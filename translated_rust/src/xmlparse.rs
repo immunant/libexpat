@@ -7140,6 +7140,142 @@ macro_rules! get_attribute_id {
     }};
 }
 
+macro_rules! store_attribute_value_from_unsafe_context {
+    ($parser:expr, $enc:expr, $isCdata:expr, $ptr:expr, $end:expr, $pool:expr, $account:expr $(,)?) => {{
+        let parser: crate::expat_h::XML_Parser = $parser;
+        let enc: *const crate::src::xmltok::ENCODING = $enc;
+        let isCdata: crate::expat_h::XML_Bool = $isCdata;
+        let ptr: *const ::core::ffi::c_char = $ptr;
+        let end: *const ::core::ffi::c_char = $end;
+        let pool: *mut STRING_POOL = $pool;
+        let account: XML_Account = $account;
+
+        'store_attribute_value: {
+            let mut next: *const ::core::ffi::c_char = ptr;
+            let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
+            loop {
+                if (*parser).m_openAttributeEntities.is_null() {
+                    result = appendAttributeValue(
+                        parser,
+                        enc,
+                        isCdata,
+                        next,
+                        end,
+                        pool,
+                        account,
+                        &raw mut next,
+                    );
+                } else {
+                    let openEntity: *mut OPEN_INTERNAL_ENTITY = (*parser).m_openAttributeEntities;
+                    if openEntity.is_null() {
+                        break 'store_attribute_value crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    }
+                    let entity: *mut ENTITY = (*openEntity).entity;
+                    let textStart: *const ::core::ffi::c_char =
+                        ((*entity).textPtr as *const ::core::ffi::c_char)
+                            .offset((*entity).processed as isize);
+                    let textEnd: *const ::core::ffi::c_char =
+                        (*entity).textPtr.offset((*entity).textLen as isize)
+                            as *const ::core::ffi::c_char;
+                    let mut nextInEntity: *const ::core::ffi::c_char = textStart;
+                    if (*entity).hasMore != 0 {
+                        result = appendAttributeValue(
+                            parser,
+                            (*parser).m_internalEncoding,
+                            isCdata,
+                            textStart,
+                            textEnd,
+                            pool,
+                            XML_ACCOUNT_ENTITY_EXPANSION,
+                            &raw mut nextInEntity,
+                        );
+                        if result as ::core::ffi::c_uint
+                            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                                as ::core::ffi::c_uint
+                        {
+                            break;
+                        }
+                        if textEnd != nextInEntity {
+                            (*entity).processed = nextInEntity
+                                .offset_from((*entity).textPtr as *const ::core::ffi::c_char)
+                                as ::core::ffi::c_long
+                                as ::core::ffi::c_int;
+                            continue;
+                        } else {
+                            (*entity).hasMore = crate::expat_h::XML_FALSE;
+                            continue;
+                        }
+                    } else {
+                        let entity_root_parser =
+                            root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+                                as crate::expat_h::XML_Parser;
+                        entityTrackingReportStats(
+                            &*entity_root_parser,
+                            &*entity,
+                            ::std::ffi::CStr::from_ptr(
+                                (*entity).name as *const ::core::ffi::c_char,
+                            ),
+                            "CLOSE",
+                            6547 as ::core::ffi::c_int,
+                        );
+                        entityTrackingOnClose(&mut *entity_root_parser);
+                        '_c2rust_label: {
+                            if (*parser).m_openAttributeEntities == openEntity {
+                            } else {
+                                crate::stdlib::__assert_fail(
+                                    b"parser->m_openAttributeEntities == openEntity\0".as_ptr()
+                                        as *const ::core::ffi::c_char,
+                                    b"../../expat/lib/xmlparse.c\0".as_ptr()
+                                        as *const ::core::ffi::c_char,
+                                    6553 as ::core::ffi::c_uint,
+                                    b"enum XML_Error storeAttributeValue(XML_Parser, const ENCODING *, XML_Bool, const char *, const char *, STRING_POOL *, enum XML_Account)\0"
+                                        .as_ptr() as *const ::core::ffi::c_char,
+                                );
+                            }
+                        };
+                        (*entity).open = crate::expat_h::XML_FALSE;
+                        (*parser).m_openAttributeEntities =
+                            (*(*parser).m_openAttributeEntities).next as *mut OPEN_INTERNAL_ENTITY;
+                        (*openEntity).next =
+                            (*parser).m_freeAttributeEntities as *mut open_internal_entity;
+                        (*parser).m_freeAttributeEntities = openEntity;
+                    }
+                }
+                if result as ::core::ffi::c_uint != 0
+                    || (*parser).m_openAttributeEntities.is_null() && end == next
+                {
+                    break;
+                }
+            }
+            if result as u64 != 0 {
+                break 'store_attribute_value result;
+            }
+            if isCdata == 0
+                && (*pool).ptr.offset_from((*pool).start) as ::core::ffi::c_long != 0
+                && *(*pool).ptr.offset(-1 as ::core::ffi::c_int as isize)
+                    as ::core::ffi::c_int
+                    == 0x20 as ::core::ffi::c_int
+            {
+                (*pool).ptr = (*pool).ptr.offset(-1);
+            }
+            if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
+                && poolGrow(&mut *pool, None) == 0
+            {
+                0 as ::core::ffi::c_int
+            } else {
+                let c2rust_fresh55 = (*pool).ptr;
+                (*pool).ptr = (*pool).ptr.offset(1);
+                *c2rust_fresh55 = '\0' as i32 as crate::expat_external_h::XML_Char;
+                1 as ::core::ffi::c_int
+            } == 0
+            {
+                break 'store_attribute_value crate::expat_h::XML_ERROR_NO_MEMORY;
+            }
+            break 'store_attribute_value crate::expat_h::XML_ERROR_NONE;
+        }
+    }};
+}
+
 unsafe extern "C" fn storeAtts(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -7298,7 +7434,7 @@ unsafe extern "C" fn storeAtts(
                     }
                 }
             }
-            result = storeAttributeValue(
+            result = store_attribute_value_from_unsafe_context!(
                 parser,
                 enc,
                 isCdata,
@@ -10617,7 +10753,7 @@ unsafe extern "C" fn doProlog(
                 if (*dtd).keepProcessing != 0 {
                     let mut attVal: *const crate::expat_external_h::XML_Char =
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    let mut result_1: crate::expat_h::XML_Error = storeAttributeValue(
+                    let mut result_1: crate::expat_h::XML_Error = store_attribute_value_from_unsafe_context!(
                         parser,
                         enc,
                         (*parser).m_declAttributeIsCdata,
@@ -12093,131 +12229,6 @@ extern "C" fn errorProcessor(
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     parser_processor_impl(ParserProcessorKind::Error, parser, s, end, nextPtr)
-}
-
-unsafe extern "C" fn storeAttributeValue(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut isCdata: crate::expat_h::XML_Bool,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pool: *mut STRING_POOL,
-    mut account: XML_Account,
-) -> crate::expat_h::XML_Error {
-    let mut next: *const ::core::ffi::c_char = ptr;
-    let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-    loop {
-        if (*parser).m_openAttributeEntities.is_null() {
-            result = appendAttributeValue(
-                parser,
-                enc,
-                isCdata,
-                next,
-                end,
-                pool,
-                account,
-                &raw mut next,
-            );
-        } else {
-            let openEntity: *mut OPEN_INTERNAL_ENTITY = (*parser).m_openAttributeEntities;
-            if openEntity.is_null() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            let entity: *mut ENTITY = (*openEntity).entity;
-            let textStart: *const ::core::ffi::c_char = ((*entity).textPtr
-                as *const ::core::ffi::c_char)
-                .offset((*entity).processed as isize);
-            let textEnd: *const ::core::ffi::c_char =
-                (*entity).textPtr.offset((*entity).textLen as isize) as *const ::core::ffi::c_char;
-            let mut nextInEntity: *const ::core::ffi::c_char = textStart;
-            if (*entity).hasMore != 0 {
-                result = appendAttributeValue(
-                    parser,
-                    (*parser).m_internalEncoding,
-                    isCdata,
-                    textStart,
-                    textEnd,
-                    pool,
-                    XML_ACCOUNT_ENTITY_EXPANSION,
-                    &raw mut nextInEntity,
-                );
-                if result as ::core::ffi::c_uint
-                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    break;
-                }
-                if textEnd != nextInEntity {
-                    (*entity).processed =
-                        nextInEntity.offset_from((*entity).textPtr as *const ::core::ffi::c_char)
-                            as ::core::ffi::c_long as ::core::ffi::c_int;
-                    continue;
-                } else {
-                    (*entity).hasMore = crate::expat_h::XML_FALSE;
-                    continue;
-                }
-            } else {
-                let entity_root_parser =
-                    root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-                        as crate::expat_h::XML_Parser;
-                entityTrackingReportStats(
-                    &*entity_root_parser,
-                    &*entity,
-                    ::std::ffi::CStr::from_ptr((*entity).name as *const ::core::ffi::c_char),
-                    "CLOSE",
-                    6547 as ::core::ffi::c_int,
-                );
-                entityTrackingOnClose(&mut *entity_root_parser);
-                '_c2rust_label: {
-                    if (*parser).m_openAttributeEntities == openEntity {
-                    } else {
-                        crate::stdlib::__assert_fail(
-                            b"parser->m_openAttributeEntities == openEntity\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            b"../../expat/lib/xmlparse.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            6553 as ::core::ffi::c_uint,
-                            b"enum XML_Error storeAttributeValue(XML_Parser, const ENCODING *, XML_Bool, const char *, const char *, STRING_POOL *, enum XML_Account)\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    }
-                };
-                (*entity).open = crate::expat_h::XML_FALSE;
-                (*parser).m_openAttributeEntities =
-                    (*(*parser).m_openAttributeEntities).next as *mut OPEN_INTERNAL_ENTITY;
-                (*openEntity).next = (*parser).m_freeAttributeEntities as *mut open_internal_entity;
-                (*parser).m_freeAttributeEntities = openEntity;
-            }
-        }
-        if result as ::core::ffi::c_uint != 0
-            || (*parser).m_openAttributeEntities.is_null() && end == next
-        {
-            break;
-        }
-    }
-    if result as u64 != 0 {
-        return result;
-    }
-    if isCdata == 0
-        && (*pool).ptr.offset_from((*pool).start) as ::core::ffi::c_long != 0
-        && *(*pool).ptr.offset(-1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0x20 as ::core::ffi::c_int
-    {
-        (*pool).ptr = (*pool).ptr.offset(-1);
-    }
-    if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-        && poolGrow(&mut *pool, None) == 0
-    {
-        0 as ::core::ffi::c_int
-    } else {
-        let c2rust_fresh55 = (*pool).ptr;
-        (*pool).ptr = (*pool).ptr.offset(1);
-        *c2rust_fresh55 = '\0' as i32 as crate::expat_external_h::XML_Char;
-        1 as ::core::ffi::c_int
-    } == 0
-    {
-        return crate::expat_h::XML_ERROR_NO_MEMORY;
-    }
-    return crate::expat_h::XML_ERROR_NONE;
 }
 
 unsafe extern "C" fn appendAttributeValue(
