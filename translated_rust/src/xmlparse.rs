@@ -2397,7 +2397,11 @@ unsafe extern "C" fn parserCreate(
     if !dtd.is_null() {
         (*parser).m_dtd = dtd;
     } else {
-        (*parser).m_dtd = dtdCreate(parser);
+        (*parser).m_dtd = expat_malloc(
+            parser,
+            ::core::mem::size_of::<DTD>() as crate::__stddef_size_t_h::size_t,
+            7500 as ::core::ffi::c_int,
+        ) as *mut DTD;
         if (*parser).m_dtd.is_null() {
             expat_free(
                 parser,
@@ -2416,6 +2420,7 @@ unsafe extern "C" fn parserCreate(
             );
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
+        dtdInit(&mut *(*parser).m_dtd, parser);
     }
     (*parser).m_freeBindingList = ::core::ptr::null_mut::<BINDING>();
     (*parser).m_freeTagList = ::core::ptr::null_mut::<TAG>();
@@ -11636,36 +11641,27 @@ fn normalizePublicId(public_id: &mut [crate::expat_external_h::XML_Char]) {
     }
 }
 
-unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut DTD {
-    let mut p: *mut DTD = expat_malloc(
-        parser,
-        ::core::mem::size_of::<DTD>() as crate::__stddef_size_t_h::size_t,
-        7500 as ::core::ffi::c_int,
-    ) as *mut DTD;
-    if p.is_null() {
-        return p;
-    }
-    poolInit(&mut (*p).pool, parser);
-    poolInit(&mut (*p).entityValuePool, parser);
-    hashTableInit(&mut (*p).generalEntities, parser);
-    hashTableInit(&mut (*p).elementTypes, parser);
-    hashTableInit(&mut (*p).attributeIds, parser);
-    hashTableInit(&mut (*p).prefixes, parser);
-    (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableInit(&mut (*p).paramEntities, parser);
-    (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
-    (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    (*p).scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
-    (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-    (*p).scaffLevel = 0 as ::core::ffi::c_int;
-    (*p).scaffSize = 0 as ::core::ffi::c_uint;
-    (*p).scaffCount = 0 as ::core::ffi::c_uint;
-    (*p).contentStringLen = 0 as ::core::ffi::c_uint;
-    (*p).keepProcessing = crate::expat_h::XML_TRUE;
-    (*p).hasParamEntityRefs = crate::expat_h::XML_FALSE;
-    (*p).standalone = crate::expat_h::XML_FALSE;
-    return p;
+fn dtdInit(p: &mut DTD, parser: crate::expat_h::XML_Parser) {
+    poolInit(&mut p.pool, parser);
+    poolInit(&mut p.entityValuePool, parser);
+    hashTableInit(&mut p.generalEntities, parser);
+    hashTableInit(&mut p.elementTypes, parser);
+    hashTableInit(&mut p.attributeIds, parser);
+    hashTableInit(&mut p.prefixes, parser);
+    p.paramEntityRead = crate::expat_h::XML_FALSE;
+    hashTableInit(&mut p.paramEntities, parser);
+    p.defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    p.defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
+    p.in_eldecl = crate::expat_h::XML_FALSE;
+    p.scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
+    p.scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
+    p.scaffLevel = 0 as ::core::ffi::c_int;
+    p.scaffSize = 0 as ::core::ffi::c_uint;
+    p.scaffCount = 0 as ::core::ffi::c_uint;
+    p.contentStringLen = 0 as ::core::ffi::c_uint;
+    p.keepProcessing = crate::expat_h::XML_TRUE;
+    p.hasParamEntityRefs = crate::expat_h::XML_FALSE;
+    p.standalone = crate::expat_h::XML_FALSE;
 }
 
 unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_Parser) {
