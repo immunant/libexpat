@@ -4802,44 +4802,21 @@ pub unsafe extern "C" fn expat_malloc_ffi(
 ) -> *mut ::core::ffi::c_void {
     expat_malloc(parser, size, sourceLine)
 }
-pub unsafe extern "C" fn expat_free(
-    mut parser: crate::expat_h::XML_Parser,
-    mut ptr: *mut ::core::ffi::c_void,
-    mut sourceLine: ::core::ffi::c_int,
+fn expat_free_account(
+    parser: &XML_ParserStruct,
+    bytes_allocated: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
 ) {
-    '_c2rust_label: {
-        if !parser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                906 as ::core::ffi::c_uint,
-                b"void expat_free(XML_Parser, void *, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    if ptr.is_null() {
-        return;
-    }
-    let mallocedPtr: *mut ::core::ffi::c_void = (ptr as *mut ::core::ffi::c_char)
-        .offset(-(crate::internal_h::EXPAT_MALLOC_PADDING as isize))
-        .offset(-(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as isize))
-        as *mut ::core::ffi::c_void;
-    let bytesAllocated: crate::__stddef_size_t_h::size_t =
-        ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
-            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-            .wrapping_add(*(mallocedPtr as *mut crate::__stddef_size_t_h::size_t));
-    let root = std::sync::Arc::clone(&(*parser).m_root);
+    let root = std::sync::Arc::clone(&parser.m_root);
     let allocation_totals = {
         let mut root = root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(root.alloc_tracker.bytesAllocated >= bytesAllocated as XmlBigCount);
+        assert!(root.alloc_tracker.bytesAllocated >= bytes_allocated as XmlBigCount);
         root.alloc_tracker.bytesAllocated = root
             .alloc_tracker
             .bytesAllocated
-            .wrapping_sub(bytesAllocated as XmlBigCount);
+            .wrapping_sub(bytes_allocated as XmlBigCount);
         (root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong).then_some((
             root.alloc_tracker.bytesAllocated,
             root.alloc_tracker.peakBytesAllocated,
@@ -4848,15 +4825,47 @@ pub unsafe extern "C" fn expat_free(
     if let Some((new_total, peak_total)) = allocation_totals {
         expat_heap_stat(
             &root,
-            parser.addr(),
+            std::ptr::from_ref(parser).addr(),
             '-' as ::core::ffi::c_char,
-            bytesAllocated as XmlBigCount,
+            bytes_allocated as XmlBigCount,
             new_total,
             peak_total,
-            sourceLine,
+            source_line,
         );
     }
-    (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
+}
+
+pub unsafe fn expat_free(
+    parser: crate::expat_h::XML_Parser,
+    ptr: *mut ::core::ffi::c_void,
+    sourceLine: ::core::ffi::c_int,
+) {
+    if parser.is_null() {
+        crate::stdlib::__assert_fail(
+            b"parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+            b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
+            906 as ::core::ffi::c_uint,
+            b"void expat_free(XML_Parser, void *, int)\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    }
+    if ptr.is_null() {
+        return;
+    }
+    let parser = &mut *parser;
+    let mallocedPtr = ptr
+        .cast::<u8>()
+        .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
+        .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>());
+    let bytesAllocated: crate::__stddef_size_t_h::size_t =
+        ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+            .wrapping_add(*mallocedPtr.cast::<crate::__stddef_size_t_h::size_t>());
+    expat_free_account(parser, bytesAllocated, sourceLine);
+    parser
+        .m_mem
+        .free_fcn
+        .expect("non-null function pointer")(mallocedPtr.cast());
 }
 #[export_name = "expat_free"]
 
