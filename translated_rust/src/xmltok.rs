@@ -1192,7 +1192,7 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        pub static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
+        const CDATA_LSQB: [::core::ffi::c_char; 6] = [
             crate::ascii_h::ASCII_C as ::core::ffi::c_char,
             crate::ascii_h::ASCII_D as ::core::ffi::c_char,
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
