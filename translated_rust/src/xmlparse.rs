@@ -3156,6 +3156,37 @@ fn parser_mut<'a>(parser: crate::expat_h::XML_Parser) -> Option<&'a mut XML_Pars
     parser_mut_from_raw!(parser)
 }
 
+macro_rules! entity_ref_from_raw {
+    ($entity:expr) => {
+        if $entity.is_null() {
+            None
+        } else {
+            Some(unsafe { &*$entity })
+        }
+    };
+}
+
+#[inline]
+fn entity_ref<'a>(entity: *const ENTITY) -> Option<&'a ENTITY> {
+    entity_ref_from_raw!(entity)
+}
+
+macro_rules! uint_mut_from_raw {
+    ($ptr:expr) => {
+        if $ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut *$ptr })
+        }
+    };
+}
+
+macro_rules! unsafe_expr {
+    ($expr:expr) => {
+        unsafe { $expr }
+    };
+}
+
 pub extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
     if let Some(parser_state) = parser_mut(parser) {
         parser_state.m_handlerArg = parser as *mut ::core::ffi::c_void;
@@ -12702,85 +12733,84 @@ unsafe extern "C" fn copyString(
     return result;
 }
 
-unsafe extern "C" fn accountingGetCurrentAmplification(
+extern "C" fn accountingGetCurrentAmplification(
     mut rootParser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_float {
+    let root = parser_ref(rootParser).expect("non-null root parser");
     let lenOfShortestInclude: crate::__stddef_size_t_h::size_t =
         (::core::mem::size_of::<[::core::ffi::c_char; 23]>() as crate::__stddef_size_t_h::size_t)
             .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
-    let countBytesOutput: XmlBigCount = (*rootParser)
+    let countBytesOutput: XmlBigCount = root
         .m_accounting
         .countBytesDirect
-        .wrapping_add((*rootParser).m_accounting.countBytesIndirect);
-    let amplificationFactor: ::core::ffi::c_float =
-        if (*rootParser).m_accounting.countBytesDirect != 0 {
-            countBytesOutput as ::core::ffi::c_float
-                / (*rootParser).m_accounting.countBytesDirect as ::core::ffi::c_float
-        } else {
-            (lenOfShortestInclude as XmlBigCount)
-                .wrapping_add((*rootParser).m_accounting.countBytesIndirect)
-                as ::core::ffi::c_float
-                / lenOfShortestInclude as ::core::ffi::c_float
-        };
+        .wrapping_add(root.m_accounting.countBytesIndirect);
+    let amplificationFactor: ::core::ffi::c_float = if root.m_accounting.countBytesDirect != 0 {
+        countBytesOutput as ::core::ffi::c_float
+            / root.m_accounting.countBytesDirect as ::core::ffi::c_float
+    } else {
+        (lenOfShortestInclude as XmlBigCount).wrapping_add(root.m_accounting.countBytesIndirect)
+            as ::core::ffi::c_float
+            / lenOfShortestInclude as ::core::ffi::c_float
+    };
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8480 as ::core::ffi::c_uint,
                 b"float accountingGetCurrentAmplification(XML_Parser)\0".as_ptr()
                     as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
     return amplificationFactor;
 }
 
-unsafe extern "C" fn accountingReportStats(
+extern "C" fn accountingReportStats(
     mut originParser: crate::expat_h::XML_Parser,
     mut epilog: *const ::core::ffi::c_char,
 ) {
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
+        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+    let root = parser_ref(rootParser).expect("non-null root parser");
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8487 as ::core::ffi::c_uint,
                 b"void accountingReportStats(XML_Parser, const char *)\0".as_ptr()
                     as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
-    if (*rootParser).m_accounting.debugLevel == 0 as ::core::ffi::c_ulong {
+    if root.m_accounting.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
     let amplificationFactor: ::core::ffi::c_float =
         accountingGetCurrentAmplification(rootParser) as ::core::ffi::c_float;
-    crate::stdlib::fprintf(
+    unsafe_expr!(crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"expat: Accounting(%p): Direct %10llu, indirect %10llu, amplification %8.2f%s\0".as_ptr()
             as *const ::core::ffi::c_char,
         rootParser as *mut ::core::ffi::c_void,
-        (*rootParser).m_accounting.countBytesDirect,
-        (*rootParser).m_accounting.countBytesIndirect,
+        root.m_accounting.countBytesDirect,
+        root.m_accounting.countBytesIndirect,
         amplificationFactor as ::core::ffi::c_double,
         epilog,
-    );
+    ));
 }
 
-unsafe extern "C" fn accountingOnAbort(mut originParser: crate::expat_h::XML_Parser) {
+extern "C" fn accountingOnAbort(mut originParser: crate::expat_h::XML_Parser) {
     accountingReportStats(
         originParser,
         b" ABORTING\n\0".as_ptr() as *const ::core::ffi::c_char,
     );
 }
 
-unsafe extern "C" fn accountingReportDiff(
+extern "C" fn accountingReportDiff(
     mut rootParser: crate::expat_h::XML_Parser,
     mut levelsAwayFromRootParser: ::core::ffi::c_uint,
     mut before: *const ::core::ffi::c_char,
@@ -12789,19 +12819,20 @@ unsafe extern "C" fn accountingReportDiff(
     mut source_line: ::core::ffi::c_int,
     mut account: XML_Account,
 ) {
+    let root = parser_ref(rootParser).expect("non-null root parser");
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8513 as ::core::ffi::c_uint,
                 b"void accountingReportDiff(XML_Parser, unsigned int, const char *, const char *, ptrdiff_t, int, enum XML_Account)\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
-    crate::stdlib::fprintf(
+    unsafe_expr!(crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b" (+%6ld bytes %s|%u, xmlparse.c:%d) %*s\"\0".as_ptr() as *const ::core::ffi::c_char,
         bytesMore,
@@ -12816,65 +12847,67 @@ unsafe extern "C" fn accountingReportDiff(
         source_line,
         10 as ::core::ffi::c_int,
         b"\0".as_ptr() as *const ::core::ffi::c_char,
-    );
-    let ellipis: [::core::ffi::c_char; 5] =
-        ::core::mem::transmute::<[u8; 5], [::core::ffi::c_char; 5]>(*b"[..]\0");
+    ));
+    let ellipis: [::core::ffi::c_char; 5] = unsafe_expr!(::core::mem::transmute::<
+        [u8; 5],
+        [::core::ffi::c_char; 5],
+    >(*b"[..]\0"));
     let ellipsisLength: crate::__stddef_size_t_h::size_t =
         (::core::mem::size_of::<[::core::ffi::c_char; 5]>() as crate::__stddef_size_t_h::size_t)
             .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
     let contextLength: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
     let mut walker: *const ::core::ffi::c_char = before;
-    if (*rootParser).m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
-        || after.offset_from(before) as crate::__stddef_ptrdiff_t_h::ptrdiff_t
+    if root.m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
+        || unsafe_expr!(after.offset_from(before)) as crate::__stddef_ptrdiff_t_h::ptrdiff_t
             <= (contextLength as crate::__stddef_size_t_h::size_t)
                 .wrapping_add(ellipsisLength)
                 .wrapping_add(contextLength as crate::__stddef_size_t_h::size_t)
                 as crate::__stddef_ptrdiff_t_h::ptrdiff_t
     {
         while walker < after {
-            crate::stdlib::fprintf(
+            unsafe_expr!(crate::stdlib::fprintf(
                 crate::stdlib::stderr,
                 b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+                unsignedCharToPrintable(*unsafe_expr!(
+                    walker.offset(0 as ::core::ffi::c_int as isize)
+                ) as ::core::ffi::c_uchar),
+            ));
+            walker = unsafe_expr!(walker.offset(1));
         }
     } else {
-        while walker < before.offset(contextLength as isize) {
-            crate::stdlib::fprintf(
+        while walker < unsafe_expr!(before.offset(contextLength as isize)) {
+            unsafe_expr!(crate::stdlib::fprintf(
                 crate::stdlib::stderr,
                 b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+                unsignedCharToPrintable(*unsafe_expr!(
+                    walker.offset(0 as ::core::ffi::c_int as isize)
+                ) as ::core::ffi::c_uchar),
+            ));
+            walker = unsafe_expr!(walker.offset(1));
         }
-        crate::stdlib::fprintf(
+        unsafe_expr!(crate::stdlib::fprintf(
             crate::stdlib::stderr,
             &raw const ellipis as *const ::core::ffi::c_char,
-        );
-        walker = after.offset(-(contextLength as isize));
+        ));
+        walker = unsafe_expr!(after.offset(-(contextLength as isize)));
         while walker < after {
-            crate::stdlib::fprintf(
+            unsafe_expr!(crate::stdlib::fprintf(
                 crate::stdlib::stderr,
                 b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+                unsignedCharToPrintable(*unsafe_expr!(
+                    walker.offset(0 as ::core::ffi::c_int as isize)
+                ) as ::core::ffi::c_uchar),
+            ));
+            walker = unsafe_expr!(walker.offset(1));
         }
     }
-    crate::stdlib::fprintf(
+    unsafe_expr!(crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"\"\n\0".as_ptr() as *const ::core::ffi::c_char,
-    );
+    ));
 }
 
-unsafe extern "C" fn accountingDiffTolerated(
+extern "C" fn accountingDiffTolerated(
     mut originParser: crate::expat_h::XML_Parser,
     mut tok: ::core::ffi::c_int,
     mut before: *const ::core::ffi::c_char,
@@ -12898,29 +12931,29 @@ unsafe extern "C" fn accountingDiffTolerated(
     }
     let mut levelsAwayFromRootParser: ::core::ffi::c_uint = 0;
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, &raw mut levelsAwayFromRootParser)
-            as crate::expat_h::XML_Parser;
+        getRootParserOf(originParser, &raw mut levelsAwayFromRootParser);
+    let root = parser_mut(rootParser).expect("non-null root parser");
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8566 as ::core::ffi::c_uint,
                 b"XML_Bool accountingDiffTolerated(XML_Parser, int, const char *, const char *, int, enum XML_Account)\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
     let isDirect: ::core::ffi::c_int = (account as ::core::ffi::c_uint
         == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
         && originParser == rootParser) as ::core::ffi::c_int;
     let bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t =
-        after.offset_from(before) as crate::__stddef_ptrdiff_t_h::ptrdiff_t;
-    let additionTarget: *mut XmlBigCount = if isDirect != 0 {
-        &raw mut (*rootParser).m_accounting.countBytesDirect
+        unsafe_expr!(after.offset_from(before)) as crate::__stddef_ptrdiff_t_h::ptrdiff_t;
+    let additionTarget: &mut XmlBigCount = if isDirect != 0 {
+        &mut root.m_accounting.countBytesDirect
     } else {
-        &raw mut (*rootParser).m_accounting.countBytesIndirect
+        &mut root.m_accounting.countBytesIndirect
     };
     if *additionTarget
         > (-1 as ::core::ffi::c_int as XmlBigCount).wrapping_sub(bytesMore as XmlBigCount)
@@ -12928,17 +12961,17 @@ unsafe extern "C" fn accountingDiffTolerated(
         return crate::expat_h::XML_FALSE;
     }
     *additionTarget = (*additionTarget).wrapping_add(bytesMore as XmlBigCount);
-    let countBytesOutput: XmlBigCount = (*rootParser)
+    let countBytesOutput: XmlBigCount = root
         .m_accounting
         .countBytesDirect
-        .wrapping_add((*rootParser).m_accounting.countBytesIndirect);
+        .wrapping_add(root.m_accounting.countBytesIndirect);
     let amplificationFactor: ::core::ffi::c_float =
         accountingGetCurrentAmplification(rootParser) as ::core::ffi::c_float;
     let tolerated: crate::expat_h::XML_Bool =
-        (countBytesOutput < (*rootParser).m_accounting.activationThresholdBytes
-            || amplificationFactor <= (*rootParser).m_accounting.maximumAmplificationFactor)
+        (countBytesOutput < root.m_accounting.activationThresholdBytes
+            || amplificationFactor <= root.m_accounting.maximumAmplificationFactor)
             as ::core::ffi::c_int as crate::expat_h::XML_Bool;
-    if (*rootParser).m_accounting.debugLevel >= 2 as ::core::ffi::c_ulong {
+    if root.m_accounting.debugLevel >= 2 as ::core::ffi::c_ulong {
         accountingReportStats(rootParser, b"\0".as_ptr() as *const ::core::ffi::c_char);
         accountingReportDiff(
             rootParser,
@@ -12982,80 +13015,77 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
 ) -> ::core::ffi::c_ulonglong {
     testingAccountingGetCountBytesIndirect(parser)
 }
-unsafe extern "C" fn entityTrackingReportStats(
+extern "C" fn entityTrackingReportStats(
     mut rootParser: crate::expat_h::XML_Parser,
     mut entity: *mut ENTITY,
     mut action: *const ::core::ffi::c_char,
     mut sourceLine: ::core::ffi::c_int,
 ) {
+    let root = parser_ref(rootParser).expect("non-null root parser");
+    let entity = entity_ref(entity).expect("non-null entity");
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8617 as ::core::ffi::c_uint,
                 b"void entityTrackingReportStats(XML_Parser, ENTITY *, const char *, int)\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
-    if (*rootParser).m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
+    if root.m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
-    let entityName: *const ::core::ffi::c_char = (*entity).name as *const ::core::ffi::c_char;
-    crate::stdlib::fprintf(
+    let entityName: *const ::core::ffi::c_char = entity.name as *const ::core::ffi::c_char;
+    unsafe_expr!(crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"expat: Entities(%p): Count %9u, depth %2u/%2u %*s%s%s; %s length %d (xmlparse.c:%d)\n\0"
             .as_ptr() as *const ::core::ffi::c_char,
         rootParser as *mut ::core::ffi::c_void,
-        (*rootParser).m_entity_stats.countEverOpened,
-        (*rootParser).m_entity_stats.currentDepth,
-        (*rootParser).m_entity_stats.maximumDepthSeen,
-        ((*rootParser).m_entity_stats.currentDepth as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
+        root.m_entity_stats.countEverOpened,
+        root.m_entity_stats.currentDepth,
+        root.m_entity_stats.maximumDepthSeen,
+        (root.m_entity_stats.currentDepth as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
             * 2 as ::core::ffi::c_int,
         b"\0".as_ptr() as *const ::core::ffi::c_char,
-        if (*entity).is_param as ::core::ffi::c_int != 0 {
+        if entity.is_param as ::core::ffi::c_int != 0 {
             b"%\0".as_ptr() as *const ::core::ffi::c_char
         } else {
             b"&\0".as_ptr() as *const ::core::ffi::c_char
         },
         entityName,
         action,
-        (*entity).textLen,
+        entity.textLen,
         sourceLine,
-    );
+    ));
 }
 
-unsafe extern "C" fn entityTrackingOnOpen(
+extern "C" fn entityTrackingOnOpen(
     mut originParser: crate::expat_h::XML_Parser,
     mut entity: *mut ENTITY,
     mut sourceLine: ::core::ffi::c_int,
 ) {
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
+        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+    let root = parser_mut(rootParser).expect("non-null root parser");
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8641 as ::core::ffi::c_uint,
                 b"void entityTrackingOnOpen(XML_Parser, ENTITY *, int)\0".as_ptr()
                     as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
-    (*rootParser).m_entity_stats.countEverOpened =
-        (*rootParser).m_entity_stats.countEverOpened.wrapping_add(1);
-    (*rootParser).m_entity_stats.currentDepth =
-        (*rootParser).m_entity_stats.currentDepth.wrapping_add(1);
-    if (*rootParser).m_entity_stats.currentDepth > (*rootParser).m_entity_stats.maximumDepthSeen {
-        (*rootParser).m_entity_stats.maximumDepthSeen = (*rootParser)
-            .m_entity_stats
-            .maximumDepthSeen
-            .wrapping_add(1);
+    root.m_entity_stats.countEverOpened = root.m_entity_stats.countEverOpened.wrapping_add(1);
+    root.m_entity_stats.currentDepth = root.m_entity_stats.currentDepth.wrapping_add(1);
+    if root.m_entity_stats.currentDepth > root.m_entity_stats.maximumDepthSeen {
+        root.m_entity_stats.maximumDepthSeen = root.m_entity_stats.maximumDepthSeen.wrapping_add(1);
     }
     entityTrackingReportStats(
         rootParser,
@@ -13065,24 +13095,24 @@ unsafe extern "C" fn entityTrackingOnOpen(
     );
 }
 
-unsafe extern "C" fn entityTrackingOnClose(
+extern "C" fn entityTrackingOnClose(
     mut originParser: crate::expat_h::XML_Parser,
     mut entity: *mut ENTITY,
     mut sourceLine: ::core::ffi::c_int,
 ) {
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
+        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+    let root = parser_mut(rootParser).expect("non-null root parser");
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8656 as ::core::ffi::c_uint,
                 b"void entityTrackingOnClose(XML_Parser, ENTITY *, int)\0".as_ptr()
                     as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
     entityTrackingReportStats(
@@ -13091,38 +13121,41 @@ unsafe extern "C" fn entityTrackingOnClose(
         b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
         sourceLine,
     );
-    (*rootParser).m_entity_stats.currentDepth =
-        (*rootParser).m_entity_stats.currentDepth.wrapping_sub(1);
+    root.m_entity_stats.currentDepth = root.m_entity_stats.currentDepth.wrapping_sub(1);
 }
 
-unsafe extern "C" fn getRootParserOf(
+extern "C" fn getRootParserOf(
     mut parser: crate::expat_h::XML_Parser,
     mut outLevelDiff: *mut ::core::ffi::c_uint,
 ) -> crate::expat_h::XML_Parser {
     let mut rootParser: crate::expat_h::XML_Parser = parser;
     let mut stepsTakenUpwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
-    while !(*rootParser).m_parentParser.is_null() {
-        rootParser = (*rootParser).m_parentParser;
+    while let Some(parser_state) = parser_ref(rootParser) {
+        if parser_state.m_parentParser.is_null() {
+            break;
+        }
+        rootParser = parser_state.m_parentParser;
         stepsTakenUpwards = stepsTakenUpwards.wrapping_add(1);
     }
+    let root = parser_ref(rootParser).expect("non-null root parser");
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if root.m_parentParser.is_null() {
         } else {
-            crate::stdlib::__assert_fail(
+            unsafe_expr!(crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
                 b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                 8672 as ::core::ffi::c_uint,
                 b"XML_Parser getRootParserOf(XML_Parser, unsigned int *)\0".as_ptr()
                     as *const ::core::ffi::c_char,
-            );
+            ));
         }
     };
-    if !outLevelDiff.is_null() {
-        *outLevelDiff = stepsTakenUpwards;
+    if let Some(out_level_diff) = uint_mut_from_raw!(outLevelDiff) {
+        *out_level_diff = stepsTakenUpwards;
     }
     return rootParser;
 }
-pub unsafe extern "C" fn unsignedCharToPrintable(
+pub extern "C" fn unsignedCharToPrintable(
     mut c: ::core::ffi::c_uchar,
 ) -> *const ::core::ffi::c_char {
     match c as ::core::ffi::c_int {
@@ -13384,13 +13417,13 @@ pub unsafe extern "C" fn unsignedCharToPrintable(
         255 => return b"\\xFF\0".as_ptr() as *const ::core::ffi::c_char,
         _ => {
             '_c2rust_label: {
-                crate::stdlib::__assert_fail(
+                unsafe_expr!(crate::stdlib::__assert_fail(
                     b"0\0".as_ptr() as *const ::core::ffi::c_char,
                     b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                     9198 as ::core::ffi::c_uint,
                     b"const char *unsignedCharToPrintable(unsigned char)\0".as_ptr()
                         as *const ::core::ffi::c_char,
-                );
+                ));
             };
             return b"dead code\0".as_ptr() as *const ::core::ffi::c_char;
         }
