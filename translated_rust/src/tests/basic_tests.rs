@@ -1533,6 +1533,39 @@ fn parser_set_external_entity_ref_handler_for(
     ffi_call2(XML_SetExternalEntityRefHandler, parser, handler);
 }
 
+fn parser_resume() -> XML_Status {
+    ffi_call1(XML_ResumeParser, current_parser())
+}
+
+fn parser_parsing_status() -> XML_ParsingStatus {
+    let mut status = XML_ParsingStatus {
+        parsing: XML_INITIALIZED,
+        finalBuffer: 0,
+    };
+    ffi_call2(
+        XML_GetParsingStatus,
+        current_parser(),
+        &mut status as *mut XML_ParsingStatus,
+    );
+    status
+}
+
+fn configure_resumable_character_data_handler(resumable: XML_Bool) {
+    set_parser_stop_state(resumable, None);
+    parser_set_character_data_handler(clearing_aborting_character_data_handler());
+}
+
+fn configure_subordinate_external_entity_parser(
+    handler: XML_ExternalEntityRefHandler,
+    resumable: Option<XML_Bool>,
+) {
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(handler);
+    if let Some(resumable) = resumable {
+        set_parser_stop_state(resumable, None);
+    }
+}
+
 fn assert_status_ok(status: XML_Status, line: ::core::ffi::c_int, message: &[u8]) {
     if status as ::core::ffi::c_uint != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint {
         fail_test(line, message);
@@ -1676,6 +1709,17 @@ fn default_handler() -> XML_DefaultHandler {
     )
 }
 
+fn accumulating_default_handler() -> XML_DefaultHandler {
+    Some(
+        accumulate_characters
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    )
+}
+
 fn xml_decl_handler_for_tests() -> XML_XmlDeclHandler {
     Some(
         dummy_xdecl_handler
@@ -1714,6 +1758,22 @@ fn external_entity_loader2_handler_for_tests() -> XML_ExternalEntityRefHandler {
 
 fn external_entity_faulter_handler_for_tests() -> XML_ExternalEntityRefHandler {
     Some(external_entity_faulter)
+}
+
+fn external_entity_resetter_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_resetter)
+}
+
+fn external_entity_suspender_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_suspender)
+}
+
+fn external_entity_suspend_xmldecl_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_suspend_xmldecl)
+}
+
+fn external_entity_suspending_faulter_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_suspending_faulter)
 }
 
 fn external_entity_good_cdata_handler_for_tests() -> XML_ExternalEntityRefHandler {
@@ -8395,463 +8455,208 @@ extern "C" fn test_attributes() {
     }
 }
 extern "C" fn test_reset_in_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_reset_in_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2495 as ::core::ffi::c_int,
+    set_test_info(b"test_reset_in_entity\0", 2495 as ::core::ffi::c_int);
+    if current_chunk_size() != 0 as ::core::ffi::c_int {
+        return;
+    }
+
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n<!ENTITY wombat 'wom'>\n<!ENTITY entity 'hi &wom; there'>\n]>\n<doc>&entity;</doc>\0",
+    );
+    configure_resumable_character_data_handler(XML_TRUE);
+    ensure_parser_success(parser_parse_c_string(text), 2514 as ::core::ffi::c_int);
+
+    if parser_parsing_status().parsing != XML_SUSPENDED {
+        fail_test(
+            2517 as ::core::ffi::c_int,
+            b"Parsing status not SUSPENDED\0",
         );
-        if g_chunkSize != 0 as ::core::ffi::c_int {
-            return;
-        }
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY wombat 'wom'>\n<!ENTITY entity 'hi &wom; there'>\n]>\n<doc>&entity;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut status: XML_ParsingStatus = XML_ParsingStatus {
-            parsing: XML_INITIALIZED,
-            finalBuffer: 0,
-        };
-        g_resumable = XML_TRUE;
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                clearing_aborting_character_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
+    }
+
+    parser_reset();
+
+    if parser_parsing_status().parsing != XML_INITIALIZED {
+        fail_test(
+            2521 as ::core::ffi::c_int,
+            b"Parsing status doesn't reset to INITIALIZED\0",
         );
-        if XML_Parse(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2514 as ::core::ffi::c_int,
-            );
-        }
-        XML_GetParsingStatus(g_parser, &raw mut status);
-        if status.parsing as ::core::ffi::c_uint
-            != XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2517 as ::core::ffi::c_int,
-                b"Parsing status not SUSPENDED\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_GetParsingStatus(g_parser, &raw mut status);
-        if status.parsing as ::core::ffi::c_uint
-            != XML_INITIALIZED as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2521 as ::core::ffi::c_int,
-                b"Parsing status doesn't reset to INITIALIZED\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_resume_invalid_parse() {
-    unsafe {
-        _check_set_test_info(
-            b"test_resume_invalid_parse\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2526 as ::core::ffi::c_int,
+    set_test_info(b"test_resume_invalid_parse\0", 2526 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<doc>Hello</doc\0");
+
+    configure_resumable_character_data_handler(XML_TRUE);
+    ensure_parser_success(parser_parse_c_string(text), 2533 as ::core::ffi::c_int);
+
+    if parser_resume() as ::core::ffi::c_uint
+        == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_test(
+            2535 as ::core::ffi::c_int,
+            b"Resumed invalid parse not faulted\0",
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc>Hello</doc\0".as_ptr() as *const ::core::ffi::c_char;
-        g_resumable = XML_TRUE;
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                clearing_aborting_character_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
+    }
+
+    if parser_error_code() as ::core::ffi::c_uint
+        != XML_ERROR_UNCLOSED_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_test(
+            2537 as ::core::ffi::c_int,
+            b"Invalid parse not correctly faulted\0",
         );
-        if XML_Parse(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2533 as ::core::ffi::c_int,
-            );
-        }
-        if XML_ResumeParser(g_parser) as ::core::ffi::c_uint
-            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2535 as ::core::ffi::c_int,
-                b"Resumed invalid parse not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetErrorCode(g_parser) as ::core::ffi::c_uint
-            != XML_ERROR_UNCLOSED_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2537 as ::core::ffi::c_int,
-                b"Invalid parse not correctly faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_resume_resuspended() {
-    unsafe {
-        _check_set_test_info(
-            b"test_resume_resuspended\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2542 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc>Hello<meep/>world</doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        g_resumable = XML_TRUE;
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                clearing_aborting_character_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if XML_Parse(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2549 as ::core::ffi::c_int,
-            );
-        }
-        g_resumable = XML_TRUE;
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                clearing_aborting_character_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if XML_ResumeParser(g_parser) as ::core::ffi::c_uint
-            != XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2553 as ::core::ffi::c_int,
-                b"Resumption not suspended\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_ResumeParser(g_parser) as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2556 as ::core::ffi::c_int,
-            );
-        }
+    set_test_info(b"test_resume_resuspended\0", 2542 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<doc>Hello<meep/>world</doc>\0");
+
+    configure_resumable_character_data_handler(XML_TRUE);
+    ensure_parser_success(parser_parse_c_string(text), 2549 as ::core::ffi::c_int);
+
+    configure_resumable_character_data_handler(XML_TRUE);
+    if parser_resume() as ::core::ffi::c_uint
+        != XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_test(2553 as ::core::ffi::c_int, b"Resumption not suspended\0");
+    }
+
+    if parser_resume() as ::core::ffi::c_uint
+        != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(2556 as ::core::ffi::c_int);
     }
 }
 extern "C" fn test_cdata_default() {
-    unsafe {
-        _check_set_test_info(
-            b"test_cdata_default\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2561 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc><![CDATA[Hello\nworld]]></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"<doc><![CDATA[Hello\nworld]]></doc>\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                accumulate_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2572 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_cdata_default\0", 2561 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<doc><![CDATA[Hello\nworld]]></doc>\0");
+    let expected = bytes_as_xml_char_ptr(b"<doc><![CDATA[Hello\nworld]]></doc>\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_user_data((&mut storage as *mut CharData).cast());
+    parser_set_default_handler(accumulating_default_handler());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2572 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
 }
 extern "C" fn test_subordinate_reset() {
-    unsafe {
-        _check_set_test_info(
-            b"test_subordinate_reset\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2578 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_resetter
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2587 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(b"test_subordinate_reset\0", 2578 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0",
+    );
+
+    configure_subordinate_external_entity_parser(
+        external_entity_resetter_handler_for_tests(),
+        None,
+    );
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2587 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_subordinate_suspend() {
-    unsafe {
-        _check_set_test_info(
-            b"test_subordinate_suspend\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2592 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_suspender
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2601 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(b"test_subordinate_suspend\0", 2592 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0",
+    );
+
+    configure_subordinate_external_entity_parser(
+        external_entity_suspender_handler_for_tests(),
+        None,
+    );
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2601 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_subordinate_xdecl_suspend() {
-    unsafe {
-        _check_set_test_info(
-            b"test_subordinate_xdecl_suspend\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2608 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY entity SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&entity;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_suspend_xmldecl
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        g_resumable = XML_TRUE;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2620 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(
+        b"test_subordinate_xdecl_suspend\0",
+        2608 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ENTITY entity SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&entity;</doc>\0",
+    );
+
+    configure_subordinate_external_entity_parser(
+        external_entity_suspend_xmldecl_handler_for_tests(),
+        Some(XML_TRUE),
+    );
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2620 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_subordinate_xdecl_abort() {
-    unsafe {
-        _check_set_test_info(
-            b"test_subordinate_xdecl_abort\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2624 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY entity SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&entity;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_suspend_xmldecl
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        g_resumable = XML_FALSE;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2636 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(
+        b"test_subordinate_xdecl_abort\0",
+        2624 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ENTITY entity SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&entity;</doc>\0",
+    );
+
+    configure_subordinate_external_entity_parser(
+        external_entity_suspend_xmldecl_handler_for_tests(),
+        Some(XML_FALSE),
+    );
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2636 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_ext_entity_invalid_suspended_parse() {
-    unsafe {
-        _check_set_test_info(
-            b"test_ext_entity_invalid_suspended_parse\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2641 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_ext_entity_invalid_suspended_parse\0",
+        2641 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0",
+    );
+    let faults = [
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='us-ascii'?><\0"),
+            fail_text: bytes_as_c_char_ptr(b"Incomplete element declaration not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-8'?>\xE2\x82\0"),
+            fail_text: bytes_as_c_char_ptr(b"Incomplete character not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_PARTIAL_CHAR,
+        },
+        ext_faults {
+            parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_NONE,
+        },
+    ];
+
+    for fault in faults
+        .iter()
+        .take_while(|fault| !fault.parse_text.is_null())
+    {
+        set_subtest_text(fault.parse_text);
+        configure_subordinate_external_entity_parser(
+            external_entity_suspending_faulter_handler_for_tests(),
+            None,
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut faults: [ExtFaults; 3] = [
-            ext_faults {
-                parse_text: b"<?xml version='1.0' encoding='us-ascii'?><\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: b"Incomplete element declaration not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            ext_faults {
-                parse_text: b"<?xml version='1.0' encoding='utf-8'?>\xE2\x82\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: b"Incomplete character not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_PARTIAL_CHAR,
-            },
-            ext_faults {
-                parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_NONE,
-            },
-        ];
-        let mut fault: *mut ExtFaults = ::core::ptr::null_mut::<ExtFaults>();
-        fault = (&raw mut faults as *mut ExtFaults).offset(0 as ::core::ffi::c_int as isize)
-            as *mut ExtFaults;
-        while !(*fault).parse_text.is_null() {
-            set_subtest(
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                (*fault).parse_text,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_suspending_faulter
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            XML_SetUserData(g_parser, fault as *mut ::core::ffi::c_void);
-            _expect_failure(
-                text,
-                XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-                b"Parser did not report external entity error\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2663 as ::core::ffi::c_int,
-            );
-            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            fault = fault.offset(1);
-        }
+        parser_set_user_data((fault as *const ExtFaults).cast_mut().cast());
+        expect_failure(
+            text,
+            XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+            b"Parser did not report external entity error\0",
+            2663 as ::core::ffi::c_int,
+        );
+        parser_reset();
     }
 }
 extern "C" fn test_explicit_encoding() {
