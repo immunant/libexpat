@@ -12556,25 +12556,31 @@ fn trim_to_complete_utf8_characters(input: &[u8]) -> usize {
 /// When non-null and non-empty, `from..*from_lim_ref` must be a readable
 /// range from one allocation.  `from_lim_ref` must be writable.
 unsafe fn trim_to_complete_utf8_cursor(
-    from: *const ::core::ffi::c_char,
-    mut from_lim_ref: core::ptr::NonNull<*const ::core::ffi::c_char>,
+    from: Option<core::ptr::NonNull<::core::ffi::c_char>>,
+    from_lim_out: &mut Option<core::ptr::NonNull<::core::ffi::c_char>>,
 ) {
-    let from_lim_ref = unsafe { from_lim_ref.as_mut() };
-    let from_lim = *from_lim_ref;
     // A zero-length range does not need a dereferenceable data pointer.
-    if from == from_lim {
+    let Some(from) = from else {
         return;
-    }
-    if from.is_null() || from_lim.is_null() {
+    };
+    let Some(from_lim) = *from_lim_out else {
+        return;
+    };
+    if from == from_lim {
         return;
     }
     let length = unsafe { from_lim.offset_from(from) };
     if length <= 0 {
         return;
     }
-    let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>(), length as usize) };
+    let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>().as_ptr(), length as usize) };
     let trimmed = trim_to_complete_utf8_characters(input);
-    *from_lim_ref = from.wrapping_add(trimmed);
+    *from_lim_out = core::ptr::NonNull::new(
+        input[trimmed..]
+            .as_ptr()
+            .cast_mut()
+            .cast::<::core::ffi::c_char>(),
+    );
 }
 
 #[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
@@ -12583,10 +12589,15 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
     mut from: *const ::core::ffi::c_char,
     mut fromLimRef: *mut *const ::core::ffi::c_char,
 ) {
-    let Some(from_lim_ref) = core::ptr::NonNull::new(fromLimRef) else {
+    let Some(mut from_lim_ref) = core::ptr::NonNull::new(fromLimRef) else {
         return;
     };
-    unsafe { trim_to_complete_utf8_cursor(from, from_lim_ref) };
+    // The wrapper only converts the C out-slot.  Validation and cursor
+    // updates are performed by the named implementation.
+    let from_lim_ref = unsafe { from_lim_ref.as_mut() };
+    let mut from_lim = core::ptr::NonNull::new((*from_lim_ref).cast_mut());
+    unsafe { trim_to_complete_utf8_cursor(core::ptr::NonNull::new(from.cast_mut()), &mut from_lim) };
+    *from_lim_ref = from_lim.map_or(core::ptr::null(), |pointer| pointer.as_ptr().cast_const());
 }
 /// Copies the largest UTF-8 prefix that fits in `output` without splitting a
 /// complete character.  This intentionally mirrors Expat's byte-oriented
