@@ -8951,7 +8951,7 @@ unsafe extern "C" fn contentProcessor(
         } else {
             0 as ::core::ffi::c_int
         },
-        parser_encoding(parser),
+        parser_encoding(parser).cast::<crate::src::xmltok::normal_encoding>(),
         start,
         end,
         endPtr,
@@ -9216,7 +9216,7 @@ unsafe extern "C" fn externalEntityContentProcessor(
     let mut result: crate::expat_h::XML_Error = doContent(
         parser,
         1 as ::core::ffi::c_int,
-        parser_encoding(parser),
+        parser_encoding(parser).cast::<crate::src::xmltok::normal_encoding>(),
         start,
         end,
         endPtr,
@@ -9316,7 +9316,7 @@ fn close_content_tag(parser: &mut XML_ParserStruct, tag_index: usize) -> ClosedC
 unsafe extern "C" fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
-    mut enc: *const crate::src::xmltok::ENCODING,
+    mut normal_enc: *const crate::src::xmltok::normal_encoding,
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
@@ -9329,8 +9329,13 @@ unsafe extern "C" fn doContent(
     // replacement text.  Resolve that ownership afresh for every scan below.
     // In particular, do not retain an input slice across a callback, because
     // re-entry may grow and relocate the parser buffer.
-    let encoding = &*enc;
-    let normal_encoding = &*(enc as *const crate::src::xmltok::normal_encoding);
+    // Content processing is only entered after the initial encoding probe has
+    // selected a full normal-encoding table.  Carry that typed table through
+    // this implementation instead of repeatedly reinterpreting its ABI
+    // prefix as a larger internal table.
+    let normal_encoding = &*normal_enc;
+    let encoding = &normal_encoding.enc;
+    let enc = encoding as *const crate::src::xmltok::ENCODING;
     let parser_events = enc == parser_encoding(parser);
     let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
@@ -17035,7 +17040,9 @@ unsafe extern "C" fn internalEntityProcessor(
             result = doContent(
                 parser,
                 entity_state.start_tag_level,
-                internal_encoding(entity_state.internal_encoding) as *const _,
+                (internal_encoding(entity_state.internal_encoding)
+                    as *const crate::src::xmltok::ENCODING)
+                    .cast::<crate::src::xmltok::normal_encoding>(),
                 textStart,
                 textEnd,
                 &raw mut next,
