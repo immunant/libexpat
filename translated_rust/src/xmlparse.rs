@@ -5699,15 +5699,19 @@ fn expat_malloc_record(
     }
 }
 
-pub unsafe extern "C" fn expat_malloc(
-    mut parser: crate::expat_h::XML_Parser,
-    mut size: crate::__stddef_size_t_h::size_t,
-    mut sourceLine: ::core::ffi::c_int,
+/// Allocate a test-visible Expat block for an already-validated parser.
+///
+/// The parser reference keeps raw-handle validation at the boundary.  The
+/// allocation itself still has to write the XML_TESTING size prefix required
+/// by the C test ABI.
+pub unsafe fn expat_malloc(
+    parser: &XML_ParserStruct,
+    size: crate::__stddef_size_t_h::size_t,
+    sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
     let Some(bytes_to_allocate) = expat_allocation_bytes(size) else {
         return crate::__stddef_null_h::NULL;
     };
-    let parser = &*parser;
     let Some(root) = expat_malloc_prepare(parser, bytes_to_allocate, sourceLine) else {
         return crate::__stddef_null_h::NULL;
     };
@@ -5741,6 +5745,10 @@ pub unsafe extern "C" fn expat_malloc_ffi(
     mut size: crate::__stddef_size_t_h::size_t,
     mut sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::__stddef_null_h::NULL;
+    }
+    let parser = parser.as_ref().expect("non-null parser was checked");
     expat_malloc(parser, size, sourceLine)
 }
 fn expat_free_account(
@@ -5967,7 +5975,7 @@ unsafe fn expat_realloc(
     mut sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
     if ptr.is_null() {
-        return expat_malloc(std::ptr::from_mut(parser), size, sourceLine);
+        return expat_malloc(parser, size, sourceLine);
     }
     if size == 0 as crate::__stddef_size_t_h::size_t {
         expat_free(std::ptr::from_mut(parser), ptr, sourceLine);
@@ -25397,9 +25405,7 @@ fn scaffold_allocator() -> impl FnMut(
     crate::__stddef_size_t_h::size_t,
 ) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, ScaffoldAllocationAction) -> bool>> {
     move |parser: &mut XML_ParserStruct, size| {
-        let allocation = unsafe {
-            expat_malloc(std::ptr::from_mut(parser), size, 8266 as ::core::ffi::c_int)
-        };
+        let allocation = unsafe { expat_malloc(parser, size, 8266 as ::core::ffi::c_int) };
         if allocation.is_null() {
             return None;
         }
