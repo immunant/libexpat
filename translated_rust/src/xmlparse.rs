@@ -12437,193 +12437,223 @@ fn hash(hash_secret_salt: ::core::ffi::c_ulong, key: &CStr) -> ::core::ffi::c_ul
     return sip24_final(&mut state) as ::core::ffi::c_ulong;
 }
 
-unsafe extern "C" fn lookup(
-    mut parser: crate::expat_h::XML_Parser,
-    mut table: *mut HASH_TABLE,
-    mut name: KEY,
-    mut createSize: crate::__stddef_size_t_h::size_t,
-) -> *mut NAMED {
-    let mut i: crate::__stddef_size_t_h::size_t = 0;
-    if (*table).size == 0 as crate::__stddef_size_t_h::size_t {
-        let mut tsize: crate::__stddef_size_t_h::size_t = 0;
-        if createSize == 0 {
-            return ::core::ptr::null_mut::<NAMED>();
-        }
-        (*table).power = INIT_POWER as ::core::ffi::c_uchar;
-        (*table).size = (1 as ::core::ffi::c_int as crate::__stddef_size_t_h::size_t) << INIT_POWER;
-        tsize = (*table)
-            .size
-            .wrapping_mul(::core::mem::size_of::<*mut NAMED>() as crate::__stddef_size_t_h::size_t);
-        (*table).v =
-            expat_malloc((*table).parser, tsize, 7845 as ::core::ffi::c_int) as *mut *mut NAMED;
-        if (*table).v.is_null() {
-            (*table).size = 0 as crate::__stddef_size_t_h::size_t;
-            return ::core::ptr::null_mut::<NAMED>();
-        }
-        crate::stdlib::memset(
-            (*table).v as *mut ::core::ffi::c_void,
-            0 as ::core::ffi::c_int,
-            tsize,
-        );
-        let root_parser = getRootParserOf(&mut *parser, None);
-        let hash_secret_salt = get_hash_secret_salt(&*root_parser);
-        i = (hash(
-            hash_secret_salt,
-            CStr::from_ptr(name as *const ::core::ffi::c_char),
-        ) & ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
-            as crate::__stddef_size_t_h::size_t;
-    } else {
-        let root_parser = getRootParserOf(&mut *parser, None);
-        let hash_secret_salt = get_hash_secret_salt(&*root_parser);
-        let mut h: ::core::ffi::c_ulong = hash(
-            hash_secret_salt,
-            CStr::from_ptr(name as *const ::core::ffi::c_char),
-        );
-        let mut mask: ::core::ffi::c_ulong =
-            ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
-        let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
-        i = (h & mask) as crate::__stddef_size_t_h::size_t;
-        while !(*(*table).v.offset(i as isize)).is_null() {
-            if keyeq(
-                CStr::from_ptr(name as *const ::core::ffi::c_char),
-                CStr::from_ptr(
-                    (**(*table).v.offset(i as isize)).name as *const ::core::ffi::c_char,
-                ),
-            ) != 0
-            {
-                return *(*table).v.offset(i as isize);
-            }
-            if step == 0 {
-                step = ((h & !mask)
-                    >> (*table).power as ::core::ffi::c_int - 1 as ::core::ffi::c_int
-                    & mask >> 2 as ::core::ffi::c_int
-                    | 1 as ::core::ffi::c_ulong) as ::core::ffi::c_uchar;
-            }
-            if i < step as crate::__stddef_size_t_h::size_t {
-                i = i.wrapping_add(
-                    (*table)
-                        .size
-                        .wrapping_sub(step as crate::__stddef_size_t_h::size_t),
-                );
-            } else {
-                i = i.wrapping_sub(step as crate::__stddef_size_t_h::size_t);
-            };
-        }
-        if createSize == 0 {
-            return ::core::ptr::null_mut::<NAMED>();
-        }
-        if (*table).used >> (*table).power as ::core::ffi::c_int - 1 as ::core::ffi::c_int != 0 {
-            let mut newPower: ::core::ffi::c_uchar = ((*table).power as ::core::ffi::c_int
-                + 1 as ::core::ffi::c_int)
-                as ::core::ffi::c_uchar;
-            if newPower as usize
-                >= (::core::mem::size_of::<::core::ffi::c_ulong>() as usize)
-                    .wrapping_mul(8 as usize)
-            {
+struct RawLookup {
+    parser: crate::expat_h::XML_Parser,
+    table: *mut HASH_TABLE,
+    name: KEY,
+}
+
+impl RawLookup {
+    fn run(self, createSize: crate::__stddef_size_t_h::size_t) -> *mut NAMED {
+        unsafe { self.run_unchecked(createSize) }
+    }
+
+    unsafe fn run_unchecked(self, createSize: crate::__stddef_size_t_h::size_t) -> *mut NAMED {
+        let mut parser = self.parser;
+        let mut table = self.table;
+        let mut name = self.name;
+        let mut i: crate::__stddef_size_t_h::size_t = 0;
+        if (*table).size == 0 as crate::__stddef_size_t_h::size_t {
+            let mut tsize: crate::__stddef_size_t_h::size_t = 0;
+            if createSize == 0 {
                 return ::core::ptr::null_mut::<NAMED>();
             }
-            let mut newSize: crate::__stddef_size_t_h::size_t = (1 as ::core::ffi::c_int
-                as crate::__stddef_size_t_h::size_t)
-                << newPower as ::core::ffi::c_int;
-            let mut newMask: ::core::ffi::c_ulong =
-                (newSize as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
-            if newSize
-                > (crate::stdlib::SIZE_MAX as usize)
-                    .wrapping_div(::core::mem::size_of::<*mut NAMED>() as usize)
-            {
-                return ::core::ptr::null_mut::<NAMED>();
-            }
-            let mut tsize_0: crate::__stddef_size_t_h::size_t = newSize.wrapping_mul(
-                ::core::mem::size_of::<*mut NAMED>() as crate::__stddef_size_t_h::size_t,
+            (*table).power = INIT_POWER as ::core::ffi::c_uchar;
+            (*table).size =
+                (1 as ::core::ffi::c_int as crate::__stddef_size_t_h::size_t) << INIT_POWER;
+            tsize = (*table).size.wrapping_mul(
+                ::core::mem::size_of::<*mut NAMED>() as crate::__stddef_size_t_h::size_t
             );
-            let mut newV: *mut *mut NAMED =
-                expat_malloc((*table).parser, tsize_0, 7885 as ::core::ffi::c_int)
-                    as *mut *mut NAMED;
-            if newV.is_null() {
+            (*table).v =
+                expat_malloc((*table).parser, tsize, 7845 as ::core::ffi::c_int) as *mut *mut NAMED;
+            if (*table).v.is_null() {
+                (*table).size = 0 as crate::__stddef_size_t_h::size_t;
                 return ::core::ptr::null_mut::<NAMED>();
             }
             crate::stdlib::memset(
-                newV as *mut ::core::ffi::c_void,
-                0 as ::core::ffi::c_int,
-                tsize_0,
-            );
-            i = 0 as crate::__stddef_size_t_h::size_t;
-            while i < (*table).size {
-                if !(*(*table).v.offset(i as isize)).is_null() {
-                    let mut newHash: ::core::ffi::c_ulong = hash(
-                        hash_secret_salt,
-                        CStr::from_ptr(
-                            (**(*table).v.offset(i as isize)).name as *const ::core::ffi::c_char,
-                        ),
-                    );
-                    let mut j: crate::__stddef_size_t_h::size_t = newHash
-                        as crate::__stddef_size_t_h::size_t
-                        & newMask as crate::__stddef_size_t_h::size_t;
-                    step = 0 as ::core::ffi::c_uchar;
-                    while !(*newV.offset(j as isize)).is_null() {
-                        if step == 0 {
-                            step = ((newHash & !newMask)
-                                >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
-                                & newMask >> 2 as ::core::ffi::c_int
-                                | 1 as ::core::ffi::c_ulong)
-                                as ::core::ffi::c_uchar;
-                        }
-                        if j < step as crate::__stddef_size_t_h::size_t {
-                            j = j.wrapping_add(
-                                newSize.wrapping_sub(step as crate::__stddef_size_t_h::size_t),
-                            );
-                        } else {
-                            j = j.wrapping_sub(step as crate::__stddef_size_t_h::size_t);
-                        };
-                    }
-                    let ref mut c2rust_fresh17 = *newV.offset(j as isize);
-                    *c2rust_fresh17 = *(*table).v.offset(i as isize);
-                }
-                i = i.wrapping_add(1);
-            }
-            expat_free(
-                (*table).parser,
                 (*table).v as *mut ::core::ffi::c_void,
-                7901 as ::core::ffi::c_int,
+                0 as ::core::ffi::c_int,
+                tsize,
             );
-            (*table).v = newV;
-            (*table).power = newPower;
-            (*table).size = newSize;
-            i = (h & newMask) as crate::__stddef_size_t_h::size_t;
-            step = 0 as ::core::ffi::c_uchar;
+            let root_parser = getRootParserOf(&mut *parser, None);
+            let hash_secret_salt = get_hash_secret_salt(&*root_parser);
+            i = (hash(
+                hash_secret_salt,
+                CStr::from_ptr(name as *const ::core::ffi::c_char),
+            ) & ((*table).size as ::core::ffi::c_ulong)
+                .wrapping_sub(1 as ::core::ffi::c_ulong))
+                as crate::__stddef_size_t_h::size_t;
+        } else {
+            let root_parser = getRootParserOf(&mut *parser, None);
+            let hash_secret_salt = get_hash_secret_salt(&*root_parser);
+            let mut h: ::core::ffi::c_ulong = hash(
+                hash_secret_salt,
+                CStr::from_ptr(name as *const ::core::ffi::c_char),
+            );
+            let mut mask: ::core::ffi::c_ulong =
+                ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
+            let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
+            i = (h & mask) as crate::__stddef_size_t_h::size_t;
             while !(*(*table).v.offset(i as isize)).is_null() {
+                if keyeq(
+                    CStr::from_ptr(name as *const ::core::ffi::c_char),
+                    CStr::from_ptr(
+                        (**(*table).v.offset(i as isize)).name as *const ::core::ffi::c_char,
+                    ),
+                ) != 0
+                {
+                    return *(*table).v.offset(i as isize);
+                }
                 if step == 0 {
-                    step = ((h & !newMask)
-                        >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
-                        & newMask >> 2 as ::core::ffi::c_int
+                    step = ((h & !mask)
+                        >> (*table).power as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                        & mask >> 2 as ::core::ffi::c_int
                         | 1 as ::core::ffi::c_ulong)
                         as ::core::ffi::c_uchar;
                 }
                 if i < step as crate::__stddef_size_t_h::size_t {
                     i = i.wrapping_add(
-                        newSize.wrapping_sub(step as crate::__stddef_size_t_h::size_t),
+                        (*table)
+                            .size
+                            .wrapping_sub(step as crate::__stddef_size_t_h::size_t),
                     );
                 } else {
                     i = i.wrapping_sub(step as crate::__stddef_size_t_h::size_t);
                 };
             }
+            if createSize == 0 {
+                return ::core::ptr::null_mut::<NAMED>();
+            }
+            if (*table).used >> (*table).power as ::core::ffi::c_int - 1 as ::core::ffi::c_int != 0
+            {
+                let mut newPower: ::core::ffi::c_uchar = ((*table).power as ::core::ffi::c_int
+                    + 1 as ::core::ffi::c_int)
+                    as ::core::ffi::c_uchar;
+                if newPower as usize
+                    >= (::core::mem::size_of::<::core::ffi::c_ulong>() as usize)
+                        .wrapping_mul(8 as usize)
+                {
+                    return ::core::ptr::null_mut::<NAMED>();
+                }
+                let mut newSize: crate::__stddef_size_t_h::size_t = (1 as ::core::ffi::c_int
+                    as crate::__stddef_size_t_h::size_t)
+                    << newPower as ::core::ffi::c_int;
+                let mut newMask: ::core::ffi::c_ulong =
+                    (newSize as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
+                if newSize
+                    > (crate::stdlib::SIZE_MAX as usize)
+                        .wrapping_div(::core::mem::size_of::<*mut NAMED>() as usize)
+                {
+                    return ::core::ptr::null_mut::<NAMED>();
+                }
+                let mut tsize_0: crate::__stddef_size_t_h::size_t =
+                    newSize
+                        .wrapping_mul(::core::mem::size_of::<*mut NAMED>()
+                            as crate::__stddef_size_t_h::size_t);
+                let mut newV: *mut *mut NAMED =
+                    expat_malloc((*table).parser, tsize_0, 7885 as ::core::ffi::c_int)
+                        as *mut *mut NAMED;
+                if newV.is_null() {
+                    return ::core::ptr::null_mut::<NAMED>();
+                }
+                crate::stdlib::memset(
+                    newV as *mut ::core::ffi::c_void,
+                    0 as ::core::ffi::c_int,
+                    tsize_0,
+                );
+                i = 0 as crate::__stddef_size_t_h::size_t;
+                while i < (*table).size {
+                    if !(*(*table).v.offset(i as isize)).is_null() {
+                        let mut newHash: ::core::ffi::c_ulong = hash(
+                            hash_secret_salt,
+                            CStr::from_ptr(
+                                (**(*table).v.offset(i as isize)).name
+                                    as *const ::core::ffi::c_char,
+                            ),
+                        );
+                        let mut j: crate::__stddef_size_t_h::size_t = newHash
+                            as crate::__stddef_size_t_h::size_t
+                            & newMask as crate::__stddef_size_t_h::size_t;
+                        step = 0 as ::core::ffi::c_uchar;
+                        while !(*newV.offset(j as isize)).is_null() {
+                            if step == 0 {
+                                step = ((newHash & !newMask)
+                                    >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                                    & newMask >> 2 as ::core::ffi::c_int
+                                    | 1 as ::core::ffi::c_ulong)
+                                    as ::core::ffi::c_uchar;
+                            }
+                            if j < step as crate::__stddef_size_t_h::size_t {
+                                j = j.wrapping_add(
+                                    newSize.wrapping_sub(step as crate::__stddef_size_t_h::size_t),
+                                );
+                            } else {
+                                j = j.wrapping_sub(step as crate::__stddef_size_t_h::size_t);
+                            };
+                        }
+                        let ref mut c2rust_fresh17 = *newV.offset(j as isize);
+                        *c2rust_fresh17 = *(*table).v.offset(i as isize);
+                    }
+                    i = i.wrapping_add(1);
+                }
+                expat_free(
+                    (*table).parser,
+                    (*table).v as *mut ::core::ffi::c_void,
+                    7901 as ::core::ffi::c_int,
+                );
+                (*table).v = newV;
+                (*table).power = newPower;
+                (*table).size = newSize;
+                i = (h & newMask) as crate::__stddef_size_t_h::size_t;
+                step = 0 as ::core::ffi::c_uchar;
+                while !(*(*table).v.offset(i as isize)).is_null() {
+                    if step == 0 {
+                        step = ((h & !newMask)
+                            >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                            & newMask >> 2 as ::core::ffi::c_int
+                            | 1 as ::core::ffi::c_ulong)
+                            as ::core::ffi::c_uchar;
+                    }
+                    if i < step as crate::__stddef_size_t_h::size_t {
+                        i = i.wrapping_add(
+                            newSize.wrapping_sub(step as crate::__stddef_size_t_h::size_t),
+                        );
+                    } else {
+                        i = i.wrapping_sub(step as crate::__stddef_size_t_h::size_t);
+                    };
+                }
+            }
         }
+        let ref mut c2rust_fresh18 = *(*table).v.offset(i as isize);
+        *c2rust_fresh18 =
+            expat_malloc((*table).parser, createSize, 7914 as ::core::ffi::c_int) as *mut NAMED;
+        if (*(*table).v.offset(i as isize)).is_null() {
+            return ::core::ptr::null_mut::<NAMED>();
+        }
+        crate::stdlib::memset(
+            *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
+            0 as ::core::ffi::c_int,
+            createSize,
+        );
+        let ref mut c2rust_fresh19 = (**(*table).v.offset(i as isize)).name;
+        *c2rust_fresh19 = name;
+        (*table).used = (*table).used.wrapping_add(1);
+        return *(*table).v.offset(i as isize);
     }
-    let ref mut c2rust_fresh18 = *(*table).v.offset(i as isize);
-    *c2rust_fresh18 =
-        expat_malloc((*table).parser, createSize, 7914 as ::core::ffi::c_int) as *mut NAMED;
-    if (*(*table).v.offset(i as isize)).is_null() {
-        return ::core::ptr::null_mut::<NAMED>();
+}
+
+fn lookup(
+    mut parser: crate::expat_h::XML_Parser,
+    mut table: *mut HASH_TABLE,
+    mut name: KEY,
+    mut createSize: crate::__stddef_size_t_h::size_t,
+) -> *mut NAMED {
+    RawLookup {
+        parser,
+        table,
+        name,
     }
-    crate::stdlib::memset(
-        *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-        0 as ::core::ffi::c_int,
-        createSize,
-    );
-    let ref mut c2rust_fresh19 = (**(*table).v.offset(i as isize)).name;
-    *c2rust_fresh19 = name;
-    (*table).used = (*table).used.wrapping_add(1);
-    return *(*table).v.offset(i as isize);
+    .run(createSize)
 }
 
 fn free_hash_table_entries(
