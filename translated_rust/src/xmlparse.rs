@@ -2040,7 +2040,10 @@ pub struct XML_ParserStruct {
     pub m_declAttributeIsCdata: crate::expat_h::XML_Bool,
     pub m_declAttributeIsId: crate::expat_h::XML_Bool,
     pub m_dtd: *mut DTD,
-    pub m_curBase: *const crate::expat_external_h::XML_Char,
+    // The parser base is retained in the DTD pool.  Keep its checked pool
+    // location instead of an address into a growable slab; API and callback
+    // boundaries materialize a pointer for their documented lifetime.
+    pub m_curBase: Option<PoolStringRef>,
     pub m_tagStack: *mut TAG,
     pub m_freeTagList: *mut TAG,
     pub m_inheritedBindings: *mut BINDING,
@@ -3566,7 +3569,7 @@ fn initial_parser_struct(
         m_declAttributeIsCdata: crate::expat_h::XML_FALSE,
         m_declAttributeIsId: crate::expat_h::XML_FALSE,
         m_dtd: ::core::ptr::null_mut::<DTD>(),
-        m_curBase: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        m_curBase: None,
         m_tagStack: ::core::ptr::null_mut::<TAG>(),
         m_freeTagList: ::core::ptr::null_mut::<TAG>(),
         m_inheritedBindings: ::core::ptr::null_mut::<BINDING>(),
@@ -3849,7 +3852,7 @@ fn parser_init(
 ) {
     parser.m_processor = ProcessorState::PrologInit;
     crate::src::xmlrole::prolog_state_init(&mut parser.m_prologState);
-    parser.m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_curBase = None;
     parser.m_initEncoding.initEnc.isUtf16 = crate::src::xmltok::NO_ENC as ::core::ffi::c_char;
     parser.m_initEncoding.initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] =
         crate::src::xmltok::Scanner::InitProlog;
@@ -4948,13 +4951,14 @@ pub unsafe extern "C" fn XML_SetBase(
         return crate::expat_h::XML_STATUS_ERROR;
     }
     if !p.is_null() {
-        p = poolCopyString(&raw mut (*(*parser).m_dtd).pool, p);
+        let (copied, base) = poolCopyString(&raw mut (*(*parser).m_dtd).pool, p);
+        p = copied;
         if p.is_null() {
             return crate::expat_h::XML_STATUS_ERROR;
         }
-        (*parser).m_curBase = p;
+        (*parser).m_curBase = base;
     } else {
-        (*parser).m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        (*parser).m_curBase = None;
     }
     return crate::expat_h::XML_STATUS_OK;
 }
@@ -4966,20 +4970,26 @@ pub unsafe extern "C" fn XML_SetBase_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_SetBase(parser, p)
 }
-pub unsafe extern "C" fn XML_GetBase(
+unsafe fn xml_get_base_impl(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *const crate::expat_external_h::XML_Char {
     if parser.is_null() {
         return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     }
-    return (*parser).m_curBase;
+    let parser = &*parser;
+    let dtd = &*parser.m_dtd;
+    return parser
+        .m_curBase
+        .and_then(|base| dtd.pool.chars_from(base))
+        .map(|chars| chars.as_ptr())
+        .unwrap_or(::core::ptr::null());
 }
 #[export_name = "XML_GetBase"]
 
 pub unsafe extern "C" fn XML_GetBase_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *const crate::expat_external_h::XML_Char {
-    XML_GetBase(parser)
+    xml_get_base_impl(parser)
 }
 pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount(
     mut parser: crate::expat_h::XML_Parser,
@@ -8201,7 +8211,7 @@ unsafe extern "C" fn storeAtts(
     ) as *mut ELEMENT_TYPE;
     if elementType.is_null() {
         let mut name: *const crate::expat_external_h::XML_Char =
-            poolCopyString(&raw mut (*dtd).pool, tag_name);
+            poolCopyString(&raw mut (*dtd).pool, tag_name).0;
         if name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -10501,11 +10511,7 @@ unsafe extern "C" fn doProlog(
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
                                                 if (*parser).m_useForeignDTD != 0 {
-                                                    (*entity).base = pool_string_ref(
-                                                        dtd_pool as *const STRING_POOL,
-                                                        (*parser).m_curBase,
-                                                        false,
-                                                    );
+                                                    (*entity).base = (*parser).m_curBase;
                                                 }
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
@@ -10579,11 +10585,7 @@ unsafe extern "C" fn doProlog(
                                                 if entity_0.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                (*entity_0).base = pool_string_ref(
-                                                    dtd_pool as *const STRING_POOL,
-                                                    (*parser).m_curBase,
-                                                    false,
-                                                );
+                                                (*entity_0).base = (*parser).m_curBase;
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                                     .get_or_init(|| {
@@ -11020,7 +11022,16 @@ unsafe extern "C" fn doProlog(
                                                                 as ::core::ffi::c_int,
                                                             entity_text,
                                                             (*(*parser).m_declEntity).textLen,
-                                                            (*parser).m_curBase,
+                                                            (*parser)
+                                                                .m_curBase
+                                                                .map(|base| {
+                                                                    pool_string_pointer(
+                                                                        dtd_pool
+                                                                            as *const STRING_POOL,
+                                                                        base,
+                                                                    )
+                                                                })
+                                                                .unwrap_or(::core::ptr::null()),
                                                             ::core::ptr::null::<
                                                                 crate::expat_external_h::XML_Char,
                                                             >(
@@ -11471,7 +11482,15 @@ unsafe extern "C" fn doProlog(
                                                 callback.invoke(
                                                     (*parser).m_handlerArg,
                                                     (*parser).m_declNotationName,
-                                                    (*parser).m_curBase,
+                                                    (*parser)
+                                                        .m_curBase
+                                                        .map(|base| {
+                                                            pool_string_pointer(
+                                                                dtd_pool as *const STRING_POOL,
+                                                                base,
+                                                            )
+                                                        })
+                                                        .unwrap_or(::core::ptr::null()),
                                                     systemId,
                                                     (*parser).m_declNotationPublicId,
                                                 );
@@ -11500,7 +11519,15 @@ unsafe extern "C" fn doProlog(
                                                 callback.invoke(
                                                     (*parser).m_handlerArg,
                                                     (*parser).m_declNotationName,
-                                                    (*parser).m_curBase,
+                                                    (*parser)
+                                                        .m_curBase
+                                                        .map(|base| {
+                                                            pool_string_pointer(
+                                                                dtd_pool as *const STRING_POOL,
+                                                                base,
+                                                            )
+                                                        })
+                                                        .unwrap_or(::core::ptr::null()),
                                                     ::core::ptr::null::<
                                                         crate::expat_external_h::XML_Char,
                                                     >(
@@ -12108,11 +12135,7 @@ unsafe extern "C" fn doProlog(
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
                                 (*(*parser).m_declEntity).systemId = Some(system_id);
-                                (*(*parser).m_declEntity).base = pool_string_ref(
-                                    dtd_pool as *const STRING_POOL,
-                                    (*parser).m_curBase,
-                                    false,
-                                );
+                                (*(*parser).m_declEntity).base = (*parser).m_curBase;
                                 (*dtd).pool.commit();
                                 if (*parser).m_entityDeclHandler
                                     && role
@@ -14037,7 +14060,7 @@ unsafe extern "C" fn setContext(
                         return crate::expat_h::XML_FALSE;
                     }
                     if (*prefix).name == pool_start {
-                        (*prefix).name = poolCopyString(&raw mut dtd.pool, (*prefix).name);
+                        (*prefix).name = poolCopyString(&raw mut dtd.pool, (*prefix).name).0;
                         if (*prefix).name.is_null() {
                             return crate::expat_h::XML_FALSE;
                         }
@@ -14322,7 +14345,7 @@ unsafe extern "C" fn dtdCopy(
             break;
         }
         let old_p = &*old_p;
-        let name = poolCopyString(&raw mut new_dtd.pool, old_p.name);
+        let name = poolCopyString(&raw mut new_dtd.pool, old_p.name).0;
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -14360,7 +14383,7 @@ unsafe extern "C" fn dtdCopy(
         {
             return 0 as ::core::ffi::c_int;
         }
-        let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.name);
+        let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.name).0;
         if name_0.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -14399,7 +14422,7 @@ unsafe extern "C" fn dtdCopy(
             break;
         }
         let old_e = &*old_e;
-        let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.named.name);
+        let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.named.name).0;
         if name_1.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -14584,7 +14607,7 @@ unsafe extern "C" fn copyEntityTable(
             break;
         }
         let old_e = &*oldE;
-        name = poolCopyString(newPool, old_e.named.name);
+        name = poolCopyString(newPool, old_e.named.name).0;
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -14603,12 +14626,11 @@ unsafe extern "C" fn copyEntityTable(
             if old_system_id.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            let mut tem: *const crate::expat_external_h::XML_Char =
-                poolCopyString(newPool, old_system_id);
+            let (mut tem, system_id) = poolCopyString(newPool, old_system_id);
             if tem.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            new_e.systemId = pool_string_ref(newPool, tem, false);
+            new_e.systemId = system_id;
             if new_e.systemId.is_none() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -14617,17 +14639,18 @@ unsafe extern "C" fn copyEntityTable(
                     new_e.base = cachedNewBase;
                 } else {
                     cachedOldBase = old_e.base;
-                    tem = poolCopyString(
+                    let (copied_base, base) = poolCopyString(
                         newPool,
                         pool_string_pointer(
                             &raw const old_dtd.pool,
                             cachedOldBase.expect("base is present after the non-null check"),
                         ),
                     );
+                    tem = copied_base;
                     if tem.is_null() {
                         return 0 as ::core::ffi::c_int;
                     }
-                    new_e.base = pool_string_ref(newPool, tem, false);
+                    new_e.base = base;
                     if new_e.base.is_none() {
                         return 0 as ::core::ffi::c_int;
                     }
@@ -14639,11 +14662,12 @@ unsafe extern "C" fn copyEntityTable(
                 if old_public_id.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
-                tem = poolCopyString(newPool, old_public_id);
+                let (copied_public_id, public_id) = poolCopyString(newPool, old_public_id);
+                tem = copied_public_id;
                 if tem.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
-                new_e.publicId = pool_string_ref(newPool, tem, false);
+                new_e.publicId = public_id;
                 if new_e.publicId.is_none() {
                     return 0 as ::core::ffi::c_int;
                 }
@@ -14669,12 +14693,11 @@ unsafe extern "C" fn copyEntityTable(
             if old_notation.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            let mut tem_1: *const crate::expat_external_h::XML_Char =
-                poolCopyString(newPool, old_notation);
+            let (mut tem_1, notation) = poolCopyString(newPool, old_notation);
             if tem_1.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            new_e.notation = pool_string_ref(newPool, tem_1, false);
+            new_e.notation = notation;
             if new_e.notation.is_none() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -15304,10 +15327,13 @@ unsafe extern "C" fn poolAppend(
         .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _)
 }
 
-unsafe extern "C" fn poolCopyString(
+unsafe fn poolCopyString(
     mut pool: *mut STRING_POOL,
     mut s: *const crate::expat_external_h::XML_Char,
-) -> *const crate::expat_external_h::XML_Char {
+) -> (
+    *const crate::expat_external_h::XML_Char,
+    Option<PoolStringRef>,
+) {
     loop {
         if if (*pool).is_full() && poolGrow(pool) == 0 {
             0 as ::core::ffi::c_int
@@ -15319,7 +15345,7 @@ unsafe extern "C" fn poolCopyString(
             }
         } == 0
         {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+            return (::core::ptr::null::<crate::expat_external_h::XML_Char>(), None);
         }
         let c2rust_fresh46 = s;
         s = s.offset(1);
@@ -15329,13 +15355,13 @@ unsafe extern "C" fn poolCopyString(
     }
     let pool = &mut *pool;
     let Some(start) = pool.start_ref(true) else {
-        return ::core::ptr::null();
+        return (::core::ptr::null(), None);
     };
     s = pool
         .chars_from(start)
         .map_or(::core::ptr::null(), |chars| chars.as_ptr());
     pool.commit();
-    return s;
+    return (s, Some(start));
 }
 
 unsafe fn poolCopyStringN(
