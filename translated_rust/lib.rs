@@ -346,7 +346,7 @@ pub mod siphash_h {
         v2: 0 as crate::stdlib::uint64_t,
         v3: 0 as crate::stdlib::uint64_t,
         buf: [0 as ::core::ffi::c_uchar, 0, 0, 0, 0, 0, 0, 0],
-        p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
+        buffered: 0,
         c: 0 as crate::stdlib::uint64_t,
     };
 
@@ -359,7 +359,7 @@ pub mod siphash_h {
         pub v2: crate::stdlib::uint64_t,
         pub v3: crate::stdlib::uint64_t,
         pub buf: [::core::ffi::c_uchar; 8],
-        pub p: *mut ::core::ffi::c_uchar,
+        pub buffered: usize,
         pub c: crate::stdlib::uint64_t,
     }
 

@@ -61,33 +61,24 @@ pub mod siphash_h {
             << 32 as ::core::ffi::c_int
             | 0x79746573 as crate::stdlib::uint64_t)
             ^ key.k[1 as usize];
-        state.p = state.buf.as_mut_ptr();
+        state.buffered = 0;
         state.c = 0 as crate::stdlib::uint64_t;
     }
 
-    /// Raw ABI adapter retained for the translated SipHash helpers.  Internal
-    /// callers use `sip24_init_state` directly once they own the state/key.
-    pub unsafe extern "C" fn sip24_init(
-        H: *mut crate::siphash_h::siphash,
-        key: *const crate::siphash_h::sipkey,
-    ) -> *mut crate::siphash_h::siphash {
-        if H.is_null() || key.is_null() {
-            return H;
-        }
-        let state = &mut *H;
-        let key = &*key;
+    /// Initializes a borrowed SipHash state and returns that same state for
+    /// chaining with the remaining SipHash helpers.
+    pub fn sip24_init<'a>(
+        state: &'a mut crate::siphash_h::siphash,
+        key: &crate::siphash_h::sipkey,
+    ) -> &'a mut crate::siphash_h::siphash {
         sip24_init_state(state, key);
-        H
+        state
     }
 
-    /// Returns the number of pending bytes in the ABI state, validating that
-    /// its cursor still refers to the fixed eight-byte buffer.
+    /// Returns the number of pending bytes in the state, validating the
+    /// checked offset into its fixed eight-byte buffer.
     fn sip24_buffered_len(state: &crate::siphash_h::siphash) -> Option<usize> {
-        state
-            .p
-            .addr()
-            .checked_sub(state.buf.as_ptr().addr())
-            .filter(|&buffered| buffered <= state.buf.len())
+        (state.buffered <= state.buf.len()).then_some(state.buffered)
     }
 
     /// Incorporates one externally supplied byte into an already-borrowed
@@ -103,7 +94,7 @@ pub mod siphash_h {
 
         state.buf[buffered] = byte;
         let buffered = buffered + 1;
-        state.p = state.buf.as_mut_ptr().wrapping_add(buffered);
+        state.buffered = buffered;
         if buffered < state.buf.len() {
             return true;
         }
@@ -113,7 +104,7 @@ pub mod siphash_h {
         sip_round_values(&mut values, 2);
         values[0] ^= message;
         [state.v0, state.v1, state.v2, state.v3] = values;
-        state.p = state.buf.as_mut_ptr();
+        state.buffered = 0;
         state.c = state.c.wrapping_add(8);
         true
     }
@@ -145,21 +136,12 @@ pub mod siphash_h {
         H
     }
 
-    /// Finalizes an already-borrowed SipHash state.  `p` is an internal cursor
-    /// into `buf`, established by `sip24_init` and maintained by
-    /// `sip24_update`; represent its position as a checked offset before using
-    /// the bytes.  This keeps the final compression round wholly on the
-    /// reference-based side of the state boundary.
-    pub unsafe fn sip24_final(
-        state: &mut crate::siphash_h::siphash,
-    ) -> crate::stdlib::uint64_t {
-        let buffer_start = state.buf.as_ptr().addr();
-        let Some(left) = state.p.addr().checked_sub(buffer_start) else {
+    /// Finalizes an already-borrowed SipHash state.  The pending-byte count is
+    /// the checked offset established by `sip24_init` and `sip24_update`.
+    pub fn sip24_final(state: &mut crate::siphash_h::siphash) -> crate::stdlib::uint64_t {
+        let Some(left) = sip24_buffered_len(state) else {
             return 0;
         };
-        if left > 7 {
-            return 0;
-        }
         let mut b = state.c.wrapping_add(left as crate::stdlib::uint64_t) << 56;
         for (index, byte) in state.buf[..left].iter().copied().enumerate() {
             b |= (byte as crate::stdlib::uint64_t) << (index * 8);
