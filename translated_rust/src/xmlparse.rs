@@ -10533,8 +10533,9 @@ unsafe extern "C" fn doCdataSection(
                                 .addr()
                                 .checked_sub(data_start.addr())
                                 .filter(|&len| len <= data_capacity)
+                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
                             {
-                                Some(len) => len as ::core::ffi::c_int,
+                                Some(len) => len,
                                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             charDataHandler.invoke(
@@ -10555,8 +10556,12 @@ unsafe extern "C" fn doCdataSection(
                             update_event_start(s);
                         }
                     } else {
-                        let data_len = match next.addr().checked_sub(s.addr()) {
-                            Some(len) => len as ::core::ffi::c_int,
+                        let data_len = match next
+                            .addr()
+                            .checked_sub(s.addr())
+                            .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
+                        {
+                            Some(len) => len,
                             None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                         };
                         charDataHandler.invoke(
