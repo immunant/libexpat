@@ -8750,27 +8750,27 @@ pub unsafe extern "C" fn XML_GetErrorCode_ffi(
 ) -> crate::expat_h::XML_Error {
     XML_GetErrorCode(parser)
 }
-pub unsafe extern "C" fn XML_GetCurrentByteIndex(
-    mut parser: crate::expat_h::XML_Parser,
+pub unsafe fn XML_GetCurrentByteIndex(
+    parser: Option<&XML_ParserStruct>,
 ) -> crate::expat_external_h::XML_Index {
-    if parser.is_null() {
+    let Some(parser) = parser else {
         return -1 as crate::expat_external_h::XML_Index;
-    }
-    if let Some(event_start) = (*parser).m_eventPtr {
-        if event_start <= (*parser).m_bufferEnd {
-            return (*parser).m_parseEndByteIndex.wrapping_sub(
-                ((*parser).m_bufferEnd - event_start) as crate::expat_external_h::XML_Index,
+    };
+    if let Some(event_start) = parser.m_eventPtr {
+        if event_start <= parser.m_bufferEnd {
+            return parser.m_parseEndByteIndex.wrapping_sub(
+                (parser.m_bufferEnd - event_start) as crate::expat_external_h::XML_Index,
             );
         }
     }
-    return -1 as crate::expat_external_h::XML_Index;
+    -1 as crate::expat_external_h::XML_Index
 }
 #[export_name = "XML_GetCurrentByteIndex"]
 
 pub unsafe extern "C" fn XML_GetCurrentByteIndex_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Index {
-    XML_GetCurrentByteIndex(parser)
+    XML_GetCurrentByteIndex(parser.as_ref())
 }
 pub unsafe extern "C" fn XML_GetCurrentByteCount(
     mut parser: crate::expat_h::XML_Parser,
