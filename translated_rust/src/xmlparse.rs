@@ -71,47 +71,54 @@ pub mod siphash_h {
         mut src: *const ::core::ffi::c_void,
         mut len: crate::__stddef_size_t_h::size_t,
     ) -> *mut crate::siphash_h::siphash {
-        let mut p: *const ::core::ffi::c_uchar = src as *const ::core::ffi::c_uchar;
-        let mut pe: *const ::core::ffi::c_uchar = p.offset(len as isize);
-        let mut m: crate::stdlib::uint64_t = 0;
-        loop {
-            while p < pe
-                && (*H).p
-                    < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                        ::core::mem::size_of::<[::core::ffi::c_uchar; 8]>()
-                            .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>())
-                            as isize,
-                    )
-            {
-                let c2rust_fresh16 = p;
-                p = p.offset(1);
-                let c2rust_fresh17 = (*H).p;
-                (*H).p = (*H).p.offset(1);
-                *c2rust_fresh17 = *c2rust_fresh16;
+        let (buffer_start, mut buffered) = {
+            let state = &mut *H;
+            let buffer_start = state.buf.as_mut_ptr();
+            let Some(buffered) = state.p.addr().checked_sub(buffer_start.addr()) else {
+                return H;
+            };
+            if buffered > state.buf.len() {
+                return H;
             }
-            if (*H).p
-                < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                    ::core::mem::size_of::<[::core::ffi::c_uchar; 8]>()
-                        .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>())
-                        as isize,
-                )
-            {
+            (buffer_start, buffered)
+        };
+        let mut input_offset = 0;
+        loop {
+            let writable = 8 - buffered;
+            let remaining = len - input_offset;
+            let copied = writable.min(remaining);
+            for _ in 0..copied {
+                // The caller's `src`/`len` contract is the one this C-facing
+                // implementation already required.  Reading a byte at a time
+                // keeps that boundary explicit without inventing a slice.
+                let byte = src
+                    .cast::<::core::ffi::c_uchar>()
+                    .wrapping_add(input_offset)
+                    .read();
+                let state = &mut *H;
+                state.buf[buffered] = byte;
+                buffered += 1;
+                input_offset += 1;
+                state.p = buffer_start.wrapping_add(buffered);
+            }
+
+            if buffered < 8 {
                 break;
             }
-            m = ((*H).buf[0 as usize] as crate::stdlib::uint64_t) << 0 as ::core::ffi::c_int
-                | ((*H).buf[1 as usize] as crate::stdlib::uint64_t) << 8 as ::core::ffi::c_int
-                | ((*H).buf[2 as usize] as crate::stdlib::uint64_t) << 16 as ::core::ffi::c_int
-                | ((*H).buf[3 as usize] as crate::stdlib::uint64_t) << 24 as ::core::ffi::c_int
-                | ((*H).buf[4 as usize] as crate::stdlib::uint64_t) << 32 as ::core::ffi::c_int
-                | ((*H).buf[5 as usize] as crate::stdlib::uint64_t) << 40 as ::core::ffi::c_int
-                | ((*H).buf[6 as usize] as crate::stdlib::uint64_t) << 48 as ::core::ffi::c_int
-                | ((*H).buf[7 as usize] as crate::stdlib::uint64_t) << 56 as ::core::ffi::c_int;
-            (*H).v3 ^= m;
+
+            let m = {
+                let state = &mut *H;
+                let m = crate::stdlib::uint64_t::from_le_bytes(state.buf);
+                state.v3 ^= m;
+                m
+            };
             sip_round(H, 2 as ::core::ffi::c_int);
-            (*H).v0 ^= m;
-            (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-            (*H).c = (*H).c.wrapping_add(8 as crate::stdlib::uint64_t);
-            if p >= pe {
+            let state = &mut *H;
+            state.v0 ^= m;
+            buffered = 0;
+            state.p = buffer_start;
+            state.c = state.c.wrapping_add(8 as crate::stdlib::uint64_t);
+            if input_offset == len {
                 break;
             }
         }
