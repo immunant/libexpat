@@ -2027,7 +2027,10 @@ pub struct STRING_POOL {
     // custom-allocator token, so the configured Expat allocator observes the
     // same block allocation, reallocation, and release lifecycle.
     storage: StringPoolStorage,
-    pub ptr: *mut crate::expat_external_h::XML_Char,
+    // The write cursor is an offset from `start`, rather than an address into
+    // a slab.  A completed empty value is therefore still representable when
+    // `start` is the valid one-past-end position of a full slab.
+    ptr_offset: usize,
     pub start: *mut crate::expat_external_h::XML_Char,
     pub parser: crate::expat_h::XML_Parser,
     // Active blocks grow only at the head.  This count lets pool clients use
@@ -2059,7 +2062,76 @@ impl STRING_POOL {
 
     fn is_full(&self) -> bool {
         self.remaining_capacity()
-            .is_none_or(|capacity| self.ptr == self.start.wrapping_add(capacity))
+            .is_none_or(|capacity| self.ptr_offset >= capacity)
+    }
+
+    fn rewind(&mut self) {
+        self.ptr_offset = 0;
+    }
+
+    fn commit(&mut self) {
+        self.start = self.start.wrapping_add(self.ptr_offset);
+        self.ptr_offset = 0;
+    }
+
+    fn write_cursor(&mut self, value: crate::expat_external_h::XML_Char) -> bool {
+        let Some(start) = self.start_ref(true) else {
+            return false;
+        };
+        let block_index = start.block_from_tail.get() - 1;
+        let Some(slot) = start.offset.checked_add(self.ptr_offset) else {
+            return false;
+        };
+        let Some(block) = self.storage.active.get_mut(block_index) else {
+            return false;
+        };
+        let Some(destination) = block.chars.get_mut(slot) else {
+            return false;
+        };
+        *destination = value;
+        self.ptr_offset += 1;
+        true
+    }
+
+    fn last_cursor_char(&self) -> Option<crate::expat_external_h::XML_Char> {
+        let start = self.start_ref(true)?;
+        let slot = start.offset.checked_add(self.ptr_offset.checked_sub(1)?)?;
+        self.storage
+            .active
+            .get(start.block_from_tail.get() - 1)?
+            .chars
+            .get(slot)
+            .copied()
+    }
+
+    fn discard_last_cursor_char(&mut self) -> bool {
+        let Some(offset) = self.ptr_offset.checked_sub(1) else {
+            return false;
+        };
+        self.ptr_offset = offset;
+        true
+    }
+
+    fn replace_last_cursor_char(&mut self, value: crate::expat_external_h::XML_Char) -> bool {
+        let Some(start) = self.start_ref(true) else {
+            return false;
+        };
+        let Some(cursor) = self.ptr_offset.checked_sub(1) else {
+            return false;
+        };
+        let Some(slot) = start.offset.checked_add(cursor) else {
+            return false;
+        };
+        let Some(destination) = self
+            .storage
+            .active
+            .get_mut(start.block_from_tail.get() - 1)
+            .and_then(|block| block.chars.get_mut(slot))
+        else {
+            return false;
+        };
+        *destination = value;
+        true
     }
 
     fn chars_at(
@@ -3258,7 +3330,7 @@ fn empty_string_pool() -> STRING_POOL {
             active: Vec::new(),
             free: Vec::new(),
         },
-        ptr: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
+        ptr_offset: 0,
         start: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
         parser: ::core::ptr::null_mut::<XML_ParserStruct>(),
         blockCount: 0,
@@ -7162,7 +7234,7 @@ unsafe extern "C" fn doContent(
                             name as KEY,
                             0 as crate::__stddef_size_t_h::size_t,
                         ) as *mut ENTITY;
-                        (*dtd).pool.ptr = (*dtd).pool.start;
+                        (*dtd).pool.rewind();
                         if (*dtd).hasParamEntityRefs == 0
                             || (*dtd).standalone as ::core::ffi::c_int != 0
                         {
@@ -7258,7 +7330,7 @@ unsafe extern "C" fn doContent(
                             {
                                 return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                             }
-                            (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
+                            (*parser).m_tempPool.rewind();
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
@@ -7412,7 +7484,7 @@ unsafe extern "C" fn doContent(
                     if name_0.str.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                    (*parser).m_tempPool.commit();
                     result_1 = storeAtts(
                         parser,
                         enc,
@@ -7428,7 +7500,7 @@ unsafe extern "C" fn doContent(
                         freeBindings(parser, bindings);
                         return result_1;
                     }
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                    (*parser).m_tempPool.commit();
                     if (*parser).m_startElementHandler {
                         let callback = START_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -8043,7 +8115,7 @@ unsafe extern "C" fn storeAtts(
                 return result;
             }
             appAtts[attIndex as usize] = (*parser).m_tempPool.start;
-            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+            (*parser).m_tempPool.commit();
         } else {
             appAtts[attIndex as usize] = poolStoreString(
                 &raw mut (*parser).m_tempPool,
@@ -8054,7 +8126,7 @@ unsafe extern "C" fn storeAtts(
             if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
-            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+            (*parser).m_tempPool.commit();
         }
         if !(*attId).prefix.is_null() {
             if (*attId).xmlns != 0 {
@@ -8245,10 +8317,11 @@ unsafe extern "C" fn storeAtts(
                     {
                         0 as ::core::ffi::c_int
                     } else {
-                        let c2rust_fresh29 = (*parser).m_tempPool.ptr;
-                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                        *c2rust_fresh29 = c;
-                        1 as ::core::ffi::c_int
+                        if (*parser).m_tempPool.write_cursor(c) {
+                            1 as ::core::ffi::c_int
+                        } else {
+                            0 as ::core::ffi::c_int
+                        }
                     } == 0
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -8280,10 +8353,11 @@ unsafe extern "C" fn storeAtts(
                     {
                         0 as ::core::ffi::c_int
                     } else {
-                        let c2rust_fresh31 = (*parser).m_tempPool.ptr;
-                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                        *c2rust_fresh31 = *s;
-                        1 as ::core::ffi::c_int
+                        if (*parser).m_tempPool.write_cursor(*s) {
+                            1 as ::core::ffi::c_int
+                        } else {
+                            0 as ::core::ffi::c_int
+                        }
                     } == 0
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -8338,7 +8412,12 @@ unsafe extern "C" fn storeAtts(
                     };
                 }
                 if parser_ref.m_ns_triplets != 0 {
-                    *parser_ref.m_tempPool.ptr.offset(-1 as isize) = parser_ref.m_namespaceSeparator;
+                    if !parser_ref
+                        .m_tempPool
+                        .replace_last_cursor_char(parser_ref.m_namespaceSeparator)
+                    {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
                     s = (*(*b).prefix).name;
                     loop {
                         if if parser_ref.m_tempPool.is_full()
@@ -8346,10 +8425,11 @@ unsafe extern "C" fn storeAtts(
                         {
                             0 as ::core::ffi::c_int
                         } else {
-                            let c2rust_fresh33 = parser_ref.m_tempPool.ptr;
-                            parser_ref.m_tempPool.ptr = parser_ref.m_tempPool.ptr.offset(1);
-                            *c2rust_fresh33 = *s;
-                            1 as ::core::ffi::c_int
+                            if parser_ref.m_tempPool.write_cursor(*s) {
+                                1 as ::core::ffi::c_int
+                            } else {
+                                0 as ::core::ffi::c_int
+                            }
                         } == 0
                         {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -8362,7 +8442,7 @@ unsafe extern "C" fn storeAtts(
                     }
                 }
                 s = parser_ref.m_tempPool.start;
-                parser_ref.m_tempPool.start = parser_ref.m_tempPool.ptr;
+                parser_ref.m_tempPool.commit();
                 appAtts[i as usize] = s;
                 (*parser_ref.m_nsAtts.offset(j_0 as isize)).version = version;
                 (*parser_ref.m_nsAtts.offset(j_0 as isize)).hash = uriHash;
@@ -9218,7 +9298,7 @@ unsafe extern "C" fn processXmlDecl(
                 if storedEncName.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                parser_state.m_temp2Pool.start = parser_state.m_temp2Pool.ptr;
+                parser_state.m_temp2Pool.commit();
             }
             if !version.is_null() {
                 storedversion = poolStoreString(
@@ -9907,7 +9987,7 @@ unsafe extern "C" fn doProlog(
                                             if (*parser).m_doctypeName.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                                            (*parser).m_tempPool.commit();
                                             (*parser).m_doctypePubid = ::core::ptr::null::<
                                                 crate::expat_external_h::XML_Char,
                                             >(
@@ -10005,7 +10085,7 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             normalizePublicId(pubId);
-                                            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                                            (*parser).m_tempPool.commit();
                                             (*parser).m_doctypePubid = pubId;
                                             handleDefault = crate::expat_h::XML_FALSE;
                                             break '_alreadyChecked;
@@ -10322,12 +10402,13 @@ unsafe extern "C" fn doProlog(
                                                     {
                                                         0 as ::core::ffi::c_int
                                                     } else {
-                                                        let c2rust_fresh1 =
-                                                            (*parser).m_tempPool.ptr;
-                                                        (*parser).m_tempPool.ptr =
-                                                            (*parser).m_tempPool.ptr.offset(1);
-                                                        *c2rust_fresh1 = 0x29 as crate::expat_external_h::XML_Char;
-                                                        1 as ::core::ffi::c_int
+                                                        if (*parser).m_tempPool.write_cursor(
+                                                            0x29 as crate::expat_external_h::XML_Char,
+                                                        ) {
+                                                            1 as ::core::ffi::c_int
+                                                        } else {
+                                                            0 as ::core::ffi::c_int
+                                                        }
                                                     }) == 0
                                                         || (if (*parser).m_tempPool.is_full()
                                                             && poolGrow(
@@ -10336,20 +10417,20 @@ unsafe extern "C" fn doProlog(
                                                         {
                                                             0 as ::core::ffi::c_int
                                                         } else {
-                                                            let c2rust_fresh2 =
-                                                                (*parser).m_tempPool.ptr;
-                                                            (*parser).m_tempPool.ptr =
-                                                                (*parser).m_tempPool.ptr.offset(1);
-                                                            *c2rust_fresh2 = '\0' as crate::expat_external_h::XML_Char;
-                                                            1 as ::core::ffi::c_int
+                                                            if (*parser).m_tempPool.write_cursor(
+                                                                '\0' as crate::expat_external_h::XML_Char,
+                                                            ) {
+                                                                1 as ::core::ffi::c_int
+                                                            } else {
+                                                                0 as ::core::ffi::c_int
+                                                            }
                                                         }) == 0
                                                     {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
                                                     (*parser).m_declAttributeType =
                                                         (*parser).m_tempPool.start;
-                                                    (*parser).m_tempPool.start =
-                                                        (*parser).m_tempPool.ptr;
+                                                    (*parser).m_tempPool.commit();
                                                 }
                                                 *eventEndPP = s;
                                                 if let Some(callback) = attlist_decl_handler(parser as usize) {
@@ -10389,7 +10470,7 @@ unsafe extern "C" fn doProlog(
                                                 return result_1;
                                             }
                                             attVal = (*dtd).pool.start;
-                                            (*dtd).pool.start = (*dtd).pool.ptr;
+                                            (*dtd).pool.commit();
                                             if defineAttribute(
                                                 (*parser).m_declElementType,
                                                 (*parser).m_declAttributeId,
@@ -10422,12 +10503,13 @@ unsafe extern "C" fn doProlog(
                                                     {
                                                         0 as ::core::ffi::c_int
                                                     } else {
-                                                        let c2rust_fresh3 =
-                                                            (*parser).m_tempPool.ptr;
-                                                        (*parser).m_tempPool.ptr =
-                                                            (*parser).m_tempPool.ptr.offset(1);
-                                                        *c2rust_fresh3 = 0x29 as crate::expat_external_h::XML_Char;
-                                                        1 as ::core::ffi::c_int
+                                                        if (*parser).m_tempPool.write_cursor(
+                                                            0x29 as crate::expat_external_h::XML_Char,
+                                                        ) {
+                                                            1 as ::core::ffi::c_int
+                                                        } else {
+                                                            0 as ::core::ffi::c_int
+                                                        }
                                                     }) == 0
                                                         || (if (*parser).m_tempPool.is_full()
                                                             && poolGrow(
@@ -10436,20 +10518,20 @@ unsafe extern "C" fn doProlog(
                                                         {
                                                             0 as ::core::ffi::c_int
                                                         } else {
-                                                            let c2rust_fresh4 =
-                                                                (*parser).m_tempPool.ptr;
-                                                            (*parser).m_tempPool.ptr =
-                                                                (*parser).m_tempPool.ptr.offset(1);
-                                                            *c2rust_fresh4 = '\0' as crate::expat_external_h::XML_Char;
-                                                            1 as ::core::ffi::c_int
+                                                            if (*parser).m_tempPool.write_cursor(
+                                                                '\0' as crate::expat_external_h::XML_Char,
+                                                            ) {
+                                                                1 as ::core::ffi::c_int
+                                                            } else {
+                                                                0 as ::core::ffi::c_int
+                                                            }
                                                         }) == 0
                                                     {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
                                                     (*parser).m_declAttributeType =
                                                         (*parser).m_tempPool.start;
-                                                    (*parser).m_tempPool.start =
-                                                        (*parser).m_tempPool.ptr;
+                                                    (*parser).m_tempPool.commit();
                                                 }
                                                 *eventEndPP = s;
                                                 if let Some(callback) = attlist_decl_handler(parser as usize) {
@@ -10493,13 +10575,13 @@ unsafe extern "C" fn doProlog(
                                                     pool: EntityTextPool::EntityValue,
                                                     string: Some(entity_text_ref),
                                                 };
-                                                (*(*parser).m_declEntity).textLen = (*dtd)
-                                                    .entityValuePool
-                                                    .ptr
-                                                    .offset_from((*dtd).entityValuePool.start)
-                                                    as ::core::ffi::c_int;
-                                                (*dtd).entityValuePool.start =
-                                                    (*dtd).entityValuePool.ptr;
+                                                let Ok(text_len) = ::core::ffi::c_int::try_from(
+                                                    (*dtd).entityValuePool.ptr_offset,
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
+                                                (*(*parser).m_declEntity).textLen = text_len;
+                                                (*dtd).entityValuePool.commit();
                                                 if (*parser).m_entityDeclHandler {
                                                     *eventEndPP = s;
                                                     let callback = ENTITY_DECL_HANDLERS
@@ -10540,8 +10622,7 @@ unsafe extern "C" fn doProlog(
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
                                             } else {
-                                                (*dtd).entityValuePool.ptr =
-                                                    (*dtd).entityValuePool.start;
+                                                (*dtd).entityValuePool.rewind();
                                             }
                                             if result_2 as ::core::ffi::c_uint
                                                 != crate::expat_h::XML_ERROR_NONE
@@ -10566,7 +10647,7 @@ unsafe extern "C" fn doProlog(
                                             if (*parser).m_doctypeSysid.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                                            (*parser).m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         } else {
                                             (*parser).m_doctypeSysid = &raw const externalSubsetName
@@ -10689,7 +10770,7 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             (*(*parser).m_declEntity).notation = Some(notation);
-                                            (*dtd).pool.start = (*dtd).pool.ptr;
+                                            (*dtd).pool.commit();
                                             let callback = UNPARSED_ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -10817,11 +10898,11 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 if (*(*parser).m_declEntity).named.name != name
                                                 {
-                                                    (*dtd).pool.ptr = (*dtd).pool.start;
+                                                    (*dtd).pool.rewind();
                                                     (*parser).m_declEntity =
                                                         ::core::ptr::null_mut::<ENTITY>();
                                                 } else {
-                                                    (*dtd).pool.start = (*dtd).pool.ptr;
+                                                    (*dtd).pool.commit();
                                                     (*(*parser).m_declEntity).publicId = None;
                                                     (*(*parser).m_declEntity).is_param =
                                                         crate::expat_h::XML_FALSE;
@@ -10837,7 +10918,7 @@ unsafe extern "C" fn doProlog(
                                                     }
                                                 }
                                             } else {
-                                                (*dtd).pool.ptr = (*dtd).pool.start;
+                                                (*dtd).pool.rewind();
                                                 (*parser).m_declEntity =
                                                     ::core::ptr::null_mut::<ENTITY>();
                                             }
@@ -10863,11 +10944,11 @@ unsafe extern "C" fn doProlog(
                                             }
                                             if (*(*parser).m_declEntity).named.name != name_0
                                             {
-                                                (*dtd).pool.ptr = (*dtd).pool.start;
+                                                (*dtd).pool.rewind();
                                                 (*parser).m_declEntity =
                                                     ::core::ptr::null_mut::<ENTITY>();
                                             } else {
-                                                (*dtd).pool.start = (*dtd).pool.ptr;
+                                                (*dtd).pool.commit();
                                                 (*(*parser).m_declEntity).publicId = None;
                                                 (*(*parser).m_declEntity).is_param =
                                                     crate::expat_h::XML_TRUE;
@@ -10882,7 +10963,7 @@ unsafe extern "C" fn doProlog(
                                                 }
                                             }
                                         } else {
-                                            (*dtd).pool.ptr = (*dtd).pool.start;
+                                            (*dtd).pool.rewind();
                                             (*parser).m_declEntity =
                                                 ::core::ptr::null_mut::<ENTITY>();
                                         }
@@ -10905,7 +10986,7 @@ unsafe extern "C" fn doProlog(
                                             if (*parser).m_declNotationName.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                                            (*parser).m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -10934,7 +11015,7 @@ unsafe extern "C" fn doProlog(
                                             }
                                             normalizePublicId(tem_0);
                                             (*parser).m_declNotationPublicId = tem_0;
-                                            (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                                            (*parser).m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -11247,7 +11328,7 @@ unsafe extern "C" fn doProlog(
                                                 0 as crate::__stddef_size_t_h::size_t,
                                             )
                                                 as *mut ENTITY;
-                                            (*dtd).pool.ptr = (*dtd).pool.start;
+                                            (*dtd).pool.rewind();
                                             if (*parser).m_prologState.documentEntity != 0
                                                 && (if (*dtd).standalone as ::core::ffi::c_int != 0
                                                 {
@@ -11597,7 +11678,7 @@ unsafe extern "C" fn doProlog(
                                     (*parser).m_curBase,
                                     false,
                                 );
-                                (*dtd).pool.start = (*dtd).pool.ptr;
+                                (*dtd).pool.commit();
                                 if (*parser).m_entityDeclHandler
                                     && role
                                         == crate::src::xmlrole::XML_ROLE_ENTITY_SYSTEM_ID
@@ -11741,7 +11822,7 @@ unsafe extern "C" fn doProlog(
                 if (*(*parser).m_declEntity).publicId.is_none() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                (*dtd).pool.start = (*dtd).pool.ptr;
+                (*dtd).pool.commit();
                 if (*parser).m_entityDeclHandler
                     && role == crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
                 {
@@ -12195,20 +12276,21 @@ unsafe extern "C" fn storeAttributeValue(
         return result;
     }
     if isCdata == 0
-        && (*pool).ptr.offset_from((*pool).start) != 0
-        && *(*pool).ptr.offset(-1 as isize) as ::core::ffi::c_int == 0x20 as ::core::ffi::c_int
+        && (*pool).ptr_offset != 0
+        && (*pool).last_cursor_char() == Some(0x20 as crate::expat_external_h::XML_Char)
     {
-        (*pool).ptr = (*pool).ptr.offset(-1);
+        (*pool).discard_last_cursor_char();
     }
     if if (*pool).is_full()
         && poolGrow(pool) == 0
     {
         0 as ::core::ffi::c_int
     } else {
-        let c2rust_fresh41 = (*pool).ptr;
-        (*pool).ptr = (*pool).ptr.offset(1);
-        *c2rust_fresh41 = '\0' as crate::expat_external_h::XML_Char;
-        1 as ::core::ffi::c_int
+        if (&mut *pool).write_cursor('\0' as crate::expat_external_h::XML_Char) {
+            1 as ::core::ffi::c_int
+        } else {
+            0 as ::core::ffi::c_int
+        }
     } == 0
     {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -12260,11 +12342,7 @@ unsafe fn pool_append_char(
         return false;
     }
 
-    let pool = &mut *pool;
-    let slot = pool.ptr;
-    pool.ptr = pool.ptr.wrapping_add(1);
-    *slot = value;
-    true
+    (&mut *pool).write_cursor(value)
 }
 
 unsafe extern "C" fn appendAttributeValue(
@@ -12330,9 +12408,9 @@ unsafe extern "C" fn appendAttributeValue(
                     }
                     if isCdata == 0
                         && n == 0x20 as ::core::ffi::c_int
-                        && ((*pool).ptr.offset_from((*pool).start) == 0 as isize
-                            || *(*pool).ptr.offset(-1 as isize) as ::core::ffi::c_int
-                                == 0x20 as ::core::ffi::c_int)
+                        && ((*pool).ptr_offset == 0
+                            || (*pool).last_cursor_char()
+                                == Some(0x20 as crate::expat_external_h::XML_Char))
                     {
                         break 's_350;
                     } else {
@@ -12401,7 +12479,7 @@ unsafe extern "C" fn appendAttributeValue(
                             name as KEY,
                             0 as crate::__stddef_size_t_h::size_t,
                         ) as *mut ENTITY;
-                        (*parser).m_temp2Pool.ptr = (*parser).m_temp2Pool.start;
+                        (*parser).m_temp2Pool.rewind();
                         if pool == &raw mut (*dtd).pool {
                             checkEntityDecl = (*parser).m_prologState.documentEntity != 0
                                 && (if (*dtd).standalone as ::core::ffi::c_int != 0 {
@@ -12467,9 +12545,9 @@ unsafe extern "C" fn appendAttributeValue(
                 }
             }
             if !(isCdata == 0
-                && ((*pool).ptr.offset_from((*pool).start) == 0 as isize
-                    || *(*pool).ptr.offset(-1 as isize) as ::core::ffi::c_int
-                        == 0x20 as ::core::ffi::c_int))
+                && ((*pool).ptr_offset == 0
+                    || (*pool).last_cursor_char()
+                        == Some(0x20 as crate::expat_external_h::XML_Char)))
             {
                 if !pool_append_char(pool, 0x20 as crate::expat_external_h::XML_Char) {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -12552,7 +12630,7 @@ unsafe extern "C" fn storeEntityValue(
                                     name as KEY,
                                     0 as crate::__stddef_size_t_h::size_t,
                                 ) as *mut ENTITY;
-                                (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
+                                (*parser).m_tempPool.rewind();
                                 if entity.is_null() {
                                     (*dtd).keepProcessing = (*dtd).standalone;
                                     break '_endEntityValue;
@@ -12674,9 +12752,9 @@ unsafe extern "C" fn storeEntityValue(
                                     result = crate::expat_h::XML_ERROR_NO_MEMORY;
                                     break '_endEntityValue;
                                 } else {
-                                    let c2rust_fresh59 = (*pool).ptr;
-                                    (*pool).ptr = (*pool).ptr.offset(1);
-                                    *c2rust_fresh59 = buf[i as usize];
+                                    if !(&mut *pool).write_cursor(buf[i as usize]) {
+                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                    }
                                     i += 1;
                                 }
                             }
@@ -12710,9 +12788,9 @@ unsafe extern "C" fn storeEntityValue(
                     result = crate::expat_h::XML_ERROR_NO_MEMORY;
                     break '_endEntityValue;
                 } else {
-                    let c2rust_fresh58 = (*pool).ptr;
-                    (*pool).ptr = (*pool).ptr.offset(1);
-                    *c2rust_fresh58 = 0xa as crate::expat_external_h::XML_Char;
+                    if !(&mut *pool).write_cursor(0xa as crate::expat_external_h::XML_Char) {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
                 }
             }
             entityTextPtr = next;
@@ -12888,7 +12966,7 @@ unsafe extern "C" fn reportProcessingInstruction(
         if target.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        parser_state.m_tempPool.start = parser_state.m_tempPool.ptr;
+        parser_state.m_tempPool.commit();
         let data = poolStoreString(
             &raw mut parser_state.m_tempPool,
             enc,
@@ -13140,10 +13218,11 @@ unsafe extern "C" fn setElementTypePrefix(
                 {
                     0 as ::core::ffi::c_int
                 } else {
-                    let c2rust_fresh14 = (*dtd).pool.ptr;
-                    (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                    *c2rust_fresh14 = *s;
+                if (*dtd).pool.write_cursor(*s) {
                     1 as ::core::ffi::c_int
+                } else {
+                    0 as ::core::ffi::c_int
+                }
                 } == 0
                 {
                     return 0 as ::core::ffi::c_int;
@@ -13155,10 +13234,11 @@ unsafe extern "C" fn setElementTypePrefix(
             {
                 0 as ::core::ffi::c_int
             } else {
-                let c2rust_fresh15 = (*dtd).pool.ptr;
-                (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                *c2rust_fresh15 = '\0' as crate::expat_external_h::XML_Char;
-                1 as ::core::ffi::c_int
+                if (*dtd).pool.write_cursor('\0' as crate::expat_external_h::XML_Char) {
+                    1 as ::core::ffi::c_int
+                } else {
+                    0 as ::core::ffi::c_int
+                }
             } == 0
             {
                 return 0 as ::core::ffi::c_int;
@@ -13173,9 +13253,9 @@ unsafe extern "C" fn setElementTypePrefix(
                 return 0 as ::core::ffi::c_int;
             }
             if (*prefix).name == (*dtd).pool.start as *const crate::expat_external_h::XML_Char {
-                (*dtd).pool.start = (*dtd).pool.ptr;
+                (*dtd).pool.commit();
             } else {
-                (*dtd).pool.ptr = (*dtd).pool.start;
+                (*dtd).pool.rewind();
             }
             let prefix_ref = pool_string_ref(&raw const (*dtd).pool, (*prefix).name, false);
             let Some(prefix_ref) = prefix_ref else {
@@ -13223,9 +13303,9 @@ unsafe extern "C" fn getAttributeId(
     }
     let id = &mut *id;
     if id.name != name as *mut crate::expat_external_h::XML_Char {
-        dtd.pool.ptr = dtd.pool.start;
+        dtd.pool.rewind();
     } else {
-        dtd.pool.start = dtd.pool.ptr;
+        dtd.pool.commit();
         if parser.m_ns != 0 {
             if name_bytes.starts_with(b"xmlns")
                 && matches!(name_bytes.get(5), None | Some(b':'))
@@ -13267,9 +13347,9 @@ unsafe extern "C" fn getAttributeId(
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     }
                     if (*id.prefix).name == dtd.pool.start as *const crate::expat_external_h::XML_Char {
-                        dtd.pool.start = dtd.pool.ptr;
+                        dtd.pool.commit();
                     } else {
-                        dtd.pool.ptr = dtd.pool.start;
+                        dtd.pool.rewind();
                     }
                 }
             }
@@ -13288,10 +13368,7 @@ unsafe fn pool_append_context_char(
     if pool.is_full() && poolGrow(pool) == 0 {
         return false;
     }
-    let slot = pool.ptr;
-    pool.ptr = pool.ptr.add(1);
-    *slot = ch;
-    true
+    pool.write_cursor(ch)
 }
 
 unsafe fn pool_append_context_chars(
@@ -13458,11 +13535,11 @@ unsafe extern "C" fn setContext(
                 if !entity.is_null() {
                     (*entity).open = crate::expat_h::XML_TRUE;
                 }
-                parser.m_tempPool.ptr = parser.m_tempPool.start;
+                parser.m_tempPool.rewind();
                 position += 1;
             }
             0x3d => {
-                let prefix = if parser.m_tempPool.ptr == parser.m_tempPool.start {
+                let prefix = if parser.m_tempPool.ptr_offset == 0 {
                     &raw mut dtd.defaultPrefix
                 } else {
                     if !pool_append_context_char(
@@ -13488,7 +13565,7 @@ unsafe extern "C" fn setContext(
                             return crate::expat_h::XML_FALSE;
                         }
                     }
-                    parser.m_tempPool.ptr = parser.m_tempPool.start;
+                    parser.m_tempPool.rewind();
                     prefix
                 };
 
@@ -13519,7 +13596,7 @@ unsafe extern "C" fn setContext(
                 {
                     return crate::expat_h::XML_FALSE;
                 }
-                parser.m_tempPool.ptr = parser.m_tempPool.start;
+                parser.m_tempPool.rewind();
                 if position < context.len() {
                     position += 1;
                 }
@@ -13539,7 +13616,7 @@ unsafe extern "C" fn setContext(
     // The original NUL-terminated walk treats its final terminator as an entity
     // separator.  An assignment consumes its own terminator above, so only a
     // remaining name in the temporary pool needs this final close-out.
-    if parser.m_tempPool.ptr != parser.m_tempPool.start {
+    if parser.m_tempPool.ptr_offset != 0 {
         if !pool_append_context_char(
             &mut parser.m_tempPool,
             '\0' as crate::expat_external_h::XML_Char,
@@ -13555,7 +13632,7 @@ unsafe extern "C" fn setContext(
         if !entity.is_null() {
             (*entity).open = crate::expat_h::XML_TRUE;
         }
-        parser.m_tempPool.ptr = parser.m_tempPool.start;
+        parser.m_tempPool.rewind();
     }
     crate::expat_h::XML_TRUE
 }
@@ -13786,10 +13863,11 @@ unsafe extern "C" fn dtdCopy(
         {
             0 as ::core::ffi::c_int
         } else {
-            let c2rust_fresh66 = new_dtd.pool.ptr;
-            new_dtd.pool.ptr = new_dtd.pool.ptr.offset(1);
-            *c2rust_fresh66 = '\0' as crate::expat_external_h::XML_Char;
-            1 as ::core::ffi::c_int
+            if new_dtd.pool.write_cursor('\0' as crate::expat_external_h::XML_Char) {
+                1 as ::core::ffi::c_int
+            } else {
+                0 as ::core::ffi::c_int
+            }
         } == 0
         {
             return 0 as ::core::ffi::c_int;
@@ -14526,7 +14604,7 @@ unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::exp
         },
     );
     pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    pool.ptr_offset = 0;
     pool.parser = parser;
     pool.blockCount = 0;
 }
@@ -14536,7 +14614,7 @@ unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
     pool.storage.free.append(&mut pool.storage.active);
     pool.blockCount = 0;
     pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    pool.ptr_offset = 0;
 }
 
 unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
@@ -14555,24 +14633,35 @@ unsafe extern "C" fn poolAppend(
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut crate::expat_external_h::XML_Char {
-    if (*pool).ptr.is_null() && poolGrow(pool) == 0 {
+    let pool = &mut *pool;
+    if pool.start.is_null() && poolGrow(pool as *mut STRING_POOL) == 0 {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
     loop {
-        let output_end = {
-            let pool_ref = &*pool;
-            pool_ref
-                .start
-                .wrapping_add(pool_ref.remaining_capacity().unwrap_or(0))
-        };
+        let output_end = pool
+            .start
+            .wrapping_add(pool.remaining_capacity().unwrap_or(0));
+        let output_start = pool.start.wrapping_add(pool.ptr_offset);
+        let mut output = output_start.cast::<::core::ffi::c_char>();
         let convert_res: crate::src::xmltok::XML_Convert_Result =
             crate::src::xmltok::convert_to_utf8(
                 enc,
                 &raw mut ptr,
                 end,
-                &raw mut (*pool).ptr as *mut *mut ::core::ffi::c_char,
+                &raw mut output,
                 output_end as *const ::core::ffi::c_char,
             );
+        let Some(written_bytes) = output.addr().checked_sub(output_start.addr()) else {
+            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+        };
+        let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
+        if written_bytes % char_size != 0 {
+            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+        }
+        let Some(cursor) = pool.ptr_offset.checked_add(written_bytes / char_size) else {
+            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+        };
+        pool.ptr_offset = cursor;
         if convert_res as ::core::ffi::c_uint
             == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                 as ::core::ffi::c_uint
@@ -14582,11 +14671,11 @@ unsafe extern "C" fn poolAppend(
         {
             break;
         }
-        if poolGrow(pool) == 0 {
+        if poolGrow(pool as *mut STRING_POOL) == 0 {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
         }
     }
-    return (*pool).start;
+    return pool.start;
 }
 
 unsafe extern "C" fn poolCopyString(
@@ -14599,11 +14688,11 @@ unsafe extern "C" fn poolCopyString(
         {
             0 as ::core::ffi::c_int
         } else {
-            let pool_ref = &mut *pool;
-            let c2rust_fresh45 = pool_ref.ptr;
-            pool_ref.ptr = pool_ref.ptr.offset(1);
-            *c2rust_fresh45 = *s;
-            1 as ::core::ffi::c_int
+            if (&mut *pool).write_cursor(*s) {
+                1 as ::core::ffi::c_int
+            } else {
+                0 as ::core::ffi::c_int
+            }
         } == 0
         {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -14615,7 +14704,7 @@ unsafe extern "C" fn poolCopyString(
         }
     }
     s = (*pool).start;
-    (*pool).start = (*pool).ptr;
+    (*pool).commit();
     return s;
 }
 
@@ -14624,7 +14713,7 @@ unsafe fn poolCopyStringN(
     mut s: *const crate::expat_external_h::XML_Char,
     mut n: ::core::ffi::c_int,
 ) -> Option<PoolStringRef> {
-    if (*pool).ptr.is_null() && poolGrow(pool) == 0 {
+    if (*pool).start.is_null() && poolGrow(pool) == 0 {
         return None;
     }
     while n > 0 as ::core::ffi::c_int {
@@ -14633,10 +14722,11 @@ unsafe fn poolCopyStringN(
         {
             0 as ::core::ffi::c_int
         } else {
-            let c2rust_fresh67 = (*pool).ptr;
-            (*pool).ptr = (*pool).ptr.offset(1);
-            *c2rust_fresh67 = *s;
-            1 as ::core::ffi::c_int
+            if (&mut *pool).write_cursor(*s) {
+                1 as ::core::ffi::c_int
+            } else {
+                0 as ::core::ffi::c_int
+            }
         } == 0
         {
             return None;
@@ -14646,7 +14736,7 @@ unsafe fn poolCopyStringN(
     }
     let pool = &mut *pool;
     let string = pool.start_ref(true);
-    pool.start = pool.ptr;
+    pool.commit();
     string
 }
 
@@ -14660,10 +14750,11 @@ unsafe extern "C" fn poolAppendString(
         {
             0 as ::core::ffi::c_int
         } else {
-            let c2rust_fresh60 = (*pool).ptr;
-            (*pool).ptr = (*pool).ptr.offset(1);
-            *c2rust_fresh60 = *s;
-            1 as ::core::ffi::c_int
+            if (&mut *pool).write_cursor(*s) {
+                1 as ::core::ffi::c_int
+            } else {
+                0 as ::core::ffi::c_int
+            }
         } == 0
         {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -14685,9 +14776,9 @@ unsafe extern "C" fn poolStoreString(
     if (*pool).is_full() && poolGrow(pool) == 0 {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    let c2rust_fresh9 = (*pool).ptr;
-    (*pool).ptr = (*pool).ptr.offset(1);
-    *c2rust_fresh9 = 0 as crate::expat_external_h::XML_Char;
+    if !(&mut *pool).write_cursor(0 as crate::expat_external_h::XML_Char) {
+        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    }
     return (*pool).start;
 }
 
@@ -14728,7 +14819,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
             pool.storage.active.push(free_block);
             pool.blockCount = pool.storage.active.len();
             pool.start = start;
-            pool.ptr = start;
+            pool.ptr_offset = 0;
             return crate::expat_h::XML_TRUE;
         }
 
@@ -14738,7 +14829,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
         };
         if active_capacity < free_block.chars.len() {
             let source = pool.start;
-            let pointer_offset = pool.ptr.addr().wrapping_sub(source.addr()) / char_size;
+            let pointer_offset = pool.ptr_offset;
             let source_index = pool.storage.active.iter().position(|block| {
                 let block_start = block.chars.as_ptr().addr();
                 let byte_offset = source.addr().wrapping_sub(block_start);
@@ -14761,8 +14852,8 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
             );
             let start = destination[0].chars.as_mut_ptr();
             pool.blockCount = pool.storage.active.len();
-            pool.ptr = start.wrapping_add(pointer_offset);
             pool.start = start;
+            pool.ptr_offset = pointer_offset;
             return crate::expat_h::XML_TRUE;
         }
         pool.storage.free.push(free_block);
@@ -14771,7 +14862,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     if let Some(block) = pool.storage.active.last_mut() {
         let block_start = block.chars.as_mut_ptr();
         if pool.start == block_start {
-            let pointer_offset = pool.ptr.addr().wrapping_sub(pool.start.addr()) / char_size;
+            let pointer_offset = pool.ptr_offset;
             let Some(block_size) = block.chars.len().checked_mul(2) else {
                 return crate::expat_h::XML_FALSE;
             };
@@ -14794,14 +14885,14 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
             // before returning in that case.
             let resized_start = block.chars.as_mut_ptr();
             if !(block.backing)(StringPoolAllocationAction::Grow(bytes_to_allocate)) {
-                pool.ptr = resized_start.wrapping_add(pointer_offset);
                 pool.start = resized_start;
+                pool.ptr_offset = pointer_offset;
                 return crate::expat_h::XML_FALSE;
             }
             block.chars.resize(block_size, 0);
             let start = block.chars.as_mut_ptr();
-            pool.ptr = start.wrapping_add(pointer_offset);
             pool.start = start;
+            pool.ptr_offset = pointer_offset;
             return crate::expat_h::XML_TRUE;
         }
     }
@@ -14809,7 +14900,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     let Some(capacity) = pool.remaining_capacity() else {
         return crate::expat_h::XML_FALSE;
     };
-    let pointer_offset = pool.ptr.addr().wrapping_sub(pool.start.addr()) / char_size;
+    let pointer_offset = pool.ptr_offset;
     let mut block_size = match ::core::ffi::c_int::try_from(capacity) {
         Ok(capacity) => capacity,
         Err(_) => return crate::expat_h::XML_FALSE,
@@ -14854,7 +14945,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
         }
     });
     let source = pool.start;
-    let source_index = if pool.ptr != source {
+    let source_index = if pool.ptr_offset != 0 {
         pool.storage.active.iter().position(|block| {
             let block_start = block.chars.as_ptr().addr();
             let byte_offset = source.addr().wrapping_sub(block_start);
@@ -14871,7 +14962,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     pool.storage.active.push(StringPoolBlock { chars, backing });
     let destination_index = pool.storage.active.len() - 1;
     let start = pool.storage.active[destination_index].chars.as_mut_ptr();
-    if pool.ptr != source {
+    if pool.ptr_offset != 0 {
         let Some(source_index) = source_index else {
             return crate::expat_h::XML_FALSE;
         };
@@ -14882,8 +14973,8 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
         );
     }
     pool.blockCount = pool.storage.active.len();
-    pool.ptr = start.wrapping_add(pointer_offset);
     pool.start = start;
+    pool.ptr_offset = pointer_offset;
     crate::expat_h::XML_TRUE
 }
 
@@ -15187,9 +15278,9 @@ unsafe extern "C" fn getElementType(
         return ::core::ptr::null_mut::<ELEMENT_TYPE>();
     }
     if (*ret).named.name != name {
-        (*dtd).pool.ptr = (*dtd).pool.start;
+        (*dtd).pool.rewind();
     } else {
-        (*dtd).pool.start = (*dtd).pool.ptr;
+        (*dtd).pool.commit();
         if setElementTypePrefix(parser, ret) == 0 {
             return ::core::ptr::null_mut::<ELEMENT_TYPE>();
         }
