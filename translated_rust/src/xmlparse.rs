@@ -16361,6 +16361,14 @@ unsafe extern "C" fn dtdCopy(
     {
         return 0 as ::core::ffi::c_int;
     }
+    copy_dtd_metadata(new_dtd, old_dtd);
+    return 1 as ::core::ffi::c_int;
+}
+
+/// Copies the DTD state which has no record-address identity.  The table and
+/// pool copies above establish all owned records first; this final step can
+/// then remain entirely independent of the raw parser handles.
+fn copy_dtd_metadata(new_dtd: &mut DTD, old_dtd: &DTD) {
     new_dtd.paramEntityRead = old_dtd.paramEntityRead;
     new_dtd.keepProcessing = old_dtd.keepProcessing;
     new_dtd.hasParamEntityRefs = old_dtd.hasParamEntityRefs;
@@ -16371,7 +16379,6 @@ unsafe extern "C" fn dtdCopy(
     new_dtd.scaffSize = old_dtd.scaffSize;
     new_dtd.scaffLevel = old_dtd.scaffLevel;
     new_dtd.scaffIndex = old_dtd.scaffIndex.clone();
-    return 1 as ::core::ffi::c_int;
 }
 
 unsafe extern "C" fn copyEntityTable(
