@@ -10276,11 +10276,10 @@ unsafe fn doContent(
         (EventCursorTarget::Parser, None)
     } else {
         let (open_entity_index, window) = {
-            let parser_state = &mut *parser;
-            let open_entity_index = parser_state
+            let open_entity_index = parser
                 .m_openInternalEntities
                 .expect("internal entity parsing requires an open entity");
-            let open_entity = parser_state
+            let open_entity = parser
                 .m_activeInternalEntities
                 .get_mut(open_entity_index)
                 .expect("open internal entity index is live")
@@ -10400,7 +10399,7 @@ unsafe fn doContent(
                             0xa as crate::expat_external_h::XML_Char;
                         call_character_data_handler_slice(parser, core::slice::from_ref(&c));
                     } else if handlers.default {
-                        reportDefault(parser, enc, s, end);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_NO_ELEMENTS;
@@ -10497,7 +10496,7 @@ unsafe fn doContent(
                                 core::slice::from_ref(&ch),
                             );
                         } else if handlers.default {
-                            reportDefault(parser, enc, s, next);
+                            report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                         }
                     } else {
                         let salt = parser
@@ -10594,7 +10593,7 @@ unsafe fn doContent(
                                     );
                                 }
                             } else if handlers.default {
-                                reportDefault(parser, enc, s, next);
+                                report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                             }
                             break 's_1235;
                         }
@@ -10638,7 +10637,7 @@ unsafe fn doContent(
                                         );
                                     }
                                 } else if handlers.default {
-                                    reportDefault(parser, enc, s, next);
+                                    report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                                 }
                             } else {
                                 result = processEntity(
@@ -10699,7 +10698,7 @@ unsafe fn doContent(
                             }
                             parser.m_tempPool.rewind();
                         } else if handlers.default {
-                            reportDefault(parser, enc, s, next);
+                            report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                         }
                     }
                 }
@@ -10709,13 +10708,12 @@ unsafe fn doContent(
                         // No callback can run while reserving parser-owned tag
                         // storage or taking a recycled tag.  Borrow the parser
                         // once for all three operations.
-                        let parser_state = &mut *parser;
-                        if !parser_state.m_freeTagList.tags.try_reserve(1).is_ok()
-                            || !parser_state.m_activeTags.try_reserve(1).is_ok()
+                        if !parser.m_freeTagList.tags.try_reserve(1).is_ok()
+                            || !parser.m_activeTags.try_reserve(1).is_ok()
                         {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        parser_state.m_freeTagList.tags.pop()
+                        parser.m_freeTagList.tags.pop()
                     };
                     if tag_storage.is_none() {
                         tag_storage = tag_storage_new(parser, 3477 as ::core::ffi::c_int);
@@ -10941,7 +10939,7 @@ unsafe fn doContent(
                             );
                         }
                     } else if handlers.default {
-                        reportDefault(parser, enc, s, next);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                     poolClear(&mut parser.m_tempPool);
                 }
@@ -11077,7 +11075,7 @@ unsafe fn doContent(
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
                     if noElmHandlers as ::core::ffi::c_int != 0 && end_handlers.default {
-                        reportDefault(parser, enc, s, next);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                     poolClear(&mut parser.m_tempPool);
                     freeBindings(parser, bindings);
@@ -11187,8 +11185,7 @@ unsafe fn doContent(
                                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                         }
                                     };
-                                    let parser_state = &mut *parser;
-                                    let Some(binding) = parser_state
+                                    let Some(binding) = parser
                                         .m_activeBindings
                                         .iter_mut()
                                         .find(|binding| binding.uri.as_ptr() == name)
@@ -11269,7 +11266,7 @@ unsafe fn doContent(
                                 callback(handler_arg_from_state!(parser), end_element_name);
                             }
                         } else if parser.m_defaultHandler {
-                            reportDefault(parser, enc, s, next);
+                            report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                         }
                         freeBindings(parser, bindings);
                         if close_element_epilog_action(parser) {
@@ -11309,7 +11306,7 @@ unsafe fn doContent(
                         };
                         call_character_data_handler_slice(parser, chars);
                     } else if handlers.default {
-                        reportDefault(parser, enc, s, next);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
                 crate::src::xmltok::XML_TOK_XML_DECL => {
@@ -11322,7 +11319,7 @@ unsafe fn doContent(
                             0xa as crate::expat_external_h::XML_Char;
                         call_character_data_handler_slice(parser, core::slice::from_ref(&c_0));
                     } else if handlers.default {
-                        reportDefault(parser, enc, s, next);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
                 crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN => {
@@ -11338,7 +11335,7 @@ unsafe fn doContent(
                             .expect("installed start CDATA handler");
                         invoke_cdata_section_callback(callback.as_ref(), parser);
                     } else if handlers.default {
-                        reportDefault(parser, enc, s, next);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                     result_2 =
                         doCdataSection(parser, enc, &mut next, end, nextPtr, haveMore, account);
@@ -11376,11 +11373,11 @@ unsafe fn doContent(
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             }
                             let (data_start, data_len) = {
-                                let parser_ref = &mut *parser;
-                                let Some(output) = parser_ref
+                                let data_buf_end = parser.m_dataBufEnd;
+                                let Some(output) = parser
                                     .m_dataBuf
                                     .chars
-                                    .get_mut(..parser_ref.m_dataBufEnd)
+                                    .get_mut(..data_buf_end)
                                 else {
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 };
@@ -11413,7 +11410,7 @@ unsafe fn doContent(
                             );
                         }
                     } else if handlers.default {
-                        reportDefault(parser, enc, s, end);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         content_update_event_start(
@@ -11480,11 +11477,11 @@ unsafe fn doContent(
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 }
                                 let (convert_res_0, consumed, written, data_start) = {
-                                    let parser_ref = &mut *parser;
-                                    let Some(output) = parser_ref
+                                    let data_buf_end = parser.m_dataBufEnd;
+                                    let Some(output) = parser
                                         .m_dataBuf
                                         .chars
-                                        .get_mut(..parser_ref.m_dataBufEnd)
+                                        .get_mut(..data_buf_end)
                                     else {
                                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                     };
@@ -11557,7 +11554,7 @@ unsafe fn doContent(
                             );
                         }
                     } else if parser.m_defaultHandler {
-                        reportDefault(parser, enc, s, next);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
                 crate::src::xmltok::XML_TOK_PI => {
@@ -11572,16 +11569,15 @@ unsafe fn doContent(
                 }
                 _ => {
                     if parser.m_defaultHandler {
-                        reportDefault(parser, enc, s, next);
+                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
             }
         }
         let loop_status = {
-            let parser_state = &*parser;
             content_loop_status(
-                parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint,
-                parser_state.m_reenter,
+                parser.m_parsingStatus.parsing as ::core::ffi::c_uint,
+                parser.m_reenter,
             )
         };
         match loop_status {
@@ -20769,6 +20765,46 @@ unsafe fn report_default_impl(
         }
     } else {
         report_chunk(parser, bytemuck::cast_slice(input));
+    }
+}
+
+/// Reports a token whose cursor range has already been resolved into the
+/// current content scanner's owned byte snapshot.
+///
+/// The address subtraction is checked against that snapshot before the
+/// legacy callback implementation sees it.  This also keeps the snapshot
+/// alive across callback re-entry, so a callback that relocates parser input
+/// cannot invalidate the default-handler data being reported.
+fn report_default_token(
+    parser_key: usize,
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::ENCODING,
+    encoding_address: usize,
+    input_start: usize,
+    input_end: usize,
+    source: &[u8],
+) {
+    let Some(token_len) = input_end
+        .checked_sub(input_start)
+        .filter(|length| *length <= source.len())
+    else {
+        return;
+    };
+    let Some(token) = source.get(..token_len) else {
+        return;
+    };
+    // `parser` is an exclusive, live parser borrow, `encoding` comes from
+    // the selected normal encoding, and `token` is bounded above.  Those are
+    // the legacy implementation's only pointer-derived preconditions.
+    unsafe {
+        report_default_impl(
+            parser_key,
+            parser,
+            encoding,
+            encoding_address,
+            input_start,
+            token,
+        );
     }
 }
 
