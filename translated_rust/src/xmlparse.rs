@@ -9997,6 +9997,30 @@ fn content_token_handlers(parser: &XML_ParserStruct) -> ContentTokenHandlers {
     }
 }
 
+/// Entity-reference handler settings captured immediately before dispatch.
+///
+/// These flags are deliberately kept separate from `ContentTokenHandlers`:
+/// they describe how an unresolved general entity is expanded, rather than
+/// which content token callbacks are installed.  Taking them together avoids
+/// repeated raw parser reads in the content loop while retaining the C
+/// implementation's pre-callback snapshot semantics.
+#[derive(Copy, Clone)]
+struct ContentEntityHandlers {
+    skipped_entity: bool,
+    default: bool,
+    external_entity_ref: bool,
+    default_expand_internal_entities: bool,
+}
+
+fn content_entity_handlers(parser: &XML_ParserStruct) -> ContentEntityHandlers {
+    ContentEntityHandlers {
+        skipped_entity: parser.m_skippedEntityHandler,
+        default: parser.m_defaultHandler,
+        external_entity_ref: parser.m_externalEntityRefHandler,
+        default_expand_internal_entities: parser.m_defaultExpandInternalEntities != 0,
+    }
+}
+
 /// Validate an end tag against the parser's current open tag without exposing
 /// the parser handle to the token-processing loop.  Invalid retained-name
 /// storage is still treated as a tag mismatch, matching the former cursor
@@ -10414,7 +10438,8 @@ unsafe fn doContent(
                                 return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
                         } else if entity.is_none() {
-                            if (*parser).m_skippedEntityHandler {
+                            let handlers = content_entity_handlers(&*parser);
+                            if handlers.skipped_entity {
                                 let callback = SKIPPED_ENTITY_HANDLERS
                                     .get_or_init(|| {
                                         std::sync::Mutex::new(std::collections::HashMap::new())
@@ -10430,7 +10455,7 @@ unsafe fn doContent(
                                         0 as ::core::ffi::c_int,
                                     );
                                 }
-                            } else if (*parser).m_defaultHandler {
+                            } else if handlers.default {
                                 reportDefault(parser, enc, s, next);
                             }
                             break 's_1235;
@@ -10446,11 +10471,12 @@ unsafe fn doContent(
                         if has_notation {
                             return crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
                         }
+                        let handlers = content_entity_handlers(&*parser);
                         if has_text {
                             let mut result: crate::expat_h::XML_Error =
                                 crate::expat_h::XML_ERROR_NONE;
-                            if (*parser).m_defaultExpandInternalEntities == 0 {
-                                if (*parser).m_skippedEntityHandler {
+                            if !handlers.default_expand_internal_entities {
+                                if handlers.skipped_entity {
                                     let callback = SKIPPED_ENTITY_HANDLERS
                                         .get_or_init(|| {
                                             std::sync::Mutex::new(std::collections::HashMap::new())
@@ -10473,7 +10499,7 @@ unsafe fn doContent(
                                             0 as ::core::ffi::c_int,
                                         );
                                     }
-                                } else if (*parser).m_defaultHandler {
+                                } else if handlers.default {
                                     reportDefault(parser, enc, s, next);
                                 }
                             } else {
@@ -10490,7 +10516,7 @@ unsafe fn doContent(
                                     return result;
                                 }
                             }
-                        } else if (*parser).m_externalEntityRefHandler {
+                        } else if handlers.external_entity_ref {
                             let mut context: *const crate::expat_external_h::XML_Char =
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             (*entity).open = crate::expat_h::XML_TRUE;
@@ -10519,7 +10545,7 @@ unsafe fn doContent(
                                 return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                             }
                             (*parser).m_tempPool.rewind();
-                        } else if (*parser).m_defaultHandler {
+                        } else if handlers.default {
                             reportDefault(parser, enc, s, next);
                         }
                     }
