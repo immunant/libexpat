@@ -1793,6 +1793,35 @@ fn dispatch_character_data_callback(
     }
 }
 
+/// Invokes a processing-instruction callback with parser-owned snapshots.
+/// The two strings are terminated XML-character vectors, and their storage
+/// remains live through the callback.
+fn dispatch_processing_instruction_callback(
+    callback: &dyn ProcessingInstructionCallback,
+    parser: &XML_ParserStruct,
+    target: &[crate::expat_external_h::XML_Char],
+    data: &[crate::expat_external_h::XML_Char],
+) {
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            target.as_ptr(),
+            data.as_ptr(),
+        );
+    }
+}
+
+/// Invokes a comment callback with a terminated parser-owned snapshot.
+fn dispatch_comment_callback(
+    callback: &dyn CommentCallback,
+    parser: &XML_ParserStruct,
+    data: &[crate::expat_external_h::XML_Char],
+) {
+    unsafe {
+        callback.invoke(handler_arg_from_state!(parser), data.as_ptr());
+    }
+}
+
 fn dispatch_character_data_slice(
     parser: &XML_ParserStruct,
     data: &[crate::expat_external_h::XML_Char],
@@ -18319,17 +18348,46 @@ unsafe fn doProlog(
                                         break '_closeGroup;
                                     }
                                     55 => {
-                                        if reportProcessingInstruction(parser, enc, s, next) == 0 {
-                                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                        let normal_encoding = if parser_events {
+                                            current_parser_normal_encoding(parser).unwrap_or_else(|| {
+                                                *crate::src::xmltok::internal_utf8_normal_encoding(
+                                                    parser.m_ns != 0,
+                                                )
+                                            })
+                                        } else {
+                                            *crate::src::xmltok::internal_utf8_normal_encoding(
+                                                matches!(
+                                                    parser.m_internalEncoding,
+                                                    InternalEncoding::Utf8Ns
+                                                ),
+                                            )
+                                        };
+                                        match report_processing_instruction_token(
+                                            parser,
+                                            &encoding,
+                                            &normal_encoding,
+                                            &token_bytes,
+                                        ) {
+                                            Some(true) => {
+                                                handleDefault = crate::expat_h::XML_FALSE;
+                                            }
+                                            Some(false) => {}
+                                            None => {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            }
                                         }
-                                        handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
                                     56 => {
-                                        if reportComment(parser, enc, s, next) == 0 {
-                                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                        match report_comment_token(parser, &encoding, &token_bytes) {
+                                            Some(true) => {
+                                                handleDefault = crate::expat_h::XML_FALSE;
+                                            }
+                                            Some(false) => {}
+                                            None => {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            }
                                         }
-                                        handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
                                     0 => {
@@ -20889,6 +20947,50 @@ fn report_processing_instruction_impl(
     Some((target, data))
 }
 
+/// Reports a processing instruction whose complete token has already been
+/// copied from a checked parser or entity input window.
+///
+/// `doProlog` owns that validated token copy, so it can keep both token
+/// conversion and callback staging out of the raw-cursor adapter.  `false`
+/// leaves the caller to report the token through the default handler, exactly
+/// as the legacy adapter does when no processing-instruction handler exists.
+fn report_processing_instruction_token(
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::ENCODING,
+    normal_encoding: &crate::src::xmltok::normal_encoding,
+    token: &[u8],
+) -> Option<bool> {
+    if !parser.m_processingInstructionHandler {
+        return Some(false);
+    }
+    let (target_ref, data_ref) =
+        report_processing_instruction_impl(parser, encoding, normal_encoding, token)?;
+    let target = parser.m_tempPool.chars_from(target_ref)?;
+    let data = parser.m_tempPool.chars_from(data_ref)?;
+    let mut callback_target = Vec::new();
+    let mut callback_data = Vec::new();
+    callback_target.try_reserve_exact(target.len()).ok()?;
+    callback_data.try_reserve_exact(data.len()).ok()?;
+    callback_target.extend_from_slice(target);
+    callback_data.extend_from_slice(data);
+    parser.m_tempPool.clear();
+    let callback = PROCESSING_INSTRUCTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned();
+    if let Some(callback) = callback {
+        dispatch_processing_instruction_callback(
+            callback.as_ref(),
+            parser,
+            &callback_target,
+            &callback_data,
+        );
+    }
+    Some(true)
+}
+
 unsafe extern "C" fn reportComment(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -21000,6 +21102,29 @@ fn report_comment_impl(
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     Some(CommentCallbackEvent { callback, data })
+}
+
+/// Reports a comment whose delimiters and payload are held in a checked token
+/// copy.  This mirrors the raw adapter's default-handler fallback without
+/// reconstructing a slice from prolog cursor pointers.
+fn report_comment_token(
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::ENCODING,
+    token: &[u8],
+) -> Option<bool> {
+    if !parser.m_commentHandler {
+        return Some(false);
+    }
+    let event = report_comment_impl(parser, encoding, token)?;
+    let data = parser.m_tempPool.chars_from(event.data)?;
+    let mut callback_data = Vec::new();
+    callback_data.try_reserve_exact(data.len()).ok()?;
+    callback_data.extend_from_slice(data);
+    parser.m_tempPool.clear();
+    if let Some(callback) = event.callback {
+        dispatch_comment_callback(callback.as_ref(), parser, &callback_data);
+    }
+    Some(true)
 }
 
 unsafe fn reportDefault(
