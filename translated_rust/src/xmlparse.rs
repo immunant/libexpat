@@ -7527,9 +7527,8 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
                 let mut dtd = dtd.value.into_inner();
                 dtdDestroy(
                     &mut dtd,
-                    parser.m_parentParser.is_none() as ::core::ffi::c_int
-                        as crate::expat_h::XML_Bool,
-                    parser as *mut XML_ParserStruct,
+                    parser.m_parentParser.is_none(),
+                    parser,
                 );
             }
         }
@@ -22981,19 +22980,19 @@ fn dtd_destroy_impl(
     }
 }
 
-/// Converts the internal parser handle once, then delegates DTD ownership
-/// teardown to the safe implementation.
-unsafe extern "C" fn dtdDestroy(
+/// Releases a uniquely owned DTD using the parser's already-checked exclusive
+/// borrow.  Both owners are Rust values here, so teardown does not need the
+/// legacy raw parser-handle adapter.
+unsafe fn dtdDestroy(
     p: &mut DTD,
-    is_doc_entity: crate::expat_h::XML_Bool,
-    parser: crate::expat_h::XML_Parser,
+    is_doc_entity: bool,
+    parser: &mut XML_ParserStruct,
 ) {
-    let parser = &mut *parser;
     let mut release_default_attributes = |parser: &mut XML_ParserStruct,
                                           mut storage: Box<DefaultAttributeStorage>| {
         (storage.backing)(parser, DefaultAttributeAllocationAction::Free(7580));
     };
-    dtd_destroy_impl(p, is_doc_entity != 0, parser, &mut release_default_attributes);
+    dtd_destroy_impl(p, is_doc_entity, parser, &mut release_default_attributes);
 }
 
 unsafe fn dtdCopy(
