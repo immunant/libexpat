@@ -7403,7 +7403,7 @@ unsafe extern "C" fn handleUnknownEncoding(
             }
             enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
                 Some(
-                    crate::src::xmltok::XmlInitUnknownEncodingNS
+                    crate::src::xmltok::XmlInitUnknownEncodingNS_ffi
                         as unsafe extern "C" fn(
                             *mut ::core::ffi::c_void,
                             *const ::core::ffi::c_int,
@@ -7414,7 +7414,7 @@ unsafe extern "C" fn handleUnknownEncoding(
                 )
             } else {
                 Some(
-                    crate::src::xmltok::XmlInitUnknownEncoding
+                    crate::src::xmltok::XmlInitUnknownEncoding_ffi
                         as unsafe extern "C" fn(
                             *mut ::core::ffi::c_void,
                             *const ::core::ffi::c_int,
