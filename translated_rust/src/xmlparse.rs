@@ -1677,17 +1677,6 @@ macro_rules! callback_context_pointer {
     }};
 }
 
-macro_rules! handler_arg {
-    ($parser:expr) => {{
-        let parser: *mut XML_ParserStruct = $parser;
-        let parser_ref = &*parser;
-        match parser_ref.m_handlerArg {
-            HandlerArg::UserData => callback_context_pointer!(parser_ref),
-            HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
-        }
-    }};
-}
-
 macro_rules! handler_arg_from_state {
     ($parser:expr) => {{
         let parser: &XML_ParserStruct = &*$parser;
@@ -1911,22 +1900,6 @@ fn dispatch_character_data_slice(
         .cloned();
     if let Some(callback) = callback {
         dispatch_character_data_callback(callback.as_ref(), parser, data);
-    }
-}
-
-unsafe fn callElementDeclHandler(
-    parser: crate::expat_h::XML_Parser,
-    name: *const crate::expat_external_h::XML_Char,
-    model: *mut crate::expat_h::XML_Content,
-) {
-    let callback = ELEMENT_DECL_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
-        .cloned();
-    if let Some(callback) = callback {
-        callback.invoke(handler_arg!(parser), name, model);
     }
 }
 
@@ -18667,7 +18640,7 @@ unsafe fn doProlog(
                                     41 | 42 => {
                                         if dtd.in_eldecl != 0 {
                                             if parser.m_elementDeclHandler {
-                                                let content = build_model(
+                                                if !build_model_and_dispatch(
                                                     parser,
                                                     dtd,
                                                     ContentModelSource::Simple(if role
@@ -18678,29 +18651,13 @@ unsafe fn doProlog(
                                                     } else {
                                                         crate::expat_h::XML_CTYPE_EMPTY
                                                     }),
-                                                );
-                                                if content.is_null() {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                }
-                                                event_target.set_end(
-                                                    parser,
+                                                    event_target,
                                                     internal_event_start,
                                                     internal_event_window,
                                                     s.addr(),
-                                                );
-                                                callElementDeclHandler(
-                                                    parser,
-                                                    dtd
-                                                        .pool
-                                                        .chars_from(
-                                                            parser
-                                                                .m_declElementType
-                                                                .expect("element declaration must be set before its callback"),
-                                                        )
-                                                        .expect("element declaration name must remain in the DTD pool")
-                                                        .as_ptr(),
-                                                    content,
-                                                );
+                                                ) {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                }
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                             dtd.in_eldecl = crate::expat_h::XML_FALSE;
@@ -19050,28 +19007,17 @@ unsafe fn doProlog(
                     }
                     if dtd.scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
-                            let mut model: *mut crate::expat_h::XML_Content =
-                                build_model(parser, dtd, ContentModelSource::Scaffold);
-                            if model.is_null() {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            event_target.set_end(
+                            if !build_model_and_dispatch(
                                 parser,
+                                dtd,
+                                ContentModelSource::Scaffold,
+                                event_target,
                                 internal_event_start,
                                 internal_event_window,
                                 s.addr(),
-                            );
-                            callElementDeclHandler(
-                                parser,
-                                dtd
-                                    .pool
-                                    .chars_from(parser.m_declElementType.expect(
-                                        "element declaration must be set before its callback",
-                                    ))
-                                    .expect("element declaration name must remain in the DTD pool")
-                                    .as_ptr(),
-                                model,
-                            );
+                            ) {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
                         }
                         dtd.in_eldecl = crate::expat_h::XML_FALSE;
                         dtd.contentStringLen = 0 as ::core::ffi::c_uint;
@@ -24605,6 +24551,50 @@ unsafe fn build_model(
     ::core::ptr::copy_nonoverlapping(contents.as_ptr(), ret, content_count);
     ::core::ptr::copy_nonoverlapping(names.as_ptr(), string_start, string_count);
     ret
+}
+
+/// Builds the ABI-owned declaration model and hands it to the installed
+/// element-declaration callback.  The model allocation is transferred to the
+/// callback exactly as in Expat's public callback contract, so its raw
+/// pointer never needs to escape into the prolog state machine.
+unsafe fn build_model_and_dispatch(
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
+    source: ContentModelSource,
+    event_target: EventCursorTarget,
+    internal_event_start: Option<usize>,
+    internal_event_window: Option<(usize, usize)>,
+    event_end: usize,
+) -> bool {
+    let model = build_model(parser, dtd, source);
+    if model.is_null() {
+        return false;
+    }
+    let name = dtd
+        .pool
+        .chars_from(
+            parser
+                .m_declElementType
+                .expect("element declaration must be set before its callback"),
+        )
+        .expect("element declaration name must remain in the DTD pool")
+        .as_ptr();
+    event_target.set_end(
+        parser,
+        internal_event_start,
+        internal_event_window,
+        event_end,
+    );
+    let callback = ELEMENT_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned();
+    if let Some(callback) = callback {
+        callback.invoke(handler_arg_from_state!(parser), name, model);
+    }
+    true
 }
 
 // The DTD owns both the string-pool entry and the hash-table element.  Keep
