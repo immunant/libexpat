@@ -1,4 +1,6 @@
 use ::c2rust_bitfields;
+use std::io::{self, Write};
+
 extern "C" {
     pub type _IO_wide_data;
     pub type _IO_codecvt;
@@ -964,6 +966,23 @@ fn xmlparse_assert_fail(
     }
 }
 
+fn write_stderr_bytes(bytes: &[u8]) {
+    let _ = io::stderr().write_all(bytes);
+}
+
+fn c_str_bytes<'a>(ptr: *const ::core::ffi::c_char) -> &'a [u8] {
+    let (terminator, bytes) = c_str_bytes_with_nul(ptr)
+        .split_last()
+        .expect("C strings are NUL terminated");
+    debug_assert_eq!(*terminator, b'\0');
+    bytes
+}
+
+fn append_printable_byte(buffer: &mut Vec<u8>, value: ::core::ffi::c_uchar) {
+    let printable = unsafe { unsignedCharToPrintable(value) };
+    buffer.extend_from_slice(c_str_bytes(printable));
+}
+
 fn expat_heap_stat(
     rootParser: &XML_ParserStruct,
     operator: ::core::ffi::c_char,
@@ -972,25 +991,23 @@ fn expat_heap_stat(
     peakTotal: XmlBigCount,
     sourceLine: ::core::ffi::c_int,
 ) {
-    unsafe {
-        let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
-            / rootParser.m_accounting.countBytesDirect as ::core::ffi::c_float;
-        fprintf(
-            stderr,
-            b"expat: Allocations(%p): Direct %10llu, allocated %c%10llu to %10llu (%10llu peak), amplification %8.2f (xmlparse.c:%d)\n\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            (rootParser as *const XML_ParserStruct)
-                .cast_mut()
-                .cast::<::core::ffi::c_void>(),
-            rootParser.m_accounting.countBytesDirect,
-            operator as ::core::ffi::c_int,
-            absDiff,
-            newTotal,
-            peakTotal,
-            amplification as ::core::ffi::c_double,
-            sourceLine,
-        );
-    }
+    let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
+        / rootParser.m_accounting.countBytesDirect as ::core::ffi::c_float;
+    let mut message = format!(
+        "expat: Allocations({:p}): Direct {:10}, allocated ",
+        rootParser as *const XML_ParserStruct, rootParser.m_accounting.countBytesDirect,
+    )
+    .into_bytes();
+    message.push(operator as u8);
+    message.extend_from_slice(
+        format!(
+            "{:10} to {:10} ({:10} peak), amplification {:8.2} (xmlparse.c:{})
+",
+            absDiff, newTotal, peakTotal, amplification, sourceLine,
+        )
+        .as_bytes(),
+    );
+    write_stderr_bytes(&message);
 }
 fn expat_heap_increase_tolerable(
     rootParser: &XML_ParserStruct,
@@ -1395,23 +1412,23 @@ fn ENTROPY_DEBUG(
     label: *const ::core::ffi::c_char,
     entropy: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_ulong {
-    unsafe {
-        if getDebugLevel(b"EXPAT_ENTROPY_DEBUG\0", 0 as ::core::ffi::c_ulong)
-            >= 1 as ::core::ffi::c_ulong
-        {
-            fprintf(
-                stderr,
-                b"expat: Entropy: %s --> 0x%0*lx (%lu bytes)\n\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                label,
-                ::core::mem::size_of::<::core::ffi::c_ulong>() as ::core::ffi::c_int
-                    * 2 as ::core::ffi::c_int,
-                entropy,
-                ::core::mem::size_of::<::core::ffi::c_ulong>() as ::core::ffi::c_ulong,
-            );
-        }
-        entropy
+    if getDebugLevel(b"EXPAT_ENTROPY_DEBUG\0", 0 as ::core::ffi::c_ulong)
+        >= 1 as ::core::ffi::c_ulong
+    {
+        let width = ::core::mem::size_of::<::core::ffi::c_ulong>() * 2;
+        let mut message = b"expat: Entropy: ".to_vec();
+        message.extend_from_slice(c_str_bytes(label));
+        message.extend_from_slice(
+            format!(
+                " --> 0x{entropy:0width$x} ({} bytes)
+",
+                ::core::mem::size_of::<::core::ffi::c_ulong>(),
+            )
+            .as_bytes(),
+        );
+        write_stderr_bytes(&message);
     }
+    entropy
 }
 fn generate_hash_secret_salt() -> ::core::ffi::c_ulong {
     unsafe {
@@ -11321,20 +11338,16 @@ fn report_accounting_stats(
     amplificationFactor: ::core::ffi::c_float,
     epilog: *const ::core::ffi::c_char,
 ) {
-    unsafe {
-        fprintf(
-            stderr,
-            b"expat: Accounting(%p): Direct %10llu, indirect %10llu, amplification %8.2f%s\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            (rootParser as *const XML_ParserStruct)
-                .cast_mut()
-                .cast::<::core::ffi::c_void>(),
-            rootParser.m_accounting.countBytesDirect,
-            rootParser.m_accounting.countBytesIndirect,
-            amplificationFactor as ::core::ffi::c_double,
-            epilog,
-        );
-    }
+    let mut message = format!(
+        "expat: Accounting({:p}): Direct {:10}, indirect {:10}, amplification {:8.2}",
+        rootParser as *const XML_ParserStruct,
+        rootParser.m_accounting.countBytesDirect,
+        rootParser.m_accounting.countBytesIndirect,
+        amplificationFactor,
+    )
+    .into_bytes();
+    message.extend_from_slice(c_str_bytes(epilog));
+    write_stderr_bytes(&message);
 }
 
 fn accountingReportStats(originParser: &mut XML_ParserStruct, epilog: *const ::core::ffi::c_char) {
@@ -11367,63 +11380,53 @@ fn report_accounting_diff(
     source_line: ::core::ffi::c_int,
     account: XML_Account,
 ) {
-    unsafe {
-        fprintf(
-            stderr,
-            b" (+%6ld bytes %s|%u, xmlparse.c:%d) %*s\"\0".as_ptr() as *const ::core::ffi::c_char,
-            bytesMore,
-            if account as ::core::ffi::c_uint
-                == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                b"DIR\0".as_ptr() as *const ::core::ffi::c_char
-            } else {
-                b"EXP\0".as_ptr() as *const ::core::ffi::c_char
-            },
-            levelsAwayFromRootParser,
-            source_line,
-            10 as ::core::ffi::c_int,
-            b"\0".as_ptr() as *const ::core::ffi::c_char,
-        );
-        let ellipis = *b"[..]\0";
-        let ellipsisLength: size_t = ellipis.len().wrapping_sub(1);
-        let contextLength: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
-        let mut walker = before;
-        if rootParser.m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
-            || (after as usize).wrapping_sub(before as usize) as ptrdiff_t
-                <= (contextLength as size_t)
-                    .wrapping_add(ellipsisLength)
-                    .wrapping_add(contextLength as size_t) as ptrdiff_t
-        {
-            while walker < after {
-                fprintf(
-                    stderr,
-                    b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                    unsignedCharToPrintable((*walker) as ::core::ffi::c_uchar),
-                );
-                walker = walker.add(1);
-            }
-        } else {
-            while walker < before.wrapping_add(contextLength as usize) {
-                fprintf(
-                    stderr,
-                    b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                    unsignedCharToPrintable((*walker) as ::core::ffi::c_uchar),
-                );
-                walker = walker.add(1);
-            }
-            fprintf(stderr, ellipis.as_ptr() as *const ::core::ffi::c_char);
-            walker = after.wrapping_sub(contextLength as usize);
-            while walker < after {
-                fprintf(
-                    stderr,
-                    b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                    unsignedCharToPrintable((*walker) as ::core::ffi::c_uchar),
-                );
-                walker = walker.add(1);
-            }
+    let account_label = if account as ::core::ffi::c_uint
+        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        b"DIR".as_slice()
+    } else {
+        b"EXP".as_slice()
+    };
+    let mut message = format!(" (+{:6} bytes ", bytesMore).into_bytes();
+    message.extend_from_slice(account_label);
+    message.extend_from_slice(
+        format!(
+            "|{}, xmlparse.c:{}) ",
+            levelsAwayFromRootParser, source_line
+        )
+        .as_bytes(),
+    );
+    message.extend_from_slice(b"          \"");
+
+    let ellipsis = b"[..]";
+    let context_length = 10usize;
+    let span_length = if after >= before {
+        after as usize - before as usize
+    } else {
+        0
+    };
+    let span = ptr_slice(before.cast::<u8>(), span_length);
+
+    if rootParser.m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
+        || span.len() <= context_length + ellipsis.len() + context_length
+    {
+        for &byte in span {
+            append_printable_byte(&mut message, byte);
         }
-        fprintf(stderr, b"\"\n\0".as_ptr() as *const ::core::ffi::c_char);
+    } else {
+        for &byte in &span[..context_length] {
+            append_printable_byte(&mut message, byte);
+        }
+        message.extend_from_slice(ellipsis);
+        for &byte in &span[span.len() - context_length..] {
+            append_printable_byte(&mut message, byte);
+        }
     }
+    message.extend_from_slice(
+        b"\"
+",
+    );
+    write_stderr_bytes(&message);
 }
 
 fn accountingReportDiff(
@@ -11544,30 +11547,36 @@ fn report_entity_tracking_stats(
     action: *const ::core::ffi::c_char,
     sourceLine: ::core::ffi::c_int,
 ) {
-    unsafe {
-        let entityName = entity.name as *const ::core::ffi::c_char;
-        fprintf(
-            stderr,
-            b"expat: Entities(%p): Count %9u, depth %2u/%2u %*s%s%s; %s length %d (xmlparse.c:%d)\n\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            (rootParser as *const XML_ParserStruct).cast_mut().cast::<::core::ffi::c_void>(),
-            rootParser.m_entity_stats.countEverOpened,
-            rootParser.m_entity_stats.currentDepth,
-            rootParser.m_entity_stats.maximumDepthSeen,
-            (rootParser.m_entity_stats.currentDepth as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                * 2 as ::core::ffi::c_int,
-            b"\0".as_ptr() as *const ::core::ffi::c_char,
-            if entity.is_param as ::core::ffi::c_int != 0 {
-                b"%\0".as_ptr() as *const ::core::ffi::c_char
-            } else {
-                b"&\0".as_ptr() as *const ::core::ffi::c_char
-            },
-            entityName,
-            action,
-            entity.textLen,
-            sourceLine,
-        );
-    }
+    let entity_name = entity.name as *const ::core::ffi::c_char;
+    let indent_width = (rootParser.m_entity_stats.currentDepth as ::core::ffi::c_int
+        - 1 as ::core::ffi::c_int)
+        * 2 as ::core::ffi::c_int;
+    let mut message = format!(
+        "expat: Entities({:p}): Count {:9}, depth {:2}/{:2} ",
+        rootParser as *const XML_ParserStruct,
+        rootParser.m_entity_stats.countEverOpened,
+        rootParser.m_entity_stats.currentDepth,
+        rootParser.m_entity_stats.maximumDepthSeen,
+    )
+    .into_bytes();
+    message.extend(std::iter::repeat(b' ').take(indent_width.max(0) as usize));
+    message.extend_from_slice(if entity.is_param as ::core::ffi::c_int != 0 {
+        b"%"
+    } else {
+        b"&"
+    });
+    message.extend_from_slice(c_str_bytes(entity_name));
+    message.extend_from_slice(b"; ");
+    message.extend_from_slice(c_str_bytes(action));
+    message.extend_from_slice(
+        format!(
+            " length {} (xmlparse.c:{})
+",
+            entity.textLen, sourceLine
+        )
+        .as_bytes(),
+    );
+    write_stderr_bytes(&message);
 }
 
 fn entityTrackingReportStats(
