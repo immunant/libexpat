@@ -223,30 +223,18 @@ fn bytes_as_c_char_ptr(bytes: &[u8]) -> *const ::core::ffi::c_char {
     bytes.as_ptr().cast::<::core::ffi::c_char>()
 }
 
-fn ffi_call0<R>(function: unsafe extern "C" fn() -> R) -> R {
-    unsafe { function() }
+macro_rules! ffi_call {
+    ($function:path $(, $arg:expr)* $(,)?) => {{
+        unsafe { $function($($arg),*) }
+    }};
 }
 
-fn ffi_call1<A, R>(function: unsafe extern "C" fn(A) -> R, a: A) -> R {
-    unsafe { function(a) }
-}
-
-fn ffi_call2<A, B, R>(function: unsafe extern "C" fn(A, B) -> R, a: A, b: B) -> R {
-    unsafe { function(a, b) }
-}
-
-fn ffi_call3<A, B, C, R>(function: unsafe extern "C" fn(A, B, C) -> R, a: A, b: B, c: C) -> R {
-    unsafe { function(a, b, c) }
-}
-
-fn ffi_call4<A, B, C, D, R>(
-    function: unsafe extern "C" fn(A, B, C, D) -> R,
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-) -> R {
-    unsafe { function(a, b, c, d) }
+macro_rules! unsafe_global_set {
+    ($name:ident, $value:expr) => {{
+        unsafe {
+            $name = $value;
+        }
+    }};
 }
 
 fn current_parser() -> XML_Parser {
@@ -258,19 +246,15 @@ fn set_current_parser(parser: XML_Parser) {
 }
 
 fn set_allocation_count(count: ::core::ffi::c_int) {
-    unsafe {
-        g_allocation_count = count;
-    }
+    unsafe_global_set!(g_allocation_count, count);
 }
 
 fn set_reallocation_count(count: ::core::ffi::c_int) {
-    unsafe {
-        g_reallocation_count = count;
-    }
+    unsafe_global_set!(g_reallocation_count, count);
 }
 
 fn set_test_info(name: &[u8], line: ::core::ffi::c_int) {
-    ffi_call3(
+    ffi_call!(
         _check_set_test_info,
         bytes_as_c_char_ptr(name),
         bytes_as_c_char_ptr(NSALLOC_TESTS_FILE),
@@ -279,7 +263,7 @@ fn set_test_info(name: &[u8], line: ::core::ffi::c_int) {
 }
 
 fn fail_test(line: ::core::ffi::c_int, msg: &[u8]) -> ! {
-    ffi_call3(
+    ffi_call!(
         _fail,
         bytes_as_c_char_ptr(NSALLOC_TESTS_FILE),
         line,
@@ -288,15 +272,15 @@ fn fail_test(line: ::core::ffi::c_int, msg: &[u8]) -> ! {
 }
 
 fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    ffi_call1(strlen, text) as ::core::ffi::c_int
+    ffi_call!(strlen, text) as ::core::ffi::c_int
 }
 
 fn copy_memory(dest: *mut ::core::ffi::c_void, src: *const ::core::ffi::c_void, len: size_t) {
-    ffi_call3(memcpy, dest, src, len);
+    ffi_call!(memcpy, dest, src, len);
 }
 
 fn parse_single_bytes(parser: XML_Parser, text: *const ::core::ffi::c_char) -> XML_Status {
-    ffi_call4(
+    ffi_call!(
         _XML_Parse_SINGLE_BYTES,
         parser,
         text,
@@ -310,7 +294,7 @@ fn parse_single_bytes_with_final(
     text: *const ::core::ffi::c_char,
     is_final: ::core::ffi::c_int,
 ) -> XML_Status {
-    ffi_call4(
+    ffi_call!(
         _XML_Parse_SINGLE_BYTES,
         parser,
         text,
@@ -324,53 +308,53 @@ fn parse_buffer(
     len: ::core::ffi::c_int,
     is_final: ::core::ffi::c_int,
 ) -> XML_Status {
-    ffi_call3(XML_ParseBuffer, parser, len, is_final)
+    ffi_call!(XML_ParseBuffer, parser, len, is_final)
 }
 
 fn parser_resume(parser: XML_Parser) -> XML_Status {
-    ffi_call1(XML_ResumeParser, parser)
+    ffi_call!(XML_ResumeParser, parser)
 }
 
 fn parser_error_code(parser: XML_Parser) -> XML_Error {
-    ffi_call1(XML_GetErrorCode, parser)
+    ffi_call!(XML_GetErrorCode, parser)
 }
 
 fn parser_reset(parser: XML_Parser, encoding: *const XML_Char) -> XML_Bool {
-    ffi_call2(XML_ParserReset, parser, encoding)
+    ffi_call!(XML_ParserReset, parser, encoding)
 }
 
 fn parser_get_buffer(parser: XML_Parser, len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
-    ffi_call2(XML_GetBuffer, parser, len)
+    ffi_call!(XML_GetBuffer, parser, len)
 }
 
 fn parser_set_default_handler(parser: XML_Parser, handler: XML_DefaultHandler) {
-    ffi_call2(XML_SetDefaultHandler, parser, handler);
+    ffi_call!(XML_SetDefaultHandler, parser, handler);
 }
 
 fn parser_set_character_data_handler(parser: XML_Parser, handler: XML_CharacterDataHandler) {
-    ffi_call2(XML_SetCharacterDataHandler, parser, handler);
+    ffi_call!(XML_SetCharacterDataHandler, parser, handler);
 }
 
 fn parser_set_return_ns_triplet(parser: XML_Parser, enabled: ::core::ffi::c_int) {
-    ffi_call2(XML_SetReturnNSTriplet, parser, enabled);
+    ffi_call!(XML_SetReturnNSTriplet, parser, enabled);
 }
 
 fn parser_set_user_data(parser: XML_Parser, user_data: *mut ::core::ffi::c_void) {
-    ffi_call2(XML_SetUserData, parser, user_data);
+    ffi_call!(XML_SetUserData, parser, user_data);
 }
 
 fn parser_set_param_entity_parsing(
     parser: XML_Parser,
     parsing: XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
-    ffi_call2(XML_SetParamEntityParsing, parser, parsing)
+    ffi_call!(XML_SetParamEntityParsing, parser, parsing)
 }
 
 fn parser_set_external_entity_ref_handler(
     parser: XML_Parser,
     handler: XML_ExternalEntityRefHandler,
 ) {
-    ffi_call2(XML_SetExternalEntityRefHandler, parser, handler);
+    ffi_call!(XML_SetExternalEntityRefHandler, parser, handler);
 }
 
 fn parser_configure_external_entity_loader(parser: XML_Parser, options: &mut [ExtOption]) {
@@ -384,12 +368,12 @@ fn parser_set_element_handler(
     start: XML_StartElementHandler,
     end: XML_EndElementHandler,
 ) {
-    ffi_call3(XML_SetElementHandler, parser, start, end);
+    ffi_call!(XML_SetElementHandler, parser, start, end);
 }
 
 fn assert_buffer_not_null(buffer: *mut ::core::ffi::c_void, line: ::core::ffi::c_uint) {
     if buffer.is_null() {
-        ffi_call4(
+        ffi_call!(
             __assert_fail,
             bytes_as_c_char_ptr(b"buffer != NULL\0"),
             bytes_as_c_char_ptr(NSALLOC_TESTS_FILE),
@@ -400,7 +384,7 @@ fn assert_buffer_not_null(buffer: *mut ::core::ffi::c_void, line: ::core::ffi::c
 }
 
 fn xml_failure(line: ::core::ffi::c_int) {
-    ffi_call3(
+    ffi_call!(
         _xml_failure,
         current_parser(),
         bytes_as_c_char_ptr(NSALLOC_TESTS_FILE),
@@ -409,9 +393,7 @@ fn xml_failure(line: ::core::ffi::c_int) {
 }
 
 fn set_resumable(resumable: XML_Bool) {
-    unsafe {
-        g_resumable = resumable;
-    }
+    unsafe_global_set!(g_resumable, resumable);
 }
 
 fn reset_nsalloc_fixture() {
@@ -428,7 +410,7 @@ extern "C" fn nsalloc_setup() {
     let mut ns_sep: [XML_Char; 2] = [' ' as i32 as XML_Char, '\0' as i32 as XML_Char];
     set_allocation_count(ALLOC_ALWAYS_SUCCEED);
     set_reallocation_count(REALLOC_ALWAYS_SUCCEED);
-    set_current_parser(ffi_call3(
+    set_current_parser(ffi_call!(
         XML_ParserCreate_MM,
         ::core::ptr::null::<XML_Char>(),
         &raw mut memsuite as *mut XML_Memory_Handling_Suite as *const XML_Memory_Handling_Suite,
@@ -440,7 +422,7 @@ extern "C" fn nsalloc_setup() {
 }
 
 extern "C" fn nsalloc_teardown() {
-    ffi_call0(basic_teardown);
+    ffi_call!(basic_teardown);
 }
 extern "C" fn test_nsalloc_xmlns() {
     set_test_info(b"test_nsalloc_xmlns\0", 78 as ::core::ffi::c_int);
@@ -1082,22 +1064,22 @@ fn context_realloc_test(text: *const ::core::ffi::c_char) {
     let mut i: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     while i < max_realloc_count {
         set_reallocation_count(i);
-        ffi_call2(
+        ffi_call!(
             XML_SetUserData,
             current_parser(),
             &raw mut options as *mut ExtOption as *mut ::core::ffi::c_void,
         );
-        ffi_call2(
+        ffi_call!(
             XML_SetParamEntityParsing,
             current_parser(),
             XML_PARAM_ENTITY_PARSING_ALWAYS,
         );
-        ffi_call2(
+        ffi_call!(
             XML_SetExternalEntityRefHandler,
             current_parser(),
             Some(external_entity_optioner),
         );
-        if ffi_call4(
+        if ffi_call!(
             _XML_Parse_SINGLE_BYTES,
             current_parser(),
             text,
