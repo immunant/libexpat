@@ -2122,25 +2122,11 @@ unsafe extern "C" fn generate_hash_secret_salt(
     return ENTROPY_DEBUG("arc4random_buf", entropy);
 }
 
-unsafe extern "C" fn get_hash_secret_salt(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_ulong {
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1251 as ::core::ffi::c_uint,
-                b"unsigned long get_hash_secret_salt(XML_Parser)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    return (*rootParser).m_hash_secret_salt;
+fn get_hash_secret_salt(parser: &XML_ParserStruct) -> ::core::ffi::c_ulong {
+    if !parser.m_parentParser.is_null() {
+        ::std::process::abort();
+    }
+    return parser.m_hash_secret_salt;
 }
 
 unsafe extern "C" fn callProcessor(
@@ -6345,7 +6331,9 @@ unsafe extern "C" fn storeAtts(
                     p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
                     c: 0,
                 };
-                let sip_key = sipkey_from_hash_secret_salt(get_hash_secret_salt(parser));
+                let root_parser =
+                    getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+                let sip_key = sipkey_from_hash_secret_salt(get_hash_secret_salt(&*root_parser));
                 sip24_init(&mut sip_state, &sip_key);
                 *(s as *mut crate::expat_external_h::XML_Char)
                     .offset(-1 as ::core::ffi::c_int as isize) =
@@ -11798,14 +11786,16 @@ unsafe extern "C" fn lookup(
             0 as ::core::ffi::c_int,
             tsize,
         );
-        let hash_secret_salt = get_hash_secret_salt(parser);
+        let root_parser = getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+        let hash_secret_salt = get_hash_secret_salt(&*root_parser);
         i = (hash(
             hash_secret_salt,
             CStr::from_ptr(name as *const ::core::ffi::c_char),
         ) & ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
             as crate::__stddef_size_t_h::size_t;
     } else {
-        let hash_secret_salt = get_hash_secret_salt(parser);
+        let root_parser = getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+        let hash_secret_salt = get_hash_secret_salt(&*root_parser);
         let mut h: ::core::ffi::c_ulong = hash(
             hash_secret_salt,
             CStr::from_ptr(name as *const ::core::ffi::c_char),
