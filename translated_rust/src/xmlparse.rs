@@ -5819,11 +5819,9 @@ unsafe fn allocate_parser_storage(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
     share_parent_dtd: bool,
     parent: Option<&XML_ParserStruct>,
-) -> Option<(
-    crate::expat_h::XML_Parser,
-    std::sync::Arc<std::sync::Mutex<RootParserState>>,
-    Option<ParserParentState>,
-)> {
+    encoding_name: Option<&std::ffi::CStr>,
+    namespace_separator: Option<crate::expat_external_h::XML_Char>,
+) -> Option<crate::expat_h::XML_Parser> {
     let increase = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
@@ -5952,7 +5950,118 @@ unsafe fn allocate_parser_storage(
             );
         }
     }
-    Some((parser_ptr, root_owner, parent_state))
+    // The allocation remains private to this constructor until every
+    // allocator-backed member has been installed.  In particular, each
+    // failure below releases exactly the tokens acquired so far before the
+    // parser allocation itself is returned to the configured allocator.
+    let parser = &mut *parser_ptr;
+    parser.m_buffer = InputBuffer::empty();
+    parser.m_bufferLim = 0;
+    parser.m_attsSize = INIT_ATTS_SIZE;
+    let Some(atts) = attribute_storage_new(parser, INIT_ATTS_SIZE as usize, 1449) else {
+        expat_free(
+            parser,
+            parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
+            1451 as ::core::ffi::c_int,
+        );
+        return None;
+    };
+    parser.m_atts = atts;
+    let mut data_buf_backing = match allocation_backing(
+        parser,
+        (INIT_DATA_BUF_SIZE as crate::__stddef_size_t_h::size_t)
+            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
+        1462 as ::core::ffi::c_int,
+    ) {
+        Some(backing) => backing,
+        None => {
+            let mut backing = parser.m_atts.backing.take();
+            if let Some(backing) = backing.as_mut() {
+                backing(parser, AttributeAllocationAction::Free(1464));
+            }
+            expat_free(
+                parser,
+                parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
+                1468 as ::core::ffi::c_int,
+            );
+            return None;
+        }
+    };
+    let mut data_buf_chars = Vec::new();
+    if data_buf_chars
+        .try_reserve_exact(INIT_DATA_BUF_SIZE as usize)
+        .is_err()
+    {
+        data_buf_backing(1464 as ::core::ffi::c_int);
+        let mut backing = parser.m_atts.backing.take();
+        if let Some(backing) = backing.as_mut() {
+            backing(parser, AttributeAllocationAction::Free(1464));
+        }
+        expat_free(
+            parser,
+            parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
+            1468 as ::core::ffi::c_int,
+        );
+        return None;
+    }
+    data_buf_chars.resize(INIT_DATA_BUF_SIZE as usize, 0);
+    parser.m_dataBuf = DataBuffer {
+        chars: data_buf_chars,
+        backing: Some(data_buf_backing),
+    };
+    parser.m_dataBufEnd = INIT_DATA_BUF_SIZE as usize;
+    if share_parent_dtd {
+        parser.m_dtd = parent_state
+            .as_ref()
+            .and_then(|state| state.inherited_dtd.as_ref())
+            .cloned();
+    } else {
+        parser.m_dtd = dtd_create(parser);
+        if parser.m_dtd.is_none() {
+            parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
+            let mut backing = parser.m_atts.backing.take();
+            if let Some(backing) = backing.as_mut() {
+                backing(parser, AttributeAllocationAction::Free(1479));
+            }
+            expat_free(
+                parser,
+                parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
+                1483 as ::core::ffi::c_int,
+            );
+            return None;
+        }
+    }
+    initialize_parser_collections(parser);
+    parser.m_unknownEncodingHandler = false;
+    UNKNOWN_ENCODING_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as *mut XML_ParserStruct as usize));
+    UNKNOWN_ENCODING_HANDLER_ARGS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as *mut XML_ParserStruct as usize));
+    let parser_handle = std::ptr::from_mut(parser);
+    poolInit(&raw mut parser.m_tempPool, parser_handle);
+    poolInit(&raw mut parser.m_temp2Pool, parser_handle);
+    parserInit(
+        parser_handle,
+        encoding_name.map_or(std::ptr::null(), std::ffi::CStr::as_ptr),
+    );
+    if encoding_name.is_some() && parser.m_protocolEncodingName.is_none() {
+        XML_ParserFree(parser);
+        return None;
+    }
+    if let Some(namespace_separator) = namespace_separator {
+        parser.m_ns = crate::expat_h::XML_TRUE;
+        parser.m_internalEncoding = InternalEncoding::Utf8Ns;
+        parser.m_namespaceSeparator = namespace_separator;
+    } else {
+        parser.m_internalEncoding = InternalEncoding::Utf8;
+    }
+    Some(parser_ptr)
 }
 
 fn empty_string_pool() -> STRING_POOL {
@@ -6150,12 +6259,9 @@ fn initialize_parser_collections(parser: &mut XML_ParserStruct) {
     parser.m_protocolEncodingName = None;
 }
 
-/// The parser handle has not escaped while this facade runs.  It is the only
-/// construction path that turns the allocator's opaque storage into a parser
-/// object; all subsequent initialization operates through its exclusive
-/// reference.  Keeping that conversion here prevents parser setup from
-/// acquiring fresh raw handles after the ABI-facing caller has validated its
-/// inputs.
+/// Route the public construction variants through the one allocator-aware
+/// constructor.  That constructor keeps the parser handle private until it
+/// has either completed initialization or released all acquired allocations.
 unsafe fn parser_create_ownership_facade(
     encoding_name: Option<&std::ffi::CStr>,
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
@@ -6163,119 +6269,14 @@ unsafe fn parser_create_ownership_facade(
     share_parent_dtd: bool,
     parent: Option<&XML_ParserStruct>,
 ) -> crate::expat_h::XML_Parser {
-    let Some((parser_ptr, _root_owner, parent_state)) =
-        allocate_parser_storage(memory_suite, share_parent_dtd, parent)
-    else {
-        return ::core::ptr::null_mut::<XML_ParserStruct>();
-    };
-    let parser = &mut *parser_ptr;
-    parser.m_buffer = InputBuffer::empty();
-    parser.m_bufferLim = 0;
-    parser.m_attsSize = INIT_ATTS_SIZE;
-    let Some(atts) = attribute_storage_new(parser, INIT_ATTS_SIZE as usize, 1449) else {
-        expat_free(
-            parser,
-            parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-            1451 as ::core::ffi::c_int,
-        );
-        return ::core::ptr::null_mut::<XML_ParserStruct>();
-    };
-    parser.m_atts = atts;
-    let mut data_buf_backing = match allocation_backing(
-        parser,
-        (INIT_DATA_BUF_SIZE as crate::__stddef_size_t_h::size_t)
-            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-        1462 as ::core::ffi::c_int,
-    ) {
-        Some(backing) => backing,
-        None => {
-            let mut backing = parser.m_atts.backing.take();
-            if let Some(backing) = backing.as_mut() {
-                backing(parser, AttributeAllocationAction::Free(1464));
-            }
-            expat_free(
-                parser,
-                parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-                1468 as ::core::ffi::c_int,
-            );
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-    };
-    let mut data_buf_chars = Vec::new();
-    if data_buf_chars
-        .try_reserve_exact(INIT_DATA_BUF_SIZE as usize)
-        .is_err()
-    {
-        data_buf_backing(1464 as ::core::ffi::c_int);
-        let mut backing = parser.m_atts.backing.take();
-        if let Some(backing) = backing.as_mut() {
-            backing(parser, AttributeAllocationAction::Free(1464));
-        }
-        expat_free(
-            parser,
-            parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-            1468 as ::core::ffi::c_int,
-        );
-        return ::core::ptr::null_mut::<XML_ParserStruct>();
-    }
-    data_buf_chars.resize(INIT_DATA_BUF_SIZE as usize, 0);
-    parser.m_dataBuf = DataBuffer {
-        chars: data_buf_chars,
-        backing: Some(data_buf_backing),
-    };
-    parser.m_dataBufEnd = INIT_DATA_BUF_SIZE as usize;
-    if share_parent_dtd {
-        parser.m_dtd = parent_state
-            .as_ref()
-            .and_then(|state| state.inherited_dtd.as_ref())
-            .cloned();
-    } else {
-        parser.m_dtd = dtd_create(parser);
-        if parser.m_dtd.is_none() {
-            parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
-            let mut backing = parser.m_atts.backing.take();
-            if let Some(backing) = backing.as_mut() {
-                backing(parser, AttributeAllocationAction::Free(1479));
-            }
-            expat_free(
-                parser,
-                parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-                1483 as ::core::ffi::c_int,
-            );
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-    }
-    initialize_parser_collections(parser);
-    parser.m_unknownEncodingHandler = false;
-    UNKNOWN_ENCODING_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as *mut XML_ParserStruct as usize));
-    UNKNOWN_ENCODING_HANDLER_ARGS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as *mut XML_ParserStruct as usize));
-    let parser_handle = std::ptr::from_mut(parser);
-    poolInit(&raw mut parser.m_tempPool, parser_handle);
-    poolInit(&raw mut parser.m_temp2Pool, parser_handle);
-    parserInit(
-        parser_handle,
-        encoding_name.map_or(std::ptr::null(), std::ffi::CStr::as_ptr),
-    );
-    if encoding_name.is_some() && parser.m_protocolEncodingName.is_none() {
-        XML_ParserFree(parser);
-        return ::core::ptr::null_mut::<XML_ParserStruct>();
-    }
-    if let Some(namespace_separator) = namespace_separator {
-        parser.m_ns = crate::expat_h::XML_TRUE;
-        parser.m_internalEncoding = InternalEncoding::Utf8Ns;
-        parser.m_namespaceSeparator = namespace_separator;
-    } else {
-        parser.m_internalEncoding = InternalEncoding::Utf8;
-    }
-    return parser;
+    allocate_parser_storage(
+        memory_suite,
+        share_parent_dtd,
+        parent,
+        encoding_name,
+        namespace_separator,
+    )
+    .unwrap_or(::core::ptr::null_mut::<XML_ParserStruct>())
 }
 
 /// Read the decimal debug switches using the same accepted input as
