@@ -1,3 +1,5 @@
+use crate::src::tests::runtests::{current_test_parser, set_current_test_parser};
+
 extern "C" {
     pub type XML_ParserStruct;
     fn memcpy(
@@ -59,7 +61,6 @@ extern "C" {
         teardown: tcase_teardown_function,
     );
     fn tcase_add_test(tc: *mut TCase, test: tcase_test_function);
-    static mut g_parser: XML_Parser;
     static mut g_resumable: XML_Bool;
     fn tcase_add_test__if_xml_ge(tc: *mut TCase, test: tcase_test_function);
     fn basic_teardown();
@@ -249,13 +250,11 @@ fn ffi_call4<A, B, C, D, R>(
 }
 
 fn current_parser() -> XML_Parser {
-    unsafe { g_parser }
+    current_test_parser() as XML_Parser
 }
 
 fn set_current_parser(parser: XML_Parser) {
-    unsafe {
-        g_parser = parser;
-    }
+    set_current_test_parser(parser as crate::src::tests::runtests::XML_Parser);
 }
 
 fn set_allocation_count(count: ::core::ffi::c_int) {

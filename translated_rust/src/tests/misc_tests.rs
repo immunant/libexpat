@@ -1,3 +1,5 @@
+use crate::src::tests::runtests::{current_test_parser, set_current_test_parser};
+
 extern "C" {
     pub type XML_ParserStruct;
     fn __assert_fail(
@@ -91,7 +93,6 @@ extern "C" {
     fn CharData_Init(storage: *mut CharData);
     fn CharData_AppendXMLChars(storage: *mut CharData, s: *const XML_Char, len: ::core::ffi::c_int);
     fn CharData_CheckXMLChars(storage: *mut CharData, s: *const XML_Char) -> ::core::ffi::c_int;
-    static mut g_parser: XML_Parser;
     static mut g_chunkSize: ::core::ffi::c_int;
     fn tcase_add_test__ifdef_xml_dtd(tc: *mut TCase, test: tcase_test_function);
     fn tcase_add_test__if_xml_ge(tc: *mut TCase, test: tcase_test_function);
@@ -377,11 +378,18 @@ pub union C2Rust_Unnamed {
     pub xml_error: XML_Error,
     pub integer: ::core::ffi::c_int,
 }
-pub const __ASSERT_FUNCTION: [::core::ffi::c_char; 29] = unsafe {
-    ::core::mem::transmute::<[u8; 29], [::core::ffi::c_char; 29]>(
-        *b"void test_misc_version(void)\0",
-    )
-};
+const fn bytes_to_c_chars<const N: usize>(bytes: &[u8; N]) -> [::core::ffi::c_char; N] {
+    let mut chars = [0; N];
+    let mut index = 0;
+    while index < N {
+        chars[index] = bytes[index] as ::core::ffi::c_char;
+        index += 1;
+    }
+    chars
+}
+
+pub const __ASSERT_FUNCTION: [::core::ffi::c_char; 29] =
+    bytes_to_c_chars(b"void test_misc_version(void)\0");
 pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
 pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
 pub const NULL: *mut ::core::ffi::c_void =
@@ -433,13 +441,11 @@ fn ffi_call5<A, B, C, D, E, R>(
 }
 
 fn current_parser() -> XML_Parser {
-    unsafe { g_parser }
+    current_test_parser() as XML_Parser
 }
 
 fn set_current_parser(parser: XML_Parser) {
-    unsafe {
-        g_parser = parser;
-    }
+    set_current_test_parser(parser as crate::src::tests::runtests::XML_Parser);
 }
 
 fn set_allocation_count(count: ::core::ffi::c_int) {
