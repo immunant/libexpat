@@ -26004,25 +26004,21 @@ fn scaffold_allocator() -> impl FnMut(
     crate::__stddef_size_t_h::size_t,
 ) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, ScaffoldAllocationAction) -> bool>> {
     move |parser: &mut XML_ParserStruct, size| {
-        let allocation = unsafe { expat_malloc(parser, size, 8266 as ::core::ffi::c_int) };
-        if allocation.is_null() {
-            return None;
-        }
-        let mut allocation = allocation;
+        let mut backing = scratch_allocation_backing(
+            parser,
+            size,
+            8266 as ::core::ffi::c_int,
+        )?;
         Some(Box::new(move |parser: &mut XML_ParserStruct, action| match action {
-            ScaffoldAllocationAction::Grow(size) => {
-                let reallocated = unsafe {
-                    expat_realloc(parser, allocation, size, 8261 as ::core::ffi::c_int)
-                };
-                if reallocated.is_null() {
-                    false
-                } else {
-                    allocation = reallocated;
-                    true
-                }
-            }
+            ScaffoldAllocationAction::Grow(size) => backing(
+                parser,
+                ParserAllocationAction::Grow {
+                    size,
+                    source_line: 8261 as ::core::ffi::c_int,
+                },
+            ),
             ScaffoldAllocationAction::Free(source_line) => {
-                unsafe { expat_free(parser, allocation, source_line) };
+                backing(parser, ParserAllocationAction::Free(source_line));
                 true
             }
         })
