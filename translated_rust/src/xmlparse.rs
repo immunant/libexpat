@@ -11878,30 +11878,14 @@ unsafe extern "C" fn dtdCopy(
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 
-unsafe extern "C" fn hash(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: KEY,
-) -> ::core::ffi::c_ulong {
+fn hash(root_parser: &XML_ParserStruct, key_bytes: &[u8]) -> ::core::ffi::c_ulong {
     let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-    let root_parser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
-    '_c2rust_label: {
-        if (*root_parser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1251 as ::core::ffi::c_uint,
-                b"unsigned long get_hash_secret_salt(XML_Parser)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
+    if !root_parser.m_parentParser.is_null() {
+        std::process::abort();
+    }
     key.k[0 as ::core::ffi::c_int as usize] = 0 as crate::stdlib::uint64_t;
     key.k[1 as ::core::ffi::c_int as usize] =
-        (*root_parser).m_hash_secret_salt as crate::stdlib::uint64_t;
-    let key_bytes = std::ffi::CStr::from_ptr(s).to_bytes();
+        root_parser.m_hash_secret_salt as crate::stdlib::uint64_t;
     return siphash24(key_bytes, &key) as ::core::ffi::c_ulong;
 }
 
@@ -11912,6 +11896,8 @@ unsafe extern "C" fn lookup(
     mut createSize: crate::__stddef_size_t_h::size_t,
 ) -> *mut NAMED {
     let mut i: crate::__stddef_size_t_h::size_t = 0;
+    let root_parser = &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+    let name_bytes = std::ffi::CStr::from_ptr(name).to_bytes();
     if (*table).size == 0 as crate::__stddef_size_t_h::size_t {
         let mut tsize: crate::__stddef_size_t_h::size_t = 0;
         if createSize == 0 {
@@ -11933,11 +11919,11 @@ unsafe extern "C" fn lookup(
             0 as ::core::ffi::c_int,
             tsize,
         );
-        i = (hash(parser, name)
+        i = (hash(root_parser, name_bytes)
             & ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
             as crate::__stddef_size_t_h::size_t;
     } else {
-        let mut h: ::core::ffi::c_ulong = hash(parser, name);
+        let mut h: ::core::ffi::c_ulong = hash(root_parser, name_bytes);
         let mut mask: ::core::ffi::c_ulong =
             ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
@@ -12005,8 +11991,10 @@ unsafe extern "C" fn lookup(
             i = 0 as crate::__stddef_size_t_h::size_t;
             while i < (*table).size {
                 if !(*(*table).v.offset(i as isize)).is_null() {
-                    let mut newHash: ::core::ffi::c_ulong =
-                        hash(parser, (**(*table).v.offset(i as isize)).name);
+                    let mut newHash: ::core::ffi::c_ulong = hash(
+                        root_parser,
+                        std::ffi::CStr::from_ptr((**(*table).v.offset(i as isize)).name).to_bytes(),
+                    );
                     let mut j: crate::__stddef_size_t_h::size_t = newHash
                         as crate::__stddef_size_t_h::size_t
                         & newMask as crate::__stddef_size_t_h::size_t;
