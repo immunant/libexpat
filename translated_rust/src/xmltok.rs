@@ -4547,25 +4547,6 @@ pub mod xmltok_impl_c {
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    pub unsafe extern "C" fn little2_scanHexCharRef(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let (token, next) = little2_scan_hex_char_ref_impl(normal, input);
-        if let Some(offset) = next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        token
-    }
-
     /// Scans a bounded UTF-16LE character reference and reports the next
     /// cursor as an offset in `input`.  The caller that owns a C cursor is
     /// responsible for validating the range and translating that offset.
@@ -11472,7 +11453,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanComment;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanDecl;
-pub use crate::src::xmltok::xmltok_impl_c::little2_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
