@@ -6735,11 +6735,10 @@ fn generate_hash_secret_salt() -> ::core::ffi::c_ulong {
     return ENTROPY_DEBUG("arc4random_buf", entropy);
 }
 
-unsafe extern "C" fn get_hash_secret_salt(
-    mut parser: crate::expat_h::XML_Parser,
+fn get_hash_secret_salt(
+    root: &std::sync::Mutex<RootParserState>,
 ) -> ::core::ffi::c_ulong {
-    (*parser)
-        .m_root
+    root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt
