@@ -7456,35 +7456,23 @@ unsafe extern "C" fn handleUnknownEncoding(
                 }
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
+            let unknown_encoding_mem = &mut *((*parser).m_unknownEncodingMem
+                as *mut ::core::mem::MaybeUninit<crate::src::xmltok::unknown_encoding>);
             enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
-                Some(
-                    crate::src::xmltok::XmlInitUnknownEncodingNS
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const ::core::ffi::c_int,
-                            crate::src::xmltok::CONVERTER,
-                            *mut ::core::ffi::c_void,
-                        )
-                            -> *mut crate::src::xmltok::ENCODING,
+                crate::src::xmltok::XmlInitUnknownEncodingNS(
+                    unknown_encoding_mem,
+                    &info.map,
+                    info.convert as crate::src::xmltok::CONVERTER,
+                    info.data,
                 )
             } else {
-                Some(
-                    crate::src::xmltok::XmlInitUnknownEncoding
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const ::core::ffi::c_int,
-                            crate::src::xmltok::CONVERTER,
-                            *mut ::core::ffi::c_void,
-                        )
-                            -> *mut crate::src::xmltok::ENCODING,
+                crate::src::xmltok::XmlInitUnknownEncoding(
+                    unknown_encoding_mem,
+                    &info.map,
+                    info.convert as crate::src::xmltok::CONVERTER,
+                    info.data,
                 )
-            }
-            .expect("non-null function pointer")(
-                (*parser).m_unknownEncodingMem,
-                &raw mut info.map as *mut ::core::ffi::c_int,
-                info.convert as crate::src::xmltok::CONVERTER,
-                info.data,
-            );
+            };
             if !enc.is_null() {
                 (*parser).m_unknownEncodingData = info.data;
                 (*parser).m_unknownEncodingRelease = info.release;
