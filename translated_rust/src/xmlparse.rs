@@ -2201,12 +2201,23 @@ fn empty_scaffold() -> std::sync::Arc<std::sync::Mutex<ScaffoldStorage>> {
 
 pub struct HASH_TABLE {
     // The table owns a sized slot collection, so lookup and iteration can use
-    // checked indexing instead of pointer arithmetic.
-    pub v: Option<Vec<*mut NAMED>>,
+    // checked indexing instead of pointer arithmetic.  `backing` keeps the
+    // corresponding allocation in the parser's configured memory suite.
+    pub v: Option<HashTableSlots>,
     pub power: ::core::ffi::c_uchar,
     pub size: crate::__stddef_size_t_h::size_t,
     pub used: crate::__stddef_size_t_h::size_t,
     pub parser: crate::expat_h::XML_Parser,
+}
+
+pub struct HashTableSlots {
+    entries: Vec<Option<NamedAllocation>>,
+    backing: Box<dyn FnMut(::core::ffi::c_int)>,
+}
+
+struct NamedAllocation {
+    bytes: Vec<usize>,
+    backing: Box<dyn FnMut(::core::ffi::c_int)>,
 }
 
 #[derive(Copy, Clone)]
@@ -8035,8 +8046,9 @@ unsafe extern "C" fn storeAtts(
                     p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
                     c: 0,
                 };
-                let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-                copy_salt_to_sipkey(parser, &raw mut sip_key);
+                let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey {
+                    k: [0, get_hash_secret_salt(parser) as crate::stdlib::uint64_t],
+                };
                 sip24_init(&raw mut sip_state, &raw mut sip_key);
                 *(s as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
                     0 as crate::expat_external_h::XML_Char;
@@ -13811,14 +13823,6 @@ unsafe extern "C" fn keylen(mut s: KEY) -> crate::__stddef_size_t_h::size_t {
     return len;
 }
 
-unsafe extern "C" fn copy_salt_to_sipkey(
-    mut parser: crate::expat_h::XML_Parser,
-    mut key: *mut crate::siphash_h::sipkey,
-) {
-    (*key).k[0 as usize] = 0 as crate::stdlib::uint64_t;
-    (*key).k[1 as usize] = get_hash_secret_salt(parser) as crate::stdlib::uint64_t;
-}
-
 unsafe extern "C" fn hash(
     mut parser: crate::expat_h::XML_Parser,
     mut s: KEY,
@@ -13832,8 +13836,9 @@ unsafe extern "C" fn hash(
         p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
         c: 0,
     };
-    let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-    copy_salt_to_sipkey(parser, &raw mut key);
+    let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey {
+        k: [0, get_hash_secret_salt(parser) as crate::stdlib::uint64_t],
+    };
     sip24_init(&raw mut state, &raw mut key);
     sip24_update(
         &raw mut state,
@@ -13841,6 +13846,20 @@ unsafe extern "C" fn hash(
         keylen(s).wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
     );
     return sip24_final(&raw mut state) as ::core::ffi::c_ulong;
+}
+
+unsafe fn allocation_backing(
+    parser: crate::expat_h::XML_Parser,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
+    let allocation = expat_malloc(parser, size, source_line);
+    if allocation.is_null() {
+        return None;
+    }
+    Some(Box::new(move |free_source_line| {
+        expat_free(parser, allocation, free_source_line);
+    }))
 }
 
 unsafe extern "C" fn lookup(
@@ -13857,13 +13876,24 @@ unsafe extern "C" fn lookup(
         }
         table.power = INIT_POWER as ::core::ffi::c_uchar;
         table.size = (1 as ::core::ffi::c_int as crate::__stddef_size_t_h::size_t) << INIT_POWER;
+        let allocation_size = table
+            .size
+            .wrapping_mul(::core::mem::size_of::<*mut NAMED>());
+        let Some(mut backing) = allocation_backing(table.parser, allocation_size, 7839 as ::core::ffi::c_int) else {
+            table.size = 0 as crate::__stddef_size_t_h::size_t;
+            return ::core::ptr::null_mut::<NAMED>();
+        };
         let mut slots = Vec::new();
         if slots.try_reserve_exact(table.size).is_err() {
+            backing(7841 as ::core::ffi::c_int);
             table.size = 0 as crate::__stddef_size_t_h::size_t;
             return ::core::ptr::null_mut::<NAMED>();
         }
-        slots.resize(table.size, ::core::ptr::null_mut::<NAMED>());
-        table.v = Some(slots);
+        slots.resize_with(table.size, || None);
+        table.v = Some(HashTableSlots {
+            entries: slots,
+            backing,
+        });
         i = (hash(parser, name)
             & (table.size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
             as crate::__stddef_size_t_h::size_t;
@@ -13873,8 +13903,12 @@ unsafe extern "C" fn lookup(
             (table.size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
         i = (h & mask) as crate::__stddef_size_t_h::size_t;
-        while !table.v.as_ref().expect("initialized hash table")[i].is_null() {
-            let entry = table.v.as_ref().expect("initialized hash table")[i];
+        while table.v.as_ref().expect("initialized hash table").entries[i].is_some() {
+            let entry = table.v.as_ref().expect("initialized hash table").entries[i]
+                .as_ref()
+                .expect("occupied hash table slot")
+                .bytes
+                .as_ptr() as *mut NAMED;
             if keyeq(name, (*entry).name) != 0 {
                 return entry;
             }
@@ -13917,22 +13951,33 @@ unsafe extern "C" fn lookup(
             {
                 return ::core::ptr::null_mut::<NAMED>();
             }
+            let allocation_size = newSize.wrapping_mul(::core::mem::size_of::<*mut NAMED>());
+            let Some(mut backing) = allocation_backing(table.parser, allocation_size, 7887 as ::core::ffi::c_int) else {
+                return ::core::ptr::null_mut::<NAMED>();
+            };
             let mut new_slots = Vec::new();
             if new_slots.try_reserve_exact(newSize).is_err() {
+                backing(7889 as ::core::ffi::c_int);
                 return ::core::ptr::null_mut::<NAMED>();
             }
-            new_slots.resize(newSize, ::core::ptr::null_mut::<NAMED>());
+            new_slots.resize_with(newSize, || None);
             i = 0 as crate::__stddef_size_t_h::size_t;
             while i < table.size {
-                let entry = table.v.as_ref().expect("initialized hash table")[i];
-                if !entry.is_null() {
+                let entry = table
+                    .v
+                    .as_mut()
+                    .expect("initialized hash table")
+                    .entries[i]
+                    .take();
+                if let Some(entry) = entry {
+                    let named = entry.bytes.as_ptr() as *mut NAMED;
                     let mut newHash: ::core::ffi::c_ulong =
-                        hash(parser, (*entry).name);
+                        hash(parser, (*named).name);
                     let mut j: crate::__stddef_size_t_h::size_t = newHash
                         as crate::__stddef_size_t_h::size_t
                         & newMask as crate::__stddef_size_t_h::size_t;
                     step = 0 as ::core::ffi::c_uchar;
-                    while !new_slots[j].is_null() {
+                    while new_slots[j].is_some() {
                         if step == 0 {
                             step = ((newHash & !newMask)
                                 >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
@@ -13948,17 +13993,24 @@ unsafe extern "C" fn lookup(
                             j = j.wrapping_sub(step as crate::__stddef_size_t_h::size_t);
                         };
                     }
-                    new_slots[j] = entry;
+                    new_slots[j] = Some(entry);
                 }
                 i = i.wrapping_add(1);
             }
-            let old_slots = table.v.replace(new_slots).expect("initialized hash table");
-            drop(old_slots);
+            let old_slots = table
+                .v
+                .replace(HashTableSlots {
+                    entries: new_slots,
+                    backing,
+                })
+                .expect("initialized hash table");
+            let mut old_slots = old_slots;
+            (old_slots.backing)(7900 as ::core::ffi::c_int);
             table.power = newPower;
             table.size = newSize;
             i = (h & newMask) as crate::__stddef_size_t_h::size_t;
             step = 0 as ::core::ffi::c_uchar;
-            while !table.v.as_ref().expect("initialized hash table")[i].is_null() {
+            while table.v.as_ref().expect("initialized hash table").entries[i].is_some() {
                 if step == 0 {
                     step = ((h & !newMask)
                         >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
@@ -13976,28 +14028,38 @@ unsafe extern "C" fn lookup(
             }
         }
     }
-    let entry = expat_malloc(table.parser, createSize, 7914 as ::core::ffi::c_int) as *mut NAMED;
-    if entry.is_null() {
+    let Some(mut backing) = allocation_backing(table.parser, createSize, 7914 as ::core::ffi::c_int) else {
+        return ::core::ptr::null_mut::<NAMED>();
+    };
+    let word_size = ::core::mem::size_of::<usize>();
+    let Some(words) = createSize
+        .checked_add(word_size.wrapping_sub(1))
+        .map(|size| size / word_size)
+    else {
+        backing(7915 as ::core::ffi::c_int);
+        return ::core::ptr::null_mut::<NAMED>();
+    };
+    let mut bytes = Vec::new();
+    if bytes.try_reserve_exact(words).is_err() {
+        backing(7915 as ::core::ffi::c_int);
         return ::core::ptr::null_mut::<NAMED>();
     }
-    crate::stdlib::memset(
-        entry as *mut ::core::ffi::c_void,
-        0 as ::core::ffi::c_int,
-        createSize,
-    );
+    bytes.resize(words, 0);
+    let entry = bytes.as_mut_ptr() as *mut NAMED;
     (*entry).name = name;
-    table.v.as_mut().expect("initialized hash table")[i] = entry;
+    table.v.as_mut().expect("initialized hash table").entries[i] =
+        Some(NamedAllocation { bytes, backing });
     table.used = table.used.wrapping_add(1);
     return entry;
 }
 
 unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
     let table = &mut *table;
-    let parser = table.parser;
     if let Some(slots) = table.v.as_mut() {
-        for entry in slots {
-            expat_free(parser, *entry as *mut ::core::ffi::c_void, 7927 as ::core::ffi::c_int);
-            *entry = ::core::ptr::null_mut::<NAMED>();
+        for entry in &mut slots.entries {
+            if let Some(mut entry) = entry.take() {
+                (entry.backing)(7927 as ::core::ffi::c_int);
+            }
         }
     }
     table.used = 0 as crate::__stddef_size_t_h::size_t;
@@ -14005,11 +14067,13 @@ unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
 
 unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
     let table = &mut *table;
-    let parser = table.parser;
-    if let Some(slots) = table.v.take() {
-        for entry in slots {
-            expat_free(parser, entry as *mut ::core::ffi::c_void, 7937 as ::core::ffi::c_int);
+    if let Some(mut slots) = table.v.take() {
+        for entry in slots.entries {
+            if let Some(mut entry) = entry {
+                (entry.backing)(7937 as ::core::ffi::c_int);
+            }
         }
+        (slots.backing)(7938 as ::core::ffi::c_int);
     }
 }
 
@@ -14017,7 +14081,7 @@ unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: crate::ex
     (*p).power = 0 as ::core::ffi::c_uchar;
     (*p).size = 0 as crate::__stddef_size_t_h::size_t;
     (*p).used = 0 as crate::__stddef_size_t_h::size_t;
-    ::core::ptr::write(&raw mut (*p).v, Some(Vec::new()));
+    ::core::ptr::write(&raw mut (*p).v, None);
     (*p).parser = parser;
 }
 
@@ -14042,11 +14106,10 @@ unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut N
         let tem = table
             .v
             .as_ref()
-            .and_then(|slots| slots.get(index))
-            .copied()
-            .unwrap_or(::core::ptr::null_mut::<NAMED>());
-        if !tem.is_null() {
-            return tem;
+            .and_then(|slots| slots.entries.get(index))
+            .and_then(|entry| entry.as_ref());
+        if let Some(tem) = tem {
+            return tem.bytes.as_ptr() as *mut NAMED;
         }
     }
     return ::core::ptr::null_mut::<NAMED>();
