@@ -3348,158 +3348,129 @@ pub mod xmltok_impl_c {
         1
     }
 
-    pub unsafe extern "C" fn normal_getAtts(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut attsMax: ::core::ffi::c_int,
-        mut atts: *mut crate::src::xmltok::ATTRIBUTE,
+    #[derive(Copy, Clone)]
+    enum NormalAttributeAction {
+        Name { attribute: ::core::ffi::c_int, offset: usize },
+        ValueStart { attribute: ::core::ffi::c_int, offset: usize },
+        ValueEnd { attribute: ::core::ffi::c_int, offset: usize },
+        Normalized { attribute: ::core::ffi::c_int, value: ::core::ffi::c_char },
+    }
+
+    /// Scans a complete single-byte start-tag token using only bounded slice
+    /// indices, reporting offsets for the boundary adapter to translate.
+    fn scan_normal_atts(
+        byte_types: &[::core::ffi::c_uchar; 256],
+        source: &[u8],
+        mut report: impl FnMut(NormalAttributeAction),
     ) -> ::core::ffi::c_int {
-        let mut state: crate::xmltok_impl_h::C2Rust_Unnamed_3 = crate::xmltok_impl_c::inName;
-        let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        enum State { InName, InValue, Other }
+
+        let mut state = State::InName;
+        let mut n_atts = 0;
+        let mut open = 0;
+        let mut value_start = None;
+        let mut normalized = true;
+        let mut index = 1;
+
+        while let Some(&byte) = source.get(index) {
+            let kind = byte_types[byte as usize] as ::core::ffi::c_int;
+            match kind {
+                5 | 6 | 7 | 29 | 22 | 24 => {
+                    if state == State::Other {
+                        report(NormalAttributeAction::Name { attribute: n_atts, offset: index });
+                        normalized = true;
+                        report(NormalAttributeAction::Normalized { attribute: n_atts, value: 1 });
+                        state = State::InName;
                     }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
+                    index += match kind { 5 => 2, 6 => 3, 7 => 4, _ => 1 };
+                    continue;
                 }
-                6 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
-                    }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                7 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
-                    }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                29 | 22 | 24 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
-                    }
-                }
-                12 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valuePtr =
-                                ptr.offset(1 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue;
-                        open = crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other;
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valueEnd = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                13 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valuePtr =
-                                ptr.offset(1 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue;
-                        open = crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other;
-                        if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valueEnd = ptr;
-                        }
-                        nAtts += 1;
+                12 | 13 => {
+                    let quote_kind = if kind == 12 {
+                        crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int
+                    } else {
+                        crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int
+                    };
+                    if state != State::InValue {
+                        report(NormalAttributeAction::ValueStart { attribute: n_atts, offset: index + 1 });
+                        value_start = Some(index + 1);
+                        state = State::InValue;
+                        open = quote_kind;
+                    } else if open == quote_kind {
+                        state = State::Other;
+                        report(NormalAttributeAction::ValueEnd { attribute: n_atts, offset: index });
+                        n_atts += 1;
+                        value_start = None;
                     }
                 }
                 3 => {
-                    if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
+                    normalized = false;
+                    report(NormalAttributeAction::Normalized { attribute: n_atts, value: 0 });
                 }
                 21 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName as ::core::ffi::c_int as ::core::ffi::c_uint
+                    if state == State::InName {
+                        state = State::Other;
+                    } else if state == State::InValue && normalized
+                        && (value_start == Some(index)
+                            || byte != crate::ascii_h::ASCII_SPACE as u8
+                            || source.get(index + 1) == Some(&(crate::ascii_h::ASCII_SPACE as u8))
+                            || source.get(index + 1)
+                                .map(|next| byte_types[*next as usize] as ::core::ffi::c_int)
+                                == Some(open))
                     {
-                        state = crate::xmltok_impl_c::other;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || *ptr as ::core::ffi::c_int != crate::ascii_h::ASCII_SPACE
-                            || *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == crate::ascii_h::ASCII_SPACE
-                            || (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                                == open)
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
+                        normalized = false;
+                        report(NormalAttributeAction::Normalized { attribute: n_atts, value: 0 });
                     }
                 }
                 9 | 10 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = crate::xmltok_impl_c::other;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
+                    if state == State::InName {
+                        state = State::Other;
+                    } else if state == State::InValue {
+                        normalized = false;
+                        report(NormalAttributeAction::Normalized { attribute: n_atts, value: 0 });
                     }
                 }
-                11 | 17 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        return nAtts;
-                    }
-                }
+                11 | 17 if state != State::InValue => return n_atts,
                 _ => {}
             }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+            index += 1;
         }
+        n_atts
+    }
+
+    /// Boundary adapter for the parser's bounded start-tag token.
+    pub unsafe extern "C" fn normal_getAtts(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        attsMax: ::core::ffi::c_int,
+        atts: *mut crate::src::xmltok::ATTRIBUTE,
+    ) -> ::core::ffi::c_int {
+        let source_len = end.offset_from(ptr);
+        if source_len < 0 {
+            return 0;
+        }
+        let source = ::core::slice::from_raw_parts(ptr.cast::<u8>(), source_len as usize);
+        let byte_types = &(*(enc as *const normal_encoding)).type_0;
+        scan_normal_atts(byte_types, source, |action| {
+            let attribute = match action {
+                NormalAttributeAction::Name { attribute, .. }
+                | NormalAttributeAction::ValueStart { attribute, .. }
+                | NormalAttributeAction::ValueEnd { attribute, .. }
+                | NormalAttributeAction::Normalized { attribute, .. } => attribute,
+            };
+            if attribute < 0 || attribute >= attsMax {
+                return;
+            }
+            let slot = atts.add(attribute as usize);
+            match action {
+                NormalAttributeAction::Name { offset, .. } => (*slot).name = ptr.add(offset),
+                NormalAttributeAction::ValueStart { offset, .. } => (*slot).valuePtr = ptr.add(offset),
+                NormalAttributeAction::ValueEnd { offset, .. } => (*slot).valueEnd = ptr.add(offset),
+                NormalAttributeAction::Normalized { value, .. } => (*slot).normalized = value,
+            }
+        })
     }
 
     pub unsafe extern "C" fn normal_charRefNumber(

@@ -6914,14 +6914,21 @@ unsafe extern "C" fn storeAtts(
         }
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
+    let eventEnd = (*parser).m_eventEndPtr;
     n = match (*enc).getAtts {
         crate::src::xmltok::AttributeScanner::Normal => {
-            crate::src::xmltok::normal_getAtts(enc, attStr, (*parser).m_attsSize, (*parser).m_atts)
+            crate::src::xmltok::normal_getAtts(
+                enc,
+                attStr,
+                eventEnd,
+                (*parser).m_attsSize,
+                (*parser).m_atts,
+            )
         }
         crate::src::xmltok::AttributeScanner::Little2 => crate::src::xmltok::little2_getAtts(
             enc,
             attStr,
-            (*parser).m_eventEndPtr,
+            eventEnd,
             (*parser).m_attsSize,
             (*parser).m_atts,
         ),
@@ -6957,13 +6964,19 @@ unsafe extern "C" fn storeAtts(
         if n > oldAttsSize {
             match (*enc).getAtts {
                 crate::src::xmltok::AttributeScanner::Normal => {
-                    crate::src::xmltok::normal_getAtts(enc, attStr, n, (*parser).m_atts);
+                    crate::src::xmltok::normal_getAtts(
+                        enc,
+                        attStr,
+                        eventEnd,
+                        n,
+                        (*parser).m_atts,
+                    );
                 }
                 crate::src::xmltok::AttributeScanner::Little2 => {
                     crate::src::xmltok::little2_getAtts(
                         enc,
                         attStr,
-                        (*parser).m_eventEndPtr,
+                        eventEnd,
                         n,
                         (*parser).m_atts,
                     );
