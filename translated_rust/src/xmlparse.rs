@@ -11363,25 +11363,13 @@ fn cdata_update_event_start(
     }
 }
 
+// This is the sole raw boundary for the CDATA processor.  It validates and
+// copies the incoming cursor window, then lets the implementation below work
+// entirely in offsets and owned byte vectors.  Foreign callbacks, accounting,
+// and conversion stay here because they are the only operations that still
+// need C pointers.
 unsafe extern "C" fn doCdataSection(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    startPtr: &mut *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-    mut haveMore: crate::expat_h::XML_Bool,
-    mut account: XML_Account,
-) -> crate::expat_h::XML_Error {
-    let parser = &mut *parser;
-    do_cdata_section_impl(parser, enc, startPtr, end, nextPtr, haveMore, account)
-}
-
-// The processor is entered only from parser-owned dispatch, after the caller
-// has selected its encoding and cursor pair.  The thin `doCdataSection`
-// boundary above turns the opaque parser handle into the scoped mutable
-// parser borrow used throughout this implementation.
-unsafe fn do_cdata_section_impl(
-    parser: &mut XML_ParserStruct,
+    parser: crate::expat_h::XML_Parser,
     enc: *const crate::src::xmltok::ENCODING,
     startPtr: &mut *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
@@ -11389,351 +11377,416 @@ unsafe fn do_cdata_section_impl(
     haveMore: crate::expat_h::XML_Bool,
     account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    // `enc` is selected before entering this processor and remains valid for
-    // this token.  All in-tree encodings are stored as `normal_encoding`
-    // records whose leading member is the public `ENCODING` view.
-    let enc_ptr = enc;
-    let enc = &*(enc_ptr as *const crate::src::xmltok::normal_encoding);
-    let parser_handle = std::ptr::from_mut(parser);
-    let mut s: *const ::core::ffi::c_char = *startPtr;
-    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    // All exits from this processor update the caller's cursors through this
-    // single completion path.  Keeping the boundary writes together makes the
-    // token loop operate exclusively on local cursors and preserves the C
-    // contract that an unset cursor is left unchanged.
-    let mut finish = |error: crate::expat_h::XML_Error,
-                      start: Option<*const ::core::ffi::c_char>,
-                      next: Option<*const ::core::ffi::c_char>| {
-        if let Some(start) = start {
-            *startPtr = start;
-        }
-        if let Some(next) = next {
-            *nextPtr = next;
-        }
-        error
-    };
-    // Parser-originated CDATA cursors must lie in the parser-owned input
-    // buffer.  This is the same distinction previously inferred through the
-    // current encoding pointer, but validating the cursor pair directly also
-    // establishes the slice boundary used by the tokenizer below.  Internal
-    // entity replacement text is held in a distinct pool allocation.
-    let parser_events = parser
-        .m_buffer
-        .window_from_addresses(s.addr(), end.addr())
-        .is_some();
-    let mut event_target = EventCursorTarget::Parser;
-    let mut internal_event_text: Option<(
-        EntityTextRef,
-        ::core::ffi::c_int,
-        std::sync::Arc<SharedDtd>,
-    )> = None;
-    let internal_event_start = std::cell::Cell::new(None);
-    let mut internal_event_window = None;
-    if !parser_events {
-        let open_entity = {
-            let parser_state = &mut *parser;
-            let Some(dtd) = parser_state.m_dtd.clone() else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(open_entity_index) = parser_state.m_openInternalEntities else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(open_entity) = parser_state
-                .m_activeInternalEntities
-                .get_mut(open_entity_index)
-            else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            internal_event_text = Some((
-                open_entity.node().eventText,
-                open_entity.node().eventTextLen,
-                dtd,
-            ));
-            open_entity_index
-        };
-        event_target = EventCursorTarget::InternalEntity(open_entity);
+    if parser.is_null() || enc.is_null() || (*startPtr).is_null() || end.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
-    loop {
-        // Form the token window from owned storage and drop it before a
-        // callback.  Internal replacement text is resolved afresh from its
-        // pool handle on every iteration, so a re-entrant callback cannot
-        // leave this processor holding a stale DTD-pool slice.
-        let (tok, mut next) = {
-            let (tok, next_offset) = if parser_events {
-                let input = match parser
-                    .m_buffer
-                    .window_from_addresses(s.addr(), end.addr())
-                {
-                    Some(input) => input,
-                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
-                };
-                crate::src::xmltok::xmltok_impl_c::cdata_token(enc, input)
-            } else {
-                let Some((text_ref, text_len, dtd)) = internal_event_text.as_ref() else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(text) = shared_entity_text_chars(dtd, *text_ref, *text_len) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                if internal_event_window.is_none() {
-                    internal_event_window = Some((text.as_ptr().addr(), text.len()));
-                }
-                let Some(start) = s.addr().checked_sub(text.as_ptr().addr()) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(end) = end.addr().checked_sub(text.as_ptr().addr()) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(input) = text.get(start..end) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                crate::src::xmltok::xmltok_impl_c::internal_cdata_token(enc, input)
-            };
-            (tok, next_offset.map_or(s, |offset| s.wrapping_add(offset)))
+    let parser_state = &mut *parser;
+    let start = *startPtr;
+    let normal = &*(enc as *const crate::src::xmltok::normal_encoding);
+    let mut entity_text: Option<(EntityTextRef, ::core::ffi::c_int, std::sync::Arc<SharedDtd>)> =
+        None;
+    let (input, event_target) = if let Some(window) = parser_state
+        .m_buffer
+        .window_from_addresses(start.addr(), end.addr())
+    {
+        let Some(input_start) = parser_state.m_buffer.offset_from_address(start.addr()) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        // The internal-entity window is resolved immediately before its
-        // bounded tokenizer use.  That keeps no borrowed pool slice alive
-        // across a callback, while still publishing the event start before a
-        // token can report an event.
-        cdata_update_event_start(
-            parser,
-            event_target,
-            parser_events,
-            &internal_event_start,
-            internal_event_window,
-            s.addr(),
-        );
-        if accountingDiffTolerated(
-            parser_handle,
-            tok,
-            s,
-            next,
-            4619 as ::core::ffi::c_int,
-            account,
-        ) == 0
-        {
-            accountingOnAbort(parser_handle);
-            return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+        (CdataInput::Bytes(window.to_vec()), CdataEventTarget::Parser { input_start })
+    } else {
+        let Some(dtd) = parser_state.m_dtd.clone() else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(index) = parser_state.m_openInternalEntities else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(entity) = parser_state.m_activeInternalEntities.get(index) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let text_ref = entity.node().eventText;
+        let text_len = entity.node().eventTextLen;
+        let Some(text) = shared_entity_text_chars(&dtd, text_ref, text_len) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let base = text.as_ptr().addr();
+        let Some(text_start) = start.addr().checked_sub(base) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(text_end) = end.addr().checked_sub(base) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(window) = text.get(text_start..text_end) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        entity_text = Some((text_ref, text_len, dtd.clone()));
+        (
+            CdataInput::Chars(window.to_vec()),
+            CdataEventTarget::InternalEntity { index, text_start },
+        )
+    };
+    *startPtr = ::core::ptr::null();
+
+    let mut account_token = |token, before: usize, after: usize| {
+        let (before, after) = match &input {
+            CdataInput::Bytes(bytes) => (
+                bytes.as_ptr().wrapping_add(before).cast::<::core::ffi::c_char>(),
+                bytes.as_ptr().wrapping_add(after).cast::<::core::ffi::c_char>(),
+            ),
+            CdataInput::Chars(chars) => (
+                chars.as_ptr().wrapping_add(before),
+                chars.as_ptr().wrapping_add(after),
+            ),
+        };
+        if accountingDiffTolerated(parser, token, before, after, 4619, account) == 0 {
+            accountingOnAbort(parser);
+            false
+        } else {
+            true
         }
-        event_target.set_end(
-            parser,
-            internal_event_start.get(),
-            internal_event_window,
-            next.addr(),
-        );
-        // The flags and callback context are both observed between tokens.
-        // `callback_context` is only a transient boundary value: it is not
-        // retained in parser state, and the multi-chunk character-data path
-        // below continues to re-read it before each callback.
-        let (handler_flags, callback_context) = {
-            let parser_state = &*parser;
-            (
-                cdata_handler_flags(parser_state),
-                handler_arg_from_state!(parser_state),
-            )
-        };
-        match tok {
-            crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE => {
-                if handler_flags.end {
-                    let callback = END_CDATA_SECTION_HANDLERS
-                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-                        .lock()
-                        .unwrap_or_else(|poisoned| poisoned.into_inner())
-                        .get(&(parser_handle as usize))
-                        .cloned()
-                        .expect("installed end CDATA handler");
-                    callback.invoke(callback_context);
-                } else if handler_flags.default {
-                    reportDefault(parser_handle, enc_ptr, s, next);
-                }
-                if cdata_parsing_state(&*parser).parsing as ::core::ffi::c_uint
-                    == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return finish(crate::expat_h::XML_ERROR_ABORTED, Some(next), Some(next));
-                } else {
-                    return finish(crate::expat_h::XML_ERROR_NONE, Some(next), Some(next));
-                }
-            }
-            crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                if handler_flags.character_data {
-                    let c: crate::expat_external_h::XML_Char =
-                        0xa as crate::expat_external_h::XML_Char;
-                    let callback = CHARACTER_DATA_HANDLERS
-                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-                        .lock()
-                        .unwrap_or_else(|poisoned| poisoned.into_inner())
-                        .get(&(parser_handle as usize))
-                        .cloned();
-                    if let Some(callback) = callback {
-                        callback.invoke(callback_context, &raw const c, 1 as ::core::ffi::c_int);
-                    }
-                } else if handler_flags.default {
-                    reportDefault(parser_handle, enc_ptr, s, next);
-                }
-            }
-            crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                let charDataHandler = CHARACTER_DATA_HANDLERS
+    };
+    let mut dispatch = |event: CdataCallbackEvent| -> Result<(), crate::expat_h::XML_Error> {
+        match event {
+            CdataCallbackEvent::End => {
+                let callback = END_CDATA_SECTION_HANDLERS
                     .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .get(&(parser_handle as usize))
+                    .get(&(parser as usize))
+                    .cloned()
+                    .expect("installed end CDATA handler");
+                callback.invoke(handler_arg!(parser));
+            }
+            CdataCallbackEvent::Newline => {
+                let callback = CHARACTER_DATA_HANDLERS
+                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .get(&(parser as usize))
                     .cloned();
-                if let Some(charDataHandler) = charDataHandler {
-                    if enc.enc.isUtf8 == 0 {
-                        let (data_start, data_end, data_capacity) = {
-                            let data_start = parser.m_dataBuf.chars.as_mut_ptr();
-                            (
-                                data_start,
-                                data_start.wrapping_add(parser.m_dataBufEnd),
-                                parser.m_dataBufEnd,
-                            )
-                        };
-                        loop {
-                            let mut dataPtr: *mut ICHAR = data_start;
-                            let convert_res: crate::src::xmltok::XML_Convert_Result =
-                                crate::src::xmltok::convert_to_utf8(
-                                    enc_ptr,
-                                    &raw mut s,
-                                    next,
-                                    &raw mut dataPtr,
-                                    data_end,
-                                );
-                            event_target.set_end(
-                                parser,
-                                internal_event_start.get(),
-                                internal_event_window,
-                                next.addr(),
-                            );
-                            // The converter is bounded by `data_end`, which is derived from
-                            // the Rust-owned scratch buffer.  Validate the returned cursor
-                            // before turning its address delta into the callback length.
-                            let data_len = match dataPtr
-                                .addr()
-                                .checked_sub(data_start.addr())
-                                .filter(|&len| len <= data_capacity)
-                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
-                            {
-                                Some(len) => len,
-                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
-                            };
-                            charDataHandler.invoke(
-                                handler_arg!(parser_handle),
-                                data_start,
-                                data_len,
-                            );
-                            if convert_res as ::core::ffi::c_uint
-                                == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                                || convert_res as ::core::ffi::c_uint
-                                    == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
-                                        as ::core::ffi::c_int
-                                        as ::core::ffi::c_uint
-                            {
-                                break;
-                            }
-                            cdata_update_event_start(
-                                parser,
-                                event_target,
-                                parser_events,
-                                &internal_event_start,
-                                internal_event_window,
-                                s.addr(),
-                            );
-                        }
-                    } else {
-                        let data_len = match next
-                            .addr()
-                            .checked_sub(s.addr())
-                            .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
-                        {
-                            Some(len) => len,
-                            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
-                        };
-                        charDataHandler.invoke(
-                            callback_context,
-                            s as *const crate::expat_external_h::XML_Char,
-                            data_len,
+                if let Some(callback) = callback {
+                    let newline: crate::expat_external_h::XML_Char = 0xa;
+                    callback.invoke(handler_arg!(parser), &raw const newline, 1);
+                }
+            }
+            CdataCallbackEvent::CharacterData(chars) => {
+                let callback = CHARACTER_DATA_HANDLERS
+                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .get(&(parser as usize))
+                    .cloned();
+                let Some(callback) = callback else { return Ok(()); };
+                if normal.enc.isUtf8 != 0 {
+                    let Some(length) = ::core::ffi::c_int::try_from(chars.len()).ok() else {
+                        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                    };
+                    callback.invoke(handler_arg!(parser), chars.as_ptr(), length);
+                } else {
+                    let mut from = chars.as_ptr();
+                    let from_end = from.wrapping_add(chars.len());
+                    loop {
+                        let parser_state = &mut *parser;
+                        let data_start = parser_state.m_dataBuf.chars.as_mut_ptr();
+                        let data_end = data_start.wrapping_add(parser_state.m_dataBufEnd);
+                        let capacity = parser_state.m_dataBufEnd;
+                        let mut data_ptr = data_start;
+                        let conversion = crate::src::xmltok::convert_to_utf8(
+                            enc,
+                            &raw mut from,
+                            from_end,
+                            &raw mut data_ptr,
+                            data_end,
                         );
+                        let Some(length) = data_ptr
+                            .addr()
+                            .checked_sub(data_start.addr())
+                            .filter(|length| *length <= capacity)
+                            .and_then(|length| ::core::ffi::c_int::try_from(length).ok())
+                        else {
+                            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                        };
+                        callback.invoke(handler_arg!(parser), data_start, length);
+                        if conversion as ::core::ffi::c_uint
+                            == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
+                                as ::core::ffi::c_uint
+                            || conversion as ::core::ffi::c_uint
+                                == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+                                    as ::core::ffi::c_int
+                                    as ::core::ffi::c_uint
+                        {
+                            break;
+                        }
                     }
+                }
+            }
+            CdataCallbackEvent::Default(chars) => {
+                // `reportDefault` already owns the C-compatible conversion
+                // and callback sequence.  The event bytes are a bounded
+                // transient copy, which is sufficient for this callback's
+                // documented call-only lifetime.
+                reportDefault(
+                    parser,
+                    enc,
+                    chars.as_ptr(),
+                    chars.as_ptr().wrapping_add(chars.len()),
+                );
+            }
+        }
+        Ok(())
+    };
+    let result = do_cdata_section_impl(
+        parser_state,
+        normal,
+        &input,
+        event_target,
+        haveMore != 0,
+        &mut account_token,
+        &mut dispatch,
+    );
+    let cursor_pointer = |cursor: usize| -> Option<*const ::core::ffi::c_char> {
+        match event_target {
+            CdataEventTarget::Parser { input_start } => {
+                let offset = input_start.checked_add(cursor)?;
+                let bytes = (&*parser).m_buffer.bytes.as_deref()?;
+                bytes.get(offset..)
+                    .map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+            }
+            CdataEventTarget::InternalEntity { text_start, .. } => {
+                let (text_ref, text_len, dtd) = entity_text.as_ref()?;
+                let text = shared_entity_text_chars(dtd, *text_ref, *text_len)?;
+                let offset = text_start.checked_add(cursor)?;
+                text.get(offset..).map(|_| text.as_ptr().wrapping_add(offset))
+            }
+        }
+    };
+    if let Some(cursor) = result.start {
+        let Some(pointer) = cursor_pointer(cursor) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        *startPtr = pointer;
+    }
+    if let Some(cursor) = result.next {
+        let Some(pointer) = cursor_pointer(cursor) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        *nextPtr = pointer;
+    }
+    result.error
+}
+
+#[derive(Copy, Clone)]
+enum CdataEventTarget {
+    Parser { input_start: usize },
+    InternalEntity { index: usize, text_start: usize },
+}
+
+impl CdataEventTarget {
+    fn set_start(self, parser: &mut XML_ParserStruct, cursor: usize) {
+        match self {
+            Self::Parser { input_start } => parser.m_eventPtr = input_start.checked_add(cursor),
+            Self::InternalEntity { index, text_start } => {
+                if let Some(entity) = parser.m_activeInternalEntities.get_mut(index) {
+                    entity.node_mut().internalEventPtr = text_start.checked_add(cursor);
+                }
+            }
+        }
+    }
+
+    fn set_end(self, parser: &mut XML_ParserStruct, start: usize, end: usize) {
+        match self {
+            Self::Parser { input_start } => parser.m_eventEndPtr = input_start.checked_add(end),
+            Self::InternalEntity { index, .. } => {
+                if let Some(entity) = parser.m_activeInternalEntities.get_mut(index) {
+                    entity.node_mut().internalEventEndPtr = end.checked_sub(start);
+                }
+            }
+        }
+    }
+}
+
+enum CdataInput {
+    Bytes(Vec<u8>),
+    Chars(Vec<::core::ffi::c_char>),
+}
+
+impl CdataInput {
+    fn token(
+        &self,
+        encoding: &crate::src::xmltok::normal_encoding,
+        cursor: usize,
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        match self {
+            Self::Bytes(bytes) => crate::src::xmltok::xmltok_impl_c::cdata_token(
+                encoding,
+                bytes.get(cursor..).unwrap_or(&[]),
+            ),
+            Self::Chars(chars) => crate::src::xmltok::xmltok_impl_c::internal_cdata_token(
+                encoding,
+                chars.get(cursor..).unwrap_or(&[]),
+            ),
+        }
+    }
+
+    fn chars(&self, range: std::ops::Range<usize>) -> Option<Vec<::core::ffi::c_char>> {
+        match self {
+            Self::Bytes(bytes) => bytes
+                .get(range)
+                .map(|bytes| bytes.iter().map(|&byte| byte as ::core::ffi::c_char).collect()),
+            Self::Chars(chars) => chars.get(range).map(ToOwned::to_owned),
+        }
+    }
+}
+
+enum CdataCallbackEvent {
+    End,
+    Default(Vec<::core::ffi::c_char>),
+    CharacterData(Vec<::core::ffi::c_char>),
+    Newline,
+}
+
+struct CdataResult {
+    error: crate::expat_h::XML_Error,
+    start: Option<usize>,
+    next: Option<usize>,
+}
+
+fn cdata_result(
+    error: crate::expat_h::XML_Error,
+    start: Option<usize>,
+    next: Option<usize>,
+) -> CdataResult {
+    CdataResult { error, start, next }
+}
+
+// The CDATA state machine owns only bounded input copies and cursor offsets.
+// The caller supplies its accounting and callback boundary adapters, so this
+// implementation never reconstructs references from C cursors or invokes a
+// foreign callback itself.
+fn do_cdata_section_impl(
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::normal_encoding,
+    input: &CdataInput,
+    event_target: CdataEventTarget,
+    have_more: bool,
+    account: &mut dyn FnMut(::core::ffi::c_int, usize, usize) -> bool,
+    dispatch: &mut dyn FnMut(CdataCallbackEvent) -> Result<(), crate::expat_h::XML_Error>,
+) -> CdataResult {
+    let mut cursor = 0;
+    loop {
+        let (token, next_offset) = input.token(encoding, cursor);
+        let next = next_offset
+            .and_then(|offset| cursor.checked_add(offset))
+            .unwrap_or(cursor);
+        event_target.set_start(parser, cursor);
+        if !account(token, cursor, next) {
+            return cdata_result(
+                crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH,
+                None,
+                None,
+            );
+        }
+        event_target.set_end(parser, cursor, next);
+        let handler_flags = cdata_handler_flags(parser);
+        let mut callback = |event| dispatch(event);
+        let emit_default = |input: &CdataInput,
+                            start: usize,
+                            end: usize,
+                            callback: &mut dyn FnMut(CdataCallbackEvent) -> Result<
+                                (),
+                                crate::expat_h::XML_Error,
+                            >| {
+            input
+                .chars(start..end)
+                .ok_or(crate::expat_h::XML_ERROR_UNEXPECTED_STATE)
+                .and_then(|chars| callback(CdataCallbackEvent::Default(chars)))
+        };
+        match token {
+            crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE => {
+                let callback_result = if handler_flags.end {
+                    callback(CdataCallbackEvent::End)
                 } else if handler_flags.default {
-                    reportDefault(parser_handle, enc_ptr, s, next);
+                    emit_default(input, cursor, next, &mut |event| callback(event))
+                } else {
+                    Ok(())
+                };
+                if let Err(error) = callback_result {
+                    return cdata_result(error, None, None);
+                }
+                let error = if cdata_parsing_state(parser).parsing as ::core::ffi::c_uint
+                    == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+                {
+                    crate::expat_h::XML_ERROR_ABORTED
+                } else {
+                    crate::expat_h::XML_ERROR_NONE
+                };
+                return cdata_result(error, Some(next), Some(next));
+            }
+            crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
+                let callback_result = if handler_flags.character_data {
+                    callback(CdataCallbackEvent::Newline)
+                } else if handler_flags.default {
+                    emit_default(input, cursor, next, &mut |event| callback(event))
+                } else {
+                    Ok(())
+                };
+                if let Err(error) = callback_result {
+                    return cdata_result(error, None, None);
+                }
+            }
+            crate::src::xmltok::XML_TOK_DATA_CHARS => {
+                let callback_result = if handler_flags.character_data {
+                    input
+                        .chars(cursor..next)
+                        .ok_or(crate::expat_h::XML_ERROR_UNEXPECTED_STATE)
+                        .and_then(|chars| callback(CdataCallbackEvent::CharacterData(chars)))
+                } else if handler_flags.default {
+                    emit_default(input, cursor, next, &mut |event| callback(event))
+                } else {
+                    Ok(())
+                };
+                if let Err(error) = callback_result {
+                    return cdata_result(error, None, None);
                 }
             }
             crate::src::xmltok::XML_TOK_INVALID => {
-                cdata_update_event_start(
-                    parser,
-                    event_target,
-                    parser_events,
-                    &internal_event_start,
-                    internal_event_window,
-                    next.addr(),
-                );
-                return crate::expat_h::XML_ERROR_INVALID_TOKEN;
+                event_target.set_start(parser, next);
+                return cdata_result(crate::expat_h::XML_ERROR_INVALID_TOKEN, None, None);
             }
             crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-                if haveMore != 0 {
-                    return finish(crate::expat_h::XML_ERROR_NONE, None, Some(s));
-                }
-                return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
+                return if have_more {
+                    cdata_result(crate::expat_h::XML_ERROR_NONE, None, Some(cursor))
+                } else {
+                    cdata_result(crate::expat_h::XML_ERROR_PARTIAL_CHAR, None, None)
+                };
             }
             crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
-                if haveMore != 0 {
-                    return finish(crate::expat_h::XML_ERROR_NONE, None, Some(s));
-                }
-                return crate::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION;
+                return if have_more {
+                    cdata_result(crate::expat_h::XML_ERROR_NONE, None, Some(cursor))
+                } else {
+                    cdata_result(crate::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION, None, None)
+                };
             }
             _ => {
-                cdata_update_event_start(
-                    parser,
-                    event_target,
-                    parser_events,
-                    &internal_event_start,
-                    internal_event_window,
-                    next.addr(),
-                );
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                event_target.set_start(parser, next);
+                return cdata_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
             }
         }
-        let parsing_state = cdata_parsing_state(&*parser);
-        match parsing_state.parsing as ::core::ffi::c_uint {
+        match cdata_parsing_state(parser).parsing as ::core::ffi::c_uint {
             3 => {
-                cdata_update_event_start(
-                    parser,
-                    event_target,
-                    parser_events,
-                    &internal_event_start,
-                    internal_event_window,
-                    next.addr(),
-                );
-                return finish(crate::expat_h::XML_ERROR_NONE, None, Some(next));
+                event_target.set_start(parser, next);
+                return cdata_result(crate::expat_h::XML_ERROR_NONE, None, Some(next));
             }
             2 => {
-                cdata_update_event_start(
-                    parser,
-                    event_target,
-                    parser_events,
-                    &internal_event_start,
-                    internal_event_window,
-                    next.addr(),
-                );
-                return crate::expat_h::XML_ERROR_ABORTED;
+                event_target.set_start(parser, next);
+                return cdata_result(crate::expat_h::XML_ERROR_ABORTED, None, None);
             }
-            1 => {
-                if parsing_state.reenter != 0 {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                }
+            1 if cdata_parsing_state(parser).reenter != 0 => {
+                return cdata_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None, None);
             }
             _ => {}
         }
-        s = next;
-        cdata_update_event_start(
-            parser,
-            event_target,
-            parser_events,
-            &internal_event_start,
-            internal_event_window,
-            s.addr(),
-        );
+        cursor = next;
+        event_target.set_start(parser, cursor);
     }
 }
 
