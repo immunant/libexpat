@@ -25581,25 +25581,6 @@ fn dtdDestroy(
     dtd_destroy_impl(p, is_doc_entity, parser, &mut release_default_attributes);
 }
 
-unsafe fn dtdCopy(
-    new_dtd: &mut DTD,
-    old_dtd: &DTD,
-    parser: &mut XML_ParserStruct,
-) -> ::core::ffi::c_int {
-    let hash_secret_salt = parser
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .hash_secret_salt;
-    let dtd_copy_allocator = DtdCopyAllocator::from_parser(parser);
-    dtd_copy_impl(
-        new_dtd,
-        old_dtd,
-        hash_secret_salt,
-        &dtd_copy_allocator,
-    )
-}
-
 /// Copies DTD records using a previously captured allocator route.  The
 /// parser-dependent details are captured before entry, leaving this table and
 /// pool operation entirely within Rust-owned state.
