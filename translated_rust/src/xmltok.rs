@@ -15550,229 +15550,122 @@ extern "C" fn isNever(
     return 0 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn utf8_isName2(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (namingBitmap[(((namePages[(*(p as *const ::core::ffi::c_uchar)
-        .offset(0 as ::core::ffi::c_int as isize)
-        as ::core::ffi::c_int
-        >> 2 as ::core::ffi::c_int
-        & 7 as ::core::ffi::c_int) as usize] as ::core::ffi::c_int)
-        << 3 as ::core::ffi::c_int)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(0 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 3 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 5 as ::core::ffi::c_int
-            & 1 as ::core::ffi::c_int)) as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
+fn utf8_byte(p: *const ::core::ffi::c_char, offset: usize) -> ::core::ffi::c_int {
+    unsafe { *(p as *const ::core::ffi::c_uchar).add(offset) as ::core::ffi::c_int }
 }
 
-unsafe extern "C" fn utf8_isName3(
+extern "C" fn utf8_isName2(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (namingBitmap[(((namePages[(((*(p as *const ::core::ffi::c_uchar)
-        .offset(0 as ::core::ffi::c_int as isize)
+    let b0 = utf8_byte(p, 0);
+    let b1 = utf8_byte(p, 1);
+    let bitmap_index = ((namePages[((b0 >> 2) & 7) as usize] as ::core::ffi::c_int) << 3)
+        + ((b0 & 3) << 1)
+        + ((b1 >> 5) & 1);
+    (namingBitmap[bitmap_index as usize] & (1 as ::core::ffi::c_uint) << (b1 & 0x1f))
         as ::core::ffi::c_int
-        & 0xf as ::core::ffi::c_int)
-        << 4 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 2 as ::core::ffi::c_int
-            & 0xf as ::core::ffi::c_int)) as usize]
-        as ::core::ffi::c_int)
-        << 3 as ::core::ffi::c_int)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 3 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 5 as ::core::ffi::c_int
-            & 1 as ::core::ffi::c_int)) as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn utf8_isNmstrt2(
+extern "C" fn utf8_isName3(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (namingBitmap[(((nmstrtPages[(*(p as *const ::core::ffi::c_uchar)
-        .offset(0 as ::core::ffi::c_int as isize)
+    let b0 = utf8_byte(p, 0);
+    let b1 = utf8_byte(p, 1);
+    let b2 = utf8_byte(p, 2);
+    let page_index = ((b0 & 0xf) << 4) + ((b1 >> 2) & 0xf);
+    let bitmap_index = ((namePages[page_index as usize] as ::core::ffi::c_int) << 3)
+        + ((b1 & 3) << 1)
+        + ((b2 >> 5) & 1);
+    (namingBitmap[bitmap_index as usize] & (1 as ::core::ffi::c_uint) << (b2 & 0x1f))
         as ::core::ffi::c_int
-        >> 2 as ::core::ffi::c_int
-        & 7 as ::core::ffi::c_int) as usize] as ::core::ffi::c_int)
-        << 3 as ::core::ffi::c_int)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(0 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 3 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 5 as ::core::ffi::c_int
-            & 1 as ::core::ffi::c_int)) as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn utf8_isNmstrt3(
+extern "C" fn utf8_isNmstrt2(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (namingBitmap[(((nmstrtPages[(((*(p as *const ::core::ffi::c_uchar)
-        .offset(0 as ::core::ffi::c_int as isize)
+    let b0 = utf8_byte(p, 0);
+    let b1 = utf8_byte(p, 1);
+    let bitmap_index = ((nmstrtPages[((b0 >> 2) & 7) as usize] as ::core::ffi::c_int) << 3)
+        + ((b0 & 3) << 1)
+        + ((b1 >> 5) & 1);
+    (namingBitmap[bitmap_index as usize] & (1 as ::core::ffi::c_uint) << (b1 & 0x1f))
         as ::core::ffi::c_int
-        & 0xf as ::core::ffi::c_int)
-        << 4 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 2 as ::core::ffi::c_int
-            & 0xf as ::core::ffi::c_int)) as usize]
-        as ::core::ffi::c_int)
-        << 3 as ::core::ffi::c_int)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 3 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 5 as ::core::ffi::c_int
-            & 1 as ::core::ffi::c_int)) as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn utf8_isInvalid2(
+extern "C" fn utf8_isNmstrt3(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return ((*(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int)
-        < 0xc2 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0x80 as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0xc0 as ::core::ffi::c_int
-            == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int;
+    let b0 = utf8_byte(p, 0);
+    let b1 = utf8_byte(p, 1);
+    let b2 = utf8_byte(p, 2);
+    let page_index = ((b0 & 0xf) << 4) + ((b1 >> 2) & 0xf);
+    let bitmap_index = ((nmstrtPages[page_index as usize] as ::core::ffi::c_int) << 3)
+        + ((b1 & 3) << 1)
+        + ((b2 >> 5) & 1);
+    (namingBitmap[bitmap_index as usize] & (1 as ::core::ffi::c_uint) << (b2 & 0x1f))
+        as ::core::ffi::c_int
 }
 
-unsafe extern "C" fn utf8_isInvalid3(
+extern "C" fn utf8_isInvalid2(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-        as ::core::ffi::c_int
-        & 0x80 as ::core::ffi::c_int
-        == 0 as ::core::ffi::c_int
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-            == 0xef as ::core::ffi::c_int
-            && *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                == 0xbf as ::core::ffi::c_int
-        {
-            (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                > 0xbd as ::core::ffi::c_int) as ::core::ffi::c_int
+    let b0 = utf8_byte(p, 0);
+    let b1 = utf8_byte(p, 1);
+    (b0 < 0xc2 || b1 & 0x80 == 0 || b1 & 0xc0 == 0xc0) as ::core::ffi::c_int
+}
+
+extern "C" fn utf8_isInvalid3(
+    mut enc: *const crate::src::xmltok::ENCODING,
+    mut p: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    let b0 = utf8_byte(p, 0);
+    let b1 = utf8_byte(p, 1);
+    let b2 = utf8_byte(p, 2);
+    let invalid_third = b2 & 0x80 == 0
+        || if b0 == 0xef && b1 == 0xbf {
+            b2 > 0xbd
         } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0xc0 as ::core::ffi::c_int
-                == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-        }) != 0
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-            == 0xe0 as ::core::ffi::c_int
-        {
-            ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int)
-                < 0xa0 as ::core::ffi::c_int
-                || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0xc0 as ::core::ffi::c_int
-                    == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-        } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x80 as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                    == 0xed as ::core::ffi::c_int
-                {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        > 0x9f as ::core::ffi::c_int) as ::core::ffi::c_int
-                } else {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        & 0xc0 as ::core::ffi::c_int
-                        == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-                }) != 0) as ::core::ffi::c_int
-        }) != 0) as ::core::ffi::c_int;
+            b2 & 0xc0 == 0xc0
+        };
+    let invalid_second = if b0 == 0xe0 {
+        b1 < 0xa0 || b1 & 0xc0 == 0xc0
+    } else {
+        b1 & 0x80 == 0
+            || if b0 == 0xed {
+                b1 > 0x9f
+            } else {
+                b1 & 0xc0 == 0xc0
+            }
+    };
+    (invalid_third || invalid_second) as ::core::ffi::c_int
 }
 
-unsafe extern "C" fn utf8_isInvalid4(
+extern "C" fn utf8_isInvalid4(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    return (*(p as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
-        as ::core::ffi::c_int
-        & 0x80 as ::core::ffi::c_int
-        == 0 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0xc0 as ::core::ffi::c_int
-            == 0xc0 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0x80 as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0xc0 as ::core::ffi::c_int
-            == 0xc0 as ::core::ffi::c_int
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-            == 0xf0 as ::core::ffi::c_int
-        {
-            ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int)
-                < 0x90 as ::core::ffi::c_int
-                || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0xc0 as ::core::ffi::c_int
-                    == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-        } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x80 as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                    == 0xf4 as ::core::ffi::c_int
-                {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        > 0x8f as ::core::ffi::c_int) as ::core::ffi::c_int
-                } else {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        & 0xc0 as ::core::ffi::c_int
-                        == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-                }) != 0) as ::core::ffi::c_int
-        }) != 0) as ::core::ffi::c_int;
+    let b0 = utf8_byte(p, 0);
+    let b1 = utf8_byte(p, 1);
+    let b2 = utf8_byte(p, 2);
+    let b3 = utf8_byte(p, 3);
+    let invalid_fourth = b3 & 0x80 == 0 || b3 & 0xc0 == 0xc0;
+    let invalid_third = b2 & 0x80 == 0 || b2 & 0xc0 == 0xc0;
+    let invalid_second = if b0 == 0xf0 {
+        b1 < 0x90 || b1 & 0xc0 == 0xc0
+    } else {
+        b1 & 0x80 == 0
+            || if b0 == 0xf4 {
+                b1 > 0x8f
+            } else {
+                b1 & 0xc0 == 0xc0
+            }
+    };
+    (invalid_fourth || invalid_third || invalid_second) as ::core::ffi::c_int
 }
 pub fn _INTERNAL_trim_to_complete_utf8_characters(
     from: &[::core::ffi::c_char],
