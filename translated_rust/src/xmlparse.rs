@@ -6513,9 +6513,6 @@ unsafe fn call_processor_impl(
         if next > input.end || input.end > bytes.len() {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
         }
-        let start: *const ::core::ffi::c_char = bytes.as_ptr().wrapping_add(next).cast();
-        let end: *const ::core::ffi::c_char = bytes.as_ptr().wrapping_add(input.end).cast();
-        let mut next_pointer = start;
         // CDATA cursor results are already checked buffer offsets.  Keep
         // them as offsets through this dispatch instead of rebuilding a raw
         // cursor merely for the common processor epilogue below.
@@ -6620,7 +6617,10 @@ unsafe fn call_processor_impl(
                 return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
             };
             let source_chars: &[::core::ffi::c_char] = bytemuck::cast_slice(&source);
-            match external_entity_init_processor2_impl(parser, source_chars, start.addr()) {
+            let Some(start_address) = parser.m_buffer.address_at_offset(next) else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
+            match external_entity_init_processor2_impl(parser, source_chars, start_address) {
                 ExternalEntityInit2Action::Return(error, offset) => {
                     let Some(offset) = next
                         .checked_add(offset)
@@ -6645,7 +6645,12 @@ unsafe fn call_processor_impl(
                     match external_entity_init_processor3_transition(
                         parser,
                         scan,
-                        start.wrapping_add(first_offset).addr(),
+                        match start_address.checked_add(first_offset) {
+                            Some(address) => address,
+                            None => {
+                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                            }
+                        },
                         remaining.len(),
                     ) {
                         ExternalEntityInit3Action::Return(error, second_offset) => {
@@ -6701,10 +6706,13 @@ unsafe fn call_processor_impl(
             let Some(scan) = external_entity_init_scan(parser, source_chars) else {
                 return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
             };
+            let Some(start_address) = parser.m_buffer.address_at_offset(next) else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
             match external_entity_init_processor3_transition(
                 parser,
                 scan,
-                start.addr(),
+                start_address,
                 source_chars.len(),
             ) {
                 ExternalEntityInit3Action::Return(error, offset) => {
@@ -6762,56 +6770,101 @@ unsafe fn call_processor_impl(
             // parser handle and cursor solely for this read.
             parser.m_errorCode
         } else {
-            let processor: Processor = match parser.m_processor {
-                ProcessorState::PrologInit => {
-                    unreachable!("prolog initialization is dispatched before cursor setup")
+            // These transitions all have offset-based implementations.  Do
+            // not round-trip through their legacy raw-cursor adapters merely
+            // to immediately translate the returned cursor back to an
+            // offset in this dispatcher.
+            match parser.m_processor {
+                ProcessorState::ExternalParEntInit => {
+                    match external_par_ent_init_processor_impl(parser) {
+                        Err(error) => error,
+                        Ok(ExternalParEntInitAction::EntityValue) => {
+                            let result = entity_value_init_processor_safe(EntityValueProcessorState {
+                                parser,
+                                value_start_offset: next,
+                                end_offset: input.end,
+                                output_next: None,
+                            });
+                            checked_next_offset = result.next_offset;
+                            result.error
+                        }
+                        Ok(ExternalParEntInitAction::ExternalParameterEntity) => {
+                            let result = external_par_ent_processor_impl(parser, next, input.end);
+                            if let PrologCursorUpdate::Cursor(cursor) = result.cursor {
+                                let Some(cursor) = cursor else {
+                                    return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                                };
+                                checked_next_offset = Some(cursor);
+                            }
+                            result.error
+                        }
+                    }
                 }
-                ProcessorState::Content => {
-                    unreachable!("content dispatch is handled with checked offsets")
+                ProcessorState::ExternalParEnt => {
+                    let result = external_par_ent_processor_impl(parser, next, input.end);
+                    if let PrologCursorUpdate::Cursor(cursor) = result.cursor {
+                        let Some(cursor) = cursor else {
+                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                        };
+                        checked_next_offset = Some(cursor);
+                    }
+                    result.error
                 }
-                ProcessorState::ExternalEntityInit => {
-                    unreachable!("external entity initialization is dispatched before cursor setup")
+                ProcessorState::EntityValueInit => {
+                    let result = entity_value_init_processor_safe(EntityValueProcessorState {
+                        parser,
+                        value_start_offset: next,
+                        end_offset: input.end,
+                        output_next: None,
+                    });
+                    checked_next_offset = result.next_offset;
+                    result.error
                 }
-                ProcessorState::ExternalEntityInit2 => {
-                    unreachable!("external entity init processor 2 is dispatched directly")
+                ProcessorState::EntityValue => {
+                    let result = entity_value_processor_safe(EntityValueProcessorState {
+                        parser,
+                        value_start_offset: next,
+                        end_offset: input.end,
+                        output_next: None,
+                    });
+                    checked_next_offset = result.next_offset;
+                    result.error
                 }
-                ProcessorState::ExternalEntityInit3 => {
-                    unreachable!("external entity init processor 3 is dispatched directly")
+                ProcessorState::Prolog => {
+                    let result = prolog_processor_from_offsets(parser, next, input.end);
+                    if let PrologCursorUpdate::Cursor(cursor) = result.cursor {
+                        let Some(cursor) = cursor else {
+                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                        };
+                        checked_next_offset = Some(cursor);
+                    }
+                    result.error
                 }
-                ProcessorState::ExternalEntityContent => {
-                    unreachable!("external content dispatch is handled with checked offsets")
+                ProcessorState::PrologInit
+                | ProcessorState::Content
+                | ProcessorState::ExternalEntityInit
+                | ProcessorState::ExternalEntityInit2
+                | ProcessorState::ExternalEntityInit3
+                | ProcessorState::ExternalEntityContent
+                | ProcessorState::CdataSection
+                | ProcessorState::IgnoreSection
+                | ProcessorState::Epilog
+                | ProcessorState::InternalEntity
+                | ProcessorState::Error => {
+                    unreachable!("this processor state is dispatched before the offset transition")
                 }
-                ProcessorState::ExternalParEntInit => externalParEntInitProcessor,
-                ProcessorState::ExternalParEnt => externalParEntProcessor,
-                ProcessorState::EntityValueInit => entityValueInitProcessor,
-                ProcessorState::EntityValue => entityValueProcessor,
-                ProcessorState::CdataSection => unreachable!("CDATA dispatch is handled above"),
-                ProcessorState::IgnoreSection => {
-                    unreachable!("ignore-section dispatch is handled with checked offsets")
-                }
-                ProcessorState::Prolog => prologProcessor,
-                ProcessorState::Epilog => {
-                    unreachable!("epilog dispatch is handled with checked offsets")
-                }
-                ProcessorState::InternalEntity => {
-                    unreachable!("internal entity processing is dispatched without raw cursors")
-                }
-                ProcessorState::Error => {
-                    unreachable!("error dispatch is handled without a raw cursor adapter")
-                }
-            };
-            processor(std::ptr::from_mut(parser), start, end, &raw mut next_pointer)
+            }
         };
         let next_offset = match checked_next_offset {
             Some(offset) => offset,
-            None => {
-                let Some(offset) = parser.m_buffer.offset_from_address(next_pointer.addr()) else {
-                    return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                };
-                offset
-            }
+            None => next,
         };
-        if next_offset > input.end {
+        if next_offset > input.end
+            || parser
+                .m_buffer
+                .window_from_offsets(next_offset, next_offset)
+                .is_none()
+        {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
         }
         next = next_offset;
