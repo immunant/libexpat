@@ -19722,6 +19722,7 @@ unsafe fn active_internal_entity_state(
     })
 }
 
+#[derive(Copy, Clone)]
 enum ActiveInternalEntityUpdate {
     Advance(::core::ffi::c_int),
     Finish,
@@ -19729,67 +19730,70 @@ enum ActiveInternalEntityUpdate {
 }
 
 unsafe fn update_active_internal_entity(
-    parser: crate::expat_h::XML_Parser,
+    parser_state: &mut XML_ParserStruct,
     open_entity_index: usize,
     update: ActiveInternalEntityUpdate,
 ) -> Option<Option<::core::ffi::c_int>> {
-    let parser_state = &mut *parser;
-    let open_entity = parser_state
+    let entity_ref = parser_state
         .m_activeInternalEntities
-        .get(open_entity_index)?;
-    let entity_ref = open_entity.entity_ref?;
-    let dtd = parser_state.m_dtd.as_ref()?;
-    let dtd = &mut *dtd.value.get();
-    let name = dtd.pool.chars_from(entity_ref.name)?.as_ptr();
-    let table = match entity_ref.table {
-        OpenEntityTable::General => &mut dtd.generalEntities,
-        OpenEntityTable::Parameter => &mut dtd.paramEntities,
+        .get(open_entity_index)?
+        .entity_ref?;
+    let declaration = match entity_ref.table {
+        OpenEntityTable::General => DeclaredEntity::General(entity_ref.name),
+        OpenEntityTable::Parameter => DeclaredEntity::Parameter(entity_ref.name),
     };
-    let entity = lookup(parser, std::ptr::from_mut(table), name, 0).cast::<ENTITY>();
-    let entity = entity.as_mut()?;
-    match update {
-        ActiveInternalEntityUpdate::Advance(processed) => {
-            entity.processed = entity.processed.saturating_add(processed);
-            Some(None)
-        }
-        ActiveInternalEntityUpdate::Finish => {
-            entity.hasMore = crate::expat_h::XML_FALSE;
-            Some(Some(parser_state.m_tagLevel))
-        }
-        ActiveInternalEntityUpdate::Close(expected_index) => {
-            entityTrackingOnClose(
-                std::ptr::from_mut(parser_state),
-                std::ptr::from_mut(entity),
-                6470 as ::core::ffi::c_int,
-            );
-            if open_entity_index != expected_index
-                || parser_state.m_activeInternalEntities.len().checked_sub(1)
-                    != Some(open_entity_index)
-            {
-                std::process::abort();
+    let hash_salt = parser_state
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let dtd_owner = parser_state.m_dtd.clone()?;
+    let (result, closed_parameter_entity) = dtd_owner.inspect(|dtd| {
+        let entity = declared_entity_mut(dtd, declaration, hash_salt)?;
+        match update {
+            ActiveInternalEntityUpdate::Advance(processed) => {
+                entity.processed = entity.processed.saturating_add(processed);
+                Some((None, None))
             }
-            let is_parameter_entity = entity.is_param != 0;
-            entity.open = crate::expat_h::XML_FALSE;
-            let storage = parser_state
-                .m_activeInternalEntities
-                .pop()
-                .expect("active internal-entity index was validated");
-            parser_state.m_freeInternalEntities.push(storage);
-            parser_state.m_openInternalEntities = parser_state
-                .m_activeInternalEntities
-                .len()
-                .checked_sub(1);
-            if parser_state.m_openInternalEntities.is_none() {
-                parser_state.m_processor = if is_parameter_entity {
-                    ProcessorState::Prolog
-                } else {
-                    ProcessorState::Content
-                };
+            ActiveInternalEntityUpdate::Finish => {
+                entity.hasMore = crate::expat_h::XML_FALSE;
+                Some((Some(parser_state.m_tagLevel), None))
             }
-            trigger_reenter(parser_state);
-            Some(None)
+            ActiveInternalEntityUpdate::Close(_) => {
+                entity_tracking_on_close(parser_state, entity, 6470 as ::core::ffi::c_int);
+                let is_parameter_entity = entity.is_param != 0;
+                entity.open = crate::expat_h::XML_FALSE;
+                Some((None, Some(is_parameter_entity)))
+            }
         }
+    })?;
+    if let ActiveInternalEntityUpdate::Close(expected_index) = update {
+        let is_parameter_entity = closed_parameter_entity?;
+        if open_entity_index != expected_index
+            || parser_state.m_activeInternalEntities.len().checked_sub(1)
+                != Some(open_entity_index)
+        {
+            std::process::abort();
+        }
+        let storage = parser_state
+            .m_activeInternalEntities
+            .pop()
+            .expect("active internal-entity index was validated");
+        parser_state.m_freeInternalEntities.push(storage);
+        parser_state.m_openInternalEntities = parser_state
+            .m_activeInternalEntities
+            .len()
+            .checked_sub(1);
+        if parser_state.m_openInternalEntities.is_none() {
+            parser_state.m_processor = if is_parameter_entity {
+                ProcessorState::Prolog
+            } else {
+                ProcessorState::Content
+            };
+        }
+        trigger_reenter(parser_state);
     }
+    Some(result)
 }
 
 unsafe extern "C" fn internalEntityProcessor(
@@ -19879,7 +19883,7 @@ unsafe extern "C" fn internalEntityProcessor(
         {
             return result;
         }
-        let parser_state = &*parser;
+        let parser_state = &mut *parser;
         let is_suspended_or_reentered = parser_state.m_parsingStatus.parsing
             as ::core::ffi::c_uint
             == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -19894,7 +19898,7 @@ unsafe extern "C" fn internalEntityProcessor(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             if update_active_internal_entity(
-                parser,
+                parser_state,
                 entity_state.index,
                 ActiveInternalEntityUpdate::Advance(processed),
             )
@@ -19906,7 +19910,7 @@ unsafe extern "C" fn internalEntityProcessor(
         }
         let Some(Some(tag_level)) =
             update_active_internal_entity(
-                parser,
+                parser_state,
                 entity_state.index,
                 ActiveInternalEntityUpdate::Finish,
             )
@@ -19916,11 +19920,11 @@ unsafe extern "C" fn internalEntityProcessor(
         if !entity_state.is_parameter && entity_state.start_tag_level != tag_level {
             return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
         }
-        trigger_reenter(&mut *parser);
+        trigger_reenter(parser_state);
         return result;
     }
     if update_active_internal_entity(
-        parser,
+        &mut *parser,
         entity_state.index,
         ActiveInternalEntityUpdate::Close(entity_state.index),
     )
