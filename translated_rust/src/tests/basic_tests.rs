@@ -1788,6 +1788,45 @@ fn set_up_accumulating_character_storage(storage: &mut CharData) {
     parser_set_character_data_handler(accumulating_character_handler());
 }
 
+fn expect_accumulated_xml_chars<F>(
+    text: &[u8],
+    expected: *const XML_Char,
+    line: ::core::ffi::c_int,
+    install_handler: F,
+) where
+    F: FnOnce(),
+{
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    install_handler();
+    parser_set_user_data((&mut storage as *mut CharData).cast());
+    ensure_parser_success(
+        parse_single_bytes_buffer(text, XML_TRUE as ::core::ffi::c_int),
+        line,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
+}
+
+fn expect_processing_instruction_xml_chars(
+    text: &[u8],
+    expected: *const XML_Char,
+    line: ::core::ffi::c_int,
+) {
+    expect_accumulated_xml_chars(text, expected, line, || {
+        parser_set_processing_instruction_handler(Some(accumulate_pi_characters));
+    });
+}
+
+fn expect_comment_xml_chars(text: &[u8], expected: *const XML_Char, line: ::core::ffi::c_int) {
+    expect_accumulated_xml_chars(text, expected, line, || {
+        parser_set_comment_handler(Some(accumulate_comment));
+    });
+}
+
 fn expect_character_data_from_single_bytes(
     text: &[u8],
     expected: *const XML_Char,
@@ -12036,321 +12075,60 @@ extern "C" fn test_comment_handled_in_default() {
     }
 }
 extern "C" fn test_pi_yml() {
-    unsafe {
-        _check_set_test_info(
-            b"test_pi_yml\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4247 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?yml something like data?><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"yml: something like data\n\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetProcessingInstructionHandler(
-            g_parser,
-            Some(
-                accumulate_pi_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4257 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_pi_yml\0", 4247 as ::core::ffi::c_int);
+    expect_processing_instruction_xml_chars(
+        b"<?yml something like data?><doc/>\0",
+        bytes_as_xml_char_ptr(b"yml: something like data\n\0"),
+        4257 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_pi_xnl() {
-    unsafe {
-        _check_set_test_info(
-            b"test_pi_xnl\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4262 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xnl nothing like data?><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"xnl: nothing like data\n\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetProcessingInstructionHandler(
-            g_parser,
-            Some(
-                accumulate_pi_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4272 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_pi_xnl\0", 4262 as ::core::ffi::c_int);
+    expect_processing_instruction_xml_chars(
+        b"<?xnl nothing like data?><doc/>\0",
+        bytes_as_xml_char_ptr(b"xnl: nothing like data\n\0"),
+        4272 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_pi_xmm() {
-    unsafe {
-        _check_set_test_info(
-            b"test_pi_xmm\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4277 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xmm everything like data?><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"xmm: everything like data\n\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetProcessingInstructionHandler(
-            g_parser,
-            Some(
-                accumulate_pi_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4287 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_pi_xmm\0", 4277 as ::core::ffi::c_int);
+    expect_processing_instruction_xml_chars(
+        b"<?xmm everything like data?><doc/>\0",
+        bytes_as_xml_char_ptr(b"xmm: everything like data\n\0"),
+        4287 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_utf16_pi() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf16_pi\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4292 as ::core::ffi::c_int,
-        );
-        let text: [::core::ffi::c_char; 21] =
-            ::core::mem::transmute::<[u8; 21], [::core::ffi::c_char; 21]>(
-                *b"<\0?\0\x04\x0E\x08\x0E?\0>\0<\0q\0/\0>\0\0",
-            );
-        let mut expected: *const XML_Char =
-            b"\xE0\xB8\x84\xE0\xB8\x88: \n\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetProcessingInstructionHandler(
-            g_parser,
-            Some(
-                accumulate_pi_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw const text as *const ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 21]>() as ::core::ffi::c_int
-                - 1 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4313 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_utf16_pi\0", 4292 as ::core::ffi::c_int);
+    expect_processing_instruction_xml_chars(
+        b"<\0?\0\x04\x0E\x08\x0E?\0>\0<\0q\0/\0>\0\0",
+        bytes_as_xml_char_ptr(b"\xE0\xB8\x84\xE0\xB8\x88: \n\0"),
+        4313 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_utf16_be_pi() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf16_be_pi\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4318 as ::core::ffi::c_int,
-        );
-        let text: [::core::ffi::c_char; 21] =
-            ::core::mem::transmute::<[u8; 21], [::core::ffi::c_char; 21]>(
-                *b"\0<\0?\x0E\x04\x0E\x08\0?\0>\0<\0q\0/\0>\0",
-            );
-        let mut expected: *const XML_Char =
-            b"\xE0\xB8\x84\xE0\xB8\x88: \n\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetProcessingInstructionHandler(
-            g_parser,
-            Some(
-                accumulate_pi_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw const text as *const ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 21]>() as ::core::ffi::c_int
-                - 1 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4339 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_utf16_be_pi\0", 4318 as ::core::ffi::c_int);
+    expect_processing_instruction_xml_chars(
+        b"\0<\0?\x0E\x04\x0E\x08\0?\0>\0<\0q\0/\0>\0",
+        bytes_as_xml_char_ptr(b"\xE0\xB8\x84\xE0\xB8\x88: \n\0"),
+        4339 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_utf16_be_comment() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf16_be_comment\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4345 as ::core::ffi::c_int,
-        );
-        let text: [::core::ffi::c_char; 51] =
-            ::core::mem::transmute::<[u8; 51], [::core::ffi::c_char; 51]>(
-                *b"\0<\0!\0-\0-\0 \0C\0o\0m\0m\0e\0n\0t\0 \0A\0 \0-\0-\0>\0\n\0<\0d\0o\0c\0/\0>\0",
-            );
-        let mut expected: *const XML_Char = b" Comment A \0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetCommentHandler(
-            g_parser,
-            Some(
-                accumulate_comment
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw const text as *const ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 51]>() as ::core::ffi::c_int
-                - 1 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4359 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_utf16_be_comment\0", 4345 as ::core::ffi::c_int);
+    expect_comment_xml_chars(
+        b"\0<\0!\0-\0-\0 \0C\0o\0m\0m\0e\0n\0t\0 \0A\0 \0-\0-\0>\0\n\0<\0d\0o\0c\0/\0>\0",
+        bytes_as_xml_char_ptr(b" Comment A \0"),
+        4359 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_utf16_le_comment() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf16_le_comment\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4364 as ::core::ffi::c_int,
-        );
-        let text: [::core::ffi::c_char; 51] =
-            ::core::mem::transmute::<[u8; 51], [::core::ffi::c_char; 51]>(
-                *b"<\0!\0-\0-\0 \0C\0o\0m\0m\0e\0n\0t\0 \0B\0 \0-\0-\0>\0\n\0<\0d\0o\0c\0/\0>\0\0",
-            );
-        let mut expected: *const XML_Char = b" Comment B \0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetCommentHandler(
-            g_parser,
-            Some(
-                accumulate_comment
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw const text as *const ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 51]>() as ::core::ffi::c_int
-                - 1 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4378 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_utf16_le_comment\0", 4364 as ::core::ffi::c_int);
+    expect_comment_xml_chars(
+        b"<\0!\0-\0-\0 \0C\0o\0m\0m\0e\0n\0t\0 \0B\0 \0-\0-\0>\0\n\0<\0d\0o\0c\0/\0>\0\0",
+        bytes_as_xml_char_ptr(b" Comment B \0"),
+        4378 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_missing_encoding_conversion_fn() {
     set_test_info(
