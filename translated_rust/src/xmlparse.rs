@@ -6827,7 +6827,10 @@ impl ParserResetState<'_> {
     }
 }
 
-pub unsafe fn XML_ParserReset(
+/// Reset an already-validated parser using optional, already-bounded encoding
+/// input.  The raw DTD adapter remains confined to this implementation
+/// boundary; callers with a typed parser borrow do not need an unsafe call.
+fn parser_reset_impl(
     parser: &mut XML_ParserStruct,
     encoding_name: Option<&::std::ffi::CStr>,
 ) -> crate::expat_h::XML_Bool {
@@ -6850,7 +6853,10 @@ pub unsafe fn XML_ParserReset(
         }
         if let Some(info) = unknown_encoding_mem.info.take() {
             if let Some(release) = info.release {
-                release(info.data);
+                // The handler registered this paired release callback and
+                // opaque data token when it initialized the encoding.  The
+                // token is passed back exactly once as part of reset.
+                unsafe { release(info.data) };
             }
         }
     }
@@ -6859,10 +6865,13 @@ pub unsafe fn XML_ParserReset(
         protocol_encoding_name.release(1691);
     }
     let parser_handle = std::ptr::from_mut(parser);
-    parser_initialize_from_cstr(parser, encoding_name);
-    dtdReset(parser_dtd_ptr!(parser), parser_handle);
+    unsafe {
+        parser_initialize_from_cstr(parser, encoding_name);
+        dtdReset(parser_dtd_ptr!(parser), parser_handle);
+    }
     return crate::expat_h::XML_TRUE;
 }
+
 #[export_name = "XML_ParserReset"]
 
 pub unsafe extern "C" fn XML_ParserReset_ffi(
@@ -6874,7 +6883,7 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
     };
     let encoding_name = (!encodingName.is_null())
         .then(|| ::std::ffi::CStr::from_ptr(encodingName));
-    XML_ParserReset(parser, encoding_name)
+    parser_reset_impl(parser, encoding_name)
 }
 unsafe extern "C" fn parserBusy(
     mut parser: crate::expat_h::XML_Parser,
