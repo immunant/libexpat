@@ -1836,6 +1836,16 @@ impl XML_ParserStruct {
         }
     }
 
+    fn run_processor(
+        &mut self,
+        processor: Processor,
+        end: *const ::core::ffi::c_char,
+    ) -> crate::expat_h::XML_Error {
+        let parser: crate::expat_h::XML_Parser = self;
+        let start = self.m_bufferPtr;
+        unsafe { processor(parser, start, end, &raw mut self.m_bufferPtr) }
+    }
+
     fn root_parser_with_level(&mut self) -> (crate::expat_h::XML_Parser, ::core::ffi::c_uint) {
         let mut rootParser: crate::expat_h::XML_Parser = self;
         let mut stepsTakenUpwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
@@ -2594,27 +2604,26 @@ fn get_hash_secret_salt(parser: &XML_ParserStruct) -> ::core::ffi::c_ulong {
     return parser.m_hash_secret_salt;
 }
 
-unsafe extern "C" fn callProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let have_now: crate::__stddef_size_t_h::size_t = (if !end.is_null() && !start.is_null() {
-        end.offset_from(start) as ::core::ffi::c_long
+fn raw_span_len<T>(start: *const T, end: *const T) -> usize {
+    if start.is_null() || end.is_null() {
+        0
     } else {
-        0 as ::core::ffi::c_long
-    }) as crate::__stddef_size_t_h::size_t;
-    if (*parser).m_reparseDeferralEnabled as ::core::ffi::c_int != 0
-        && (*parser).m_parsingStatus.finalBuffer == 0
+        (end as usize).wrapping_sub(start as usize) / ::core::mem::size_of::<T>()
+    }
+}
+
+fn callProcessor(
+    parser: &mut XML_ParserStruct,
+    start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> crate::expat_h::XML_Error {
+    let have_now: crate::__stddef_size_t_h::size_t = raw_span_len(start, end);
+    if parser.m_reparseDeferralEnabled as ::core::ffi::c_int != 0
+        && parser.m_parsingStatus.finalBuffer == 0
     {
-        let had_before: crate::__stddef_size_t_h::size_t = (*parser).m_partialTokenBytesBefore;
+        let had_before: crate::__stddef_size_t_h::size_t = parser.m_partialTokenBytesBefore;
         let mut available_buffer: crate::__stddef_size_t_h::size_t =
-            (if !(*parser).m_bufferPtr.is_null() && !(*parser).m_buffer.is_null() {
-                (*parser).m_bufferPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-            } else {
-                0 as ::core::ffi::c_long
-            }) as crate::__stddef_size_t_h::size_t;
+            raw_span_len(parser.m_buffer, parser.m_bufferPtr);
         available_buffer = available_buffer.wrapping_sub(
             if available_buffer < 1024 as crate::__stddef_size_t_h::size_t {
                 available_buffer
@@ -2622,39 +2631,34 @@ unsafe extern "C" fn callProcessor(
                 1024 as crate::__stddef_size_t_h::size_t
             },
         );
-        available_buffer = available_buffer.wrapping_add(
-            (if !(*parser).m_bufferLim.is_null() && !(*parser).m_bufferEnd.is_null() {
-                (*parser).m_bufferLim.offset_from((*parser).m_bufferEnd) as ::core::ffi::c_long
-            } else {
-                0 as ::core::ffi::c_long
-            }) as crate::__stddef_size_t_h::size_t,
-        );
+        available_buffer =
+            available_buffer.wrapping_add(raw_span_len(parser.m_bufferEnd, parser.m_bufferLim));
         let enough: bool = have_now
             >= (2 as crate::__stddef_size_t_h::size_t).wrapping_mul(had_before)
-            || (*parser).m_lastBufferRequestSize as crate::__stddef_size_t_h::size_t
+            || parser.m_lastBufferRequestSize as crate::__stddef_size_t_h::size_t
                 > available_buffer;
         if !enough {
-            *endPtr = start;
+            parser.m_bufferPtr = start;
             return crate::expat_h::XML_ERROR_NONE;
         }
     }
     g_bytesScanned.fetch_add(have_now as ::core::ffi::c_uint, Ordering::Relaxed);
     let mut ret: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-    *endPtr = start;
+    parser.m_bufferPtr = start;
     loop {
-        let Some(processor) = (*parser).m_processor else {
-            return (*parser).m_errorCode;
+        let Some(processor) = parser.m_processor else {
+            return parser.m_errorCode;
         };
-        ret = processor(parser, *endPtr, end, endPtr);
-        if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+        ret = parser.run_processor(processor, end);
+        if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
             != crate::expat_h::XML_PARSING as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            (*parser).m_reenter = crate::expat_h::XML_FALSE;
+            parser.m_reenter = crate::expat_h::XML_FALSE;
         }
-        if (*parser).m_reenter == 0 {
+        if parser.m_reenter == 0 {
             break;
         }
-        (*parser).m_reenter = crate::expat_h::XML_FALSE;
+        parser.m_reenter = crate::expat_h::XML_FALSE;
         if ret as ::core::ffi::c_uint
             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
         {
@@ -2664,10 +2668,10 @@ unsafe extern "C" fn callProcessor(
     if ret as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        if *endPtr == start {
-            (*parser).m_partialTokenBytesBefore = have_now;
+        if parser.m_bufferPtr == start {
+            parser.m_partialTokenBytesBefore = have_now;
         } else {
-            (*parser).m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
+            parser.m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
         }
     }
     return ret;
@@ -4399,12 +4403,8 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
     (*parser).m_parseEndPtr = (*parser).m_bufferEnd;
     (*parser).m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
     (*parser).m_parsingStatus.finalBuffer = isFinal as crate::expat_h::XML_Bool;
-    (*parser).m_errorCode = callProcessor(
-        parser,
-        start,
-        (*parser).m_parseEndPtr,
-        &raw mut (*parser).m_bufferPtr,
-    );
+    let parse_end = (*parser).m_parseEndPtr;
+    (*parser).m_errorCode = callProcessor(&mut *parser, start, parse_end);
     if (*parser).m_errorCode as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -4672,12 +4672,9 @@ pub unsafe extern "C" fn XML_ResumeParser_ffi(
         return crate::expat_h::XML_STATUS_ERROR;
     }
     (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    (*parser).m_errorCode = callProcessor(
-        parser,
-        (*parser).m_bufferPtr,
-        (*parser).m_parseEndPtr,
-        &raw mut (*parser).m_bufferPtr,
-    );
+    let start = (*parser).m_bufferPtr;
+    let parse_end = (*parser).m_parseEndPtr;
+    (*parser).m_errorCode = callProcessor(&mut *parser, start, parse_end);
     if (*parser).m_errorCode as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
