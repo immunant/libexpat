@@ -9579,10 +9579,14 @@ unsafe extern "C" fn doCdataSection(
                     .cloned();
                 if let Some(charDataHandler) = charDataHandler {
                     if (*enc).isUtf8 == 0 {
-                        let (data_start, data_end) = {
+                        let (data_start, data_end, data_capacity) = {
                             let parser_ref = &mut *parser;
                             let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
-                            (data_start, data_start.wrapping_add(parser_ref.m_dataBufEnd))
+                            (
+                                data_start,
+                                data_start.wrapping_add(parser_ref.m_dataBufEnd),
+                                parser_ref.m_dataBufEnd,
+                            )
                         };
                         loop {
                             let mut dataPtr: *mut ICHAR = data_start;
@@ -9595,10 +9599,21 @@ unsafe extern "C" fn doCdataSection(
                                     data_end,
                                 );
                             set_event_end!(parser, parser_events, eventEndPP, next);
+                            // The converter is bounded by `data_end`, which is derived from
+                            // the Rust-owned scratch buffer.  Validate the returned cursor
+                            // before turning its address delta into the callback length.
+                            let data_len = match dataPtr
+                                .addr()
+                                .checked_sub(data_start.addr())
+                                .filter(|&len| len <= data_capacity)
+                            {
+                                Some(len) => len as ::core::ffi::c_int,
+                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            };
                             charDataHandler.invoke(
                                 (*parser).m_handlerArg,
                                 data_start,
-                                dataPtr.offset_from(data_start) as ::core::ffi::c_int,
+                                data_len,
                             );
                             if convert_res as ::core::ffi::c_uint
                                 == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
@@ -9613,12 +9628,14 @@ unsafe extern "C" fn doCdataSection(
                             update_event_start(s);
                         }
                     } else {
+                        let data_len = match next.addr().checked_sub(s.addr()) {
+                            Some(len) => len as ::core::ffi::c_int,
+                            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                        };
                         charDataHandler.invoke(
                             (*parser).m_handlerArg,
                             s as *const crate::expat_external_h::XML_Char,
-                            (next as *const crate::expat_external_h::XML_Char)
-                                .offset_from(s as *const crate::expat_external_h::XML_Char)
-                                as ::core::ffi::c_int,
+                            data_len,
                         );
                     }
                 } else if (*parser).m_defaultHandler {
