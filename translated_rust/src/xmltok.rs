@@ -6074,14 +6074,14 @@ pub mod xmltok_impl_c {
 
     fn little2_scan_pound_name_impl(
         enc: &normal_encoding,
-        input: &[u8],
+        input: &[::core::ffi::c_char],
     ) -> (::core::ffi::c_int, Option<usize>) {
         if input.len() < 2 {
             return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
         }
 
-        let mut offset = match little2_type(enc, input, 0) {
-            29 if !little2_bitmap_contains(&nmstrtPages, input[0], input[1]) => {
+        let mut offset = match little2_byte_type(&enc.type_0, input, 0) {
+            29 if !little2_in_name_bitmap(input, 0, &nmstrtPages) => {
                 return (crate::src::xmltok::XML_TOK_INVALID_1, Some(0))
             }
             29 | 22 | 24 => 2,
@@ -6096,8 +6096,8 @@ pub mod xmltok_impl_c {
         };
 
         while input.len() - offset >= 2 {
-            match little2_type(enc, input, offset) {
-                29 if !little2_bitmap_contains(&namePages, input[offset], input[offset + 1]) => {
+            match little2_byte_type(&enc.type_0, input, offset) {
+                29 if !little2_in_name_bitmap(input, offset, &namePages) => {
                     return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset))
                 }
                 29 | 22 | 24 | 25 | 26 | 27 => offset += 2,
@@ -6128,7 +6128,7 @@ pub mod xmltok_impl_c {
         if input_len < 2 {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
         let normal = &*(enc as *const normal_encoding);
         let (token, next) = little2_scan_pound_name_impl(normal, input);
         if let Some(offset) = next {
@@ -6143,11 +6143,11 @@ pub mod xmltok_impl_c {
     fn little2_scan_lit_impl(
         open: ::core::ffi::c_int,
         enc: &normal_encoding,
-        input: &[u8],
+        input: &[::core::ffi::c_char],
     ) -> Little2ScanOutcome {
         let mut offset = 0;
         while input.len() - offset >= 2 {
-            let t = little2_type(enc, input, offset);
+            let t = little2_byte_type(&enc.type_0, input, offset);
             match t {
                 5 => {
                     if input.len() - offset < 2 {
@@ -6182,7 +6182,7 @@ pub mod xmltok_impl_c {
                                 -crate::src::xmltok::XML_TOK_LITERAL_1,
                             );
                         }
-                        return match little2_type(enc, input, offset) {
+                        return match little2_byte_type(&enc.type_0, input, offset) {
                             21 | 9 | 10 | 11 | 30 | 20 => Little2ScanOutcome::Token(
                                 crate::src::xmltok::XML_TOK_LITERAL_1,
                                 offset,
@@ -6208,7 +6208,7 @@ pub mod xmltok_impl_c {
         if input_len < 2 {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
         let encoding = &*(enc as *const normal_encoding);
         match little2_scan_lit_impl(open, encoding, input) {
             Little2ScanOutcome::Token(token, next) => {
@@ -6261,12 +6261,15 @@ pub mod xmltok_impl_c {
         namingBitmap[bit] & (1 << (lo & 0x1f)) != 0
     }
 
-    fn little2_prolog_tok_impl(enc: &normal_encoding, input: &[u8]) -> Little2PrologAction {
+    fn little2_prolog_tok_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> Little2PrologAction {
         let len = input.len();
         let result = |token, next| Little2PrologAction::Return { token, next };
         let mut ptr = 0usize;
         let mut tok: ::core::ffi::c_int;
-        let first = little2_type(enc, input, ptr);
+        let first = little2_byte_type(&enc.type_0, input, ptr);
         match first {
             12 => {
                 return Little2PrologAction::ScanLit {
@@ -6285,7 +6288,7 @@ pub mod xmltok_impl_c {
                 if len - ptr < 2 {
                     return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                 }
-                return match little2_type(enc, input, ptr) {
+                return match little2_byte_type(&enc.type_0, input, ptr) {
                     16 => Little2PrologAction::ScanDecl { start: ptr + 2 },
                     15 => Little2PrologAction::ScanPi { start: ptr + 2 },
                     22 | 24 | 29 | 5 | 6 | 7 => {
@@ -6303,7 +6306,7 @@ pub mod xmltok_impl_c {
                     if len - ptr < 2 {
                         break;
                     }
-                    match little2_type(enc, input, ptr) {
+                    match little2_byte_type(&enc.type_0, input, ptr) {
                         21 | 10 => continue,
                         9 if ptr + 2 != len => continue,
                         _ => return result(crate::src::xmltok::XML_TOK_PROLOG_S_1, Some(ptr)),
@@ -6319,11 +6322,11 @@ pub mod xmltok_impl_c {
                 if len - ptr < 2 {
                     return result(-crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1, None);
                 }
-                if input[ptr + 1] == 0 && input[ptr] == b']' {
+                if input[ptr + 1] == 0 && input[ptr] == b']' as ::core::ffi::c_char {
                     if len - ptr < 4 {
                         return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                     }
-                    if input[ptr + 3] == 0 && input[ptr + 2] == b'>' {
+                    if input[ptr + 3] == 0 && input[ptr + 2] == b'>' as ::core::ffi::c_char {
                         return result(
                             crate::src::xmltok::XML_TOK_COND_SECT_CLOSE_1,
                             Some(ptr + 4),
@@ -6338,7 +6341,7 @@ pub mod xmltok_impl_c {
                 if len - ptr < 2 {
                     return result(-crate::src::xmltok::XML_TOK_CLOSE_PAREN_1, None);
                 }
-                return match little2_type(enc, input, ptr) {
+                return match little2_byte_type(&enc.type_0, input, ptr) {
                     33 => result(
                         crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK_1,
                         Some(ptr + 2),
@@ -6399,10 +6402,10 @@ pub mod xmltok_impl_c {
                 ptr = 2;
             }
             29 => {
-                if little2_bitmap_contains(&nmstrtPages, input[0], input[1]) {
+                if little2_in_name_bitmap(input, 0, &nmstrtPages) {
                     tok = crate::src::xmltok::XML_TOK_NAME;
                     ptr = 2;
-                } else if little2_bitmap_contains(&namePages, input[0], input[1]) {
+                } else if little2_in_name_bitmap(input, 0, &namePages) {
                     tok = crate::src::xmltok::XML_TOK_NMTOKEN_1;
                     ptr = 2;
                 } else {
@@ -6413,8 +6416,8 @@ pub mod xmltok_impl_c {
         }
 
         while len - ptr >= 2 {
-            match little2_type(enc, input, ptr) {
-                29 if !little2_bitmap_contains(&namePages, input[ptr], input[ptr + 1]) => {
+            match little2_byte_type(&enc.type_0, input, ptr) {
+                29 if !little2_in_name_bitmap(input, ptr, &namePages) => {
                     return result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr));
                 }
                 29 | 22 | 24 | 25 | 26 | 27 => {}
@@ -6457,13 +6460,8 @@ pub mod xmltok_impl_c {
                                 return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                             }
                             tok = crate::src::xmltok::XML_TOK_PREFIXED_NAME;
-                            match little2_type(enc, input, ptr) {
-                                29 if !little2_bitmap_contains(
-                                    &namePages,
-                                    input[ptr],
-                                    input[ptr + 1],
-                                ) =>
-                                {
+                            match little2_byte_type(&enc.type_0, input, ptr) {
+                                29 if !little2_in_name_bitmap(input, ptr, &namePages) => {
                                     return result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr))
                                 }
                                 29 | 22 | 24 | 25 | 26 | 27 => ptr += 2,
@@ -6555,6 +6553,58 @@ pub mod xmltok_impl_c {
         result(-tok, None)
     }
 
+    fn little2_scan_outcome_token(
+        outcome: Little2ScanOutcome,
+        base: usize,
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        match outcome {
+            Little2ScanOutcome::Token(token, next) => (token, Some(base + next)),
+            Little2ScanOutcome::Partial(token) => (token, None),
+            Little2ScanOutcome::Invalid(at) => {
+                (crate::src::xmltok::XML_TOK_INVALID_1, Some(base + at))
+            }
+        }
+    }
+
+    /// Scans a UTF-16LE prolog token from bounded input.  The ABI wrapper
+    /// below is solely responsible for translating its offset back to a C
+    /// cursor.
+    fn little2_prolog_tok(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        let input = &input[..input.len() & !1];
+        match little2_prolog_tok_impl(enc, input) {
+            Little2PrologAction::Return { token, next } => (token, next),
+            Little2PrologAction::ScanLit { open, start } => {
+                little2_scan_outcome_token(little2_scan_lit_impl(open, enc, &input[start..]), start)
+            }
+            Little2PrologAction::ScanDecl { start } => {
+                match little2_scan_decl_impl(&enc.type_0, &input[start..]) {
+                    Little2ScanDeclAction::ScanComment => little2_scan_outcome_token(
+                        little2_scan_comment_impl(enc, &input[start + 2..]),
+                        start + 2,
+                    ),
+                    Little2ScanDeclAction::Return { token, next } => {
+                        (token, next.map(|next| start + next))
+                    }
+                }
+            }
+            Little2PrologAction::ScanPi { start } => {
+                let (token, next) = little2_scan_pi_impl(enc, &input[start..]);
+                (token, next.map(|next| start + next))
+            }
+            Little2PrologAction::ScanPercent { start } => {
+                let (token, next) = little2_scan_percent_impl(enc, &input[start..]);
+                (token, next.map(|next| start + next))
+            }
+            Little2PrologAction::ScanPoundName { start } => {
+                let (token, next) = little2_scan_pound_name_impl(enc, &input[start..]);
+                (token, next.map(|next| start + next))
+            }
+        }
+    }
+
     pub unsafe extern "C" fn little2_prologTok(
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,
@@ -6569,34 +6619,13 @@ pub mod xmltok_impl_c {
         if len == 0 {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), len) };
+        let input = unsafe { ::core::slice::from_raw_parts(ptr, len) };
         let normal = unsafe { &*(enc as *const normal_encoding) };
-        let action = little2_prolog_tok_impl(normal, input);
-        unsafe {
-            match action {
-                Little2PrologAction::Return { token, next } => {
-                    if let Some(offset) = next {
-                        *nextTokPtr = ptr.add(offset);
-                    }
-                    token
-                }
-                Little2PrologAction::ScanLit { open, start } => {
-                    little2_scanLit(open, enc, ptr.add(start), ptr.add(len), nextTokPtr)
-                }
-                Little2PrologAction::ScanDecl { start } => {
-                    little2_scanDecl(enc, ptr.add(start), ptr.add(len), nextTokPtr)
-                }
-                Little2PrologAction::ScanPi { start } => {
-                    little2_scanPi(enc, ptr.add(start), ptr.add(len), nextTokPtr)
-                }
-                Little2PrologAction::ScanPercent { start } => {
-                    little2_scanPercent(enc, ptr.add(start), ptr.add(len), nextTokPtr)
-                }
-                Little2PrologAction::ScanPoundName { start } => {
-                    little2_scanPoundName(enc, ptr.add(start), ptr.add(len), nextTokPtr)
-                }
-            }
+        let (token, next) = little2_prolog_tok(normal, input);
+        if let Some(offset) = next {
+            unsafe { *nextTokPtr = ptr.add(offset) };
         }
+        token
     }
 
     struct Little2AttributeValueToken {
