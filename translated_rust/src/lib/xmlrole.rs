@@ -20,7 +20,7 @@ pub struct encoding {
     pub scanners: [SCANNER; 4],
     pub literalScanners: [SCANNER; 2],
     pub nameMatchesAscii: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -1678,12 +1678,10 @@ fn matches_ascii(
     end: *const ::core::ffi::c_char,
     keyword: *const ::core::ffi::c_char,
 ) -> bool {
-    unsafe {
-        encoding_ref(enc)
-            .nameMatchesAscii
-            .expect("non-null function pointer")(enc, ptr, end, keyword)
-            != 0
-    }
+    encoding_ref(enc)
+        .nameMatchesAscii
+        .expect("non-null function pointer")(enc, ptr, end, keyword)
+        != 0
 }
 
 fn decl_matches_ascii(

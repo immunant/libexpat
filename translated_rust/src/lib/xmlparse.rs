@@ -584,7 +584,7 @@ pub struct encoding {
     pub scanners: [SCANNER; 4],
     pub literalScanners: [SCANNER; 2],
     pub nameMatchesAscii: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,

@@ -29,7 +29,7 @@ pub struct encoding {
     pub scanners: [SCANNER; 4],
     pub literalScanners: [SCANNER; 2],
     pub nameMatchesAscii: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -4681,7 +4681,7 @@ unsafe extern "C" fn normal_predefinedEntityName(
         return 0 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn normal_nameMatchesAscii(
+extern "C" fn normal_nameMatchesAscii(
     mut enc: *const ENCODING,
     mut ptr1: *const ::core::ffi::c_char,
     mut end1: *const ::core::ffi::c_char,
@@ -9203,7 +9203,7 @@ unsafe extern "C" fn little2_predefinedEntityName(
         return 0 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn little2_nameMatchesAscii(
+extern "C" fn little2_nameMatchesAscii(
     mut enc: *const ENCODING,
     mut ptr1: *const ::core::ffi::c_char,
     mut end1: *const ::core::ffi::c_char,
@@ -13825,7 +13825,7 @@ unsafe extern "C" fn big2_predefinedEntityName(
         return 0 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn big2_nameMatchesAscii(
+extern "C" fn big2_nameMatchesAscii(
     mut enc: *const ENCODING,
     mut ptr1: *const ::core::ffi::c_char,
     mut end1: *const ::core::ffi::c_char,
@@ -14259,7 +14259,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -14732,7 +14732,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15207,7 +15207,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15739,7 +15739,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16276,7 +16276,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16695,7 +16695,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17136,7 +17136,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17555,7 +17555,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 normal_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18357,7 +18357,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18776,7 +18776,7 @@ static mut little2_encoding: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -19195,7 +19195,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -19614,7 +19614,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 little2_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -20033,7 +20033,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 big2_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -20452,7 +20452,7 @@ static mut big2_encoding: normal_encoding = unsafe {
             ],
             nameMatchesAscii: Some(
                 big2_nameMatchesAscii
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
