@@ -3957,7 +3957,7 @@ pub unsafe extern "C" fn XML_ParseBuffer(
         (*parser).m_encoding,
         (*parser).m_positionPtr,
         (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
+        &mut (*parser).m_position,
     );
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
@@ -4251,7 +4251,7 @@ pub unsafe extern "C" fn XML_ResumeParser(
         (*parser).m_encoding,
         (*parser).m_positionPtr,
         (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
+        &mut (*parser).m_position,
     );
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
@@ -4398,7 +4398,7 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber_ffi(
             (*parser).m_encoding,
             (*parser).m_positionPtr,
             (*parser).m_eventPtr,
-            &raw mut (*parser).m_position,
+            &mut (*parser).m_position,
         );
         (*parser).m_positionPtr = (*parser).m_eventPtr;
     }
@@ -4422,7 +4422,7 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber_ffi(
             (*parser).m_encoding,
             (*parser).m_positionPtr,
             (*parser).m_eventPtr,
-            &raw mut (*parser).m_position,
+            &mut (*parser).m_position,
         );
         (*parser).m_positionPtr = (*parser).m_eventPtr;
     }
