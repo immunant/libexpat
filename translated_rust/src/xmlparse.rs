@@ -5601,9 +5601,12 @@ pub unsafe extern "C" fn XML_ParserReset(
         }
         let mut active_tags = std::mem::take(&mut parser_state.m_activeTags);
         for mut tag_storage in active_tags.drain(..).rev() {
-            let tag = tag_storage.tag.as_mut_ptr();
-            moveToFreeBindingList(parser_state, (*tag).bindings);
-            (*tag).bindings = None;
+            let tag = tag_storage
+                .tag
+                .first_mut()
+                .expect("tag storage always contains its tag");
+            moveToFreeBindingList(parser_state, tag.bindings);
+            tag.bindings = None;
             parser_state.m_freeTagList.tags.push(tag_storage);
         }
         parser_state.m_openInternalEntities = None;
@@ -5654,8 +5657,13 @@ pub unsafe extern "C" fn XML_ParserReset(
             }
         }
     }
-    poolClear(&raw mut (*parser).m_tempPool);
-    poolClear(&raw mut (*parser).m_temp2Pool);
+    {
+        // The callback/release phase above has completed, so the parser can
+        // again be borrowed exclusively to clear its owned temporary pools.
+        let parser_state = &mut *parser;
+        parser_state.m_tempPool.clear();
+        parser_state.m_temp2Pool.clear();
+    }
     if let Some(protocol_encoding_name) = protocol_encoding_name {
         protocol_encoding_name.release(1691);
     }
