@@ -1352,6 +1352,14 @@ where
     }
 }
 
+/// Character data held in Rust-owned or borrowed slice storage for one
+/// callback.  The adapter validates its C length conversion before exposing
+/// the transient C ABI view.
+struct CharacterDataCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    data: &'a [crate::expat_external_h::XML_Char],
+}
+
 trait CharacterDataCallback: Send + Sync + std::any::Any {}
 
 impl CharacterDataCallback
@@ -1363,18 +1371,10 @@ impl CharacterDataCallback
 {
 }
 
-/// Character data held in Rust-owned or borrowed slice storage for one
-/// callback.  The adapter validates its C length conversion before exposing
-/// the transient C ABI view.
-struct CharacterDataCallbackEvent<'a> {
-    parser: &'a XML_ParserStruct,
-    data: &'a [crate::expat_external_h::XML_Char],
-}
-
 /// Owns the erased C callback representation while exposing a safe, typed
 /// character-data event to parser dispatch.
 struct CharacterDataCallbackAdapter {
-    callback: std::sync::Arc<dyn CharacterDataCallback>,
+    callback: std::sync::Arc<dyn Fn(CharacterDataCallbackEvent<'_>) + Send + Sync>,
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
@@ -1912,20 +1912,23 @@ impl CommentCallbackAdapter {
 }
 
 impl CharacterDataCallbackAdapter {
-    fn new<Callback>(callback: Callback) -> Self
-    where
-        Callback: CharacterDataCallback + 'static,
-    {
-        Self {
-            callback: std::sync::Arc::new(callback),
-        }
-    }
-
     fn invoke(&self, event: CharacterDataCallbackEvent<'_>) {
+        (self.callback)(event);
+    }
+}
+
+/// Captures a C character-data handler behind a typed event adapter.
+///
+/// Registration is the callback ABI boundary.  Later parser dispatch only
+/// supplies a live parser borrow and a bounded XML-character slice.
+fn character_data_callback_adapter(
+    callback: std::sync::Arc<dyn CharacterDataCallback>,
+) -> std::sync::Arc<CharacterDataCallbackAdapter> {
+    let callback = std::sync::Arc::new(move |event: CharacterDataCallbackEvent<'_>| {
         let Ok(len) = ::core::ffi::c_int::try_from(event.data.len()) else {
             return;
         };
-        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
             unsafe extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
@@ -1934,10 +1937,13 @@ impl CharacterDataCallbackAdapter {
         >() else {
             return;
         };
+        // The typed event provides a live parser context and a bounded,
+        // parser-owned character slice for this synchronous C callback.
         unsafe {
             callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
         }
-    }
+    });
+    std::sync::Arc::new(CharacterDataCallbackAdapter { callback })
 }
 
 impl DefaultCallbackAdapter {
@@ -9781,7 +9787,9 @@ where
     Callback: CharacterDataCallback + 'static,
 {
     CharacterDataHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(CharacterDataCallbackAdapter::new(callback))),
+        callback: handler.map(|callback| {
+            character_data_callback_adapter(std::sync::Arc::new(callback))
+        }),
     }
 }
 
@@ -9816,7 +9824,7 @@ pub unsafe extern "C" fn XML_SetCharacterDataHandler_ffi(
     }
     let parser_address = parser.addr();
     let registration = character_data_handler_registration(handler);
-    let parser = &mut *parser;
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     XML_SetCharacterDataHandler(
         &mut parser.m_characterDataHandler,
         parser_address,
