@@ -2868,7 +2868,7 @@ struct AttlistDeclCallbackAdapter {
 impl AttlistDeclCallbackAdapter {
     fn invoke(&self, event: AttlistDeclCallbackEvent<'_>) {
         let Some(callback) = self.callback.downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *const crate::expat_external_h::XML_Char,
@@ -2879,21 +2879,19 @@ impl AttlistDeclCallbackAdapter {
         >() else {
             return;
         };
-        // The event's XML-character slices are parser-owned and
-        // NUL-terminated, so they satisfy the C handler's pointer and
-        // lifetime contract for this synchronous call.
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event.element_name.as_ptr(),
-                event.attribute_name.as_ptr(),
-                event.attribute_type.as_ptr(),
-                event
-                    .default_value
-                    .map_or(::core::ptr::null(), |value| value.as_ptr()),
-                event.is_required,
-            );
-        }
+        // The registration boundary admits this exact C callback shape, and
+        // the event supplies parser-owned, NUL-terminated XML-character
+        // views for the complete synchronous call.
+        callback(
+            handler_arg_from_state!(event.parser),
+            event.element_name.as_ptr(),
+            event.attribute_name.as_ptr(),
+            event.attribute_type.as_ptr(),
+            event
+                .default_value
+                .map_or(::core::ptr::null(), |value| value.as_ptr()),
+            event.is_required,
+        );
     }
 }
 
