@@ -2892,7 +2892,7 @@ fn dispatch_notation_decl_callback(
 trait ElementDeclCallback: Send + Sync + std::any::Any {}
 
 impl ElementDeclCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *mut crate::expat_h::XML_Content,
@@ -2922,7 +2922,7 @@ fn element_decl_callback_adapter(
 ) -> std::sync::Arc<dyn for<'a> Fn(ElementDeclCallbackEvent<'a>) -> bool + Send + Sync> {
     std::sync::Arc::new(move |event: ElementDeclCallbackEvent<'_>| {
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *mut crate::expat_h::XML_Content,
@@ -2943,9 +2943,7 @@ fn element_decl_callback_adapter(
         // The registry owns the model before its stable vector address is
         // exposed, and the event's name is parser-owned and NUL-terminated.
         // The handler may synchronously free the model, as the C API permits.
-        unsafe {
-            callback(handler_arg_from_state!(event.parser), event.name.as_ptr(), model);
-        }
+        callback(handler_arg_from_state!(event.parser), event.name.as_ptr(), model);
         true
     })
 }
@@ -10928,6 +10926,17 @@ pub unsafe extern "C" fn XML_SetElementDeclHandler_ffi(
         return;
     }
     let parser_key = parser.addr();
+    // The exported ABI retains its unsafe callback type.  Registration
+    // validates the callback's only call-time preconditions: the parser-owned
+    // terminated name and the registry-owned content model are live for the
+    // synchronous invocation.
+    let eldecl: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *mut crate::expat_h::XML_Content,
+        ),
+    > = unsafe { std::mem::transmute(eldecl) };
     let handler = element_decl_handler_registration(eldecl);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_element_decl_handler(parser, parser_key, handler);
