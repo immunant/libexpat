@@ -9012,7 +9012,12 @@ unsafe extern "C" fn processXmlDecl(
         accountingOnAbort(parser);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
-    if if (*parser).m_ns as ::core::ffi::c_int != 0 {
+    let parsed = {
+        // Parsing a declaration updates only the parser's event cursor.  Keep
+        // this borrow confined to the tokenizer call: user callbacks below
+        // may re-enter the parser and must not overlap a Rust state borrow.
+        let parser_state = &mut *parser;
+        if parser_state.m_ns as ::core::ffi::c_int != 0 {
         Some(
             crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS
                 as unsafe extern "C" fn(
@@ -9045,19 +9050,20 @@ unsafe extern "C" fn processXmlDecl(
                 ) -> ::core::ffi::c_int,
         )
     }
-    .expect("non-null function pointer")(
+        .expect("non-null function pointer")(
         isGeneralTextEntity,
         encoding,
         s,
         next,
-        &raw mut (*parser).m_eventPtr,
+        &raw mut parser_state.m_eventPtr,
         &raw mut version,
         &raw mut versionend,
         &raw mut encodingName,
         &raw mut newEncoding,
         &raw mut standalone,
-    ) == 0
-    {
+        ) != 0
+    };
+    if !parsed {
         if isGeneralTextEntity != 0 {
             return crate::expat_h::XML_ERROR_TEXT_DECL;
         } else {
@@ -9065,73 +9071,99 @@ unsafe extern "C" fn processXmlDecl(
         }
     }
     if isGeneralTextEntity == 0 && standalone == 1 as ::core::ffi::c_int {
-        (*(*parser).m_dtd).standalone = crate::expat_h::XML_TRUE;
-        if (*parser).m_paramEntityParsing as ::core::ffi::c_uint
+        let parser_state = &mut *parser;
+        (*parser_state.m_dtd).standalone = crate::expat_h::XML_TRUE;
+        if parser_state.m_paramEntityParsing as ::core::ffi::c_uint
             == crate::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE as ::core::ffi::c_int
                 as ::core::ffi::c_uint
         {
-            (*parser).m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+            parser_state.m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
         }
     }
-    if (*parser).m_xmlDeclHandler {
-        if !encodingName.is_null() {
-            storedEncName = poolStoreString(
-                &raw mut (*parser).m_temp2Pool,
-                encoding,
-                encodingName,
-                encodingName
-                    .offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
-            );
-            if storedEncName.is_null() {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
+    let (xml_decl_handler, handler_arg, callback, default_handler) = {
+        // Store callback arguments while holding the parser, then release the
+        // borrow before invoking user code.  The pool owns these strings until
+        // the declaration-processing tail clears it below.
+        let parser_state = &mut *parser;
+        let xml_decl_handler = parser_state.m_xmlDeclHandler;
+        if xml_decl_handler {
+            if !encodingName.is_null() {
+                storedEncName = poolStoreString(
+                    &raw mut parser_state.m_temp2Pool,
+                    encoding,
+                    encodingName,
+                    encodingName.offset(
+                        crate::src::xmltok::name_length(encoding, encodingName) as isize,
+                    ),
+                );
+                if storedEncName.is_null() {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
+                parser_state.m_temp2Pool.start = parser_state.m_temp2Pool.ptr;
             }
-            (*parser).m_temp2Pool.start = (*parser).m_temp2Pool.ptr;
-        }
-        if !version.is_null() {
-            storedversion = poolStoreString(
-                &raw mut (*parser).m_temp2Pool,
-                encoding,
-                version,
-                versionend.offset(-((*encoding).minBytesPerChar as isize)),
-            );
-            if storedversion.is_null() {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            if !version.is_null() {
+                storedversion = poolStoreString(
+                    &raw mut parser_state.m_temp2Pool,
+                    encoding,
+                    version,
+                    versionend.offset(-((*encoding).minBytesPerChar as isize)),
+                );
+                if storedversion.is_null() {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
             }
         }
-        let callback = XML_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .get(&(parser as usize))
-            .cloned();
+        let callback = if xml_decl_handler {
+            XML_DECL_HANDLERS
+                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .get(&(parser as usize))
+                .cloned()
+        } else {
+            None
+        };
+        (
+            xml_decl_handler,
+            parser_state.m_handlerArg,
+            callback,
+            parser_state.m_defaultHandler,
+        )
+    };
+    if xml_decl_handler {
         if let Some(callback) = callback {
             callback.invoke(
-                (*parser).m_handlerArg,
+                handler_arg,
                 storedversion,
                 storedEncName,
                 standalone,
             );
         }
-    } else if (*parser).m_defaultHandler {
+    } else if default_handler {
         reportDefault(parser, encoding, s, next);
     }
-    if (*parser).m_protocolEncodingName.is_null() {
+    let has_no_protocol_encoding = {
+        let parser_state = &mut *parser;
+        parser_state.m_protocolEncodingName.is_null()
+    };
+    if has_no_protocol_encoding {
         if !newEncoding.is_null() {
             if (*newEncoding).minBytesPerChar != (*encoding).minBytesPerChar
                 || (*newEncoding).minBytesPerChar == 2 as ::core::ffi::c_int
                     && newEncoding != encoding
             {
-                (*parser).m_eventPtr = encodingName;
+                let parser_state = &mut *parser;
+                parser_state.m_eventPtr = encodingName;
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
             if !select_known_encoding(parser, newEncoding) {
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
         } else if !encodingName.is_null() {
-            let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             if storedEncName.is_null() {
+                let parser_state = &mut *parser;
                 storedEncName = poolStoreString(
-                    &raw mut (*parser).m_temp2Pool,
+                    &raw mut parser_state.m_temp2Pool,
                     encoding,
                     encodingName,
                     encodingName
@@ -9141,19 +9173,23 @@ unsafe extern "C" fn processXmlDecl(
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
             }
-            result = handleUnknownEncoding(parser, storedEncName);
-            poolClear(&raw mut (*parser).m_temp2Pool);
+            // The unknown-encoding hook is user code, so the pool borrow used
+            // to stage its name must end before the hook can re-enter.
+            let result = handleUnknownEncoding(parser, storedEncName);
+            let parser_state = &mut *parser;
+            poolClear(&raw mut parser_state.m_temp2Pool);
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
                     as ::core::ffi::c_uint
             {
-                (*parser).m_eventPtr = encodingName;
+                parser_state.m_eventPtr = encodingName;
             }
             return result;
         }
     }
     if !storedEncName.is_null() || !storedversion.is_null() {
-        poolClear(&raw mut (*parser).m_temp2Pool);
+        let parser_state = &mut *parser;
+        poolClear(&raw mut parser_state.m_temp2Pool);
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
