@@ -7954,31 +7954,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_scanRef(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        match big2_scan_ref(normal, input, 0) {
-            Big2ScanOutcome::Token(token, next) => {
-                *nextTokPtr = ptr.add(next);
-                token
-            }
-            Big2ScanOutcome::Partial(token) => token,
-            Big2ScanOutcome::Invalid(at) => {
-                *nextTokPtr = ptr.add(at);
-                crate::src::xmltok::XML_TOK_INVALID_1
-            }
-        }
-    }
-
     // Kept as a disabled translation reference while the slice implementation below
     // replaces it.  The callable scanner is `big2_scanAtts` after this block.
     #[cfg(any())]
@@ -12007,7 +11982,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_scanLt;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPoundName;
-pub use crate::src::xmltok::xmltok_impl_c::big2_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_checkPiTarget;
