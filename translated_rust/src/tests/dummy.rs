@@ -78,12 +78,6 @@ fn set_dummy_handler_flag(flag: ::core::ffi::c_ulong) {
     DUMMY_HANDLER_FLAGS.fetch_or(flag as usize, Ordering::Relaxed);
 }
 
-fn free_content_model(model: *mut XML_Content) {
-    unsafe {
-        XML_FreeContentModel(g_parser, model);
-    }
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn init_dummy_handlers() {
     reset_dummy_handler_flags();
@@ -151,7 +145,9 @@ pub unsafe extern "C" fn dummy_element_decl_handler(
     _name: *const XML_Char,
     model: *mut XML_Content,
 ) {
-    free_content_model(model);
+    unsafe {
+        XML_FreeContentModel(g_parser, model);
+    }
     set_dummy_handler_flag(DUMMY_ELEMENT_DECL_HANDLER_FLAG);
 }
 
