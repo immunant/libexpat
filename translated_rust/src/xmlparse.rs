@@ -25764,8 +25764,7 @@ fn general_entity_mut(
     Some(entity.as_mut())
 }
 
-unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
-    let table = &mut *table;
+fn hash_table_clear(table: &mut HASH_TABLE) {
     if let Some(slots) = table.v.as_mut() {
         for entry in &mut slots.entries {
             if let Some(mut entry) = entry.take() {
