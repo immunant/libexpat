@@ -8043,7 +8043,8 @@ unsafe extern "C" fn doProlog(
                     if pubId.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    normalizePublicId(pubId);
+                    let pub_id_len = ::std::ffi::CStr::from_ptr(pubId).to_bytes_with_nul().len();
+                    normalizePublicId(::core::slice::from_raw_parts_mut(pubId, pub_id_len));
                     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                     (*parser).m_doctypePubid = pubId;
                     handleDefault = crate::expat_h::XML_FALSE;
@@ -8720,7 +8721,8 @@ unsafe extern "C" fn doProlog(
                     if tem_0.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    normalizePublicId(tem_0);
+                    let public_id_len = ::std::ffi::CStr::from_ptr(tem_0).to_bytes_with_nul().len();
+                    normalizePublicId(::core::slice::from_raw_parts_mut(tem_0, public_id_len));
                     (*parser).m_declNotationPublicId = tem_0;
                     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                     handleDefault = crate::expat_h::XML_FALSE;
@@ -9398,7 +9400,8 @@ unsafe extern "C" fn doProlog(
                     if tem.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    normalizePublicId(tem);
+                    let public_id_len = ::std::ffi::CStr::from_ptr(tem).to_bytes_with_nul().len();
+                    normalizePublicId(::core::slice::from_raw_parts_mut(tem, public_id_len));
                     (*(*parser).m_declEntity).publicId = tem;
                     (*dtd).pool.start = (*dtd).pool.ptr;
                     if (*parser).m_entityDeclHandler.is_some()
@@ -10442,40 +10445,37 @@ unsafe extern "C" fn callStoreEntityValue(
     return result;
 }
 
-unsafe extern "C" fn normalizeLines(mut s: *mut crate::expat_external_h::XML_Char) {
-    let mut p: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    loop {
-        if *s as ::core::ffi::c_int == '\0' as i32 {
-            return;
-        }
-        if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-            break;
-        }
-        s = s.offset(1);
-    }
-    p = s;
-    loop {
-        if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-            let c2rust_fresh7 = p;
-            p = p.offset(1);
-            *c2rust_fresh7 = 0xa as crate::expat_external_h::XML_Char;
-            s = s.offset(1);
-            if *s as ::core::ffi::c_int == 0xa as ::core::ffi::c_int {
-                s = s.offset(1);
+fn normalizeLines(s: &mut [crate::expat_external_h::XML_Char]) {
+    let nul = s
+        .iter()
+        .position(|&c| c as ::core::ffi::c_int == '\0' as i32)
+        .unwrap_or(s.len());
+    let Some(first_cr) = s[..nul]
+        .iter()
+        .position(|&c| c as ::core::ffi::c_int == 0xd as ::core::ffi::c_int)
+    else {
+        return;
+    };
+
+    let mut read = first_cr;
+    let mut write = first_cr;
+    while read < nul {
+        if s[read] as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
+            s[write] = 0xa as crate::expat_external_h::XML_Char;
+            write += 1;
+            read += 1;
+            if read < nul && s[read] as ::core::ffi::c_int == 0xa as ::core::ffi::c_int {
+                read += 1;
             }
         } else {
-            let c2rust_fresh8 = s;
-            s = s.offset(1);
-            let c2rust_fresh9 = p;
-            p = p.offset(1);
-            *c2rust_fresh9 = *c2rust_fresh8;
-        }
-        if !(*s != 0) {
-            break;
+            s[write] = s[read];
+            write += 1;
+            read += 1;
         }
     }
-    *p = '\0' as i32 as crate::expat_external_h::XML_Char;
+    if write < s.len() {
+        s[write] = '\0' as i32 as crate::expat_external_h::XML_Char;
+    }
 }
 
 unsafe extern "C" fn reportProcessingInstruction(
@@ -10511,7 +10511,8 @@ unsafe extern "C" fn reportProcessingInstruction(
     if data.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    normalizeLines(data);
+    let data_len = ::std::ffi::CStr::from_ptr(data).to_bytes_with_nul().len();
+    normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
     (*parser)
         .m_processingInstructionHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
@@ -10542,7 +10543,8 @@ unsafe extern "C" fn reportComment(
     if data.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    normalizeLines(data);
+    let data_len = ::std::ffi::CStr::from_ptr(data).to_bytes_with_nul().len();
+    normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
     (*parser)
         .m_commentHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, data);
@@ -11238,38 +11240,34 @@ unsafe extern "C" fn setContext(
     return crate::expat_h::XML_TRUE;
 }
 
-unsafe extern "C" fn normalizePublicId(mut publicId: *mut crate::expat_external_h::XML_Char) {
-    let mut p: *mut crate::expat_external_h::XML_Char = publicId;
-    let mut s: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    s = publicId;
-    while *s != 0 {
-        match *s as ::core::ffi::c_int {
+fn normalizePublicId(public_id: &mut [crate::expat_external_h::XML_Char]) {
+    let nul = public_id
+        .iter()
+        .position(|&c| c as ::core::ffi::c_int == '\0' as i32)
+        .unwrap_or(public_id.len());
+    let mut write = 0;
+    for read in 0..nul {
+        match public_id[read] as ::core::ffi::c_int {
             32 | 13 | 10 => {
-                if p != publicId
-                    && *p.offset(-1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        != 0x20 as ::core::ffi::c_int
+                if write != 0
+                    && public_id[write - 1] as ::core::ffi::c_int != 0x20 as ::core::ffi::c_int
                 {
-                    let c2rust_fresh70 = p;
-                    p = p.offset(1);
-                    *c2rust_fresh70 = 0x20 as crate::expat_external_h::XML_Char;
+                    public_id[write] = 0x20 as crate::expat_external_h::XML_Char;
+                    write += 1;
                 }
             }
             _ => {
-                let c2rust_fresh71 = p;
-                p = p.offset(1);
-                *c2rust_fresh71 = *s;
+                public_id[write] = public_id[read];
+                write += 1;
             }
         }
-        s = s.offset(1);
     }
-    if p != publicId
-        && *p.offset(-1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0x20 as ::core::ffi::c_int
-    {
-        p = p.offset(-1);
+    if write != 0 && public_id[write - 1] as ::core::ffi::c_int == 0x20 as ::core::ffi::c_int {
+        write -= 1;
     }
-    *p = '\0' as i32 as crate::expat_external_h::XML_Char;
+    if write < public_id.len() {
+        public_id[write] = '\0' as i32 as crate::expat_external_h::XML_Char;
+    }
 }
 
 unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut DTD {
