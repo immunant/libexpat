@@ -1058,9 +1058,21 @@ macro_rules! call_handler_two_args {
     }};
 }
 
+macro_rules! call_handler_three_args {
+    ($handler:expr, $user_data:expr, $arg0:expr, $arg1:expr, $arg2:expr $(,)?) => {{
+        unsafe { $handler($user_data, $arg0, $arg1, $arg2) }
+    }};
+}
+
 macro_rules! call_handler_one_arg {
     ($handler:expr, $user_data:expr, $arg0:expr $(,)?) => {{
         unsafe { $handler($user_data, $arg0) }
+    }};
+}
+
+macro_rules! call_handler_plain_one_arg {
+    ($handler:expr, $arg0:expr $(,)?) => {{
+        unsafe { $handler($arg0) }
     }};
 }
 
@@ -1081,6 +1093,46 @@ macro_rules! call_xml_init_encoding_for_parser {
                 )
             }
         }
+    }};
+}
+
+macro_rules! call_xml_parse_xml_decl_for_parser {
+    ($parser:expr, $is_general_text_entity:expr, $s:expr, $next:expr, $version:expr, $versionend:expr, $encoding_name:expr, $new_encoding:expr, $standalone:expr $(,)?) => {{
+        unsafe {
+            if ($parser).m_ns != 0 {
+                XmlParseXmlDeclNS(
+                    $is_general_text_entity,
+                    ($parser).m_encoding,
+                    $s,
+                    $next,
+                    &raw mut ($parser).m_eventPtr,
+                    $version,
+                    $versionend,
+                    $encoding_name,
+                    $new_encoding,
+                    $standalone,
+                )
+            } else {
+                XmlParseXmlDecl(
+                    $is_general_text_entity,
+                    ($parser).m_encoding,
+                    $s,
+                    $next,
+                    &raw mut ($parser).m_eventPtr,
+                    $version,
+                    $versionend,
+                    $encoding_name,
+                    $new_encoding,
+                    $standalone,
+                )
+            }
+        }
+    }};
+}
+
+macro_rules! call_encoding_name_length {
+    ($encoding:expr, $name:expr $(,)?) => {{
+        unsafe { (*$encoding).nameLength.expect("non-null function pointer")($encoding, $name) }
     }};
 }
 
@@ -1110,6 +1162,24 @@ macro_rules! call_character_data_handler {
     ($handler:expr, $handler_arg:expr, $data:expr, $len:expr $(,)?) => {{
         unsafe {
             $handler.expect("non-null function pointer")($handler_arg, $data, $len);
+        }
+    }};
+}
+
+macro_rules! unknown_encoding_size {
+    () => {{
+        unsafe { XmlSizeOfUnknownEncoding() as size_t }
+    }};
+}
+
+macro_rules! call_xml_init_unknown_encoding_for_parser {
+    ($parser:expr, $map:expr, $convert:expr, $data:expr $(,)?) => {{
+        unsafe {
+            if ($parser).m_ns != 0 {
+                XmlInitUnknownEncodingNS(($parser).m_unknownEncodingMem, $map, $convert, $data)
+            } else {
+                XmlInitUnknownEncoding(($parser).m_unknownEncodingMem, $map, $convert, $data)
+            }
         }
     }};
 }
@@ -6136,251 +6206,198 @@ extern "C" fn processXmlDecl(
     mut s: *const ::core::ffi::c_char,
     mut next: *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut encodingName: *const ::core::ffi::c_char =
-            ::core::ptr::null::<::core::ffi::c_char>();
-        let mut storedEncName: *const XML_Char = ::core::ptr::null::<XML_Char>();
-        let mut newEncoding: *const ENCODING = ::core::ptr::null::<ENCODING>();
-        let mut version: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut versionend: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut storedversion: *const XML_Char = ::core::ptr::null::<XML_Char>();
-        let mut standalone: ::core::ffi::c_int = -(1 as ::core::ffi::c_int);
-        if accountingDiffTolerated(
-            &mut *parser,
-            XML_TOK_XML_DECL,
-            s,
-            next,
-            4870 as ::core::ffi::c_int,
-            XML_ACCOUNT_DIRECT,
-        ) == 0
-        {
-            accountingOnAbort(&mut *parser);
-            return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-        }
-        if if (*parser).m_ns as ::core::ffi::c_int != 0 {
-            Some(
-                XmlParseXmlDeclNS
-                    as unsafe extern "C" fn(
-                        ::core::ffi::c_int,
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ENCODING,
-                        *mut ::core::ffi::c_int,
-                    ) -> ::core::ffi::c_int,
-            )
-        } else {
-            Some(
-                XmlParseXmlDecl
-                    as unsafe extern "C" fn(
-                        ::core::ffi::c_int,
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ENCODING,
-                        *mut ::core::ffi::c_int,
-                    ) -> ::core::ffi::c_int,
-            )
-        }
-        .expect("non-null function pointer")(
-            isGeneralTextEntity,
-            (*parser).m_encoding,
-            s,
-            next,
-            &raw mut (*parser).m_eventPtr,
-            &raw mut version,
-            &raw mut versionend,
-            &raw mut encodingName,
-            &raw mut newEncoding,
-            &raw mut standalone,
-        ) == 0
-        {
-            if isGeneralTextEntity != 0 {
-                return XML_ERROR_TEXT_DECL;
-            } else {
-                return XML_ERROR_XML_DECL;
-            }
-        }
-        if isGeneralTextEntity == 0 && standalone == 1 as ::core::ffi::c_int {
-            (*(*parser).m_dtd).standalone = XML_TRUE;
-            if (*parser).m_paramEntityParsing as ::core::ffi::c_uint
-                == XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE as ::core::ffi::c_int
-                    as ::core::ffi::c_uint
-            {
-                (*parser).m_paramEntityParsing = XML_PARAM_ENTITY_PARSING_NEVER;
-            }
-        }
-        if (*parser).m_xmlDeclHandler.is_some() {
-            if !encodingName.is_null() {
-                storedEncName = poolStoreString(
-                    &mut (*parser).m_temp2Pool,
-                    (*parser).m_encoding,
-                    encodingName,
-                    encodingName.offset((*(*parser).m_encoding)
-                        .nameLength
-                        .expect("non-null function pointer")(
-                        (*parser).m_encoding, encodingName
-                    ) as isize),
-                );
-                if storedEncName.is_null() {
-                    return XML_ERROR_NO_MEMORY;
-                }
-                (*parser).m_temp2Pool.start = (*parser).m_temp2Pool.ptr;
-            }
-            if !version.is_null() {
-                storedversion = poolStoreString(
-                    &mut (*parser).m_temp2Pool,
-                    (*parser).m_encoding,
-                    version,
-                    versionend.offset(-((*(*parser).m_encoding).minBytesPerChar as isize)),
-                );
-                if storedversion.is_null() {
-                    return XML_ERROR_NO_MEMORY;
-                }
-            }
-            (*parser)
-                .m_xmlDeclHandler
-                .expect("non-null function pointer")(
-                (*parser).m_handlerArg,
-                storedversion,
-                storedEncName,
-                standalone,
-            );
-        } else if (*parser).m_defaultHandler.is_some() {
-            reportDefault(parser, (*parser).m_encoding, s, next);
-        }
-        if (*parser).m_protocolEncodingName.is_null() {
-            if !newEncoding.is_null() {
-                if (*newEncoding).minBytesPerChar != (*(*parser).m_encoding).minBytesPerChar
-                    || (*newEncoding).minBytesPerChar == 2 as ::core::ffi::c_int
-                        && newEncoding != (*parser).m_encoding
-                {
-                    (*parser).m_eventPtr = encodingName;
-                    return XML_ERROR_INCORRECT_ENCODING;
-                }
-                (*parser).m_encoding = newEncoding;
-            } else if !encodingName.is_null() {
-                let mut result: XML_Error = XML_ERROR_NONE;
-                if storedEncName.is_null() {
-                    storedEncName = poolStoreString(
-                        &mut (*parser).m_temp2Pool,
-                        (*parser).m_encoding,
-                        encodingName,
-                        encodingName.offset((*(*parser).m_encoding)
-                            .nameLength
-                            .expect("non-null function pointer")(
-                            (*parser).m_encoding, encodingName
-                        ) as isize),
-                    );
-                    if storedEncName.is_null() {
-                        return XML_ERROR_NO_MEMORY;
-                    }
-                }
-                result = handleUnknownEncoding(parser, storedEncName);
-                poolClear(&mut (*parser).m_temp2Pool);
-                if result as ::core::ffi::c_uint
-                    == XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    (*parser).m_eventPtr = encodingName;
-                }
-                return result;
-            }
-        }
-        if !storedEncName.is_null() || !storedversion.is_null() {
-            poolClear(&mut (*parser).m_temp2Pool);
-        }
-        return XML_ERROR_NONE;
+    let parser = ptr_mut(parser);
+    let parser_ptr = parser as *mut XML_ParserStruct;
+    let mut encodingName: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    let mut storedEncName: *const XML_Char = ::core::ptr::null::<XML_Char>();
+    let mut newEncoding: *const ENCODING = ::core::ptr::null::<ENCODING>();
+    let mut version: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    let mut versionend: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    let mut storedversion: *const XML_Char = ::core::ptr::null::<XML_Char>();
+    let mut standalone: ::core::ffi::c_int = -(1 as ::core::ffi::c_int);
+
+    if accountingDiffTolerated(
+        parser,
+        XML_TOK_XML_DECL,
+        s,
+        next,
+        4870 as ::core::ffi::c_int,
+        XML_ACCOUNT_DIRECT,
+    ) == 0
+    {
+        accountingOnAbort(parser);
+        return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
+
+    if call_xml_parse_xml_decl_for_parser!(
+        parser,
+        isGeneralTextEntity,
+        s,
+        next,
+        &raw mut version,
+        &raw mut versionend,
+        &raw mut encodingName,
+        &raw mut newEncoding,
+        &raw mut standalone,
+    ) == 0
+    {
+        return if isGeneralTextEntity != 0 {
+            XML_ERROR_TEXT_DECL
+        } else {
+            XML_ERROR_XML_DECL
+        };
+    }
+
+    if isGeneralTextEntity == 0 && standalone == 1 as ::core::ffi::c_int {
+        ptr_mut(parser.m_dtd).standalone = XML_TRUE;
+        if parser.m_paramEntityParsing as ::core::ffi::c_uint
+            == XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE as ::core::ffi::c_int
+                as ::core::ffi::c_uint
+        {
+            parser.m_paramEntityParsing = XML_PARAM_ENTITY_PARSING_NEVER;
+        }
+    }
+
+    if let Some(xml_decl_handler) = parser.m_xmlDeclHandler {
+        if !encodingName.is_null() {
+            storedEncName = poolStoreString(
+                &mut parser.m_temp2Pool,
+                parser.m_encoding,
+                encodingName,
+                add_const_c_char(
+                    encodingName,
+                    call_encoding_name_length!(ptr_ref(parser.m_encoding), encodingName) as isize,
+                ),
+            );
+            if storedEncName.is_null() {
+                return XML_ERROR_NO_MEMORY;
+            }
+            parser.m_temp2Pool.start = parser.m_temp2Pool.ptr;
+        }
+        if !version.is_null() {
+            storedversion = poolStoreString(
+                &mut parser.m_temp2Pool,
+                parser.m_encoding,
+                version,
+                add_const_c_char(
+                    versionend,
+                    -(ptr_ref(parser.m_encoding).minBytesPerChar as isize),
+                ),
+            );
+            if storedversion.is_null() {
+                return XML_ERROR_NO_MEMORY;
+            }
+        }
+        call_handler_three_args!(
+            xml_decl_handler,
+            parser.m_handlerArg,
+            storedversion,
+            storedEncName,
+            standalone,
+        );
+    } else if parser.m_defaultHandler.is_some() {
+        reportDefault(parser_ptr, parser.m_encoding, s, next);
+    }
+
+    if parser.m_protocolEncodingName.is_null() {
+        if !newEncoding.is_null() {
+            let current_encoding = ptr_ref(parser.m_encoding);
+            let new_encoding = ptr_ref(newEncoding);
+            if new_encoding.minBytesPerChar != current_encoding.minBytesPerChar
+                || new_encoding.minBytesPerChar == 2 as ::core::ffi::c_int
+                    && newEncoding != parser.m_encoding
+            {
+                parser.m_eventPtr = encodingName;
+                return XML_ERROR_INCORRECT_ENCODING;
+            }
+            parser.m_encoding = newEncoding;
+        } else if !encodingName.is_null() {
+            if storedEncName.is_null() {
+                storedEncName = poolStoreString(
+                    &mut parser.m_temp2Pool,
+                    parser.m_encoding,
+                    encodingName,
+                    add_const_c_char(
+                        encodingName,
+                        call_encoding_name_length!(ptr_ref(parser.m_encoding), encodingName)
+                            as isize,
+                    ),
+                );
+                if storedEncName.is_null() {
+                    return XML_ERROR_NO_MEMORY;
+                }
+            }
+            let result = handleUnknownEncoding(parser_ptr, storedEncName);
+            poolClear(&mut parser.m_temp2Pool);
+            if result as ::core::ffi::c_uint
+                == XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                parser.m_eventPtr = encodingName;
+            }
+            return result;
+        }
+    }
+
+    if !storedEncName.is_null() || !storedversion.is_null() {
+        poolClear(&mut parser.m_temp2Pool);
+    }
+
+    XML_ERROR_NONE
 }
 extern "C" fn handleUnknownEncoding(
     mut parser: XML_Parser,
     mut encodingName: *const XML_Char,
 ) -> XML_Error {
-    unsafe {
-        if (*parser).m_unknownEncodingHandler.is_some() {
-            let mut info: XML_Encoding = XML_Encoding {
-                map: [0; 256],
-                data: ::core::ptr::null_mut::<::core::ffi::c_void>(),
-                convert: None,
-                release: None,
-            };
-            let mut i: ::core::ffi::c_int = 0;
-            i = 0 as ::core::ffi::c_int;
-            while i < 256 as ::core::ffi::c_int {
-                info.map[i as usize] = -(1 as ::core::ffi::c_int);
-                i += 1;
+    let parser = ptr_mut(parser);
+
+    if let Some(unknown_encoding_handler) = parser.m_unknownEncodingHandler {
+        let mut info = XML_Encoding {
+            map: [-(1 as ::core::ffi::c_int); 256],
+            data: NULL,
+            convert: None,
+            release: None,
+        };
+
+        if call_handler_two_args!(
+            unknown_encoding_handler,
+            parser.m_unknownEncodingHandlerData,
+            encodingName,
+            &raw mut info,
+        ) != 0
+        {
+            parser.m_unknownEncodingMem = expat_malloc_ptr!(
+                parser,
+                unknown_encoding_size!(),
+                4963 as ::core::ffi::c_int,
+                ::core::ffi::c_void,
+            );
+            if parser.m_unknownEncodingMem.is_null() {
+                if let Some(release) = info.release {
+                    call_handler_plain_one_arg!(release, info.data);
+                }
+                return XML_ERROR_NO_MEMORY;
             }
-            info.convert = None;
-            info.data = NULL;
-            info.release = None;
-            if (*parser)
-                .m_unknownEncodingHandler
-                .expect("non-null function pointer")(
-                (*parser).m_unknownEncodingHandlerData,
-                encodingName,
-                &raw mut info,
-            ) != 0
-            {
-                let mut enc: *mut ENCODING = ::core::ptr::null_mut::<ENCODING>();
-                (*parser).m_unknownEncodingMem = expat_malloc(
-                    parser,
-                    XmlSizeOfUnknownEncoding() as size_t,
-                    4963 as ::core::ffi::c_int,
-                );
-                if (*parser).m_unknownEncodingMem.is_null() {
-                    if info.release.is_some() {
-                        info.release.expect("non-null function pointer")(info.data);
-                    }
-                    return XML_ERROR_NO_MEMORY;
-                }
-                enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
-                    Some(
-                        XmlInitUnknownEncodingNS
-                            as unsafe extern "C" fn(
-                                *mut ::core::ffi::c_void,
-                                *const ::core::ffi::c_int,
-                                CONVERTER,
-                                *mut ::core::ffi::c_void,
-                            ) -> *mut ENCODING,
-                    )
-                } else {
-                    Some(
-                        XmlInitUnknownEncoding
-                            as unsafe extern "C" fn(
-                                *mut ::core::ffi::c_void,
-                                *const ::core::ffi::c_int,
-                                CONVERTER,
-                                *mut ::core::ffi::c_void,
-                            ) -> *mut ENCODING,
-                    )
-                }
-                .expect("non-null function pointer")(
-                    (*parser).m_unknownEncodingMem,
-                    &raw mut info.map as *mut ::core::ffi::c_int,
-                    info.convert as CONVERTER,
-                    info.data,
-                );
-                if !enc.is_null() {
-                    (*parser).m_unknownEncodingData = info.data;
-                    (*parser).m_unknownEncodingRelease = info.release;
-                    (*parser).m_encoding = enc;
-                    return XML_ERROR_NONE;
-                }
-            }
-            if info.release.is_some() {
-                info.release.expect("non-null function pointer")(info.data);
+
+            let enc = call_xml_init_unknown_encoding_for_parser!(
+                parser,
+                &raw mut info.map as *mut ::core::ffi::c_int,
+                info.convert as CONVERTER,
+                info.data,
+            );
+            if !enc.is_null() {
+                parser.m_unknownEncodingData = info.data;
+                parser.m_unknownEncodingRelease = info.release;
+                parser.m_encoding = enc;
+                return XML_ERROR_NONE;
             }
         }
-        return XML_ERROR_UNKNOWN_ENCODING;
+
+        if let Some(release) = info.release {
+            call_handler_plain_one_arg!(release, info.data);
+        }
     }
+
+    XML_ERROR_UNKNOWN_ENCODING
 }
 extern "C" fn prologInitProcessor(
     mut parser: XML_Parser,
