@@ -13566,44 +13566,80 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Utf8,
 };
 
+fn latin1_to_utf8_window(
+    input: &[u8],
+    output: &mut [u8],
+) -> (crate::src::xmltok::XML_Convert_Result, usize, usize) {
+    let mut input_used = 0;
+    let mut output_used = 0;
+
+    while input_used < input.len() {
+        let byte = input[input_used];
+        let encoded_len = if byte & 0x80 == 0 { 1 } else { 2 };
+        if output.len() - output_used < encoded_len {
+            return (
+                crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED,
+                input_used,
+                output_used,
+            );
+        }
+
+        if encoded_len == 1 {
+            output[output_used] = byte;
+        } else {
+            output[output_used] = (byte >> 6) | UTF8_cval2 as u8;
+            output[output_used + 1] = (byte & 0x3f) | 0x80;
+        }
+        input_used += 1;
+        output_used += encoded_len;
+    }
+
+    (
+        crate::src::xmltok::XML_CONVERT_COMPLETED,
+        input_used,
+        output_used,
+    )
+}
+
 unsafe extern "C" fn latin1_toUtf8(
     _enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    loop {
-        let mut c: ::core::ffi::c_uchar = 0;
-        if *fromP == fromLim {
-            return crate::src::xmltok::XML_CONVERT_COMPLETED;
-        }
-        c = **fromP as ::core::ffi::c_uchar;
-        if c as ::core::ffi::c_int & 0x80 as ::core::ffi::c_int != 0 {
-            if toLim.offset_from(*toP) < 2 as isize {
-                return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-            }
-            let c2rust_fresh6 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh6 = (c as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                | UTF8_cval2 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
-            let c2rust_fresh7 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh7 = (c as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-            *fromP = (*fromP).offset(1);
-        } else {
-            if *toP == toLim as *mut ::core::ffi::c_char {
-                return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-            }
-            let c2rust_fresh8 = *fromP;
-            *fromP = (*fromP).offset(1);
-            let c2rust_fresh9 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh9 = *c2rust_fresh8;
-        }
+    let input_start = *fromP;
+    let input_len = if input_start == fromLim {
+        0
+    } else {
+        fromLim.offset_from(input_start) as usize
+    };
+    let output_start = *toP;
+    let output_len = if output_start == toLim.cast_mut() {
+        0
+    } else {
+        toLim.offset_from(output_start) as usize
+    };
+    // A zero-sized window may legally use a null C pointer.  Avoid forming a
+    // Rust slice from it; no access is needed in that case.
+    let input = if input_len == 0 {
+        &[]
+    } else {
+        core::slice::from_raw_parts(input_start.cast::<u8>(), input_len)
+    };
+    let output = if output_len == 0 {
+        &mut []
+    } else {
+        core::slice::from_raw_parts_mut(output_start.cast::<u8>(), output_len)
+    };
+    let (result, input_used, output_used) = latin1_to_utf8_window(input, output);
+    if input_used != 0 {
+        *fromP = input_start.add(input_used);
     }
+    if output_used != 0 {
+        *toP = output_start.add(output_used).cast::<::core::ffi::c_char>();
+    }
+    result
 }
 
 unsafe extern "C" fn latin1_toUtf16(
