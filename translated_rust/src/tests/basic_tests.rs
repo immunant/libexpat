@@ -1,4 +1,5 @@
 use ::c2rust_bitfields;
+use std::sync::atomic::{AtomicUsize, Ordering};
 extern "C" {
     pub type _IO_wide_data;
     pub type _IO_codecvt;
@@ -17226,24 +17227,37 @@ unsafe extern "C" fn test_set_bad_reparse_option() {
         XML_ParserFree(parser);
     }
 }
-static mut g_totalAlloc: size_t = 0 as size_t;
-static mut g_biggestAlloc: size_t = 0 as size_t;
-unsafe extern "C" fn counting_realloc(
-    mut ptr: *mut ::core::ffi::c_void,
-    mut size: size_t,
-) -> *mut ::core::ffi::c_void {
-    unsafe {
-        g_totalAlloc = g_totalAlloc.wrapping_add(size);
-        if size > g_biggestAlloc {
-            g_biggestAlloc = size;
-        }
-        return realloc(ptr, size);
-    }
+static G_TOTAL_ALLOC: AtomicUsize = AtomicUsize::new(0);
+static G_BIGGEST_ALLOC: AtomicUsize = AtomicUsize::new(0);
+
+fn total_alloc() -> size_t {
+    G_TOTAL_ALLOC.load(Ordering::Relaxed) as size_t
 }
-unsafe extern "C" fn counting_malloc(mut size: size_t) -> *mut ::core::ffi::c_void {
-    unsafe {
-        return counting_realloc(NULL, size);
-    }
+
+fn biggest_alloc() -> size_t {
+    G_BIGGEST_ALLOC.load(Ordering::Relaxed) as size_t
+}
+
+fn reset_alloc_counters() {
+    G_TOTAL_ALLOC.store(0, Ordering::Relaxed);
+    G_BIGGEST_ALLOC.store(0, Ordering::Relaxed);
+}
+
+fn note_allocation(size: size_t) {
+    G_TOTAL_ALLOC.fetch_add(size as usize, Ordering::Relaxed);
+    G_BIGGEST_ALLOC.fetch_max(size as usize, Ordering::Relaxed);
+}
+
+extern "C" fn counting_realloc(
+    ptr: *mut ::core::ffi::c_void,
+    size: size_t,
+) -> *mut ::core::ffi::c_void {
+    note_allocation(size);
+    ffi_call2(realloc, ptr, size)
+}
+
+extern "C" fn counting_malloc(size: size_t) -> *mut ::core::ffi::c_void {
+    counting_realloc(NULL, size)
 }
 unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
     unsafe {
@@ -17404,8 +17418,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                                 ) -> (),
                         ),
                     );
-                    g_biggestAlloc = 0 as size_t;
-                    g_totalAlloc = 0 as size_t;
+                    reset_alloc_counters();
                     let mut offset: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
                     while offset < *leading + *bigtoken {
                         if !(offset + *fillsize <= document_length) {
@@ -17441,7 +17454,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                         && XML_CONTEXT_BYTES == 0 as ::core::ffi::c_int)
                     {
                         if *leading < XML_CONTEXT_BYTES {
-                            if !(g_biggestAlloc
+                            if !(biggest_alloc()
                                 >= (*leading as size_t).wrapping_add(*bigtoken as size_t))
                             {
                                 _fail(
@@ -17452,7 +17465,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                                         .as_ptr() as *const ::core::ffi::c_char,
                                 );
                             }
-                        } else if !(g_biggestAlloc
+                        } else if !(biggest_alloc()
                             >= (1024 as size_t).wrapping_add(*bigtoken as size_t))
                         {
                             _fail(
@@ -17465,7 +17478,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                         }
                     }
                     while storage.count < expected_elem_total {
-                        let alloc_before: size_t = g_totalAlloc;
+                        let alloc_before: size_t = total_alloc();
                         if !(offset + *fillsize <= document_length) {
                             _fail(
                                 b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
@@ -17492,7 +17505,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                             );
                         }
                         offset += *fillsize;
-                        if !(g_totalAlloc.wrapping_sub(alloc_before) < 4096 as size_t) {
+                        if !(total_alloc().wrapping_sub(alloc_before) < 4096 as size_t) {
                             _fail(
                                 b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
                                     as *const ::core::ffi::c_char,
@@ -17502,7 +17515,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                             );
                         }
                     }
-                    if !(g_totalAlloc > 0 as size_t) {
+                    if !(total_alloc() > 0 as size_t) {
                         _fail(
                             b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
                                 as *const ::core::ffi::c_char,
