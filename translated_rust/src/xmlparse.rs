@@ -2457,16 +2457,7 @@ static UNKNOWN_ENCODING_HANDLER_ARGS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingHandlerRegistration>>,
 > = std::sync::OnceLock::new();
 
-trait ExternalEntityRefCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        parser: crate::expat_h::XML_Parser,
-        context: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-    ) -> ::core::ffi::c_int;
-}
+trait ExternalEntityRefCallback: std::any::Any + Send + Sync {}
 
 impl ExternalEntityRefCallback
     for unsafe extern "C" fn(
@@ -2476,18 +2467,7 @@ impl ExternalEntityRefCallback
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
     ) -> ::core::ffi::c_int
-{
-    unsafe fn invoke(
-        &self,
-        parser: crate::expat_h::XML_Parser,
-        context: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-    ) -> ::core::ffi::c_int {
-        self(parser, context, base, system_id, public_id)
-    }
-}
+{}
 
 // Foreign callback values live outside parser state.  The parser itself only
 // records whether a handler is installed, while this registry preserves the
@@ -2566,7 +2546,18 @@ unsafe fn external_entity_ref_handler_arg_registration(
                   base: *const crate::expat_external_h::XML_Char,
                   system_id: *const crate::expat_external_h::XML_Char,
                   public_id: *const crate::expat_external_h::XML_Char| {
-                handler.invoke(callback_arg, context, base, system_id, public_id)
+                let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
+                    unsafe extern "C" fn(
+                        crate::expat_h::XML_Parser,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                        *const crate::expat_external_h::XML_Char,
+                    ) -> ::core::ffi::c_int,
+                >() else {
+                    return 0;
+                };
+                unsafe { handler(callback_arg, context, base, system_id, public_id) }
             },
         ),
     }
@@ -25506,7 +25497,18 @@ fn dispatch_external_entity_ref_event_handler(
                 .invoke(handler, context, base, system_id, public_id)
         },
         None => unsafe {
-            handler.invoke(
+            let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
+                unsafe extern "C" fn(
+                    crate::expat_h::XML_Parser,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                ) -> ::core::ffi::c_int,
+            >() else {
+                return 0;
+            };
+            handler(
                 std::ptr::from_ref(parser).cast_mut(),
                 context,
                 base,
