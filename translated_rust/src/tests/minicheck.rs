@@ -18,9 +18,6 @@ extern "C" {
         __format: *const ::core::ffi::c_char,
         __arg: ::core::ffi::VaList,
     ) -> ::core::ffi::c_int;
-    fn calloc(__nmemb: size_t, __size: size_t) -> *mut ::core::ffi::c_void;
-    fn realloc(__ptr: *mut ::core::ffi::c_void, __size: size_t) -> *mut ::core::ffi::c_void;
-    fn free(__ptr: *mut ::core::ffi::c_void);
     fn _setjmp(__env: *mut __jmp_buf_tag) -> ::core::ffi::c_int;
     fn longjmp(__env: *mut __jmp_buf_tag, __val: ::core::ffi::c_int) -> !;
     fn __assert_fail(
@@ -149,50 +146,152 @@ fn check_state() -> MutexGuard<'static, CheckState> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-fn allocate_zeroed<T>() -> *mut T {
-    unsafe { calloc(1 as size_t, ::core::mem::size_of::<T>() as size_t) as *mut T }
-}
-
-fn reallocate_array<T>(ptr: *mut T, len: usize) -> *mut T {
-    unsafe {
-        realloc(
-            ptr as *mut ::core::ffi::c_void,
-            (::core::mem::size_of::<T>() as size_t).wrapping_mul(len as size_t),
-        ) as *mut T
-    }
-}
-
-fn free_ptr<T>(ptr: *mut T) {
-    unsafe {
-        free(ptr as *mut ::core::ffi::c_void);
-    }
-}
-
-fn with_ref<T, R>(ptr: *const T, f: impl FnOnce(&T) -> R) -> Option<R> {
-    let ptr = NonNull::new(ptr as *mut T)?;
-    Some(unsafe { f(ptr.as_ref()) })
-}
-
-fn with_mut<T, R>(ptr: *mut T, f: impl FnOnce(&mut T) -> R) -> Option<R> {
-    let mut ptr = NonNull::new(ptr)?;
-    Some(unsafe { f(ptr.as_mut()) })
-}
-
-fn assert_ptr<T>(
-    ptr: *mut T,
-    expect_null: bool,
-    assertion: *const ::core::ffi::c_char,
-    file: *const ::core::ffi::c_char,
-    line: ::core::ffi::c_uint,
-    function: *const ::core::ffi::c_char,
-) -> Option<NonNull<T>> {
-    let ptr = NonNull::new(ptr);
-    if ptr.is_none() != expect_null {
-        unsafe {
-            __assert_fail(assertion, file, line, function);
+macro_rules! assert_not_null {
+    ($ptr:expr, $assertion:expr, $file:expr, $line:expr, $function:expr $(,)?) => {{
+        match NonNull::new($ptr) {
+            Some(ptr) => ptr,
+            None => unsafe { __assert_fail($assertion, $file, $line, $function) },
         }
-    }
-    ptr
+    }};
+}
+
+macro_rules! assert_is_null {
+    ($ptr:expr, $assertion:expr, $file:expr, $line:expr, $function:expr $(,)?) => {{
+        if !$ptr.is_null() {
+            unsafe { __assert_fail($assertion, $file, $line, $function) }
+        }
+    }};
+}
+
+struct OwnedSuite {
+    header: Suite,
+}
+unsafe impl Send for OwnedSuite {}
+
+struct OwnedTCase {
+    header: TCase,
+    tests: Vec<tcase_test_function>,
+}
+unsafe impl Send for OwnedTCase {}
+
+struct OwnedRunner {
+    header: SRunner,
+}
+unsafe impl Send for OwnedRunner {}
+
+static SUITES: Mutex<Vec<Box<OwnedSuite>>> = Mutex::new(Vec::new());
+static TCASES: Mutex<Vec<Box<OwnedTCase>>> = Mutex::new(Vec::new());
+static RUNNERS: Mutex<Vec<Box<OwnedRunner>>> = Mutex::new(Vec::new());
+
+fn suites() -> MutexGuard<'static, Vec<Box<OwnedSuite>>> {
+    SUITES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn tcases() -> MutexGuard<'static, Vec<Box<OwnedTCase>>> {
+    TCASES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn runners() -> MutexGuard<'static, Vec<Box<OwnedRunner>>> {
+    RUNNERS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn suite_ptr(owned: &OwnedSuite) -> *mut Suite {
+    (&owned.header as *const Suite).cast_mut()
+}
+
+fn tcase_ptr(owned: &OwnedTCase) -> *mut TCase {
+    (&owned.header as *const TCase).cast_mut()
+}
+
+fn runner_ptr(owned: &OwnedRunner) -> *mut SRunner {
+    (&owned.header as *const SRunner).cast_mut()
+}
+
+fn with_suite<R>(ptr: *mut Suite, f: impl FnOnce(&OwnedSuite) -> R) -> Option<R> {
+    let key = ptr as usize;
+    let suites = suites();
+    suites
+        .iter()
+        .find(|owned| suite_ptr(owned.as_ref()) as usize == key)
+        .map(|owned| f(owned.as_ref()))
+}
+
+fn with_suite_mut<R>(ptr: *mut Suite, f: impl FnOnce(&mut OwnedSuite) -> R) -> Option<R> {
+    let key = ptr as usize;
+    let mut suites = suites();
+    suites
+        .iter_mut()
+        .find(|owned| suite_ptr(owned.as_ref()) as usize == key)
+        .map(|owned| f(owned.as_mut()))
+}
+
+fn remove_suite(ptr: *mut Suite) -> Option<Box<OwnedSuite>> {
+    let key = ptr as usize;
+    let mut suites = suites();
+    let index = suites
+        .iter()
+        .position(|owned| suite_ptr(owned.as_ref()) as usize == key)?;
+    Some(suites.remove(index))
+}
+
+fn with_tcase<R>(ptr: *mut TCase, f: impl FnOnce(&OwnedTCase) -> R) -> Option<R> {
+    let key = ptr as usize;
+    let tcases = tcases();
+    tcases
+        .iter()
+        .find(|owned| tcase_ptr(owned.as_ref()) as usize == key)
+        .map(|owned| f(owned.as_ref()))
+}
+
+fn with_tcase_mut<R>(ptr: *mut TCase, f: impl FnOnce(&mut OwnedTCase) -> R) -> Option<R> {
+    let key = ptr as usize;
+    let mut tcases = tcases();
+    tcases
+        .iter_mut()
+        .find(|owned| tcase_ptr(owned.as_ref()) as usize == key)
+        .map(|owned| f(owned.as_mut()))
+}
+
+fn remove_tcase(ptr: *mut TCase) -> Option<Box<OwnedTCase>> {
+    let key = ptr as usize;
+    let mut tcases = tcases();
+    let index = tcases
+        .iter()
+        .position(|owned| tcase_ptr(owned.as_ref()) as usize == key)?;
+    Some(tcases.remove(index))
+}
+
+fn with_runner<R>(ptr: *mut SRunner, f: impl FnOnce(&OwnedRunner) -> R) -> Option<R> {
+    let key = ptr as usize;
+    let runners = runners();
+    runners
+        .iter()
+        .find(|owned| runner_ptr(owned.as_ref()) as usize == key)
+        .map(|owned| f(owned.as_ref()))
+}
+
+fn with_runner_mut<R>(ptr: *mut SRunner, f: impl FnOnce(&mut OwnedRunner) -> R) -> Option<R> {
+    let key = ptr as usize;
+    let mut runners = runners();
+    runners
+        .iter_mut()
+        .find(|owned| runner_ptr(owned.as_ref()) as usize == key)
+        .map(|owned| f(owned.as_mut()))
+}
+
+fn remove_runner(ptr: *mut SRunner) -> Option<Box<OwnedRunner>> {
+    let key = ptr as usize;
+    let mut runners = runners();
+    let index = runners
+        .iter()
+        .position(|owned| runner_ptr(owned.as_ref()) as usize == key)?;
+    Some(runners.remove(index))
 }
 
 enum PrintMessage {
@@ -261,55 +360,71 @@ fn check_state_filename(state: &CheckState) -> *const ::core::ffi::c_char {
 }
 #[no_mangle]
 pub unsafe extern "C" fn suite_create(mut name: *const ::core::ffi::c_char) -> *mut Suite {
-    let suite = allocate_zeroed::<Suite>();
-    let _ = with_mut(suite, |suite| {
-        suite.name = name;
+    let mut owned = Box::new(OwnedSuite {
+        header: Suite {
+            name,
+            tests: ::core::ptr::null_mut(),
+        },
     });
+    let suite = suite_ptr(owned.as_ref());
+    suites().push(owned);
     suite
 }
 #[no_mangle]
 pub unsafe extern "C" fn tcase_create(mut name: *const ::core::ffi::c_char) -> *mut TCase {
-    let tc = allocate_zeroed::<TCase>();
-    let _ = with_mut(tc, |tc| {
-        tc.name = name;
+    let mut owned = Box::new(OwnedTCase {
+        header: TCase {
+            name,
+            setup: None,
+            teardown: None,
+            tests: ::core::ptr::null_mut(),
+            ntests: 0,
+            allocated: 0,
+            next_tcase: ::core::ptr::null_mut(),
+        },
+        tests: Vec::new(),
     });
+    let tc = tcase_ptr(owned.as_ref());
+    tcases().push(owned);
     tc
 }
 #[no_mangle]
 pub unsafe extern "C" fn suite_add_tcase(mut suite: *mut Suite, mut tc: *mut TCase) {
-    let suite = assert_ptr(
+    let suite = assert_not_null!(
         suite,
-        false,
         b"suite != NULL\0".as_ptr() as *const ::core::ffi::c_char,
         b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
         75 as ::core::ffi::c_uint,
         b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
     )
-    .unwrap();
-    let tc = assert_ptr(
+    .as_ptr();
+    let tc = assert_not_null!(
         tc,
-        false,
         b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
         b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
         76 as ::core::ffi::c_uint,
         b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
     )
-    .unwrap();
-    let _ = assert_ptr(
-        with_ref(tc.as_ptr(), |tc| tc.next_tcase).unwrap_or(::core::ptr::null_mut()),
-        true,
+    .as_ptr();
+
+    assert_is_null!(
+        with_tcase(tc, |tc| tc.header.next_tcase).unwrap_or(::core::ptr::null_mut()),
         b"tc->next_tcase == NULL\0".as_ptr() as *const ::core::ffi::c_char,
         b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
         77 as ::core::ffi::c_uint,
         b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
     );
-    let tests = with_ref(suite.as_ptr(), |suite| suite.tests).unwrap_or(::core::ptr::null_mut());
-    let _ = with_mut(tc.as_ptr(), |tc| {
-        tc.next_tcase = tests;
-    });
-    let _ = with_mut(suite.as_ptr(), |suite| {
-        suite.tests = tc.as_ptr();
-    });
+
+    let tests = with_suite(suite, |suite| suite.header.tests)
+        .expect("suite_add_tcase should receive a suite created by suite_create");
+    with_tcase_mut(tc, |tc| {
+        tc.header.next_tcase = tests;
+    })
+    .expect("suite_add_tcase should receive a test case created by tcase_create");
+    with_suite_mut(suite, |suite| {
+        suite.header.tests = tc;
+    })
+    .expect("suite_add_tcase should receive a suite created by suite_create");
 }
 #[no_mangle]
 pub unsafe extern "C" fn tcase_add_checked_fixture(
@@ -317,88 +432,82 @@ pub unsafe extern "C" fn tcase_add_checked_fixture(
     mut setup: tcase_setup_function,
     mut teardown: tcase_teardown_function,
 ) {
-    let tc = assert_ptr(
+    let tc = assert_not_null!(
         tc,
-        false,
         b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
         b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
         86 as ::core::ffi::c_uint,
         b"void tcase_add_checked_fixture(TCase *, tcase_setup_function, tcase_teardown_function)\0"
             .as_ptr() as *const ::core::ffi::c_char,
     )
-    .unwrap();
-    let _ = with_mut(tc.as_ptr(), |tc| {
-        tc.setup = setup;
-        tc.teardown = teardown;
-    });
+    .as_ptr();
+    with_tcase_mut(tc, |tc| {
+        tc.header.setup = setup;
+        tc.header.teardown = teardown;
+    })
+    .expect("tcase_add_checked_fixture should receive a test case created by tcase_create");
 }
 #[no_mangle]
 pub unsafe extern "C" fn tcase_add_test(mut tc: *mut TCase, mut test: tcase_test_function) {
-    let tc = assert_ptr(
+    let tc = assert_not_null!(
         tc,
-        false,
         b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
         b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
         93 as ::core::ffi::c_uint,
         b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
             as *const ::core::ffi::c_char,
     )
-    .unwrap();
-    if with_ref(tc.as_ptr(), |tc| tc.allocated == tc.ntests).unwrap_or(false) {
-        let nalloc = with_ref(tc.as_ptr(), |tc| tc.allocated + 100 as ::core::ffi::c_int).unwrap();
-        let current_tests = with_ref(tc.as_ptr(), |tc| tc.tests).unwrap_or(::core::ptr::null_mut());
-        let new_tests = reallocate_array(current_tests, nalloc as usize);
-        let _ = assert_ptr(
-            new_tests,
-            false,
-            b"new_tests != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-            99 as ::core::ffi::c_uint,
-            b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
-                as *const ::core::ffi::c_char,
-        );
-        let _ = with_mut(tc.as_ptr(), |tc| {
-            tc.tests = new_tests;
-            tc.allocated = nalloc;
-        });
-    }
+    .as_ptr();
+    with_tcase_mut(tc, |tc| {
+        if tc.header.allocated == tc.header.ntests {
+            let nalloc = tc.header.allocated + 100 as ::core::ffi::c_int;
+            let required_capacity =
+                usize::try_from(nalloc).expect("test allocation count should fit into usize");
+            if tc.tests.capacity() < required_capacity {
+                tc.tests
+                    .reserve_exact(required_capacity - tc.tests.capacity());
+            }
+            tc.header.allocated = nalloc;
+        }
 
-    let index = with_ref(tc.as_ptr(), |tc| tc.ntests as usize).unwrap();
-    let tests = with_ref(tc.as_ptr(), |tc| tc.tests).unwrap();
-    let _ = with_mut(tests.wrapping_add(index), |slot| {
-        *slot = test;
-    });
-    let _ = with_mut(tc.as_ptr(), |tc| {
-        tc.ntests += 1;
-    });
+        tc.tests.push(test);
+        tc.header.ntests =
+            ::core::ffi::c_int::try_from(tc.tests.len()).expect("test count should fit into c_int");
+        tc.header.tests = if tc.tests.is_empty() {
+            ::core::ptr::null_mut()
+        } else {
+            tc.tests.as_mut_ptr()
+        };
+    })
+    .expect("tcase_add_test should receive a test case created by tcase_create");
 }
 fn tcase_free(tc: *mut TCase) {
-    if let Some(tests) = with_ref(tc, |tc| tc.tests) {
-        free_ptr(tests);
-        free_ptr(tc);
-    }
+    let _ = remove_tcase(tc);
 }
 fn suite_free(suite: *mut Suite) {
-    let Some(mut next_tcase) = with_mut(suite, |suite| {
-        ::core::mem::replace(&mut suite.tests, ::core::ptr::null_mut())
-    }) else {
+    let Some(owned_suite) = remove_suite(suite) else {
         return;
     };
+    let mut next_tcase = owned_suite.header.tests;
 
     while !next_tcase.is_null() {
         let current = next_tcase;
-        next_tcase = with_ref(current, |tc| tc.next_tcase).unwrap_or(::core::ptr::null_mut());
+        next_tcase =
+            with_tcase(current, |tc| tc.header.next_tcase).unwrap_or(::core::ptr::null_mut());
         tcase_free(current);
     }
-
-    free_ptr(suite);
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_create(mut suite: *mut Suite) -> *mut SRunner {
-    let runner = allocate_zeroed::<SRunner>();
-    let _ = with_mut(runner, |runner| {
-        runner.suite = suite;
+    let mut owned = Box::new(OwnedRunner {
+        header: SRunner {
+            suite,
+            nchecks: 0,
+            nfailures: 0,
+        },
     });
+    let runner = runner_ptr(owned.as_ref());
+    runners().push(owned);
     runner
 }
 static mut env: jmp_buf = [__jmp_buf_tag {
@@ -450,8 +559,8 @@ fn handle_failure(
     context: *const ::core::ffi::c_char,
     phase_info: *const ::core::ffi::c_char,
 ) {
-    let _ = with_mut(runner, |runner| {
-        runner.nfailures += 1;
+    let _ = with_runner_mut(runner, |runner| {
+        runner.header.nfailures += 1;
     });
     if verbosity != CK_SILENT {
         let state = check_state();
@@ -574,8 +683,10 @@ pub unsafe extern "C" fn srunner_summarize(
     mut verbosity: ::core::ffi::c_int,
 ) {
     if verbosity != CK_SILENT {
-        let (nchecks, nfailures) =
-            with_ref(runner, |runner| (runner.nchecks, runner.nfailures)).unwrap_or((0, 0));
+        let (nchecks, nfailures) = with_runner(runner, |runner| {
+            (runner.header.nchecks, runner.header.nfailures)
+        })
+        .unwrap_or((0, 0));
         let passed: ::core::ffi::c_int = nchecks - nfailures;
         let percentage: ::core::ffi::c_double =
             passed as ::core::ffi::c_double / nchecks as ::core::ffi::c_double;
@@ -623,25 +734,21 @@ pub unsafe extern "C" fn _fail(
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_ntests_failed(mut runner: *mut SRunner) -> ::core::ffi::c_int {
-    with_ref(
-        assert_ptr(
-            runner,
-            false,
-            b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-            263 as ::core::ffi::c_uint,
-            b"int srunner_ntests_failed(SRunner *)\0".as_ptr() as *const ::core::ffi::c_char,
-        )
-        .unwrap()
-        .as_ptr(),
-        |runner| runner.nfailures,
+    let runner = assert_not_null!(
+        runner,
+        b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+        263 as ::core::ffi::c_uint,
+        b"int srunner_ntests_failed(SRunner *)\0".as_ptr() as *const ::core::ffi::c_char,
     )
-    .unwrap()
+    .as_ptr();
+    with_runner(runner, |runner| runner.header.nfailures)
+        .expect("srunner_ntests_failed should receive a runner created by srunner_create")
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_free(mut runner: *mut SRunner) {
-    if let Some(suite) = with_ref(runner, |runner| runner.suite) {
+    if let Some(suite) = with_runner(runner, |runner| runner.header.suite) {
         suite_free(suite);
-        free_ptr(runner);
     }
+    let _ = remove_runner(runner);
 }
