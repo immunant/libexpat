@@ -1521,67 +1521,6 @@ pub mod xmltok_impl_c {
         normal_scan_end_tag_result(crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    fn normal_scan_hex_char_ref_impl(
-        enc: &normal_encoding,
-        input: &[::core::ffi::c_char],
-    ) -> (::core::ffi::c_int, Option<usize>) {
-        let Some((&first, rest)) = input.split_first() else {
-            return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
-        };
-
-        match enc.type_0[first as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int {
-            25 | 24 => {}
-            _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
-        }
-
-        for (offset, byte) in rest.iter().enumerate() {
-            match enc.type_0[*byte as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int {
-                25 | 24 => {}
-                18 => return (crate::src::xmltok::XML_TOK_CHAR_REF_1, Some(offset + 2)),
-                _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset + 1)),
-            }
-        }
-        (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
-    }
-
-    pub unsafe extern "C" fn normal_scanHexCharRef(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
-        let normal = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = normal_scan_hex_char_ref_impl(normal, input);
-        if let Some(offset) = next {
-            unsafe { *nextTokPtr = ptr.add(offset) };
-        }
-        token
-    }
-
-    pub unsafe extern "C" fn normal_scanCharRef(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
-        let normal = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = normal_scan_char_ref_impl(normal, input);
-        if let Some(offset) = next {
-            unsafe { *nextTokPtr = ptr.add(offset) };
-        }
-        token
-    }
-
     fn normal_scan_char_ref_impl(
         enc: &normal_encoding,
         input: &[::core::ffi::c_char],
@@ -1665,25 +1604,6 @@ pub mod xmltok_impl_c {
             }
         }
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
-    }
-
-    pub unsafe extern "C" fn normal_scanRef(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
-        let normal = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = normal_scan_ref_impl(normal, input);
-        if let Some(offset) = next {
-            unsafe { *nextTokPtr = ptr.add(offset) };
-        }
-        token
     }
 
     enum NormalScanAttsCharCheck {
@@ -2557,7 +2477,11 @@ pub mod xmltok_impl_c {
                 normal_scanLt(enc, ptr.add(start), end, nextTokPtr)
             }
             NormalContentAction::ScanRef(start) => {
-                normal_scanRef(enc, ptr.add(start), end, nextTokPtr)
+                let (token, next) = normal_scan_ref_bytes_impl(normal, &input[start..]);
+                if let Some(offset) = next {
+                    *nextTokPtr = ptr.add(start + offset);
+                }
+                token
             }
         }
     }
@@ -12145,14 +12069,11 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;
 pub use crate::src::xmltok::xmltok_impl_c::normal_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanComment;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPoundName;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::skip_s;
 pub use crate::src::xmltok::xmltok_impl_c::Big2AttributeAction;
