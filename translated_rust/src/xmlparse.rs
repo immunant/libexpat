@@ -16339,19 +16339,6 @@ unsafe extern "C" fn setContext(
                     if prefix.is_null() {
                         return crate::expat_h::XML_FALSE;
                     }
-                    let Some(pool_start_ref) =
-                        pool_string_ref(&raw const dtd.pool, pool_start, false)
-                    else {
-                        return crate::expat_h::XML_FALSE;
-                    };
-                    if (*prefix).name == Some(pool_start_ref) {
-                        let (copied_name, copied_name_ref) =
-                            poolCopyString(&raw mut dtd.pool, pool_start);
-                        if copied_name.is_null() || copied_name_ref.is_none() {
-                            return crate::expat_h::XML_FALSE;
-                        }
-                        (*prefix).name = copied_name_ref;
-                    }
                     parser.m_tempPool.rewind();
                     prefix
                 };
@@ -17458,17 +17445,18 @@ unsafe extern "C" fn lookup(
     }
     bytes.resize(words, 0);
     let entry = bytes.as_mut_ptr() as *mut NAMED;
+    // Lookup normally receives a name from the DTD pool.  Context restoration
+    // also uses a temporary-pool name, which must be copied before the table
+    // retains it because that temporary pool is rewound immediately after.
     let name = if let Some(name) = pool_string_ref(&raw const (*dtd).pool, name, false) {
         name
-    } else if name == EXTERNAL_SUBSET_NAME.as_ptr() {
-        let Some(name) = pool_copy_chars(&mut (*dtd).pool, &EXTERNAL_SUBSET_NAME) else {
+    } else {
+        let (_, name) = poolCopyString(&raw mut (*dtd).pool, name);
+        let Some(name) = name else {
             backing(7915 as ::core::ffi::c_int);
             return ::core::ptr::null_mut::<NAMED>();
         };
         name
-    } else {
-        backing(7915 as ::core::ffi::c_int);
-        return ::core::ptr::null_mut::<NAMED>();
     };
     (*entry).name = name;
     table.v.as_mut().expect("initialized hash table").entries[i] =
