@@ -2463,7 +2463,10 @@ pub struct ELEMENT_TYPE {
     // remains allocator-neutral and can be resolved when needed.
     pub prefix: PoolStringRef,
     pub hasPrefix: crate::expat_h::XML_Bool,
-    pub idAtt: *const ATTRIBUTE_ID,
+    // The ID attribute is identified by its DTD-pool name.  The attribute
+    // table may grow and move its slot array, whereas this pool location is
+    // stable for the lifetime of the DTD and can be resolved when needed.
+    pub idAtt: Option<PoolStringRef>,
     pub nDefaultAtts: ::core::ffi::c_int,
     pub allocDefaultAtts: ::core::ffi::c_int,
     // The storage remains allocated and released through the parser's
@@ -8371,19 +8374,21 @@ unsafe extern "C" fn storeAtts(
         i += 1;
     }
     (*parser).m_nSpecifiedAtts = attIndex;
-    if !(*elementType).idAtt.is_null()
-        && *(*(*elementType).idAtt).name.offset(-1 as isize) as ::core::ffi::c_int != 0
-    {
+    if let Some(id_att_name) = (*elementType).idAtt {
+        let id_att_name = (*dtd)
+            .pool
+            .chars_from(id_att_name)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        if id_att_name.is_null() {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        }
         i = 0 as ::core::ffi::c_int;
         while i < attIndex {
-            if appAtts[i as usize]
-                == (*(*elementType).idAtt).name as *const crate::expat_external_h::XML_Char
-            {
+            if appAtts[i as usize] == id_att_name {
                 (*parser).m_idAttIndex = i;
                 break;
-            } else {
-                i += 2 as ::core::ffi::c_int;
             }
+            i += 2 as ::core::ffi::c_int;
         }
     } else {
         (*parser).m_idAttIndex = -1 as ::core::ffi::c_int;
@@ -13418,8 +13423,8 @@ unsafe fn defineAttribute(
             }
             i += 1;
         }
-        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_null() && (*attId).xmlns == 0 {
-            type_0.idAtt = attId;
+        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_none() && (*attId).xmlns == 0 {
+            type_0.idAtt = Some(att_name);
         }
     }
     if type_0.nDefaultAtts == type_0.allocDefaultAtts {
@@ -14285,14 +14290,24 @@ unsafe extern "C" fn dtdCopy(
                 return 0 as ::core::ffi::c_int;
             }
         }
-        if !old_e.idAtt.is_null() {
-            let old_id_att = &*old_e.idAtt;
-            new_e.idAtt = lookup(
+        if let Some(old_id_att) = old_e.idAtt {
+            let old_id_att = pool_string_pointer(&raw const old_dtd.pool, old_id_att);
+            if old_id_att.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let new_id_att = lookup(
                 oldParser,
                 &raw mut new_dtd.attributeIds,
-                old_id_att.name as KEY,
+                old_id_att as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ATTRIBUTE_ID;
+            if new_id_att.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            new_e.idAtt = pool_string_ref(&raw const new_dtd.pool, (*new_id_att).name, false);
+            if new_e.idAtt.is_none() {
+                return 0 as ::core::ffi::c_int;
+            }
         }
         new_e.nDefaultAtts = old_e.nDefaultAtts;
         new_e.allocDefaultAtts = new_e.nDefaultAtts;
