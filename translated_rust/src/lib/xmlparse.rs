@@ -1066,6 +1066,14 @@ macro_rules! memset_ptr {
     }};
 }
 
+macro_rules! memcpy_ptr {
+    ($dest:expr, $src:expr, $size:expr $(,)?) => {{
+        unsafe {
+            memcpy($dest, $src, $size);
+        }
+    }};
+}
+
 macro_rules! free_parser {
     ($parser:expr $(,)?) => {{
         unsafe {
@@ -2655,7 +2663,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: XML_Parser) {
             }
             p = tagList;
             tagList = (*tagList).parent as *mut TAG;
-            expat_free(
+            expat_free_ptr!(
                 parser,
                 (*p).buf as *mut ::core::ffi::c_void,
                 1942 as ::core::ffi::c_int,
@@ -3575,7 +3583,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
                 }
                 (*parser).m_bufferLim = newBuf.offset(bufferSize as isize);
                 if !(*parser).m_bufferPtr.is_null() {
-                    memcpy(
+                    memcpy_ptr!(
                         newBuf as *mut ::core::ffi::c_void,
                         (*parser).m_bufferPtr.offset(-keep as isize) as *const ::core::ffi::c_char
                             as *const ::core::ffi::c_void,
@@ -5265,599 +5273,615 @@ extern "C" fn storeAtts(
     mut bindingsPtr: *mut *mut BINDING,
     mut account: XML_Account,
 ) -> XML_Error {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        let mut nDefaultAtts: ::core::ffi::c_int = 0;
-        let mut appAtts: *mut *const XML_Char = ::core::ptr::null_mut::<*const XML_Char>();
-        let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut prefixLen: ::core::ffi::c_int = 0;
-        let mut i: ::core::ffi::c_int = 0;
-        let mut n: ::core::ffi::c_int = 0;
-        let mut uri: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
-        let mut nPrefixes: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut binding: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
-        let mut localPart: *const XML_Char = ::core::ptr::null::<XML_Char>();
-        elementType = lookup(
-            parser,
-            &raw mut (*dtd).elementTypes,
-            (*tagNamePtr).str as KEY,
-            0 as size_t,
-        ) as *mut ELEMENT_TYPE;
-        if elementType.is_null() {
-            let mut name: *const XML_Char = poolCopyString(&mut (*dtd).pool, (*tagNamePtr).str);
-            if name.is_null() {
-                return XML_ERROR_NO_MEMORY;
-            }
-            elementType = lookup(
-                parser,
-                &raw mut (*dtd).elementTypes,
-                name as KEY,
-                ::core::mem::size_of::<ELEMENT_TYPE>() as size_t,
-            ) as *mut ELEMENT_TYPE;
-            if elementType.is_null() {
-                return XML_ERROR_NO_MEMORY;
-            }
-            if (*parser).m_ns as ::core::ffi::c_int != 0
-                && setElementTypePrefix(parser, elementType) == 0
-            {
-                return XML_ERROR_NO_MEMORY;
-            }
-        }
-        nDefaultAtts = (*elementType).nDefaultAtts;
-        n = (*enc).getAtts.expect("non-null function pointer")(
-            enc,
-            attStr,
-            (*parser).m_attsSize,
-            (*parser).m_atts,
-        );
-        if n > INT_MAX - nDefaultAtts {
+    let parser_ptr = parser;
+    let parser = ptr_mut(parser_ptr);
+    let dtd = ptr_mut(parser.m_dtd);
+    let enc_ptr = enc;
+    let enc = ptr_ref(enc_ptr);
+    let tag_name = ptr_mut(tagNamePtr);
+    let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    let mut nDefaultAtts: ::core::ffi::c_int = 0;
+    let mut appAtts: *mut *const XML_Char = ::core::ptr::null_mut::<*const XML_Char>();
+    let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    let mut prefixLen: ::core::ffi::c_int = 0;
+    let mut i: ::core::ffi::c_int = 0;
+    let mut n: ::core::ffi::c_int = 0;
+    let mut uri: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
+    let mut nPrefixes: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    let mut binding: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
+    let mut localPart: *const XML_Char = ::core::ptr::null::<XML_Char>();
+    elementType = lookup(
+        parser,
+        &raw mut dtd.elementTypes,
+        tag_name.str as KEY,
+        0 as size_t,
+    ) as *mut ELEMENT_TYPE;
+    if elementType.is_null() {
+        let mut name: *const XML_Char = poolCopyString(&mut dtd.pool, tag_name.str);
+        if name.is_null() {
             return XML_ERROR_NO_MEMORY;
         }
-        if n + nDefaultAtts > (*parser).m_attsSize {
-            let mut oldAttsSize: ::core::ffi::c_int = (*parser).m_attsSize;
-            let mut temp: *mut ATTRIBUTE = ::core::ptr::null_mut::<ATTRIBUTE>();
-            if nDefaultAtts > INT_MAX - INIT_ATTS_SIZE
-                || n > INT_MAX - (nDefaultAtts + INIT_ATTS_SIZE)
-            {
-                return XML_ERROR_NO_MEMORY;
-            }
-            (*parser).m_attsSize = n + nDefaultAtts + INIT_ATTS_SIZE;
-            temp = expat_realloc(
-                parser,
-                (*parser).m_atts as *mut ::core::ffi::c_void,
-                ((*parser).m_attsSize as size_t)
-                    .wrapping_mul(::core::mem::size_of::<ATTRIBUTE>() as size_t),
-                3894 as ::core::ffi::c_int,
-            ) as *mut ATTRIBUTE;
-            if temp.is_null() {
-                (*parser).m_attsSize = oldAttsSize;
-                return XML_ERROR_NO_MEMORY;
-            }
-            (*parser).m_atts = temp;
-            if n > oldAttsSize {
-                (*enc).getAtts.expect("non-null function pointer")(
-                    enc,
-                    attStr,
-                    n,
-                    (*parser).m_atts,
-                );
-            }
+        elementType = lookup(
+            parser,
+            &raw mut dtd.elementTypes,
+            name as KEY,
+            ::core::mem::size_of::<ELEMENT_TYPE>() as size_t,
+        ) as *mut ELEMENT_TYPE;
+        if elementType.is_null() {
+            return XML_ERROR_NO_MEMORY;
         }
-        appAtts = (*parser).m_atts as *mut *const XML_Char;
-        i = 0 as ::core::ffi::c_int;
-        while i < n {
-            let mut currAtt: *mut ATTRIBUTE = (*parser).m_atts.offset(i as isize) as *mut ATTRIBUTE;
-            let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
-                parser,
-                enc,
-                (*currAtt).name,
-                (*currAtt)
-                    .name
-                    .offset((*enc).nameLength.expect("non-null function pointer")(
-                        enc,
-                        (*currAtt).name,
-                    ) as isize),
+        if parser.m_ns as ::core::ffi::c_int != 0 && setElementTypePrefix(parser, elementType) == 0
+        {
+            return XML_ERROR_NO_MEMORY;
+        }
+    }
+    nDefaultAtts = ptr_mut(elementType).nDefaultAtts;
+    n = enc.getAtts.expect("non-null function pointer")(
+        enc,
+        attStr,
+        parser.m_attsSize,
+        parser.m_atts,
+    );
+    if n > INT_MAX - nDefaultAtts {
+        return XML_ERROR_NO_MEMORY;
+    }
+    if n + nDefaultAtts > parser.m_attsSize {
+        let mut oldAttsSize: ::core::ffi::c_int = parser.m_attsSize;
+        let mut temp: *mut ATTRIBUTE = ::core::ptr::null_mut::<ATTRIBUTE>();
+        if nDefaultAtts > INT_MAX - INIT_ATTS_SIZE || n > INT_MAX - (nDefaultAtts + INIT_ATTS_SIZE)
+        {
+            return XML_ERROR_NO_MEMORY;
+        }
+        parser.m_attsSize = n + nDefaultAtts + INIT_ATTS_SIZE;
+        temp = expat_realloc_ptr!(
+            parser_ptr,
+            parser.m_atts as *mut ::core::ffi::c_void,
+            (parser.m_attsSize as size_t)
+                .wrapping_mul(::core::mem::size_of::<ATTRIBUTE>() as size_t),
+            3894 as ::core::ffi::c_int,
+            ATTRIBUTE,
+        );
+        if temp.is_null() {
+            parser.m_attsSize = oldAttsSize;
+            return XML_ERROR_NO_MEMORY;
+        }
+        parser.m_atts = temp;
+        if n > oldAttsSize {
+            enc.getAtts.expect("non-null function pointer")(enc, attStr, n, parser.m_atts);
+        }
+    }
+    appAtts = parser.m_atts as *mut *const XML_Char;
+    i = 0 as ::core::ffi::c_int;
+    while i < n {
+        let curr_att = ptr_mut(parser.m_atts.wrapping_offset(i as isize));
+        let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
+            parser_ptr,
+            enc_ptr,
+            curr_att.name,
+            curr_att
+                .name
+                .wrapping_offset(enc.nameLength.expect("non-null function pointer")(
+                    enc_ptr,
+                    curr_att.name,
+                ) as isize),
+        );
+        if attId.is_null() {
+            return XML_ERROR_NO_MEMORY;
+        }
+        let att_id = ptr_mut(attId);
+        if *ptr_index_ref(att_id.name, -(1 as ::core::ffi::c_int) as isize) != 0 {
+            if enc_ptr == parser.m_encoding {
+                parser.m_eventPtr = ptr_index_mut(parser.m_atts, i as isize).name;
+            }
+            return XML_ERROR_DUPLICATE_ATTRIBUTE;
+        }
+        *ptr_index_mut(
+            att_id.name as *mut XML_Char,
+            -(1 as ::core::ffi::c_int) as isize,
+        ) = 1 as XML_Char;
+        let c2rust_fresh27 = attIndex;
+        attIndex = attIndex + 1;
+        let ref mut c2rust_fresh28 = *ptr_index_mut(appAtts, c2rust_fresh27 as isize);
+        *c2rust_fresh28 = att_id.name;
+        if curr_att.normalized == 0 {
+            let mut result: XML_Error = XML_ERROR_NONE;
+            let mut isCdata: XML_Bool = XML_TRUE;
+            if att_id.maybeTokenized != 0 {
+                let mut j: ::core::ffi::c_int = 0;
+                j = 0 as ::core::ffi::c_int;
+                while j < nDefaultAtts {
+                    let default_att = ptr_index_ref(ptr_mut(elementType).defaultAtts, j as isize);
+                    if attId == default_att.id as *mut ATTRIBUTE_ID {
+                        isCdata = default_att.isCdata;
+                        break;
+                    } else {
+                        j += 1;
+                    }
+                }
+            }
+            result = storeAttributeValue(
+                parser_ptr,
+                enc_ptr,
+                isCdata,
+                curr_att.valuePtr,
+                curr_att.valueEnd,
+                &raw mut parser.m_tempPool,
+                account,
             );
-            if attId.is_null() {
+            if result as u64 != 0 {
+                return result;
+            }
+            let ref mut c2rust_fresh29 = *ptr_index_mut(appAtts, attIndex as isize);
+            *c2rust_fresh29 = parser.m_tempPool.start;
+            parser.m_tempPool.start = parser.m_tempPool.ptr;
+        } else {
+            let ref mut c2rust_fresh30 = *ptr_index_mut(appAtts, attIndex as isize);
+            *c2rust_fresh30 = poolStoreString(
+                &mut parser.m_tempPool,
+                enc_ptr,
+                curr_att.valuePtr,
+                curr_att.valueEnd,
+            );
+            if (*ptr_index_mut(appAtts, attIndex as isize)).is_null() {
                 return XML_ERROR_NO_MEMORY;
             }
-            if *(*attId).name.offset(-(1 as ::core::ffi::c_int) as isize) != 0 {
-                if enc == (*parser).m_encoding {
-                    (*parser).m_eventPtr = (*(*parser).m_atts.offset(i as isize)).name;
-                }
-                return XML_ERROR_DUPLICATE_ATTRIBUTE;
-            }
-            *(*attId).name.offset(-(1 as ::core::ffi::c_int) as isize) = 1 as XML_Char;
-            let c2rust_fresh27 = attIndex;
-            attIndex = attIndex + 1;
-            let ref mut c2rust_fresh28 = *appAtts.offset(c2rust_fresh27 as isize);
-            *c2rust_fresh28 = (*attId).name;
-            if (*(*parser).m_atts.offset(i as isize)).normalized == 0 {
-                let mut result: XML_Error = XML_ERROR_NONE;
-                let mut isCdata: XML_Bool = XML_TRUE;
-                if (*attId).maybeTokenized != 0 {
-                    let mut j: ::core::ffi::c_int = 0;
-                    j = 0 as ::core::ffi::c_int;
-                    while j < nDefaultAtts {
-                        if attId
-                            == (*(*elementType).defaultAtts.offset(j as isize)).id
-                                as *mut ATTRIBUTE_ID
-                        {
-                            isCdata = (*(*elementType).defaultAtts.offset(j as isize)).isCdata;
-                            break;
-                        } else {
-                            j += 1;
-                        }
-                    }
-                }
-                result = storeAttributeValue(
-                    parser,
-                    enc,
-                    isCdata,
-                    (*(*parser).m_atts.offset(i as isize)).valuePtr,
-                    (*(*parser).m_atts.offset(i as isize)).valueEnd,
-                    &raw mut (*parser).m_tempPool,
-                    account,
+            parser.m_tempPool.start = parser.m_tempPool.ptr;
+        }
+        if !att_id.prefix.is_null() {
+            if att_id.xmlns != 0 {
+                let mut result_0: XML_Error = addBinding(
+                    parser_ptr,
+                    att_id.prefix,
+                    attId,
+                    *ptr_index_mut(appAtts, attIndex as isize),
+                    bindingsPtr,
                 );
-                if result as u64 != 0 {
-                    return result;
+                if result_0 as u64 != 0 {
+                    return result_0;
                 }
-                let ref mut c2rust_fresh29 = *appAtts.offset(attIndex as isize);
-                *c2rust_fresh29 = (*parser).m_tempPool.start;
-                (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-            } else {
-                let ref mut c2rust_fresh30 = *appAtts.offset(attIndex as isize);
-                *c2rust_fresh30 = poolStoreString(
-                    &mut (*parser).m_tempPool,
-                    enc,
-                    (*(*parser).m_atts.offset(i as isize)).valuePtr,
-                    (*(*parser).m_atts.offset(i as isize)).valueEnd,
-                );
-                if (*appAtts.offset(attIndex as isize)).is_null() {
-                    return XML_ERROR_NO_MEMORY;
-                }
-                (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-            }
-            if !(*attId).prefix.is_null() {
-                if (*attId).xmlns != 0 {
-                    let mut result_0: XML_Error = addBinding(
-                        parser,
-                        (*attId).prefix,
-                        attId,
-                        *appAtts.offset(attIndex as isize),
-                        bindingsPtr,
-                    );
-                    if result_0 as u64 != 0 {
-                        return result_0;
-                    }
-                    attIndex -= 1;
-                } else {
-                    attIndex += 1;
-                    nPrefixes += 1;
-                    *(*attId).name.offset(-(1 as ::core::ffi::c_int) as isize) = 2 as XML_Char;
-                }
+                attIndex -= 1;
             } else {
                 attIndex += 1;
-            }
-            i += 1;
-        }
-        (*parser).m_nSpecifiedAtts = attIndex;
-        if !(*elementType).idAtt.is_null()
-            && *(*(*elementType).idAtt)
-                .name
-                .offset(-(1 as ::core::ffi::c_int) as isize) as ::core::ffi::c_int
-                != 0
-        {
-            i = 0 as ::core::ffi::c_int;
-            while i < attIndex {
-                if *appAtts.offset(i as isize) == (*(*elementType).idAtt).name as *const XML_Char {
-                    (*parser).m_idAttIndex = i;
-                    break;
-                } else {
-                    i += 2 as ::core::ffi::c_int;
-                }
+                nPrefixes += 1;
+                *ptr_index_mut(
+                    att_id.name as *mut XML_Char,
+                    -(1 as ::core::ffi::c_int) as isize,
+                ) = 2 as XML_Char;
             }
         } else {
-            (*parser).m_idAttIndex = -(1 as ::core::ffi::c_int);
+            attIndex += 1;
         }
+        i += 1;
+    }
+    parser.m_nSpecifiedAtts = attIndex;
+    if !ptr_mut(elementType).idAtt.is_null()
+        && *ptr_index_ref(
+            ptr_ref(ptr_mut(elementType).idAtt).name,
+            -(1 as ::core::ffi::c_int) as isize,
+        ) as ::core::ffi::c_int
+            != 0
+    {
         i = 0 as ::core::ffi::c_int;
-        while i < nDefaultAtts {
-            let mut da: *const DEFAULT_ATTRIBUTE = (*elementType).defaultAtts.offset(i as isize);
-            if *(*(*da).id).name.offset(-(1 as ::core::ffi::c_int) as isize) == 0
-                && !(*da).value.is_null()
+        while i < attIndex {
+            if *ptr_index_mut(appAtts, i as isize)
+                == ptr_ref(ptr_mut(elementType).idAtt).name as *const XML_Char
             {
-                if !(*(*da).id).prefix.is_null() {
-                    if (*(*da).id).xmlns != 0 {
-                        let mut result_1: XML_Error = addBinding(
-                            parser,
-                            (*(*da).id).prefix,
-                            (*da).id,
-                            (*da).value,
-                            bindingsPtr,
-                        );
-                        if result_1 as u64 != 0 {
-                            return result_1;
-                        }
-                    } else {
-                        *(*(*da).id).name.offset(-(1 as ::core::ffi::c_int) as isize) =
-                            2 as XML_Char;
-                        nPrefixes += 1;
-                        let c2rust_fresh31 = attIndex;
-                        attIndex = attIndex + 1;
-                        let ref mut c2rust_fresh32 = *appAtts.offset(c2rust_fresh31 as isize);
-                        *c2rust_fresh32 = (*(*da).id).name;
-                        let c2rust_fresh33 = attIndex;
-                        attIndex = attIndex + 1;
-                        let ref mut c2rust_fresh34 = *appAtts.offset(c2rust_fresh33 as isize);
-                        *c2rust_fresh34 = (*da).value;
-                    }
-                } else {
-                    *(*(*da).id).name.offset(-(1 as ::core::ffi::c_int) as isize) = 1 as XML_Char;
-                    let c2rust_fresh35 = attIndex;
-                    attIndex = attIndex + 1;
-                    let ref mut c2rust_fresh36 = *appAtts.offset(c2rust_fresh35 as isize);
-                    *c2rust_fresh36 = (*(*da).id).name;
-                    let c2rust_fresh37 = attIndex;
-                    attIndex = attIndex + 1;
-                    let ref mut c2rust_fresh38 = *appAtts.offset(c2rust_fresh37 as isize);
-                    *c2rust_fresh38 = (*da).value;
-                }
-            }
-            i += 1;
-        }
-        let ref mut c2rust_fresh39 = *appAtts.offset(attIndex as isize);
-        *c2rust_fresh39 = ::core::ptr::null::<XML_Char>();
-        i = 0 as ::core::ffi::c_int;
-        if nPrefixes != 0 {
-            let mut j_0: ::core::ffi::c_uint = 0;
-            let mut version: ::core::ffi::c_ulong = (*parser).m_nsAttsVersion;
-            if (*parser).m_nsAttsPower as usize
-                >= (::core::mem::size_of::<::core::ffi::c_uint>() as usize).wrapping_mul(8 as usize)
-            {
-                return XML_ERROR_NO_MEMORY;
-            }
-            let mut nsAttsSize: ::core::ffi::c_uint =
-                (1 as ::core::ffi::c_uint) << (*parser).m_nsAttsPower as ::core::ffi::c_int;
-            let mut oldNsAttsPower: ::core::ffi::c_uchar = (*parser).m_nsAttsPower;
-            if nPrefixes << 1 as ::core::ffi::c_int >> (*parser).m_nsAttsPower as ::core::ffi::c_int
-                != 0
-            {
-                let mut temp_0: *mut NS_ATT = ::core::ptr::null_mut::<NS_ATT>();
-                loop {
-                    let c2rust_fresh40 = (*parser).m_nsAttsPower;
-                    (*parser).m_nsAttsPower = (*parser).m_nsAttsPower.wrapping_add(1);
-                    if !(nPrefixes >> c2rust_fresh40 as ::core::ffi::c_int != 0) {
-                        break;
-                    }
-                }
-                if ((*parser).m_nsAttsPower as ::core::ffi::c_int) < 3 as ::core::ffi::c_int {
-                    (*parser).m_nsAttsPower = 3 as ::core::ffi::c_uchar;
-                }
-                if (*parser).m_nsAttsPower as usize
-                    >= (::core::mem::size_of::<::core::ffi::c_uint>() as usize)
-                        .wrapping_mul(8 as usize)
-                {
-                    (*parser).m_nsAttsPower = oldNsAttsPower;
-                    return XML_ERROR_NO_MEMORY;
-                }
-                nsAttsSize =
-                    (1 as ::core::ffi::c_uint) << (*parser).m_nsAttsPower as ::core::ffi::c_int;
-                temp_0 = expat_realloc(
-                    parser,
-                    (*parser).m_nsAtts as *mut ::core::ffi::c_void,
-                    (nsAttsSize as size_t).wrapping_mul(::core::mem::size_of::<NS_ATT>() as size_t),
-                    4089 as ::core::ffi::c_int,
-                ) as *mut NS_ATT;
-                if temp_0.is_null() {
-                    (*parser).m_nsAttsPower = oldNsAttsPower;
-                    return XML_ERROR_NO_MEMORY;
-                }
-                (*parser).m_nsAtts = temp_0;
-                version = 0 as ::core::ffi::c_ulong;
-            }
-            if version == 0 {
-                version = INIT_ATTS_VERSION as ::core::ffi::c_ulong;
-                j_0 = nsAttsSize;
-                while j_0 != 0 as ::core::ffi::c_uint {
-                    j_0 = j_0.wrapping_sub(1);
-                    (*(*parser).m_nsAtts.offset(j_0 as isize)).version = version;
-                }
-            }
-            version = version.wrapping_sub(1);
-            (*parser).m_nsAttsVersion = version;
-            while i < attIndex {
-                let mut s: *const XML_Char = *appAtts.offset(i as isize);
-                if *s.offset(-(1 as ::core::ffi::c_int) as isize) as ::core::ffi::c_int
-                    == 2 as ::core::ffi::c_int
-                {
-                    let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                    let mut b: *const BINDING = ::core::ptr::null::<BINDING>();
-                    let mut uriHash: ::core::ffi::c_ulong = 0;
-                    let mut sip_state: siphash = siphash {
-                        v0: 0,
-                        v1: 0,
-                        v2: 0,
-                        v3: 0,
-                        buf: [0; 8],
-                        buf_len: 0,
-                        c: 0,
-                    };
-                    let mut sip_key: sipkey = sipkey { k: [0; 2] };
-                    copy_salt_to_sipkey(get_hash_secret_salt(&mut *parser), &mut sip_key);
-                    sip24_init(&mut sip_state, &sip_key);
-                    *(s as *mut XML_Char).offset(-(1 as ::core::ffi::c_int) as isize) =
-                        0 as XML_Char;
-                    id = lookup(parser, &raw mut (*dtd).attributeIds, s as KEY, 0 as size_t)
-                        as *mut ATTRIBUTE_ID;
-                    if id.is_null() || (*id).prefix.is_null() {
-                        return XML_ERROR_NO_MEMORY;
-                    }
-                    b = (*(*id).prefix).binding;
-                    if b.is_null() {
-                        return XML_ERROR_UNBOUND_PREFIX;
-                    }
-                    j_0 = 0 as ::core::ffi::c_uint;
-                    while j_0 < (*b).uriLen as ::core::ffi::c_uint {
-                        let c: XML_Char = *(*b).uri.offset(j_0 as isize);
-                        if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                            && poolGrow(&mut (*parser).m_tempPool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            let c2rust_fresh41 = (*parser).m_tempPool.ptr;
-                            (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                            *c2rust_fresh41 = c;
-                            1 as ::core::ffi::c_int
-                        } == 0
-                        {
-                            return XML_ERROR_NO_MEMORY;
-                        }
-                        j_0 = j_0.wrapping_add(1);
-                    }
-                    sip24_update(
-                        &mut sip_state,
-                        ::core::slice::from_raw_parts(
-                            (*b).uri.cast::<::core::ffi::c_uchar>(),
-                            ((*b).uriLen as size_t)
-                                .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-                        ),
-                    );
-                    loop {
-                        let c2rust_fresh42 = s;
-                        s = s.offset(1);
-                        if !(*c2rust_fresh42 as ::core::ffi::c_int != 0x3a as ::core::ffi::c_int) {
-                            break;
-                        }
-                    }
-                    sip24_update(
-                        &mut sip_state,
-                        ::core::slice::from_raw_parts(
-                            s.cast::<::core::ffi::c_uchar>(),
-                            keylen(s as KEY)
-                                .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-                        ),
-                    );
-                    loop {
-                        if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                            && poolGrow(&mut (*parser).m_tempPool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            let c2rust_fresh43 = (*parser).m_tempPool.ptr;
-                            (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                            *c2rust_fresh43 = *s;
-                            1 as ::core::ffi::c_int
-                        } == 0
-                        {
-                            return XML_ERROR_NO_MEMORY;
-                        }
-                        let c2rust_fresh44 = s;
-                        s = s.offset(1);
-                        if !(*c2rust_fresh44 != 0) {
-                            break;
-                        }
-                    }
-                    uriHash = sip24_final(&mut sip_state) as ::core::ffi::c_ulong;
-                    let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
-                    let mut mask: ::core::ffi::c_ulong =
-                        nsAttsSize.wrapping_sub(1 as ::core::ffi::c_uint) as ::core::ffi::c_ulong;
-                    j_0 = (uriHash & mask) as ::core::ffi::c_uint;
-                    while (*(*parser).m_nsAtts.offset(j_0 as isize)).version == version {
-                        if uriHash == (*(*parser).m_nsAtts.offset(j_0 as isize)).hash {
-                            let mut s1: *const XML_Char = (*parser).m_tempPool.start;
-                            let mut s2: *const XML_Char =
-                                (*(*parser).m_nsAtts.offset(j_0 as isize)).uriName;
-                            while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int
-                                && *s1 as ::core::ffi::c_int != 0 as ::core::ffi::c_int
-                            {
-                                s1 = s1.offset(1);
-                                s2 = s2.offset(1);
-                            }
-                            if *s1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                                return XML_ERROR_DUPLICATE_ATTRIBUTE;
-                            }
-                        }
-                        if step == 0 {
-                            step = ((uriHash & !mask)
-                                >> (*parser).m_nsAttsPower as ::core::ffi::c_int
-                                    - 1 as ::core::ffi::c_int
-                                & mask >> 2 as ::core::ffi::c_int
-                                | 1 as ::core::ffi::c_ulong)
-                                as ::core::ffi::c_uchar;
-                        }
-                        if j_0 < step as ::core::ffi::c_uint {
-                            j_0 = j_0
-                                .wrapping_add(nsAttsSize.wrapping_sub(step as ::core::ffi::c_uint));
-                        } else {
-                            j_0 = j_0.wrapping_sub(step as ::core::ffi::c_uint);
-                        };
-                    }
-                    if (*parser).m_ns_triplets != 0 {
-                        *(*parser)
-                            .m_tempPool
-                            .ptr
-                            .offset(-(1 as ::core::ffi::c_int) as isize) =
-                            (*parser).m_namespaceSeparator;
-                        s = (*(*b).prefix).name;
-                        loop {
-                            if if (*parser).m_tempPool.ptr
-                                == (*parser).m_tempPool.end as *mut XML_Char
-                                && poolGrow(&mut (*parser).m_tempPool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh45 = (*parser).m_tempPool.ptr;
-                                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                                *c2rust_fresh45 = *s;
-                                1 as ::core::ffi::c_int
-                            } == 0
-                            {
-                                return XML_ERROR_NO_MEMORY;
-                            }
-                            let c2rust_fresh46 = s;
-                            s = s.offset(1);
-                            if !(*c2rust_fresh46 != 0) {
-                                break;
-                            }
-                        }
-                    }
-                    s = (*parser).m_tempPool.start;
-                    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                    let ref mut c2rust_fresh47 = *appAtts.offset(i as isize);
-                    *c2rust_fresh47 = s;
-                    (*(*parser).m_nsAtts.offset(j_0 as isize)).version = version;
-                    (*(*parser).m_nsAtts.offset(j_0 as isize)).hash = uriHash;
-                    let ref mut c2rust_fresh48 = (*(*parser).m_nsAtts.offset(j_0 as isize)).uriName;
-                    *c2rust_fresh48 = s;
-                    nPrefixes -= 1;
-                    if nPrefixes == 0 {
-                        i += 2 as ::core::ffi::c_int;
-                        break;
-                    }
-                } else {
-                    *(s as *mut XML_Char).offset(-(1 as ::core::ffi::c_int) as isize) =
-                        0 as XML_Char;
-                }
+                parser.m_idAttIndex = i;
+                break;
+            } else {
                 i += 2 as ::core::ffi::c_int;
             }
         }
-        while i < attIndex {
-            *(*appAtts.offset(i as isize) as *mut XML_Char)
-                .offset(-(1 as ::core::ffi::c_int) as isize) = 0 as XML_Char;
-            i += 2 as ::core::ffi::c_int;
-        }
-        binding = *bindingsPtr;
-        while !binding.is_null() {
-            *(*(*binding).attId)
-                .name
-                .offset(-(1 as ::core::ffi::c_int) as isize) = 0 as XML_Char;
-            binding = (*binding).nextTagBinding as *mut BINDING;
-        }
-        if (*parser).m_ns == 0 {
-            return XML_ERROR_NONE;
-        }
-        if !(*elementType).prefix.is_null() {
-            binding = (*(*elementType).prefix).binding;
-            if binding.is_null() {
-                return XML_ERROR_UNBOUND_PREFIX;
-            }
-            localPart = (*tagNamePtr).str;
-            loop {
-                let c2rust_fresh49 = localPart;
-                localPart = localPart.offset(1);
-                if !(*c2rust_fresh49 as ::core::ffi::c_int != 0x3a as ::core::ffi::c_int) {
-                    break;
-                }
-            }
-        } else if !(*dtd).defaultPrefix.binding.is_null() {
-            binding = (*dtd).defaultPrefix.binding;
-            localPart = (*tagNamePtr).str;
-        } else {
-            return XML_ERROR_NONE;
-        }
-        prefixLen = 0 as ::core::ffi::c_int;
-        if (*parser).m_ns_triplets as ::core::ffi::c_int != 0
-            && !(*(*binding).prefix).name.is_null()
+    } else {
+        parser.m_idAttIndex = -(1 as ::core::ffi::c_int);
+    }
+    i = 0 as ::core::ffi::c_int;
+    while i < nDefaultAtts {
+        let default_att = ptr_index_ref(ptr_mut(elementType).defaultAtts, i as isize);
+        let default_id = ptr_ref(default_att.id);
+        if *ptr_index_ref(default_id.name, -(1 as ::core::ffi::c_int) as isize) == 0
+            && !default_att.value.is_null()
         {
-            loop {
-                let c2rust_fresh50 = prefixLen;
-                prefixLen = prefixLen + 1;
-                if !(*(*(*binding).prefix).name.offset(c2rust_fresh50 as isize) != 0) {
-                    break;
+            if !default_id.prefix.is_null() {
+                if default_id.xmlns != 0 {
+                    let mut result_1: XML_Error = addBinding(
+                        parser_ptr,
+                        default_id.prefix,
+                        default_att.id,
+                        default_att.value,
+                        bindingsPtr,
+                    );
+                    if result_1 as u64 != 0 {
+                        return result_1;
+                    }
+                } else {
+                    *ptr_index_mut(
+                        default_id.name as *mut XML_Char,
+                        -(1 as ::core::ffi::c_int) as isize,
+                    ) = 2 as XML_Char;
+                    nPrefixes += 1;
+                    let c2rust_fresh31 = attIndex;
+                    attIndex = attIndex + 1;
+                    let ref mut c2rust_fresh32 = *ptr_index_mut(appAtts, c2rust_fresh31 as isize);
+                    *c2rust_fresh32 = default_id.name;
+                    let c2rust_fresh33 = attIndex;
+                    attIndex = attIndex + 1;
+                    let ref mut c2rust_fresh34 = *ptr_index_mut(appAtts, c2rust_fresh33 as isize);
+                    *c2rust_fresh34 = default_att.value;
                 }
+            } else {
+                *ptr_index_mut(
+                    default_id.name as *mut XML_Char,
+                    -(1 as ::core::ffi::c_int) as isize,
+                ) = 1 as XML_Char;
+                let c2rust_fresh35 = attIndex;
+                attIndex = attIndex + 1;
+                let ref mut c2rust_fresh36 = *ptr_index_mut(appAtts, c2rust_fresh35 as isize);
+                *c2rust_fresh36 = default_id.name;
+                let c2rust_fresh37 = attIndex;
+                attIndex = attIndex + 1;
+                let ref mut c2rust_fresh38 = *ptr_index_mut(appAtts, c2rust_fresh37 as isize);
+                *c2rust_fresh38 = default_att.value;
             }
         }
-        (*tagNamePtr).localPart = localPart;
-        (*tagNamePtr).uriLen = (*binding).uriLen;
-        (*tagNamePtr).prefix = (*(*binding).prefix).name;
-        (*tagNamePtr).prefixLen = prefixLen;
-        i = 0 as ::core::ffi::c_int;
-        loop {
-            let c2rust_fresh51 = i;
-            i = i + 1;
-            if !(*localPart.offset(c2rust_fresh51 as isize) != 0) {
-                break;
-            }
-        }
-        if (*binding).uriLen > INT_MAX - prefixLen || i > INT_MAX - ((*binding).uriLen + prefixLen)
+        i += 1;
+    }
+    let ref mut c2rust_fresh39 = *ptr_index_mut(appAtts, attIndex as isize);
+    *c2rust_fresh39 = ::core::ptr::null::<XML_Char>();
+    i = 0 as ::core::ffi::c_int;
+    if nPrefixes != 0 {
+        let mut j_0: ::core::ffi::c_uint = 0;
+        let mut version: ::core::ffi::c_ulong = parser.m_nsAttsVersion;
+        if parser.m_nsAttsPower as usize
+            >= (::core::mem::size_of::<::core::ffi::c_uint>() as usize).wrapping_mul(8 as usize)
         {
             return XML_ERROR_NO_MEMORY;
         }
-        n = i + (*binding).uriLen + prefixLen;
-        if n > (*binding).uriAlloc {
-            let mut p: *mut TAG = ::core::ptr::null_mut::<TAG>();
-            if n > INT_MAX - EXPAND_SPARE {
-                return XML_ERROR_NO_MEMORY;
-            }
-            uri = expat_malloc(
-                parser,
-                ((n + 24 as ::core::ffi::c_int) as size_t)
-                    .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-                4270 as ::core::ffi::c_int,
-            ) as *mut XML_Char;
-            if uri.is_null() {
-                return XML_ERROR_NO_MEMORY;
-            }
-            (*binding).uriAlloc = n + EXPAND_SPARE;
-            memcpy(
-                uri as *mut ::core::ffi::c_void,
-                (*binding).uri as *const ::core::ffi::c_void,
-                ((*binding).uriLen as size_t)
-                    .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-            );
-            p = (*parser).m_tagStack;
-            while !p.is_null() {
-                if (*p).name.str == (*binding).uri as *const XML_Char {
-                    (*p).name.str = uri;
+        let mut nsAttsSize: ::core::ffi::c_uint =
+            (1 as ::core::ffi::c_uint) << parser.m_nsAttsPower as ::core::ffi::c_int;
+        let mut oldNsAttsPower: ::core::ffi::c_uchar = parser.m_nsAttsPower;
+        if nPrefixes << 1 as ::core::ffi::c_int >> parser.m_nsAttsPower as ::core::ffi::c_int != 0 {
+            let mut temp_0: *mut NS_ATT = ::core::ptr::null_mut::<NS_ATT>();
+            loop {
+                let c2rust_fresh40 = parser.m_nsAttsPower;
+                parser.m_nsAttsPower = parser.m_nsAttsPower.wrapping_add(1);
+                if !(nPrefixes >> c2rust_fresh40 as ::core::ffi::c_int != 0) {
+                    break;
                 }
-                p = (*p).parent as *mut TAG;
             }
-            expat_free(
-                parser,
-                (*binding).uri as *mut ::core::ffi::c_void,
-                4278 as ::core::ffi::c_int,
+            if (parser.m_nsAttsPower as ::core::ffi::c_int) < 3 as ::core::ffi::c_int {
+                parser.m_nsAttsPower = 3 as ::core::ffi::c_uchar;
+            }
+            if parser.m_nsAttsPower as usize
+                >= (::core::mem::size_of::<::core::ffi::c_uint>() as usize).wrapping_mul(8 as usize)
+            {
+                parser.m_nsAttsPower = oldNsAttsPower;
+                return XML_ERROR_NO_MEMORY;
+            }
+            nsAttsSize = (1 as ::core::ffi::c_uint) << parser.m_nsAttsPower as ::core::ffi::c_int;
+            temp_0 = expat_realloc_ptr!(
+                parser_ptr,
+                parser.m_nsAtts as *mut ::core::ffi::c_void,
+                (nsAttsSize as size_t).wrapping_mul(::core::mem::size_of::<NS_ATT>() as size_t),
+                4089 as ::core::ffi::c_int,
+                NS_ATT,
             );
-            (*binding).uri = uri;
+            if temp_0.is_null() {
+                parser.m_nsAttsPower = oldNsAttsPower;
+                return XML_ERROR_NO_MEMORY;
+            }
+            parser.m_nsAtts = temp_0;
+            version = 0 as ::core::ffi::c_ulong;
         }
-        uri = (*binding).uri.offset((*binding).uriLen as isize);
-        memcpy(
-            uri as *mut ::core::ffi::c_void,
-            localPart as *const ::core::ffi::c_void,
-            (i as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-        );
-        if prefixLen != 0 {
-            uri = uri.offset((i - 1 as ::core::ffi::c_int) as isize);
-            *uri = (*parser).m_namespaceSeparator;
-            memcpy(
-                uri.offset(1 as ::core::ffi::c_int as isize) as *mut ::core::ffi::c_void,
-                (*(*binding).prefix).name as *const ::core::ffi::c_void,
-                (prefixLen as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-            );
+        if version == 0 {
+            version = INIT_ATTS_VERSION as ::core::ffi::c_ulong;
+            j_0 = nsAttsSize;
+            while j_0 != 0 as ::core::ffi::c_uint {
+                j_0 = j_0.wrapping_sub(1);
+                (*ptr_index_mut(parser.m_nsAtts, j_0 as isize)).version = version;
+            }
         }
-        (*tagNamePtr).str = (*binding).uri;
+        version = version.wrapping_sub(1);
+        parser.m_nsAttsVersion = version;
+        while i < attIndex {
+            let mut s: *const XML_Char = *ptr_index_mut(appAtts, i as isize);
+            if *ptr_index_ref(s, -(1 as ::core::ffi::c_int) as isize) as ::core::ffi::c_int
+                == 2 as ::core::ffi::c_int
+            {
+                let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                let mut b: *const BINDING = ::core::ptr::null::<BINDING>();
+                let mut uriHash: ::core::ffi::c_ulong = 0;
+                let mut sip_state: siphash = siphash {
+                    v0: 0,
+                    v1: 0,
+                    v2: 0,
+                    v3: 0,
+                    buf: [0; 8],
+                    buf_len: 0,
+                    c: 0,
+                };
+                let mut sip_key: sipkey = sipkey { k: [0; 2] };
+                copy_salt_to_sipkey(get_hash_secret_salt(parser), &mut sip_key);
+                sip24_init(&mut sip_state, &sip_key);
+                *ptr_index_mut(s as *mut XML_Char, -(1 as ::core::ffi::c_int) as isize) =
+                    0 as XML_Char;
+                id = lookup(parser_ptr, &raw mut dtd.attributeIds, s as KEY, 0 as size_t)
+                    as *mut ATTRIBUTE_ID;
+                if id.is_null() || ptr_mut(id).prefix.is_null() {
+                    return XML_ERROR_NO_MEMORY;
+                }
+                b = ptr_ref(ptr_mut(id).prefix).binding;
+                if b.is_null() {
+                    return XML_ERROR_UNBOUND_PREFIX;
+                }
+                j_0 = 0 as ::core::ffi::c_uint;
+                while j_0 < ptr_ref(b).uriLen as ::core::ffi::c_uint {
+                    let c: XML_Char = *ptr_index_ref(ptr_ref(b).uri, j_0 as isize);
+                    if if parser.m_tempPool.ptr == parser.m_tempPool.end as *mut XML_Char
+                        && poolGrow(&mut parser.m_tempPool) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh41 = parser.m_tempPool.ptr;
+                        parser.m_tempPool.ptr = parser.m_tempPool.ptr.wrapping_offset(1);
+                        *ptr_mut(c2rust_fresh41) = c;
+                        1 as ::core::ffi::c_int
+                    } == 0
+                    {
+                        return XML_ERROR_NO_MEMORY;
+                    }
+                    j_0 = j_0.wrapping_add(1);
+                }
+                sip24_update(
+                    &mut sip_state,
+                    raw_ptr_slice!(
+                        ptr_ref(b).uri.cast::<::core::ffi::c_uchar>(),
+                        (ptr_ref(b).uriLen as size_t)
+                            .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+                    ),
+                );
+                loop {
+                    let c2rust_fresh42 = s;
+                    s = s.wrapping_offset(1);
+                    if !(*ptr_ref(c2rust_fresh42) as ::core::ffi::c_int
+                        != 0x3a as ::core::ffi::c_int)
+                    {
+                        break;
+                    }
+                }
+                sip24_update(
+                    &mut sip_state,
+                    raw_ptr_slice!(
+                        s.cast::<::core::ffi::c_uchar>(),
+                        keylen(s as KEY).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+                    ),
+                );
+                loop {
+                    if if parser.m_tempPool.ptr == parser.m_tempPool.end as *mut XML_Char
+                        && poolGrow(&mut parser.m_tempPool) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh43 = parser.m_tempPool.ptr;
+                        parser.m_tempPool.ptr = parser.m_tempPool.ptr.wrapping_offset(1);
+                        *ptr_mut(c2rust_fresh43) = *ptr_ref(s);
+                        1 as ::core::ffi::c_int
+                    } == 0
+                    {
+                        return XML_ERROR_NO_MEMORY;
+                    }
+                    let c2rust_fresh44 = s;
+                    s = s.wrapping_offset(1);
+                    if !(*ptr_ref(c2rust_fresh44) != 0) {
+                        break;
+                    }
+                }
+                uriHash = sip24_final(&mut sip_state) as ::core::ffi::c_ulong;
+                let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
+                let mut mask: ::core::ffi::c_ulong =
+                    nsAttsSize.wrapping_sub(1 as ::core::ffi::c_uint) as ::core::ffi::c_ulong;
+                j_0 = (uriHash & mask) as ::core::ffi::c_uint;
+                while ptr_index_mut(parser.m_nsAtts, j_0 as isize).version == version {
+                    if uriHash == ptr_index_mut(parser.m_nsAtts, j_0 as isize).hash {
+                        let mut s1: *const XML_Char = parser.m_tempPool.start;
+                        let mut s2: *const XML_Char =
+                            ptr_index_mut(parser.m_nsAtts, j_0 as isize).uriName;
+                        while *ptr_ref(s1) as ::core::ffi::c_int
+                            == *ptr_ref(s2) as ::core::ffi::c_int
+                            && *ptr_ref(s1) as ::core::ffi::c_int != 0 as ::core::ffi::c_int
+                        {
+                            s1 = s1.wrapping_offset(1);
+                            s2 = s2.wrapping_offset(1);
+                        }
+                        if *ptr_ref(s1) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                            return XML_ERROR_DUPLICATE_ATTRIBUTE;
+                        }
+                    }
+                    if step == 0 {
+                        step = ((uriHash & !mask)
+                            >> parser.m_nsAttsPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                            & mask >> 2 as ::core::ffi::c_int
+                            | 1 as ::core::ffi::c_ulong)
+                            as ::core::ffi::c_uchar;
+                    }
+                    if j_0 < step as ::core::ffi::c_uint {
+                        j_0 =
+                            j_0.wrapping_add(nsAttsSize.wrapping_sub(step as ::core::ffi::c_uint));
+                    } else {
+                        j_0 = j_0.wrapping_sub(step as ::core::ffi::c_uint);
+                    };
+                }
+                if parser.m_ns_triplets != 0 {
+                    *ptr_index_mut(parser.m_tempPool.ptr, -(1 as ::core::ffi::c_int) as isize) =
+                        parser.m_namespaceSeparator;
+                    s = ptr_ref(ptr_ref(b).prefix).name;
+                    loop {
+                        if if parser.m_tempPool.ptr == parser.m_tempPool.end as *mut XML_Char
+                            && poolGrow(&mut parser.m_tempPool) == 0
+                        {
+                            0 as ::core::ffi::c_int
+                        } else {
+                            let c2rust_fresh45 = parser.m_tempPool.ptr;
+                            parser.m_tempPool.ptr = parser.m_tempPool.ptr.wrapping_offset(1);
+                            *ptr_mut(c2rust_fresh45) = *ptr_ref(s);
+                            1 as ::core::ffi::c_int
+                        } == 0
+                        {
+                            return XML_ERROR_NO_MEMORY;
+                        }
+                        let c2rust_fresh46 = s;
+                        s = s.wrapping_offset(1);
+                        if !(*ptr_ref(c2rust_fresh46) != 0) {
+                            break;
+                        }
+                    }
+                }
+                s = parser.m_tempPool.start;
+                parser.m_tempPool.start = parser.m_tempPool.ptr;
+                let ref mut c2rust_fresh47 = *ptr_index_mut(appAtts, i as isize);
+                *c2rust_fresh47 = s;
+                ptr_index_mut(parser.m_nsAtts, j_0 as isize).version = version;
+                ptr_index_mut(parser.m_nsAtts, j_0 as isize).hash = uriHash;
+                let ref mut c2rust_fresh48 = ptr_index_mut(parser.m_nsAtts, j_0 as isize).uriName;
+                *c2rust_fresh48 = s;
+                nPrefixes -= 1;
+                if nPrefixes == 0 {
+                    i += 2 as ::core::ffi::c_int;
+                    break;
+                }
+            } else {
+                *ptr_index_mut(s as *mut XML_Char, -(1 as ::core::ffi::c_int) as isize) =
+                    0 as XML_Char;
+            }
+            i += 2 as ::core::ffi::c_int;
+        }
+    }
+    while i < attIndex {
+        *ptr_index_mut(
+            *ptr_index_mut(appAtts, i as isize) as *mut XML_Char,
+            -(1 as ::core::ffi::c_int) as isize,
+        ) = 0 as XML_Char;
+        i += 2 as ::core::ffi::c_int;
+    }
+    binding = *ptr_mut(bindingsPtr);
+    while !binding.is_null() {
+        *ptr_index_mut(
+            ptr_ref(ptr_mut(binding).attId).name as *mut XML_Char,
+            -(1 as ::core::ffi::c_int) as isize,
+        ) = 0 as XML_Char;
+        binding = ptr_mut(binding).nextTagBinding as *mut BINDING;
+    }
+    if parser.m_ns == 0 {
         return XML_ERROR_NONE;
     }
+    if !ptr_mut(elementType).prefix.is_null() {
+        binding = ptr_ref(ptr_mut(elementType).prefix).binding;
+        if binding.is_null() {
+            return XML_ERROR_UNBOUND_PREFIX;
+        }
+        localPart = tag_name.str;
+        loop {
+            let c2rust_fresh49 = localPart;
+            localPart = localPart.wrapping_offset(1);
+            if !(*ptr_ref(c2rust_fresh49) as ::core::ffi::c_int != 0x3a as ::core::ffi::c_int) {
+                break;
+            }
+        }
+    } else if !dtd.defaultPrefix.binding.is_null() {
+        binding = dtd.defaultPrefix.binding;
+        localPart = tag_name.str;
+    } else {
+        return XML_ERROR_NONE;
+    }
+    prefixLen = 0 as ::core::ffi::c_int;
+    if parser.m_ns_triplets as ::core::ffi::c_int != 0
+        && !ptr_ref(ptr_mut(binding).prefix).name.is_null()
+    {
+        loop {
+            let c2rust_fresh50 = prefixLen;
+            prefixLen = prefixLen + 1;
+            if !(*ptr_index_ref(
+                ptr_ref(ptr_mut(binding).prefix).name,
+                c2rust_fresh50 as isize,
+            ) != 0)
+            {
+                break;
+            }
+        }
+    }
+    tag_name.localPart = localPart;
+    tag_name.uriLen = ptr_mut(binding).uriLen;
+    tag_name.prefix = ptr_ref(ptr_mut(binding).prefix).name;
+    tag_name.prefixLen = prefixLen;
+    i = 0 as ::core::ffi::c_int;
+    loop {
+        let c2rust_fresh51 = i;
+        i = i + 1;
+        if !(*ptr_index_ref(localPart, c2rust_fresh51 as isize) != 0) {
+            break;
+        }
+    }
+    if ptr_mut(binding).uriLen > INT_MAX - prefixLen
+        || i > INT_MAX - (ptr_mut(binding).uriLen + prefixLen)
+    {
+        return XML_ERROR_NO_MEMORY;
+    }
+    n = i + ptr_mut(binding).uriLen + prefixLen;
+    if n > ptr_mut(binding).uriAlloc {
+        let mut p: *mut TAG = ::core::ptr::null_mut::<TAG>();
+        if n > INT_MAX - EXPAND_SPARE {
+            return XML_ERROR_NO_MEMORY;
+        }
+        uri = expat_malloc_ptr!(
+            parser_ptr,
+            ((n + 24 as ::core::ffi::c_int) as size_t)
+                .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+            4270 as ::core::ffi::c_int,
+            XML_Char,
+        );
+        if uri.is_null() {
+            return XML_ERROR_NO_MEMORY;
+        }
+        ptr_mut(binding).uriAlloc = n + EXPAND_SPARE;
+        memcpy_ptr!(
+            uri as *mut ::core::ffi::c_void,
+            ptr_mut(binding).uri as *const ::core::ffi::c_void,
+            (ptr_mut(binding).uriLen as size_t)
+                .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+        );
+        p = parser.m_tagStack;
+        while !p.is_null() {
+            if ptr_mut(p).name.str == ptr_mut(binding).uri as *const XML_Char {
+                ptr_mut(p).name.str = uri;
+            }
+            p = ptr_mut(p).parent as *mut TAG;
+        }
+        expat_free_ptr!(
+            parser_ptr,
+            ptr_mut(binding).uri as *mut ::core::ffi::c_void,
+            4278 as ::core::ffi::c_int,
+        );
+        ptr_mut(binding).uri = uri;
+    }
+    uri = ptr_mut(binding)
+        .uri
+        .wrapping_offset(ptr_mut(binding).uriLen as isize);
+    memcpy_ptr!(
+        uri as *mut ::core::ffi::c_void,
+        localPart as *const ::core::ffi::c_void,
+        (i as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+    );
+    if prefixLen != 0 {
+        uri = uri.wrapping_offset((i - 1 as ::core::ffi::c_int) as isize);
+        *ptr_mut(uri) = parser.m_namespaceSeparator;
+        memcpy_ptr!(
+            uri.wrapping_offset(1 as ::core::ffi::c_int as isize) as *mut ::core::ffi::c_void,
+            ptr_ref(ptr_mut(binding).prefix).name as *const ::core::ffi::c_void,
+            (prefixLen as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+        );
+    }
+    tag_name.str = ptr_mut(binding).uri;
+    return XML_ERROR_NONE;
 }
 fn is_rfc3986_uri_char(candidate: XML_Char) -> XML_Bool {
     match candidate as ::core::ffi::c_int {
@@ -10288,6 +10312,14 @@ fn ptr_ref<'a, T>(ptr: *const T) -> &'a T {
 
 fn ptr_mut<'a, T>(ptr: *mut T) -> &'a mut T {
     raw_ptr_mut!(ptr)
+}
+
+fn ptr_index_ref<'a, T>(ptr: *const T, index: isize) -> &'a T {
+    ptr_ref(ptr.wrapping_offset(index))
+}
+
+fn ptr_index_mut<'a, T>(ptr: *mut T, index: isize) -> &'a mut T {
+    ptr_mut(ptr.wrapping_offset(index))
 }
 
 fn write_copy<T>(ptr: *mut T, value: T) {
