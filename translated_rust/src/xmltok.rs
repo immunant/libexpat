@@ -12289,7 +12289,11 @@ pub type C2Rust_Unnamed_7 = ::core::ffi::c_uint;
 pub struct unknown_encoding {
     pub normal: normal_encoding,
     pub converter_id: usize,
-    pub userData: *mut ::core::ffi::c_void,
+    // This field preserves the hidden C structure's callback-context slot and
+    // therefore its queried size and alignment.  The context itself is an
+    // opaque token: tokenizer state never dereferences it, and callback
+    // invocation keeps the original pointer only in the boundary adapter.
+    user_data_token: usize,
     pub utf16: [::core::ffi::c_ushort; 256],
     pub utf8: [[::core::ffi::c_char; 4]; 256],
 }
@@ -18071,7 +18075,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
         return ::core::ptr::null_mut();
     }
     encoding.converter_id = mem as usize;
-    encoding.userData = userData;
+    encoding.user_data_token = userData.addr();
     register_unknown_encoding_converter(
         encoding.converter_id,
         convert.map(|callback| {
