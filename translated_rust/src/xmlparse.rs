@@ -17028,10 +17028,10 @@ unsafe extern "C" fn externalParEntProcessor(
     let error = doProlog(
         parser,
         true,
-        s,
-        end,
+        PrologCursorAddress(s.addr()),
+        PrologCursorAddress(end.addr()),
         tok,
-        next,
+        PrologCursorAddress(next.addr()),
         &mut prolog_cursor,
         (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
@@ -17151,10 +17151,10 @@ unsafe extern "C" fn prologProcessor(
     let error = doProlog(
         parser,
         true,
-        s,
-        end,
+        PrologCursorAddress(s.addr()),
+        PrologCursorAddress(end.addr()),
         tok,
-        next,
+        PrologCursorAddress(next.addr()),
         &mut prolog_cursor,
         (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
@@ -17251,6 +17251,30 @@ struct PrologContentContinuation {
 enum PrologCursorUpdate {
     Unchanged,
     Cursor(Option<usize>),
+}
+
+/// An address-sized prolog cursor.  Processor adapters validate these
+/// addresses against the current parser or entity window before and after
+/// calling `doProlog`; the prolog state machine only transports them.
+#[derive(Clone, Copy)]
+struct PrologCursorAddress(usize);
+
+impl PrologCursorAddress {
+    fn addr(self) -> usize {
+        self.0
+    }
+
+    fn wrapping_add(self, offset: usize) -> Self {
+        Self(self.0.wrapping_add(offset))
+    }
+
+    fn wrapping_sub(self, offset: usize) -> Self {
+        Self(self.0.wrapping_sub(offset))
+    }
+
+    fn is_null(self) -> bool {
+        self.0 == 0
+    }
 }
 
 /// Continues from a complete prolog token into content processing.
@@ -17359,10 +17383,10 @@ fn continue_prolog_as_content(
 unsafe fn doProlog(
     parser: &mut XML_ParserStruct,
     parser_events: bool,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
+    mut s: PrologCursorAddress,
+    mut end: PrologCursorAddress,
     mut tok: ::core::ffi::c_int,
-    mut next: *const ::core::ffi::c_char,
+    mut next: PrologCursorAddress,
     next_ptr: &mut PrologCursorUpdate,
     mut haveMore: crate::expat_h::XML_Bool,
     mut allowClosingDoctype: crate::expat_h::XML_Bool,
@@ -19150,7 +19174,7 @@ unsafe fn doProlog(
                                         next = action
                                             .start_offset
                                             .map(|offset| ignore_start.wrapping_add(offset))
-                                            .unwrap_or(::core::ptr::null());
+                                            .unwrap_or(PrologCursorAddress(0));
                                         if let Some(offset) = action.next_offset {
                                             let Some(next_address) =
                                                 ignore_start.addr().checked_add(offset)
@@ -20870,10 +20894,10 @@ unsafe fn internalEntityProcessor(
             result = doProlog(
                 parser_state,
                 false,
-                textStart,
-                textEnd,
+                PrologCursorAddress(textStart.addr()),
+                PrologCursorAddress(textEnd.addr()),
                 tok,
-                next,
+                PrologCursorAddress(next.addr()),
                 &mut prolog_cursor,
                 crate::expat_h::XML_FALSE,
                 crate::expat_h::XML_FALSE,
@@ -22288,12 +22312,12 @@ unsafe fn storeEntityValue(
 unsafe fn callStoreEntityValue(
     parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
-    mut entityTextPtr: *const ::core::ffi::c_char,
-    mut entityTextEnd: *const ::core::ffi::c_char,
+    entityTextPtr: PrologCursorAddress,
+    entityTextEnd: PrologCursorAddress,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
     let parser_handle = std::ptr::from_mut(parser);
-    let mut next: *const ::core::ffi::c_char = entityTextPtr;
+    let mut next_address = entityTextPtr.addr();
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
         if parser.m_openValueEntities.is_none() {
@@ -22305,7 +22329,7 @@ unsafe fn callStoreEntityValue(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let Some((input_start, input_end)) = dtd_owner.inspect(|dtd| {
-                entity_value_token_source(parser, dtd, next.addr(), entityTextEnd.addr()).map(
+                entity_value_token_source(parser, dtd, next_address, entityTextEnd.addr()).map(
                     |input| match input {
                         RawNameSource::Bytes(bytes) => (
                             bytes.as_ptr().cast::<::core::ffi::c_char>(),
@@ -22324,9 +22348,9 @@ unsafe fn callStoreEntityValue(
             };
             let stored = storeEntityValue(parser_handle, enc, input_start, input_end, account);
             result = stored.error;
-            next = stored
+            next_address = stored
                 .next_offset
-                .map_or(input_start, |offset| input_start.wrapping_add(offset));
+                .map_or(input_start.addr(), |offset| input_start.addr().wrapping_add(offset));
         } else {
             let (open_entity_index, entity_ref) = {
                 let open_entity_index = parser
@@ -22486,7 +22510,7 @@ unsafe fn callStoreEntityValue(
             }
         }
         if result as ::core::ffi::c_uint != 0
-            || parser.m_openValueEntities.is_none() && entityTextEnd == next
+            || parser.m_openValueEntities.is_none() && entityTextEnd.addr() == next_address
         {
             break;
         }
