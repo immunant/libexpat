@@ -7054,16 +7054,14 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize) {
+        let input_len = end.offset_from(ptr);
+        if input_len < (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-        } else {
-            unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-        } {
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        let mut pos = 0usize;
+        match big2_byte_type(normal, input, pos) {
             27 => {
                 return big2_scanComment(
                     enc,
@@ -7078,47 +7076,21 @@ pub mod xmltok_impl_c {
             }
             22 | 24 => {
                 ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                pos += 2;
             }
             _ => {
                 *nextTokPtr = ptr;
                 return crate::src::xmltok::XML_TOK_INVALID_1;
             }
         }
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
+        while input.len() - pos >= 2 {
             's_129: {
-                match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                } {
+                match big2_byte_type(normal, input, pos) {
                     30 => {
-                        if !(end.offset_from(ptr)
-                            >= (2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
+                        if input.len() - pos < 4 {
                             return crate::src::xmltok::XML_TOK_PARTIAL_1;
                         }
-                        match if *ptr
-                            .offset(2 as ::core::ffi::c_int as isize)
-                            .offset(0 as isize)
-                            as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(0 as isize),
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as isize),
-                            )
-                        } {
+                        match big2_byte_type(normal, input, pos + 2) {
                             21 | 9 | 10 | 30 => {
                                 *nextTokPtr = ptr;
                                 return crate::src::xmltok::XML_TOK_INVALID_1;
@@ -7129,6 +7101,7 @@ pub mod xmltok_impl_c {
                     21 | 9 | 10 => {}
                     22 | 24 => {
                         ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                        pos += 2;
                         break 's_129;
                     }
                     _ => {
