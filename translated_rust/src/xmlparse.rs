@@ -2065,7 +2065,10 @@ pub struct XML_ParserStruct {
     // doctype name until the start-declaration callback has returned.
     pub m_doctypePubid: Option<PoolStringRef>,
     pub m_declAttributeType: Option<DeclAttributeType>,
-    pub m_declNotationName: *const crate::expat_external_h::XML_Char,
+    // The notation name is retained in the temporary pool until its
+    // declaration callback.  Keep its checked pool location rather than an
+    // address into a growable allocator-backed slab.
+    pub m_declNotationName: Option<PoolStringRef>,
     // Notation public identifiers are retained only while the declaration
     // callback is staged.  Keep their checked temporary-pool location rather
     // than an address into a growable slab.
@@ -3713,7 +3716,7 @@ fn initial_parser_struct(
         m_doctypeSysid: DoctypeSystemId::None,
         m_doctypePubid: None,
         m_declAttributeType: None,
-        m_declNotationName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        m_declNotationName: None,
         m_declNotationPublicId: None,
         m_declElementType: None,
         m_declAttributeId: None,
@@ -4142,7 +4145,7 @@ fn parser_init(
     parser.m_doctypeSysid = DoctypeSystemId::None;
     parser.m_doctypePubid = None;
     parser.m_declAttributeType = None;
-    parser.m_declNotationName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_declNotationName = None;
     parser.m_declNotationPublicId = None;
     parser.m_declAttributeIsCdata = crate::expat_h::XML_FALSE;
     parser.m_declAttributeIsId = crate::expat_h::XML_FALSE;
@@ -11846,19 +11849,23 @@ unsafe extern "C" fn doProlog(
                                     }
                                     18 => {
                                         (*parser).m_declNotationPublicId = None;
-                                        (*parser).m_declNotationName =
-                                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(
-                                            );
+                                        (*parser).m_declNotationName = None;
                                         if (*parser).m_notationDeclHandler {
-                                            (*parser).m_declNotationName = poolStoreString(
+                                            let notation_name = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
                                                 s,
                                                 next,
                                             );
-                                            if (*parser).m_declNotationName.is_null() {
+                                            if notation_name.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
+                                            let Some(notation_name) =
+                                                (*parser).m_tempPool.start_ref(false)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
+                                            (*parser).m_declNotationName = Some(notation_name);
                                             (*parser).m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
@@ -11878,7 +11885,7 @@ unsafe extern "C" fn doProlog(
                                             }
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
-                                        if !(*parser).m_declNotationName.is_null() {
+                                        if (*parser).m_declNotationName.is_some() {
                                             let mut tem_0: *mut crate::expat_external_h::XML_Char =
                                                 poolStoreString(
                                                     &raw mut (*parser).m_tempPool,
@@ -11901,7 +11908,7 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     19 => {
-                                        if !(*parser).m_declNotationName.is_null()
+                                        if (*parser).m_declNotationName.is_some()
                                             && (*parser).m_notationDeclHandler
                                         {
                                             let mut systemId: *const crate::expat_external_h::XML_Char = poolStoreString(
@@ -11934,7 +11941,16 @@ unsafe extern "C" fn doProlog(
                                                     let parser_ref = &*parser;
                                                     (
                                                         parser_ref.m_handlerArg,
-                                                        parser_ref.m_declNotationName,
+                                                        parser_ref
+                                                            .m_declNotationName
+                                                            .and_then(|notation_name| {
+                                                                parser_ref
+                                                                    .m_tempPool
+                                                                    .chars_from(notation_name)
+                                                            })
+                                                            .map_or(::core::ptr::null(), |chars| {
+                                                                chars.as_ptr()
+                                                            }),
                                                         parser_ref
                                                             .m_curBase
                                                             .map(|base| {
@@ -11994,7 +12010,16 @@ unsafe extern "C" fn doProlog(
                                                     let parser_ref = &*parser;
                                                     (
                                                         parser_ref.m_handlerArg,
-                                                        parser_ref.m_declNotationName,
+                                                        parser_ref
+                                                            .m_declNotationName
+                                                            .and_then(|notation_name| {
+                                                                parser_ref
+                                                                    .m_tempPool
+                                                                    .chars_from(notation_name)
+                                                            })
+                                                            .map_or(::core::ptr::null(), |chars| {
+                                                                chars.as_ptr()
+                                                            }),
                                                         parser_ref
                                                             .m_curBase
                                                             .map(|base| {
