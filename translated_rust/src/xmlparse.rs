@@ -14012,11 +14012,13 @@ unsafe fn storeAtts(
                     parser_ref.m_nsAttsPower = oldNsAttsPower;
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                let Some(backing) = live_parser_allocation_backing(parser_ref, allocation_size, 4089)
+                let Some(backing) = AllocationBackingFactory::for_parser(parser_ref)
+                    .allocation_backing(allocation_size, 4089)
                 else {
                     parser_ref.m_nsAttsPower = oldNsAttsPower;
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
+                let backing = LiveParserAllocationBacking { backing };
                 let Some(storage) = namespace_attribute_storage_from_backing(
                     parser_ref,
                     ns_atts_capacity,
@@ -18178,11 +18180,9 @@ unsafe fn doProlog(
                                                 let allocation_size = capacity.checked_mul(
                                                     ::core::mem::size_of::<DEFAULT_ATTRIBUTE>(),
                                                 )?;
-                                                let backing = live_parser_allocation_backing(
-                                                    parser,
-                                                    allocation_size,
-                                                    7182,
-                                                )?;
+                                                let backing = AllocationBackingFactory::for_parser(parser)
+                                                    .allocation_backing(allocation_size, 7182)?;
+                                                let backing = LiveParserAllocationBacking { backing };
                                                 default_attribute_storage_from_backing(
                                                     parser, capacity, 7182, backing,
                                                 )
@@ -18367,11 +18367,9 @@ unsafe fn doProlog(
                                                 let allocation_size = capacity.checked_mul(
                                                     ::core::mem::size_of::<DEFAULT_ATTRIBUTE>(),
                                                 )?;
-                                                let backing = live_parser_allocation_backing(
-                                                    parser,
-                                                    allocation_size,
-                                                    7182,
-                                                )?;
+                                                let backing = AllocationBackingFactory::for_parser(parser)
+                                                    .allocation_backing(allocation_size, 7182)?;
+                                                let backing = LiveParserAllocationBacking { backing };
                                                 default_attribute_storage_from_backing(
                                                     parser, capacity, 7182, backing,
                                                 )
@@ -24158,10 +24156,12 @@ unsafe fn dtdCopy(
                 else {
                     return 0 as ::core::ffi::c_int;
                 };
-                let Some(backing) = live_parser_allocation_backing(parser, allocation_size, 7683)
+                let Some(backing) = AllocationBackingFactory::for_parser(parser)
+                    .allocation_backing(allocation_size, 7683)
                 else {
                     return 0 as ::core::ffi::c_int;
                 };
+                let backing = LiveParserAllocationBacking { backing };
                 let Some(storage) = default_attribute_storage_from_backing(
                     parser,
                     old_e.nDefaultAtts as usize,
@@ -24480,22 +24480,6 @@ fn attribute_storage_new(
     Some(AttributeStorage {
         records,
         backing: Some(backing),
-    })
-}
-
-/// Acquires an opaque allocation token whose actions are performed through
-/// the parser supplied at the point of use.  This keeps DTD-owned storage
-/// valid when its final owner is a different parser from the one that first
-/// created it.
-unsafe fn live_parser_allocation_backing(
-    parser: &mut XML_ParserStruct,
-    allocation_size: crate::__stddef_size_t_h::size_t,
-    source_line: ::core::ffi::c_int,
-) -> Option<LiveParserAllocationBacking> {
-    let backing = AllocationBackingFactory::for_parser(parser)
-        .allocation_backing(allocation_size, source_line)?;
-    Some(LiveParserAllocationBacking {
-        backing,
     })
 }
 
