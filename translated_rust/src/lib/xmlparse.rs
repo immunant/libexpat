@@ -1025,6 +1025,50 @@ pub static mut g_reparseDeferralEnabledDefault: XML_Bool = XML_TRUE;
 pub static mut g_bytesScanned: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
 const XMLPARSE_C_FILE: &[u8] = b"/root/work/expat/lib/xmlparse.c\0";
 
+macro_rules! expat_malloc_ptr {
+    ($parser:expr, $size:expr, $line:expr, $ty:ty $(,)?) => {{
+        unsafe { expat_malloc($parser, $size, $line).cast::<$ty>() }
+    }};
+}
+
+macro_rules! expat_realloc_ptr {
+    ($parser:expr, $ptr:expr, $size:expr, $line:expr, $ty:ty $(,)?) => {{
+        unsafe { expat_realloc($parser, $ptr, $size, $line).cast::<$ty>() }
+    }};
+}
+
+macro_rules! expat_free_ptr {
+    ($parser:expr, $ptr:expr, $line:expr $(,)?) => {{
+        unsafe {
+            expat_free($parser, $ptr, $line);
+        }
+    }};
+}
+
+macro_rules! parser_malloc {
+    ($parser:expr, $size:expr $(,)?) => {{
+        unsafe { $parser.m_mem.malloc_fcn.expect("non-null function pointer")($size) }
+    }};
+}
+
+macro_rules! call_end_namespace_decl_handler {
+    ($handler:expr, $user_data:expr, $prefix_name:expr $(,)?) => {{
+        unsafe { $handler($user_data, $prefix_name) }
+    }};
+}
+
+macro_rules! call_handler_two_args {
+    ($handler:expr, $user_data:expr, $arg0:expr, $arg1:expr $(,)?) => {{
+        unsafe { $handler($user_data, $arg0, $arg1) }
+    }};
+}
+
+macro_rules! call_handler_one_arg {
+    ($handler:expr, $user_data:expr, $arg0:expr $(,)?) => {{
+        unsafe { $handler($user_data, $arg0) }
+    }};
+}
+
 fn xmlparse_assert_fail(
     assertion: &'static [u8],
     line: ::core::ffi::c_uint,
@@ -3931,11 +3975,12 @@ extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
         let current_capacity =
             (tag_ref.bufEnd as usize).wrapping_sub(tag_buf_raw(tag_ref) as usize);
         if bufSize > current_capacity {
-            let temp = expat_realloc_ptr::<::core::ffi::c_char>(
+            let temp = expat_realloc_ptr!(
                 parser,
                 tag_buf_raw(tag_ref) as *mut ::core::ffi::c_void,
                 bufSize,
                 3151 as ::core::ffi::c_int,
+                ::core::ffi::c_char,
             );
             if temp.is_null() {
                 return XML_FALSE;
@@ -4956,7 +5001,7 @@ fn freeBindings(parser: XML_Parser, mut bindings: *mut BINDING) {
     while !bindings.is_null() {
         let binding = ptr_mut(bindings);
         if let Some(handler) = parser.m_endNamespaceDeclHandler {
-            call_end_namespace_decl_handler(
+            call_end_namespace_decl_handler!(
                 handler,
                 parser.m_handlerArg,
                 ptr_mut(binding.prefix).name,
@@ -9375,7 +9420,7 @@ extern "C" fn reportProcessingInstruction(
         return 0 as ::core::ffi::c_int;
     }
     normalize_c_string_lines(data);
-    call_handler_two_args(
+    call_handler_two_args!(
         parser
             .m_processingInstructionHandler
             .expect("non-null function pointer"),
@@ -9417,7 +9462,7 @@ extern "C" fn reportComment(
         return 0 as ::core::ffi::c_int;
     }
     normalize_c_string_lines(data);
-    call_handler_one_arg(
+    call_handler_one_arg!(
         parser.m_commentHandler.expect("non-null function pointer"),
         parser.m_handlerArg,
         data,
@@ -9454,7 +9499,7 @@ extern "C" fn reportDefault(
                 parser.m_dataBufEnd as *mut ICHAR,
             );
             write_copy(event_end_pp, s);
-            call_handler_two_args(
+            call_handler_two_args!(
                 parser.m_defaultHandler.expect("non-null function pointer"),
                 parser.m_handlerArg,
                 parser.m_dataBuf,
@@ -9470,7 +9515,7 @@ extern "C" fn reportDefault(
             }
         }
     } else {
-        call_handler_two_args(
+        call_handler_two_args!(
             parser.m_defaultHandler.expect("non-null function pointer"),
             parser.m_handlerArg,
             s as *const XML_Char,
@@ -9506,11 +9551,12 @@ extern "C" fn defineAttribute(
     if ptr_ref(type_0).nDefaultAtts == ptr_ref(type_0).allocDefaultAtts {
         if ptr_ref(type_0).allocDefaultAtts == 0 as ::core::ffi::c_int {
             ptr_mut(type_0).allocDefaultAtts = 8 as ::core::ffi::c_int;
-            ptr_mut(type_0).defaultAtts = expat_malloc_ptr::<DEFAULT_ATTRIBUTE>(
+            ptr_mut(type_0).defaultAtts = expat_malloc_ptr!(
                 parser,
                 (ptr_ref(type_0).allocDefaultAtts as size_t)
                     .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>() as size_t),
                 7182 as ::core::ffi::c_int,
+                DEFAULT_ATTRIBUTE,
             );
             if ptr_ref(type_0).defaultAtts.is_null() {
                 ptr_mut(type_0).allocDefaultAtts = 0 as ::core::ffi::c_int;
@@ -9521,12 +9567,13 @@ extern "C" fn defineAttribute(
                 return 0 as ::core::ffi::c_int;
             }
             let count = ptr_ref(type_0).allocDefaultAtts * 2 as ::core::ffi::c_int;
-            let temp = expat_realloc_ptr::<DEFAULT_ATTRIBUTE>(
+            let temp = expat_realloc_ptr!(
                 parser,
                 ptr_ref(type_0).defaultAtts as *mut ::core::ffi::c_void,
                 (count as size_t)
                     .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>() as size_t),
                 7208 as ::core::ffi::c_int,
+                DEFAULT_ATTRIBUTE,
             );
             if temp.is_null() {
                 return 0 as ::core::ffi::c_int;
@@ -10045,7 +10092,7 @@ fn normalizePublicId(buffer: &mut [XML_Char]) {
     buffer[write] = '\0' as i32 as XML_Char;
 }
 fn dtdCreate(parser: XML_Parser) -> *mut DTD {
-    let p = expat_malloc_ptr::<DTD>(parser, ::core::mem::size_of::<DTD>() as size_t, 7500);
+    let p = expat_malloc_ptr!(parser, ::core::mem::size_of::<DTD>() as size_t, 7500, DTD);
     if p.is_null() {
         return p;
     }
@@ -10089,7 +10136,7 @@ fn dtdReset(p: *mut DTD, parser: XML_Parser) {
         }
         let element = ptr_mut(element);
         if element.allocDefaultAtts != 0 {
-            expat_free_ptr(parser, element.defaultAtts.cast(), 7539);
+            expat_free_ptr!(parser, element.defaultAtts.cast(), 7539);
         }
     }
 
@@ -10104,9 +10151,9 @@ fn dtdReset(p: *mut DTD, parser: XML_Parser) {
     dtd.defaultPrefix.name = ::core::ptr::null::<XML_Char>();
     dtd.defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     dtd.in_eldecl = XML_FALSE;
-    expat_free_ptr(parser, dtd.scaffIndex.cast(), 7556);
+    expat_free_ptr!(parser, dtd.scaffIndex.cast(), 7556);
     dtd.scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
-    expat_free_ptr(parser, dtd.scaffold.cast(), 7558);
+    expat_free_ptr!(parser, dtd.scaffold.cast(), 7558);
     dtd.scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
     dtd.scaffLevel = 0 as ::core::ffi::c_int;
     dtd.scaffSize = 0 as ::core::ffi::c_uint;
@@ -10131,7 +10178,7 @@ fn dtdDestroy(p: *mut DTD, isDocEntity: XML_Bool, parser: XML_Parser) {
         }
         let element = ptr_mut(element);
         if element.allocDefaultAtts != 0 {
-            expat_free_ptr(parser, element.defaultAtts.cast(), 7580);
+            expat_free_ptr!(parser, element.defaultAtts.cast(), 7580);
         }
     }
 
@@ -10143,10 +10190,10 @@ fn dtdDestroy(p: *mut DTD, isDocEntity: XML_Bool, parser: XML_Parser) {
     poolDestroy(&mut dtd.pool);
     poolDestroy(&mut dtd.entityValuePool);
     if isDocEntity != 0 {
-        expat_free_ptr(parser, dtd.scaffIndex.cast(), 7592);
-        expat_free_ptr(parser, dtd.scaffold.cast(), 7593);
+        expat_free_ptr!(parser, dtd.scaffIndex.cast(), 7592);
+        expat_free_ptr!(parser, dtd.scaffold.cast(), 7593);
     }
-    expat_free_ptr(parser, p.cast(), 7595);
+    expat_free_ptr!(parser, p.cast(), 7595);
 }
 fn dtdCopy(
     oldParser: XML_Parser,
@@ -10254,7 +10301,7 @@ fn dtdCopy(
         if old_element.nDefaultAtts != 0 {
             let size = (old_element.nDefaultAtts as size_t)
                 .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>() as size_t);
-            new_element.defaultAtts = expat_malloc_ptr(parser, size, 7683);
+            new_element.defaultAtts = expat_malloc_ptr!(parser, size, 7683, DEFAULT_ATTRIBUTE);
             if new_element.defaultAtts.is_null() {
                 return 0;
             }
@@ -10499,54 +10546,6 @@ fn xml_char_slice_with_nul<'a>(ptr: *const XML_Char) -> &'a [XML_Char] {
     ptr_slice(ptr, len)
 }
 
-fn expat_malloc_ptr<T>(parser: XML_Parser, size: size_t, line: ::core::ffi::c_int) -> *mut T {
-    unsafe { expat_malloc(parser, size, line) as *mut T }
-}
-
-fn expat_realloc_ptr<T>(
-    parser: XML_Parser,
-    ptr: *mut ::core::ffi::c_void,
-    size: size_t,
-    line: ::core::ffi::c_int,
-) -> *mut T {
-    unsafe { expat_realloc(parser, ptr, size, line) as *mut T }
-}
-
-fn expat_free_ptr(parser: XML_Parser, ptr: *mut ::core::ffi::c_void, line: ::core::ffi::c_int) {
-    unsafe {
-        expat_free(parser, ptr, line);
-    }
-}
-
-fn parser_malloc(parser: &XML_ParserStruct, size: size_t) -> *mut ::core::ffi::c_void {
-    unsafe { parser.m_mem.malloc_fcn.expect("non-null function pointer")(size) }
-}
-
-fn call_end_namespace_decl_handler(
-    handler: unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-    user_data: *mut ::core::ffi::c_void,
-    prefix_name: *const XML_Char,
-) {
-    unsafe { handler(user_data, prefix_name) }
-}
-
-fn call_handler_two_args<A, B>(
-    handler: unsafe extern "C" fn(*mut ::core::ffi::c_void, A, B) -> (),
-    user_data: *mut ::core::ffi::c_void,
-    arg0: A,
-    arg1: B,
-) {
-    unsafe { handler(user_data, arg0, arg1) }
-}
-
-fn call_handler_one_arg<A>(
-    handler: unsafe extern "C" fn(*mut ::core::ffi::c_void, A) -> (),
-    user_data: *mut ::core::ffi::c_void,
-    arg0: A,
-) {
-    unsafe { handler(user_data, arg0) }
-}
-
 fn zero_memory(ptr: *mut ::core::ffi::c_void, size: size_t) {
     if size == 0 {
         return;
@@ -10611,7 +10610,7 @@ fn lookup(
         let tsize = table
             .size
             .wrapping_mul(::core::mem::size_of::<*mut NAMED>() as size_t);
-        table.v = expat_malloc_ptr(table.parser, tsize, 7845 as ::core::ffi::c_int);
+        table.v = expat_malloc_ptr!(table.parser, tsize, 7845 as ::core::ffi::c_int, *mut NAMED);
         if table.v.is_null() {
             table.size = 0 as size_t;
             return ::core::ptr::null_mut::<NAMED>();
@@ -10668,7 +10667,7 @@ fn lookup(
 
             let tsize = new_size.wrapping_mul(::core::mem::size_of::<*mut NAMED>() as size_t);
             let new_v: *mut *mut NAMED =
-                expat_malloc_ptr(table.parser, tsize, 7885 as ::core::ffi::c_int);
+                expat_malloc_ptr!(table.parser, tsize, 7885 as ::core::ffi::c_int, *mut NAMED);
             if new_v.is_null() {
                 return ::core::ptr::null_mut::<NAMED>();
             }
@@ -10702,7 +10701,7 @@ fn lookup(
                 }
             }
 
-            expat_free_ptr(
+            expat_free_ptr!(
                 table.parser,
                 table.v as *mut ::core::ffi::c_void,
                 7901 as ::core::ffi::c_int,
@@ -10733,7 +10732,7 @@ fn lookup(
     let parser = table.parser;
     let entry = {
         let slots = table_slots_mut(table);
-        slots[i] = expat_malloc_ptr(parser, create_size, 7914 as ::core::ffi::c_int);
+        slots[i] = expat_malloc_ptr!(parser, create_size, 7914 as ::core::ffi::c_int, NAMED);
         if slots[i].is_null() {
             return ::core::ptr::null_mut::<NAMED>();
         }
@@ -10748,7 +10747,7 @@ fn hashTableClear(table: *mut HASH_TABLE) {
     let table = ptr_mut(table);
     let parser = table.parser;
     for slot in table_slots_mut(table).iter_mut() {
-        expat_free_ptr(
+        expat_free_ptr!(
             parser,
             *slot as *mut ::core::ffi::c_void,
             7927 as ::core::ffi::c_int,
@@ -10761,13 +10760,13 @@ fn hashTableDestroy(table: *mut HASH_TABLE) {
     let table = ptr_mut(table);
     let parser = table.parser;
     for &entry in table_slots(table) {
-        expat_free_ptr(
+        expat_free_ptr!(
             parser,
             entry as *mut ::core::ffi::c_void,
             7937 as ::core::ffi::c_int,
         );
     }
-    expat_free_ptr(
+    expat_free_ptr!(
         parser,
         table.v as *mut ::core::ffi::c_void,
         7938 as ::core::ffi::c_int,
@@ -10823,7 +10822,7 @@ fn block_storage(block: *mut BLOCK) -> *mut XML_Char {
 }
 
 fn free_block(parser: XML_Parser, block: *mut BLOCK, source_line: ::core::ffi::c_int) {
-    expat_free_ptr(parser, block.cast::<::core::ffi::c_void>(), source_line);
+    expat_free_ptr!(parser, block.cast::<::core::ffi::c_void>(), source_line);
 }
 
 fn realloc_block(
@@ -10832,11 +10831,12 @@ fn realloc_block(
     bytes_to_allocate: size_t,
     source_line: ::core::ffi::c_int,
 ) -> *mut BLOCK {
-    expat_realloc_ptr(
+    expat_realloc_ptr!(
         parser,
         block.cast::<::core::ffi::c_void>(),
         bytes_to_allocate,
         source_line,
+        BLOCK
     )
 }
 
@@ -10845,7 +10845,7 @@ fn malloc_block(
     bytes_to_allocate: size_t,
     source_line: ::core::ffi::c_int,
 ) -> *mut BLOCK {
-    expat_malloc_ptr(parser, bytes_to_allocate, source_line)
+    expat_malloc_ptr!(parser, bytes_to_allocate, source_line, BLOCK)
 }
 
 fn copy_xml_chars(dest: *mut XML_Char, src: *const XML_Char, count: usize) {
@@ -11160,11 +11160,12 @@ fn nextScaffoldPart(parser: XML_Parser) -> ::core::ffi::c_int {
     let parser_ptr = parser as *mut XML_ParserStruct;
     let dtd = ptr_mut(parser.m_dtd);
     if dtd.scaffIndex.is_null() {
-        dtd.scaffIndex = expat_malloc_ptr::<::core::ffi::c_int>(
+        dtd.scaffIndex = expat_malloc_ptr!(
             parser_ptr,
             (parser.m_groupSize as size_t)
                 .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>() as size_t),
             8232 as ::core::ffi::c_int,
+            ::core::ffi::c_int,
         );
         if dtd.scaffIndex.is_null() {
             return -(1 as ::core::ffi::c_int);
@@ -11179,12 +11180,13 @@ fn nextScaffoldPart(parser: XML_Parser) -> ::core::ffi::c_int {
             if dtd.scaffSize > UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
                 return -(1 as ::core::ffi::c_int);
             }
-            let temp = expat_realloc_ptr::<CONTENT_SCAFFOLD>(
+            let temp = expat_realloc_ptr!(
                 parser_ptr,
                 dtd.scaffold.cast::<::core::ffi::c_void>(),
                 (dtd.scaffSize.wrapping_mul(2 as ::core::ffi::c_uint) as size_t)
                     .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>() as size_t),
                 8261 as ::core::ffi::c_int,
+                CONTENT_SCAFFOLD,
             );
             if temp.is_null() {
                 return -(1 as ::core::ffi::c_int);
@@ -11192,10 +11194,11 @@ fn nextScaffoldPart(parser: XML_Parser) -> ::core::ffi::c_int {
             dtd.scaffSize = dtd.scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
             temp
         } else {
-            let temp = expat_malloc_ptr::<CONTENT_SCAFFOLD>(
+            let temp = expat_malloc_ptr!(
                 parser_ptr,
                 (32 as size_t).wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>() as size_t),
                 8266 as ::core::ffi::c_int,
+                CONTENT_SCAFFOLD,
             );
             if temp.is_null() {
                 return -(1 as ::core::ffi::c_int);
@@ -11248,7 +11251,7 @@ fn build_model(parser: XML_Parser) -> *mut XML_Content {
             (dtd.contentStringLen as size_t)
                 .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
         );
-    let ret = parser_malloc(parser, allocsize) as *mut XML_Content;
+    let ret = parser_malloc!(parser, allocsize) as *mut XML_Content;
     if ret.is_null() {
         return ::core::ptr::null_mut::<XML_Content>();
     }
@@ -11329,10 +11332,11 @@ fn getElementType(
 fn copyString(s: *const XML_Char, parser: XML_Parser) -> *mut XML_Char {
     let source = xml_char_slice_with_nul(s);
     let chars_required = source.len() as size_t;
-    let result = expat_malloc_ptr::<XML_Char>(
+    let result = expat_malloc_ptr!(
         parser,
         chars_required.wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
         8456 as ::core::ffi::c_int,
+        XML_Char,
     );
     if result.is_null() {
         return ::core::ptr::null_mut::<XML_Char>();
