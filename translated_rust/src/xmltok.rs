@@ -5079,25 +5079,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_scanRef(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = little2_scan_ref_impl(normal, input);
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
-    }
-
     fn little2_byte_type(
         byte_types: &[::core::ffi::c_uchar; 256],
         input: &[::core::ffi::c_char],
@@ -5533,14 +5514,8 @@ pub mod xmltok_impl_c {
         let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
         let normal = &*(enc as *const normal_encoding);
         let result = little2_scan_atts_impl(&normal.type_0, input, |ref_start| {
-            let mut ref_end = ptr;
-            let token = little2_scanRef(enc, ptr.add(ref_start), end, &mut ref_end);
-            let next = ref_end.offset_from(ptr);
-            if next < 0 || next as usize > input.len() {
-                (crate::src::xmltok::XML_TOK_INVALID_1, ref_start)
-            } else {
-                (token, next as usize)
-            }
+            let result = little2_scan_ref_impl(normal, &input[ref_start..]);
+            (result.token, result.next.map_or(0, |next| ref_start + next))
         });
         if let Some(next) = result.next {
             *nextTokPtr = ptr.add(next);
@@ -12052,7 +12027,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanLt;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
-pub use crate::src::xmltok::xmltok_impl_c::little2_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::skip_s;
