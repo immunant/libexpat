@@ -1215,46 +1215,82 @@ fn current_chunk_size() -> ::core::ffi::c_int {
     unsafe { g_chunkSize }
 }
 
+fn ffi_call1<A, R>(function: unsafe extern "C" fn(A) -> R, a: A) -> R {
+    unsafe { function(a) }
+}
+
+fn ffi_call2<A, B, R>(function: unsafe extern "C" fn(A, B) -> R, a: A, b: B) -> R {
+    unsafe { function(a, b) }
+}
+
+fn ffi_call3<A, B, C, R>(function: unsafe extern "C" fn(A, B, C) -> R, a: A, b: B, c: C) -> R {
+    unsafe { function(a, b, c) }
+}
+
+fn ffi_call4<A, B, C, D, R>(
+    function: unsafe extern "C" fn(A, B, C, D) -> R,
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+) -> R {
+    unsafe { function(a, b, c, d) }
+}
+
+fn ffi_call5<A, B, C, D, E, R>(
+    function: unsafe extern "C" fn(A, B, C, D, E) -> R,
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+    e: E,
+) -> R {
+    unsafe { function(a, b, c, d, e) }
+}
+
 fn set_test_info(name: &[u8], line: ::core::ffi::c_int) {
-    unsafe {
-        _check_set_test_info(
-            bytes_as_c_char_ptr(name),
-            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
-            line,
-        );
-    }
+    ffi_call3(
+        _check_set_test_info,
+        bytes_as_c_char_ptr(name),
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+    );
 }
 
 fn fail_test(line: ::core::ffi::c_int, message: &[u8]) -> ! {
-    unsafe {
-        _fail(
-            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
-            line,
-            bytes_as_c_char_ptr(message),
-        )
-    }
+    ffi_call3(
+        _fail,
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+        bytes_as_c_char_ptr(message),
+    )
 }
 
 fn fail_test_with_buffer(line: ::core::ffi::c_int, message: *mut ::core::ffi::c_char) -> ! {
-    unsafe { _fail(bytes_as_c_char_ptr(BASIC_TESTS_FILE), line, message) }
+    ffi_call3(_fail, bytes_as_c_char_ptr(BASIC_TESTS_FILE), line, message)
 }
 
 fn xml_failure(line: ::core::ffi::c_int) {
-    unsafe {
-        _xml_failure(
-            current_parser(),
-            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
-            line,
-        );
-    }
+    ffi_call3(
+        _xml_failure,
+        current_parser(),
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+    );
 }
 
 fn parser_create() -> XML_Parser {
-    unsafe { XML_ParserCreate(::core::ptr::null::<XML_Char>()) }
+    ffi_call1(XML_ParserCreate, ::core::ptr::null::<XML_Char>())
 }
 
 fn parse_single_bytes(text: *const ::core::ffi::c_char, len: ::core::ffi::c_int) -> XML_Status {
-    unsafe { _XML_Parse_SINGLE_BYTES(current_parser(), text, len, XML_TRUE as ::core::ffi::c_int) }
+    ffi_call4(
+        _XML_Parse_SINGLE_BYTES,
+        current_parser(),
+        text,
+        len,
+        XML_TRUE as ::core::ffi::c_int,
+    )
 }
 
 fn parse_single_bytes_c_string(text: *const ::core::ffi::c_char) -> XML_Status {
@@ -1262,23 +1298,23 @@ fn parse_single_bytes_c_string(text: *const ::core::ffi::c_char) -> XML_Status {
 }
 
 fn parser_error_code() -> XML_Error {
-    unsafe { XML_GetErrorCode(current_parser()) }
+    ffi_call1(XML_GetErrorCode, current_parser())
 }
 
 fn parser_reset() {
-    unsafe {
-        XML_ParserReset(current_parser(), ::core::ptr::null::<XML_Char>());
-    }
+    ffi_call2(
+        XML_ParserReset,
+        current_parser(),
+        ::core::ptr::null::<XML_Char>(),
+    );
 }
 
 fn parser_set_hash_salt(hash_salt: ::core::ffi::c_ulong) {
-    unsafe {
-        XML_SetHashSalt(current_parser(), hash_salt);
-    }
+    ffi_call2(XML_SetHashSalt, current_parser(), hash_salt);
 }
 
 fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    unsafe { strlen(text) as ::core::ffi::c_int }
+    ffi_call1(strlen, text) as ::core::ffi::c_int
 }
 
 fn expect_failure(
@@ -1287,15 +1323,14 @@ fn expect_failure(
     error_message: &[u8],
     line: ::core::ffi::c_int,
 ) {
-    unsafe {
-        _expect_failure(
-            text,
-            error_code,
-            bytes_as_c_char_ptr(error_message),
-            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
-            line,
-        );
-    }
+    ffi_call5(
+        _expect_failure,
+        text,
+        error_code,
+        bytes_as_c_char_ptr(error_message),
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+    );
 }
 
 fn run_character_check(
@@ -1303,9 +1338,13 @@ fn run_character_check(
     expected: *const XML_Char,
     line: ::core::ffi::c_int,
 ) {
-    unsafe {
-        _run_character_check(text, expected, bytes_as_c_char_ptr(BASIC_TESTS_FILE), line);
-    }
+    ffi_call4(
+        _run_character_check,
+        text,
+        expected,
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+    );
 }
 
 fn write_illegal_utf8_input(buffer: &mut [u8; 100], ordinal: ::core::ffi::c_int) {
