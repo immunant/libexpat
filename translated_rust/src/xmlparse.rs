@@ -3126,22 +3126,34 @@ pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Pars
     XML_ParserFree(parser)
 }
 
+macro_rules! parser_ref_from_raw {
+    ($parser:expr) => {
+        if $parser.is_null() {
+            None
+        } else {
+            Some(unsafe { &*$parser })
+        }
+    };
+}
+
+macro_rules! parser_mut_from_raw {
+    ($parser:expr) => {
+        if $parser.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut *$parser })
+        }
+    };
+}
+
 #[inline]
 fn parser_ref<'a>(parser: crate::expat_h::XML_Parser) -> Option<&'a XML_ParserStruct> {
-    if parser.is_null() {
-        None
-    } else {
-        Some(unsafe { &*parser })
-    }
+    parser_ref_from_raw!(parser)
 }
 
 #[inline]
 fn parser_mut<'a>(parser: crate::expat_h::XML_Parser) -> Option<&'a mut XML_ParserStruct> {
-    if parser.is_null() {
-        None
-    } else {
-        Some(unsafe { &mut *parser })
-    }
+    parser_mut_from_raw!(parser)
 }
 
 pub extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
@@ -12205,10 +12217,8 @@ fn poolClear(pool: &mut STRING_POOL) {
     } else {
         let mut p: *mut BLOCK = pool.blocks;
         while !p.is_null() {
-            let tem: *mut BLOCK = unsafe { (*p).next };
-            unsafe {
-                (*p).next = pool.freeBlocks as *mut block;
-            }
+            let tem: *mut BLOCK = block_next!(p);
+            set_block_next!(p, pool.freeBlocks as *mut block);
             pool.freeBlocks = p;
             p = tem;
         }
@@ -12252,15 +12262,7 @@ fn poolAppend(
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
     loop {
-        let convert_res = unsafe {
-            (*enc).utf8Convert.expect("non-null function pointer")(
-                enc,
-                &raw mut ptr,
-                end,
-                &raw mut pool.ptr as *mut *mut ::core::ffi::c_char,
-                pool.end as *const ::core::ffi::c_char,
-            ) as crate::src::xmltok::XML_Convert_Result
-        };
+        let convert_res = run_utf8_convert!(enc, &raw mut ptr, end, &raw mut pool.ptr, pool.end);
         if convert_res as ::core::ffi::c_uint
             == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                 as ::core::ffi::c_uint
