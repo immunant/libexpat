@@ -2764,164 +2764,21 @@ pub mod xmltok_impl_c {
         )
     }
 
-    pub unsafe extern "C" fn normal_getAtts(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut attsMax: ::core::ffi::c_int,
-        mut atts: *mut crate::src::xmltok::ATTRIBUTE,
+    pub extern "C" fn normal_getAtts(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        attsMax: ::core::ffi::c_int,
+        atts: *mut crate::src::xmltok::ATTRIBUTE,
     ) -> ::core::ffi::c_int {
-        let mut state: crate::xmltok_impl_h::C2Rust_Unnamed_3 = crate::xmltok_impl_c::inName;
-        let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh10 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh10 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
-                    }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                6 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh11 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh11 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
-                    }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                7 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh12 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh12 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
-                    }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                29 | 22 | 24 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh13 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh13 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName;
-                    }
-                }
-                12 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh14 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh14 = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue;
-                        open = crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh15 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh15 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                13 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh16 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh16 = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue;
-                        open = crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh17 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh17 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                3 => {
-                    if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                21 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = crate::xmltok_impl_c::other;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || *ptr as ::core::ffi::c_int != crate::ascii_h::ASCII_SPACE
-                            || *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == crate::ascii_h::ASCII_SPACE
-                            || (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                                == open)
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                9 | 10 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = crate::xmltok_impl_c::other;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                11 | 17 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        return nAtts;
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        }
+        super::get_atts(
+            enc,
+            ptr,
+            attsMax,
+            atts,
+            1,
+            super::normal_ascii_byte,
+            super::normal_encoded_byte_type,
+        )
     }
 
     pub extern "C" fn normal_charRefNumber(
@@ -5533,208 +5390,21 @@ pub mod xmltok_impl_c {
         )
     }
 
-    pub unsafe extern "C" fn little2_getAtts(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut attsMax: ::core::ffi::c_int,
-        mut atts: *mut crate::src::xmltok::ATTRIBUTE,
+    pub extern "C" fn little2_getAtts(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        attsMax: ::core::ffi::c_int,
+        atts: *mut crate::src::xmltok::ATTRIBUTE,
     ) -> ::core::ffi::c_int {
-        let mut state: crate::xmltok_impl_h::C2Rust_Unnamed_3 = crate::xmltok_impl_c::inName_0;
-        let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        loop {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh29 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh29 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_0;
-                    }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                6 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh30 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh30 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_0;
-                    }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                7 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh31 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh31 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_0;
-                    }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                29 | 22 | 24 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh32 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh32 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_0;
-                    }
-                }
-                12 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh33 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh33 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue_0;
-                        open = crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other_0;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh34 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh34 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                13 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh35 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh35 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue_0;
-                        open = crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other_0;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh36 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh36 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                3 => {
-                    if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                21 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        state = crate::xmltok_impl_c::other_0;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || (if *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            } else {
-                                -1 as ::core::ffi::c_int
-                            }) != crate::ascii_h::ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(0 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                            } else {
-                                -1 as ::core::ffi::c_int
-                            }) == crate::ascii_h::ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(2 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_uchar
-                                    as usize] as ::core::ffi::c_int
-                            } else {
-                                unicode_byte_type(
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(1 as ::core::ffi::c_int as isize),
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(0 as ::core::ffi::c_int as isize),
-                                )
-                            }) == open)
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                9 | 10 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        state = crate::xmltok_impl_c::other_0;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                11 | 17 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue_0 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        return nAtts;
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
+        super::get_atts(
+            enc,
+            ptr,
+            attsMax,
+            atts,
+            2,
+            super::little2_ascii_byte,
+            super::little2_encoded_byte_type,
+        )
     }
 
     pub extern "C" fn little2_charRefNumber(
@@ -8401,210 +8071,21 @@ pub mod xmltok_impl_c {
         )
     }
 
-    pub unsafe extern "C" fn big2_getAtts(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut attsMax: ::core::ffi::c_int,
-        mut atts: *mut crate::src::xmltok::ATTRIBUTE,
+    pub extern "C" fn big2_getAtts(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        attsMax: ::core::ffi::c_int,
+        atts: *mut crate::src::xmltok::ATTRIBUTE,
     ) -> ::core::ffi::c_int {
-        let mut state: crate::xmltok_impl_h::C2Rust_Unnamed_3 = crate::xmltok_impl_c::inName_1;
-        let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        loop {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh48 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh48 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_1;
-                    }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                6 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh49 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh49 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_1;
-                    }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                7 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh50 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh50 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_1;
-                    }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                29 | 22 | 24 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::other_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh51 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh51 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = crate::xmltok_impl_c::inName_1;
-                    }
-                }
-                12 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh52 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh52 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue_1;
-                        open = crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other_1;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh53 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh53 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                13 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh54 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh54 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = crate::xmltok_impl_c::inValue_1;
-                        open = crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int;
-                    } else if open == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int {
-                        state = crate::xmltok_impl_c::other_1;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh55 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh55 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                3 => {
-                    if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                21 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        state = crate::xmltok_impl_c::other_1;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || (if *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            } else {
-                                -1 as ::core::ffi::c_int
-                            }) != crate::ascii_h::ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(0 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                            } else {
-                                -1 as ::core::ffi::c_int
-                            }) == crate::ascii_h::ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(0 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_uchar
-                                    as usize] as ::core::ffi::c_int
-                            } else {
-                                unicode_byte_type(
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(0 as ::core::ffi::c_int as isize),
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(1 as ::core::ffi::c_int as isize),
-                                )
-                            }) == open)
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                9 | 10 => {
-                    if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inName_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        state = crate::xmltok_impl_c::other_1;
-                    } else if state as ::core::ffi::c_uint
-                        == crate::xmltok_impl_c::inValue_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                11 | 17 => {
-                    if state as ::core::ffi::c_uint
-                        != crate::xmltok_impl_c::inValue_1 as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        return nAtts;
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
+        super::get_atts(
+            enc,
+            ptr,
+            attsMax,
+            atts,
+            2,
+            super::big2_ascii_byte,
+            super::big2_encoded_byte_type,
+        )
     }
 
     pub extern "C" fn big2_charRefNumber(
@@ -11821,6 +11302,118 @@ fn is_public_id(
         ptr = ptr.wrapping_add(width);
     }
     1
+}
+
+fn get_atts(
+    enc: *const crate::src::xmltok::ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    atts_max: ::core::ffi::c_int,
+    atts: *mut crate::src::xmltok::ATTRIBUTE,
+    width: usize,
+    ascii_byte: fn(*const ::core::ffi::c_char) -> ::core::ffi::c_int,
+    byte_type: fn(
+        *const crate::src::xmltok::ENCODING,
+        *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int,
+) -> ::core::ffi::c_int {
+    let mut state = crate::xmltok_impl_c::inName;
+    let mut n_atts: ::core::ffi::c_int = 0;
+    let mut open: ::core::ffi::c_int = 0;
+    ptr = ptr.wrapping_add(width);
+    loop {
+        match byte_type(enc, ptr) {
+            t if matches!(
+                t,
+                t if t == crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
+                    || t == crate::xmltok_impl_h::BT_LEAD3 as ::core::ffi::c_int
+                    || t == crate::xmltok_impl_h::BT_LEAD4 as ::core::ffi::c_int
+                    || t == crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int
+                    || t == crate::xmltok_impl_h::BT_HEX as ::core::ffi::c_int
+                    || t == crate::xmltok_impl_h::BT_NONASCII as ::core::ffi::c_int
+            ) =>
+            {
+                if state == crate::xmltok_impl_c::other {
+                    if n_atts < atts_max {
+                        unsafe {
+                            let att = &mut *atts.offset(n_atts as isize);
+                            att.name = ptr;
+                            att.normalized = 1;
+                        }
+                    }
+                    state = crate::xmltok_impl_c::inName;
+                }
+                if let Some(lead_width) = lead_byte_width(t) {
+                    ptr = ptr.wrapping_add(lead_width.saturating_sub(width));
+                }
+            }
+            t if t == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int
+                || t == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int =>
+            {
+                if state != crate::xmltok_impl_c::inValue {
+                    if n_atts < atts_max {
+                        unsafe {
+                            (*atts.offset(n_atts as isize)).valuePtr = ptr.wrapping_add(width);
+                        }
+                    }
+                    state = crate::xmltok_impl_c::inValue;
+                    open = t;
+                } else if open == t {
+                    state = crate::xmltok_impl_c::other;
+                    if n_atts < atts_max {
+                        unsafe {
+                            (*atts.offset(n_atts as isize)).valueEnd = ptr;
+                        }
+                    }
+                    n_atts += 1;
+                }
+            }
+            t if t == crate::xmltok_impl_h::BT_AMP as ::core::ffi::c_int => {
+                if n_atts < atts_max {
+                    unsafe {
+                        (*atts.offset(n_atts as isize)).normalized = 0;
+                    }
+                }
+            }
+            t if t == crate::xmltok_impl_h::BT_S as ::core::ffi::c_int => {
+                if state == crate::xmltok_impl_c::inName {
+                    state = crate::xmltok_impl_c::other;
+                } else if state == crate::xmltok_impl_c::inValue && n_atts < atts_max {
+                    let next = ptr.wrapping_add(width);
+                    unsafe {
+                        let att = &mut *atts.offset(n_atts as isize);
+                        if att.normalized != 0
+                            && (ptr == att.valuePtr
+                                || ascii_byte(ptr) != crate::ascii_h::ASCII_SPACE
+                                || ascii_byte(next) == crate::ascii_h::ASCII_SPACE
+                                || byte_type(enc, next) == open)
+                        {
+                            att.normalized = 0;
+                        }
+                    }
+                }
+            }
+            t if t == crate::xmltok_impl_h::BT_CR as ::core::ffi::c_int
+                || t == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int =>
+            {
+                if state == crate::xmltok_impl_c::inName {
+                    state = crate::xmltok_impl_c::other;
+                } else if state == crate::xmltok_impl_c::inValue && n_atts < atts_max {
+                    unsafe {
+                        (*atts.offset(n_atts as isize)).normalized = 0;
+                    }
+                }
+            }
+            t if t == crate::xmltok_impl_h::BT_SOL as ::core::ffi::c_int
+                || t == crate::xmltok_impl_h::BT_GT as ::core::ffi::c_int =>
+            {
+                if state != crate::xmltok_impl_c::inValue {
+                    return n_atts;
+                }
+            }
+            _ => {}
+        }
+        ptr = ptr.wrapping_add(width);
+    }
 }
 
 fn add_char_ref_hex_digit(result: &mut ::core::ffi::c_int, c: ::core::ffi::c_int) {
