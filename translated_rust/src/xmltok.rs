@@ -17511,37 +17511,85 @@ unsafe extern "C" fn unknown_toUtf8(
 }
 
 unsafe extern "C" fn unknown_toUtf16(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+    enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let mut c: ::core::ffi::c_ushort = (*uenc).utf16[**fromP as ::core::ffi::c_uchar as usize];
-        if c as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            c = unknown_encoding_converter((*uenc).converter_id)
-                .expect("unknown encoding converter is registered")
-                .invoke((*uenc).userData, *fromP) as ::core::ffi::c_ushort;
-            *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                    - (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
-                        - 2 as ::core::ffi::c_int)) as isize,
-            );
-        } else {
-            *fromP = (*fromP).offset(1);
-        }
-        let c2rust_fresh36 = *toP;
-        *toP = (*toP).offset(1);
-        *c2rust_fresh36 = c;
-    }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+    let input_start = unsafe { *fromP };
+    let input_len = if input_start == fromLim {
+        0
     } else {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
+        unsafe { fromLim.offset_from(input_start) as usize }
     };
+    if input_len == 0 {
+        return crate::src::xmltok::XML_CONVERT_COMPLETED;
+    }
+    let output_start = unsafe { *toP };
+    let output_len = if output_start == toLim.cast_mut() {
+        0
+    } else {
+        unsafe { toLim.offset_from(output_start) as usize }
+    };
+    let encoding = unsafe { &*(enc as *const unknown_encoding) };
+    let input = unsafe { core::slice::from_raw_parts(input_start, input_len) };
+    // As with the UTF-8 converter, an empty C window may be represented by a
+    // null pointer.  There is no output access in that case.
+    let output = if output_len == 0 {
+        &mut []
+    } else {
+        unsafe { core::slice::from_raw_parts_mut(output_start, output_len) }
+    };
+    let (result, input_used, output_used) = unknown_to_utf16_window(
+        encoding,
+        input,
+        output,
+        |source| unsafe {
+            unknown_encoding_converter(encoding.converter_id)
+                .expect("unknown encoding converter is registered")
+                .invoke(encoding.userData, source.as_ptr())
+        },
+    );
+    if input_used != 0 {
+        unsafe { *fromP = input_start.add(input_used) };
+    }
+    if output_used != 0 {
+        unsafe { *toP = output_start.add(output_used) };
+    }
+    result
+}
+
+fn unknown_to_utf16_window(
+    encoding: &unknown_encoding,
+    input: &[::core::ffi::c_char],
+    output: &mut [::core::ffi::c_ushort],
+    mut convert: impl FnMut(&[::core::ffi::c_char]) -> ::core::ffi::c_int,
+) -> (crate::src::xmltok::XML_Convert_Result, usize, usize) {
+    let mut input_used = 0;
+    let mut output_used = 0;
+
+    while input_used < input.len() && output_used < output.len() {
+        let byte = input[input_used] as ::core::ffi::c_uchar as usize;
+        let (character, input_advance) = match encoding.utf16[byte] {
+            0 => {
+                let advance = encoding.normal.type_0[byte] as usize
+                    - (crate::xmltok_impl_h::BT_LEAD2 as usize - 2);
+                (convert(&input[input_used..]) as ::core::ffi::c_ushort, advance)
+            }
+            character => (character, 1),
+        };
+        output[output_used] = character;
+        input_used += input_advance.min(input.len() - input_used);
+        output_used += 1;
+    }
+
+    let result = if output_used == output.len() && input_used < input.len() {
+        crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED
+    } else {
+        crate::src::xmltok::XML_CONVERT_COMPLETED
+    };
+    (result, input_used, output_used)
 }
 fn char_ref_number_is_valid(result: ::core::ffi::c_int, latin1: &normal_encoding) -> bool {
     match result >> 8 {
