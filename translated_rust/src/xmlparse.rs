@@ -3059,7 +3059,6 @@ pub struct binding {
     // pool name when it is unwound.  Retaining that location avoids keeping a
     // raw pointer into the hash table across later table growth.
     pub attId: Option<PoolStringRef>,
-    pub uri: *mut crate::expat_external_h::XML_Char,
     pub uriLen: ::core::ffi::c_int,
     pub uriAlloc: ::core::ffi::c_int,
 }
@@ -3388,7 +3387,6 @@ impl BindingStorage {
             nextTagBinding: None,
             prevPrefixBinding: None,
             attId: None,
-            uri: uri.as_mut_ptr(),
             uriLen: 0,
             uriAlloc: uri_capacity as ::core::ffi::c_int,
         });
@@ -3430,9 +3428,7 @@ impl BindingStorage {
             return false;
         }
         self.uri.resize(capacity, 0);
-        let uri = self.uri.as_mut_ptr();
         let binding = self.binding_mut();
-        binding.uri = uri;
         binding.uriAlloc = capacity as ::core::ffi::c_int;
         true
     }
@@ -3480,9 +3476,7 @@ impl BindingStorage {
             return false;
         }
         self.uri.resize(capacity, 0);
-        let uri = self.uri.as_mut_ptr();
         let binding = self.binding_mut();
-        binding.uri = uri;
         binding.uriAlloc = capacity as ::core::ffi::c_int;
         true
     }
@@ -10621,7 +10615,6 @@ unsafe extern "C" fn storeAtts(
             let mut s: *const crate::expat_external_h::XML_Char = appAtts[i as usize];
             if *s.offset(-1 as isize) as ::core::ffi::c_int == 2 as ::core::ffi::c_int {
                 let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                let mut b: *const BINDING = ::core::ptr::null::<BINDING>();
                 let mut uriHash: ::core::ffi::c_ulong = 0;
                 let mut sip_state: crate::siphash_h::siphash = crate::siphash_h::siphash {
                     v0: 0,
@@ -10664,10 +10657,26 @@ unsafe extern "C" fn storeAtts(
                 let Some(binding_index) = parser_ref.binding_index(binding_id) else {
                     return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
                 };
-                b = parser_ref.m_activeBindings[binding_index].binding.as_ptr();
-                j_0 = 0 as ::core::ffi::c_uint;
-                while j_0 < (*b).uriLen as ::core::ffi::c_uint {
-                    let c: crate::expat_external_h::XML_Char = *(*b).uri.offset(j_0 as isize);
+                let binding_storage = &parser_ref.m_activeBindings[binding_index];
+                let binding_prefix = binding_storage
+                    .binding
+                    .first()
+                    .expect("binding storage has one binding")
+                    .prefix;
+                let uri_len = match usize::try_from(
+                    binding_storage
+                        .binding
+                        .first()
+                        .expect("binding storage has one binding")
+                        .uriLen,
+                ) {
+                    Ok(length) => length,
+                    Err(_) => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                };
+                let Some(binding_uri) = binding_storage.uri.get(..uri_len) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                for &c in binding_uri {
                     if if (*parser).m_tempPool.is_full() && poolGrow(&mut (*parser).m_tempPool) == 0
                     {
                         0 as ::core::ffi::c_int
@@ -10681,12 +10690,11 @@ unsafe extern "C" fn storeAtts(
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    j_0 = j_0.wrapping_add(1);
                 }
                 sip24_update(
                     &raw mut sip_state,
-                    (*b).uri as *const ::core::ffi::c_void,
-                    ((*b).uriLen as crate::__stddef_size_t_h::size_t)
+                    binding_uri.as_ptr().cast(),
+                    (binding_uri.len() as crate::__stddef_size_t_h::size_t)
                         .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
                 );
                 loop {
@@ -10789,7 +10797,7 @@ unsafe extern "C" fn storeAtts(
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    let BindingPrefix::Named(prefix_name) = (*b).prefix else {
+                    let BindingPrefix::Named(prefix_name) = binding_prefix else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
                     s = pool_string_pointer!(&dtd.pool, prefix_name);
@@ -11200,13 +11208,20 @@ unsafe extern "C" fn addBinding(
         .last_mut()
         .expect("reserved binding storage");
     storage.id = binding_id;
-    let b = &mut *storage.binding.as_mut_ptr();
-
-    b.uriLen = len;
-    ::core::ptr::copy_nonoverlapping(uri.as_ptr().cast(), b.uri, uri.len());
-    if parser.m_namespaceSeparator != 0 {
-        b.uri.add(uri.len()).write(parser.m_namespaceSeparator);
+    let Some(destination) = storage.uri.get_mut(..uri.len()) else {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    };
+    for (destination, &source) in destination.iter_mut().zip(uri.iter()) {
+        *destination = source as crate::expat_external_h::XML_Char;
     }
+    if parser.m_namespaceSeparator != 0 {
+        let Some(separator) = storage.uri.get_mut(uri.len()) else {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        };
+        *separator = parser.m_namespaceSeparator;
+    }
+    let b = storage.binding_mut();
+    b.uriLen = len;
     b.prefix = binding_prefix;
     b.attId = attribute_name;
     b.prevPrefixBinding = previous_prefix_binding;
@@ -17456,16 +17471,12 @@ fn pool_append_context_char(pool: &mut STRING_POOL, ch: crate::expat_external_h:
     pool_append_char(pool, ch)
 }
 
-unsafe fn pool_append_context_chars(
+fn pool_append_context_chars(
     pool: &mut STRING_POOL,
-    source: *const crate::expat_external_h::XML_Char,
-    len: ::core::ffi::c_int,
+    source: &[crate::expat_external_h::XML_Char],
 ) -> bool {
-    if len <= 0 {
-        return true;
-    }
-    for index in 0..len as usize {
-        if !pool_append_context_char(pool, *source.add(index)) {
+    for &ch in source {
+        if !pool_append_context_char(pool, ch) {
             return false;
         }
     }
@@ -17515,15 +17526,22 @@ unsafe extern "C" fn getContext(
         ) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        let binding = parser.m_activeBindings[binding_index]
+        let storage = &parser.m_activeBindings[binding_index];
+        let mut len = storage
             .binding
             .first()
-            .expect("binding storage has one binding");
-        let mut len = binding.uriLen;
+            .expect("binding storage has one binding")
+            .uriLen;
         if (*parser).m_namespaceSeparator != 0 {
             len -= 1;
         }
-        if !pool_append_context_chars(&mut parser.m_tempPool, binding.uri, len) {
+        let Ok(len) = usize::try_from(len) else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
+        let Some(uri) = storage.uri.get(..len) else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
+        if !pool_append_context_chars(&mut parser.m_tempPool, uri) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
         needSep = crate::expat_h::XML_TRUE;
@@ -17562,15 +17580,22 @@ unsafe extern "C" fn getContext(
         ) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        let binding = parser.m_activeBindings[binding_index]
+        let storage = &parser.m_activeBindings[binding_index];
+        let mut len = storage
             .binding
             .first()
-            .expect("binding storage has one binding");
-        let mut len = binding.uriLen;
+            .expect("binding storage has one binding")
+            .uriLen;
         if parser.m_namespaceSeparator != 0 {
             len -= 1;
         }
-        if !pool_append_context_chars(&mut parser.m_tempPool, binding.uri, len) {
+        let Ok(len) = usize::try_from(len) else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
+        let Some(uri) = storage.uri.get(..len) else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
+        if !pool_append_context_chars(&mut parser.m_tempPool, uri) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
         needSep = crate::expat_h::XML_TRUE;
