@@ -302,18 +302,35 @@ pub enum Scanner {
 /// A tokenizer result expressed relative to an already-validated input slice.
 /// Boundary adapters alone turn `next` back into a C cursor.
 #[derive(Copy, Clone)]
-struct ScannerResult {
-    token: ::core::ffi::c_int,
-    next: Option<usize>,
+pub(crate) struct ScannerResult {
+    pub(crate) token: ::core::ffi::c_int,
+    pub(crate) next: Option<usize>,
 }
 
 impl ScannerResult {
-    const fn new(token: ::core::ffi::c_int, next: Option<usize>) -> Self {
+    pub(crate) const fn new(token: ::core::ffi::c_int, next: Option<usize>) -> Self {
         Self { token, next }
     }
 }
 
+/// Two read-only views of the same tokenizer-bounded bytes.  UTF-16 helpers
+/// retain their historical `XML_Char` view while byte-oriented scanners use
+/// the ordinary byte slice.  Both are created only by the C cursor adapter.
+pub(crate) struct ScannerInput<'a> {
+    pub(crate) bytes: &'a [u8],
+    pub(crate) chars: &'a [::core::ffi::c_char],
+}
+
 impl Scanner {
+    fn scan_result(
+        self,
+        encoding: &normal_encoding,
+        input: ScannerInput<'_>,
+        encoding_id: usize,
+    ) -> ScannerResult {
+        crate::src::xmltok::xmltok_impl_c::scan_result(self, encoding, input, encoding_id)
+    }
+
     pub unsafe fn scan(
         self,
         enc: *const crate::src::xmltok::ENCODING,
@@ -321,145 +338,36 @@ impl Scanner {
         end: *const ::core::ffi::c_char,
         next_tok_ptr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if let Self::NormalProlog = self {
-            let input_len = if ptr >= end {
-                0
-            } else {
-                end.offset_from(ptr) as usize
-            };
-            let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
-            let normal = &*(enc as *const normal_encoding);
-            let action =
-                xmltok_impl_c::normal_prolog_tok_impl(normal, input, |kind, offset, width| {
-                    let kind = match kind {
-                        xmltok_impl_c::NormalPrologCharCheck::Invalid => {
-                            xmltok_impl_c::NormalCharCheck::Invalid
-                        }
-                        xmltok_impl_c::NormalPrologCharCheck::NameStart => {
-                            xmltok_impl_c::NormalCharCheck::NameStart
-                        }
-                        xmltok_impl_c::NormalPrologCharCheck::Name => {
-                            xmltok_impl_c::NormalCharCheck::Name
-                        }
-                    };
-                    xmltok_impl_c::normal_char_check(normal, kind, width, &input[offset..], || {
-                        unknown_character_value(enc as usize, &input[offset..])
-                    })
-                });
-            let result = match action {
-                xmltok_impl_c::NormalPrologAction::Token(token, next) => {
-                    let next = (token >= crate::src::xmltok::XML_TOK_INVALID_1
-                        || token == -crate::src::xmltok::XML_TOK_PROLOG_S_1)
-                        .then_some(next);
-                    ScannerResult::new(token, next)
-                }
-                xmltok_impl_c::NormalPrologAction::Literal(open, start) => {
-                    let (token, next) = xmltok_impl_c::normal_scan_lit_impl(
-                        open,
-                        normal,
-                        &input[start..],
-                        |offset, width| {
-                            xmltok_impl_c::normal_char_check(
-                                normal,
-                                xmltok_impl_c::NormalCharCheck::Invalid,
-                                width,
-                                &input[start + offset..],
-                                || unknown_character_value(enc as usize, &input[start + offset..]),
-                            )
-                        },
-                    );
-                    ScannerResult::new(token, next.map(|offset| start + offset))
-                }
-                xmltok_impl_c::NormalPrologAction::Declaration(start) => {
-                    match xmltok_impl_c::normal_scan_decl_impl(&normal.type_0, &input[start..]) {
-                        xmltok_impl_c::NormalScanDeclAction::Comment => {
-                            let comment_start = start + 1;
-                            let (token, next) = xmltok_impl_c::normal_scan_comment_impl(
-                                &normal.type_0,
-                                &input[comment_start..],
-                                |offset, width| {
-                                    xmltok_impl_c::normal_char_check(
-                                        normal,
-                                        xmltok_impl_c::NormalCharCheck::Invalid,
-                                        width,
-                                        &input[comment_start + offset..],
-                                        || {
-                                            unknown_character_value(
-                                                enc as usize,
-                                                &input[comment_start + offset..],
-                                            )
-                                        },
-                                    )
-                                },
-                            );
-                            ScannerResult::new(
-                                token,
-                                next.map(|offset| comment_start + offset),
-                            )
-                        }
-                        xmltok_impl_c::NormalScanDeclAction::Token(token, next) => {
-                            ScannerResult::new(token, next.map(|offset| start + offset))
-                        }
-                    }
-                }
-                xmltok_impl_c::NormalPrologAction::ProcessingInstruction(start) => {
-                    let (token, next) = xmltok_impl_c::normal_scan_pi_impl(normal, &input[start..]);
-                    ScannerResult::new(token, next.map(|offset| start + offset))
-                }
-                xmltok_impl_c::NormalPrologAction::Percent(start) => {
-                    let (token, next) =
-                        xmltok_impl_c::normal_scan_percent_impl(normal, &input[start..]);
-                    ScannerResult::new(token, next.map(|offset| start + offset))
-                }
-                xmltok_impl_c::NormalPrologAction::PoundName(start) => {
-                    let (token, next) =
-                        xmltok_impl_c::normal_scan_pound_name_impl(normal, &input[start..]);
-                    ScannerResult::new(token, next.map(|offset| start + offset))
-                }
-            };
-            if let Some(offset) = result.next {
-                *next_tok_ptr = ptr.wrapping_add(offset);
-            }
-            return result.token;
+        let span = end.offset_from(ptr);
+        if span < 0 {
+            return crate::src::xmltok::XML_TOK_NONE_1;
         }
-        if let Self::Big2Prolog = self {
-            if ptr >= end {
-                return crate::src::xmltok::XML_TOK_NONE_1;
-            }
-            let input_len = end.offset_from(ptr) as usize & !1;
-            let input = ::core::slice::from_raw_parts(ptr, input_len);
-            let encoding = &*(enc as *const normal_encoding);
-            let (token, next) = xmltok_impl_c::big2_prologTok(encoding, input);
-            let result = ScannerResult::new(token, next);
-            if let Some(offset) = result.next {
-                *next_tok_ptr = ptr.wrapping_add(offset);
-            }
-            return result.token;
-        }
-        let scanner: unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int = match self {
-            Self::NormalProlog => unreachable!("handled before raw scanner dispatch"),
-            Self::NormalContent => xmltok_impl_c::normal_contentTok,
-            Self::NormalCdataSection => xmltok_impl_c::normal_cdataSectionTok,
-            Self::NormalIgnoreSection => xmltok_impl_c::normal_ignoreSectionTok,
-            Self::Little2Prolog => xmltok_impl_c::little2_prologTok,
-            Self::Little2Content => xmltok_impl_c::little2_contentTok,
-            Self::Little2CdataSection => xmltok_impl_c::little2_cdataSectionTok,
-            Self::Little2IgnoreSection => xmltok_impl_c::little2_ignoreSectionTok,
-            Self::Big2Prolog => unreachable!("handled before raw scanner dispatch"),
-            Self::Big2Content => xmltok_impl_c::big2_contentTok,
-            Self::Big2CdataSection => xmltok_impl_c::big2_cdataSectionTok,
-            Self::Big2IgnoreSection => xmltok_impl_c::big2_ignoreSectionTok,
-            Self::InitProlog => xmltok_ns_c::initScanProlog,
-            Self::InitContent => xmltok_ns_c::initScanContent,
-            Self::InitPrologNS => xmltok_ns_c::initScanPrologNS,
-            Self::InitContentNS => xmltok_ns_c::initScanContentNS,
+        let input = ScannerInput {
+            bytes: ::core::slice::from_raw_parts(ptr.cast::<u8>(), span as usize),
+            chars: ::core::slice::from_raw_parts(ptr, span as usize),
         };
-        scanner(enc, ptr, end, next_tok_ptr)
+        match self {
+            Self::InitProlog | Self::InitContent | Self::InitPrologNS | Self::InitContentNS => {
+                let state = match self {
+                    Self::InitProlog | Self::InitPrologNS => InitScanState::Prolog,
+                    Self::InitContent | Self::InitContentNS => InitScanState::Content,
+                    _ => unreachable!(),
+                };
+                let namespace_aware = matches!(self, Self::InitPrologNS | Self::InitContentNS);
+                let initial = &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING);
+                let result = initial_scan_result(initial, namespace_aware, state, input);
+                if let Some(offset) = result.next {
+                    *next_tok_ptr = ptr.wrapping_add(offset);
+                }
+                return result.token;
+            }
+            _ => {}
+        }
+        let result = self.scan_result(&*(enc as *const normal_encoding), input, enc as usize);
+        if let Some(offset) = result.next {
+            *next_tok_ptr = ptr.wrapping_add(offset);
+        }
+        result.token
     }
 }
 
@@ -10774,6 +10682,237 @@ pub mod xmltok_impl_c {
         Normalized(::core::ffi::c_char),
     }
 
+    /// Executes a fixed tokenizer scanner on views whose bounds were already
+    /// checked by its caller.  The result remains an offset, so this internal
+    /// dispatch never needs a C cursor or an unsafe function pointer.
+    pub(super) fn scan_result(
+        scanner: crate::src::xmltok::Scanner,
+        encoding: &normal_encoding,
+        input: crate::src::xmltok::ScannerInput<'_>,
+        encoding_id: usize,
+    ) -> crate::src::xmltok::ScannerResult {
+        use crate::src::xmltok::{Scanner, ScannerResult};
+
+        let normal_prolog = || {
+            let bytes = input.bytes;
+            let action = normal_prolog_tok_impl(encoding, bytes, |kind, offset, width| {
+                let kind = match kind {
+                    NormalPrologCharCheck::Invalid => NormalCharCheck::Invalid,
+                    NormalPrologCharCheck::NameStart => NormalCharCheck::NameStart,
+                    NormalPrologCharCheck::Name => NormalCharCheck::Name,
+                };
+                normal_char_check(encoding, kind, width, &bytes[offset..], || {
+                    unknown_character_value(encoding_id, &bytes[offset..])
+                })
+            });
+            match action {
+                NormalPrologAction::Token(token, next) => ScannerResult::new(
+                    token,
+                    (token >= crate::src::xmltok::XML_TOK_INVALID_1
+                        || token == -crate::src::xmltok::XML_TOK_PROLOG_S_1)
+                        .then_some(next),
+                ),
+                NormalPrologAction::Literal(open, start) => {
+                    let (token, next) = normal_scan_lit_impl(
+                        open,
+                        encoding,
+                        &bytes[start..],
+                        |offset, width| {
+                            normal_char_check(
+                                encoding,
+                                NormalCharCheck::Invalid,
+                                width,
+                                &bytes[start + offset..],
+                                || unknown_character_value(encoding_id, &bytes[start + offset..]),
+                            )
+                        },
+                    );
+                    ScannerResult::new(token, next.map(|offset| start + offset))
+                }
+                NormalPrologAction::Declaration(start) => {
+                    match normal_scan_decl_impl(&encoding.type_0, &bytes[start..]) {
+                        NormalScanDeclAction::Comment => {
+                            let comment_start = start + 1;
+                            let (token, next) = normal_scan_comment_impl(
+                                &encoding.type_0,
+                                &bytes[comment_start..],
+                                |offset, width| {
+                                    normal_char_check(
+                                        encoding,
+                                        NormalCharCheck::Invalid,
+                                        width,
+                                        &bytes[comment_start + offset..],
+                                        || unknown_character_value(
+                                            encoding_id,
+                                            &bytes[comment_start + offset..],
+                                        ),
+                                    )
+                                },
+                            );
+                            ScannerResult::new(token, next.map(|offset| comment_start + offset))
+                        }
+                        NormalScanDeclAction::Token(token, next) => {
+                            ScannerResult::new(token, next.map(|offset| start + offset))
+                        }
+                    }
+                }
+                NormalPrologAction::ProcessingInstruction(start) => {
+                    let (token, next) = normal_scan_pi_impl(encoding, &bytes[start..]);
+                    ScannerResult::new(token, next.map(|offset| start + offset))
+                }
+                NormalPrologAction::Percent(start) => {
+                    let (token, next) = normal_scan_percent_impl(encoding, &bytes[start..]);
+                    ScannerResult::new(token, next.map(|offset| start + offset))
+                }
+                NormalPrologAction::PoundName(start) => {
+                    let (token, next) = normal_scan_pound_name_impl(encoding, &bytes[start..]);
+                    ScannerResult::new(token, next.map(|offset| start + offset))
+                }
+            }
+        };
+
+        let normal_content = || match normal_content_tok_impl(
+            &encoding.type_0,
+            input.bytes,
+            |offset, width| {
+                normal_char_check(
+                    encoding,
+                    NormalCharCheck::Invalid,
+                    width,
+                    &input.bytes[offset..],
+                    || unknown_character_value(encoding_id, &input.bytes[offset..]),
+                )
+            },
+        ) {
+            NormalContentAction::Token(token, next) => ScannerResult::new(token, next),
+            NormalContentAction::ScanLt(start) => {
+                let result = normal_scan_lt_with_check(encoding, &input.bytes[start..], &|kind, offset, width| {
+                    normal_char_check(
+                        encoding,
+                        kind,
+                        width,
+                        &input.bytes[start + offset..],
+                        || unknown_character_value(encoding_id, &input.bytes[start + offset..]),
+                    )
+                });
+                ScannerResult::new(result.token, result.next.map(|next| start + next))
+            }
+            NormalContentAction::ScanRef(start) => {
+                let (token, next) = normal_scan_ref_bytes_impl(encoding, &input.bytes[start..]);
+                ScannerResult::new(token, next.map(|next| start + next))
+            }
+        };
+
+        let little2_content = || match little2_content_tok_impl(encoding, input.chars) {
+            Little2ContentToken::Result(token, next) => ScannerResult::new(token, next),
+            Little2ContentToken::ScanLt => {
+                let result = little2_scan_lt_result(encoding, &input.bytes[2..], &input.chars[2..]);
+                ScannerResult::new(result.token, result.next.map(|next| 2 + next))
+            }
+            Little2ContentToken::ScanRef => {
+                let result = little2_scan_ref_impl(encoding, &input.chars[2..]);
+                ScannerResult::new(result.token, result.next.map(|next| 2 + next))
+            }
+        };
+
+        let big2_result = |result: Big2ScanOutcome| match result {
+            Big2ScanOutcome::Token(token, next) => ScannerResult::new(token, Some(next)),
+            Big2ScanOutcome::Partial(token) => ScannerResult::new(token, None),
+            Big2ScanOutcome::Invalid(at) => {
+                ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(at))
+            }
+        };
+        let big2_content = || match big2_content_tok_impl(encoding, input.chars) {
+            Big2ContentToken::Result(token, next) => ScannerResult::new(token, next),
+            Big2ContentToken::ScanLt => {
+                let result = big2_scan_lt_impl(encoding, &input.chars[2..]);
+                match big2_result(result) {
+                    ScannerResult { token, next } => ScannerResult::new(token, next.map(|next| 2 + next)),
+                }
+            }
+            Big2ContentToken::ScanRef => {
+                let result = big2_scan_ref(encoding, &input.chars[2..], 0);
+                match big2_result(result) {
+                    ScannerResult { token, next } => ScannerResult::new(token, next.map(|next| 2 + next)),
+                }
+            }
+        };
+
+        match scanner {
+            Scanner::NormalProlog => normal_prolog(),
+            Scanner::NormalContent => normal_content(),
+            Scanner::NormalCdataSection => {
+                let (token, next) = normal_cdata_section_tok(
+                    input.bytes,
+                    &encoding.type_0,
+                    encoding.enc.isUtf8 != 0,
+                );
+                ScannerResult::new(token, next)
+            }
+            Scanner::NormalIgnoreSection => {
+                let mut start = 0;
+                let mut level = 0;
+                loop {
+                    match normal_ignore_section_tok_impl(encoding, input.bytes, start, level) {
+                        NormalIgnoreSectionOutcome::Token(token, next) => {
+                            break ScannerResult::new(token, Some(next));
+                        }
+                        NormalIgnoreSectionOutcome::Partial(token) => break ScannerResult::new(token, None),
+                        NormalIgnoreSectionOutcome::Invalid(at) => {
+                            break ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(at));
+                        }
+                        NormalIgnoreSectionOutcome::UnknownInvalid { at, width, level: saved_level } => {
+                            if unknown_is_invalid(unknown_character_value(encoding_id, &input.bytes[at..])) {
+                                break ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(at));
+                            }
+                            start = at + width;
+                            level = saved_level;
+                        }
+                    }
+                }
+            }
+            Scanner::Little2Prolog => {
+                if input.chars.is_empty() {
+                    return ScannerResult::new(crate::src::xmltok::XML_TOK_NONE_1, None);
+                }
+                if input.chars.len() & !1 == 0 {
+                    return ScannerResult::new(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                }
+                let (token, next) = little2_prolog_tok(encoding, input.chars);
+                ScannerResult::new(token, next)
+            }
+            Scanner::Little2Content => little2_content(),
+            Scanner::Little2CdataSection => {
+                let result = little2_cdata_section_tok_impl(encoding, input.bytes);
+                ScannerResult::new(result.token, result.next)
+            }
+            Scanner::Little2IgnoreSection => match little2_ignore_section_tok_impl(encoding, input.chars) {
+                Little2IgnoreSectionOutcome::Token(token, next) => ScannerResult::new(token, Some(next)),
+                Little2IgnoreSectionOutcome::Partial(token) => ScannerResult::new(token, None),
+                Little2IgnoreSectionOutcome::Invalid(at) => ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(at)),
+            },
+            Scanner::Big2Prolog => {
+                if input.chars.is_empty() {
+                    return ScannerResult::new(crate::src::xmltok::XML_TOK_NONE_1, None);
+                }
+                if input.chars.len() & !1 == 0 {
+                    return ScannerResult::new(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                }
+                let (token, next) = big2_prologTok(encoding, input.chars);
+                ScannerResult::new(token, next)
+            }
+            Scanner::Big2Content => big2_content(),
+            Scanner::Big2CdataSection => {
+                let result = big2_cdata_section_tok_impl(encoding, input.bytes);
+                ScannerResult::new(result.token, result.next)
+            }
+            Scanner::Big2IgnoreSection => big2_result(big2_ignore_section_tok_impl(encoding, input.chars)),
+            Scanner::InitProlog | Scanner::InitContent | Scanner::InitPrologNS | Scanner::InitContentNS => {
+                unreachable!("initial scanners update INIT_ENCODING through their boundary adapter")
+            }
+        }
+    }
+
     pub(crate) fn big2_update_position(
         encoding: &normal_encoding,
         bytes: &[u8],
@@ -18068,6 +18207,52 @@ fn init_scan_action(
         _ => InitScanAction::Scan {
             encoding_index: initial_encoding as usize,
         },
+    }
+}
+
+fn initial_known_encoding(index: usize, namespace_aware: bool) -> Option<&'static normal_encoding> {
+    let encoding = match (namespace_aware, index) {
+        (false, 0) => &latin1_encoding,
+        (false, 1) => &ascii_encoding,
+        (false, 2) | (false, 6) => &utf8_encoding,
+        (false, 3) | (false, 4) => &big2_encoding,
+        (false, 5) => &little2_encoding,
+        (true, 0) => &latin1_encoding_ns,
+        (true, 1) => &ascii_encoding_ns,
+        (true, 2) | (true, 6) => &utf8_encoding_ns,
+        (true, 3) | (true, 4) => &big2_encoding_ns,
+        (true, 5) => &little2_encoding_ns,
+        _ => return None,
+    };
+    Some(encoding)
+}
+
+/// Runs the initial-encoding state transition on an already bounded scanner
+/// input.  The selected encoding is a fixed static table entry, so scanner
+/// dispatch can stay entirely slice- and offset-based.
+fn initial_scan_result(
+    initial: &mut INIT_ENCODING,
+    namespace_aware: bool,
+    state: InitScanState,
+    input: ScannerInput<'_>,
+) -> ScannerResult {
+    match init_scan_action(initial.initEnc.isUtf16, state, input.bytes) {
+        InitScanAction::None => ScannerResult::new(crate::src::xmltok::XML_TOK_NONE_1, None),
+        InitScanAction::Partial => ScannerResult::new(crate::src::xmltok::XML_TOK_PARTIAL_1, None),
+        InitScanAction::Bom {
+            encoding_index,
+            consumed,
+        } => {
+            initial.selected_encoding = Some(encoding_index);
+            ScannerResult::new(crate::src::xmltok::XML_TOK_BOM_1, Some(consumed))
+        }
+        InitScanAction::Scan { encoding_index } => {
+            let Some(encoding) = initial_known_encoding(encoding_index, namespace_aware) else {
+                return ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(0));
+            };
+            initial.selected_encoding = Some(encoding_index);
+            encoding.enc.scanners[state.scanner_index()].scan_result(encoding, input, 0)
+        }
     }
 }
 
