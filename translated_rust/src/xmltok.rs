@@ -247,6 +247,17 @@ pub enum Utf16Converter {
     Unknown,
 }
 
+/// Chooses the literal scanner without retaining an internal C callback.
+#[derive(Copy, Clone)]
+pub enum LiteralScanner {
+    NormalAttributeValue,
+    NormalEntityValue,
+    Little2AttributeValue,
+    Little2EntityValue,
+    Big2AttributeValue,
+    Big2EntityValue,
+}
+
 /// The tokenizer has exactly three public-identifier scanners.  Keeping the
 /// selection as data avoids retaining an internal C callback in every
 /// encoding table.
@@ -326,7 +337,7 @@ pub unsafe fn check_public_id(
 
 pub struct encoding {
     pub scanners: [crate::src::xmltok::SCANNER; 4],
-    pub literalScanners: [crate::src::xmltok::SCANNER; 2],
+    pub literalScanners: [crate::src::xmltok::LiteralScanner; 2],
     pub nameMatchesAscii: Option<
         unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
@@ -14313,24 +14324,8 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -14759,24 +14754,8 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -15205,24 +15184,8 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -15651,24 +15614,8 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -16158,24 +16105,8 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -16550,24 +16481,8 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -16963,24 +16878,8 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -17355,24 +17254,8 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                normal_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::NormalAttributeValue,
+            LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
@@ -18095,24 +17978,8 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                little2_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::Little2AttributeValue,
+            LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
@@ -18487,24 +18354,8 @@ static mut little2_encoding: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                little2_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::Little2AttributeValue,
+            LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
@@ -18879,24 +18730,8 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                little2_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::Little2AttributeValue,
+            LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
@@ -19271,24 +19106,8 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                little2_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::Little2AttributeValue,
+            LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
@@ -19663,24 +19482,8 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                big2_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::Big2AttributeValue,
+            LiteralScanner::Big2EntityValue,
         ],
         nameMatchesAscii: Some(
             big2_nameMatchesAscii
@@ -20055,24 +19858,8 @@ static mut big2_encoding: normal_encoding = normal_encoding {
             ),
         ],
         literalScanners: [
-            Some(
-                big2_attributeValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_entityValueTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            LiteralScanner::Big2AttributeValue,
+            LiteralScanner::Big2EntityValue,
         ],
         nameMatchesAscii: Some(
             big2_nameMatchesAscii

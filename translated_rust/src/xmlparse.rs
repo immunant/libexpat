@@ -9924,10 +9924,19 @@ unsafe extern "C" fn appendAttributeValue(
     let dtd: *mut DTD = (*parser).m_dtd;
     loop {
         let mut next: *const ::core::ffi::c_char = ptr;
-        let mut tok: ::core::ffi::c_int = (*enc).literalScanners[0 as usize]
-            .expect("non-null function pointer")(
-            enc, ptr, end, &raw mut next
-        );
+        let scanner = match (*enc).literalScanners[0] {
+            crate::src::xmltok::LiteralScanner::NormalAttributeValue => {
+                crate::src::xmltok::xmltok_impl_c::normal_attributeValueTok
+            }
+            crate::src::xmltok::LiteralScanner::Little2AttributeValue => {
+                crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok
+            }
+            crate::src::xmltok::LiteralScanner::Big2AttributeValue => {
+                crate::src::xmltok::xmltok_impl_c::big2_attributeValueTok
+            }
+            _ => unreachable!("attribute literal scanner must match its table slot"),
+        };
+        let mut tok: ::core::ffi::c_int = scanner(enc, ptr, end, &raw mut next);
         if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
         {
             accountingOnAbort(parser);
@@ -10174,10 +10183,19 @@ unsafe extern "C" fn storeEntityValue(
     let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     '_endEntityValue: loop {
         next = entityTextPtr;
-        let mut tok: ::core::ffi::c_int = (*enc).literalScanners[1 as usize]
-            .expect("non-null function pointer")(
-            enc, entityTextPtr, entityTextEnd, &raw mut next
-        );
+        let scanner = match (*enc).literalScanners[1] {
+            crate::src::xmltok::LiteralScanner::NormalEntityValue => {
+                crate::src::xmltok::xmltok_impl_c::normal_entityValueTok
+            }
+            crate::src::xmltok::LiteralScanner::Little2EntityValue => {
+                crate::src::xmltok::xmltok_impl_c::little2_entityValueTok
+            }
+            crate::src::xmltok::LiteralScanner::Big2EntityValue => {
+                crate::src::xmltok::xmltok_impl_c::big2_entityValueTok
+            }
+            _ => unreachable!("entity literal scanner must match its table slot"),
+        };
+        let mut tok: ::core::ffi::c_int = scanner(enc, entityTextPtr, entityTextEnd, &raw mut next);
         if accountingDiffTolerated(
             parser,
             tok,
