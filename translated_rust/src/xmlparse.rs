@@ -2796,6 +2796,37 @@ impl GroupConnectorStorage {
     }
 }
 
+/// Acquires the observable allocator token for the parser-owned group
+/// connector buffer.  The Rust `Vec` owns the readable bytes; this closure
+/// only preserves Expat's malloc/realloc/free sequence for custom allocator
+/// callbacks, and never dereferences the foreign allocation.
+fn group_connector_allocation_backing(
+    parser: &mut XML_ParserStruct,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, GroupConnectorAllocationAction) -> bool>> {
+    let allocation = unsafe { expat_malloc(std::ptr::from_mut(parser), size, source_line) };
+    if allocation.is_null() {
+        return None;
+    }
+    let mut allocation = allocation;
+    Some(Box::new(move |parser, action| match action {
+        GroupConnectorAllocationAction::Grow(size) => {
+            let reallocated = unsafe { expat_realloc(parser, allocation, size, 5915) };
+            if reallocated.is_null() {
+                false
+            } else {
+                allocation = reallocated;
+                true
+            }
+        }
+        GroupConnectorAllocationAction::Free(source_line) => {
+            unsafe { expat_free(parser, allocation, source_line) };
+            true
+        }
+    }))
+}
+
 impl AttributeStorage {
     fn empty() -> Self {
         Self {
@@ -18377,42 +18408,16 @@ unsafe fn doProlog(
                                                 }
                                             } else {
                                                 parser.m_groupSize = 32 as ::core::ffi::c_uint;
-                                                let mut allocation = expat_malloc(
+                                                let Some(mut backing) = group_connector_allocation_backing(
                                                     parser,
                                                     parser.m_groupSize
                                                         as crate::__stddef_size_t_h::size_t,
                                                     5944 as ::core::ffi::c_int,
-                                                );
-                                                if allocation.is_null() {
+                                                ) else {
                                                     parser.m_groupSize =
                                                         0 as ::core::ffi::c_uint;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                }
-                                                let mut backing: Box<
-                                                    dyn FnMut(
-                                                        &mut XML_ParserStruct,
-                                                        GroupConnectorAllocationAction,
-                                                    )
-                                                        -> bool,
-                                                > = Box::new(move |parser, action| match action {
-                                                    GroupConnectorAllocationAction::Grow(size) => {
-                                                        let reallocated = expat_realloc(
-                                                            parser, allocation, size, 5915,
-                                                        );
-                                                        if reallocated.is_null() {
-                                                            false
-                                                        } else {
-                                                            allocation = reallocated;
-                                                            true
-                                                        }
-                                                    }
-                                                    GroupConnectorAllocationAction::Free(
-                                                        source_line,
-                                                    ) => {
-                                                        expat_free(parser, allocation, source_line);
-                                                        true
-                                                    }
-                                                });
+                                                };
                                                 let mut values = Vec::new();
                                                 if values
                                                     .try_reserve_exact(
