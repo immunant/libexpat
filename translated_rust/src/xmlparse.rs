@@ -25956,52 +25956,26 @@ fn dispatch_external_entity_ref_event_handler(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
-    match callback_arg {
-        Some(arg) => unsafe {
-            let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
-                unsafe extern "C" fn(
-                    crate::expat_h::XML_Parser,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                ) -> ::core::ffi::c_int,
-            >() else {
-                return 0;
-            };
-            handler(
-                arg.callback_arg
-                    .context
-                    .downcast_ref::<std::sync::atomic::AtomicPtr<XML_ParserStruct>>()
-                    .map(|callback_arg| callback_arg.load(std::sync::atomic::Ordering::Relaxed))
-                    .unwrap_or(::core::ptr::null_mut()),
-                context,
-                base,
-                system_id,
-                public_id,
-            )
-        },
-        None => unsafe {
-            let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
-                unsafe extern "C" fn(
-                    crate::expat_h::XML_Parser,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                    *const crate::expat_external_h::XML_Char,
-                ) -> ::core::ffi::c_int,
-            >() else {
-                return 0;
-            };
-            handler(
-                std::ptr::from_ref(parser).cast_mut(),
-                context,
-                base,
-                system_id,
-                public_id,
-            )
-        },
-    }
+    let callback_parser = callback_arg
+        .and_then(|arg| {
+            arg.callback_arg
+                .context
+                .downcast_ref::<std::sync::atomic::AtomicPtr<XML_ParserStruct>>()
+                .map(|callback_arg| callback_arg.load(std::sync::atomic::Ordering::Relaxed))
+        })
+        .unwrap_or_else(|| std::ptr::from_ref(parser).cast_mut());
+    let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
+        unsafe extern "C" fn(
+            crate::expat_h::XML_Parser,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+        ) -> ::core::ffi::c_int,
+    >() else {
+        return 0;
+    };
+    unsafe { handler(callback_parser, context, base, system_id, public_id) }
 }
 
 
