@@ -2545,9 +2545,7 @@ unsafe extern "C" fn parserInit(
                 *mut *const ::core::ffi::c_char,
             ) -> crate::expat_h::XML_Error,
     );
-    crate::src::xmlrole::XmlPrologStateInit(
-        &raw mut (*parser).m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
-    );
+    crate::src::xmlrole::XmlPrologStateInit(&mut (*parser).m_prologState);
     if !encodingName.is_null() {
         (*parser).m_protocolEncodingName = copyString(encodingName, parser);
     }
@@ -2938,9 +2936,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         );
     } else {
         (*parser).m_isParamEntity = crate::expat_h::XML_TRUE;
-        crate::src::xmlrole::XmlPrologStateInitExternalEntity(
-            &raw mut (*parser).m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
-        );
+        crate::src::xmlrole::XmlPrologStateInitExternalEntity(&mut (*parser).m_prologState);
         (*parser).m_processor = Some(
             externalParEntInitProcessor
                 as unsafe extern "C" fn(
