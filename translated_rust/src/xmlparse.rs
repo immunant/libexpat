@@ -6500,7 +6500,7 @@ fn retained_raw_name_source<'a>(
 // Resolve shared replacement text through the owning facade and copy it
 // before returning.  The caller cannot retain a slice into a DTD that a
 // callback may later grow or relocate.
-unsafe fn shared_entity_text_chars(
+fn shared_entity_text_chars(
     dtd: &SharedDtd,
     text: EntityTextRef,
     length: ::core::ffi::c_int,
