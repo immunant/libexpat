@@ -15810,21 +15810,24 @@ unsafe extern "C" fn internalEntityProcessor(
     let mut textEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-    let (open_entity_index, mut openEntity, entity_ref) = {
+    // Keep the active-frame identity as an index and snapshot the only frame
+    // value needed while nested parsing may re-enter.  A raw node address
+    // would otherwise remain live across `doProlog`/`doContent` callbacks.
+    let (open_entity_index, entity_ref, start_tag_level) = {
         let parser_state = &mut *parser;
         let Some(open_entity_index) = parser_state.m_openInternalEntities else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         let Some(open_entity) = parser_state
             .m_activeInternalEntities
-            .get_mut(open_entity_index)
+            .get(open_entity_index)
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         (
             open_entity_index,
-            std::ptr::from_mut(open_entity.node_mut()),
             open_entity.entity_ref,
+            open_entity.node().startTagLevel,
         )
     };
     let Some(entity_ref) = entity_ref else {
@@ -15898,7 +15901,6 @@ unsafe extern "C" fn internalEntityProcessor(
                 XML_ACCOUNT_ENTITY_EXPANSION,
             );
         } else {
-            let start_tag_level = (*openEntity).startTagLevel;
             result = doContent(
                 parser,
                 start_tag_level,
@@ -15934,7 +15936,6 @@ unsafe extern "C" fn internalEntityProcessor(
             entity_ref.processed = entity_ref.processed.saturating_add(processed);
             return result;
         }
-        let start_tag_level = (*openEntity).startTagLevel;
         let tag_level = (&*parser).m_tagLevel;
         (&mut *entity).hasMore = crate::expat_h::XML_FALSE;
         if !is_parameter_entity && start_tag_level != tag_level {
@@ -15944,20 +15945,18 @@ unsafe extern "C" fn internalEntityProcessor(
         return result;
     }
     entityTrackingOnClose(parser, entity, 6470 as ::core::ffi::c_int);
-    if (*parser).m_activeInternalEntities.len().checked_sub(1) != Some(open_entity_index) {
+    let parser_state = &mut *parser;
+    if parser_state.m_activeInternalEntities.len().checked_sub(1) != Some(open_entity_index) {
         std::process::abort();
     }
     (*entity).open = crate::expat_h::XML_FALSE;
-    let Some(storage) = (*parser).m_activeInternalEntities.pop() else {
+    let Some(storage) = parser_state.m_activeInternalEntities.pop() else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
-    if !std::ptr::eq(storage.node(), &*openEntity) {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    (*parser).m_freeInternalEntities.push(storage);
-    (*parser).m_openInternalEntities = (*parser).m_activeInternalEntities.len().checked_sub(1);
-    if (*parser).m_openInternalEntities.is_none() {
-        (*parser).m_processor = if (*entity).is_param as ::core::ffi::c_int != 0 {
+    parser_state.m_freeInternalEntities.push(storage);
+    parser_state.m_openInternalEntities = parser_state.m_activeInternalEntities.len().checked_sub(1);
+    if parser_state.m_openInternalEntities.is_none() {
+        parser_state.m_processor = if (*entity).is_param as ::core::ffi::c_int != 0 {
             ProcessorState::Prolog
         } else {
             ProcessorState::Content
