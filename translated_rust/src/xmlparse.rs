@@ -11303,7 +11303,6 @@ unsafe fn doContent(
                             let entity = general_entity_mut(dtd_state, name_ref, salt).map(
                                 |entity| {
                                     (
-                                        std::ptr::from_mut(entity),
                                         entity.named.name,
                                         entity.is_internal != 0,
                                         entity.open != 0,
@@ -11317,7 +11316,6 @@ unsafe fn doContent(
                             );
                             let entity = entity.map(
                                 |(
-                                    entity,
                                     name,
                                     is_internal,
                                     is_open,
@@ -11328,7 +11326,6 @@ unsafe fn doContent(
                                     public_id,
                                 )| {
                                     (
-                                        entity,
                                         name,
                                         is_internal,
                                         is_open,
@@ -11354,7 +11351,7 @@ unsafe fn doContent(
                             Err(error) => return error,
                         };
                         if restricted_entity_declarations {
-                            let Some(is_internal) = entity.as_ref().map(|entity| entity.2) else {
+                            let Some(is_internal) = entity.as_ref().map(|entity| entity.1) else {
                                 return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
                             };
                             if !is_internal {
@@ -11385,7 +11382,6 @@ unsafe fn doContent(
                             break 's_1235;
                         }
                         let Some((
-                            entity,
                             entity_name_ref,
                             _,
                             entity_open,
@@ -11435,12 +11431,19 @@ unsafe fn doContent(
                                     report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                                 }
                             } else {
-                                result = processEntity(
-                                    parser,
-                                    entity,
-                                    crate::expat_h::XML_FALSE,
-                                    ENTITY_INTERNAL,
-                                );
+                                result = dtd.inspect(|dtd_state| {
+                                    let Some(entity) =
+                                        general_entity_mut(dtd_state, entity_name_ref, salt)
+                                    else {
+                                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                    };
+                                    processEntity(
+                                        parser,
+                                        entity,
+                                        crate::expat_h::XML_FALSE,
+                                        ENTITY_INTERNAL,
+                                    )
+                                });
                                 if result as ::core::ffi::c_uint
                                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                                         as ::core::ffi::c_uint
@@ -18826,14 +18829,12 @@ unsafe fn doProlog(
                                                     as crate::expat_h::XML_Bool;
                                                 result_4 = processEntity(
                                                     parser,
-                                                    std::ptr::from_mut(
-                                                        declared_entity_mut(
-                                                            dtd,
-                                                            DeclaredEntity::Parameter(entity_name),
-                                                            hash_salt,
-                                                        )
-                                                        .expect("parameter entity must remain in the DTD"),
-                                                    ),
+                                                    declared_entity_mut(
+                                                        dtd,
+                                                        DeclaredEntity::Parameter(entity_name),
+                                                        hash_salt,
+                                                    )
+                                                    .expect("parameter entity must remain in the DTD"),
                                                     betweenDecl,
                                                     ENTITY_INTERNAL,
                                                 );
@@ -19817,14 +19818,16 @@ unsafe extern "C" fn epilogProcessor(
     result.error
 }
 
-unsafe extern "C" fn processEntity(
-    mut parser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
+/// Expands an entity declaration already borrowed from the parser's DTD.
+///
+/// The caller keeps the DTD borrow scoped to this non-reentrant transition;
+/// the active-entity stacks retain only the declaration's stable pool key.
+unsafe fn processEntity(
+    parser_state: &mut XML_ParserStruct,
+    entity: &mut ENTITY,
     mut betweenDecl: crate::expat_h::XML_Bool,
     mut type_0: EntityType,
 ) -> crate::expat_h::XML_Error {
-    let parser_state = &mut *parser;
-    let entity = &mut *entity;
     // Active entity frames are owned by their respective parser stacks.  Keep
     // the index selected at allocation time rather than a raw address into a
     // vector that later bookkeeping could grow.
@@ -19883,8 +19886,7 @@ unsafe extern "C" fn processEntity(
         }
         1 => {
             is_attribute_entity = true;
-            let dtd = parser_dtd_ptr!(parser_state);
-            if dtd.is_null() {
+            if parser_state.m_dtd.is_none() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
             let entity_name = entity.named.name;
@@ -21020,7 +21022,7 @@ unsafe fn appendAttributeValue(
                                 crate::expat_h::XML_ERROR_NONE;
                             result = processEntity(
                                 parser,
-                                std::ptr::from_mut(entity),
+                                entity,
                                 crate::expat_h::XML_FALSE,
                                 ENTITY_ATTRIBUTE,
                             );
