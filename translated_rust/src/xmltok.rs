@@ -319,7 +319,7 @@ impl Scanner {
                         }
                     };
                     xmltok_impl_c::normal_char_check(normal, kind, width, &input[offset..], || {
-                        unknown_character_value(enc, &input[offset..])
+                        unknown_character_value(enc as usize, &input[offset..])
                     })
                 });
             let (token, next) = match action {
@@ -340,7 +340,12 @@ impl Scanner {
                                 xmltok_impl_c::NormalCharCheck::Invalid,
                                 width,
                                 &input[start + offset..],
-                                || unknown_character_value(enc, &input[start + offset..]),
+                                || {
+                                    unknown_character_value(
+                                        enc as usize,
+                                        &input[start + offset..],
+                                    )
+                                },
                             )
                         },
                     );
@@ -361,7 +366,7 @@ impl Scanner {
                                         &input[comment_start + offset..],
                                         || {
                                             unknown_character_value(
-                                                enc,
+                                                enc as usize,
                                                 &input[comment_start + offset..],
                                             )
                                         },
@@ -2380,7 +2385,7 @@ pub mod xmltok_impl_c {
         let normal = &*(enc as *const normal_encoding);
         let char_check = |kind, offset, width| {
             normal_char_check(normal, kind, width, &input[offset..], || {
-                unknown_character_value(enc, &input[offset..])
+                unknown_character_value(enc as usize, &input[offset..])
             })
         };
         let result = normal_scan_lt_with_check(normal, input, &char_check);
@@ -2553,7 +2558,7 @@ pub mod xmltok_impl_c {
                 NormalCharCheck::Invalid,
                 width,
                 &input[offset..],
-                || unknown_character_value(enc, &input[offset..]),
+                || unknown_character_value(enc as usize, &input[offset..]),
             )
         }) {
             NormalContentAction::Token(token, next) => {
@@ -2806,7 +2811,7 @@ pub mod xmltok_impl_c {
                 NormalCharCheck::Invalid,
                 width,
                 &input[offset..],
-                || unknown_character_value(enc, &input[offset..]),
+                || unknown_character_value(enc as usize, &input[offset..]),
             )
         });
         if let Some(offset) = next {
@@ -3568,7 +3573,7 @@ pub mod xmltok_impl_c {
                     width,
                     level: saved_level,
                 } => {
-                    if unknown_is_invalid(unknown_character_value(enc, &input[at..])) {
+                    if unknown_is_invalid(unknown_character_value(enc as usize, &input[at..])) {
                         *nextTokPtr = ptr.add(at);
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -17695,15 +17700,15 @@ pub unsafe extern "C" fn XmlSizeOfUnknownEncoding_ffi() -> ::core::ffi::c_int {
 }
 /// Invokes the foreign unknown-encoding converter for one complete character.
 ///
-/// Callers supply the initialized unknown-encoding table and the remaining
-/// bounded input beginning at the character selected by that table's byte
-/// classification.
-unsafe fn unknown_character_value(
-    enc: *const crate::src::xmltok::ENCODING,
+/// Callers supply the initialized unknown-encoding storage address and the
+/// remaining bounded input beginning at the character selected by that
+/// table's byte classification.  The registry is keyed by this stable storage
+/// address, which is also the address returned by `XmlInitUnknownEncoding`.
+fn unknown_character_value(
+    storage_id: usize,
     input: &[u8],
 ) -> ::core::ffi::c_int {
-    let uenc = &*(enc as *const unknown_encoding);
-    unknown_encoding_converter(uenc.converter_id)
+    unknown_encoding_converter(storage_id)
         .expect("unknown encoding converter is registered")
         .invoke
         .invoke(input)
