@@ -221,7 +221,6 @@ pub use crate::src::xmltok::XML_Convert_Result;
 pub use crate::src::xmltok::ATTRIBUTE;
 pub use crate::src::xmltok::ENCODING;
 pub use crate::src::xmltok::POSITION;
-pub use crate::src::xmltok::SCANNER;
 pub use crate::src::xmltok::XML_CONVERT_COMPLETED;
 pub use crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
 pub use crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;

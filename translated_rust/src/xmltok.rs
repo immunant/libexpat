@@ -221,15 +221,6 @@ pub struct ATTRIBUTE {
 
 pub type ENCODING = crate::src::xmltok::encoding;
 
-pub type SCANNER = Option<
-    unsafe extern "C" fn(
-        *const crate::src::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-        *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
->;
-
 pub type XML_Convert_Result = ::core::ffi::c_uint;
 
 pub const XML_CONVERT_COMPLETED: crate::src::xmltok::XML_Convert_Result = 0;
