@@ -17458,39 +17458,6 @@ fn external_par_ent_processor_impl(
     ExternalParEntProcessorResult { error, cursor }
 }
 
-unsafe extern "C" fn entityValueProcessor(
-    parser: crate::expat_h::XML_Parser,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let Some(parser) = parser.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(next_ptr) = nextPtr.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(start_offset) = parser.m_buffer.offset_from_address(s.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(end_offset) = parser.m_buffer.offset_from_address(end.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let result = entity_value_processor_safe(EntityValueProcessorState {
-        parser,
-        value_start_offset: start_offset,
-        end_offset,
-        output_next: None,
-    });
-    if let Some(next_offset) = result.next_offset {
-        let Some(cursor) = parser.m_buffer.window_from_offsets(next_offset, next_offset) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        *next_ptr = cursor.as_ptr().cast::<::core::ffi::c_char>();
-    }
-    result.error
-}
-
 fn entity_value_processor_safe(state: EntityValueProcessorState<'_>) -> EntityValueProcessorResult {
     let EntityValueProcessorState {
         parser,
