@@ -2818,7 +2818,9 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
 
     XML_SetEncoding(unsafe { parser.as_mut() }, protocol_encoding_name)
 }
-pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
+#[export_name = "XML_ExternalEntityParserCreate"]
+
+pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
     mut oldParser: crate::expat_h::XML_Parser,
     mut context: *const crate::expat_external_h::XML_Char,
     mut encodingName: *const crate::expat_external_h::XML_Char,
@@ -2992,15 +2994,6 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         );
     }
     return parser;
-}
-#[export_name = "XML_ExternalEntityParserCreate"]
-
-pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut context: *const crate::expat_external_h::XML_Char,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    XML_ExternalEntityParserCreate(oldParser, context, encodingName)
 }
 #[export_name = "XML_ParserFree"]
 
