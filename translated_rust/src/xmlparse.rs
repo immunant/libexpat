@@ -4910,41 +4910,13 @@ fn content_processor_impl(
     end: *const ::core::ffi::c_char,
     endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    unsafe {
-        let start_tag_level = match kind {
-            ContentProcessorKind::Document => {
-                if !(*parser).m_parentParser.is_null() {
-                    1 as ::core::ffi::c_int
-                } else {
-                    0 as ::core::ffi::c_int
-                }
-            }
-            ContentProcessorKind::ExternalEntity => 1 as ::core::ffi::c_int,
-        };
-        let account = match kind {
-            ContentProcessorKind::Document => XML_ACCOUNT_DIRECT,
-            ContentProcessorKind::ExternalEntity => XML_ACCOUNT_ENTITY_EXPANSION,
-        };
-        let result: crate::expat_h::XML_Error = doContent(
-            parser,
-            start_tag_level,
-            (*parser).m_encoding,
-            start,
-            end,
-            endPtr,
-            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-                as crate::expat_h::XML_Bool,
-            account,
-        );
-        if result as ::core::ffi::c_uint
-            == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            if storeRawNames(parser) == 0 {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
-            }
-        }
-        result
-    }
+    parser_processor_impl(
+        ParserProcessorKind::Content(kind),
+        parser,
+        start,
+        end,
+        endPtr,
+    )
 }
 
 extern "C" fn contentProcessor(
@@ -4969,83 +4941,7 @@ fn init_processor_impl(
     end: *const ::core::ffi::c_char,
     nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    unsafe {
-        let encoding_name = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
-        let name = if encoding_name.is_null() {
-            None
-        } else {
-            let len = std::ffi::CStr::from_ptr(encoding_name)
-                .to_bytes_with_nul()
-                .len();
-            Some(::core::slice::from_raw_parts(encoding_name, len))
-        };
-        let result: crate::expat_h::XML_Error = if initialize_encoding(&mut *parser, name) {
-            crate::expat_h::XML_ERROR_NONE
-        } else {
-            handleUnknownEncoding(parser, (*parser).m_protocolEncodingName)
-        };
-        if result as ::core::ffi::c_uint
-            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result;
-        }
-        match kind {
-            InitProcessorKind::ExternalEntity => {
-                (*parser).m_processor = Some(
-                    externalEntityInitProcessor2
-                        as unsafe extern "C" fn(
-                            crate::expat_h::XML_Parser,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        )
-                            -> crate::expat_h::XML_Error,
-                );
-                externalEntityInitProcessor2(parser, s, end, nextPtr)
-            }
-            InitProcessorKind::Prolog => {
-                (*parser).m_processor = Some(
-                    prologProcessor
-                        as unsafe extern "C" fn(
-                            crate::expat_h::XML_Parser,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        )
-                            -> crate::expat_h::XML_Error,
-                );
-                prologProcessor(parser, s, end, nextPtr)
-            }
-            InitProcessorKind::ExternalParameterEntity => {
-                (*(*parser).m_dtd).paramEntityRead = crate::expat_h::XML_TRUE;
-                if (*parser).m_prologState.inEntityValue != 0 {
-                    (*parser).m_processor = Some(
-                        entityValueInitProcessor
-                            as unsafe extern "C" fn(
-                                crate::expat_h::XML_Parser,
-                                *const ::core::ffi::c_char,
-                                *const ::core::ffi::c_char,
-                                *mut *const ::core::ffi::c_char,
-                            )
-                                -> crate::expat_h::XML_Error,
-                    );
-                    entityValueInitProcessor(parser, s, end, nextPtr)
-                } else {
-                    (*parser).m_processor = Some(
-                        externalParEntProcessor
-                            as unsafe extern "C" fn(
-                                crate::expat_h::XML_Parser,
-                                *const ::core::ffi::c_char,
-                                *const ::core::ffi::c_char,
-                                *mut *const ::core::ffi::c_char,
-                            )
-                                -> crate::expat_h::XML_Error,
-                    );
-                    externalParEntProcessor(parser, s, end, nextPtr)
-                }
-            }
-        }
-    }
+    parser_processor_impl(ParserProcessorKind::Init(kind), parser, s, end, nextPtr)
 }
 
 extern "C" fn externalEntityInitProcessor(
@@ -6981,6 +6877,211 @@ enum SectionProcessorKind {
     Ignore,
 }
 
+enum ParserProcessorKind {
+    Content(ContentProcessorKind),
+    Error,
+    Init(InitProcessorKind),
+    Section(SectionProcessorKind),
+}
+
+fn parser_processor_impl(
+    kind: ParserProcessorKind,
+    parser: crate::expat_h::XML_Parser,
+    mut start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    endPtr: *mut *const ::core::ffi::c_char,
+) -> crate::expat_h::XML_Error {
+    unsafe {
+        match kind {
+            ParserProcessorKind::Content(kind) => {
+                let start_tag_level = match kind {
+                    ContentProcessorKind::Document => {
+                        if !(*parser).m_parentParser.is_null() {
+                            1 as ::core::ffi::c_int
+                        } else {
+                            0 as ::core::ffi::c_int
+                        }
+                    }
+                    ContentProcessorKind::ExternalEntity => 1 as ::core::ffi::c_int,
+                };
+                let account = match kind {
+                    ContentProcessorKind::Document => XML_ACCOUNT_DIRECT,
+                    ContentProcessorKind::ExternalEntity => XML_ACCOUNT_ENTITY_EXPANSION,
+                };
+                let result: crate::expat_h::XML_Error = doContent(
+                    parser,
+                    start_tag_level,
+                    (*parser).m_encoding,
+                    start,
+                    end,
+                    endPtr,
+                    ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+                        as crate::expat_h::XML_Bool,
+                    account,
+                );
+                if result as ::core::ffi::c_uint
+                    == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+                    && storeRawNames(parser) == 0
+                {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
+                result
+            }
+            ParserProcessorKind::Error => (*parser).m_errorCode,
+            ParserProcessorKind::Init(kind) => {
+                let encoding_name = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
+                let name = if encoding_name.is_null() {
+                    None
+                } else {
+                    let len = std::ffi::CStr::from_ptr(encoding_name)
+                        .to_bytes_with_nul()
+                        .len();
+                    Some(::core::slice::from_raw_parts(encoding_name, len))
+                };
+                let result: crate::expat_h::XML_Error = if initialize_encoding(&mut *parser, name) {
+                    crate::expat_h::XML_ERROR_NONE
+                } else {
+                    handleUnknownEncoding(parser, (*parser).m_protocolEncodingName)
+                };
+                if result as ::core::ffi::c_uint
+                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+                {
+                    return result;
+                }
+                match kind {
+                    InitProcessorKind::ExternalEntity => {
+                        (*parser).m_processor = Some(
+                            externalEntityInitProcessor2
+                                as unsafe extern "C" fn(
+                                    crate::expat_h::XML_Parser,
+                                    *const ::core::ffi::c_char,
+                                    *const ::core::ffi::c_char,
+                                    *mut *const ::core::ffi::c_char,
+                                )
+                                    -> crate::expat_h::XML_Error,
+                        );
+                        externalEntityInitProcessor2(parser, start, end, endPtr)
+                    }
+                    InitProcessorKind::Prolog => {
+                        (*parser).m_processor = Some(
+                            prologProcessor
+                                as unsafe extern "C" fn(
+                                    crate::expat_h::XML_Parser,
+                                    *const ::core::ffi::c_char,
+                                    *const ::core::ffi::c_char,
+                                    *mut *const ::core::ffi::c_char,
+                                )
+                                    -> crate::expat_h::XML_Error,
+                        );
+                        prologProcessor(parser, start, end, endPtr)
+                    }
+                    InitProcessorKind::ExternalParameterEntity => {
+                        (*(*parser).m_dtd).paramEntityRead = crate::expat_h::XML_TRUE;
+                        if (*parser).m_prologState.inEntityValue != 0 {
+                            (*parser).m_processor = Some(
+                                entityValueInitProcessor
+                                    as unsafe extern "C" fn(
+                                        crate::expat_h::XML_Parser,
+                                        *const ::core::ffi::c_char,
+                                        *const ::core::ffi::c_char,
+                                        *mut *const ::core::ffi::c_char,
+                                    )
+                                        -> crate::expat_h::XML_Error,
+                            );
+                            entityValueInitProcessor(parser, start, end, endPtr)
+                        } else {
+                            (*parser).m_processor = Some(
+                                externalParEntProcessor
+                                    as unsafe extern "C" fn(
+                                        crate::expat_h::XML_Parser,
+                                        *const ::core::ffi::c_char,
+                                        *const ::core::ffi::c_char,
+                                        *mut *const ::core::ffi::c_char,
+                                    )
+                                        -> crate::expat_h::XML_Error,
+                            );
+                            externalParEntProcessor(parser, start, end, endPtr)
+                        }
+                    }
+                }
+            }
+            ParserProcessorKind::Section(kind) => {
+                let result: crate::expat_h::XML_Error = match kind {
+                    SectionProcessorKind::Cdata => doCdataSection(
+                        parser,
+                        (*parser).m_encoding,
+                        &raw mut start,
+                        end,
+                        endPtr,
+                        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+                            as crate::expat_h::XML_Bool,
+                        XML_ACCOUNT_DIRECT,
+                    ),
+                    SectionProcessorKind::Ignore => doIgnoreSection(
+                        parser,
+                        (*parser).m_encoding,
+                        &raw mut start,
+                        end,
+                        endPtr,
+                        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+                            as crate::expat_h::XML_Bool,
+                    ),
+                };
+                if result as ::core::ffi::c_uint
+                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+                {
+                    return result;
+                }
+                if start.is_null() {
+                    return result;
+                }
+                match kind {
+                    SectionProcessorKind::Cdata => {
+                        if !(*parser).m_parentParser.is_null() {
+                            (*parser).m_processor = Some(
+                                externalEntityContentProcessor
+                                    as unsafe extern "C" fn(
+                                        crate::expat_h::XML_Parser,
+                                        *const ::core::ffi::c_char,
+                                        *const ::core::ffi::c_char,
+                                        *mut *const ::core::ffi::c_char,
+                                    )
+                                        -> crate::expat_h::XML_Error,
+                            );
+                            externalEntityContentProcessor(parser, start, end, endPtr)
+                        } else {
+                            (*parser).m_processor = Some(
+                                contentProcessor
+                                    as unsafe extern "C" fn(
+                                        crate::expat_h::XML_Parser,
+                                        *const ::core::ffi::c_char,
+                                        *const ::core::ffi::c_char,
+                                        *mut *const ::core::ffi::c_char,
+                                    )
+                                        -> crate::expat_h::XML_Error,
+                            );
+                            contentProcessor(parser, start, end, endPtr)
+                        }
+                    }
+                    SectionProcessorKind::Ignore => {
+                        (*parser).m_processor = Some(
+                            prologProcessor
+                                as unsafe extern "C" fn(
+                                    crate::expat_h::XML_Parser,
+                                    *const ::core::ffi::c_char,
+                                    *const ::core::ffi::c_char,
+                                    *mut *const ::core::ffi::c_char,
+                                )
+                                    -> crate::expat_h::XML_Error,
+                        );
+                        prologProcessor(parser, start, end, endPtr)
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn section_processor_impl(
     kind: SectionProcessorKind,
     parser: crate::expat_h::XML_Parser,
@@ -6988,79 +7089,13 @@ fn section_processor_impl(
     end: *const ::core::ffi::c_char,
     endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    unsafe {
-        let result: crate::expat_h::XML_Error = match kind {
-            SectionProcessorKind::Cdata => doCdataSection(
-                parser,
-                (*parser).m_encoding,
-                &raw mut start,
-                end,
-                endPtr,
-                ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-                    as crate::expat_h::XML_Bool,
-                XML_ACCOUNT_DIRECT,
-            ),
-            SectionProcessorKind::Ignore => doIgnoreSection(
-                parser,
-                (*parser).m_encoding,
-                &raw mut start,
-                end,
-                endPtr,
-                ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-                    as crate::expat_h::XML_Bool,
-            ),
-        };
-        if result as ::core::ffi::c_uint
-            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result;
-        }
-        if start.is_null() {
-            return result;
-        }
-        match kind {
-            SectionProcessorKind::Cdata => {
-                if !(*parser).m_parentParser.is_null() {
-                    (*parser).m_processor = Some(
-                        externalEntityContentProcessor
-                            as unsafe extern "C" fn(
-                                crate::expat_h::XML_Parser,
-                                *const ::core::ffi::c_char,
-                                *const ::core::ffi::c_char,
-                                *mut *const ::core::ffi::c_char,
-                            )
-                                -> crate::expat_h::XML_Error,
-                    );
-                    externalEntityContentProcessor(parser, start, end, endPtr)
-                } else {
-                    (*parser).m_processor = Some(
-                        contentProcessor
-                            as unsafe extern "C" fn(
-                                crate::expat_h::XML_Parser,
-                                *const ::core::ffi::c_char,
-                                *const ::core::ffi::c_char,
-                                *mut *const ::core::ffi::c_char,
-                            )
-                                -> crate::expat_h::XML_Error,
-                    );
-                    contentProcessor(parser, start, end, endPtr)
-                }
-            }
-            SectionProcessorKind::Ignore => {
-                (*parser).m_processor = Some(
-                    prologProcessor
-                        as unsafe extern "C" fn(
-                            crate::expat_h::XML_Parser,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        )
-                            -> crate::expat_h::XML_Error,
-                );
-                prologProcessor(parser, start, end, endPtr)
-            }
-        }
-    }
+    parser_processor_impl(
+        ParserProcessorKind::Section(kind),
+        parser,
+        start,
+        end,
+        endPtr,
+    )
 }
 
 extern "C" fn cdataSectionProcessor(
@@ -9988,13 +10023,13 @@ unsafe extern "C" fn internalEntityProcessor(
     return crate::expat_h::XML_ERROR_NONE;
 }
 
-unsafe extern "C" fn errorProcessor(
+extern "C" fn errorProcessor(
     mut parser: crate::expat_h::XML_Parser,
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    return (*parser).m_errorCode;
+    parser_processor_impl(ParserProcessorKind::Error, parser, s, end, nextPtr)
 }
 
 unsafe extern "C" fn storeAttributeValue(
