@@ -5947,16 +5947,15 @@ fn retained_raw_name_source<'a>(
     }
 }
 
-// A shared DTD is held in an `UnsafeCell` only because parent and child
-// parsers share it.  This legacy CDATA adapter resolves a replacement-text
-// slice only while its caller retains the parser's exclusive processing
-// access; callers must not retain it across a callback.
+// Resolve shared replacement text through the owning facade and copy it
+// before returning.  The caller cannot retain a slice into a DTD that a
+// callback may later grow or relocate.
 unsafe fn shared_entity_text_chars(
     dtd: &SharedDtd,
     text: EntityTextRef,
     length: ::core::ffi::c_int,
-) -> Option<&[crate::expat_external_h::XML_Char]> {
-    entity_text_chars(&*dtd.value.get(), text, length)
+) -> Option<Vec<crate::expat_external_h::XML_Char>> {
+    dtd.inspect(|dtd| entity_text_chars(dtd, text, length).map(ToOwned::to_owned))
 }
 
 // Internal-entity events are locations in the entity's replacement text, not
