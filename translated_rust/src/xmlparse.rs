@@ -9126,7 +9126,25 @@ unsafe extern "C" fn doProlog(
                             } else if (*parser).m_externalEntityRefHandler.is_some() {
                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                 (*entity_1).open = crate::expat_h::XML_TRUE;
-                                entityTrackingOnOpen(parser, entity_1, 6057 as ::core::ffi::c_int);
+                                {
+                                    let rootParser = getRootParserOf(
+                                        parser,
+                                        ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                                    );
+                                    let root_parser = &mut *rootParser;
+                                    let entity_ref = &*entity_1;
+                                    let entity_name = CStr::from_ptr(
+                                        entity_ref.name as *const ::core::ffi::c_char,
+                                    );
+                                    entityTrackingOnOpen(
+                                        rootParser,
+                                        root_parser.m_parentParser,
+                                        &mut root_parser.m_entity_stats,
+                                        entity_ref,
+                                        entity_name,
+                                        6057 as ::core::ffi::c_int,
+                                    );
+                                }
                                 if (*parser)
                                     .m_externalEntityRefHandler
                                     .expect("non-null function pointer")(
@@ -9137,15 +9155,47 @@ unsafe extern "C" fn doProlog(
                                     (*entity_1).publicId,
                                 ) == 0
                                 {
-                                    entityTrackingOnClose(
-                                        parser,
-                                        entity_1,
-                                        6061 as ::core::ffi::c_int,
-                                    );
+                                    {
+                                        let rootParser = getRootParserOf(
+                                            parser,
+                                            ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                                        );
+                                        let root_parser = &mut *rootParser;
+                                        let entity_ref = &*entity_1;
+                                        let entity_name = CStr::from_ptr(
+                                            entity_ref.name as *const ::core::ffi::c_char,
+                                        );
+                                        entityTrackingOnClose(
+                                            rootParser,
+                                            root_parser.m_parentParser,
+                                            &mut root_parser.m_entity_stats,
+                                            entity_ref,
+                                            entity_name,
+                                            6061 as ::core::ffi::c_int,
+                                        );
+                                    }
                                     (*entity_1).open = crate::expat_h::XML_FALSE;
                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                 }
-                                entityTrackingOnClose(parser, entity_1, 6065 as ::core::ffi::c_int);
+                                {
+                                    let rootParser = getRootParserOf(
+                                        parser,
+                                        ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                                    );
+                                    let root_parser = &mut *rootParser;
+                                    let entity_ref = &*entity_1;
+                                    let entity_name = CStr::from_ptr(
+                                        entity_ref.name as *const ::core::ffi::c_char,
+                                    );
+                                    entityTrackingOnClose(
+                                        rootParser,
+                                        root_parser.m_parentParser,
+                                        &mut root_parser.m_entity_stats,
+                                        entity_ref,
+                                        entity_name,
+                                        6065 as ::core::ffi::c_int,
+                                    );
+                                }
                                 (*entity_1).open = crate::expat_h::XML_FALSE;
                                 handleDefault = crate::expat_h::XML_FALSE;
                                 if (*dtd).paramEntityRead == 0 {
@@ -9693,7 +9743,20 @@ unsafe extern "C" fn processEntity(
     }
     (*entity).open = crate::expat_h::XML_TRUE;
     (*entity).hasMore = crate::expat_h::XML_TRUE;
-    entityTrackingOnOpen(parser, entity, 6389 as ::core::ffi::c_int);
+    {
+        let rootParser = getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+        let root_parser = &mut *rootParser;
+        let entity_ref = &*entity;
+        let entity_name = CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char);
+        entityTrackingOnOpen(
+            rootParser,
+            root_parser.m_parentParser,
+            &mut root_parser.m_entity_stats,
+            entity_ref,
+            entity_name,
+            6389 as ::core::ffi::c_int,
+        );
+    }
     (*entity).processed = 0 as ::core::ffi::c_int;
     (*openEntity).next = *openEntityList as *mut open_internal_entity;
     *openEntityList = openEntity;
@@ -9788,7 +9851,20 @@ unsafe extern "C" fn internalEntityProcessor(
         triggerReenter(&mut *parser);
         return result;
     }
-    entityTrackingOnClose(parser, entity, 6470 as ::core::ffi::c_int);
+    {
+        let rootParser = getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+        let root_parser = &mut *rootParser;
+        let entity_ref = &*entity;
+        let entity_name = CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char);
+        entityTrackingOnClose(
+            rootParser,
+            root_parser.m_parentParser,
+            &mut root_parser.m_entity_stats,
+            entity_ref,
+            entity_name,
+            6470 as ::core::ffi::c_int,
+        );
+    }
     '_c2rust_label: {
         if (*parser).m_openInternalEntities == openEntity {
         } else {
@@ -9904,7 +9980,21 @@ unsafe extern "C" fn storeAttributeValue(
                     continue;
                 }
             } else {
-                entityTrackingOnClose(parser, entity, 6547 as ::core::ffi::c_int);
+                {
+                    let rootParser =
+                        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+                    let root_parser = &mut *rootParser;
+                    let entity_ref = &*entity;
+                    let entity_name = CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char);
+                    entityTrackingOnClose(
+                        rootParser,
+                        root_parser.m_parentParser,
+                        &mut root_parser.m_entity_stats,
+                        entity_ref,
+                        entity_name,
+                        6547 as ::core::ffi::c_int,
+                    );
+                }
                 '_c2rust_label: {
                     if (*parser).m_openAttributeEntities == openEntity {
                     } else {
@@ -10299,11 +10389,25 @@ unsafe extern "C" fn storeEntityValue(
                                 if (*parser).m_externalEntityRefHandler.is_some() {
                                     (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                     (*entity).open = crate::expat_h::XML_TRUE;
-                                    entityTrackingOnOpen(
-                                        parser,
-                                        entity,
-                                        6840 as ::core::ffi::c_int,
-                                    );
+                                    {
+                                        let rootParser = getRootParserOf(
+                                            parser,
+                                            ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                                        );
+                                        let root_parser = &mut *rootParser;
+                                        let entity_ref = &*entity;
+                                        let entity_name = CStr::from_ptr(
+                                            entity_ref.name as *const ::core::ffi::c_char,
+                                        );
+                                        entityTrackingOnOpen(
+                                            rootParser,
+                                            root_parser.m_parentParser,
+                                            &mut root_parser.m_entity_stats,
+                                            entity_ref,
+                                            entity_name,
+                                            6840 as ::core::ffi::c_int,
+                                        );
+                                    }
                                     if (*parser)
                                         .m_externalEntityRefHandler
                                         .expect("non-null function pointer")(
@@ -10314,20 +10418,48 @@ unsafe extern "C" fn storeEntityValue(
                                         (*entity).publicId,
                                     ) == 0
                                     {
-                                        entityTrackingOnClose(
-                                            parser,
-                                            entity,
-                                            6844 as ::core::ffi::c_int,
-                                        );
+                                        {
+                                            let rootParser = getRootParserOf(
+                                                parser,
+                                                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                                            );
+                                            let root_parser = &mut *rootParser;
+                                            let entity_ref = &*entity;
+                                            let entity_name = CStr::from_ptr(
+                                                entity_ref.name as *const ::core::ffi::c_char,
+                                            );
+                                            entityTrackingOnClose(
+                                                rootParser,
+                                                root_parser.m_parentParser,
+                                                &mut root_parser.m_entity_stats,
+                                                entity_ref,
+                                                entity_name,
+                                                6844 as ::core::ffi::c_int,
+                                            );
+                                        }
                                         (*entity).open = crate::expat_h::XML_FALSE;
                                         result = crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                         break;
                                     } else {
-                                        entityTrackingOnClose(
-                                            parser,
-                                            entity,
-                                            6849 as ::core::ffi::c_int,
-                                        );
+                                        {
+                                            let rootParser = getRootParserOf(
+                                                parser,
+                                                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                                            );
+                                            let root_parser = &mut *rootParser;
+                                            let entity_ref = &*entity;
+                                            let entity_name = CStr::from_ptr(
+                                                entity_ref.name as *const ::core::ffi::c_char,
+                                            );
+                                            entityTrackingOnClose(
+                                                rootParser,
+                                                root_parser.m_parentParser,
+                                                &mut root_parser.m_entity_stats,
+                                                entity_ref,
+                                                entity_name,
+                                                6849 as ::core::ffi::c_int,
+                                            );
+                                        }
                                         (*entity).open = crate::expat_h::XML_FALSE;
                                         if (*dtd).paramEntityRead == 0 {
                                             (*dtd).keepProcessing = (*dtd).standalone;
@@ -10501,7 +10633,21 @@ unsafe extern "C" fn callStoreEntityValue(
                     continue;
                 }
             } else {
-                entityTrackingOnClose(parser, entity, 6998 as ::core::ffi::c_int);
+                {
+                    let rootParser =
+                        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+                    let root_parser = &mut *rootParser;
+                    let entity_ref = &*entity;
+                    let entity_name = CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char);
+                    entityTrackingOnClose(
+                        rootParser,
+                        root_parser.m_parentParser,
+                        &mut root_parser.m_entity_stats,
+                        entity_ref,
+                        entity_name,
+                        6998 as ::core::ffi::c_int,
+                    );
+                }
                 '_c2rust_label: {
                     if (*parser).m_openValueEntities == openEntity {
                     } else {
@@ -12837,30 +12983,31 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
     testingAccountingGetCountBytesIndirect(unsafe { parser.as_mut() })
 }
 fn entityTrackingReportStats(
-    rootParser: &XML_ParserStruct,
+    root_parser_ptr: *const XML_ParserStruct,
+    root_parent_parser: crate::expat_h::XML_Parser,
+    stats: &ENTITY_STATS,
     entity: &ENTITY,
     entityName: &CStr,
     action: &str,
     sourceLine: ::core::ffi::c_int,
 ) {
-    if !rootParser.m_parentParser.is_null() {
+    if !root_parent_parser.is_null() {
         ::std::process::abort();
     }
-    if rootParser.m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
+    if stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
     let mut stderr_lock = ::std::io::stderr().lock();
-    let indent_width = (rootParser.m_entity_stats.currentDepth as ::core::ffi::c_int
-        - 1 as ::core::ffi::c_int)
+    let indent_width = (stats.currentDepth as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
         * 2 as ::core::ffi::c_int;
     let _ = ::std::io::Write::write_fmt(
         &mut stderr_lock,
         format_args!(
             "expat: Entities({:p}): Count {:9}, depth {:2}/{:2} {:width$}{}",
-            rootParser as *const XML_ParserStruct,
-            rootParser.m_entity_stats.countEverOpened,
-            rootParser.m_entity_stats.currentDepth,
-            rootParser.m_entity_stats.maximumDepthSeen,
+            root_parser_ptr,
+            stats.countEverOpened,
+            stats.currentDepth,
+            stats.maximumDepthSeen,
             "",
             if entity.is_param as ::core::ffi::c_int != 0 {
                 "%"
@@ -12880,76 +13027,54 @@ fn entityTrackingReportStats(
     );
 }
 
-unsafe extern "C" fn entityTrackingOnOpen(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut sourceLine: ::core::ffi::c_int,
+fn entityTrackingOnOpen(
+    root_parser_ptr: *const XML_ParserStruct,
+    root_parent_parser: crate::expat_h::XML_Parser,
+    stats: &mut ENTITY_STATS,
+    entity: &ENTITY,
+    entity_name: &CStr,
+    sourceLine: ::core::ffi::c_int,
 ) {
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8641 as ::core::ffi::c_uint,
-                b"void entityTrackingOnOpen(XML_Parser, ENTITY *, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    (*rootParser).m_entity_stats.countEverOpened =
-        (*rootParser).m_entity_stats.countEverOpened.wrapping_add(1);
-    (*rootParser).m_entity_stats.currentDepth =
-        (*rootParser).m_entity_stats.currentDepth.wrapping_add(1);
-    if (*rootParser).m_entity_stats.currentDepth > (*rootParser).m_entity_stats.maximumDepthSeen {
-        (*rootParser).m_entity_stats.maximumDepthSeen = (*rootParser)
-            .m_entity_stats
-            .maximumDepthSeen
-            .wrapping_add(1);
+    if !root_parent_parser.is_null() {
+        ::std::process::abort();
     }
-    let entity_ref = &*entity;
+    stats.countEverOpened = stats.countEverOpened.wrapping_add(1);
+    stats.currentDepth = stats.currentDepth.wrapping_add(1);
+    if stats.currentDepth > stats.maximumDepthSeen {
+        stats.maximumDepthSeen = stats.maximumDepthSeen.wrapping_add(1);
+    }
     entityTrackingReportStats(
-        &*rootParser,
-        entity_ref,
-        CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char),
+        root_parser_ptr,
+        root_parent_parser,
+        stats,
+        entity,
+        entity_name,
         "OPEN ",
         sourceLine,
     );
 }
 
-unsafe extern "C" fn entityTrackingOnClose(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut sourceLine: ::core::ffi::c_int,
+fn entityTrackingOnClose(
+    root_parser_ptr: *const XML_ParserStruct,
+    root_parent_parser: crate::expat_h::XML_Parser,
+    stats: &mut ENTITY_STATS,
+    entity: &ENTITY,
+    entity_name: &CStr,
+    sourceLine: ::core::ffi::c_int,
 ) {
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8656 as ::core::ffi::c_uint,
-                b"void entityTrackingOnClose(XML_Parser, ENTITY *, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    let entity_ref = &*entity;
+    if !root_parent_parser.is_null() {
+        ::std::process::abort();
+    }
     entityTrackingReportStats(
-        &*rootParser,
-        entity_ref,
-        CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char),
+        root_parser_ptr,
+        root_parent_parser,
+        stats,
+        entity,
+        entity_name,
         "CLOSE",
         sourceLine,
     );
-    (*rootParser).m_entity_stats.currentDepth =
-        (*rootParser).m_entity_stats.currentDepth.wrapping_sub(1);
+    stats.currentDepth = stats.currentDepth.wrapping_sub(1);
 }
 
 unsafe extern "C" fn getRootParserOf(
