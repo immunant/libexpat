@@ -636,17 +636,111 @@ pub enum CharRefNumberDecoder {
 }
 
 impl CharRefNumberDecoder {
-    pub unsafe fn decode(
-        self,
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+    /// Decodes a complete tokenizer-recognized character-reference token.
+    ///
+    /// `input` includes the leading `&#` and trailing semicolon.  Keeping the
+    /// token bounded here avoids the old callback's unbounded raw reads.
+    pub fn decode(self, input: &[u8]) -> ::core::ffi::c_int {
         match self {
-            Self::Normal => crate::src::xmltok::normal_charRefNumber(enc, ptr),
-            Self::Little2 => crate::src::xmltok::little2_charRefNumber(enc, ptr),
-            Self::Big2 => crate::src::xmltok::big2_charRefNumber(enc, ptr),
+            Self::Normal => decode_char_ref_number_units(
+                input
+                    .get(2..)
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(|&byte| byte as ::core::ffi::c_int),
+            ),
+            Self::Little2 => decode_char_ref_number_units(
+                input
+                    .get(4..)
+                    .unwrap_or(&[])
+                    .chunks_exact(2)
+                    .map(|unit| if unit[1] == 0 { unit[0] as ::core::ffi::c_int } else { -1 }),
+            ),
+            Self::Big2 => decode_char_ref_number_units(
+                input
+                    .get(4..)
+                    .unwrap_or(&[])
+                    .chunks_exact(2)
+                    .map(|unit| if unit[0] == 0 { unit[1] as ::core::ffi::c_int } else { -1 }),
+            ),
         }
     }
+}
+
+/// Decodes the ASCII units after the `&#` prefix of a recognized character
+/// reference.  The tokenizer guarantees the terminating semicolon; malformed
+/// input is still rejected rather than reading beyond the supplied slice.
+fn decode_char_ref_number_units(
+    mut units: impl Iterator<Item = ::core::ffi::c_int>,
+) -> ::core::ffi::c_int {
+    let Some(first) = units.next() else {
+        return -1;
+    };
+    let mut result: ::core::ffi::c_int = 0;
+    if first == crate::ascii_h::ASCII_x {
+        for c in units {
+            if c == 0x3b {
+                return checkCharRefNumber(result);
+            }
+            match c {
+                crate::ascii_h::ASCII_0
+                | crate::ascii_h::ASCII_1_1
+                | crate::ascii_h::ASCII_2_1
+                | crate::ascii_h::ASCII_3_1
+                | crate::ascii_h::ASCII_4
+                | crate::ascii_h::ASCII_5
+                | crate::ascii_h::ASCII_6
+                | crate::ascii_h::ASCII_7
+                | crate::ascii_h::ASCII_8_1
+                | crate::ascii_h::ASCII_9_1 => {
+                    result <<= 4;
+                    result |= c - crate::ascii_h::ASCII_0;
+                }
+                crate::ascii_h::ASCII_A
+                | crate::ascii_h::ASCII_B_1
+                | crate::ascii_h::ASCII_C
+                | crate::ascii_h::ASCII_D
+                | crate::ascii_h::ASCII_E_1
+                | crate::ascii_h::ASCII_F_1 => {
+                    result <<= 4;
+                    result += 10 + (c - crate::ascii_h::ASCII_A);
+                }
+                crate::ascii_h::ASCII_a_1
+                | crate::ascii_h::ASCII_b
+                | crate::ascii_h::ASCII_c_1
+                | crate::ascii_h::ASCII_d
+                | crate::ascii_h::ASCII_e_1
+                | crate::ascii_h::ASCII_f => {
+                    result <<= 4;
+                    result += 10 + (c - crate::ascii_h::ASCII_a_1);
+                }
+                _ => return -1,
+            }
+            if result >= 0x110000 {
+                return -1;
+            }
+        }
+    } else {
+        let mut c = first;
+        loop {
+            if c == 0x3b {
+                return checkCharRefNumber(result);
+            }
+            if !(crate::ascii_h::ASCII_0..=crate::ascii_h::ASCII_9_1).contains(&c) {
+                return -1;
+            }
+            result *= 10;
+            result += c - crate::ascii_h::ASCII_0;
+            if result >= 0x110000 {
+                return -1;
+            }
+            let Some(next) = units.next() else {
+                break;
+            };
+            c = next;
+        }
+    }
+    -1
 }
 
 #[derive(Copy, Clone)]

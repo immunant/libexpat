@@ -8886,7 +8886,14 @@ unsafe extern "C" fn doContent(
                     }
                 }
                 crate::src::xmltok::XML_TOK_CHAR_REF => {
-                    let mut n: ::core::ffi::c_int = (*enc).charRefNumber.decode(enc, s);
+                    // The scanner returned a complete character-reference
+                    // token, so this is one validated range in its input
+                    // allocation (including the terminating semicolon).
+                    let token = ::core::slice::from_raw_parts(
+                        s.cast::<u8>(),
+                        next.offset_from(s) as usize,
+                    );
+                    let mut n: ::core::ffi::c_int = (*enc).charRefNumber.decode(token);
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }
@@ -15023,7 +15030,13 @@ unsafe fn appendAttributeValue(
                 crate::src::xmltok::XML_TOK_CHAR_REF => {
                     let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                     let mut i: ::core::ffi::c_int = 0;
-                    let mut n: ::core::ffi::c_int = enc.charRefNumber.decode(enc_ptr, ptr);
+                    // `next` is the end of the complete token just returned
+                    // by the literal scanner.
+                    let token = ::core::slice::from_raw_parts(
+                        ptr.cast::<u8>(),
+                        next.offset_from(ptr) as usize,
+                    );
+                    let mut n: ::core::ffi::c_int = enc.charRefNumber.decode(token);
                     if n < 0 as ::core::ffi::c_int {
                         if enc_ptr == parser_encoding(parser) {
                             set_parser_event_start!(&mut *parser, ptr);
@@ -15361,7 +15374,13 @@ unsafe extern "C" fn storeEntityValue(
                     }
                     crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
                     crate::src::xmltok::XML_TOK_CHAR_REF => {
-                        let n = enc.charRefNumber.decode(enc_ptr, entityTextPtr);
+                        // `next` bounds the character-reference token the
+                        // entity-value scanner just recognized.
+                        let token = ::core::slice::from_raw_parts(
+                            entityTextPtr.cast::<u8>(),
+                            next.offset_from(entityTextPtr) as usize,
+                        );
+                        let n = enc.charRefNumber.decode(token);
                         if n < 0 as ::core::ffi::c_int {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, entityTextPtr);
