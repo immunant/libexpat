@@ -4528,7 +4528,10 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanRef(
+    // Retained as a disabled translation reference.  The active scanner below
+    // performs the same state transitions over a checked input slice.
+    #[cfg(any())]
+    pub unsafe extern "C" fn little2_scanRef_legacy(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -4690,6 +4693,194 @@ pub mod xmltok_impl_c {
     struct Little2ScanResult {
         token: ::core::ffi::c_int,
         next: Option<usize>,
+    }
+
+    enum Little2NameCheck {
+        Advance(usize),
+        PartialChar,
+        Invalid,
+    }
+
+    fn little2_check_name(
+        byte_types: &[::core::ffi::c_uchar; 256],
+        input: &[::core::ffi::c_char],
+        pos: usize,
+        start: bool,
+    ) -> Little2NameCheck {
+        match little2_byte_type(byte_types, input, pos) {
+            29 => {
+                let pages = if start { &nmstrtPages } else { &namePages };
+                if little2_in_name_bitmap(input, pos, pages) {
+                    Little2NameCheck::Advance(pos + 2)
+                } else {
+                    Little2NameCheck::Invalid
+                }
+            }
+            22 | 24 if start => Little2NameCheck::Advance(pos + 2),
+            22 | 24 | 25 | 26 | 27 if !start => Little2NameCheck::Advance(pos + 2),
+            5 => {
+                if input.len() - pos < 2 {
+                    Little2NameCheck::PartialChar
+                } else {
+                    Little2NameCheck::Invalid
+                }
+            }
+            6 => {
+                if input.len() - pos < 3 {
+                    Little2NameCheck::PartialChar
+                } else {
+                    Little2NameCheck::Invalid
+                }
+            }
+            7 => {
+                if input.len() - pos < 4 {
+                    Little2NameCheck::PartialChar
+                } else {
+                    Little2NameCheck::Invalid
+                }
+            }
+            _ => Little2NameCheck::Invalid,
+        }
+    }
+
+    fn little2_scan_char_ref_impl(
+        byte_types: &[::core::ffi::c_uchar; 256],
+        input: &[::core::ffi::c_char],
+        mut pos: usize,
+    ) -> Little2ScanResult {
+        if pos + 2 > input.len() {
+            return Little2ScanResult {
+                token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+                next: None,
+            };
+        }
+
+        let hex = input[pos + 1] == 0 && input[pos] == b'x' as ::core::ffi::c_char;
+        if hex {
+            pos += 2;
+            if pos + 2 > input.len() {
+                return Little2ScanResult {
+                    token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+                    next: None,
+                };
+            }
+        }
+
+        match little2_byte_type(byte_types, input, pos) {
+            25 | 24 if hex => {}
+            25 if !hex => {}
+            _ => {
+                return Little2ScanResult {
+                    token: crate::src::xmltok::XML_TOK_INVALID_1,
+                    next: Some(pos),
+                }
+            }
+        }
+        pos += 2;
+
+        while pos + 2 <= input.len() {
+            match little2_byte_type(byte_types, input, pos) {
+                25 | 24 if hex => pos += 2,
+                25 if !hex => pos += 2,
+                18 => {
+                    return Little2ScanResult {
+                        token: crate::src::xmltok::XML_TOK_CHAR_REF_1,
+                        next: Some(pos + 2),
+                    }
+                }
+                _ => {
+                    return Little2ScanResult {
+                        token: crate::src::xmltok::XML_TOK_INVALID_1,
+                        next: Some(pos),
+                    }
+                }
+            }
+        }
+
+        Little2ScanResult {
+            token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+            next: None,
+        }
+    }
+
+    fn little2_scan_ref_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> Little2ScanResult {
+        if input.len() < 2 {
+            return Little2ScanResult {
+                token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+                next: None,
+            };
+        }
+
+        let byte_types = &enc.type_0;
+        let mut pos = match little2_check_name(byte_types, input, 0, true) {
+            Little2NameCheck::Advance(next) => next,
+            Little2NameCheck::PartialChar => {
+                return Little2ScanResult {
+                    token: crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                    next: None,
+                }
+            }
+            Little2NameCheck::Invalid => {
+                if little2_byte_type(byte_types, input, 0) == 19 {
+                    return little2_scan_char_ref_impl(byte_types, input, 2);
+                }
+                return Little2ScanResult {
+                    token: crate::src::xmltok::XML_TOK_INVALID_1,
+                    next: Some(0),
+                };
+            }
+        };
+
+        while pos + 2 <= input.len() {
+            match little2_check_name(byte_types, input, pos, false) {
+                Little2NameCheck::Advance(next) => pos = next,
+                Little2NameCheck::PartialChar => {
+                    return Little2ScanResult {
+                        token: crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        next: None,
+                    }
+                }
+                Little2NameCheck::Invalid => {
+                    if little2_byte_type(byte_types, input, pos) == 18 {
+                        return Little2ScanResult {
+                            token: crate::src::xmltok::XML_TOK_ENTITY_REF_1,
+                            next: Some(pos + 2),
+                        };
+                    }
+                    return Little2ScanResult {
+                        token: crate::src::xmltok::XML_TOK_INVALID_1,
+                        next: Some(pos),
+                    };
+                }
+            }
+        }
+
+        Little2ScanResult {
+            token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+            next: None,
+        }
+    }
+
+    pub unsafe extern "C" fn little2_scanRef(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len < 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        let result = little2_scan_ref_impl(normal, input);
+        if let Some(next) = result.next {
+            *nextTokPtr = ptr.add(next);
+        }
+        result.token
     }
 
     fn little2_byte_type(
