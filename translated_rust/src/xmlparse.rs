@@ -8868,33 +8868,49 @@ pub unsafe extern "C" fn XML_SetEndElementHandler_ffi(
 ) {
     XML_SetEndElementHandler(parser, end)
 }
-pub unsafe extern "C" fn XML_SetCharacterDataHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_CharacterDataHandler,
+struct CharacterDataHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn CharacterDataCallback>>,
+}
+
+fn XML_SetCharacterDataHandler(
+    handler_enabled: &mut bool,
+    parser_address: usize,
+    registration: CharacterDataHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_characterDataHandler = handler.is_some();
-        let mut handlers = CHARACTER_DATA_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    *handler_enabled = registration.callback.is_some();
+    let mut handlers = CHARACTER_DATA_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
+
 #[export_name = "XML_SetCharacterDataHandler"]
 
 pub unsafe extern "C" fn XML_SetCharacterDataHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_CharacterDataHandler,
 ) {
-    XML_SetCharacterDataHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = CharacterDataHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    };
+    let parser = &mut *parser;
+    XML_SetCharacterDataHandler(
+        &mut parser.m_characterDataHandler,
+        parser_address,
+        registration,
+    )
 }
 pub unsafe extern "C" fn XML_SetProcessingInstructionHandler(
     mut parser: crate::expat_h::XML_Parser,
