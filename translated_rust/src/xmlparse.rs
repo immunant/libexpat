@@ -2473,9 +2473,9 @@ unsafe extern "C" fn parserInit(
     }
     (*parser).m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     crate::src::xmltok::xmltok_ns_c::XmlInitEncoding(
-        &raw mut (*parser).m_initEncoding as *mut _ as *mut crate::src::xmltok::INIT_ENCODING,
-        &raw mut (*parser).m_encoding as *mut _ as *mut *const crate::src::xmltok::encoding,
-        ::core::ptr::null::<::core::ffi::c_char>(),
+        &mut (*parser).m_initEncoding,
+        &mut (*parser).m_encoding,
+        None,
     );
     (*parser).m_userData = crate::__stddef_null_h::NULL;
     (*parser).m_handlerArg = crate::__stddef_null_h::NULL;
@@ -7173,30 +7173,25 @@ unsafe extern "C" fn initializeEncoding(
 ) -> crate::expat_h::XML_Error {
     let mut s: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     s = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
+    let name = if s.is_null() {
+        None
+    } else {
+        let len = std::ffi::CStr::from_ptr(s).to_bytes_with_nul().len();
+        Some(::core::slice::from_raw_parts(s, len))
+    };
     if if (*parser).m_ns as ::core::ffi::c_int != 0 {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS
-                as unsafe extern "C" fn(
-                    *mut crate::src::xmltok::INIT_ENCODING,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+        crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS(
+            &mut (*parser).m_initEncoding,
+            &mut (*parser).m_encoding,
+            name,
         )
     } else {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlInitEncoding
-                as unsafe extern "C" fn(
-                    *mut crate::src::xmltok::INIT_ENCODING,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+        crate::src::xmltok::xmltok_ns_c::XmlInitEncoding(
+            &mut (*parser).m_initEncoding,
+            &mut (*parser).m_encoding,
+            name,
         )
-    }
-    .expect("non-null function pointer")(
-        &raw mut (*parser).m_initEncoding,
-        &raw mut (*parser).m_encoding,
-        s,
-    ) != 0
+    } != 0
     {
         return crate::expat_h::XML_ERROR_NONE;
     }

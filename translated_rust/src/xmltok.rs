@@ -13258,23 +13258,17 @@ pub mod xmltok_ns_c {
             nextTokPtr,
         );
     }
-    pub unsafe extern "C" fn XmlInitEncoding(
-        mut p: *mut crate::src::xmltok::INIT_ENCODING,
-        mut encPtr: *mut *const crate::src::xmltok::ENCODING,
-        mut name: *const ::core::ffi::c_char,
+    pub fn XmlInitEncoding(
+        p: &mut crate::src::xmltok::INIT_ENCODING,
+        encPtr: &mut *const crate::src::xmltok::ENCODING,
+        name: Option<&[::core::ffi::c_char]>,
     ) -> ::core::ffi::c_int {
-        let name = if name.is_null() {
-            None
-        } else {
-            let len = std::ffi::CStr::from_ptr(name).to_bytes_with_nul().len();
-            Some(::core::slice::from_raw_parts(name, len))
-        };
         let mut i: ::core::ffi::c_int = getEncodingIndex(name);
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return 0 as ::core::ffi::c_int;
         }
-        (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] = Some(
+        p.initEnc.isUtf16 = i as ::core::ffi::c_char;
+        p.initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] = Some(
             initScanProlog
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -13284,7 +13278,7 @@ pub mod xmltok_ns_c {
                 ) -> ::core::ffi::c_int,
         )
             as crate::src::xmltok::SCANNER;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] = Some(
+        p.initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] = Some(
             initScanContent
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -13294,7 +13288,7 @@ pub mod xmltok_ns_c {
                 ) -> ::core::ffi::c_int,
         )
             as crate::src::xmltok::SCANNER;
-        (*p).initEnc.updatePosition = Some(
+        p.initEnc.updatePosition = Some(
             initUpdatePosition
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -13311,8 +13305,8 @@ pub mod xmltok_ns_c {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
             >;
-        (*p).encPtr = encPtr;
-        *encPtr = &raw mut (*p).initEnc;
+        p.encPtr = encPtr;
+        *encPtr = &raw mut p.initEnc;
         return 1 as ::core::ffi::c_int;
     }
     #[export_name = "XmlInitEncoding"]
@@ -13322,7 +13316,13 @@ pub mod xmltok_ns_c {
         mut encPtr: *mut *const crate::src::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        XmlInitEncoding(p, encPtr, name)
+        let name = if name.is_null() {
+            None
+        } else {
+            let len = std::ffi::CStr::from_ptr(name).to_bytes_with_nul().len();
+            Some(::core::slice::from_raw_parts(name, len))
+        };
+        XmlInitEncoding(&mut *p, &mut *encPtr, name)
     }
     pub unsafe extern "C" fn findEncoding(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -13484,23 +13484,17 @@ pub mod xmltok_ns_c {
             nextTokPtr,
         );
     }
-    pub unsafe extern "C" fn XmlInitEncodingNS(
-        mut p: *mut crate::src::xmltok::INIT_ENCODING,
-        mut encPtr: *mut *const crate::src::xmltok::ENCODING,
-        mut name: *const ::core::ffi::c_char,
+    pub fn XmlInitEncodingNS(
+        p: &mut crate::src::xmltok::INIT_ENCODING,
+        encPtr: &mut *const crate::src::xmltok::ENCODING,
+        name: Option<&[::core::ffi::c_char]>,
     ) -> ::core::ffi::c_int {
-        let name = if name.is_null() {
-            None
-        } else {
-            let len = std::ffi::CStr::from_ptr(name).to_bytes_with_nul().len();
-            Some(::core::slice::from_raw_parts(name, len))
-        };
         let mut i: ::core::ffi::c_int = getEncodingIndex(name);
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return 0 as ::core::ffi::c_int;
         }
-        (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] = Some(
+        p.initEnc.isUtf16 = i as ::core::ffi::c_char;
+        p.initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] = Some(
             initScanPrologNS
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -13510,7 +13504,7 @@ pub mod xmltok_ns_c {
                 ) -> ::core::ffi::c_int,
         )
             as crate::src::xmltok::SCANNER;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] = Some(
+        p.initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] = Some(
             initScanContentNS
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -13520,7 +13514,7 @@ pub mod xmltok_ns_c {
                 ) -> ::core::ffi::c_int,
         )
             as crate::src::xmltok::SCANNER;
-        (*p).initEnc.updatePosition = Some(
+        p.initEnc.updatePosition = Some(
             initUpdatePosition
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -13537,8 +13531,8 @@ pub mod xmltok_ns_c {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
             >;
-        (*p).encPtr = encPtr;
-        *encPtr = &raw mut (*p).initEnc;
+        p.encPtr = encPtr;
+        *encPtr = &raw mut p.initEnc;
         return 1 as ::core::ffi::c_int;
     }
     #[export_name = "XmlInitEncodingNS"]
@@ -13548,7 +13542,13 @@ pub mod xmltok_ns_c {
         mut encPtr: *mut *const crate::src::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        XmlInitEncodingNS(p, encPtr, name)
+        let name = if name.is_null() {
+            None
+        } else {
+            let len = std::ffi::CStr::from_ptr(name).to_bytes_with_nul().len();
+            Some(::core::slice::from_raw_parts(name, len))
+        };
+        XmlInitEncodingNS(&mut *p, &mut *encPtr, name)
     }
     pub unsafe extern "C" fn findEncodingNS(
         mut enc: *const crate::src::xmltok::ENCODING,
