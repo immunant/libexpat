@@ -1098,6 +1098,22 @@ macro_rules! default_reparse_deferral_enabled {
     }};
 }
 
+macro_rules! call_end_cdata_section_handler {
+    ($handler:expr, $handler_arg:expr $(,)?) => {{
+        unsafe {
+            $handler.expect("non-null function pointer")($handler_arg);
+        }
+    }};
+}
+
+macro_rules! call_character_data_handler {
+    ($handler:expr, $handler_arg:expr, $data:expr, $len:expr $(,)?) => {{
+        unsafe {
+            $handler.expect("non-null function pointer")($handler_arg, $data, $len);
+        }
+    }};
+}
+
 fn xmlparse_assert_fail(
     assertion: &'static [u8],
     line: ::core::ffi::c_uint,
@@ -5804,48 +5820,44 @@ extern "C" fn cdataSectionProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut result: XML_Error = doCdataSection(
-            parser,
-            (*parser).m_encoding,
-            &raw mut start,
-            end,
-            endPtr,
-            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
-            XML_ACCOUNT_DIRECT,
-        );
-        if result as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result;
-        }
-        if !start.is_null() {
-            if !(*parser).m_parentParser.is_null() {
-                (*parser).m_processor = Some(
-                    externalEntityContentProcessor
-                        as extern "C" fn(
-                            XML_Parser,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> XML_Error,
-                );
-                return externalEntityContentProcessor(parser, start, end, endPtr);
-            } else {
-                (*parser).m_processor = Some(
-                    contentProcessor
-                        as extern "C" fn(
-                            XML_Parser,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> XML_Error,
-                );
-                return contentProcessor(parser, start, end, endPtr);
-            }
-        }
+    let result = doCdataSection(
+        parser,
+        ptr_ref(parser).m_encoding,
+        &raw mut start,
+        end,
+        endPtr,
+        (ptr_ref(parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
+        XML_ACCOUNT_DIRECT,
+    );
+    if result as ::core::ffi::c_uint != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
         return result;
     }
+    if !start.is_null() {
+        if !ptr_ref(parser).m_parentParser.is_null() {
+            ptr_mut(parser).m_processor = Some(
+                externalEntityContentProcessor
+                    as extern "C" fn(
+                        XML_Parser,
+                        *const ::core::ffi::c_char,
+                        *const ::core::ffi::c_char,
+                        *mut *const ::core::ffi::c_char,
+                    ) -> XML_Error,
+            );
+            return externalEntityContentProcessor(parser, start, end, endPtr);
+        }
+        ptr_mut(parser).m_processor = Some(
+            contentProcessor
+                as extern "C" fn(
+                    XML_Parser,
+                    *const ::core::ffi::c_char,
+                    *const ::core::ffi::c_char,
+                    *mut *const ::core::ffi::c_char,
+                ) -> XML_Error,
+        );
+        return contentProcessor(parser, start, end, endPtr);
+    }
+    result
 }
 extern "C" fn doCdataSection(
     mut parser: XML_Parser,
@@ -5856,175 +5868,157 @@ extern "C" fn doCdataSection(
     mut haveMore: XML_Bool,
     mut account: XML_Account,
 ) -> XML_Error {
-    unsafe {
-        let mut s: *const ::core::ffi::c_char = *startPtr;
-        let mut eventPP: *mut *const ::core::ffi::c_char =
-            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-        let mut eventEndPP: *mut *const ::core::ffi::c_char =
-            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-        if enc == (*parser).m_encoding {
-            eventPP = &raw mut (*parser).m_eventPtr;
-            *eventPP = s;
-            eventEndPP = &raw mut (*parser).m_eventEndPtr;
-        } else {
-            eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-            eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
+    let mut s = *ptr_ref(startPtr);
+    let (event_pp, event_end_pp) = active_event_pointer_slots(parser, enc);
+
+    write_copy(event_pp, s);
+    write_copy(startPtr, ::core::ptr::null::<::core::ffi::c_char>());
+    loop {
+        let mut next = s;
+        let tok = call_scanner(ptr_ref(enc).scanners[2], enc, s, end, &raw mut next);
+        if accountingDiffTolerated(
+            ptr_mut(parser),
+            tok,
+            s,
+            next,
+            4619 as ::core::ffi::c_int,
+            account,
+        ) == 0
+        {
+            accountingOnAbort(ptr_mut(parser));
+            return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
-        *eventPP = s;
-        *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        loop {
-            let mut next: *const ::core::ffi::c_char = s;
-            let mut tok: ::core::ffi::c_int =
-                (*enc).scanners[2 as ::core::ffi::c_int as usize]
-                    .expect("non-null function pointer")(enc, s, end, &raw mut next);
-            if accountingDiffTolerated(
-                &mut *parser,
-                tok,
-                s,
-                next,
-                4619 as ::core::ffi::c_int,
-                account,
-            ) == 0
-            {
-                accountingOnAbort(&mut *parser);
-                return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+        write_copy(event_end_pp, next);
+        match tok {
+            XML_TOK_CDATA_SECT_CLOSE => {
+                if ptr_ref(parser).m_endCdataSectionHandler.is_some() {
+                    call_end_cdata_section_handler!(
+                        ptr_ref(parser).m_endCdataSectionHandler,
+                        ptr_ref(parser).m_handlerArg,
+                    );
+                } else if 0 as ::core::ffi::c_int != 0
+                    && ptr_ref(parser).m_characterDataHandler.is_some()
+                {
+                    call_character_data_handler!(
+                        ptr_ref(parser).m_characterDataHandler,
+                        ptr_ref(parser).m_handlerArg,
+                        ptr_ref(parser).m_dataBuf,
+                        0 as ::core::ffi::c_int,
+                    );
+                } else if ptr_ref(parser).m_defaultHandler.is_some() {
+                    reportDefault(parser, enc, s, next);
+                }
+                write_copy(startPtr, next);
+                write_copy(nextPtr, next);
+                if ptr_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                    == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+                {
+                    return XML_ERROR_ABORTED;
+                }
+                return XML_ERROR_NONE;
             }
-            *eventEndPP = next;
-            match tok {
-                XML_TOK_CDATA_SECT_CLOSE => {
-                    if (*parser).m_endCdataSectionHandler.is_some() {
-                        (*parser)
-                            .m_endCdataSectionHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg
-                        );
-                    } else if 0 as ::core::ffi::c_int != 0
-                        && (*parser).m_characterDataHandler.is_some()
-                    {
-                        (*parser)
-                            .m_characterDataHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            (*parser).m_dataBuf,
-                            0 as ::core::ffi::c_int,
-                        );
-                    } else if (*parser).m_defaultHandler.is_some() {
-                        reportDefault(parser, enc, s, next);
-                    }
-                    *startPtr = next;
-                    *nextPtr = next;
-                    if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                        == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        return XML_ERROR_ABORTED;
-                    } else {
-                        return XML_ERROR_NONE;
-                    }
+            XML_TOK_DATA_NEWLINE => {
+                if ptr_ref(parser).m_characterDataHandler.is_some() {
+                    let mut c: XML_Char = 0xa as XML_Char;
+                    call_character_data_handler!(
+                        ptr_ref(parser).m_characterDataHandler,
+                        ptr_ref(parser).m_handlerArg,
+                        &raw mut c,
+                        1 as ::core::ffi::c_int,
+                    );
+                } else if ptr_ref(parser).m_defaultHandler.is_some() {
+                    reportDefault(parser, enc, s, next);
                 }
-                XML_TOK_DATA_NEWLINE => {
-                    if (*parser).m_characterDataHandler.is_some() {
-                        let mut c: XML_Char = 0xa as XML_Char;
-                        (*parser)
-                            .m_characterDataHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            &raw mut c,
-                            1 as ::core::ffi::c_int,
-                        );
-                    } else if (*parser).m_defaultHandler.is_some() {
-                        reportDefault(parser, enc, s, next);
-                    }
-                }
-                XML_TOK_DATA_CHARS => {
-                    let mut charDataHandler: XML_CharacterDataHandler =
-                        (*parser).m_characterDataHandler;
-                    if charDataHandler.is_some() {
-                        if (*enc).isUtf8 == 0 {
-                            loop {
-                                let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
-                                let convert_res: XML_Convert_Result =
-                                    (*enc).utf8Convert.expect("non-null function pointer")(
-                                        enc,
-                                        &raw mut s,
-                                        next,
-                                        &raw mut dataPtr,
-                                        (*parser).m_dataBufEnd as *mut ICHAR,
-                                    ) as XML_Convert_Result;
-                                *eventEndPP = next;
-                                charDataHandler.expect("non-null function pointer")(
-                                    (*parser).m_handlerArg,
-                                    (*parser).m_dataBuf,
-                                    dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
-                                        as ::core::ffi::c_long
-                                        as ::core::ffi::c_int,
-                                );
-                                if convert_res as ::core::ffi::c_uint
-                                    == XML_CONVERT_COMPLETED as ::core::ffi::c_int
-                                        as ::core::ffi::c_uint
-                                    || convert_res as ::core::ffi::c_uint
-                                        == XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
-                                            as ::core::ffi::c_uint
-                                {
-                                    break;
-                                }
-                                *eventPP = s;
-                            }
-                        } else {
-                            charDataHandler.expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
-                                s as *const XML_Char,
-                                (next as *const XML_Char).offset_from(s as *const XML_Char)
-                                    as ::core::ffi::c_long
-                                    as ::core::ffi::c_int,
+            }
+            XML_TOK_DATA_CHARS => {
+                let char_data_handler = ptr_ref(parser).m_characterDataHandler;
+                if char_data_handler.is_some() {
+                    if ptr_ref(enc).isUtf8 == 0 {
+                        loop {
+                            let mut data_ptr = ptr_ref(parser).m_dataBuf as *mut ICHAR;
+                            let convert_res =
+                                ptr_ref(enc).utf8Convert.expect("non-null function pointer")(
+                                    enc,
+                                    &raw mut s,
+                                    next,
+                                    &raw mut data_ptr,
+                                    ptr_ref(parser).m_dataBufEnd as *mut ICHAR,
+                                ) as XML_Convert_Result;
+                            write_copy(event_end_pp, next);
+                            call_character_data_handler!(
+                                char_data_handler,
+                                ptr_ref(parser).m_handlerArg,
+                                ptr_ref(parser).m_dataBuf,
+                                c_char_span_len(
+                                    ptr_ref(parser).m_dataBuf,
+                                    data_ptr as *const ::core::ffi::c_char,
+                                ) as ::core::ffi::c_int,
                             );
+                            if convert_res as ::core::ffi::c_uint
+                                == XML_CONVERT_COMPLETED as ::core::ffi::c_int
+                                    as ::core::ffi::c_uint
+                                || convert_res as ::core::ffi::c_uint
+                                    == XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
+                                        as ::core::ffi::c_uint
+                            {
+                                break;
+                            }
+                            write_copy(event_pp, s);
                         }
-                    } else if (*parser).m_defaultHandler.is_some() {
-                        reportDefault(parser, enc, s, next);
+                    } else {
+                        call_character_data_handler!(
+                            char_data_handler,
+                            ptr_ref(parser).m_handlerArg,
+                            s as *const XML_Char,
+                            c_char_span_len(s, next) as ::core::ffi::c_int,
+                        );
                     }
+                } else if ptr_ref(parser).m_defaultHandler.is_some() {
+                    reportDefault(parser, enc, s, next);
                 }
-                XML_TOK_INVALID => {
-                    *eventPP = next;
-                    return XML_ERROR_INVALID_TOKEN;
+            }
+            XML_TOK_INVALID => {
+                write_copy(event_pp, next);
+                return XML_ERROR_INVALID_TOKEN;
+            }
+            XML_TOK_PARTIAL_CHAR => {
+                if haveMore != 0 {
+                    write_copy(nextPtr, s);
+                    return XML_ERROR_NONE;
                 }
-                XML_TOK_PARTIAL_CHAR => {
-                    if haveMore != 0 {
-                        *nextPtr = s;
-                        return XML_ERROR_NONE;
-                    }
-                    return XML_ERROR_PARTIAL_CHAR;
+                return XML_ERROR_PARTIAL_CHAR;
+            }
+            XML_TOK_PARTIAL | XML_TOK_NONE => {
+                if haveMore != 0 {
+                    write_copy(nextPtr, s);
+                    return XML_ERROR_NONE;
                 }
-                XML_TOK_PARTIAL | XML_TOK_NONE => {
-                    if haveMore != 0 {
-                        *nextPtr = s;
-                        return XML_ERROR_NONE;
-                    }
-                    return XML_ERROR_UNCLOSED_CDATA_SECTION;
-                }
-                _ => {
-                    *eventPP = next;
+                return XML_ERROR_UNCLOSED_CDATA_SECTION;
+            }
+            _ => {
+                write_copy(event_pp, next);
+                return XML_ERROR_UNEXPECTED_STATE;
+            }
+        }
+        match ptr_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+            3 => {
+                write_copy(event_pp, next);
+                write_copy(nextPtr, next);
+                return XML_ERROR_NONE;
+            }
+            2 => {
+                write_copy(event_pp, next);
+                return XML_ERROR_ABORTED;
+            }
+            1 => {
+                if ptr_ref(parser).m_reenter != 0 {
                     return XML_ERROR_UNEXPECTED_STATE;
                 }
             }
-            match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-                3 => {
-                    *eventPP = next;
-                    *nextPtr = next;
-                    return XML_ERROR_NONE;
-                }
-                2 => {
-                    *eventPP = next;
-                    return XML_ERROR_ABORTED;
-                }
-                1 => {
-                    if (*parser).m_reenter != 0 {
-                        return XML_ERROR_UNEXPECTED_STATE;
-                    }
-                }
-                _ => {}
-            }
-            s = next;
-            *eventPP = s;
+            _ => {}
         }
+        s = next;
+        write_copy(event_pp, s);
     }
 }
 extern "C" fn ignoreSectionProcessor(
@@ -6033,34 +6027,31 @@ extern "C" fn ignoreSectionProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut result: XML_Error = doIgnoreSection(
-            parser,
-            (*parser).m_encoding,
-            &raw mut start,
-            end,
-            endPtr,
-            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
-        );
-        if result as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result;
-        }
-        if !start.is_null() {
-            (*parser).m_processor = Some(
-                prologProcessor
-                    as extern "C" fn(
-                        XML_Parser,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> XML_Error,
-            );
-            return prologProcessor(parser, start, end, endPtr);
-        }
+    let result = doIgnoreSection(
+        parser,
+        ptr_ref(parser).m_encoding,
+        &raw mut start,
+        end,
+        endPtr,
+        (ptr_ref(parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
+    );
+    if result as ::core::ffi::c_uint != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
         return result;
     }
+    if !start.is_null() {
+        ptr_mut(parser).m_processor = Some(
+            prologProcessor
+                as extern "C" fn(
+                    XML_Parser,
+                    *const ::core::ffi::c_char,
+                    *const ::core::ffi::c_char,
+                    *mut *const ::core::ffi::c_char,
+                ) -> XML_Error,
+        );
+        return prologProcessor(parser, start, end, endPtr);
+    }
+    result
 }
 extern "C" fn doIgnoreSection(
     mut parser: XML_Parser,
@@ -6070,81 +6061,65 @@ extern "C" fn doIgnoreSection(
     mut nextPtr: *mut *const ::core::ffi::c_char,
     mut haveMore: XML_Bool,
 ) -> XML_Error {
-    unsafe {
-        let mut next: *const ::core::ffi::c_char = *startPtr;
-        let mut tok: ::core::ffi::c_int = 0;
-        let mut s: *const ::core::ffi::c_char = *startPtr;
-        let mut eventPP: *mut *const ::core::ffi::c_char =
-            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-        let mut eventEndPP: *mut *const ::core::ffi::c_char =
-            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-        if enc == (*parser).m_encoding {
-            eventPP = &raw mut (*parser).m_eventPtr;
-            *eventPP = s;
-            eventEndPP = &raw mut (*parser).m_eventEndPtr;
-        } else {
-            eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-            eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
+    let mut next = *ptr_ref(startPtr);
+    let s = *ptr_ref(startPtr);
+    let (event_pp, event_end_pp) = active_event_pointer_slots(parser, enc);
+
+    write_copy(event_pp, s);
+    write_copy(startPtr, ::core::ptr::null::<::core::ffi::c_char>());
+    let tok = call_scanner(ptr_ref(enc).scanners[3], enc, s, end, &raw mut next);
+    if accountingDiffTolerated(
+        ptr_mut(parser),
+        tok,
+        s,
+        next,
+        4778 as ::core::ffi::c_int,
+        XML_ACCOUNT_DIRECT,
+    ) == 0
+    {
+        accountingOnAbort(ptr_mut(parser));
+        return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+    }
+    write_copy(event_end_pp, next);
+    match tok {
+        XML_TOK_IGNORE_SECT => {
+            if ptr_ref(parser).m_defaultHandler.is_some() {
+                reportDefault(parser, enc, s, next);
+            }
+            write_copy(startPtr, next);
+            write_copy(nextPtr, next);
+            if ptr_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                XML_ERROR_ABORTED
+            } else {
+                XML_ERROR_NONE
+            }
         }
-        *eventPP = s;
-        *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        tok = (*enc).scanners[3 as ::core::ffi::c_int as usize].expect("non-null function pointer")(
-            enc,
-            s,
-            end,
-            &raw mut next,
-        );
-        if accountingDiffTolerated(
-            &mut *parser,
-            tok,
-            s,
-            next,
-            4778 as ::core::ffi::c_int,
-            XML_ACCOUNT_DIRECT,
-        ) == 0
-        {
-            accountingOnAbort(&mut *parser);
-            return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+        XML_TOK_INVALID => {
+            write_copy(event_pp, next);
+            XML_ERROR_INVALID_TOKEN
         }
-        *eventEndPP = next;
-        match tok {
-            XML_TOK_IGNORE_SECT => {
-                if (*parser).m_defaultHandler.is_some() {
-                    reportDefault(parser, enc, s, next);
-                }
-                *startPtr = next;
-                *nextPtr = next;
-                if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                    == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return XML_ERROR_ABORTED;
-                } else {
-                    return XML_ERROR_NONE;
-                }
+        XML_TOK_PARTIAL_CHAR => {
+            if haveMore != 0 {
+                write_copy(nextPtr, s);
+                XML_ERROR_NONE
+            } else {
+                XML_ERROR_PARTIAL_CHAR
             }
-            XML_TOK_INVALID => {
-                *eventPP = next;
-                return XML_ERROR_INVALID_TOKEN;
+        }
+        XML_TOK_PARTIAL | XML_TOK_NONE => {
+            if haveMore != 0 {
+                write_copy(nextPtr, s);
+                XML_ERROR_NONE
+            } else {
+                XML_ERROR_SYNTAX
             }
-            XML_TOK_PARTIAL_CHAR => {
-                if haveMore != 0 {
-                    *nextPtr = s;
-                    return XML_ERROR_NONE;
-                }
-                return XML_ERROR_PARTIAL_CHAR;
-            }
-            XML_TOK_PARTIAL | XML_TOK_NONE => {
-                if haveMore != 0 {
-                    *nextPtr = s;
-                    return XML_ERROR_NONE;
-                }
-                return XML_ERROR_SYNTAX;
-            }
-            _ => {
-                *eventPP = next;
-                return XML_ERROR_UNEXPECTED_STATE;
-            }
-        };
+        }
+        _ => {
+            write_copy(event_pp, next);
+            XML_ERROR_UNEXPECTED_STATE
+        }
     }
 }
 extern "C" fn initializeEncoding(mut parser: XML_Parser) -> XML_Error {
@@ -10314,6 +10289,25 @@ fn ptr_mut<'a, T>(ptr: *mut T) -> &'a mut T {
 
 fn write_copy<T>(ptr: *mut T, value: T) {
     *ptr_mut(ptr) = value;
+}
+
+fn active_event_pointer_slots(
+    parser: XML_Parser,
+    enc: *const ENCODING,
+) -> (
+    *mut *const ::core::ffi::c_char,
+    *mut *const ::core::ffi::c_char,
+) {
+    if enc == ptr_ref(parser).m_encoding {
+        let parser = ptr_mut(parser);
+        (&raw mut parser.m_eventPtr, &raw mut parser.m_eventEndPtr)
+    } else {
+        let open_internal_entity = ptr_mut(ptr_ref(parser).m_openInternalEntities);
+        (
+            &raw mut open_internal_entity.internalEventPtr,
+            &raw mut open_internal_entity.internalEventEndPtr,
+        )
+    }
 }
 
 fn add_const_c_char(ptr: *const ::core::ffi::c_char, offset: isize) -> *const ::core::ffi::c_char {
