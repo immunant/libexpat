@@ -1495,6 +1495,41 @@ pub struct binding {
     pub uriLen: ::core::ffi::c_int,
     pub uriAlloc: ::core::ffi::c_int,
 }
+
+impl binding {
+    fn prefix_name(&self) -> *const crate::expat_external_h::XML_Char {
+        unsafe { (*self.prefix).name }
+    }
+
+    fn restore_prefix_binding(&mut self) {
+        unsafe {
+            (*self.prefix).binding = self.prevPrefixBinding as *mut BINDING;
+        }
+    }
+}
+
+struct BindingList {
+    next: *mut BINDING,
+}
+
+impl BindingList {
+    fn new(next: *mut BINDING) -> Self {
+        Self { next }
+    }
+
+    fn next_binding(&mut self) -> Option<&mut BINDING> {
+        if self.next.is_null() {
+            return None;
+        }
+
+        unsafe {
+            let binding = &mut *self.next;
+            self.next = binding.nextTagBinding as *mut BINDING;
+            Some(binding)
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -1709,6 +1744,17 @@ fn with_parser_mut<R>(
 }
 
 impl XML_ParserStruct {
+    fn call_end_namespace_decl_handler(
+        &self,
+        prefix_name: *const crate::expat_external_h::XML_Char,
+    ) {
+        if let Some(end_namespace_decl_handler) = self.m_endNamespaceDeclHandler {
+            unsafe {
+                end_namespace_decl_handler(self.m_handlerArg, prefix_name);
+            }
+        }
+    }
+
     fn root_parser_with_level(&mut self) -> (crate::expat_h::XML_Parser, ::core::ffi::c_uint) {
         let mut rootParser: crate::expat_h::XML_Parser = self;
         let mut stepsTakenUpwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
@@ -5782,7 +5828,7 @@ unsafe extern "C" fn doContent(
                 if result_1 as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
-                    freeBindings(parser, bindings);
+                    free_bindings(&mut *parser, bindings);
                     return result_1;
                 }
                 (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
@@ -5812,7 +5858,7 @@ unsafe extern "C" fn doContent(
                     reportDefault(parser, enc, s, next);
                 }
                 poolClear(&mut (*parser).m_tempPool);
-                freeBindings(parser, bindings);
+                free_bindings(&mut *parser, bindings);
                 if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
                     && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
                         != crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -6168,23 +6214,13 @@ unsafe extern "C" fn doContent(
     }
 }
 
-unsafe extern "C" fn freeBindings(
-    mut parser: crate::expat_h::XML_Parser,
-    mut bindings: *mut BINDING,
-) {
-    while !bindings.is_null() {
-        let mut b: *mut BINDING = bindings;
-        if (*parser).m_endNamespaceDeclHandler.is_some() {
-            (*parser)
-                .m_endNamespaceDeclHandler
-                .expect("non-null function pointer")(
-                (*parser).m_handlerArg, (*(*b).prefix).name
-            );
-        }
-        bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-        (*parser).m_freeBindingList = b;
-        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+fn free_bindings(parser: &mut XML_ParserStruct, bindings: *mut BINDING) {
+    let mut bindings = BindingList::new(bindings);
+    while let Some(binding) = bindings.next_binding() {
+        parser.call_end_namespace_decl_handler(binding.prefix_name());
+        binding.nextTagBinding = parser.m_freeBindingList as *mut binding;
+        parser.m_freeBindingList = binding;
+        binding.restore_prefix_binding();
     }
 }
 
