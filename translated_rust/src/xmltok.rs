@@ -246,6 +246,81 @@ pub enum Utf16Converter {
     Big2,
     Unknown,
 }
+
+/// The tokenizer has exactly three public-identifier scanners.  Keeping the
+/// selection as data avoids retaining an internal C callback in every
+/// encoding table.
+#[derive(Copy, Clone)]
+pub enum PublicIdChecker {
+    Normal,
+    Little2,
+    Big2,
+}
+
+fn public_id_bad_offset(
+    bytes: &[u8],
+    byte_types: &[::core::ffi::c_uchar; 256],
+    checker: PublicIdChecker,
+) -> Option<usize> {
+    let width = match checker {
+        PublicIdChecker::Normal => 1,
+        PublicIdChecker::Little2 | PublicIdChecker::Big2 => 2,
+    };
+    for (offset, code_unit) in bytes.chunks_exact(width).enumerate() {
+        let (character, byte_type) = match checker {
+            PublicIdChecker::Normal => (Some(code_unit[0]), byte_types[code_unit[0] as usize]),
+            PublicIdChecker::Little2 => {
+                let (low, high) = (code_unit[0], code_unit[1]);
+                (
+                    (high == 0).then_some(low),
+                    if high == 0 {
+                        byte_types[low as usize]
+                    } else {
+                        unicode_byte_type(high as ::core::ffi::c_char, low as ::core::ffi::c_char)
+                            as ::core::ffi::c_uchar
+                    },
+                )
+            }
+            PublicIdChecker::Big2 => {
+                let (high, low) = (code_unit[0], code_unit[1]);
+                (
+                    (high == 0).then_some(low),
+                    if high == 0 {
+                        byte_types[low as usize]
+                    } else {
+                        unicode_byte_type(high as ::core::ffi::c_char, low as ::core::ffi::c_char)
+                            as ::core::ffi::c_uchar
+                    },
+                )
+            }
+        };
+        let valid = match byte_type as ::core::ffi::c_int {
+            25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
+            | 30 | 19 | 23 => true,
+            21 => character != Some(b'\t'),
+            26 | 22 if character.is_some_and(|byte| byte & !0x7f == 0) => true,
+            _ => matches!(character, Some(b'$' | b'@')),
+        };
+        if !valid {
+            return Some(offset * width);
+        }
+    }
+    None
+}
+
+pub unsafe fn check_public_id(
+    checker: PublicIdChecker,
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    bad_ptr: *mut *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    match checker {
+        PublicIdChecker::Normal => xmltok_impl_c::normal_isPublicId(enc, ptr, end, bad_ptr),
+        PublicIdChecker::Little2 => xmltok_impl_c::little2_isPublicId(enc, ptr, end, bad_ptr),
+        PublicIdChecker::Big2 => xmltok_impl_c::big2_isPublicId(enc, ptr, end, bad_ptr),
+    }
+}
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -301,14 +376,7 @@ pub struct encoding {
             *mut crate::src::xmltok::POSITION,
         ) -> (),
     >,
-    pub isPublicId: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub isPublicId: crate::src::xmltok::PublicIdChecker,
     pub utf8Convert: crate::src::xmltok::Utf8Converter,
     /// Selects the fixed UTF-16 converter without retaining a raw callback.
     pub utf16Convert: crate::src::xmltok::Utf16Converter,
@@ -3925,48 +3993,29 @@ pub mod xmltok_impl_c {
     }
 
     pub unsafe extern "C" fn normal_isPublicId(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut badPtr: *mut *const ::core::ffi::c_char,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        badPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        end = end.offset(-(1 as ::core::ffi::c_int as isize));
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize {
-            's_85: {
-                match (*(enc as *const normal_encoding)).type_0
-                    [*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                {
-                    25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16
-                    | 33 | 30 | 19 | 23 => {
-                        break 's_85;
-                    }
-                    21 => {
-                        if *ptr as ::core::ffi::c_int == 0x9 as ::core::ffi::c_int {
-                            *badPtr = ptr;
-                            return 0 as ::core::ffi::c_int;
-                        }
-                        break 's_85;
-                    }
-                    26 | 22 => {
-                        if *ptr as ::core::ffi::c_int & !(0x7f as ::core::ffi::c_int) == 0 {
-                            break 's_85;
-                        }
-                    }
-                    _ => {}
-                }
-                match *ptr as ::core::ffi::c_int {
-                    36 | 64 => {}
-                    _ => {
-                        *badPtr = ptr;
-                        return 0 as ::core::ffi::c_int;
-                    }
-                }
-            }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+        let span_len = end.offset_from(ptr);
+        if span_len < 2 {
+            return 1;
         }
-        return 1 as ::core::ffi::c_int;
+        let contents = ::core::slice::from_raw_parts(
+            ptr.add(1).cast::<u8>(),
+            (span_len - 2) as usize,
+        );
+        let byte_types = &(*(enc as *const normal_encoding)).type_0;
+        if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
+            contents,
+            byte_types,
+            crate::src::xmltok::PublicIdChecker::Normal,
+        ) {
+            *badPtr = ptr.add(1 + offset);
+            return 0;
+        }
+        1
     }
 
     pub unsafe extern "C" fn normal_getAtts(
@@ -7730,65 +7779,29 @@ pub mod xmltok_impl_c {
     }
 
     pub unsafe extern "C" fn little2_isPublicId(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut badPtr: *mut *const ::core::ffi::c_char,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        badPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        end = end.offset(-(2 as ::core::ffi::c_int as isize));
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            's_85: {
-                match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                } {
-                    25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16
-                    | 33 | 30 | 19 | 23 => {
-                        break 's_85;
-                    }
-                    21 => {
-                        if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                == 0x9 as ::core::ffi::c_int
-                        {
-                            *badPtr = ptr;
-                            return 0 as ::core::ffi::c_int;
-                        }
-                        break 's_85;
-                    }
-                    26 | 22 => {
-                        if (if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            *ptr.offset(0 as isize) as ::core::ffi::c_int
-                        } else {
-                            -1 as ::core::ffi::c_int
-                        }) & !(0x7f as ::core::ffi::c_int)
-                            == 0
-                        {
-                            break 's_85;
-                        }
-                    }
-                    _ => {}
-                }
-                match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    *ptr.offset(0 as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                } {
-                    36 | 64 => {}
-                    _ => {
-                        *badPtr = ptr;
-                        return 0 as ::core::ffi::c_int;
-                    }
-                }
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+        let span_len = end.offset_from(ptr);
+        if span_len < 4 {
+            return 1;
         }
-        return 1 as ::core::ffi::c_int;
+        let contents = ::core::slice::from_raw_parts(
+            ptr.add(2).cast::<u8>(),
+            (span_len - 4) as usize,
+        );
+        let byte_types = &(*(enc as *const normal_encoding)).type_0;
+        if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
+            contents,
+            byte_types,
+            crate::src::xmltok::PublicIdChecker::Little2,
+        ) {
+            *badPtr = ptr.add(2 + offset);
+            return 0;
+        }
+        1
     }
 
     pub unsafe extern "C" fn little2_getAtts(
@@ -11741,67 +11754,29 @@ pub mod xmltok_impl_c {
     }
 
     pub unsafe extern "C" fn big2_isPublicId(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut badPtr: *mut *const ::core::ffi::c_char,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        badPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        end = end.offset(-(2 as ::core::ffi::c_int as isize));
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            's_85: {
-                match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                } {
-                    25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16
-                    | 33 | 30 | 19 | 23 => {
-                        break 's_85;
-                    }
-                    21 => {
-                        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0x9 as ::core::ffi::c_int
-                        {
-                            *badPtr = ptr;
-                            return 0 as ::core::ffi::c_int;
-                        }
-                        break 's_85;
-                    }
-                    26 | 22 => {
-                        if (if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            *ptr.offset(1 as isize) as ::core::ffi::c_int
-                        } else {
-                            -1 as ::core::ffi::c_int
-                        }) & !(0x7f as ::core::ffi::c_int)
-                            == 0
-                        {
-                            break 's_85;
-                        }
-                    }
-                    _ => {}
-                }
-                match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    *ptr.offset(1 as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                } {
-                    36 | 64 => {}
-                    _ => {
-                        *badPtr = ptr;
-                        return 0 as ::core::ffi::c_int;
-                    }
-                }
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+        let span_len = end.offset_from(ptr);
+        if span_len < 4 {
+            return 1;
         }
-        return 1 as ::core::ffi::c_int;
+        let contents = ::core::slice::from_raw_parts(
+            ptr.add(2).cast::<u8>(),
+            (span_len - 4) as usize,
+        );
+        let byte_types = &(*(enc as *const normal_encoding)).type_0;
+        if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
+            contents,
+            byte_types,
+            crate::src::xmltok::PublicIdChecker::Big2,
+        ) {
+            *badPtr = ptr.add(2 + offset);
+            return 0;
+        }
+        1
     }
 
     pub unsafe extern "C" fn big2_getAtts(
@@ -14510,15 +14485,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
         utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -14964,15 +14931,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
         utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -15418,15 +15377,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
         utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -15872,15 +15823,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
         utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -16387,15 +16330,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Latin1,
         utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -16787,15 +16722,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Latin1,
         utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -17208,15 +17135,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Ascii,
         utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -17608,15 +17527,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            normal_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Ascii,
         utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
@@ -17892,9 +17803,9 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-unsafe extern "C" fn unicode_byte_type(
-    mut hi: ::core::ffi::c_char,
-    mut lo: ::core::ffi::c_char,
+fn unicode_byte_type(
+    hi: ::core::ffi::c_char,
+    lo: ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     match hi as ::core::ffi::c_uchar as ::core::ffi::c_int {
         216 | 217 | 218 | 219 => return crate::xmltok_impl_h::BT_LEAD4 as ::core::ffi::c_int,
@@ -18356,15 +18267,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            little2_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
         utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
@@ -18756,15 +18659,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            little2_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
         utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
@@ -19156,15 +19051,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            little2_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
         utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
@@ -19556,15 +19443,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            little2_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
         utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
@@ -19956,15 +19835,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            big2_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Big2,
         utf8Convert: Utf8Converter::Big2,
         utf16Convert: Utf16Converter::Big2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
@@ -20356,15 +20227,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
                     *mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
-        isPublicId: Some(
-            big2_isPublicId
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isPublicId: PublicIdChecker::Big2,
         utf8Convert: Utf8Converter::Big2,
         utf16Convert: Utf16Converter::Big2,
         minBytesPerChar: 2 as ::core::ffi::c_int,

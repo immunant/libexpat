@@ -7965,8 +7965,8 @@ unsafe extern "C" fn doProlog(
                                                 ::core::ptr::null_mut::<
                                                     crate::expat_external_h::XML_Char,
                                                 >();
-                                            if (*enc).isPublicId.expect("non-null function pointer")(
-                                                enc, s, next, eventPP,
+                                            if crate::src::xmltok::check_public_id(
+                                                (*enc).isPublicId, enc, s, next, eventPP,
                                             ) == 0
                                             {
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
@@ -8750,8 +8750,8 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     21 => {
-                                        if (*enc).isPublicId.expect("non-null function pointer")(
-                                            enc, s, next, eventPP,
+                                        if crate::src::xmltok::check_public_id(
+                                            (*enc).isPublicId, enc, s, next, eventPP,
                                         ) == 0
                                         {
                                             return crate::expat_h::XML_ERROR_PUBLICID;
@@ -9344,8 +9344,8 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                 }
-                                if (*enc).isPublicId.expect("non-null function pointer")(
-                                    enc, s, next, eventPP,
+                                if crate::src::xmltok::check_public_id(
+                                    (*enc).isPublicId, enc, s, next, eventPP,
                                 ) == 0
                                 {
                                     return crate::expat_h::XML_ERROR_PUBLICID;
