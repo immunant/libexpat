@@ -5938,23 +5938,16 @@ pub mod xmltok_impl_c {
         (-crate::src::xmltok::XML_TOK_POUND_NAME_1, None)
     }
 
-    pub unsafe extern "C" fn little2_scanPoundName(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let (token, next) = little2_scan_pound_name_impl(normal, input);
-        if let Some(offset) = next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        token
+    /// Scans a UTF-16LE pound-name from a validated bounded input.
+    ///
+    /// The scanner reports the next cursor as an offset.  Boundary code that
+    /// needs a C pointer is responsible for validating its input range and
+    /// translating this offset after the scan completes.
+    pub fn little2_scanPoundName(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        little2_scan_pound_name_impl(enc, input)
     }
 
     /// Scans a UTF-16LE literal using offsets into a bounded input slice.
