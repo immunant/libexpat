@@ -2554,7 +2554,7 @@ where
 trait UnparsedEntityDeclCallback: Send + Sync + std::any::Any {}
 
 impl UnparsedEntityDeclCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
@@ -2639,14 +2639,13 @@ struct UnparsedEntityDeclCallbackInvocation<'a> {
 }
 
 /// Converts the erased unparsed-entity declaration callback into the typed
-/// dispatch used by parser code.  This is the sole unsafe ABI call site for
-/// this handler family.
+/// dispatch used by parser code.
 fn unparsed_entity_decl_callback_adapter(
     callback: std::sync::Arc<dyn UnparsedEntityDeclCallback>,
 ) -> std::sync::Arc<dyn for<'a> Fn(UnparsedEntityDeclCallbackInvocation<'a>) + Send + Sync> {
     std::sync::Arc::new(move |invocation: UnparsedEntityDeclCallbackInvocation<'_>| {
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *const crate::expat_external_h::XML_Char,
@@ -2684,16 +2683,14 @@ fn unparsed_entity_decl_callback_adapter(
         });
         // The typed invocation keeps the parser context and all DTD strings
         // live for this synchronous foreign callback.
-        unsafe {
-            callback(
-                handler_arg_from_state!(parser),
-                name,
-                base,
-                system_id,
-                public_id,
-                notation,
-            );
-        }
+        callback(
+            handler_arg_from_state!(parser),
+            name,
+            base,
+            system_id,
+            public_id,
+            notation,
+        );
     })
 }
 
@@ -10479,8 +10476,20 @@ pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // C callback pointers are callable after this unsafe ABI boundary; the
+    // internal adapter keeps only the safe callable form.  The exported
+    // signature intentionally remains the translated unsafe callback type.
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    set_unparsed_entity_decl_handler(parser, parser_address, handler)
+    set_unparsed_entity_decl_handler::<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    >(parser, parser_address, unsafe { std::mem::transmute(handler) })
 }
 #[export_name = "XML_SetNotationDeclHandler"]
 
