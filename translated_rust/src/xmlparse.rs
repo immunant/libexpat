@@ -1920,6 +1920,28 @@ enum AttributeAllocationAction {
     Free(::core::ffi::c_int),
 }
 
+// Content-model group separators are parser-owned bytes.  Their backing
+// allocation remains an opaque token so a configured Expat allocator sees
+// the same allocation, growth, and release sequence as the C buffer.
+struct GroupConnectorStorage {
+    values: Vec<::core::ffi::c_char>,
+    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, GroupConnectorAllocationAction) -> bool>>,
+}
+
+enum GroupConnectorAllocationAction {
+    Grow(crate::__stddef_size_t_h::size_t),
+    Free(::core::ffi::c_int),
+}
+
+impl GroupConnectorStorage {
+    fn empty() -> Self {
+        Self {
+            values: Vec::new(),
+            backing: None,
+        }
+    }
+}
+
 impl AttributeStorage {
     fn empty() -> Self {
         Self {
@@ -2102,7 +2124,7 @@ pub struct XML_ParserStruct {
     pub m_position: crate::src::xmltok::POSITION,
     pub m_tempPool: STRING_POOL,
     pub m_temp2Pool: STRING_POOL,
-    pub m_groupConnector: *mut ::core::ffi::c_char,
+    m_groupConnector: GroupConnectorStorage,
     pub m_groupSize: ::core::ffi::c_uint,
     pub m_namespaceSeparator: crate::expat_external_h::XML_Char,
     pub m_parentParser: crate::expat_h::XML_Parser,
@@ -3741,7 +3763,7 @@ fn initial_parser_struct(
         },
         m_tempPool: empty_string_pool(),
         m_temp2Pool: empty_string_pool(),
-        m_groupConnector: ::core::ptr::null_mut::<::core::ffi::c_char>(),
+        m_groupConnector: GroupConnectorStorage::empty(),
         m_groupSize: 0,
         m_namespaceSeparator: crate::ascii_h::ASCII_EXCL as crate::expat_external_h::XML_Char,
         m_parentParser: ::core::ptr::null_mut::<XML_ParserStruct>(),
@@ -3962,7 +3984,7 @@ unsafe extern "C" fn parserCreate(
     parser.m_freeAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_groupSize = 0 as ::core::ffi::c_uint;
-    parser.m_groupConnector = ::core::ptr::null_mut::<::core::ffi::c_char>();
+    parser.m_groupConnector = GroupConnectorStorage::empty();
     parser.m_unknownEncodingHandler = false;
     parser.m_unknownEncodingHandlerData = crate::__stddef_null_h::NULL;
     UNKNOWN_ENCODING_HANDLERS
@@ -5006,11 +5028,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     if let Some(backing) = atts_backing.as_mut() {
         backing(parser, AttributeAllocationAction::Free(2002));
     }
-    expat_free(
-        parser as *mut XML_ParserStruct,
-        parser.m_groupConnector as *mut ::core::ffi::c_void,
-        2006 as ::core::ffi::c_int,
-    );
+    let mut group_connector_backing = parser.m_groupConnector.backing.take();
+    if let Some(backing) = group_connector_backing.as_mut() {
+        backing(parser, GroupConnectorAllocationAction::Free(2006));
+    }
+    parser.m_groupConnector.values = Vec::new();
     if let Some(mut release) = parser.m_buffer.release.take() {
         release();
     }
@@ -12093,6 +12115,10 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     44 => {
+                                        let group_level = match usize::try_from((*parser).m_prologState.level) {
+                                            Ok(level) => level,
+                                            Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
+                                        };
                                         if (*parser).m_prologState.level >= (*parser).m_groupSize {
                                             if (*parser).m_groupSize != 0 {
                                                 if (*parser).m_groupSize
@@ -12102,31 +12128,48 @@ unsafe extern "C" fn doProlog(
                                                 {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
+                                                let old_group_size = (*parser).m_groupSize;
                                                 (*parser).m_groupSize = (*parser)
                                                     .m_groupSize
                                                     .wrapping_mul(2 as ::core::ffi::c_uint);
-                                                let new_connector: *mut ::core::ffi::c_char =
-                                                    expat_realloc(
-                                                        parser,
-                                                        (*parser).m_groupConnector
-                                                            as *mut ::core::ffi::c_void,
-                                                        (*parser).m_groupSize
+                                                let new_group_size = (*parser).m_groupSize as usize;
+                                                let Some(mut backing) = (*parser).m_groupConnector.backing.take() else {
+                                                    (*parser).m_groupSize = old_group_size;
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
+                                                if !backing(
+                                                    &mut *parser,
+                                                    GroupConnectorAllocationAction::Grow(
+                                                        new_group_size
                                                             as crate::__stddef_size_t_h::size_t,
-                                                        5915 as ::core::ffi::c_int,
-                                                    )
-                                                        as *mut ::core::ffi::c_char;
-                                                if new_connector.is_null() {
-                                                    (*parser).m_groupSize = (*parser)
-                                                        .m_groupSize
-                                                        .wrapping_div(2 as ::core::ffi::c_uint);
+                                                    ),
+                                                ) {
+                                                    (*parser).m_groupConnector.backing = Some(backing);
+                                                    (*parser).m_groupSize = old_group_size;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                (*parser).m_groupConnector = new_connector;
+                                                (*parser).m_groupConnector.backing = Some(backing);
+                                                let additional = new_group_size.saturating_sub(
+                                                    (*parser).m_groupConnector.values.len(),
+                                                );
+                                                if (*parser)
+                                                    .m_groupConnector
+                                                    .values
+                                                    .try_reserve_exact(additional)
+                                                    .is_err()
+                                                {
+                                                    (*parser).m_groupSize = old_group_size;
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                }
+                                                (*parser)
+                                                    .m_groupConnector
+                                                    .values
+                                                    .resize(new_group_size, 0);
                                                 let mut scaff_index =
                                                     (*dtd).scaffIndex.lock().unwrap_or_else(
                                                         |poisoned| poisoned.into_inner(),
                                                     );
-                                                let additional = ((*parser).m_groupSize as usize)
+                                                let additional = new_group_size
                                                     .saturating_sub(scaff_index.len());
                                                 if !scaff_index.is_empty()
                                                     && scaff_index
@@ -12140,24 +12183,62 @@ unsafe extern "C" fn doProlog(
                                                 }
                                             } else {
                                                 (*parser).m_groupSize = 32 as ::core::ffi::c_uint;
-                                                (*parser).m_groupConnector = expat_malloc(
+                                                let mut allocation = expat_malloc(
                                                     parser,
                                                     (*parser).m_groupSize
                                                         as crate::__stddef_size_t_h::size_t,
                                                     5944 as ::core::ffi::c_int,
-                                                )
-                                                    as *mut ::core::ffi::c_char;
-                                                if (*parser).m_groupConnector.is_null() {
+                                                );
+                                                if allocation.is_null() {
                                                     (*parser).m_groupSize =
                                                         0 as ::core::ffi::c_uint;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
+                                                let mut backing: Box<dyn FnMut(
+                                                    &mut XML_ParserStruct,
+                                                    GroupConnectorAllocationAction,
+                                                ) -> bool> = Box::new(move |parser, action| match action {
+                                                    GroupConnectorAllocationAction::Grow(size) => {
+                                                        let reallocated = expat_realloc(
+                                                            parser,
+                                                            allocation,
+                                                            size,
+                                                            5915,
+                                                        );
+                                                        if reallocated.is_null() {
+                                                            false
+                                                        } else {
+                                                            allocation = reallocated;
+                                                            true
+                                                        }
+                                                    }
+                                                    GroupConnectorAllocationAction::Free(source_line) => {
+                                                        expat_free(parser, allocation, source_line);
+                                                        true
+                                                    }
+                                                });
+                                                let mut values = Vec::new();
+                                                if values.try_reserve_exact((*parser).m_groupSize as usize).is_err() {
+                                                    backing(
+                                                        &mut *parser,
+                                                        GroupConnectorAllocationAction::Free(5944),
+                                                    );
+                                                    (*parser).m_groupSize = 0;
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                }
+                                                values.resize((*parser).m_groupSize as usize, 0);
+                                                (*parser).m_groupConnector = GroupConnectorStorage {
+                                                    values,
+                                                    backing: Some(backing),
+                                                };
                                             }
                                         }
-                                        *(*parser)
-                                            .m_groupConnector
-                                            .offset((*parser).m_prologState.level as isize) =
-                                            0 as ::core::ffi::c_char;
+                                        let Some(connector) = (&mut (*parser).m_groupConnector.values)
+                                            .get_mut(group_level)
+                                        else {
+                                            return crate::expat_h::XML_ERROR_SYNTAX;
+                                        };
+                                        *connector = 0;
                                         if (*dtd).in_eldecl != 0 {
                                             let mut myindex: ::core::ffi::c_int =
                                                 nextScaffoldPart(parser);
@@ -12198,18 +12279,21 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     50 => {
-                                        if *(*parser)
-                                            .m_groupConnector
-                                            .offset((*parser).m_prologState.level as isize)
-                                            as ::core::ffi::c_int
+                                        let group_level = match usize::try_from((*parser).m_prologState.level) {
+                                            Ok(level) => level,
+                                            Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
+                                        };
+                                        let Some(connector) = (&mut (*parser).m_groupConnector.values)
+                                            .get_mut(group_level)
+                                        else {
+                                            return crate::expat_h::XML_ERROR_SYNTAX;
+                                        };
+                                        if *connector as ::core::ffi::c_int
                                             == crate::ascii_h::ASCII_PIPE
                                         {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         }
-                                        *(*parser)
-                                            .m_groupConnector
-                                            .offset((*parser).m_prologState.level as isize) =
-                                            crate::ascii_h::ASCII_COMMA as ::core::ffi::c_char;
+                                        *connector = crate::ascii_h::ASCII_COMMA as ::core::ffi::c_char;
                                         if (*dtd).in_eldecl as ::core::ffi::c_int != 0
                                             && (*parser).m_elementDeclHandler
                                         {
@@ -12218,19 +12302,24 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     49 => {
-                                        if *(*parser)
-                                            .m_groupConnector
-                                            .offset((*parser).m_prologState.level as isize)
-                                            as ::core::ffi::c_int
+                                        let group_level = match usize::try_from((*parser).m_prologState.level) {
+                                            Ok(level) => level,
+                                            Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
+                                        };
+                                        let connector = match (&(*parser).m_groupConnector.values)
+                                            .get(group_level)
+                                            .copied()
+                                        {
+                                            Some(connector) => connector,
+                                            None => return crate::expat_h::XML_ERROR_SYNTAX,
+                                        };
+                                        if connector as ::core::ffi::c_int
                                             == crate::ascii_h::ASCII_COMMA
                                         {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         }
                                         if (*dtd).in_eldecl as ::core::ffi::c_int != 0
-                                            && *(*parser)
-                                                .m_groupConnector
-                                                .offset((*parser).m_prologState.level as isize)
-                                                == 0
+                                            && connector == 0
                                         {
                                             let parent_index = {
                                                 let scaff_index =
@@ -12267,10 +12356,12 @@ unsafe extern "C" fn doProlog(
                                                 }
                                             }
                                         }
-                                        *(*parser)
-                                            .m_groupConnector
-                                            .offset((*parser).m_prologState.level as isize) =
-                                            crate::ascii_h::ASCII_PIPE as ::core::ffi::c_char;
+                                        let Some(connector) = (&mut (*parser).m_groupConnector.values)
+                                            .get_mut(group_level)
+                                        else {
+                                            return crate::expat_h::XML_ERROR_SYNTAX;
+                                        };
+                                        *connector = crate::ascii_h::ASCII_PIPE as ::core::ffi::c_char;
                                         break 's_2375;
                                     }
                                     60 | 59 => {
