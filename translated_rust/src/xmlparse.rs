@@ -2254,7 +2254,9 @@ pub struct ENTITY {
     pub textLen: ::core::ffi::c_int,
     pub processed: ::core::ffi::c_int,
     pub systemId: *const crate::expat_external_h::XML_Char,
-    pub base: *const crate::expat_external_h::XML_Char,
+    // A base identifier is nullable and, when present, owned by the DTD
+    // string pool.  The entity only borrows it for its lifetime.
+    pub base: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>>,
     pub publicId: *const crate::expat_external_h::XML_Char,
     pub notation: *const crate::expat_external_h::XML_Char,
     pub open: crate::expat_h::XML_Bool,
@@ -7005,7 +7007,9 @@ unsafe extern "C" fn doContent(
                             if handler.invoke(
                                 (*parser).m_externalEntityRefHandlerArg,
                                 context,
-                                (*entity).base,
+                                (*entity).base.map_or(::core::ptr::null(), |base| {
+                                    base.as_ptr() as *const crate::expat_external_h::XML_Char
+                                }),
                                 (*entity).systemId,
                                 (*entity).publicId,
                             ) == 0
@@ -9729,7 +9733,9 @@ unsafe extern "C" fn doProlog(
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
                                                 if (*parser).m_useForeignDTD != 0 {
-                                                    (*entity).base = (*parser).m_curBase;
+                                                    (*entity).base = std::ptr::NonNull::new(
+                                                        (*parser).m_curBase.cast_mut(),
+                                                    );
                                                 }
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
@@ -9745,7 +9751,13 @@ unsafe extern "C" fn doProlog(
                                                         crate::expat_external_h::XML_Char,
                                                     >(
                                                     ),
-                                                    (*entity).base,
+                                                    (*entity).base.map_or(
+                                                        ::core::ptr::null(),
+                                                        |base| {
+                                                            base.as_ptr()
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        },
+                                                    ),
                                                     (*entity).systemId,
                                                     (*entity).publicId,
                                                 ) == 0
@@ -9800,7 +9812,9 @@ unsafe extern "C" fn doProlog(
                                                 if entity_0.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                (*entity_0).base = (*parser).m_curBase;
+                                                (*entity_0).base = std::ptr::NonNull::new(
+                                                    (*parser).m_curBase.cast_mut(),
+                                                );
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                                     .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -9815,7 +9829,13 @@ unsafe extern "C" fn doProlog(
                                                         crate::expat_external_h::XML_Char,
                                                     >(
                                                     ),
-                                                    (*entity_0).base,
+                                                    (*entity_0).base.map_or(
+                                                        ::core::ptr::null(),
+                                                        |base| {
+                                                            base.as_ptr()
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        },
+                                                    ),
                                                     (*entity_0).systemId,
                                                     (*entity_0).publicId,
                                                 ) == 0
@@ -10293,7 +10313,13 @@ unsafe extern "C" fn doProlog(
                                                     >(
                                                     ),
                                                     0 as ::core::ffi::c_int,
-                                                    (*(*parser).m_declEntity).base,
+                                                    (*(*parser).m_declEntity).base.map_or(
+                                                        ::core::ptr::null(),
+                                                        |base| {
+                                                            base.as_ptr()
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        },
+                                                    ),
                                                     (*(*parser).m_declEntity).systemId,
                                                     (*(*parser).m_declEntity).publicId,
                                                     ::core::ptr::null::<
@@ -10333,7 +10359,13 @@ unsafe extern "C" fn doProlog(
                                                 callback.invoke(
                                                     (*parser).m_handlerArg,
                                                     (*(*parser).m_declEntity).name,
-                                                    (*(*parser).m_declEntity).base,
+                                                    (*(*parser).m_declEntity).base.map_or(
+                                                        ::core::ptr::null(),
+                                                        |base| {
+                                                            base.as_ptr()
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        },
+                                                    ),
                                                     (*(*parser).m_declEntity).systemId,
                                                     (*(*parser).m_declEntity).publicId,
                                                     (*(*parser).m_declEntity).notation,
@@ -10363,7 +10395,13 @@ unsafe extern "C" fn doProlog(
                                                         >(
                                                         ),
                                                         0 as ::core::ffi::c_int,
-                                                        (*(*parser).m_declEntity).base,
+                                                        (*(*parser).m_declEntity).base.map_or(
+                                                            ::core::ptr::null(),
+                                                            |base| {
+                                                                base.as_ptr()
+                                                                    as *const crate::expat_external_h::XML_Char
+                                                            },
+                                                        ),
                                                         (*(*parser).m_declEntity).systemId,
                                                         (*(*parser).m_declEntity).publicId,
                                                         (*(*parser).m_declEntity).notation,
@@ -10921,7 +10959,13 @@ unsafe extern "C" fn doProlog(
                                                         crate::expat_external_h::XML_Char,
                                                     >(
                                                     ),
-                                                    (*entity_1).base,
+                                                    (*entity_1).base.map_or(
+                                                        ::core::ptr::null(),
+                                                        |base| {
+                                                            base.as_ptr()
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        },
+                                                    ),
                                                     (*entity_1).systemId,
                                                     (*entity_1).publicId,
                                                 ) == 0
@@ -11166,7 +11210,9 @@ unsafe extern "C" fn doProlog(
                                 if (*(*parser).m_declEntity).systemId.is_null() {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 }
-                                (*(*parser).m_declEntity).base = (*parser).m_curBase;
+                                (*(*parser).m_declEntity).base = std::ptr::NonNull::new(
+                                    (*parser).m_curBase.cast_mut(),
+                                );
                                 (*dtd).pool.start = (*dtd).pool.ptr;
                                 if (*parser).m_entityDeclHandler
                                     && role
@@ -12082,7 +12128,10 @@ unsafe extern "C" fn storeEntityValue(
                                             (*parser).m_externalEntityRefHandlerArg,
                                             ::core::ptr::null::<crate::expat_external_h::XML_Char>(
                                             ),
-                                            (*entity).base,
+                                            (*entity).base.map_or(::core::ptr::null(), |base| {
+                                                base.as_ptr()
+                                                    as *const crate::expat_external_h::XML_Char
+                                            }),
                                             (*entity).systemId,
                                             (*entity).publicId,
                                         ) == 0
@@ -13414,10 +13463,8 @@ unsafe extern "C" fn copyEntityTable(
         table: None,
         next: 0 as crate::__stddef_size_t_h::size_t,
     };
-    let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    let mut cachedNewBase: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    let mut cachedOldBase: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>> = None;
+    let mut cachedNewBase: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>> = None;
     let table = &*oldTable;
     hashTableIterInit(&raw mut iter, table);
     loop {
@@ -13448,16 +13495,21 @@ unsafe extern "C" fn copyEntityTable(
                 return 0 as ::core::ffi::c_int;
             }
             (*newE).systemId = tem;
-            if !(*oldE).base.is_null() {
+            if (*oldE).base.is_some() {
                 if (*oldE).base == cachedOldBase {
                     (*newE).base = cachedNewBase;
                 } else {
                     cachedOldBase = (*oldE).base;
-                    tem = poolCopyString(newPool, cachedOldBase);
+                    tem = poolCopyString(
+                        newPool,
+                        cachedOldBase
+                            .expect("base is present after the non-null check")
+                            .as_ptr() as *const crate::expat_external_h::XML_Char,
+                    );
                     if tem.is_null() {
                         return 0 as ::core::ffi::c_int;
                     }
-                    (*newE).base = tem;
+                    (*newE).base = std::ptr::NonNull::new(tem.cast_mut());
                     cachedNewBase = (*newE).base;
                 }
             }
