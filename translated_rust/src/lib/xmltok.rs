@@ -317,6 +317,56 @@ fn add_mut_c_ushort(ptr: *mut ::core::ffi::c_ushort, offset: isize) -> *mut ::co
     ptr.wrapping_offset(offset)
 }
 
+fn trim_to_complete_utf8_end(
+    from: *const ::core::ffi::c_char,
+    mut from_lim: *const ::core::ffi::c_char,
+) -> *const ::core::ffi::c_char {
+    let mut walked = 0 as size_t;
+
+    while from_lim > from {
+        let prev = read_c_char(add_const_c_char(from_lim, -1)) as ::core::ffi::c_uchar;
+        if prev as ::core::ffi::c_uint & 0xf8 as ::core::ffi::c_uint == 0xf0 as ::core::ffi::c_uint
+        {
+            if walked.wrapping_add(1) >= 4 {
+                from_lim = add_const_c_char(from_lim, 3);
+                break;
+            }
+            walked = 0;
+        } else if prev as ::core::ffi::c_uint & 0xf0 as ::core::ffi::c_uint
+            == 0xe0 as ::core::ffi::c_uint
+        {
+            if walked.wrapping_add(1) >= 3 {
+                from_lim = add_const_c_char(from_lim, 2);
+                break;
+            }
+            walked = 0;
+        } else if prev as ::core::ffi::c_uint & 0xe0 as ::core::ffi::c_uint
+            == 0xc0 as ::core::ffi::c_uint
+        {
+            if walked.wrapping_add(1) >= 2 {
+                from_lim = add_const_c_char(from_lim, 1);
+                break;
+            }
+            walked = 0;
+        } else if prev as ::core::ffi::c_uint & 0x80 as ::core::ffi::c_uint == 0 {
+            break;
+        }
+
+        from_lim = add_const_c_char(from_lim, -1);
+        walked = walked.wrapping_add(1);
+    }
+
+    from_lim
+}
+
+fn even_c_char_boundary(
+    start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> *const ::core::ffi::c_char {
+    let even_len = remaining_const_c_chars(start, end) & !1;
+    add_const_c_char(start, even_len as isize)
+}
+
 fn read_c_char(ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_char {
     read_c_char_bytes::<1>(ptr)[0] as ::core::ffi::c_char
 }
@@ -13869,89 +13919,47 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
     mut from: *const ::core::ffi::c_char,
     mut fromLimRef: *mut *const ::core::ffi::c_char,
 ) {
-    unsafe {
-        let mut fromLim: *const ::core::ffi::c_char = *fromLimRef;
-        let mut walked: size_t = 0 as size_t;
-        while fromLim > from {
-            let prev: ::core::ffi::c_uchar =
-                *fromLim.offset(-(1 as ::core::ffi::c_int) as isize) as ::core::ffi::c_uchar;
-            if prev as ::core::ffi::c_uint & 0xf8 as ::core::ffi::c_uint
-                == 0xf0 as ::core::ffi::c_uint
-            {
-                if walked.wrapping_add(1 as size_t) >= 4 as size_t {
-                    fromLim = fromLim
-                        .offset((4 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                    break;
-                } else {
-                    walked = 0 as size_t;
-                }
-            } else if prev as ::core::ffi::c_uint & 0xf0 as ::core::ffi::c_uint
-                == 0xe0 as ::core::ffi::c_uint
-            {
-                if walked.wrapping_add(1 as size_t) >= 3 as size_t {
-                    fromLim = fromLim
-                        .offset((3 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                    break;
-                } else {
-                    walked = 0 as size_t;
-                }
-            } else if prev as ::core::ffi::c_uint & 0xe0 as ::core::ffi::c_uint
-                == 0xc0 as ::core::ffi::c_uint
-            {
-                if walked.wrapping_add(1 as size_t) >= 2 as size_t {
-                    fromLim = fromLim
-                        .offset((2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                    break;
-                } else {
-                    walked = 0 as size_t;
-                }
-            } else if prev as ::core::ffi::c_uint & 0x80 as ::core::ffi::c_uint
-                == 0 as ::core::ffi::c_uint
-            {
-                break;
-            }
-            fromLim = fromLim.offset(-1);
-            walked = walked.wrapping_add(1);
-        }
-        *fromLimRef = fromLim;
-    }
+    write_copy(
+        fromLimRef,
+        trim_to_complete_utf8_end(from, read_copy(fromLimRef)),
+    );
 }
-unsafe extern "C" fn utf8_toUtf8(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
+extern "C" fn utf8_toUtf8(
+    _enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
     mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    unsafe {
-        let mut input_incomplete: bool = false_0 != 0;
-        let mut output_exhausted: bool = false_0 != 0;
-        let bytesAvailable: ptrdiff_t = fromLim.offset_from(*fromP) as ptrdiff_t;
-        let bytesStorable: ptrdiff_t = toLim.offset_from(*toP) as ptrdiff_t;
-        if bytesAvailable > bytesStorable {
-            fromLim = (*fromP).offset(bytesStorable as isize);
-            output_exhausted = true_0 != 0;
-        }
-        let fromLimBefore: *const ::core::ffi::c_char = fromLim;
-        _INTERNAL_trim_to_complete_utf8_characters(*fromP, &raw mut fromLim);
-        if fromLim < fromLimBefore {
-            input_incomplete = true_0 != 0;
-        }
-        let bytesToCopy: ptrdiff_t = fromLim.offset_from(*fromP) as ptrdiff_t;
-        memcpy(
-            *toP as *mut ::core::ffi::c_void,
-            *fromP as *const ::core::ffi::c_void,
-            bytesToCopy as size_t,
-        );
-        *fromP = (*fromP).offset(bytesToCopy as isize);
-        *toP = (*toP).offset(bytesToCopy as isize);
-        if output_exhausted {
-            return XML_CONVERT_OUTPUT_EXHAUSTED;
-        } else if input_incomplete {
-            return XML_CONVERT_INPUT_INCOMPLETE;
-        } else {
-            return XML_CONVERT_COMPLETED;
-        };
+    let from = read_copy(fromP);
+    let to = read_copy(toP);
+    let mut input_incomplete = false_0 != 0;
+    let mut output_exhausted = false_0 != 0;
+    let bytes_available = remaining_const_c_chars(from, fromLim);
+    let bytes_storable = remaining_c_chars(to, toLim);
+
+    if bytes_available > bytes_storable {
+        fromLim = add_const_c_char(from, bytes_storable as isize);
+        output_exhausted = true_0 != 0;
+    }
+
+    let from_lim_before = fromLim;
+    fromLim = trim_to_complete_utf8_end(from, fromLim);
+    if fromLim < from_lim_before {
+        input_incomplete = true_0 != 0;
+    }
+
+    let bytes_to_copy = remaining_const_c_chars(from, fromLim);
+    copy_c_chars(to, from, bytes_to_copy);
+    write_copy(fromP, add_const_c_char(from, bytes_to_copy as isize));
+    write_copy(toP, add_mut_c_char(to, bytes_to_copy as isize));
+
+    if output_exhausted {
+        XML_CONVERT_OUTPUT_EXHAUSTED
+    } else if input_incomplete {
+        XML_CONVERT_INPUT_INCOMPLETE
+    } else {
+        XML_CONVERT_COMPLETED
     }
 }
 unsafe extern "C" fn utf8_toUtf16(
@@ -15813,68 +15821,74 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
         isInvalid4: Some(utf8_isInvalid4),
     }
 };
-unsafe extern "C" fn latin1_toUtf8(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+extern "C" fn latin1_toUtf8(
+    _enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    unsafe {
-        loop {
-            let mut c: ::core::ffi::c_uchar = 0;
-            if *fromP == fromLim {
-                return XML_CONVERT_COMPLETED;
+    loop {
+        let from = read_copy(fromP);
+        if from == fromLim {
+            return XML_CONVERT_COMPLETED;
+        }
+
+        let c = read_c_char(from) as ::core::ffi::c_uchar;
+        let to = read_copy(toP);
+        if c as ::core::ffi::c_int & 0x80 as ::core::ffi::c_int != 0 {
+            if remaining_c_chars(to, toLim) < 2 {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
-            c = **fromP as ::core::ffi::c_uchar;
-            if c as ::core::ffi::c_int & 0x80 as ::core::ffi::c_int != 0 {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                let c2rust_fresh6 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh6 = (c as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                    | UTF8_cval2 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh7 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh7 = (c as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                *fromP = (*fromP).offset(1);
-            } else {
-                if *toP == toLim as *mut ::core::ffi::c_char {
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                let c2rust_fresh8 = *fromP;
-                *fromP = (*fromP).offset(1);
-                let c2rust_fresh9 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh9 = *c2rust_fresh8;
+
+            write_copy(
+                to,
+                (c as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
+                    | UTF8_cval2 as ::core::ffi::c_int) as ::core::ffi::c_char,
+            );
+            write_copy(
+                add_mut_c_char(to, 1),
+                (c as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int)
+                    as ::core::ffi::c_char,
+            );
+            write_copy(fromP, add_const_c_char(from, 1));
+            write_copy(toP, add_mut_c_char(to, 2));
+        } else {
+            if to == toLim as *mut ::core::ffi::c_char {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
             }
+
+            write_copy(to, read_c_char(from));
+            write_copy(fromP, add_const_c_char(from, 1));
+            write_copy(toP, add_mut_c_char(to, 1));
         }
     }
 }
-unsafe extern "C" fn latin1_toUtf16(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+extern "C" fn latin1_toUtf16(
+    _enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> XML_Convert_Result {
-    unsafe {
-        while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-            let c2rust_fresh4 = *fromP;
-            *fromP = (*fromP).offset(1);
-            let c2rust_fresh5 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh5 = *c2rust_fresh4 as ::core::ffi::c_uchar as ::core::ffi::c_ushort;
-        }
-        if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-            return XML_CONVERT_OUTPUT_EXHAUSTED;
-        } else {
-            return XML_CONVERT_COMPLETED;
-        };
+    let mut from = read_copy(fromP);
+    let mut to = read_copy(toP);
+
+    while from < fromLim && to < toLim as *mut ::core::ffi::c_ushort {
+        write_copy(
+            to,
+            read_c_char(from) as ::core::ffi::c_uchar as ::core::ffi::c_ushort,
+        );
+        from = add_const_c_char(from, 1);
+        to = add_mut_c_ushort(to, 1);
+    }
+
+    write_copy(fromP, from);
+    write_copy(toP, to);
+    if to == toLim as *mut ::core::ffi::c_ushort && from < fromLim {
+        XML_CONVERT_OUTPUT_EXHAUSTED
+    } else {
+        XML_CONVERT_COMPLETED
     }
 }
 static mut latin1_encoding_ns: normal_encoding = unsafe {
@@ -16715,26 +16729,28 @@ static mut latin1_encoding: normal_encoding = unsafe {
         isInvalid4: None,
     }
 };
-unsafe extern "C" fn ascii_toUtf8(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+extern "C" fn ascii_toUtf8(
+    _enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    unsafe {
-        while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_char {
-            let c2rust_fresh56 = *fromP;
-            *fromP = (*fromP).offset(1);
-            let c2rust_fresh57 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh57 = *c2rust_fresh56;
-        }
-        if *toP == toLim as *mut ::core::ffi::c_char && *fromP < fromLim {
-            return XML_CONVERT_OUTPUT_EXHAUSTED;
-        } else {
-            return XML_CONVERT_COMPLETED;
-        };
+    let mut from = read_copy(fromP);
+    let mut to = read_copy(toP);
+
+    while from < fromLim && to < toLim as *mut ::core::ffi::c_char {
+        write_copy(to, read_c_char(from));
+        from = add_const_c_char(from, 1);
+        to = add_mut_c_char(to, 1);
+    }
+
+    write_copy(fromP, from);
+    write_copy(toP, to);
+    if to == toLim as *mut ::core::ffi::c_char && from < fromLim {
+        XML_CONVERT_OUTPUT_EXHAUSTED
+    } else {
+        XML_CONVERT_COMPLETED
     }
 }
 static mut ascii_encoding_ns: normal_encoding = unsafe {
@@ -17727,46 +17743,42 @@ unsafe extern "C" fn little2_toUtf8(
         };
     }
 }
-unsafe extern "C" fn little2_toUtf16(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
+extern "C" fn little2_toUtf16(
+    _enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
     mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> XML_Convert_Result {
-    unsafe {
-        let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
-        fromLim = (*fromP).offset(
-            ((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-                << 1 as ::core::ffi::c_int) as isize,
-        );
-        if fromLim.offset_from(*fromP) as ::core::ffi::c_long
-            > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1 as ::core::ffi::c_int
-            && *fromLim
-                .offset(-(2 as ::core::ffi::c_int as isize))
-                .offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int
-                & 0xf8 as ::core::ffi::c_int
-                == 0xd8 as ::core::ffi::c_int
-        {
-            fromLim = fromLim.offset(-(2 as ::core::ffi::c_int as isize));
-            res = XML_CONVERT_INPUT_INCOMPLETE;
-        }
-        while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-            let c2rust_fresh18 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh18 = ((*(*fromP).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_uchar as ::core::ffi::c_int)
-                << 8 as ::core::ffi::c_int
-                | *(*fromP).offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                    as ::core::ffi::c_int) as ::core::ffi::c_ushort;
-            *fromP = (*fromP).offset(2 as ::core::ffi::c_int as isize);
-        }
-        if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-            return XML_CONVERT_OUTPUT_EXHAUSTED;
-        } else {
-            return res;
-        };
+    let mut res = XML_CONVERT_COMPLETED;
+    let mut from = read_copy(fromP);
+    let mut to = read_copy(toP);
+
+    fromLim = even_c_char_boundary(from, fromLim);
+    if remaining_const_c_chars(from, fromLim) > remaining_c_ushorts(to, toLim) << 1
+        && read_c_char(add_const_c_char(fromLim, -1)) as ::core::ffi::c_uchar as ::core::ffi::c_int
+            & 0xf8 as ::core::ffi::c_int
+            == 0xd8 as ::core::ffi::c_int
+    {
+        fromLim = add_const_c_char(fromLim, -2);
+        res = XML_CONVERT_INPUT_INCOMPLETE;
+    }
+
+    while from < fromLim && to < toLim as *mut ::core::ffi::c_ushort {
+        let low = read_c_char(from) as ::core::ffi::c_uchar as ::core::ffi::c_int;
+        let high =
+            read_c_char(add_const_c_char(from, 1)) as ::core::ffi::c_uchar as ::core::ffi::c_int;
+        write_copy(to, ((high << 8) | low) as ::core::ffi::c_ushort);
+        from = add_const_c_char(from, 2);
+        to = add_mut_c_ushort(to, 1);
+    }
+
+    write_copy(fromP, from);
+    write_copy(toP, to);
+    if to == toLim as *mut ::core::ffi::c_ushort && from < fromLim {
+        XML_CONVERT_OUTPUT_EXHAUSTED
+    } else {
+        res
     }
 }
 unsafe extern "C" fn big2_toUtf8(
@@ -17910,46 +17922,42 @@ unsafe extern "C" fn big2_toUtf8(
         };
     }
 }
-unsafe extern "C" fn big2_toUtf16(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
+extern "C" fn big2_toUtf16(
+    _enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
     mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> XML_Convert_Result {
-    unsafe {
-        let mut res: XML_Convert_Result = XML_CONVERT_COMPLETED;
-        fromLim = (*fromP).offset(
-            ((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-                << 1 as ::core::ffi::c_int) as isize,
-        );
-        if fromLim.offset_from(*fromP) as ::core::ffi::c_long
-            > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1 as ::core::ffi::c_int
-            && *fromLim
-                .offset(-(2 as ::core::ffi::c_int as isize))
-                .offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int
-                & 0xf8 as ::core::ffi::c_int
-                == 0xd8 as ::core::ffi::c_int
-        {
-            fromLim = fromLim.offset(-(2 as ::core::ffi::c_int as isize));
-            res = XML_CONVERT_INPUT_INCOMPLETE;
-        }
-        while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-            let c2rust_fresh37 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh37 = ((*(*fromP).offset(0 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_uchar as ::core::ffi::c_int)
-                << 8 as ::core::ffi::c_int
-                | *(*fromP).offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                    as ::core::ffi::c_int) as ::core::ffi::c_ushort;
-            *fromP = (*fromP).offset(2 as ::core::ffi::c_int as isize);
-        }
-        if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-            return XML_CONVERT_OUTPUT_EXHAUSTED;
-        } else {
-            return res;
-        };
+    let mut res = XML_CONVERT_COMPLETED;
+    let mut from = read_copy(fromP);
+    let mut to = read_copy(toP);
+
+    fromLim = even_c_char_boundary(from, fromLim);
+    if remaining_const_c_chars(from, fromLim) > remaining_c_ushorts(to, toLim) << 1
+        && read_c_char(add_const_c_char(fromLim, -2)) as ::core::ffi::c_uchar as ::core::ffi::c_int
+            & 0xf8 as ::core::ffi::c_int
+            == 0xd8 as ::core::ffi::c_int
+    {
+        fromLim = add_const_c_char(fromLim, -2);
+        res = XML_CONVERT_INPUT_INCOMPLETE;
+    }
+
+    while from < fromLim && to < toLim as *mut ::core::ffi::c_ushort {
+        let high = read_c_char(from) as ::core::ffi::c_uchar as ::core::ffi::c_int;
+        let low =
+            read_c_char(add_const_c_char(from, 1)) as ::core::ffi::c_uchar as ::core::ffi::c_int;
+        write_copy(to, ((high << 8) | low) as ::core::ffi::c_ushort);
+        from = add_const_c_char(from, 2);
+        to = add_mut_c_ushort(to, 1);
+    }
+
+    write_copy(fromP, from);
+    write_copy(toP, to);
+    if to == toLim as *mut ::core::ffi::c_ushort && from < fromLim {
+        XML_CONVERT_OUTPUT_EXHAUSTED
+    } else {
+        res
     }
 }
 static mut little2_encoding_ns: normal_encoding = unsafe {
