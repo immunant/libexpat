@@ -9990,6 +9990,7 @@ struct ClosedContentTag {
     uses_namespaces: bool,
     uses_ns_triplets: bool,
     namespace_separator: crate::expat_external_h::XML_Char,
+    bindings: Option<BindingId>,
     storage: TagStorage,
 }
 
@@ -10000,12 +10001,23 @@ fn close_content_tag(parser: &mut XML_ParserStruct, tag_index: usize) -> ClosedC
     let uses_ns_triplets = parser.m_ns_triplets != 0;
     let namespace_separator = parser.m_namespaceSeparator;
     parser.m_tagLevel -= 1;
-    let storage = parser.m_activeTags.remove(tag_index);
+    let mut storage = parser.m_activeTags.remove(tag_index);
+    // Namespace bindings belong to the closed element, not to the reusable
+    // tag allocation.  Detach their chain before placing the allocation on
+    // the free list, because an end-element callback can re-enter and reuse
+    // that allocation before namespace callbacks are dispatched.
+    let bindings = storage
+        .tag
+        .first_mut()
+        .expect("tag storage has one tag")
+        .bindings
+        .take();
     ClosedContentTag {
         has_end_element_handler,
         uses_namespaces,
         uses_ns_triplets,
         namespace_separator,
+        bindings,
         storage,
     }
 }
@@ -10750,6 +10762,7 @@ unsafe fn doContent(
                             uses_namespaces,
                             uses_ns_triplets,
                             namespace_separator,
+                            bindings,
                             storage: mut tag_storage,
                         } = close_content_tag(&mut *parser, tag_index);
                         let mut end_element_name = ::core::ptr::null();
@@ -10858,7 +10871,6 @@ unsafe fn doContent(
                         // The original implementation makes this storage available for
                         // reuse before it dispatches callbacks.  Keep that ordering so a
                         // re-entrant callback observes the same allocator/free-list state.
-                        let tag_0 = tag_0 as *mut TAG;
                         (*parser).m_freeTagList.tags.push(tag_storage);
                         if has_end_element_handler {
                             let callback = END_ELEMENT_HANDLERS
@@ -10875,44 +10887,7 @@ unsafe fn doContent(
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
-                        while let Some(binding_id) = (*tag_0).bindings {
-                            let parser_state = &*parser;
-                            let Some(index) = parser_state.binding_index(binding_id) else {
-                                std::process::abort();
-                            };
-                            let binding = parser_state.m_activeBindings[index]
-                                .binding
-                                .first()
-                                .expect("binding storage has one binding");
-                            let binding_prefix = binding.prefix;
-                            let next_binding = binding.nextTagBinding;
-                            if (*parser).m_endNamespaceDeclHandler {
-                                let callback = END_NAMESPACE_DECL_HANDLERS
-                                    .get_or_init(|| {
-                                        std::sync::Mutex::new(std::collections::HashMap::new())
-                                    })
-                                    .lock()
-                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                    .get(&(parser as usize))
-                                    .cloned();
-                                if let Some(callback) = callback {
-                                    let prefix_name = match binding_prefix {
-                                        BindingPrefix::Default => ::core::ptr::null(),
-                                        BindingPrefix::Named(name) => {
-                                            pool_string_pointer!(&(*dtd).pool, name)
-                                        }
-                                    };
-                                    callback.invoke(handler_arg!(parser), prefix_name);
-                                }
-                            }
-                            (*tag_0).bindings = next_binding;
-                            let parser_state = &mut *parser;
-                            let Some(index) = parser_state.binding_index(binding_id) else {
-                                std::process::abort();
-                            };
-                            let storage = parser_state.m_activeBindings.swap_remove(index);
-                            parser_state.m_freeBindingList.bindings.push(storage);
-                        }
+                        freeBindings(parser, bindings);
                         if close_element_epilog_action(&mut *parser) {
                             return epilogProcessor(parser, next, end, nextPtr);
                         }
