@@ -378,6 +378,10 @@ fn read_c_uchar(ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_uchar {
 
 type AsciiUnitReader = fn(*const ::core::ffi::c_char) -> ::core::ffi::c_int;
 type ByteTypeReader = fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int;
+type AsciiMatcher = fn(*const ::core::ffi::c_char, u8) -> bool;
+
+static CDATA_LSQB_UNITS: [::core::ffi::c_int; 6] =
+    [ASCII_C, ASCII_D, ASCII_A, ASCII_T, ASCII_A, ASCII_LSQB];
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum AttributeParseState {
@@ -589,6 +593,294 @@ fn matches_ascii_units(
         ptr = add_const_c_char(ptr, unit_size);
     }
     true
+}
+
+fn scan_cdata_section_open_with(
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next_tok_ptr: *mut *const ::core::ffi::c_char,
+    unit_size: isize,
+    read_unit: AsciiUnitReader,
+) -> ::core::ffi::c_int {
+    if remaining_const_c_chars(ptr, end) < CDATA_LSQB_UNITS.len() * unit_size as usize {
+        return XML_TOK_PARTIAL;
+    }
+    if !matches_ascii_units(ptr, unit_size, read_unit, &CDATA_LSQB_UNITS) {
+        set_next_token_ptr(next_tok_ptr, ptr);
+        return XML_TOK_INVALID;
+    }
+    set_next_token_ptr(
+        next_tok_ptr,
+        add_const_c_char(ptr, (CDATA_LSQB_UNITS.len() as isize) * unit_size),
+    );
+    XML_TOK_CDATA_SECT_OPEN
+}
+
+fn cdata_section_tok_normal(
+    enc: *const ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next_tok_ptr: *mut *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    if ptr >= end {
+        return XML_TOK_NONE;
+    }
+
+    match normal_byte_type(enc, ptr) {
+        value if value == BT_RSQB as ::core::ffi::c_int => {
+            let next = add_const_c_char(ptr, 1);
+            if !has_c_chars(next, end, 1) {
+                return XML_TOK_PARTIAL;
+            }
+            if c_char_is_ascii(next, b']') {
+                let close = add_const_c_char(next, 1);
+                if !has_c_chars(close, end, 1) {
+                    return XML_TOK_PARTIAL;
+                }
+                if c_char_is_ascii(close, b'>') {
+                    set_next_token_ptr(next_tok_ptr, add_const_c_char(close, 1));
+                    return XML_TOK_CDATA_SECT_CLOSE;
+                }
+            }
+            ptr = next;
+        }
+        value if value == BT_CR as ::core::ffi::c_int => {
+            let next = add_const_c_char(ptr, 1);
+            if !has_c_chars(next, end, 1) {
+                return XML_TOK_PARTIAL;
+            }
+            ptr = if normal_byte_type(enc, next) == BT_LF as ::core::ffi::c_int {
+                add_const_c_char(next, 1)
+            } else {
+                next
+            };
+            set_next_token_ptr(next_tok_ptr, ptr);
+            return XML_TOK_DATA_NEWLINE;
+        }
+        value if value == BT_LF as ::core::ffi::c_int => {
+            set_next_token_ptr(next_tok_ptr, add_const_c_char(ptr, 1));
+            return XML_TOK_DATA_NEWLINE;
+        }
+        value if value == BT_LEAD2 as ::core::ffi::c_int => {
+            if !has_c_chars(ptr, end, 2) {
+                return XML_TOK_PARTIAL_CHAR;
+            }
+            if normal_is_invalid(enc, 2, ptr) != 0 {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_INVALID;
+            }
+            ptr = add_const_c_char(ptr, 2);
+        }
+        value if value == BT_LEAD3 as ::core::ffi::c_int => {
+            if !has_c_chars(ptr, end, 3) {
+                return XML_TOK_PARTIAL_CHAR;
+            }
+            if normal_is_invalid(enc, 3, ptr) != 0 {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_INVALID;
+            }
+            ptr = add_const_c_char(ptr, 3);
+        }
+        value if value == BT_LEAD4 as ::core::ffi::c_int => {
+            if !has_c_chars(ptr, end, 4) {
+                return XML_TOK_PARTIAL_CHAR;
+            }
+            if normal_is_invalid(enc, 4, ptr) != 0 {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_INVALID;
+            }
+            ptr = add_const_c_char(ptr, 4);
+        }
+        value
+            if matches!(
+                value,
+                x if x == BT_NONXML as ::core::ffi::c_int
+                    || x == BT_MALFORM as ::core::ffi::c_int
+                    || x == BT_TRAIL as ::core::ffi::c_int
+            ) =>
+        {
+            set_next_token_ptr(next_tok_ptr, ptr);
+            return XML_TOK_INVALID;
+        }
+        _ => {
+            ptr = add_const_c_char(ptr, 1);
+        }
+    }
+
+    while has_c_chars(ptr, end, 1) {
+        match normal_byte_type(enc, ptr) {
+            value if value == BT_LEAD2 as ::core::ffi::c_int => {
+                if !has_c_chars(ptr, end, 2) || normal_is_invalid(enc, 2, ptr) != 0 {
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return XML_TOK_DATA_CHARS;
+                }
+                ptr = add_const_c_char(ptr, 2);
+            }
+            value if value == BT_LEAD3 as ::core::ffi::c_int => {
+                if !has_c_chars(ptr, end, 3) || normal_is_invalid(enc, 3, ptr) != 0 {
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return XML_TOK_DATA_CHARS;
+                }
+                ptr = add_const_c_char(ptr, 3);
+            }
+            value if value == BT_LEAD4 as ::core::ffi::c_int => {
+                if !has_c_chars(ptr, end, 4) || normal_is_invalid(enc, 4, ptr) != 0 {
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return XML_TOK_DATA_CHARS;
+                }
+                ptr = add_const_c_char(ptr, 4);
+            }
+            value
+                if matches!(
+                    value,
+                    x if x == BT_NONXML as ::core::ffi::c_int
+                        || x == BT_MALFORM as ::core::ffi::c_int
+                        || x == BT_TRAIL as ::core::ffi::c_int
+                        || x == BT_CR as ::core::ffi::c_int
+                        || x == BT_LF as ::core::ffi::c_int
+                        || x == BT_RSQB as ::core::ffi::c_int
+                ) =>
+            {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_DATA_CHARS;
+            }
+            _ => {
+                ptr = add_const_c_char(ptr, 1);
+            }
+        }
+    }
+
+    set_next_token_ptr(next_tok_ptr, ptr);
+    XML_TOK_DATA_CHARS
+}
+
+fn cdata_section_tok_wide(
+    enc: *const ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next_tok_ptr: *mut *const ::core::ffi::c_char,
+    byte_type: ByteTypeReader,
+    is_ascii: AsciiMatcher,
+) -> ::core::ffi::c_int {
+    if ptr >= end {
+        return XML_TOK_NONE;
+    }
+
+    let end = even_c_char_boundary(ptr, end);
+    if ptr >= end {
+        return XML_TOK_PARTIAL;
+    }
+
+    match byte_type(enc, ptr) {
+        value if value == BT_RSQB as ::core::ffi::c_int => {
+            let next = add_const_c_char(ptr, 2);
+            if !has_c_chars(next, end, 2) {
+                return XML_TOK_PARTIAL;
+            }
+            if is_ascii(next, b']') {
+                let close = add_const_c_char(next, 2);
+                if !has_c_chars(close, end, 2) {
+                    return XML_TOK_PARTIAL;
+                }
+                if is_ascii(close, b'>') {
+                    set_next_token_ptr(next_tok_ptr, add_const_c_char(close, 2));
+                    return XML_TOK_CDATA_SECT_CLOSE;
+                }
+            }
+            ptr = next;
+        }
+        value if value == BT_CR as ::core::ffi::c_int => {
+            let next = add_const_c_char(ptr, 2);
+            if !has_c_chars(next, end, 2) {
+                return XML_TOK_PARTIAL;
+            }
+            ptr = if byte_type(enc, next) == BT_LF as ::core::ffi::c_int {
+                add_const_c_char(next, 2)
+            } else {
+                next
+            };
+            set_next_token_ptr(next_tok_ptr, ptr);
+            return XML_TOK_DATA_NEWLINE;
+        }
+        value if value == BT_LF as ::core::ffi::c_int => {
+            set_next_token_ptr(next_tok_ptr, add_const_c_char(ptr, 2));
+            return XML_TOK_DATA_NEWLINE;
+        }
+        value if value == BT_LEAD2 as ::core::ffi::c_int => {
+            if !has_c_chars(ptr, end, 2) {
+                return XML_TOK_PARTIAL_CHAR;
+            }
+            ptr = add_const_c_char(ptr, 2);
+        }
+        value if value == BT_LEAD3 as ::core::ffi::c_int => {
+            if !has_c_chars(ptr, end, 3) {
+                return XML_TOK_PARTIAL_CHAR;
+            }
+            ptr = add_const_c_char(ptr, 3);
+        }
+        value if value == BT_LEAD4 as ::core::ffi::c_int => {
+            if !has_c_chars(ptr, end, 4) {
+                return XML_TOK_PARTIAL_CHAR;
+            }
+            ptr = add_const_c_char(ptr, 4);
+        }
+        value
+            if matches!(
+                value,
+                x if x == BT_NONXML as ::core::ffi::c_int
+                    || x == BT_MALFORM as ::core::ffi::c_int
+                    || x == BT_TRAIL as ::core::ffi::c_int
+            ) =>
+        {
+            set_next_token_ptr(next_tok_ptr, ptr);
+            return XML_TOK_INVALID;
+        }
+        _ => {
+            ptr = add_const_c_char(ptr, 2);
+        }
+    }
+
+    while has_c_chars(ptr, end, 2) {
+        match byte_type(enc, ptr) {
+            value if value == BT_LEAD2 as ::core::ffi::c_int => {
+                ptr = add_const_c_char(ptr, 2);
+            }
+            value if value == BT_LEAD3 as ::core::ffi::c_int => {
+                if !has_c_chars(ptr, end, 3) {
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return XML_TOK_DATA_CHARS;
+                }
+                ptr = add_const_c_char(ptr, 3);
+            }
+            value if value == BT_LEAD4 as ::core::ffi::c_int => {
+                if !has_c_chars(ptr, end, 4) {
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return XML_TOK_DATA_CHARS;
+                }
+                ptr = add_const_c_char(ptr, 4);
+            }
+            value
+                if matches!(
+                    value,
+                    x if x == BT_NONXML as ::core::ffi::c_int
+                        || x == BT_MALFORM as ::core::ffi::c_int
+                        || x == BT_TRAIL as ::core::ffi::c_int
+                        || x == BT_CR as ::core::ffi::c_int
+                        || x == BT_LF as ::core::ffi::c_int
+                        || x == BT_RSQB as ::core::ffi::c_int
+                ) =>
+            {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_DATA_CHARS;
+            }
+            _ => {
+                ptr = add_const_c_char(ptr, 2);
+            }
+        }
+    }
+
+    set_next_token_ptr(next_tok_ptr, ptr);
+    XML_TOK_DATA_CHARS
 }
 
 fn check_pi_target_with(
@@ -1695,33 +1987,8 @@ extern "C" fn normal_scanCdataSection(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            ASCII_C as ::core::ffi::c_char,
-            ASCII_D as ::core::ffi::c_char,
-            ASCII_A as ::core::ffi::c_char,
-            ASCII_T as ::core::ffi::c_char,
-            ASCII_A as ::core::ffi::c_char,
-            ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return XML_TOK_PARTIAL;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr as ::core::ffi::c_int == CDATA_LSQB[i as usize] as ::core::ffi::c_int) {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID;
-            }
-            i += 1;
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_CDATA_SECT_OPEN;
-    }
+    let _ = enc;
+    scan_cdata_section_open_with(ptr, end, nextTokPtr, 1, read_normal_ascii_unit)
 }
 extern "C" fn normal_cdataSectionTok(
     mut enc: *const ENCODING,
@@ -1729,170 +1996,7 @@ extern "C" fn normal_cdataSectionTok(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if ptr >= end {
-            return XML_TOK_NONE;
-        }
-        if 1 as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
-            let mut n: size_t = end.offset_from(ptr) as ::core::ffi::c_long as size_t;
-            if n & (1 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as size_t != 0 {
-                n &= !(1 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as size_t;
-                if n == 0 as size_t {
-                    return XML_TOK_PARTIAL;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-            as ::core::ffi::c_int
-        {
-            4 => {
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                if !(end.offset_from(ptr) as ::core::ffi::c_long
-                    >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long)
-                {
-                    return XML_TOK_PARTIAL;
-                }
-                if *ptr as ::core::ffi::c_int == 0x5d as ::core::ffi::c_int {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long)
-                    {
-                        return XML_TOK_PARTIAL;
-                    }
-                    if !(*ptr as ::core::ffi::c_int == 0x3e as ::core::ffi::c_int) {
-                        ptr = ptr.offset(-(1 as ::core::ffi::c_int as isize));
-                    } else {
-                        *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CDATA_SECT_CLOSE;
-                    }
-                }
-            }
-            9 => {
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                if !(end.offset_from(ptr) as ::core::ffi::c_long
-                    >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long)
-                {
-                    return XML_TOK_PARTIAL;
-                }
-                if (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                    == BT_LF as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE;
-            }
-            10 => {
-                *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                return XML_TOK_DATA_NEWLINE;
-            }
-            5 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-            6 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-            }
-            7 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-            }
-            0 | 1 | 8 => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID;
-            }
-            _ => {
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            }
-        }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long
-                        || (*(enc as *const normal_encoding))
-                            .isInvalid2
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long
-                        || (*(enc as *const normal_encoding))
-                            .isInvalid3
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long
-                        || (*(enc as *const normal_encoding))
-                            .isInvalid4
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                0 | 1 | 8 | 9 | 10 | 4 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS;
-                }
-                _ => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS;
-    }
+    cdata_section_tok_normal(enc, ptr, end, nextTokPtr)
 }
 extern "C" fn normal_scanEndTag(
     mut enc: *const ENCODING,
@@ -5423,37 +5527,8 @@ extern "C" fn little2_scanCdataSection(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            ASCII_C as ::core::ffi::c_char,
-            ASCII_D as ::core::ffi::c_char,
-            ASCII_A as ::core::ffi::c_char,
-            ASCII_T as ::core::ffi::c_char,
-            ASCII_A as ::core::ffi::c_char,
-            ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return XML_TOK_PARTIAL;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID;
-            }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_CDATA_SECT_OPEN;
-    }
+    let _ = enc;
+    scan_cdata_section_open_with(ptr, end, nextTokPtr, 2, read_little2_ascii_unit)
 }
 extern "C" fn little2_cdataSectionTok(
     mut enc: *const ENCODING,
@@ -5461,169 +5536,14 @@ extern "C" fn little2_cdataSectionTok(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if ptr >= end {
-            return XML_TOK_NONE;
-        }
-        if 2 as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
-            let mut n: size_t = end.offset_from(ptr) as ::core::ffi::c_long as size_t;
-            if n & (2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as size_t != 0 {
-                n &= !(2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as size_t;
-                if n == 0 as size_t {
-                    return XML_TOK_PARTIAL;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-        } else {
-            unicode_byte_type(
-                *ptr.offset(1 as ::core::ffi::c_int as isize),
-                *ptr.offset(0 as ::core::ffi::c_int as isize),
-            )
-        } {
-            4 => {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                if !(end.offset_from(ptr) as ::core::ffi::c_long
-                    >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-                {
-                    return XML_TOK_PARTIAL;
-                }
-                if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x5d as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long)
-                    {
-                        return XML_TOK_PARTIAL;
-                    }
-                    if !(*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                        && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0x3e as ::core::ffi::c_int)
-                    {
-                        ptr = ptr.offset(-(2 as ::core::ffi::c_int as isize));
-                    } else {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CDATA_SECT_CLOSE;
-                    }
-                }
-            }
-            9 => {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                if !(end.offset_from(ptr) as ::core::ffi::c_long
-                    >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-                {
-                    return XML_TOK_PARTIAL;
-                }
-                if (if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(
-                        *ptr.offset(1 as ::core::ffi::c_int as isize),
-                        *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    )
-                }) == BT_LF as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE;
-            }
-            10 => {
-                *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                return XML_TOK_DATA_NEWLINE;
-            }
-            5 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-            6 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-            }
-            7 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-            }
-            0 | 1 | 8 => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID;
-            }
-            _ => {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long
-                        || 0 as ::core::ffi::c_int != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long
-                        || 0 as ::core::ffi::c_int != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long
-                        || 0 as ::core::ffi::c_int != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                0 | 1 | 8 | 9 | 10 | 4 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS;
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS;
-    }
+    cdata_section_tok_wide(
+        enc,
+        ptr,
+        end,
+        nextTokPtr,
+        little2_byte_type,
+        little2_is_ascii,
+    )
 }
 extern "C" fn little2_scanEndTag(
     mut enc: *const ENCODING,
@@ -9321,37 +9241,8 @@ extern "C" fn big2_scanCdataSection(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        static mut CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            ASCII_C as ::core::ffi::c_char,
-            ASCII_D as ::core::ffi::c_char,
-            ASCII_A as ::core::ffi::c_char,
-            ASCII_T as ::core::ffi::c_char,
-            ASCII_A as ::core::ffi::c_char,
-            ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return XML_TOK_PARTIAL;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID;
-            }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_CDATA_SECT_OPEN;
-    }
+    let _ = enc;
+    scan_cdata_section_open_with(ptr, end, nextTokPtr, 2, read_big2_ascii_unit)
 }
 extern "C" fn big2_cdataSectionTok(
     mut enc: *const ENCODING,
@@ -9359,173 +9250,7 @@ extern "C" fn big2_cdataSectionTok(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if ptr >= end {
-            return XML_TOK_NONE;
-        }
-        if 2 as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
-            let mut n: size_t = end.offset_from(ptr) as ::core::ffi::c_long as size_t;
-            if n & (2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as size_t != 0 {
-                n &= !(2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as size_t;
-                if n == 0 as size_t {
-                    return XML_TOK_PARTIAL;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            (*(enc as *const normal_encoding)).type_0
-                [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-        } else {
-            unicode_byte_type(
-                *ptr.offset(0 as ::core::ffi::c_int as isize),
-                *ptr.offset(1 as ::core::ffi::c_int as isize),
-            )
-        } {
-            4 => {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                if !(end.offset_from(ptr) as ::core::ffi::c_long
-                    >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-                {
-                    return XML_TOK_PARTIAL;
-                }
-                if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x5d as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long)
-                    {
-                        return XML_TOK_PARTIAL;
-                    }
-                    if !(*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                        && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0x3e as ::core::ffi::c_int)
-                    {
-                        ptr = ptr.offset(-(2 as ::core::ffi::c_int as isize));
-                    } else {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CDATA_SECT_CLOSE;
-                    }
-                }
-            }
-            9 => {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                if !(end.offset_from(ptr) as ::core::ffi::c_long
-                    >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-                {
-                    return XML_TOK_PARTIAL;
-                }
-                if (if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(
-                        *ptr.offset(0 as ::core::ffi::c_int as isize),
-                        *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    )
-                }) == BT_LF as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                *nextTokPtr = ptr;
-                return XML_TOK_DATA_NEWLINE;
-            }
-            10 => {
-                *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                return XML_TOK_DATA_NEWLINE;
-            }
-            5 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-            6 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-            }
-            7 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-            }
-            0 | 1 | 8 => {
-                *nextTokPtr = ptr;
-                return XML_TOK_INVALID;
-            }
-            _ => {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long
-                        || 0 as ::core::ffi::c_int != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long
-                        || 0 as ::core::ffi::c_int != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long
-                        || 0 as ::core::ffi::c_int != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_DATA_CHARS;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                0 | 1 | 8 | 9 | 10 | 4 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_DATA_CHARS;
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-            }
-        }
-        *nextTokPtr = ptr;
-        return XML_TOK_DATA_CHARS;
-    }
+    cdata_section_tok_wide(enc, ptr, end, nextTokPtr, big2_byte_type, big2_is_ascii)
 }
 extern "C" fn big2_scanEndTag(
     mut enc: *const ENCODING,
