@@ -4345,7 +4345,7 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
 ) -> ::core::ffi::c_int {
     XML_SetHashSalt(parser, hash_salt)
 }
-pub unsafe extern "C" fn XML_Parse(
+pub extern "C" fn XML_Parse(
     mut parser: crate::expat_h::XML_Parser,
     mut s: *const ::core::ffi::c_char,
     mut len: ::core::ffi::c_int,
@@ -4356,28 +4356,28 @@ pub unsafe extern "C" fn XML_Parse(
         || s.is_null() && len != 0 as ::core::ffi::c_int
     {
         if !parser.is_null() {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
         }
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+    match expect_parser_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
         3 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         2 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         0 => {
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+            if expect_parser_ref(parser).m_parentParser.is_null() && startParsing(parser) == 0 {
+                expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
         }
         _ => {}
     }
-    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+    expect_parser_mut(parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
     let mut buff: *mut ::core::ffi::c_void = XML_GetBuffer(parser, len);
     if buff.is_null() {
         return crate::expat_h::XML_STATUS_ERROR;
@@ -4386,20 +4386,20 @@ pub unsafe extern "C" fn XML_Parse(
         '_c2rust_label: {
             if !s.is_null() {
             } else {
-                crate::stdlib::__assert_fail(
+                helper_unsafe!(crate::stdlib::__assert_fail(
                     b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                     b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                     2445 as ::core::ffi::c_uint,
                     b"enum XML_Status XML_Parse(XML_Parser, const char *, int, int)\0".as_ptr()
                         as *const ::core::ffi::c_char,
-                );
+                ));
             }
         };
-        crate::stdlib::memcpy(
+        helper_unsafe!(crate::stdlib::memcpy(
             buff,
             s as *const ::core::ffi::c_void,
             len as crate::__stddef_size_t_h::size_t,
-        );
+        ));
     }
     return XML_ParseBuffer(parser, len, isFinal);
 }
@@ -4413,7 +4413,7 @@ pub unsafe extern "C" fn XML_Parse_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_Parse(parser, s, len, isFinal)
 }
-pub unsafe extern "C" fn XML_ParseBuffer(
+pub extern "C" fn XML_ParseBuffer(
     mut parser: crate::expat_h::XML_Parser,
     mut len: ::core::ffi::c_int,
     mut isFinal: ::core::ffi::c_int,
@@ -4424,72 +4424,80 @@ pub unsafe extern "C" fn XML_ParseBuffer(
         return crate::expat_h::XML_STATUS_ERROR;
     }
     if len < 0 as ::core::ffi::c_int {
-        (*parser).m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+        expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+    match expect_parser_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
         3 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         2 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         0 => {
-            if (*parser).m_bufferPtr.is_null() {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
+            if expect_parser_ref(parser).m_bufferPtr.is_null() {
+                expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+            if expect_parser_ref(parser).m_parentParser.is_null() && startParsing(parser) == 0 {
+                expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
         }
         _ => {}
     }
-    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    start = (*parser).m_bufferPtr;
-    (*parser).m_positionPtr = start;
-    (*parser).m_bufferEnd = (*parser).m_bufferEnd.offset(len as isize);
-    (*parser).m_parseEndPtr = (*parser).m_bufferEnd;
-    (*parser).m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
-    (*parser).m_parsingStatus.finalBuffer = isFinal as crate::expat_h::XML_Bool;
-    (*parser).m_errorCode = callProcessor(
-        parser,
-        start,
-        (*parser).m_parseEndPtr,
-        &raw mut (*parser).m_bufferPtr,
-    );
-    if (*parser).m_errorCode as ::core::ffi::c_uint
+    {
+        let parser_state = expect_parser_mut(parser);
+        parser_state.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+        start = parser_state.m_bufferPtr;
+        parser_state.m_positionPtr = start;
+        parser_state.m_bufferEnd = parser_state.m_bufferEnd.wrapping_offset(len as isize);
+        parser_state.m_parseEndPtr = parser_state.m_bufferEnd;
+        parser_state.m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
+        parser_state.m_parsingStatus.finalBuffer = isFinal as crate::expat_h::XML_Bool;
+        parser_state.m_errorCode = callProcessor(
+            parser,
+            start,
+            parser_state.m_parseEndPtr,
+            &raw mut parser_state.m_bufferPtr,
+        );
+    }
+    if expect_parser_ref(parser).m_errorCode as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = Some(errorProcessor);
+        let parser_state = expect_parser_mut(parser);
+        parser_state.m_eventEndPtr = parser_state.m_eventPtr;
+        parser_state.m_processor = Some(errorProcessor);
         return crate::expat_h::XML_STATUS_ERROR;
     } else {
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+        match expect_parser_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
                 result = crate::expat_h::XML_STATUS_SUSPENDED;
             }
             0 | 1 => {
                 if isFinal != 0 {
-                    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+                    expect_parser_mut(parser).m_parsingStatus.parsing =
+                        crate::expat_h::XML_FINISHED;
                     return result;
                 }
             }
             _ => {}
         }
     }
-    (*(*parser).m_encoding)
-        .updatePosition
-        .expect("non-null function pointer")(
-        (*parser).m_encoding,
-        (*parser).m_positionPtr,
-        (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
-    );
-    (*parser).m_positionPtr = (*parser).m_bufferPtr;
+    {
+        let parser_state = expect_parser_mut(parser);
+        helper_unsafe!(expect_encoding_ref(parser_state.m_encoding)
+            .updatePosition
+            .expect("non-null function pointer")(
+            parser_state.m_encoding,
+            parser_state.m_positionPtr,
+            parser_state.m_bufferPtr,
+            &raw mut parser_state.m_position,
+        ));
+        parser_state.m_positionPtr = parser_state.m_bufferPtr;
+    }
     return result;
 }
 #[export_name = "XML_ParseBuffer"]
@@ -4501,7 +4509,7 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_ParseBuffer(parser, len, isFinal)
 }
-pub unsafe extern "C" fn XML_GetBuffer(
+pub extern "C" fn XML_GetBuffer(
     mut parser: crate::expat_h::XML_Parser,
     mut len: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
@@ -4509,43 +4517,56 @@ pub unsafe extern "C" fn XML_GetBuffer(
         return crate::__stddef_null_h::NULL;
     }
     if len < 0 as ::core::ffi::c_int {
-        (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+        expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
         return crate::__stddef_null_h::NULL;
     }
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+    match expect_parser_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
         3 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
             return crate::__stddef_null_h::NULL;
         }
         2 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
             return crate::__stddef_null_h::NULL;
         }
         _ => {}
     }
-    (*parser).m_lastBufferRequestSize = len;
-    if len as ::core::ffi::c_long
-        > (if !(*parser).m_bufferLim.is_null() && !(*parser).m_bufferEnd.is_null() {
-            (*parser).m_bufferLim.offset_from((*parser).m_bufferEnd) as ::core::ffi::c_long
+    {
+        expect_parser_mut(parser).m_lastBufferRequestSize = len;
+    }
+    let available = {
+        let parser_ref = expect_parser_ref(parser);
+        if !parser_ref.m_bufferLim.is_null() && !parser_ref.m_bufferEnd.is_null() {
+            helper_unsafe!(parser_ref.m_bufferLim.offset_from(parser_ref.m_bufferEnd))
+                as ::core::ffi::c_long
         } else {
             0 as ::core::ffi::c_long
-        })
-        || (*parser).m_buffer.is_null()
-    {
+        }
+    };
+    if len as ::core::ffi::c_long > available || expect_parser_ref(parser).m_buffer.is_null() {
         let mut keep: ::core::ffi::c_int = 0;
         let mut neededSize: ::core::ffi::c_int = (len as ::core::ffi::c_uint).wrapping_add(
-            (if !(*parser).m_bufferEnd.is_null() && !(*parser).m_bufferPtr.is_null() {
-                (*parser).m_bufferEnd.offset_from((*parser).m_bufferPtr) as ::core::ffi::c_long
+            (if !expect_parser_ref(parser).m_bufferEnd.is_null()
+                && !expect_parser_ref(parser).m_bufferPtr.is_null()
+            {
+                helper_unsafe!(expect_parser_ref(parser)
+                    .m_bufferEnd
+                    .offset_from(expect_parser_ref(parser).m_bufferPtr))
+                    as ::core::ffi::c_long
             } else {
                 0 as ::core::ffi::c_long
             }) as ::core::ffi::c_uint,
         ) as ::core::ffi::c_int;
         if neededSize < 0 as ::core::ffi::c_int {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
             return crate::__stddef_null_h::NULL;
         }
-        keep = (if !(*parser).m_bufferPtr.is_null() && !(*parser).m_buffer.is_null() {
-            (*parser).m_bufferPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
+        keep = (if !expect_parser_ref(parser).m_bufferPtr.is_null()
+            && !expect_parser_ref(parser).m_buffer.is_null()
+        {
+            helper_unsafe!(expect_parser_ref(parser)
+                .m_bufferPtr
+                .offset_from(expect_parser_ref(parser).m_buffer)) as ::core::ffi::c_long
         } else {
             0 as ::core::ffi::c_long
         }) as ::core::ffi::c_int;
@@ -4553,51 +4574,76 @@ pub unsafe extern "C" fn XML_GetBuffer(
             keep = crate::stdlib::XML_CONTEXT_BYTES;
         }
         if keep > crate::limits_h::INT_MAX - neededSize {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+            expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
             return crate::__stddef_null_h::NULL;
         }
         neededSize += keep;
-        if !(*parser).m_buffer.is_null()
-            && !(*parser).m_bufferPtr.is_null()
+        if !expect_parser_ref(parser).m_buffer.is_null()
+            && !expect_parser_ref(parser).m_bufferPtr.is_null()
             && neededSize as ::core::ffi::c_long
-                <= (if !(*parser).m_bufferLim.is_null() && !(*parser).m_buffer.is_null() {
-                    (*parser).m_bufferLim.offset_from((*parser).m_buffer) as ::core::ffi::c_long
+                <= (if !expect_parser_ref(parser).m_bufferLim.is_null()
+                    && !expect_parser_ref(parser).m_buffer.is_null()
+                {
+                    helper_unsafe!(expect_parser_ref(parser)
+                        .m_bufferLim
+                        .offset_from(expect_parser_ref(parser).m_buffer))
+                        as ::core::ffi::c_long
                 } else {
                     0 as ::core::ffi::c_long
                 })
         {
             if (keep as ::core::ffi::c_long)
-                < (if !(*parser).m_bufferPtr.is_null() && !(*parser).m_buffer.is_null() {
-                    (*parser).m_bufferPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
+                < (if !expect_parser_ref(parser).m_bufferPtr.is_null()
+                    && !expect_parser_ref(parser).m_buffer.is_null()
+                {
+                    helper_unsafe!(expect_parser_ref(parser)
+                        .m_bufferPtr
+                        .offset_from(expect_parser_ref(parser).m_buffer))
+                        as ::core::ffi::c_long
                 } else {
                     0 as ::core::ffi::c_long
                 })
             {
                 let mut offset: ::core::ffi::c_int =
-                    (if !(*parser).m_bufferPtr.is_null() && !(*parser).m_buffer.is_null() {
-                        (*parser).m_bufferPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
+                    (if !expect_parser_ref(parser).m_bufferPtr.is_null()
+                        && !expect_parser_ref(parser).m_buffer.is_null()
+                    {
+                        helper_unsafe!(expect_parser_ref(parser)
+                            .m_bufferPtr
+                            .offset_from(expect_parser_ref(parser).m_buffer))
+                            as ::core::ffi::c_long
                     } else {
                         0 as ::core::ffi::c_long
                     }) as ::core::ffi::c_int
                         - keep;
-                crate::stdlib::memmove(
-                    (*parser).m_buffer as *mut ::core::ffi::c_void,
-                    (*parser).m_buffer.offset(offset as isize) as *mut ::core::ffi::c_char
+                let parser_state = expect_parser_mut(parser);
+                helper_unsafe!(crate::stdlib::memmove(
+                    parser_state.m_buffer as *mut ::core::ffi::c_void,
+                    parser_state.m_buffer.offset(offset as isize) as *mut ::core::ffi::c_char
                         as *const ::core::ffi::c_void,
-                    ((*parser).m_bufferEnd.offset_from((*parser).m_bufferPtr)
+                    (helper_unsafe!(parser_state
+                        .m_bufferEnd
+                        .offset_from(parser_state.m_bufferPtr))
                         as ::core::ffi::c_long
                         + keep as ::core::ffi::c_long)
                         as crate::__stddef_size_t_h::size_t,
-                );
-                (*parser).m_bufferEnd = (*parser).m_bufferEnd.offset(-(offset as isize));
-                (*parser).m_bufferPtr = (*parser).m_bufferPtr.offset(-(offset as isize));
+                ));
+                parser_state.m_bufferEnd =
+                    parser_state.m_bufferEnd.wrapping_offset(-(offset as isize));
+                parser_state.m_bufferPtr =
+                    parser_state.m_bufferPtr.wrapping_offset(-(offset as isize));
             }
         } else {
             let mut newBuf: *mut ::core::ffi::c_char =
                 ::core::ptr::null_mut::<::core::ffi::c_char>();
             let mut bufferSize: ::core::ffi::c_int =
-                (if !(*parser).m_bufferLim.is_null() && !(*parser).m_buffer.is_null() {
-                    (*parser).m_bufferLim.offset_from((*parser).m_buffer) as ::core::ffi::c_long
+                (if !expect_parser_ref(parser).m_bufferLim.is_null()
+                    && !expect_parser_ref(parser).m_buffer.is_null()
+                {
+                    helper_unsafe!(expect_parser_ref(parser)
+                        .m_bufferLim
+                        .offset_from(expect_parser_ref(parser).m_buffer))
+                        as ::core::ffi::c_long
                 } else {
                     0 as ::core::ffi::c_long
                 }) as ::core::ffi::c_int;
@@ -4613,60 +4659,66 @@ pub unsafe extern "C" fn XML_GetBuffer(
                 }
             }
             if bufferSize <= 0 as ::core::ffi::c_int {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+                expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                 return crate::__stddef_null_h::NULL;
             }
-            newBuf = (*parser)
+            let parser_ref = expect_parser_ref(parser);
+            newBuf = helper_unsafe!(parser_ref
                 .m_mem
                 .malloc_fcn
                 .expect("non-null function pointer")(
                 bufferSize as crate::__stddef_size_t_h::size_t
-            ) as *mut ::core::ffi::c_char;
+            )) as *mut ::core::ffi::c_char;
             if newBuf.is_null() {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+                expect_parser_mut(parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                 return crate::__stddef_null_h::NULL;
             }
-            (*parser).m_bufferLim = newBuf.offset(bufferSize as isize);
-            if !(*parser).m_bufferPtr.is_null() {
-                crate::stdlib::memcpy(
+            {
+                expect_parser_mut(parser).m_bufferLim = newBuf.wrapping_offset(bufferSize as isize);
+            }
+            if !expect_parser_ref(parser).m_bufferPtr.is_null() {
+                let parser_state = expect_parser_mut(parser);
+                helper_unsafe!(crate::stdlib::memcpy(
                     newBuf as *mut ::core::ffi::c_void,
-                    (*parser).m_bufferPtr.offset(-keep as isize) as *const ::core::ffi::c_char
+                    parser_state.m_bufferPtr.wrapping_offset(-keep as isize)
+                        as *const ::core::ffi::c_char
                         as *const ::core::ffi::c_void,
-                    ((if !(*parser).m_bufferEnd.is_null() && !(*parser).m_bufferPtr.is_null() {
-                        (*parser).m_bufferEnd.offset_from((*parser).m_bufferPtr)
-                            as ::core::ffi::c_long
-                    } else {
-                        0 as ::core::ffi::c_long
-                    }) + keep as ::core::ffi::c_long)
+                    (helper_unsafe!(parser_state
+                        .m_bufferEnd
+                        .offset_from(parser_state.m_bufferPtr))
+                        as ::core::ffi::c_long
+                        + keep as ::core::ffi::c_long)
                         as crate::__stddef_size_t_h::size_t,
-                );
-                (*parser).m_mem.free_fcn.expect("non-null function pointer")(
-                    (*parser).m_buffer as *mut ::core::ffi::c_void,
-                );
-                (*parser).m_buffer = newBuf;
-                (*parser).m_bufferEnd = (*parser)
+                ));
+                helper_unsafe!(parser_state
+                    .m_mem
+                    .free_fcn
+                    .expect("non-null function pointer")(
+                    parser_state.m_buffer as *mut ::core::ffi::c_void,
+                ));
+                let buffered_len = helper_unsafe!(parser_state
+                    .m_bufferEnd
+                    .offset_from(parser_state.m_bufferPtr))
+                    as isize;
+                parser_state.m_buffer = newBuf;
+                parser_state.m_bufferEnd = parser_state
                     .m_buffer
-                    .offset(
-                        (if !(*parser).m_bufferEnd.is_null() && !(*parser).m_bufferPtr.is_null() {
-                            (*parser).m_bufferEnd.offset_from((*parser).m_bufferPtr)
-                                as ::core::ffi::c_long
-                        } else {
-                            0 as ::core::ffi::c_long
-                        }) as isize,
-                    )
-                    .offset(keep as isize);
-                (*parser).m_bufferPtr = (*parser).m_buffer.offset(keep as isize);
+                    .wrapping_offset(buffered_len)
+                    .wrapping_offset(keep as isize);
+                parser_state.m_bufferPtr = parser_state.m_buffer.wrapping_offset(keep as isize);
             } else {
-                (*parser).m_bufferEnd = newBuf;
-                (*parser).m_buffer = newBuf;
-                (*parser).m_bufferPtr = (*parser).m_buffer;
+                let parser_state = expect_parser_mut(parser);
+                parser_state.m_bufferEnd = newBuf;
+                parser_state.m_buffer = newBuf;
+                parser_state.m_bufferPtr = parser_state.m_buffer;
             }
         }
-        (*parser).m_eventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        (*parser).m_eventPtr = (*parser).m_eventEndPtr;
-        (*parser).m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
+        let parser_state = expect_parser_mut(parser);
+        parser_state.m_eventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+        parser_state.m_eventPtr = parser_state.m_eventEndPtr;
+        parser_state.m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
     }
-    return (*parser).m_bufferEnd as *mut ::core::ffi::c_void;
+    return expect_parser_ref(parser).m_bufferEnd as *mut ::core::ffi::c_void;
 }
 #[export_name = "XML_GetBuffer"]
 
