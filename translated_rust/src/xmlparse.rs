@@ -3913,7 +3913,63 @@ struct RootParserState {
 /// The closures retain the allocator-specific token; the registry itself
 /// contains only safe ownership state.
 struct PublicMemoryReleases {
-    releases: std::collections::HashMap<usize, Box<dyn FnOnce()>>,
+    releases: std::collections::HashMap<usize, PublicMemoryAllocation>,
+    null_allocation: Option<PublicMemoryAllocation>,
+}
+
+/// An ABI allocation is represented internally by an address key and an
+/// allocator-owned action.  The action keeps the foreign pointer opaque: it
+/// is only recreated immediately before passing it back to the allocator
+/// callback that created it.
+struct PublicMemoryAllocation {
+    dispatch: Box<dyn FnMut(PublicMemoryAllocationAction) -> PublicMemoryAllocationResult>,
+}
+
+enum PublicMemoryAllocationAction {
+    Reallocate(crate::__stddef_size_t_h::size_t),
+    Free,
+}
+
+enum PublicMemoryAllocationResult {
+    Reallocated(usize),
+    ReallocationFailed,
+    Freed,
+}
+
+fn public_memory_allocation(
+    dispatch: impl FnMut(PublicMemoryAllocationAction) -> PublicMemoryAllocationResult + 'static,
+) -> PublicMemoryAllocation {
+    PublicMemoryAllocation {
+        dispatch: Box::new(dispatch),
+    }
+}
+
+/// Keep the null `realloc` case in the ownership registry as well.  This
+/// lets the ABI wrapper pass only an address key while preserving the
+/// configured allocator's `realloc(NULL, size)` behavior.
+fn null_public_memory_allocation(
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+) -> PublicMemoryAllocation {
+    let realloc = memory_suite
+        .realloc_fcn
+        .expect("non-null function pointer");
+    let free = memory_suite.free_fcn.expect("non-null function pointer");
+    let mut allocation = std::ptr::null_mut();
+    public_memory_allocation(move |action| match action {
+        PublicMemoryAllocationAction::Reallocate(size) => {
+            let replacement = realloc(allocation, size);
+            if replacement.is_null() {
+                PublicMemoryAllocationResult::ReallocationFailed
+            } else {
+                allocation = replacement;
+                PublicMemoryAllocationResult::Reallocated(allocation.addr())
+            }
+        }
+        PublicMemoryAllocationAction::Free => {
+            free(allocation);
+            PublicMemoryAllocationResult::Freed
+        }
+    })
 }
 
 // The C allocator DTO stays at the ABI boundary. Parser state carries only
@@ -4000,6 +4056,7 @@ impl RootParserState {
             public_memory_releases: std::sync::Arc::new(std::sync::Mutex::new(
                 PublicMemoryReleases {
                     releases: std::collections::HashMap::new(),
+                    null_allocation: None,
                 },
             )),
         }
@@ -7558,16 +7615,16 @@ fn parser_create_ownership(
                 .expect("child parser depth is non-zero"),
             );
         } else {
-            parser
+            let mut root = parser
                 .m_root
                 .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .alloc_tracker = alloc_tracker;
-            parser
-                .m_root
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            root.alloc_tracker = alloc_tracker;
+            root.allocator_suite_key = parser.m_allocatorKey;
+            root.public_memory_releases
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .allocator_suite_key = parser.m_allocatorKey;
+                .null_allocation = Some(null_public_memory_allocation(memory_suite));
         }
         std::sync::Arc::clone(&parser.m_root)
     };
@@ -11275,12 +11332,33 @@ fn XML_MemMalloc(
         .malloc_fcn
         .expect("non-null function pointer")(size);
     if !allocation.is_null() {
-        let release = memory_suite.free_fcn.expect("non-null function pointer");
+        let realloc = memory_suite
+            .realloc_fcn
+            .expect("non-null function pointer");
+        let free = memory_suite.free_fcn.expect("non-null function pointer");
+        let mut allocation = allocation;
         public_memory_releases
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .releases
-            .insert(allocation.addr(), Box::new(move || release(allocation)));
+            .insert(
+                allocation.addr(),
+                public_memory_allocation(move |action| match action {
+                    PublicMemoryAllocationAction::Reallocate(size) => {
+                        let replacement = realloc(allocation, size);
+                        if replacement.is_null() {
+                            PublicMemoryAllocationResult::ReallocationFailed
+                        } else {
+                            allocation = replacement;
+                            PublicMemoryAllocationResult::Reallocated(allocation.addr())
+                        }
+                    }
+                    PublicMemoryAllocationAction::Free => {
+                        free(allocation);
+                        PublicMemoryAllocationResult::Freed
+                    }
+                }),
+            );
     }
     allocation.addr()
 }
@@ -11303,34 +11381,55 @@ pub unsafe extern "C" fn XML_MemMalloc_ffi(
     let allocation_address = XML_MemMalloc(parser.m_allocatorKey, &public_memory_releases, size);
     std::ptr::with_exposed_provenance_mut(allocation_address)
 }
-unsafe fn XML_MemRealloc(
-    parser: &mut XML_ParserStruct,
-    mut ptr: *mut ::core::ffi::c_void,
-    mut size: crate::__stddef_size_t_h::size_t,
-) -> *mut ::core::ffi::c_void {
-    let memory_suite = allocator_suite(parser.m_allocatorKey)
-        .expect("allocator suite is registered while parser is alive");
-    let allocation = memory_suite
-        .realloc_fcn
-        .expect("non-null function pointer")(ptr, size);
-    if !allocation.is_null() {
-        let release = memory_suite.free_fcn.expect("non-null function pointer");
-        let public_memory_releases = parser
-            .m_root
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let public_memory_releases = public_memory_releases
-            .public_memory_releases
-            .clone();
+fn XML_MemRealloc(
+    allocator_key: usize,
+    public_memory_releases: &std::sync::Arc<std::sync::Mutex<PublicMemoryReleases>>,
+    address: usize,
+    size: crate::__stddef_size_t_h::size_t,
+) -> usize {
+    let (registered_allocation, null_allocation) = {
         let mut releases = public_memory_releases
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        releases.releases.remove(&ptr.addr());
-        releases
-            .releases
-            .insert(allocation.addr(), Box::new(move || release(allocation)));
+        let registered_allocation = releases.releases.remove(&address);
+        let null_allocation = if registered_allocation.is_none() && address == 0 {
+            releases.null_allocation.take()
+        } else {
+            None
+        };
+        (registered_allocation, null_allocation)
+    };
+    let was_registered = registered_allocation.is_some();
+    let used_null_allocation = null_allocation.is_some();
+    let Some(mut allocation) = registered_allocation.or(null_allocation) else {
+        return 0;
+    };
+    match (allocation.dispatch)(PublicMemoryAllocationAction::Reallocate(size)) {
+        PublicMemoryAllocationResult::Reallocated(replacement_address) => {
+            let mut releases = public_memory_releases
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            releases.releases.insert(replacement_address, allocation);
+            if used_null_allocation {
+                let memory_suite = allocator_suite(allocator_key)
+                    .expect("allocator suite is registered while parser is alive");
+                releases.null_allocation = Some(null_public_memory_allocation(memory_suite));
+            }
+            replacement_address
+        }
+        PublicMemoryAllocationResult::ReallocationFailed => {
+            let mut releases = public_memory_releases
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if was_registered {
+                releases.releases.insert(address, allocation);
+            } else if used_null_allocation {
+                releases.null_allocation = Some(allocation);
+            }
+            0
+        }
+        PublicMemoryAllocationResult::Freed => unreachable!("reallocation cannot free memory"),
     }
-    allocation
 }
 #[export_name = "XML_MemRealloc"]
 
@@ -11339,10 +11438,23 @@ pub unsafe extern "C" fn XML_MemRealloc_ffi(
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    let Some(parser) = parser.as_mut() else {
+    if parser.is_null() || !parser.is_aligned() {
         return crate::__stddef_null_h::NULL;
-    };
-    XML_MemRealloc(parser, ptr, size)
+    }
+    let parser = unsafe { parser.as_ref() }.expect("non-null parser was checked");
+    let public_memory_releases = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .public_memory_releases
+        .clone();
+    let allocation_address = XML_MemRealloc(
+        parser.m_allocatorKey,
+        &public_memory_releases,
+        ptr.addr(),
+        size,
+    );
+    std::ptr::with_exposed_provenance_mut(allocation_address)
 }
 /// Releases an allocation returned by XML_MemMalloc or XML_MemRealloc.
 ///
@@ -11353,13 +11465,19 @@ fn XML_MemFree(
     public_memory_releases: &std::sync::Arc<std::sync::Mutex<PublicMemoryReleases>>,
     address: usize,
 ) {
-    let release = public_memory_releases
+    let allocation = public_memory_releases
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .releases
         .remove(&address);
-    if let Some(release) = release {
-        release();
+    if let Some(mut allocation) = allocation {
+        match (allocation.dispatch)(PublicMemoryAllocationAction::Free) {
+            PublicMemoryAllocationResult::Freed => {}
+            PublicMemoryAllocationResult::Reallocated(_)
+            | PublicMemoryAllocationResult::ReallocationFailed => {
+                unreachable!("free must not reallocate memory")
+            }
+        }
     }
 }
 #[export_name = "XML_MemFree"]
