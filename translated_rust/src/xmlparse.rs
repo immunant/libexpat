@@ -21499,14 +21499,13 @@ unsafe fn storeEntityValue(
     }
 }
 
-unsafe extern "C" fn callStoreEntityValue(
-    parser: crate::expat_h::XML_Parser,
+unsafe fn callStoreEntityValue(
+    parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut entityTextPtr: *const ::core::ffi::c_char,
     mut entityTextEnd: *const ::core::ffi::c_char,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let parser = &mut *parser;
     let parser_handle = std::ptr::from_mut(parser);
     let mut next: *const ::core::ffi::c_char = entityTextPtr;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
@@ -21516,24 +21515,26 @@ unsafe extern "C" fn callStoreEntityValue(
             // range through the parser buffer or its active entity owner
             // first; the resulting pointers are then exactly the bounded
             // token window accepted by `storeEntityValue`.
-            let dtd = &*parser_dtd_ptr!(parser_handle);
-            let Some(input) = entity_value_token_source(
-                parser,
-                dtd,
-                next.addr(),
-                entityTextEnd.addr(),
-            ) else {
+            let Some(dtd_owner) = parser.m_dtd.clone() else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let (input_start, input_end) = match input {
-                RawNameSource::Bytes(bytes) => (
-                    bytes.as_ptr().cast::<::core::ffi::c_char>(),
-                    bytes.as_ptr().wrapping_add(bytes.len()).cast::<::core::ffi::c_char>(),
-                ),
-                RawNameSource::Chars(chars) => (
-                    chars.as_ptr(),
-                    chars.as_ptr().wrapping_add(chars.len()),
-                ),
+            let Some((input_start, input_end)) = dtd_owner.inspect(|dtd| {
+                entity_value_token_source(parser, dtd, next.addr(), entityTextEnd.addr()).map(
+                    |input| match input {
+                        RawNameSource::Bytes(bytes) => (
+                            bytes.as_ptr().cast::<::core::ffi::c_char>(),
+                            bytes.as_ptr()
+                                .wrapping_add(bytes.len())
+                                .cast::<::core::ffi::c_char>(),
+                        ),
+                        RawNameSource::Chars(chars) => (
+                            chars.as_ptr(),
+                            chars.as_ptr().wrapping_add(chars.len()),
+                        ),
+                    },
+                )
+            }) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let stored = storeEntityValue(parser_handle, enc, input_start, input_end, account);
             result = stored.error;
@@ -21569,38 +21570,28 @@ unsafe extern "C" fn callStoreEntityValue(
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .hash_secret_salt;
             let (textStart, textEnd, has_more) = {
-                let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                let Some(dtd_owner) = parser.m_dtd.clone() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                let dtd = &mut *dtd_owner.value.get();
-                let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                let Some(text) = dtd_owner.inspect(|dtd| {
+                    let entity = declared_entity_mut(dtd, declaration, hash_salt)?;
+                    let text = entity.textPtr.present()?;
+                    let text_len = entity.textLen;
+                    let processed = usize::try_from(entity.processed).ok()?;
+                    let has_more = entity.hasMore != 0;
+                    let text = entity_text_chars(dtd, text, text_len)?;
+                    let unprocessed = text.get(processed..)?;
+                    Some((
+                        unprocessed.as_ptr().cast::<::core::ffi::c_char>(),
+                        text.as_ptr()
+                            .wrapping_add(text.len())
+                            .cast::<::core::ffi::c_char>(),
+                        has_more,
+                    ))
+                }) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                let (text_ref, text_len, processed_before, has_more) = (
-                    entity.textPtr.present(),
-                    entity.textLen,
-                    entity.processed,
-                    entity.hasMore != 0,
-                );
-                let Some(text) = text_ref else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(text) = entity_text_chars(dtd, text, text_len) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Ok(processed) = usize::try_from(processed_before) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(unprocessed) = text.get(processed..) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                (
-                    unprocessed.as_ptr().cast::<::core::ffi::c_char>(),
-                    text.as_ptr()
-                        .wrapping_add(text.len())
-                        .cast::<::core::ffi::c_char>(),
-                    has_more,
-                )
+                text
             };
             let mut nextInEntity: *const ::core::ffi::c_char = textStart;
             if has_more {
