@@ -172,12 +172,12 @@ pub const XML_ROLE_ERROR: C2Rust_Unnamed = -1;
 #[repr(C)]
 pub struct prolog_state {
     pub handler: Option<
-        extern "C" fn(
-            *mut prolog_state,
+        fn(
+            &mut prolog_state,
             ::core::ffi::c_int,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
-            *const ENCODING,
+            &ENCODING,
         ) -> ::core::ffi::c_int,
     >,
     pub level: ::core::ffi::c_uint,
@@ -187,12 +187,12 @@ pub struct prolog_state {
     pub inEntityValue: ::core::ffi::c_int,
 }
 pub type PROLOG_STATE = prolog_state;
-pub type PROLOG_HANDLER = extern "C" fn(
-    *mut PROLOG_STATE,
+pub type PROLOG_HANDLER = fn(
+    &mut PROLOG_STATE,
     ::core::ffi::c_int,
     *const ::core::ffi::c_char,
     *const ::core::ffi::c_char,
-    *const ENCODING,
+    &ENCODING,
 ) -> ::core::ffi::c_int;
 pub const XML_TOK_NONE: ::core::ffi::c_int = -4;
 pub const XML_TOK_PI: ::core::ffi::c_int = 11;
@@ -454,15 +454,13 @@ static KW_SYSTEM: [::core::ffi::c_char; 7] = [
     ASCII_M as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-extern "C" fn prolog0(
-    state: *mut PROLOG_STATE,
+fn prolog0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => {
             set_handler(state, prolog1);
@@ -496,19 +494,17 @@ extern "C" fn prolog0(
             set_handler(state, error);
             XML_ROLE_INSTANCE_START as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn prolog1(
-    state: *mut PROLOG_STATE,
+fn prolog1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S | XML_TOK_BOM => XML_ROLE_NONE as ::core::ffi::c_int,
         XML_TOK_PI => XML_ROLE_PI as ::core::ffi::c_int,
@@ -528,19 +524,17 @@ extern "C" fn prolog1(
             set_handler(state, error);
             XML_ROLE_INSTANCE_START as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn prolog2(
-    state: *mut PROLOG_STATE,
+fn prolog2(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NONE as ::core::ffi::c_int,
         XML_TOK_PI => XML_ROLE_PI as ::core::ffi::c_int,
@@ -549,38 +543,34 @@ extern "C" fn prolog2(
             set_handler(state, error);
             XML_ROLE_INSTANCE_START as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn doctype0(
-    state: *mut PROLOG_STATE,
+fn doctype0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int,
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             set_handler(state, doctype1);
             XML_ROLE_DOCTYPE_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn doctype1(
-    state: *mut PROLOG_STATE,
+fn doctype1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int,
         XML_TOK_OPEN_BRACKET => {
@@ -613,57 +603,51 @@ extern "C" fn doctype1(
             set_handler(state, doctype2);
             XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn doctype2(
-    state: *mut PROLOG_STATE,
+fn doctype2(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, doctype3);
             XML_ROLE_DOCTYPE_PUBLIC_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn doctype3(
-    state: *mut PROLOG_STATE,
+fn doctype3(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, doctype4);
             XML_ROLE_DOCTYPE_SYSTEM_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn doctype4(
-    state: *mut PROLOG_STATE,
+fn doctype4(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int,
         XML_TOK_OPEN_BRACKET => {
@@ -674,38 +658,34 @@ extern "C" fn doctype4(
             set_handler(state, prolog2);
             XML_ROLE_DOCTYPE_CLOSE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn doctype5(
-    state: *mut PROLOG_STATE,
+fn doctype5(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int,
         XML_TOK_DECL_CLOSE => {
             set_handler(state, prolog2);
             XML_ROLE_DOCTYPE_CLOSE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn internalSubset(
-    state: *mut PROLOG_STATE,
+fn internalSubset(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NONE as ::core::ffi::c_int,
         XML_TOK_DECL_OPEN
@@ -760,36 +740,33 @@ extern "C" fn internalSubset(
             XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         XML_TOK_NONE => XML_ROLE_NONE as ::core::ffi::c_int,
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn externalSubset0(
-    state: *mut PROLOG_STATE,
+fn externalSubset0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
     set_handler(state, externalSubset1);
 
     if tok == XML_TOK_XML_DECL {
         XML_ROLE_TEXT_DECL as ::core::ffi::c_int
     } else {
-        externalSubset1(state as *mut PROLOG_STATE, tok, ptr, end, enc)
+        externalSubset1(state, tok, ptr, end, enc)
     }
 }
 
-extern "C" fn externalSubset1(
-    state: *mut PROLOG_STATE,
+fn externalSubset1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_COND_SECT_OPEN => {
             set_handler(state, condSect0);
@@ -800,21 +777,19 @@ extern "C" fn externalSubset1(
             XML_ROLE_NONE as ::core::ffi::c_int
         }
         XML_TOK_PROLOG_S => XML_ROLE_NONE as ::core::ffi::c_int,
-        XML_TOK_CLOSE_BRACKET => common(state as *mut PROLOG_STATE, tok),
+        XML_TOK_CLOSE_BRACKET => common(state, tok),
         XML_TOK_NONE if state.includeLevel == 0 => XML_ROLE_NONE as ::core::ffi::c_int,
-        XML_TOK_NONE => common(state as *mut PROLOG_STATE, tok),
-        _ => internalSubset(state as *mut PROLOG_STATE, tok, ptr, end, enc),
+        XML_TOK_NONE => common(state, tok),
+        _ => internalSubset(state, tok, ptr, end, enc),
     }
 }
-extern "C" fn entity0(
-    state: *mut PROLOG_STATE,
+fn entity0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_PERCENT => {
@@ -825,38 +800,34 @@ extern "C" fn entity0(
             set_handler(state, entity2);
             XML_ROLE_GENERAL_ENTITY_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity1(
-    state: *mut PROLOG_STATE,
+fn entity1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_NAME => {
             set_handler(state, entity7);
             XML_ROLE_PARAM_ENTITY_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity2(
-    state: *mut PROLOG_STATE,
+fn entity2(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_NAME if matches_ascii(enc, ptr, end, &raw const KW_SYSTEM as *const _) => {
@@ -871,57 +842,51 @@ extern "C" fn entity2(
             set_decl_close_role_none(state, XML_ROLE_ENTITY_NONE as ::core::ffi::c_int);
             XML_ROLE_ENTITY_VALUE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity3(
-    state: *mut PROLOG_STATE,
+fn entity3(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, entity4);
             XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity4(
-    state: *mut PROLOG_STATE,
+fn entity4(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, entity5);
             XML_ROLE_ENTITY_SYSTEM_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity5(
-    state: *mut PROLOG_STATE,
+fn entity5(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_DECL_CLOSE => {
@@ -932,38 +897,34 @@ extern "C" fn entity5(
             set_handler(state, entity6);
             XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity6(
-    state: *mut PROLOG_STATE,
+fn entity6(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_NAME => {
             set_decl_close_role_none(state, XML_ROLE_ENTITY_NONE as ::core::ffi::c_int);
             XML_ROLE_ENTITY_NOTATION_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity7(
-    state: *mut PROLOG_STATE,
+fn entity7(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_NAME if matches_ascii(enc, ptr, end, &raw const KW_SYSTEM as *const _) => {
@@ -978,95 +939,85 @@ extern "C" fn entity7(
             set_decl_close_role_none(state, XML_ROLE_ENTITY_NONE as ::core::ffi::c_int);
             XML_ROLE_ENTITY_VALUE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity8(
-    state: *mut PROLOG_STATE,
+fn entity8(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, entity9);
             XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity9(
-    state: *mut PROLOG_STATE,
+fn entity9(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, entity10);
             XML_ROLE_ENTITY_SYSTEM_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn entity10(
-    state: *mut PROLOG_STATE,
+fn entity10(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ENTITY_NONE as ::core::ffi::c_int,
         XML_TOK_DECL_CLOSE => {
             set_next_subset_handler(state);
             XML_ROLE_ENTITY_COMPLETE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn notation0(
-    state: *mut PROLOG_STATE,
+fn notation0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NOTATION_NONE as ::core::ffi::c_int,
         XML_TOK_NAME => {
             set_handler(state, notation1);
             XML_ROLE_NOTATION_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn notation1(
-    state: *mut PROLOG_STATE,
+fn notation1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NOTATION_NONE as ::core::ffi::c_int,
         XML_TOK_NAME if matches_ascii(enc, ptr, end, &raw const KW_SYSTEM as *const _) => {
@@ -1077,57 +1028,51 @@ extern "C" fn notation1(
             set_handler(state, notation2);
             XML_ROLE_NOTATION_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn notation2(
-    state: *mut PROLOG_STATE,
+fn notation2(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NOTATION_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, notation4);
             XML_ROLE_NOTATION_PUBLIC_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn notation3(
-    state: *mut PROLOG_STATE,
+fn notation3(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NOTATION_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_decl_close_role_none(state, XML_ROLE_NOTATION_NONE as ::core::ffi::c_int);
             XML_ROLE_NOTATION_SYSTEM_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn notation4(
-    state: *mut PROLOG_STATE,
+fn notation4(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NOTATION_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
@@ -1138,37 +1083,33 @@ extern "C" fn notation4(
             set_next_subset_handler(state);
             XML_ROLE_NOTATION_NO_SYSTEM_ID as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
-extern "C" fn attlist0(
-    state: *mut PROLOG_STATE,
+fn attlist0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             set_handler(state, attlist1);
             XML_ROLE_ATTLIST_ELEMENT_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist1(
-    state: *mut PROLOG_STATE,
+fn attlist1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_DECL_CLOSE => {
@@ -1179,19 +1120,17 @@ extern "C" fn attlist1(
             set_handler(state, attlist2);
             XML_ROLE_ATTRIBUTE_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist2(
-    state: *mut PROLOG_STATE,
+fn attlist2(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_NAME => {
@@ -1225,44 +1164,40 @@ extern "C" fn attlist2(
                 return XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
 
-            common(state as *mut PROLOG_STATE, tok)
+            common(state, tok)
         }
         XML_TOK_OPEN_PAREN => {
             set_handler(state, attlist3);
             XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist3(
-    state: *mut PROLOG_STATE,
+fn attlist3(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_NMTOKEN | XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             set_handler(state, attlist4);
             XML_ROLE_ATTRIBUTE_ENUM_VALUE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist4(
-    state: *mut PROLOG_STATE,
+fn attlist4(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_CLOSE_PAREN => {
@@ -1273,57 +1208,51 @@ extern "C" fn attlist4(
             set_handler(state, attlist3);
             XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist5(
-    state: *mut PROLOG_STATE,
+fn attlist5(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_OPEN_PAREN => {
             set_handler(state, attlist6);
             XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist6(
-    state: *mut PROLOG_STATE,
+fn attlist6(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_NAME => {
             set_handler(state, attlist7);
             XML_ROLE_ATTRIBUTE_NOTATION_VALUE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist7(
-    state: *mut PROLOG_STATE,
+fn attlist7(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_CLOSE_PAREN => {
@@ -1334,19 +1263,17 @@ extern "C" fn attlist7(
             set_handler(state, attlist6);
             XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist8(
-    state: *mut PROLOG_STATE,
+fn attlist8(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_POUND_NAME => {
@@ -1380,62 +1307,56 @@ extern "C" fn attlist8(
                 return XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
 
-            common(state as *mut PROLOG_STATE, tok)
+            common(state, tok)
         }
         XML_TOK_LITERAL => {
             set_handler(state, attlist1);
             XML_ROLE_DEFAULT_ATTRIBUTE_VALUE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn attlist9(
-    state: *mut PROLOG_STATE,
+fn attlist9(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int,
         XML_TOK_LITERAL => {
             set_handler(state, attlist1);
             XML_ROLE_FIXED_ATTRIBUTE_VALUE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
-extern "C" fn element0(
-    state: *mut PROLOG_STATE,
+fn element0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             set_handler(state, element1);
             XML_ROLE_ELEMENT_NAME as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn element1(
-    state: *mut PROLOG_STATE,
+fn element1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_NAME if matches_ascii(enc, ptr, end, &raw const KW_EMPTY as *const _) => {
@@ -1451,19 +1372,17 @@ extern "C" fn element1(
             state.level = 1;
             XML_ROLE_GROUP_OPEN as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn element2(
-    state: *mut PROLOG_STATE,
+fn element2(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_POUND_NAME
@@ -1493,19 +1412,17 @@ extern "C" fn element2(
             set_handler(state, element7);
             XML_ROLE_CONTENT_ELEMENT_PLUS as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn element3(
-    state: *mut PROLOG_STATE,
+fn element3(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_CLOSE_PAREN => {
@@ -1520,38 +1437,34 @@ extern "C" fn element3(
             set_handler(state, element4);
             XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn element4(
-    state: *mut PROLOG_STATE,
+fn element4(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_NAME | XML_TOK_PREFIXED_NAME => {
             set_handler(state, element5);
             XML_ROLE_CONTENT_ELEMENT as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn element5(
-    state: *mut PROLOG_STATE,
+fn element5(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_CLOSE_PAREN_ASTERISK => {
@@ -1562,19 +1475,17 @@ extern "C" fn element5(
             set_handler(state, element4);
             XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn element6(
-    state: *mut PROLOG_STATE,
+fn element6(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_OPEN_PAREN => {
@@ -1597,19 +1508,17 @@ extern "C" fn element6(
             set_handler(state, element7);
             XML_ROLE_CONTENT_ELEMENT_PLUS as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn element7(
-    state: *mut PROLOG_STATE,
+fn element7(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int,
         XML_TOK_CLOSE_PAREN => {
@@ -1632,17 +1541,9 @@ extern "C" fn element7(
             set_handler(state, element6);
             XML_ROLE_GROUP_CHOICE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
-fn state_mut<'a>(state: *mut PROLOG_STATE) -> &'a mut PROLOG_STATE {
-    unsafe { &mut *state }
-}
-
-fn encoding_ref<'a>(enc: *const ENCODING) -> &'a ENCODING {
-    unsafe { &*enc }
-}
-
 fn set_handler(state: &mut PROLOG_STATE, handler: PROLOG_HANDLER) {
     state.handler = Some(handler);
 }
@@ -1664,28 +1565,22 @@ fn close_element_group(state: &mut PROLOG_STATE, role: ::core::ffi::c_int) -> ::
     role
 }
 
-fn decl_name_ptr(
-    enc: *const ENCODING,
-    ptr: *const ::core::ffi::c_char,
-) -> *const ::core::ffi::c_char {
-    let prefix_len = (2 as ::core::ffi::c_int * encoding_ref(enc).minBytesPerChar) as usize;
+fn decl_name_ptr(enc: &ENCODING, ptr: *const ::core::ffi::c_char) -> *const ::core::ffi::c_char {
+    let prefix_len = (2 as ::core::ffi::c_int * enc.minBytesPerChar) as usize;
     ptr.wrapping_add(prefix_len)
 }
 
 fn matches_ascii(
-    enc: *const ENCODING,
+    enc: &ENCODING,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
     keyword: *const ::core::ffi::c_char,
 ) -> bool {
-    encoding_ref(enc)
-        .nameMatchesAscii
-        .expect("non-null function pointer")(enc, ptr, end, keyword)
-        != 0
+    enc.nameMatchesAscii.expect("non-null function pointer")(enc, ptr, end, keyword) != 0
 }
 
 fn decl_matches_ascii(
-    enc: *const ENCODING,
+    enc: &ENCODING,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
     keyword: *const ::core::ffi::c_char,
@@ -1693,15 +1588,12 @@ fn decl_matches_ascii(
     matches_ascii(enc, decl_name_ptr(enc, ptr), end, keyword)
 }
 
-fn ptr_after_char(
-    enc: *const ENCODING,
-    ptr: *const ::core::ffi::c_char,
-) -> *const ::core::ffi::c_char {
-    ptr.wrapping_add(encoding_ref(enc).minBytesPerChar as usize)
+fn ptr_after_char(enc: &ENCODING, ptr: *const ::core::ffi::c_char) -> *const ::core::ffi::c_char {
+    ptr.wrapping_add(enc.minBytesPerChar as usize)
 }
 
 fn pound_name_matches_ascii(
-    enc: *const ENCODING,
+    enc: &ENCODING,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
     keyword: *const ::core::ffi::c_char,
@@ -1723,7 +1615,7 @@ enum ConditionalKeyword {
 }
 
 fn matches_conditional_keyword(
-    enc: *const ENCODING,
+    enc: &ENCODING,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
     keyword: ConditionalKeyword,
@@ -1736,15 +1628,13 @@ fn matches_conditional_keyword(
     matches_ascii(enc, ptr, end, keyword)
 }
 
-extern "C" fn condSect0(
-    state: *mut PROLOG_STATE,
+fn condSect0(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    enc: *const ENCODING,
+    enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NONE as ::core::ffi::c_int,
         XML_TOK_NAME => {
@@ -1758,21 +1648,19 @@ extern "C" fn condSect0(
                 return XML_ROLE_NONE as ::core::ffi::c_int;
             }
 
-            common(state as *mut PROLOG_STATE, tok)
+            common(state, tok)
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn condSect1(
-    state: *mut PROLOG_STATE,
+fn condSect1(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NONE as ::core::ffi::c_int,
         XML_TOK_OPEN_BRACKET => {
@@ -1780,38 +1668,34 @@ extern "C" fn condSect1(
             state.includeLevel = state.includeLevel.wrapping_add(1 as ::core::ffi::c_uint);
             XML_ROLE_NONE as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn condSect2(
-    state: *mut PROLOG_STATE,
+fn condSect2(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => XML_ROLE_NONE as ::core::ffi::c_int,
         XML_TOK_OPEN_BRACKET => {
             state.handler = Some(externalSubset1);
             XML_ROLE_IGNORE_SECT as ::core::ffi::c_int
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn declClose(
-    state: *mut PROLOG_STATE,
+fn declClose(
+    state: &mut PROLOG_STATE,
     tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
     match tok {
         XML_TOK_PROLOG_S => state.role_none,
         XML_TOK_DECL_CLOSE => {
@@ -1822,23 +1706,21 @@ extern "C" fn declClose(
             });
             state.role_none
         }
-        _ => common(state as *mut PROLOG_STATE, tok),
+        _ => common(state, tok),
     }
 }
 
-extern "C" fn error(
-    _state: *mut PROLOG_STATE,
+fn error(
+    _state: &mut PROLOG_STATE,
     _tok: ::core::ffi::c_int,
     _ptr: *const ::core::ffi::c_char,
     _end: *const ::core::ffi::c_char,
-    _enc: *const ENCODING,
+    _enc: &ENCODING,
 ) -> ::core::ffi::c_int {
     XML_ROLE_NONE as ::core::ffi::c_int
 }
 
-extern "C" fn common(state: *mut PROLOG_STATE, tok: ::core::ffi::c_int) -> ::core::ffi::c_int {
-    let state = state_mut(state);
-
+fn common(state: &mut PROLOG_STATE, tok: ::core::ffi::c_int) -> ::core::ffi::c_int {
     if state.documentEntity == 0 && tok == XML_TOK_PARAM_ENTITY_REF {
         return XML_ROLE_INNER_PARAM_ENTITY_REF as ::core::ffi::c_int;
     }
@@ -1848,7 +1730,7 @@ extern "C" fn common(state: *mut PROLOG_STATE, tok: ::core::ffi::c_int) -> ::cor
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {
-    let state = state_mut(state);
+    let state = unsafe { &mut *state };
     state.handler = Some(prolog0);
     state.documentEntity = 1 as ::core::ffi::c_int;
     state.includeLevel = 0 as ::core::ffi::c_uint;
@@ -1856,7 +1738,7 @@ pub unsafe extern "C" fn XmlPrologStateInit(mut state: *mut PROLOG_STATE) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlPrologStateInitExternalEntity(mut state: *mut PROLOG_STATE) {
-    let state = state_mut(state);
+    let state = unsafe { &mut *state };
     state.handler = Some(externalSubset0);
     state.documentEntity = 0 as ::core::ffi::c_int;
     state.includeLevel = 0 as ::core::ffi::c_uint;
