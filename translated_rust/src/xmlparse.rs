@@ -11502,26 +11502,31 @@ pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_alloc_tracker_activation_threshold_impl(parser, activationThresholdBytes)
 }
-pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enabled: crate::expat_h::XML_Bool,
+/// Sets the parser's reparse-deferral switch after the ABI wrapper has
+/// validated and borrowed the opaque parser handle.
+fn set_reparse_deferral_enabled_impl(
+    parser: &mut XML_ParserStruct,
+    enabled: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Bool {
-    if !parser.is_null()
-        && (enabled as ::core::ffi::c_int == crate::expat_h::XML_TRUE as ::core::ffi::c_int
-            || enabled as ::core::ffi::c_int == crate::expat_h::XML_FALSE as ::core::ffi::c_int)
+    if enabled as ::core::ffi::c_int != crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        && enabled as ::core::ffi::c_int != crate::expat_h::XML_FALSE as ::core::ffi::c_int
     {
-        (*parser).m_reparseDeferralEnabled = enabled;
-        return crate::expat_h::XML_TRUE;
+        return crate::expat_h::XML_FALSE;
     }
-    return crate::expat_h::XML_FALSE;
+    parser.m_reparseDeferralEnabled = enabled;
+    crate::expat_h::XML_TRUE
 }
 #[export_name = "XML_SetReparseDeferralEnabled"]
 
 pub unsafe extern "C" fn XML_SetReparseDeferralEnabled_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enabled: crate::expat_h::XML_Bool,
+    parser: crate::expat_h::XML_Parser,
+    enabled: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetReparseDeferralEnabled(parser, enabled)
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_FALSE;
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_reparse_deferral_enabled_impl(parser, enabled)
 }
 fn store_raw_names_impl(
     parser: &mut XML_ParserStruct,
