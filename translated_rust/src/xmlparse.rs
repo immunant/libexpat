@@ -6205,10 +6205,26 @@ unsafe extern "C" fn storeAtts(
         if elementType.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if (*parser).m_ns as ::core::ffi::c_int != 0
-            && setElementTypePrefix(parser, elementType) == 0
-        {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        if (*parser).m_ns as ::core::ffi::c_int != 0 {
+            match copy_element_type_prefix_to_pool(
+                &mut (*dtd),
+                ::std::ffi::CStr::from_ptr((*elementType).name),
+            ) {
+                Ok(Some(prefix_key)) => {
+                    let prefix = lookup(
+                        parser,
+                        &raw mut (*dtd).prefixes,
+                        prefix_key,
+                        ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
+                    ) as *mut PREFIX;
+                    if prefix.is_null() {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                    finish_element_type_prefix(&mut (*dtd), &mut (*elementType), &mut (*prefix));
+                }
+                Ok(None) => {}
+                Err(()) => return crate::expat_h::XML_ERROR_NO_MEMORY,
+            }
         }
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
@@ -9275,8 +9291,33 @@ unsafe extern "C" fn doProlog(
                             (*dtd).pool.ptr = (*dtd).pool.start;
                         } else {
                             (*dtd).pool.start = (*dtd).pool.ptr;
-                            if setElementTypePrefix(parser, element_type) == 0 {
-                                element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                            match copy_element_type_prefix_to_pool(
+                                &mut (*dtd),
+                                ::std::ffi::CStr::from_ptr((*element_type).name),
+                            ) {
+                                Ok(Some(prefix_key)) => {
+                                    let prefix = lookup(
+                                        parser,
+                                        &raw mut (*dtd).prefixes,
+                                        prefix_key,
+                                        ::core::mem::size_of::<PREFIX>()
+                                            as crate::__stddef_size_t_h::size_t,
+                                    )
+                                        as *mut PREFIX;
+                                    if prefix.is_null() {
+                                        element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                    } else {
+                                        finish_element_type_prefix(
+                                            &mut (*dtd),
+                                            &mut (*element_type),
+                                            &mut (*prefix),
+                                        );
+                                    }
+                                }
+                                Ok(None) => {}
+                                Err(()) => {
+                                    element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                }
                             }
                         }
                     }
@@ -10341,8 +10382,33 @@ unsafe extern "C" fn doProlog(
                                 (*dtd).pool.ptr = (*dtd).pool.start;
                             } else {
                                 (*dtd).pool.start = (*dtd).pool.ptr;
-                                if setElementTypePrefix(parser, element_type) == 0 {
-                                    element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                match copy_element_type_prefix_to_pool(
+                                    &mut (*dtd),
+                                    ::std::ffi::CStr::from_ptr((*element_type).name),
+                                ) {
+                                    Ok(Some(prefix_key)) => {
+                                        let prefix = lookup(
+                                            parser,
+                                            &raw mut (*dtd).prefixes,
+                                            prefix_key,
+                                            ::core::mem::size_of::<PREFIX>()
+                                                as crate::__stddef_size_t_h::size_t,
+                                        )
+                                            as *mut PREFIX;
+                                        if prefix.is_null() {
+                                            element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                        } else {
+                                            finish_element_type_prefix(
+                                                &mut (*dtd),
+                                                &mut (*element_type),
+                                                &mut (*prefix),
+                                            );
+                                        }
+                                    }
+                                    Ok(None) => {}
+                                    Err(()) => {
+                                        element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                    }
                                 }
                             }
                         }
@@ -10584,8 +10650,33 @@ unsafe extern "C" fn doProlog(
                                 (*dtd).pool.ptr = (*dtd).pool.start;
                             } else {
                                 (*dtd).pool.start = (*dtd).pool.ptr;
-                                if setElementTypePrefix(parser, el) == 0 {
-                                    el = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                match copy_element_type_prefix_to_pool(
+                                    &mut (*dtd),
+                                    ::std::ffi::CStr::from_ptr((*el).name),
+                                ) {
+                                    Ok(Some(prefix_key)) => {
+                                        let prefix = lookup(
+                                            parser,
+                                            &raw mut (*dtd).prefixes,
+                                            prefix_key,
+                                            ::core::mem::size_of::<PREFIX>()
+                                                as crate::__stddef_size_t_h::size_t,
+                                        )
+                                            as *mut PREFIX;
+                                        if prefix.is_null() {
+                                            el = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                        } else {
+                                            finish_element_type_prefix(
+                                                &mut (*dtd),
+                                                &mut (*el),
+                                                &mut (*prefix),
+                                            );
+                                        }
+                                    }
+                                    Ok(None) => {}
+                                    Err(()) => {
+                                        el = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                    }
                                 }
                             }
                         }
@@ -11802,70 +11893,40 @@ fn report_event(
     }
 }
 
-unsafe extern "C" fn setElementTypePrefix(
-    mut parser: crate::expat_h::XML_Parser,
-    mut elementType: *mut ELEMENT_TYPE,
-) -> ::core::ffi::c_int {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut name: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    name = (*elementType).name;
-    while *name != 0 {
-        if *name as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
-            let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
-            let mut s: *const crate::expat_external_h::XML_Char =
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            s = (*elementType).name;
-            while s != name {
-                if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(&mut (*dtd).pool, None) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh15 = (*dtd).pool.ptr;
-                    (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                    *c2rust_fresh15 = *s;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return 0 as ::core::ffi::c_int;
-                }
-                s = s.offset(1);
-            }
-            if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*dtd).pool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh16 = (*dtd).pool.ptr;
-                (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                *c2rust_fresh16 = '\0' as i32 as crate::expat_external_h::XML_Char;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            prefix = lookup(
-                parser,
-                &raw mut (*dtd).prefixes,
-                (*dtd).pool.start as KEY,
-                ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
-            ) as *mut PREFIX;
-            if prefix.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            if (*prefix).name == (*dtd).pool.start as *const crate::expat_external_h::XML_Char {
-                (*dtd).pool.start = (*dtd).pool.ptr;
-            } else {
-                (*dtd).pool.ptr = (*dtd).pool.start;
-            }
-            (*elementType).prefix = prefix;
-            break;
-        } else {
-            name = name.offset(1);
+fn copy_element_type_prefix_to_pool(
+    dtd: &mut DTD,
+    element_name: &::std::ffi::CStr,
+) -> Result<Option<KEY>, ()> {
+    let Some(prefix_len) = element_name
+        .to_bytes()
+        .iter()
+        .position(|&c| c == crate::ascii_h::ASCII_COLON as u8)
+    else {
+        return Ok(None);
+    };
+
+    for &c in &element_name.to_bytes()[..prefix_len] {
+        if poolGrow(&mut dtd.pool, Some(c as crate::expat_external_h::XML_Char)) == 0 {
+            return Err(());
         }
     }
-    return 1 as ::core::ffi::c_int;
+    if poolGrow(
+        &mut dtd.pool,
+        Some('\0' as i32 as crate::expat_external_h::XML_Char),
+    ) == 0
+    {
+        return Err(());
+    }
+    Ok(Some(dtd.pool.start as KEY))
+}
+
+fn finish_element_type_prefix(dtd: &mut DTD, element_type: &mut ELEMENT_TYPE, prefix: &mut PREFIX) {
+    if prefix.name == dtd.pool.start as *const crate::expat_external_h::XML_Char {
+        dtd.pool.start = dtd.pool.ptr;
+    } else {
+        dtd.pool.ptr = dtd.pool.start;
+    }
+    element_type.prefix = prefix;
 }
 
 unsafe extern "C" fn getAttributeId(
