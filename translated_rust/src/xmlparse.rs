@@ -9705,66 +9705,138 @@ unsafe fn scanner_context_from_raw<'a>(
     }
 }
 
+/// Result of processing the external entity's initial token.
+///
+/// The processor ABI still uses raw cursors, but all decisions made while
+/// looking at that bounded token are expressed as offsets into its input.
+/// This lets the parser state transition and accounting use ordinary Rust
+/// references without recovering another raw cursor.
+enum ExternalEntityInit2Action {
+    Return(crate::expat_h::XML_Error, usize),
+    Abort(crate::expat_h::XML_Error),
+    Continue(usize),
+}
+
+/// Scan the first content token of an external entity using the parser's
+/// typed encoding state.  The initial scanner is deliberately retained until
+/// it has selected a complete encoding after an optional BOM.
+fn external_entity_init_scan(
+    parser: &mut XML_ParserStruct,
+    input: &[::core::ffi::c_char],
+) -> Option<crate::src::xmltok::ScannerResult> {
+    match parser.m_encoding {
+        EncodingState::Initial if parser.m_initEncoding.selected_encoding.is_none() => {
+            let scanner = parser.m_initEncoding.initEnc.scanners[1];
+            Some(
+                crate::src::xmltok::ScannerContext::initial(
+                    scanner,
+                    &mut parser.m_initEncoding,
+                    input,
+                )
+                .scan(),
+            )
+        }
+        EncodingState::Initial | EncodingState::Unknown => {
+            let encoding = current_parser_normal_encoding(parser)?;
+            Some(
+                crate::src::xmltok::ScannerContext::normal(
+                    encoding.enc.scanners[1],
+                    &encoding,
+                    input,
+                )
+                .scan(),
+            )
+        }
+    }
+}
+
+/// Handles the external entity's optional BOM and first partial token over a
+/// caller-validated input slice.  Cursor results remain offsets so the raw
+/// processor adapter is the only code that reconstructs a C cursor.
+fn external_entity_init_processor2_impl(
+    parser: &mut XML_ParserStruct,
+    input: &[::core::ffi::c_char],
+) -> ExternalEntityInit2Action {
+    let Some(scan) = external_entity_init_scan(parser, input) else {
+        return ExternalEntityInit2Action::Abort(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    let next = scan.next.unwrap_or(0);
+    let mut continuation = 0;
+    match scan.token {
+        crate::src::xmltok::XML_TOK_BOM => {
+            let input_bytes: &[u8] = bytemuck::cast_slice(input);
+            if !accounting_slice_diff_tolerated(
+                parser,
+                scan.token,
+                input_bytes,
+                0,
+                next,
+                3208 as ::core::ffi::c_int,
+                XML_ACCOUNT_DIRECT,
+            ) {
+                cdata_accounting_on_abort(parser);
+                return ExternalEntityInit2Action::Abort(
+                    crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH,
+                );
+            }
+            if next == input.len() && parser.m_parsingStatus.finalBuffer == 0 {
+                return ExternalEntityInit2Action::Return(crate::expat_h::XML_ERROR_NONE, next);
+            }
+            continuation = next;
+        }
+        crate::src::xmltok::XML_TOK_PARTIAL => {
+            if parser.m_parsingStatus.finalBuffer == 0 {
+                return ExternalEntityInit2Action::Return(crate::expat_h::XML_ERROR_NONE, 0);
+            }
+            set_parser_event_start_address(parser, input.as_ptr().addr());
+            return ExternalEntityInit2Action::Abort(crate::expat_h::XML_ERROR_UNCLOSED_TOKEN);
+        }
+        crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
+            if parser.m_parsingStatus.finalBuffer == 0 {
+                return ExternalEntityInit2Action::Return(crate::expat_h::XML_ERROR_NONE, 0);
+            }
+            set_parser_event_start_address(parser, input.as_ptr().addr());
+            return ExternalEntityInit2Action::Abort(crate::expat_h::XML_ERROR_PARTIAL_CHAR);
+        }
+        _ => {}
+    }
+    parser.m_processor = ProcessorState::ExternalEntityInit3;
+    ExternalEntityInit2Action::Continue(continuation)
+}
+
 unsafe extern "C" fn externalEntityInitProcessor2(
     mut parser: crate::expat_h::XML_Parser,
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut next: *const ::core::ffi::c_char = start;
-    let encoding = parser_encoding(parser);
-    let scan = scanner_context_from_raw(
-        (*encoding).scanners[1 as usize],
-        encoding,
-        start,
-        end,
-    )
-    .scan();
-    let mut tok: ::core::ffi::c_int = scan.token;
-    if let Some(offset) = scan.next {
-        next = start.wrapping_add(offset);
+    let Some(input_len) = end.addr().checked_sub(start.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    if parser.is_null()
+        || start.is_null()
+        || end.is_null()
+        || endPtr.is_null()
+        || !parser.is_aligned()
+        || !start.is_aligned()
+        || !end.is_aligned()
+        || !endPtr.is_aligned()
+        || input_len > isize::MAX as usize
+    {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
-    match tok {
-        crate::src::xmltok::XML_TOK_BOM => {
-            if accountingDiffTolerated(
-                parser,
-                tok,
-                start,
-                next,
-                3208 as ::core::ffi::c_int,
-                XML_ACCOUNT_DIRECT,
-                None,
-            ) == 0
-            {
-                accountingOnAbort(parser);
-                return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-            }
-            if next == end && (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = next;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            start = next;
+    let parser_state = &mut *parser;
+    let input = ::core::slice::from_raw_parts(start, input_len);
+    match external_entity_init_processor2_impl(parser_state, input) {
+        ExternalEntityInit2Action::Return(result, offset) => {
+            *endPtr = start.wrapping_add(offset);
+            result
         }
-        crate::src::xmltok::XML_TOK_PARTIAL => {
-            if (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = start;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            set_parser_event_start!(&mut *parser, start);
-            return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+        ExternalEntityInit2Action::Abort(result) => result,
+        ExternalEntityInit2Action::Continue(offset) => {
+            externalEntityInitProcessor3(parser, start.wrapping_add(offset), end, endPtr)
         }
-        crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-            if (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = start;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            set_parser_event_start!(&mut *parser, start);
-            return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
-        }
-        _ => {}
     }
-    (*parser).m_processor = ProcessorState::ExternalEntityInit3;
-    return externalEntityInitProcessor3(parser, start, end, endPtr);
 }
 
 unsafe extern "C" fn externalEntityInitProcessor3(
