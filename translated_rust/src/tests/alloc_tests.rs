@@ -749,6 +749,26 @@ fn set_user_data(user_data: *mut ::core::ffi::c_void) {
     ffi_call!(XML_SetUserData, current_parser(), user_data);
 }
 
+fn set_encoding(encoding: &CStr) -> XML_Status {
+    ffi_call!(XML_SetEncoding, current_parser(), encoding.as_ptr())
+}
+
+fn set_base(base: &CStr) -> XML_Status {
+    ffi_call!(XML_SetBase, current_parser(), base.as_ptr())
+}
+
+fn use_foreign_dtd(use_dtd: XML_Bool) -> XML_Error {
+    ffi_call!(XML_UseForeignDTD, current_parser(), use_dtd)
+}
+
+fn parser_reset() {
+    ffi_call!(
+        XML_ParserReset,
+        current_parser(),
+        ::core::ptr::null::<XML_Char>()
+    );
+}
+
 fn xml_failure_current_parser(line: ::core::ffi::c_int) {
     ffi_call!(
         _xml_failure,
@@ -1363,74 +1383,61 @@ extern "C" fn test_alloc_dtd_default_handling() {
     }
 }
 extern "C" fn test_alloc_explicit_encoding() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_explicit_encoding\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            547 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_explicit_encoding\0"),
+        547 as ::core::ffi::c_int,
+    );
+    let mut i = 0;
+    let max_alloc_count = 5 as ::core::ffi::c_int;
+
+    while i < max_alloc_count {
+        set_allocation_count(i);
+        if set_encoding(c_str(b"us-ascii\0")) as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        i += 1;
+    }
+
+    if i == 0 {
+        fail_alloc_test(
+            557 as ::core::ffi::c_int,
+            c_str(b"Encoding set despite failing allocator\0"),
         );
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            if XML_SetEncoding(g_parser, b"us-ascii\0".as_ptr() as *const XML_Char)
-                as ::core::ffi::c_uint
-                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                557 as ::core::ffi::c_int,
-                b"Encoding set despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                559 as ::core::ffi::c_int,
-                b"Encoding not set at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            559 as ::core::ffi::c_int,
+            c_str(b"Encoding not set at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_set_base() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_set_base\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            564 as ::core::ffi::c_int,
+    set_alloc_test_info(c_str(b"test_alloc_set_base\0"), 564 as ::core::ffi::c_int);
+    let mut i = 0;
+    let max_alloc_count = 5 as ::core::ffi::c_int;
+    let new_base = c_str(b"/local/file/name.xml\0");
+
+    while i < max_alloc_count {
+        set_allocation_count(i);
+        if set_base(new_base) as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        i += 1;
+    }
+
+    if i == 0 {
+        fail_alloc_test(
+            575 as ::core::ffi::c_int,
+            c_str(b"Base set despite failing allocator\0"),
         );
-        let mut new_base: *const XML_Char = b"/local/file/name.xml\0".as_ptr() as *const XML_Char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            if XML_SetBase(g_parser, new_base) as ::core::ffi::c_uint
-                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                575 as ::core::ffi::c_int,
-                b"Base set despite failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                577 as ::core::ffi::c_int,
-                b"Base not set with max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            577 as ::core::ffi::c_int,
+            c_str(b"Base not set with max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_realloc_buffer() {
@@ -1903,79 +1910,49 @@ extern "C" fn test_alloc_parse_public_doctype_long_name() {
     }
 }
 extern "C" fn test_alloc_set_foreign_dtd() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_set_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            892 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_set_foreign_dtd\0"),
+        892 as ::core::ffi::c_int,
+    );
+    let text1 = c_str(b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0");
+    let mut text2 = c_char_array(*b"<!ELEMENT doc (#PCDATA)*>\0");
+    let mut i = 0;
+    let max_alloc_count = 25 as ::core::ffi::c_int;
+
+    while i < max_alloc_count {
+        set_allocation_count(i);
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_user_data(text2.as_mut_ptr().cast());
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+        if use_foreign_dtd(XML_TRUE) as ::core::ffi::c_uint
+            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            fail_alloc_test(
+                905 as ::core::ffi::c_int,
+                c_str(b"Could not set foreign DTD\0"),
+            );
+        }
+        if parse_single_bytes(text1, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+
+    if i == 0 {
+        fail_alloc_test(
+            914 as ::core::ffi::c_int,
+            c_str(b"Parse succeeded despite failing allocator\0"),
         );
-        let mut text1: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut text2: [::core::ffi::c_char; 26] = ::core::mem::transmute::<
-            [u8; 26],
-            [::core::ffi::c_char; 26],
-        >(*b"<!ELEMENT doc (#PCDATA)*>\0");
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetUserData(g_parser, &raw mut text2 as *mut ::core::ffi::c_void);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if XML_UseForeignDTD(g_parser, XML_TRUE) as ::core::ffi::c_uint
-                != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    905 as ::core::ffi::c_int,
-                    b"Could not set foreign DTD\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text1,
-                strlen(text1) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                914 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                916 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if i == max_alloc_count {
+        fail_alloc_test(
+            916 as ::core::ffi::c_int,
+            c_str(b"Parse failed at maximum allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_attribute_enum_value() {
@@ -3417,77 +3394,46 @@ extern "C" fn test_alloc_long_doc_name() {
     }
 }
 extern "C" fn test_alloc_long_base() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_long_base\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1860 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY e SYSTEM 'foo'>\n]>\n<doc>&e;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut entity_text: [::core::ffi::c_char; 12] =
-            ::core::mem::transmute::<[u8; 12], [::core::ffi::c_char; 12]>(*b"Hello world\0");
-        let mut base: *const XML_Char = b"LongBaseURI/that/will/overflow/an/internal/buffer/and/cause/it/to/have/to/grow/PQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/\0"
-            .as_ptr() as *const XML_Char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut entity_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if XML_SetBase(g_parser, base) as ::core::ffi::c_uint
-                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    set_alloc_test_info(c_str(b"test_alloc_long_base\0"), 1860 as ::core::ffi::c_int);
+    let text = c_str(b"<!DOCTYPE doc [\n  <!ENTITY e SYSTEM 'foo'>\n]>\n<doc>&e;</doc>\0");
+    let mut entity_text = c_char_array(*b"Hello world\0");
+    let base = c_str(
+        b"LongBaseURI/that/will/overflow/an/internal/buffer/and/cause/it/to/have/to/grow/PQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A/\0",
+    );
+    let mut i = 0;
+    let max_alloc_count = 25 as ::core::ffi::c_int;
+
+    while i < max_alloc_count {
+        set_allocation_count(i);
+        set_user_data(entity_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+        if set_base(base) as ::core::ffi::c_uint
+            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_reset();
+        } else {
+            if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
             {
-                XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            } else {
-                if _XML_Parse_SINGLE_BYTES(
-                    g_parser,
-                    text,
-                    strlen(text) as ::core::ffi::c_int,
-                    XML_TRUE as ::core::ffi::c_int,
-                ) as ::core::ffi::c_uint
-                    != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    break;
-                }
-                alloc_teardown();
-                alloc_setup();
+                break;
             }
-            i += 1;
+            alloc_teardown();
+            alloc_setup();
         }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1906 as ::core::ffi::c_int,
-                b"Parsing worked despite failing allocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1908 as ::core::ffi::c_int,
-                b"Parsing failed even at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+        i += 1;
+    }
+
+    if i == 0 {
+        fail_alloc_test(
+            1906 as ::core::ffi::c_int,
+            c_str(b"Parsing worked despite failing allocations\0"),
+        );
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            1908 as ::core::ffi::c_int,
+            c_str(b"Parsing failed even at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_long_public_id() {
