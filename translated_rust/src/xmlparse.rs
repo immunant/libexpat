@@ -19924,43 +19924,87 @@ unsafe extern "C" fn reportComment(
 
 unsafe fn reportDefault(
     parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
+    enc: *const crate::src::xmltok::ENCODING,
+    s: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
 ) {
-    let parser_handle = parser;
-    let report_chunk = |data: *const crate::expat_external_h::XML_Char,
-                        len: ::core::ffi::c_int| {
+    if parser.is_null() || !parser.is_aligned() || enc.is_null() || !enc.is_aligned() {
+        return;
+    }
+    let Some(input_len) = end.addr().checked_sub(s.addr()) else {
+        return;
+    };
+    if input_len > isize::MAX as usize || (input_len != 0 && (s.is_null() || end.is_null())) {
+        return;
+    }
+    // The empty cursor range is permitted to contain null pointers.  Do not
+    // construct a slice for it, matching the former cursor adapter.
+    let input = if input_len == 0 {
+        &[]
+    } else {
+        core::slice::from_raw_parts(s.cast::<u8>(), input_len)
+    };
+    let parser_state = &mut *parser;
+    let encoding = &*enc;
+    // A zero-length UTF-8 token still reaches the default handler.  Preserve
+    // its original cursor (including a null cursor) rather than replacing it
+    // with the dangling pointer carried by Rust's empty slice.
+    if input.is_empty() && encoding.isUtf8 != 0 {
         let callback = DEFAULT_HANDLERS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .get(&(parser_handle as usize))
+            .get(&parser.addr())
             .cloned()
             .expect("default callback must be registered when installed");
-        callback.invoke(handler_arg!(parser_handle), data, len);
+        callback.invoke(handler_arg_from_state!(parser_state), s.cast(), 0);
+        return;
+    }
+    report_default_impl(
+        parser.addr(),
+        parser_state,
+        encoding,
+        enc.addr(),
+        s.addr(),
+        input,
+    );
+}
+
+/// Reports a validated default-handler token.
+///
+/// `reportDefault` owns the raw cursor boundary.  This helper receives only
+/// checked references, a bounded token, and cursor addresses for publishing
+/// parser event locations.  Its sole unsafe operation is invoking the
+/// installed foreign callback.
+unsafe fn report_default_impl(
+    parser_key: usize,
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::ENCODING,
+    encoding_address: usize,
+    input_start: usize,
+    input: &[u8],
+) {
+    let report_chunk = |parser: &XML_ParserStruct, data: &[crate::expat_external_h::XML_Char]| {
+        let callback = DEFAULT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&parser_key)
+            .cloned()
+            .expect("default callback must be registered when installed");
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            data.as_ptr(),
+            data.len() as ::core::ffi::c_int,
+        );
     };
-    if (*enc).isUtf8 == 0 {
-        let Some(input_len) = end.addr().checked_sub(s.addr()) else {
-            return;
-        };
-        // The empty cursor range is permitted to contain null pointers.  Do
-        // not construct a slice for it, matching the former cursor adapter.
-        let input = if input_len == 0 {
-            &[]
-        } else {
-            if s.is_null() {
-                return;
-            }
-            core::slice::from_raw_parts(s.cast::<u8>(), input_len)
-        };
-        let encoding = &*enc;
-        let unknown_encoding = if input_len == 0 {
+    if encoding.isUtf8 == 0 {
+        let unknown_encoding = if input.is_empty() {
             None
         } else {
             match encoding.utf8Convert {
                 crate::src::xmltok::Utf8Converter::Unknown => {
-                    crate::src::xmltok::registered_unknown_encoding(Some(enc.addr()))
+                    crate::src::xmltok::registered_unknown_encoding(Some(encoding_address))
                         .expect("unknown encoding must have state")
                         .into()
                 }
@@ -19971,38 +20015,38 @@ unsafe fn reportDefault(
         let mut convert_res: crate::src::xmltok::XML_Convert_Result =
             crate::src::xmltok::XML_CONVERT_COMPLETED;
         let (event_target, internal_event_window, internal_event_start) = {
-            let parser_state = &mut *parser;
-            let active_parser_encoding = match parser_state.m_encoding {
-                EncodingState::Initial => match parser_state.m_initEncoding.selected_encoding {
+            let active_parser_encoding = match parser.m_encoding {
+                EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
                     Some(index) if index < 7 => {
-                        if parser_state.m_ns != 0 {
-                            crate::src::xmltok::encodingsNS[index]
+                        if parser.m_ns != 0 {
+                            crate::src::xmltok::encodingsNS[index].addr()
                         } else {
-                            crate::src::xmltok::encodings[index]
+                            crate::src::xmltok::encodings[index].addr()
                         }
                     }
-                    _ => &raw const parser_state.m_initEncoding.initEnc,
+                    _ => std::ptr::from_ref(&parser.m_initEncoding.initEnc).addr(),
                 },
-                EncodingState::Unknown => parser_state
+                EncodingState::Unknown => parser
                     .m_unknownEncodingMem
                     .as_ref()
                     .expect("unknown encoding storage is installed")
                     .storage
                     .as_ptr()
-                    .cast(),
+                    .cast::<crate::src::xmltok::ENCODING>()
+                    .addr(),
             };
-            let parser_events = enc == active_parser_encoding;
+            let parser_events = encoding_address == active_parser_encoding;
             let event_target = if parser_events {
                 (EventCursorTarget::Parser, None, None)
             } else {
-                let open_entity_index = parser_state
+                let open_entity_index = parser
                     .m_openInternalEntities
                     .expect("internal entity default reporting requires an open entity");
-                let dtd = parser_state
+                let dtd = parser
                     .m_dtd
                     .as_ref()
                     .expect("internal entity default reporting requires a DTD");
-                let open_entity = parser_state
+                let open_entity = parser
                     .m_activeInternalEntities
                     .get(open_entity_index)
                     .expect("open internal entity index is live")
@@ -20014,18 +20058,17 @@ unsafe fn reportDefault(
                 (
                     EventCursorTarget::InternalEntity(open_entity_index),
                     internal_window,
-                    internal_event_offset(internal_window, s.addr()),
+                    internal_event_offset(internal_window, input_start),
                 )
             };
             event_target
         };
         loop {
-            let (input_used, output_used, data_start) = {
-                let parser_state = &mut *parser;
-                let Some(output) = parser_state
+            let (input_used, output_used) = {
+                let Some(output) = parser
                     .m_dataBuf
                     .chars
-                    .get_mut(..parser_state.m_dataBufEnd)
+                    .get_mut(..parser.m_dataBufEnd)
                 else {
                     return;
                 };
@@ -20037,26 +20080,28 @@ unsafe fn reportDefault(
                         bytemuck::cast_slice_mut(output),
                     );
                 convert_res = result;
-                (input_used, output_used, output.as_ptr())
+                (input_used, output_used)
             };
             if input_used != 0 {
                 let Some(next_offset) = input_offset.checked_add(input_used) else {
                     return;
                 };
                 input_offset = next_offset;
-                s = input[input_offset..].as_ptr().cast();
             }
+            let Some(event_end) = input_start.checked_add(input_offset) else {
+                return;
+            };
             event_target.set_end(
-                &mut *parser,
+                parser,
                 internal_event_start,
                 internal_event_window,
-                s.addr(),
+                event_end,
             );
-            report_chunk(
-                data_start,
-                output_used as ::core::ffi::c_int,
-            );
-            event_target.set_start(&mut *parser, internal_event_window, s.addr());
+            let Some(data) = parser.m_dataBuf.chars.get(..output_used) else {
+                return;
+            };
+            report_chunk(parser, data);
+            event_target.set_start(parser, internal_event_window, event_end);
             if !(convert_res as ::core::ffi::c_uint
                 != crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                     as ::core::ffi::c_uint
@@ -20068,11 +20113,8 @@ unsafe fn reportDefault(
             }
         }
     } else {
-        report_chunk(
-            s as *const crate::expat_external_h::XML_Char,
-            end.addr().wrapping_sub(s.addr()) as ::core::ffi::c_int,
-        );
-    };
+        report_chunk(parser, bytemuck::cast_slice(input));
+    }
 }
 
 unsafe fn defineAttribute(
