@@ -9517,6 +9517,7 @@ unsafe extern "C" fn externalEntityInitProcessor2(
                 next,
                 3208 as ::core::ffi::c_int,
                 XML_ACCOUNT_DIRECT,
+                None,
             ) == 0
             {
                 accountingOnAbort(parser);
@@ -9852,6 +9853,7 @@ unsafe fn doContent(
             accountAfter,
             3337 as ::core::ffi::c_int,
             account,
+            None,
         ) == 0
         {
             accountingOnAbort(parser);
@@ -9986,6 +9988,7 @@ unsafe fn doContent(
                                 >() as isize),
                             3403 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
+                            Some(bytemuck::bytes_of(&ch)),
                         );
                         let (has_character_data_handler, has_default_handler) = {
                             let parser_state = &*parser;
@@ -13451,6 +13454,7 @@ unsafe fn process_xml_decl(
         next,
         4870 as ::core::ffi::c_int,
         XML_ACCOUNT_DIRECT,
+        None,
     ) == 0
     {
         accountingOnAbort(parser);
@@ -13852,6 +13856,7 @@ unsafe extern "C" fn entityValueInitProcessor(
                 next,
                 5077 as ::core::ffi::c_int,
                 XML_ACCOUNT_DIRECT,
+                None,
             ) == 0
             {
                 accountingOnAbort(parser);
@@ -13910,6 +13915,7 @@ unsafe extern "C" fn externalParEntProcessor(
             next,
             5130 as ::core::ffi::c_int,
             XML_ACCOUNT_DIRECT,
+            None,
         ) == 0
         {
             accountingOnAbort(parser);
@@ -14335,6 +14341,7 @@ unsafe extern "C" fn doProlog(
                     next,
                     5301 as ::core::ffi::c_int,
                     account,
+                    None,
                 ) == 0
                 {
                     accountingOnAbort(parser);
@@ -17269,6 +17276,7 @@ unsafe extern "C" fn epilogProcessor(
             end.as_ptr().cast(),
             6279,
             XML_ACCOUNT_DIRECT,
+            None,
         ) == 0
         {
             accountingOnAbort(parser_for_account);
@@ -18116,7 +18124,15 @@ unsafe fn appendAttributeValue(
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
         }
         let mut tok: ::core::ffi::c_int = scan.token;
-        if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
+        if accountingDiffTolerated(
+            parser,
+            tok,
+            ptr,
+            next,
+            6591 as ::core::ffi::c_int,
+            account,
+            None,
+        ) == 0
         {
             accountingOnAbort(parser);
             return (crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH, ptr);
@@ -18243,6 +18259,7 @@ unsafe fn appendAttributeValue(
                                 .cast::<::core::ffi::c_char>(),
                             6663 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
+                            Some(bytemuck::bytes_of(&ch)),
                         );
                         if !pool_append_char(pool, ch) {
                             return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
@@ -18428,6 +18445,7 @@ unsafe fn storeEntityValue(
             next,
             6798 as ::core::ffi::c_int,
             account,
+            None,
         ) == 0
         {
             accountingOnAbort(parser);
@@ -22182,14 +22200,17 @@ fn append_printable_byte(output: &mut Vec<u8>, byte: u8) {
     }
 }
 
-unsafe extern "C" fn accountingReportDiff(
-    mut rootParser: crate::expat_h::XML_Parser,
-    mut levelsAwayFromRootParser: ::core::ffi::c_uint,
-    mut before: *const ::core::ffi::c_char,
-    mut after: *const ::core::ffi::c_char,
-    mut bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
-    mut source_line: ::core::ffi::c_int,
-    mut account: XML_Account,
+/// Writes the optional accounting context from a caller-owned, bounded token
+/// slice.  Keeping the context as a slice is important for predefined entity
+/// expansions: those use a stack-local character rather than parser-owned
+/// input, but must still produce the same diagnostic.
+fn accounting_report_diff(
+    debug_level: ::core::ffi::c_ulong,
+    levels_away_from_root_parser: ::core::ffi::c_uint,
+    bytes: &[u8],
+    bytes_more: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
 ) {
     use std::io::Write;
 
@@ -22204,53 +22225,75 @@ unsafe extern "C" fn accountingReportDiff(
     let _ = write!(
         stderr,
         " (+{:>6} bytes {}|{}, xmlparse.c:{}) {:>10}\"",
-        bytesMore, account_kind, levelsAwayFromRootParser, source_line, "",
+        bytes_more, account_kind, levels_away_from_root_parser, source_line, "",
     );
-    let ellipsisLength: crate::__stddef_size_t_h::size_t =
-        b"[..]".len() as crate::__stddef_size_t_h::size_t;
-    let contextLength: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
-    let mut walker: *const ::core::ffi::c_char = before;
+    let ellipsis_length = b"[..]".len();
+    let context_length = 10usize;
     let mut rendered = Vec::new();
-    if (*rootParser)
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .accounting
-        .debugLevel
-        >= 3 as ::core::ffi::c_ulong
-        || after.offset_from(before)
-            <= (contextLength as crate::__stddef_size_t_h::size_t)
-                .wrapping_add(ellipsisLength)
-                .wrapping_add(contextLength as crate::__stddef_size_t_h::size_t)
-                as crate::__stddef_ptrdiff_t_h::ptrdiff_t
-    {
-        while walker < after {
-            append_printable_byte(&mut rendered, *walker as u8);
-            walker = walker.offset(1);
+    if debug_level >= 3 || bytes.len() <= context_length + ellipsis_length + context_length {
+        for &byte in bytes {
+            append_printable_byte(&mut rendered, byte);
         }
     } else {
-        while walker < before.offset(contextLength as isize) {
-            append_printable_byte(&mut rendered, *walker as u8);
-            walker = walker.offset(1);
+        for &byte in &bytes[..context_length] {
+            append_printable_byte(&mut rendered, byte);
         }
         rendered.extend_from_slice(b"[..]");
-        walker = after.offset(-(contextLength as isize));
-        while walker < after {
-            append_printable_byte(&mut rendered, *walker as u8);
-            walker = walker.offset(1);
+        for &byte in &bytes[bytes.len() - context_length..] {
+            append_printable_byte(&mut rendered, byte);
         }
     }
     let _ = stderr.write_all(&rendered);
     let _ = stderr.write_all(b"\"\n");
 }
 
-unsafe extern "C" fn accountingDiffTolerated(
+/// Resolves a legacy tokenizer cursor pair only long enough to render its
+/// accounting context.  The slice stays within this helper and is never
+/// handed out from raw pointers; its owner is verified as parser or active
+/// entity storage before the safe formatter consumes it.
+unsafe fn accounting_report_token_context(
+    origin_parser: crate::expat_h::XML_Parser,
+    levels_away_from_root_parser: ::core::ffi::c_uint,
+    before: *const ::core::ffi::c_char,
+    after: *const ::core::ffi::c_char,
+    bytes_more: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+    debug_level: ::core::ffi::c_ulong,
+) {
+    let Some(shared_dtd) = (*origin_parser).m_dtd.as_deref() else {
+        return;
+    };
+    // All non-local accounting callers provide tokenizer cursors.  A cursor
+    // must resolve through its parser/entity owner before it can be rendered;
+    // do not synthesize a slice from its addresses.
+    let dtd = &*shared_dtd.value.get();
+    let Some(source) = entity_value_token_source(&*origin_parser, dtd, before.addr(), after.addr())
+    else {
+        return;
+    };
+    let bytes: &[u8] = match source {
+        RawNameSource::Bytes(bytes) => bytes,
+        RawNameSource::Chars(chars) => bytemuck::cast_slice(chars),
+    };
+    accounting_report_diff(
+        debug_level,
+        levels_away_from_root_parser,
+        bytes,
+        bytes_more,
+        source_line,
+        account,
+    );
+}
+
+unsafe fn accountingDiffTolerated(
     mut originParser: crate::expat_h::XML_Parser,
     mut tok: ::core::ffi::c_int,
     mut before: *const ::core::ffi::c_char,
     mut after: *const ::core::ffi::c_char,
     mut source_line: ::core::ffi::c_int,
     mut account: XML_Account,
+    diagnostic_bytes: Option<&[u8]>,
 ) -> crate::expat_h::XML_Bool {
     match tok {
         crate::src::xmltok::XML_TOK_INVALID
@@ -22315,15 +22358,27 @@ unsafe extern "C" fn accountingDiffTolerated(
             as crate::expat_h::XML_Bool;
     if debug_level >= 2 as ::core::ffi::c_ulong {
         accountingReportStats(originParser, b"\0".as_ptr() as *const ::core::ffi::c_char);
-        accountingReportDiff(
-            originParser,
-            levelsAwayFromRootParser,
-            before,
-            after,
-            bytesMore,
-            source_line,
-            account,
-        );
+        if let Some(bytes) = diagnostic_bytes {
+            accounting_report_diff(
+                debug_level,
+                levelsAwayFromRootParser,
+                bytes,
+                bytesMore,
+                source_line,
+                account,
+            );
+        } else {
+            accounting_report_token_context(
+                originParser,
+                levelsAwayFromRootParser,
+                before,
+                after,
+                bytesMore,
+                source_line,
+                account,
+                debug_level,
+            );
+        }
     }
     return tolerated;
 }
