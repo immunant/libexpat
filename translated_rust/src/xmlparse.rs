@@ -1206,14 +1206,7 @@ pub use crate::stdlib::__off64_t;
 pub use crate::stdlib::__off_t;
 pub use crate::stdlib::_IO_FILE;
 pub use crate::stdlib::FILE;
-trait StartElementCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        name: *const crate::expat_external_h::XML_Char,
-        atts: *mut *const crate::expat_external_h::XML_Char,
-    );
-}
+trait StartElementCallback: Send + Sync + std::any::Any {}
 
 // Start-element attributes are retained in one of the parser's owned pools
 // until the callback completes.  Carry the pool location through content
@@ -1232,18 +1225,24 @@ impl StartElementCallback
         *mut *const crate::expat_external_h::XML_Char,
     )
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        name: *const crate::expat_external_h::XML_Char,
-        atts: *mut *const crate::expat_external_h::XML_Char,
-    ) {
-        self(user_data, name, atts);
-    }
+}
+
+/// Owns an erased start-element C callback while exposing a typed event to
+/// parser-side dispatch.
+struct StartElementCallbackAdapter {
+    callback: std::sync::Arc<dyn std::any::Any + Send + Sync>,
+}
+
+struct StartElementCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    name: &'a [crate::expat_external_h::XML_Char],
+    attributes: &'a [Vec<crate::expat_external_h::XML_Char>],
 }
 
 static START_ELEMENT_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn StartElementCallback>>>,
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<StartElementCallbackAdapter>>,
+    >,
 > = std::sync::OnceLock::new();
 
 /// A start-element handler registration prepared from the ABI callback value.
@@ -1251,7 +1250,7 @@ static START_ELEMENT_HANDLERS: std::sync::OnceLock<
 /// Parser state retains only this typed registry entry and its opaque address
 /// key, never the C callback representation itself.
 struct StartElementHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn StartElementCallback>>,
+    callback: Option<std::sync::Arc<StartElementCallbackAdapter>>,
 }
 
 fn start_element_handler_registration<Callback>(
@@ -1261,7 +1260,7 @@ where
     Callback: StartElementCallback + 'static,
 {
     StartElementHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(StartElementCallbackAdapter::new(callback))),
     }
 }
 
@@ -1879,12 +1878,52 @@ impl CdataSectionCallbackAdapter {
     }
 }
 
+impl StartElementCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: StartElementCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
+
+    fn invoke(&self, event: StartElementCallbackEvent<'_>) -> bool {
+        let Some(callback) = self.callback.downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *mut *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return false;
+        };
+        let mut attribute_pointers = Vec::new();
+        if attribute_pointers
+            .try_reserve_exact(event.attributes.len().saturating_add(1))
+            .is_err()
+        {
+            return false;
+        }
+        attribute_pointers.extend(event.attributes.iter().map(|value| value.as_ptr()));
+        attribute_pointers.push(::core::ptr::null());
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event.name.as_ptr(),
+                attribute_pointers.as_mut_ptr(),
+            );
+        }
+        true
+    }
+}
+
 /// Stages a start-element event in owned XML-character vectors before making
 /// the one ABI callback.  Attribute pool handles, rather than raw pointers,
 /// survive the parser work leading up to this point; the local pointer array
 /// is valid for precisely this foreign call.
 fn dispatch_start_element_callback(
-    callback: &dyn StartElementCallback,
+    callback: &StartElementCallbackAdapter,
     parser: &XML_ParserStruct,
     name: &[crate::expat_external_h::XML_Char],
     attributes: &[Option<StartElementAttributeValue>],
@@ -1911,23 +1950,11 @@ fn dispatch_start_element_callback(
             None => return false,
         });
     }
-    let mut callback_pointers = Vec::new();
-    if callback_pointers
-        .try_reserve_exact(callback_attributes.len().saturating_add(1))
-        .is_err()
-    {
-        return false;
-    }
-    callback_pointers.extend(callback_attributes.iter().map(|value| value.as_ptr()));
-    callback_pointers.push(::core::ptr::null());
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            callback_name.as_ptr(),
-            callback_pointers.as_mut_ptr(),
-        );
-    }
-    true
+    callback.invoke(StartElementCallbackEvent {
+        parser,
+        name: &callback_name,
+        attributes: &callback_attributes,
+    })
 }
 
 /// Invokes a start-doctype callback from the parser's retained pool values.
@@ -8260,7 +8287,7 @@ fn xml_external_entity_parser_create_impl(
     encoding_name: Option<&std::ffi::CStr>,
 ) -> Option<Box<XML_ParserStruct>> {
     let mut oldStartElementHandler = false;
-    let mut oldStartElementCallback: Option<std::sync::Arc<dyn StartElementCallback>> = None;
+    let mut oldStartElementCallback: Option<std::sync::Arc<StartElementCallbackAdapter>> = None;
     let mut oldEndElementCallback: Option<std::sync::Arc<dyn EndElementCallback>> = None;
     let mut oldCharacterDataHandler = false;
     let mut oldCharacterDataCallback: Option<std::sync::Arc<CharacterDataCallbackAdapter>> = None;
@@ -9223,14 +9250,15 @@ pub unsafe fn XML_SetElementHandler(
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
     let parser_key = parser as *mut XML_ParserStruct as usize;
-    parser.m_startElementHandler = start.is_some();
+    let start_registration = start_element_handler_registration(start);
+    parser.m_startElementHandler = start_registration.callback.is_some();
     let mut handlers = START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    match start {
+    match start_registration.callback {
         Some(callback) => {
-            handlers.insert(parser_key, std::sync::Arc::new(callback));
+            handlers.insert(parser_key, callback);
         }
         None => {
             handlers.remove(&parser_key);
@@ -9262,11 +9290,14 @@ pub unsafe extern "C" fn XML_SetElementHandler_ffi(
     };
     XML_SetElementHandler(parser, start, end)
 }
-fn set_start_element_handler(
+fn set_start_element_handler<Callback>(
     parser: &mut XML_ParserStruct,
     parser_address: usize,
-    registration: StartElementHandlerRegistration,
-) {
+    handler: Option<Callback>,
+) where
+    Callback: StartElementCallback + 'static,
+{
+    let registration = start_element_handler_registration(handler);
     parser.m_startElementHandler = registration.callback.is_some();
     let mut handlers = START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -9291,9 +9322,8 @@ pub unsafe extern "C" fn XML_SetStartElementHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let registration = start_element_handler_registration(start);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    set_start_element_handler(parser, parser_address, registration)
+    set_start_element_handler(parser, parser_address, start)
 }
 fn set_end_element_handler(
     parser: &mut XML_ParserStruct,
