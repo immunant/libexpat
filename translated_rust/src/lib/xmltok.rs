@@ -656,11 +656,11 @@ fn encoding_utf8_convert(
 }
 
 fn encoding_table_ptr() -> *const *const ENCODING {
-    unsafe { ::core::ptr::addr_of!(encodings).cast::<*const ENCODING>() }
+    encodings.0.as_ptr()
 }
 
 fn encoding_table_ns_ptr() -> *const *const ENCODING {
-    unsafe { ::core::ptr::addr_of!(encodingsNS).cast::<*const ENCODING>() }
+    encodingsNS.0.as_ptr()
 }
 
 fn update_position_with_utf8(
@@ -20700,7 +20700,21 @@ pub unsafe extern "C" fn XmlGetUtf16InternalEncoding() -> *const ENCODING {
         return &raw const internal_little2_encoding.enc;
     }
 }
-static mut encodings: [*const ENCODING; 7] = [::core::ptr::null::<ENCODING>(); 7];
+struct EncodingTable([*const ENCODING; 7]);
+
+unsafe impl Sync for EncodingTable {}
+
+static encodings: EncodingTable = unsafe {
+    EncodingTable([
+        ::core::ptr::addr_of!(latin1_encoding.enc),
+        ::core::ptr::addr_of!(ascii_encoding.enc),
+        ::core::ptr::addr_of!(utf8_encoding.enc),
+        ::core::ptr::addr_of!(big2_encoding.enc),
+        ::core::ptr::addr_of!(big2_encoding.enc),
+        ::core::ptr::addr_of!(little2_encoding.enc),
+        ::core::ptr::addr_of!(utf8_encoding.enc),
+    ])
+};
 extern "C" fn initScanProlog(
     enc: *const ENCODING,
     ptr: *const ::core::ffi::c_char,
@@ -20865,7 +20879,17 @@ pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const ENCODING {
         return &raw const internal_little2_encoding_ns.enc;
     }
 }
-static mut encodingsNS: [*const ENCODING; 7] = [::core::ptr::null::<ENCODING>(); 7];
+static encodingsNS: EncodingTable = unsafe {
+    EncodingTable([
+        ::core::ptr::addr_of!(latin1_encoding_ns.enc),
+        ::core::ptr::addr_of!(ascii_encoding_ns.enc),
+        ::core::ptr::addr_of!(utf8_encoding_ns.enc),
+        ::core::ptr::addr_of!(big2_encoding_ns.enc),
+        ::core::ptr::addr_of!(big2_encoding_ns.enc),
+        ::core::ptr::addr_of!(little2_encoding_ns.enc),
+        ::core::ptr::addr_of!(utf8_encoding_ns.enc),
+    ])
+};
 extern "C" fn initScanPrologNS(
     enc: *const ENCODING,
     ptr: *const ::core::ffi::c_char,
@@ -21843,30 +21867,3 @@ pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
         return enc;
     }
 }
-extern "C" fn c2rust_run_static_initializers() {
-    unsafe {
-        encodings = [
-            ::core::ptr::addr_of!(latin1_encoding.enc),
-            ::core::ptr::addr_of!(ascii_encoding.enc),
-            ::core::ptr::addr_of!(utf8_encoding.enc),
-            ::core::ptr::addr_of!(big2_encoding.enc),
-            ::core::ptr::addr_of!(big2_encoding.enc),
-            ::core::ptr::addr_of!(little2_encoding.enc),
-            ::core::ptr::addr_of!(utf8_encoding.enc),
-        ];
-        encodingsNS = [
-            ::core::ptr::addr_of!(latin1_encoding_ns.enc),
-            ::core::ptr::addr_of!(ascii_encoding_ns.enc),
-            ::core::ptr::addr_of!(utf8_encoding_ns.enc),
-            ::core::ptr::addr_of!(big2_encoding_ns.enc),
-            ::core::ptr::addr_of!(big2_encoding_ns.enc),
-            ::core::ptr::addr_of!(little2_encoding_ns.enc),
-            ::core::ptr::addr_of!(utf8_encoding_ns.enc),
-        ];
-    }
-}
-#[used]
-#[cfg_attr(target_os = "linux", link_section = ".init_array")]
-#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
-#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [extern "C" fn(); 1] = [c2rust_run_static_initializers];
