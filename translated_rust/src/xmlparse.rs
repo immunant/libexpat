@@ -11512,9 +11512,9 @@ unsafe extern "C" fn storeAtts(
         (*parser).m_nsAttsVersion = version;
         let parser_ref = &mut *parser;
         while i < attIndex {
-            let mut s: *const crate::expat_external_h::XML_Char = appAtts[i as usize];
+            let attribute_address = appAtts[i as usize].addr();
             let Some(attribute_name) =
-                pool_string_ref_from_address(&dtd.pool, s.addr(), false)
+                pool_string_ref_from_address(&dtd.pool, attribute_address, false)
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -11522,21 +11522,22 @@ unsafe extern "C" fn storeAtts(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             if marker as ::core::ffi::c_int == 2 as ::core::ffi::c_int {
-                let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                let mut uriHash: ::core::ffi::c_ulong = 0;
-                let mut sip_state: crate::siphash_h::siphash = crate::siphash_h::siphash {
-                    v0: 0,
-                    v1: 0,
-                    v2: 0,
-                    v3: 0,
-                    buf: [0; 8],
-                    p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
-                    c: 0,
+                // The marker is set only for names with a prefix.  Resolve the
+                // whole, terminated pool string before locating that prefix so
+                // no pointer walk can run past the string's owned slab.
+                let Some(attribute_chars) = pool_terminated_chars(&dtd.pool, attribute_name)
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey {
-                    k: [0, get_hash_secret_salt(parser) as crate::stdlib::uint64_t],
+                let Some(colon) = attribute_chars
+                    .iter()
+                    .position(|&character| character == ':' as crate::expat_external_h::XML_Char)
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                crate::src::xmlparse::siphash_h::sip24_init_state(&mut sip_state, &sip_key);
+                let Some(local_part_start) = colon.checked_add(1) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
                 if dtd
                     .pool
                     .set_marker_before(attribute_name, 0 as crate::expat_external_h::XML_Char)
@@ -11544,20 +11545,24 @@ unsafe extern "C" fn storeAtts(
                 {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
-                id = lookup(
+                let id = lookup(
                     parser,
                     &raw mut dtd.attributeIds,
-                    s as KEY,
+                    appAtts[i as usize] as KEY,
                     0 as crate::__stddef_size_t_h::size_t,
                 ) as *mut ATTRIBUTE_ID;
-                if id.is_null() {
+                let Some(id) = id.as_ref() else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                let Some(local_part) = pool_terminated_chars(&dtd.pool, attribute_name)
+                    .and_then(|chars| chars.get(local_part_start..))
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                if local_part.last().copied() != Some(0) {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
-                let attribute_prefix = (*id).prefix;
-                if matches!(attribute_prefix, AttributePrefix::None) {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                let binding_prefix = match attribute_prefix {
+                let binding_prefix = match id.prefix {
                     AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
                     AttributePrefix::Default => BindingPrefix::Default,
                     AttributePrefix::Named(name) => BindingPrefix::Named(name),
@@ -11571,79 +11576,42 @@ unsafe extern "C" fn storeAtts(
                     return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
                 };
                 let binding_storage = &parser_ref.m_activeBindings[binding_index];
-                let binding_prefix = binding_storage
+                let binding_ref = binding_storage
                     .binding
                     .first()
-                    .expect("binding storage has one binding")
-                    .prefix;
-                let uri_len = match usize::try_from(
-                    binding_storage
-                        .binding
-                        .first()
-                        .expect("binding storage has one binding")
-                        .uriLen,
-                ) {
+                    .expect("binding storage has one binding");
+                let binding_prefix = binding_ref.prefix;
+                let uri_len = match usize::try_from(binding_ref.uriLen) {
                     Ok(length) => length,
                     Err(_) => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                 };
                 let Some(binding_uri) = binding_storage.uri.get(..uri_len) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                for &c in binding_uri {
-                    if if (*parser).m_tempPool.is_full() && poolGrow(&mut (*parser).m_tempPool) == 0
-                    {
-                        0 as ::core::ffi::c_int
-                    } else {
-                        if (*parser).m_tempPool.write_cursor(c) {
-                            1 as ::core::ffi::c_int
-                        } else {
-                            0 as ::core::ffi::c_int
-                        }
-                    } == 0
-                    {
+                for &character in binding_uri.iter().chain(local_part.iter()) {
+                    if !pool_append_char(&mut parser_ref.m_tempPool, character) {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
                 }
-                sip24_update(
-                    &raw mut sip_state,
-                    binding_uri.as_ptr().cast(),
-                    (binding_uri.len() as crate::__stddef_size_t_h::size_t)
-                        .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-                );
-                loop {
-                    let c2rust_fresh30 = s;
-                    s = s.offset(1);
-                    if *c2rust_fresh30 as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
-                        break;
-                    }
-                }
-                sip24_update(
-                    &raw mut sip_state,
-                    s as *const ::core::ffi::c_void,
-                    keylen(s as KEY)
-                        .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-                );
-                loop {
-                    if if (*parser).m_tempPool.is_full() && poolGrow(&mut (*parser).m_tempPool) == 0
-                    {
-                        0 as ::core::ffi::c_int
-                    } else {
-                        if (*parser).m_tempPool.write_cursor(*s) {
-                            1 as ::core::ffi::c_int
-                        } else {
-                            0 as ::core::ffi::c_int
-                        }
-                    } == 0
-                    {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    let c2rust_fresh32 = s;
-                    s = s.offset(1);
-                    if *c2rust_fresh32 == 0 {
-                        break;
-                    }
-                }
-                uriHash = sip24_final(&raw mut sip_state) as ::core::ffi::c_ulong;
+                // Appending may grow the active pool slab and relocate its
+                // unfinished string.  Obtain the handle only after the write
+                // loop so the callback and duplicate table retain that final
+                // location rather than the pre-growth slab.
+                let Some(candidate_start) = parser_ref.m_tempPool.start_ref(true) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                let Some(candidate) = pool_terminated_chars(&parser_ref.m_tempPool, candidate_start)
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let salt = parser_ref
+                    .m_root
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .hash_secret_salt;
+                let Some(uriHash) = hash_xml_chars(candidate, salt) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
                 let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
                 let mut mask: ::core::ffi::c_ulong =
                     nsAttsSize.wrapping_sub(1 as ::core::ffi::c_uint) as ::core::ffi::c_ulong;
@@ -11660,31 +11628,15 @@ unsafe extern "C" fn storeAtts(
                         .get(j_0 as usize)
                         .expect("namespace attribute index must fit table capacity");
                     if uriHash == entry.hash {
-                        let Some(start) = parser_ref.m_tempPool.start_ref(true) else {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        };
-                        let mut s1 = parser_ref
-                            .m_tempPool
-                            .chars_from(start)
-                            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                        if s1.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
                         let Some(uri_name) = entry.uriName else {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         };
-                        let s2 = pool_string_pointer!(&parser_ref.m_tempPool, uri_name);
-                        if s2.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        let mut s2 = s2;
-                        while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int
-                            && *s1 as ::core::ffi::c_int != 0 as ::core::ffi::c_int
-                        {
-                            s1 = s1.offset(1);
-                            s2 = s2.offset(1);
-                        }
-                        if *s1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                        let Some(previous) =
+                            pool_terminated_chars(&parser_ref.m_tempPool, uri_name)
+                        else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        if candidate == previous {
                             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
                         }
                     }
@@ -11713,54 +11665,36 @@ unsafe extern "C" fn storeAtts(
                     let BindingPrefix::Named(prefix_name) = binding_prefix else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
-                    s = pool_string_pointer!(&dtd.pool, prefix_name);
-                    if s.is_null() {
+                    let Some(prefix_chars) = pool_terminated_chars(&dtd.pool, prefix_name) else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                    loop {
-                        if if parser_ref.m_tempPool.is_full()
-                            && poolGrow(&mut parser_ref.m_tempPool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            if parser_ref.m_tempPool.write_cursor(*s) {
-                                1 as ::core::ffi::c_int
-                            } else {
-                                0 as ::core::ffi::c_int
-                            }
-                        } == 0
-                        {
+                    };
+                    for &character in prefix_chars {
+                        if !pool_append_char(&mut parser_ref.m_tempPool, character) {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        let c2rust_fresh34 = s;
-                        s = s.offset(1);
-                        if *c2rust_fresh34 == 0 {
-                            break;
                         }
                     }
                 }
-                let Some(start) = parser_ref.m_tempPool.start_ref(true) else {
+                // Triplet prefixes may require another pool growth.  Resolve
+                // the final address after that append for the C callback and
+                // for the duplicate table's retained pool location.
+                let Some(callback_start) = parser_ref.m_tempPool.start_ref(true) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                s = parser_ref
+                let callback_name = parser_ref
                     .m_tempPool
-                    .chars_from(start)
+                    .chars_from(callback_start)
                     .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                if s.is_null() {
+                if callback_name.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
                 parser_ref.m_tempPool.commit();
-                appAtts[i as usize] = s;
+                appAtts[i as usize] = callback_name;
                 let Some(entry) = parser_ref.m_nsAtts.entries.get_mut(j_0 as usize) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
                 entry.version = version;
                 entry.hash = uriHash;
-                let Some(uri_name) = pool_string_ref(&raw const parser_ref.m_tempPool, s, false)
-                else {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                };
-                entry.uriName = Some(uri_name);
+                entry.uriName = Some(callback_start);
                 nPrefixes -= 1;
                 if nPrefixes == 0 {
                     i += 2 as ::core::ffi::c_int;
