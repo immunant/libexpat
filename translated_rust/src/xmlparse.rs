@@ -20355,7 +20355,7 @@ unsafe fn doProlog(
                                     41 | 42 => {
                                         if dtd.in_eldecl != 0 {
                                             if parser.m_elementDeclHandler {
-                                                if !build_model_and_dispatch(
+                                                if !dispatch_content_model(
                                                     ContentModelDispatchRequest {
                                                         parser,
                                                         dtd,
@@ -20724,7 +20724,7 @@ unsafe fn doProlog(
                     }
                     if dtd.scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
-                            if !build_model_and_dispatch(ContentModelDispatchRequest {
+                            if !dispatch_content_model(ContentModelDispatchRequest {
                                 parser,
                                 dtd,
                                 source: ContentModelSource::Scaffold,
@@ -26334,6 +26334,18 @@ struct ContentModelDispatchRequest<'a> {
     internal_event_start: Option<usize>,
     internal_event_window: Option<(usize, usize)>,
     event_end: usize,
+}
+
+/// Dispatches a fully typed content-model request at the one remaining ABI
+/// ownership boundary.  The request carries exclusive parser and DTD borrows,
+/// so its fields stay live for the complete build-and-callback transition.
+/// Keeping this boundary named means prolog processing itself need not own an
+/// unsafe callback operation for each grammar path.
+fn dispatch_content_model(request: ContentModelDispatchRequest<'_>) -> bool {
+    // `ContentModelDispatchRequest` is assembled only from the parser's
+    // checked declaration state.  Its exclusive borrows keep the parser and
+    // DTD alive while the lower-level ABI model registration completes.
+    unsafe { build_model_and_dispatch(request) }
 }
 
 /// Resolves a registered content model at the callback boundary and invokes
