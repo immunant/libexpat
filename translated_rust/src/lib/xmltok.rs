@@ -320,6 +320,183 @@ fn read_c_uchar(ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_uchar {
 type AsciiUnitReader = fn(*const ::core::ffi::c_char) -> ::core::ffi::c_int;
 type ByteTypeReader = fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int;
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum AttributeParseState {
+    Other,
+    InName,
+    InValue,
+}
+
+fn with_attribute_mut<R>(
+    atts: *mut ATTRIBUTE,
+    index: ::core::ffi::c_int,
+    f: impl FnOnce(&mut ATTRIBUTE) -> R,
+) -> R {
+    with_mut(atts.wrapping_offset(index as isize), f)
+}
+
+fn attribute_value_ptr(
+    atts: *mut ATTRIBUTE,
+    index: ::core::ffi::c_int,
+) -> *const ::core::ffi::c_char {
+    with_ref(atts.wrapping_offset(index as isize).cast_const(), |att| {
+        att.valuePtr
+    })
+}
+
+fn attribute_is_normalized(atts: *mut ATTRIBUTE, index: ::core::ffi::c_int) -> bool {
+    with_ref(atts.wrapping_offset(index as isize).cast_const(), |att| {
+        att.normalized as ::core::ffi::c_int != 0
+    })
+}
+
+fn set_attribute_name(
+    atts: *mut ATTRIBUTE,
+    index: ::core::ffi::c_int,
+    value: *const ::core::ffi::c_char,
+) {
+    with_attribute_mut(atts, index, |att| att.name = value)
+}
+
+fn set_attribute_value_ptr(
+    atts: *mut ATTRIBUTE,
+    index: ::core::ffi::c_int,
+    value: *const ::core::ffi::c_char,
+) {
+    with_attribute_mut(atts, index, |att| att.valuePtr = value)
+}
+
+fn set_attribute_value_end(
+    atts: *mut ATTRIBUTE,
+    index: ::core::ffi::c_int,
+    value: *const ::core::ffi::c_char,
+) {
+    with_attribute_mut(atts, index, |att| att.valueEnd = value)
+}
+
+fn set_attribute_normalized(
+    atts: *mut ATTRIBUTE,
+    index: ::core::ffi::c_int,
+    value: ::core::ffi::c_char,
+) {
+    with_attribute_mut(atts, index, |att| att.normalized = value)
+}
+
+fn note_attribute_name_start(
+    atts: *mut ATTRIBUTE,
+    atts_max: ::core::ffi::c_int,
+    n_atts: ::core::ffi::c_int,
+    ptr: *const ::core::ffi::c_char,
+    state: &mut AttributeParseState,
+) {
+    if *state == AttributeParseState::Other {
+        if n_atts < atts_max {
+            set_attribute_name(atts, n_atts, ptr);
+            set_attribute_normalized(atts, n_atts, 1 as ::core::ffi::c_char);
+        }
+        *state = AttributeParseState::InName;
+    }
+}
+
+fn get_atts_with(
+    enc: *const ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    atts_max: ::core::ffi::c_int,
+    atts: *mut ATTRIBUTE,
+    unit_size: isize,
+    byte_type: ByteTypeReader,
+    read_ascii_unit: AsciiUnitReader,
+) -> ::core::ffi::c_int {
+    let mut state = AttributeParseState::InName;
+    let mut n_atts = 0 as ::core::ffi::c_int;
+    let mut open = 0 as ::core::ffi::c_int;
+    ptr = add_const_c_char(ptr, unit_size);
+
+    loop {
+        match byte_type(enc, ptr) {
+            5 => {
+                note_attribute_name_start(atts, atts_max, n_atts, ptr, &mut state);
+                ptr = add_const_c_char(ptr, 2 - unit_size);
+            }
+            6 => {
+                note_attribute_name_start(atts, atts_max, n_atts, ptr, &mut state);
+                ptr = add_const_c_char(ptr, 3 - unit_size);
+            }
+            7 => {
+                note_attribute_name_start(atts, atts_max, n_atts, ptr, &mut state);
+                ptr = add_const_c_char(ptr, 4 - unit_size);
+            }
+            29 | 22 | 24 => {
+                note_attribute_name_start(atts, atts_max, n_atts, ptr, &mut state);
+            }
+            12 => {
+                if state != AttributeParseState::InValue {
+                    if n_atts < atts_max {
+                        set_attribute_value_ptr(atts, n_atts, add_const_c_char(ptr, unit_size));
+                    }
+                    state = AttributeParseState::InValue;
+                    open = BT_QUOT as ::core::ffi::c_int;
+                } else if open == BT_QUOT as ::core::ffi::c_int {
+                    state = AttributeParseState::Other;
+                    if n_atts < atts_max {
+                        set_attribute_value_end(atts, n_atts, ptr);
+                    }
+                    n_atts += 1;
+                }
+            }
+            13 => {
+                if state != AttributeParseState::InValue {
+                    if n_atts < atts_max {
+                        set_attribute_value_ptr(atts, n_atts, add_const_c_char(ptr, unit_size));
+                    }
+                    state = AttributeParseState::InValue;
+                    open = BT_APOS as ::core::ffi::c_int;
+                } else if open == BT_APOS as ::core::ffi::c_int {
+                    state = AttributeParseState::Other;
+                    if n_atts < atts_max {
+                        set_attribute_value_end(atts, n_atts, ptr);
+                    }
+                    n_atts += 1;
+                }
+            }
+            3 => {
+                if n_atts < atts_max {
+                    set_attribute_normalized(atts, n_atts, 0 as ::core::ffi::c_char);
+                }
+            }
+            21 => {
+                if state == AttributeParseState::InName {
+                    state = AttributeParseState::Other;
+                } else if state == AttributeParseState::InValue
+                    && n_atts < atts_max
+                    && attribute_is_normalized(atts, n_atts)
+                    && (ptr == attribute_value_ptr(atts, n_atts)
+                        || read_ascii_unit(ptr) != ASCII_SPACE
+                        || read_ascii_unit(add_const_c_char(ptr, unit_size)) == ASCII_SPACE
+                        || byte_type(enc, add_const_c_char(ptr, unit_size)) == open)
+                {
+                    set_attribute_normalized(atts, n_atts, 0 as ::core::ffi::c_char);
+                }
+            }
+            9 | 10 => {
+                if state == AttributeParseState::InName {
+                    state = AttributeParseState::Other;
+                } else if state == AttributeParseState::InValue && n_atts < atts_max {
+                    set_attribute_normalized(atts, n_atts, 0 as ::core::ffi::c_char);
+                }
+            }
+            11 | 17 => {
+                if state != AttributeParseState::InValue {
+                    return n_atts;
+                }
+            }
+            _ => {}
+        }
+
+        ptr = add_const_c_char(ptr, unit_size);
+    }
+}
+
 fn read_normal_ascii_unit(ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     read_c_char(ptr) as ::core::ffi::c_int
 }
@@ -4760,155 +4937,15 @@ extern "C" fn normal_getAtts(
     mut attsMax: ::core::ffi::c_int,
     mut atts: *mut ATTRIBUTE,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut state: C2Rust_Unnamed = inName;
-        let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    if state as ::core::ffi::c_uint
-                        == other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh10 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh10 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName;
-                    }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                6 => {
-                    if state as ::core::ffi::c_uint
-                        == other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh11 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh11 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName;
-                    }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                7 => {
-                    if state as ::core::ffi::c_uint
-                        == other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh12 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh12 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName;
-                    }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                }
-                29 | 22 | 24 => {
-                    if state as ::core::ffi::c_uint
-                        == other as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh13 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh13 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName;
-                    }
-                }
-                12 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh14 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh14 = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        }
-                        state = inValue;
-                        open = BT_QUOT as ::core::ffi::c_int;
-                    } else if open == BT_QUOT as ::core::ffi::c_int {
-                        state = other;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh15 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh15 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                13 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh16 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh16 = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        }
-                        state = inValue;
-                        open = BT_APOS as ::core::ffi::c_int;
-                    } else if open == BT_APOS as ::core::ffi::c_int {
-                        state = other;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh17 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh17 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                3 => {
-                    if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                21 => {
-                    if state as ::core::ffi::c_uint
-                        == inName as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = other;
-                    } else if state as ::core::ffi::c_uint
-                        == inValue as ::core::ffi::c_int as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || *ptr as ::core::ffi::c_int != ASCII_SPACE
-                            || *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == ASCII_SPACE
-                            || (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                                == open)
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                9 | 10 => {
-                    if state as ::core::ffi::c_uint
-                        == inName as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = other;
-                    } else if state as ::core::ffi::c_uint
-                        == inValue as ::core::ffi::c_int as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                11 | 17 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        return nAtts;
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        }
-    }
+    get_atts_with(
+        enc,
+        ptr,
+        attsMax,
+        atts,
+        1,
+        normal_byte_type,
+        read_normal_ascii_unit,
+    )
 }
 extern "C" fn normal_charRefNumber(
     _enc: *const ENCODING,
@@ -8871,193 +8908,15 @@ extern "C" fn little2_getAtts(
     mut attsMax: ::core::ffi::c_int,
     mut atts: *mut ATTRIBUTE,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut state: C2Rust_Unnamed_0 = inName_0;
-        let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        loop {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    if state as ::core::ffi::c_uint
-                        == other_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh29 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh29 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_0;
-                    }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                6 => {
-                    if state as ::core::ffi::c_uint
-                        == other_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh30 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh30 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_0;
-                    }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                7 => {
-                    if state as ::core::ffi::c_uint
-                        == other_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh31 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh31 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_0;
-                    }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                29 | 22 | 24 => {
-                    if state as ::core::ffi::c_uint
-                        == other_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh32 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh32 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_0;
-                    }
-                }
-                12 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh33 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh33 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = inValue_0;
-                        open = BT_QUOT as ::core::ffi::c_int;
-                    } else if open == BT_QUOT as ::core::ffi::c_int {
-                        state = other_0;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh34 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh34 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                13 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh35 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh35 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = inValue_0;
-                        open = BT_APOS as ::core::ffi::c_int;
-                    } else if open == BT_APOS as ::core::ffi::c_int {
-                        state = other_0;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh36 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh36 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                3 => {
-                    if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                21 => {
-                    if state as ::core::ffi::c_uint
-                        == inName_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = other_0;
-                    } else if state as ::core::ffi::c_uint
-                        == inValue_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || (if *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            } else {
-                                -(1 as ::core::ffi::c_int)
-                            }) != ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(0 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                            } else {
-                                -(1 as ::core::ffi::c_int)
-                            }) == ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(2 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_uchar
-                                    as usize] as ::core::ffi::c_int
-                            } else {
-                                unicode_byte_type(
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(1 as ::core::ffi::c_int as isize),
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(0 as ::core::ffi::c_int as isize),
-                                )
-                            }) == open)
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                9 | 10 => {
-                    if state as ::core::ffi::c_uint
-                        == inName_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = other_0;
-                    } else if state as ::core::ffi::c_uint
-                        == inValue_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                11 | 17 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue_0 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        return nAtts;
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-    }
+    get_atts_with(
+        enc,
+        ptr,
+        attsMax,
+        atts,
+        2,
+        little2_byte_type,
+        read_little2_ascii_unit,
+    )
 }
 extern "C" fn little2_charRefNumber(
     _enc: *const ENCODING,
@@ -13077,195 +12936,15 @@ extern "C" fn big2_getAtts(
     mut attsMax: ::core::ffi::c_int,
     mut atts: *mut ATTRIBUTE,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut state: C2Rust_Unnamed_1 = inName_1;
-        let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        loop {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    if state as ::core::ffi::c_uint
-                        == other_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh48 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh48 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_1;
-                    }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                6 => {
-                    if state as ::core::ffi::c_uint
-                        == other_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh49 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh49 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_1;
-                    }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                7 => {
-                    if state as ::core::ffi::c_uint
-                        == other_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh50 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh50 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_1;
-                    }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
-                }
-                29 | 22 | 24 => {
-                    if state as ::core::ffi::c_uint
-                        == other_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh51 = (*atts.offset(nAtts as isize)).name;
-                            *c2rust_fresh51 = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
-                        }
-                        state = inName_1;
-                    }
-                }
-                12 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh52 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh52 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = inValue_1;
-                        open = BT_QUOT as ::core::ffi::c_int;
-                    } else if open == BT_QUOT as ::core::ffi::c_int {
-                        state = other_1;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh53 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh53 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                13 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh54 = (*atts.offset(nAtts as isize)).valuePtr;
-                            *c2rust_fresh54 = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        state = inValue_1;
-                        open = BT_APOS as ::core::ffi::c_int;
-                    } else if open == BT_APOS as ::core::ffi::c_int {
-                        state = other_1;
-                        if nAtts < attsMax {
-                            let ref mut c2rust_fresh55 = (*atts.offset(nAtts as isize)).valueEnd;
-                            *c2rust_fresh55 = ptr;
-                        }
-                        nAtts += 1;
-                    }
-                }
-                3 => {
-                    if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                21 => {
-                    if state as ::core::ffi::c_uint
-                        == inName_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = other_1;
-                    } else if state as ::core::ffi::c_uint
-                        == inValue_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || (if *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            } else {
-                                -(1 as ::core::ffi::c_int)
-                            }) != ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(0 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                            } else {
-                                -(1 as ::core::ffi::c_int)
-                            }) == ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(0 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_uchar
-                                    as usize] as ::core::ffi::c_int
-                            } else {
-                                unicode_byte_type(
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(0 as ::core::ffi::c_int as isize),
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(1 as ::core::ffi::c_int as isize),
-                                )
-                            }) == open)
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                9 | 10 => {
-                    if state as ::core::ffi::c_uint
-                        == inName_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        state = other_1;
-                    } else if state as ::core::ffi::c_uint
-                        == inValue_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                        && nAtts < attsMax
-                    {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
-                    }
-                }
-                11 | 17 => {
-                    if state as ::core::ffi::c_uint
-                        != inValue_1 as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        return nAtts;
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-    }
+    get_atts_with(
+        enc,
+        ptr,
+        attsMax,
+        atts,
+        2,
+        big2_byte_type,
+        read_big2_ascii_unit,
+    )
 }
 extern "C" fn big2_charRefNumber(
     _enc: *const ENCODING,
