@@ -2600,103 +2600,97 @@ pub mod xmltok_impl_c {
         token
     }
 
-    pub unsafe extern "C" fn normal_scanLit(
-        mut open: ::core::ffi::c_int,
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize {
-            let mut t: ::core::ffi::c_int = (*(enc as *const normal_encoding)).type_0
-                [*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int;
+    /// Scans a normal-encoding literal using offsets within a bounded input
+    /// slice.  The pointer adapter below owns the raw cursor contract.
+    fn normal_scan_lit_impl(
+        open: ::core::ffi::c_int,
+        enc: &normal_encoding,
+        input: &[u8],
+        mut is_invalid: impl FnMut(usize, usize) -> bool,
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        let mut offset = 0;
+        while offset < input.len() {
+            let t = enc.type_0[input[offset] as usize] as ::core::ffi::c_int;
             match t {
                 5 => {
-                    if end.offset_from(ptr) < 2 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - offset < 2 {
+                        return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                     }
-                    let normal = &*(enc as *const normal_encoding);
-                    let invalid = match normal.invalid2 {
-                        Invalid2Checker::Never => false,
-                        Invalid2Checker::Utf8 => {
-                            utf8_invalid2(::core::slice::from_raw_parts(ptr.cast::<u8>(), 2))
-                        }
-                        Invalid2Checker::Unknown => unknown_isInvalid(enc, ptr) != 0,
-                    };
-                    if invalid {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
+                    if is_invalid(offset, 2) {
+                        return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                     }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    offset += 2;
                 }
                 6 => {
-                    if end.offset_from(ptr) < 3 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - offset < 3 {
+                        return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                     }
-                    let normal = &*(enc as *const normal_encoding);
-                    let predicate = match normal.invalid3 {
-                        Invalid3Checker::Never => isNever,
-                        Invalid3Checker::Utf8 => utf8_isInvalid3,
-                        Invalid3Checker::Unknown => unknown_isInvalid,
-                    };
-                    if predicate(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
+                    if is_invalid(offset, 3) {
+                        return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                     }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
+                    offset += 3;
                 }
                 7 => {
-                    if end.offset_from(ptr) < 4 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - offset < 4 {
+                        return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                     }
-                    let normal = &*(enc as *const normal_encoding);
-                    let invalid = match normal.invalid4 {
-                        Invalid4Checker::Never => false,
-                        Invalid4Checker::Utf8 => {
-                            utf8_invalid4(::core::slice::from_raw_parts(ptr.cast::<u8>(), 4))
-                        }
-                        Invalid4Checker::Unknown => {
-                            let predicate = unknown_isInvalid as unsafe extern "C" fn(_, _) -> _;
-                            predicate(enc, ptr) != 0
-                        }
-                    };
-                    if invalid {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
+                    if is_invalid(offset, 4) {
+                        return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                     }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
+                    offset += 4;
                 }
                 0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
+                    return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                 }
                 12 | 13 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                    offset += 1;
                     if t == open {
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-                        {
-                            return -crate::src::xmltok::XML_TOK_LITERAL_1;
+                        if offset == input.len() {
+                            return (-crate::src::xmltok::XML_TOK_LITERAL_1, None);
                         }
-                        *nextTokPtr = ptr;
-                        match (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                        {
+                        return match enc.type_0[input[offset] as usize] as ::core::ffi::c_int {
                             21 | 9 | 10 | 11 | 30 | 20 => {
-                                return crate::src::xmltok::XML_TOK_LITERAL_1
+                                (crate::src::xmltok::XML_TOK_LITERAL_1, Some(offset))
                             }
-                            _ => return crate::src::xmltok::XML_TOK_INVALID_1,
-                        }
+                            _ => (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+                        };
                     }
                 }
                 _ => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                    offset += 1;
                 }
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
+    }
+
+    pub unsafe extern "C" fn normal_scanLit(
+        open: ::core::ffi::c_int,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len <= 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        let (token, next) = normal_scan_lit_impl(open, normal, input, |offset, width| {
+            normal_char_check(
+                normal,
+                NormalCharCheck::Invalid,
+                width,
+                enc,
+                ptr.add(offset),
+                &input[offset..],
+            )
+        });
+        if let Some(offset) = next {
+            *nextTokPtr = ptr.add(offset);
+        }
+        token
     }
 
     enum NormalPrologCharCheck {
@@ -10501,7 +10495,6 @@ pub mod xmltok_impl_c {
     use crate::src::xmltok::utf8_invalid2;
     use crate::src::xmltok::utf8_invalid3;
     use crate::src::xmltok::utf8_invalid4;
-    use crate::src::xmltok::utf8_isInvalid3;
     use crate::src::xmltok::utf8_is_name2;
     use crate::src::xmltok::utf8_is_name3;
     use crate::src::xmltok::utf8_is_name_start3;
