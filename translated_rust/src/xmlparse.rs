@@ -6655,11 +6655,11 @@ pub unsafe extern "C" fn XML_ParserCreate_ffi(
     parser_create_default(encoding_name, memory_suite)
         .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
-unsafe fn XML_ParserCreateNS(
+fn parser_create_namespaced(
     encoding_name: Option<&std::ffi::CStr>,
     ns_sep: crate::expat_external_h::XML_Char,
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-) -> crate::expat_h::XML_Parser {
+) -> Option<Box<XML_ParserStruct>> {
     parser_create_ownership(ParserCreationRequest {
         encoding_name,
         memory_suite,
@@ -6667,7 +6667,6 @@ unsafe fn XML_ParserCreateNS(
         share_parent_dtd: false,
         parent: None,
     })
-        .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 #[export_name = "XML_ParserCreateNS"]
 
@@ -6676,7 +6675,7 @@ pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
     mut nsSep: crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
     let encoding_name = (!encodingName.is_null()).then(|| std::ffi::CStr::from_ptr(encodingName));
-    XML_ParserCreateNS(
+    parser_create_namespaced(
         encoding_name,
         nsSep,
         crate::expat_h::XML_Memory_Handling_Suite {
@@ -6685,6 +6684,7 @@ pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
             free_fcn: Some(crate::stdlib::free),
         },
     )
+    .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     crate::ascii_h::ASCII_x as crate::expat_external_h::XML_Char,
