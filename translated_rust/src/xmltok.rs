@@ -11972,43 +11972,6 @@ pub mod xmltok_ns_c {
         };
         XmlInitEncoding(unsafe { &mut *p }, unsafe { &mut *encPtr }, name)
     }
-    fn find_encoding(
-        encoding_table: [*const crate::src::xmltok::ENCODING; 7],
-        enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    ) -> *const crate::src::xmltok::ENCODING {
-        let mut buf = [0 as ::core::ffi::c_char; 128];
-        let mut p = buf.as_mut_ptr();
-        unsafe {
-            (*enc).utf8Convert.expect("non-null function pointer")(
-                enc,
-                &raw mut ptr,
-                end,
-                &raw mut p,
-                p.wrapping_add(127),
-            );
-            if ptr != end {
-                return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-            }
-            *p = 0 as ::core::ffi::c_char;
-            if streqci(&buf, &KW_UTF_16) != 0 && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int {
-                return enc;
-            }
-        }
-        let i = getEncodingIndex(Some(&buf));
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-        }
-        return encoding_table[i as usize];
-    }
-    pub extern "C" fn findEncoding(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    ) -> *const crate::src::xmltok::ENCODING {
-        find_encoding(encodings(), enc, ptr, end)
-    }
     #[export_name = "XmlParseXmlDecl"]
 
     pub unsafe extern "C" fn XmlParseXmlDecl_ffi(
@@ -12043,7 +12006,7 @@ pub mod xmltok_ns_c {
             }
         };
         let result = doParseXmlDecl(
-            findEncoding,
+            encodings(),
             isGeneralTextEntity,
             enc_ref,
             ptr,
@@ -12257,13 +12220,6 @@ pub mod xmltok_ns_c {
         };
         XmlInitEncodingNS(unsafe { &mut *p }, unsafe { &mut *encPtr }, name)
     }
-    pub extern "C" fn findEncodingNS(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    ) -> *const crate::src::xmltok::ENCODING {
-        find_encoding(encodingsNS(), enc, ptr, end)
-    }
     #[export_name = "XmlParseXmlDeclNS"]
 
     pub unsafe extern "C" fn XmlParseXmlDeclNS_ffi(
@@ -12298,7 +12254,7 @@ pub mod xmltok_ns_c {
             }
         };
         let result = doParseXmlDecl(
-            findEncodingNS,
+            encodingsNS(),
             isGeneralTextEntity,
             enc_ref,
             ptr,
@@ -12351,13 +12307,11 @@ pub mod xmltok_ns_c {
     use crate::src::xmltok::latin1_encoding_ns;
     use crate::src::xmltok::little2_encoding;
     use crate::src::xmltok::little2_encoding_ns;
-    use crate::src::xmltok::streqci;
     use crate::src::xmltok::utf8_encoding;
     use crate::src::xmltok::utf8_encoding_ns;
     use crate::src::xmltok::InitScanAction;
     use crate::src::xmltok::ENCODING;
     use crate::src::xmltok::INIT_ENCODING;
-    use crate::src::xmltok::KW_UTF_16;
     use crate::src::xmltok::POSITION;
     use crate::src::xmltok::SCANNER;
     use crate::src::xmltok::UNKNOWN_ENC;
@@ -13364,8 +13318,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_skipS;
 pub use crate::src::xmltok::xmltok_impl_c::normal_updatePosition;
 pub use crate::src::xmltok::xmltok_ns_c::encodings;
 pub use crate::src::xmltok::xmltok_ns_c::encodingsNS;
-pub use crate::src::xmltok::xmltok_ns_c::findEncoding;
-pub use crate::src::xmltok::xmltok_ns_c::findEncodingNS;
 pub use crate::src::xmltok::xmltok_ns_c::initScanContent;
 pub use crate::src::xmltok::xmltok_ns_c::initScanContentNS;
 pub use crate::src::xmltok::xmltok_ns_c::initScanProlog;
@@ -20654,12 +20606,46 @@ impl XmlDeclParseResult {
     }
 }
 
+fn find_declared_encoding(
+    encoding_table: [*const crate::src::xmltok::ENCODING; 7],
+    enc: &crate::src::xmltok::ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    to_ascii: &ToAsciiFn<'_>,
+) -> *const crate::src::xmltok::ENCODING {
+    let mut buf = [0 as ::core::ffi::c_char; 128];
+    let mut len = 0usize;
+
+    while ptr < end {
+        if len == buf.len() - 1 {
+            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+        }
+        let c = toAscii(to_ascii, ptr, end);
+        if c == -1 as ::core::ffi::c_int {
+            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+        }
+        buf[len] = c as ::core::ffi::c_char;
+        len += 1;
+        ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
+    }
+    if ptr != end {
+        return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+    }
+    buf[len] = 0 as ::core::ffi::c_char;
+
+    if streqci(&buf, &KW_UTF_16) != 0 && enc.minBytesPerChar == 2 as ::core::ffi::c_int {
+        return enc as *const crate::src::xmltok::ENCODING;
+    }
+
+    let i = getEncodingIndex(Some(&buf));
+    if i == UNKNOWN_ENC as ::core::ffi::c_int {
+        return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+    }
+    return encoding_table[i as usize];
+}
+
 fn doParseXmlDecl(
-    encodingFinder: extern "C" fn(
-        *const crate::src::xmltok::ENCODING,
-        *const ::core::ffi::c_char,
-        *const ::core::ffi::c_char,
-    ) -> *const crate::src::xmltok::ENCODING,
+    encoding_table: [*const crate::src::xmltok::ENCODING; 7],
     mut isGeneralTextEntity: ::core::ffi::c_int,
     enc: &crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
@@ -20715,10 +20701,12 @@ fn doParseXmlDecl(
             return result.fail(attr.value);
         }
         result.encoding_name = Some(attr.value);
-        result.encoding = Some(encodingFinder(
-            enc_ptr,
+        result.encoding = Some(find_declared_encoding(
+            encoding_table,
+            enc,
             attr.value,
             ptr.wrapping_offset(-(enc.minBytesPerChar as isize)),
+            to_ascii,
         ));
         attr = match parsePseudoAttribute(enc, ptr, end, to_ascii) {
             Ok(Some(attr)) => attr,
