@@ -1,6 +1,6 @@
 use ::c2rust_bitfields;
+use std::cell::RefCell;
 use std::ptr::NonNull;
-use std::sync::{Mutex, MutexGuard};
 extern "C" {
     pub type _IO_wide_data;
     pub type _IO_codecvt;
@@ -133,17 +133,29 @@ struct CheckState {
     current_filename: usize,
 }
 
-static CHECK_STATE: Mutex<CheckState> = Mutex::new(CheckState {
-    current_function: 0,
-    current_subtest: [0; SUBTEST_LEN as usize],
-    current_lineno: -(1 as ::core::ffi::c_int),
-    current_filename: 0,
-});
+thread_local! {
+    static CHECK_STATE: RefCell<CheckState> = const {
+        RefCell::new(CheckState {
+            current_function: 0,
+            current_subtest: [0; SUBTEST_LEN as usize],
+            current_lineno: -(1 as ::core::ffi::c_int),
+            current_filename: 0,
+        })
+    };
+}
 
-fn check_state() -> MutexGuard<'static, CheckState> {
-    CHECK_STATE
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+fn with_check_state<R>(f: impl FnOnce(&CheckState) -> R) -> R {
+    CHECK_STATE.with(|state| {
+        let state = state.borrow();
+        f(&state)
+    })
+}
+
+fn with_check_state_mut<R>(f: impl FnOnce(&mut CheckState) -> R) -> R {
+    CHECK_STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        f(&mut state)
+    })
 }
 
 macro_rules! assert_not_null {
@@ -166,39 +178,62 @@ macro_rules! assert_is_null {
 struct OwnedSuite {
     header: Suite,
 }
-unsafe impl Send for OwnedSuite {}
 
 struct OwnedTCase {
     header: TCase,
     tests: Vec<tcase_test_function>,
 }
-unsafe impl Send for OwnedTCase {}
 
 struct OwnedRunner {
     header: SRunner,
 }
-unsafe impl Send for OwnedRunner {}
 
-static SUITES: Mutex<Vec<Box<OwnedSuite>>> = Mutex::new(Vec::new());
-static TCASES: Mutex<Vec<Box<OwnedTCase>>> = Mutex::new(Vec::new());
-static RUNNERS: Mutex<Vec<Box<OwnedRunner>>> = Mutex::new(Vec::new());
-
-fn suites() -> MutexGuard<'static, Vec<Box<OwnedSuite>>> {
-    SUITES
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+thread_local! {
+    static SUITES: RefCell<Vec<Box<OwnedSuite>>> = const { RefCell::new(Vec::new()) };
+    static TCASES: RefCell<Vec<Box<OwnedTCase>>> = const { RefCell::new(Vec::new()) };
+    static RUNNERS: RefCell<Vec<Box<OwnedRunner>>> = const { RefCell::new(Vec::new()) };
 }
 
-fn tcases() -> MutexGuard<'static, Vec<Box<OwnedTCase>>> {
-    TCASES
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+fn with_suites<R>(f: impl FnOnce(&Vec<Box<OwnedSuite>>) -> R) -> R {
+    SUITES.with(|suites| {
+        let suites = suites.borrow();
+        f(&suites)
+    })
 }
 
-fn runners() -> MutexGuard<'static, Vec<Box<OwnedRunner>>> {
-    RUNNERS
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+fn with_suites_mut<R>(f: impl FnOnce(&mut Vec<Box<OwnedSuite>>) -> R) -> R {
+    SUITES.with(|suites| {
+        let mut suites = suites.borrow_mut();
+        f(&mut suites)
+    })
+}
+
+fn with_tcases<R>(f: impl FnOnce(&Vec<Box<OwnedTCase>>) -> R) -> R {
+    TCASES.with(|tcases| {
+        let tcases = tcases.borrow();
+        f(&tcases)
+    })
+}
+
+fn with_tcases_mut<R>(f: impl FnOnce(&mut Vec<Box<OwnedTCase>>) -> R) -> R {
+    TCASES.with(|tcases| {
+        let mut tcases = tcases.borrow_mut();
+        f(&mut tcases)
+    })
+}
+
+fn with_runners<R>(f: impl FnOnce(&Vec<Box<OwnedRunner>>) -> R) -> R {
+    RUNNERS.with(|runners| {
+        let runners = runners.borrow();
+        f(&runners)
+    })
+}
+
+fn with_runners_mut<R>(f: impl FnOnce(&mut Vec<Box<OwnedRunner>>) -> R) -> R {
+    RUNNERS.with(|runners| {
+        let mut runners = runners.borrow_mut();
+        f(&mut runners)
+    })
 }
 
 fn suite_ptr(owned: &OwnedSuite) -> *mut Suite {
@@ -215,140 +250,131 @@ fn runner_ptr(owned: &OwnedRunner) -> *mut SRunner {
 
 fn with_suite<R>(ptr: *mut Suite, f: impl FnOnce(&OwnedSuite) -> R) -> Option<R> {
     let key = ptr as usize;
-    let suites = suites();
-    suites
-        .iter()
-        .find(|owned| suite_ptr(owned.as_ref()) as usize == key)
-        .map(|owned| f(owned.as_ref()))
+    with_suites(|suites| {
+        suites
+            .iter()
+            .find(|owned| suite_ptr(owned.as_ref()) as usize == key)
+            .map(|owned| f(owned.as_ref()))
+    })
 }
 
 fn with_suite_mut<R>(ptr: *mut Suite, f: impl FnOnce(&mut OwnedSuite) -> R) -> Option<R> {
     let key = ptr as usize;
-    let mut suites = suites();
-    suites
-        .iter_mut()
-        .find(|owned| suite_ptr(owned.as_ref()) as usize == key)
-        .map(|owned| f(owned.as_mut()))
+    with_suites_mut(|suites| {
+        suites
+            .iter_mut()
+            .find(|owned| suite_ptr(owned.as_ref()) as usize == key)
+            .map(|owned| f(owned.as_mut()))
+    })
 }
 
 fn remove_suite(ptr: *mut Suite) -> Option<Box<OwnedSuite>> {
     let key = ptr as usize;
-    let mut suites = suites();
-    let index = suites
-        .iter()
-        .position(|owned| suite_ptr(owned.as_ref()) as usize == key)?;
-    Some(suites.remove(index))
+    with_suites_mut(|suites| {
+        let index = suites
+            .iter()
+            .position(|owned| suite_ptr(owned.as_ref()) as usize == key)?;
+        Some(suites.remove(index))
+    })
 }
 
 fn with_tcase<R>(ptr: *mut TCase, f: impl FnOnce(&OwnedTCase) -> R) -> Option<R> {
     let key = ptr as usize;
-    let tcases = tcases();
-    tcases
-        .iter()
-        .find(|owned| tcase_ptr(owned.as_ref()) as usize == key)
-        .map(|owned| f(owned.as_ref()))
+    with_tcases(|tcases| {
+        tcases
+            .iter()
+            .find(|owned| tcase_ptr(owned.as_ref()) as usize == key)
+            .map(|owned| f(owned.as_ref()))
+    })
 }
 
 fn with_tcase_mut<R>(ptr: *mut TCase, f: impl FnOnce(&mut OwnedTCase) -> R) -> Option<R> {
     let key = ptr as usize;
-    let mut tcases = tcases();
-    tcases
-        .iter_mut()
-        .find(|owned| tcase_ptr(owned.as_ref()) as usize == key)
-        .map(|owned| f(owned.as_mut()))
+    with_tcases_mut(|tcases| {
+        tcases
+            .iter_mut()
+            .find(|owned| tcase_ptr(owned.as_ref()) as usize == key)
+            .map(|owned| f(owned.as_mut()))
+    })
 }
 
 fn remove_tcase(ptr: *mut TCase) -> Option<Box<OwnedTCase>> {
     let key = ptr as usize;
-    let mut tcases = tcases();
-    let index = tcases
-        .iter()
-        .position(|owned| tcase_ptr(owned.as_ref()) as usize == key)?;
-    Some(tcases.remove(index))
+    with_tcases_mut(|tcases| {
+        let index = tcases
+            .iter()
+            .position(|owned| tcase_ptr(owned.as_ref()) as usize == key)?;
+        Some(tcases.remove(index))
+    })
 }
 
 fn with_runner<R>(ptr: *mut SRunner, f: impl FnOnce(&OwnedRunner) -> R) -> Option<R> {
     let key = ptr as usize;
-    let runners = runners();
-    runners
-        .iter()
-        .find(|owned| runner_ptr(owned.as_ref()) as usize == key)
-        .map(|owned| f(owned.as_ref()))
+    with_runners(|runners| {
+        runners
+            .iter()
+            .find(|owned| runner_ptr(owned.as_ref()) as usize == key)
+            .map(|owned| f(owned.as_ref()))
+    })
 }
 
 fn with_runner_mut<R>(ptr: *mut SRunner, f: impl FnOnce(&mut OwnedRunner) -> R) -> Option<R> {
     let key = ptr as usize;
-    let mut runners = runners();
-    runners
-        .iter_mut()
-        .find(|owned| runner_ptr(owned.as_ref()) as usize == key)
-        .map(|owned| f(owned.as_mut()))
+    with_runners_mut(|runners| {
+        runners
+            .iter_mut()
+            .find(|owned| runner_ptr(owned.as_ref()) as usize == key)
+            .map(|owned| f(owned.as_mut()))
+    })
 }
 
 fn remove_runner(ptr: *mut SRunner) -> Option<Box<OwnedRunner>> {
     let key = ptr as usize;
-    let mut runners = runners();
-    let index = runners
-        .iter()
-        .position(|owned| runner_ptr(owned.as_ref()) as usize == key)?;
-    Some(runners.remove(index))
+    with_runners_mut(|runners| {
+        let index = runners
+            .iter()
+            .position(|owned| runner_ptr(owned.as_ref()) as usize == key)?;
+        Some(runners.remove(index))
+    })
 }
 
-enum PrintMessage {
-    Pass(*const ::core::ffi::c_char),
-    Fail {
-        context: *const ::core::ffi::c_char,
-        function: *const ::core::ffi::c_char,
-        phase_info: *const ::core::ffi::c_char,
-        filename: *const ::core::ffi::c_char,
-        line: ::core::ffi::c_int,
-    },
-    Summary {
-        display: ::core::ffi::c_int,
-        nchecks: ::core::ffi::c_int,
-        nfailures: ::core::ffi::c_int,
-    },
-}
-
-fn print_message(message: PrintMessage) {
-    unsafe {
-        match message {
-            PrintMessage::Pass(function) => {
-                printf(
-                    b"PASS: %s\n\0".as_ptr() as *const ::core::ffi::c_char,
-                    function,
-                );
-            }
-            PrintMessage::Fail {
-                context,
-                function,
-                phase_info,
-                filename,
-                line,
-            } => {
-                printf(
-                    b"FAIL [%s]: %s (%s at %s:%d)\n\0".as_ptr() as *const ::core::ffi::c_char,
-                    context,
-                    function,
-                    phase_info,
-                    filename,
-                    line,
-                );
-            }
-            PrintMessage::Summary {
-                display,
-                nchecks,
-                nfailures,
-            } => {
-                printf(
-                    b"%d%%: Checks: %d, Failed: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
-                    display,
-                    nchecks,
-                    nfailures,
-                );
-            }
+macro_rules! print_pass {
+    ($function:expr $(,)?) => {{
+        unsafe {
+            printf(
+                b"PASS: %s\n\0".as_ptr() as *const ::core::ffi::c_char,
+                $function,
+            );
         }
-    }
+    }};
+}
+
+macro_rules! print_fail {
+    ($context:expr, $function:expr, $phase_info:expr, $filename:expr, $line:expr $(,)?) => {{
+        unsafe {
+            printf(
+                b"FAIL [%s]: %s (%s at %s:%d)\n\0".as_ptr() as *const ::core::ffi::c_char,
+                $context,
+                $function,
+                $phase_info,
+                $filename,
+                $line,
+            );
+        }
+    }};
+}
+
+macro_rules! print_summary {
+    ($display:expr, $nchecks:expr, $nfailures:expr $(,)?) => {{
+        unsafe {
+            printf(
+                b"%d%%: Checks: %d, Failed: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
+                $display,
+                $nchecks,
+                $nfailures,
+            );
+        }
+    }};
 }
 
 fn check_state_function(state: &CheckState) -> *const ::core::ffi::c_char {
@@ -360,19 +386,19 @@ fn check_state_filename(state: &CheckState) -> *const ::core::ffi::c_char {
 }
 #[no_mangle]
 pub unsafe extern "C" fn suite_create(mut name: *const ::core::ffi::c_char) -> *mut Suite {
-    let mut owned = Box::new(OwnedSuite {
+    let owned = Box::new(OwnedSuite {
         header: Suite {
             name,
             tests: ::core::ptr::null_mut(),
         },
     });
     let suite = suite_ptr(owned.as_ref());
-    suites().push(owned);
+    with_suites_mut(|suites| suites.push(owned));
     suite
 }
 #[no_mangle]
 pub unsafe extern "C" fn tcase_create(mut name: *const ::core::ffi::c_char) -> *mut TCase {
-    let mut owned = Box::new(OwnedTCase {
+    let owned = Box::new(OwnedTCase {
         header: TCase {
             name,
             setup: None,
@@ -385,7 +411,7 @@ pub unsafe extern "C" fn tcase_create(mut name: *const ::core::ffi::c_char) -> *
         tests: Vec::new(),
     });
     let tc = tcase_ptr(owned.as_ref());
-    tcases().push(owned);
+    with_tcases_mut(|tcases| tcases.push(owned));
     tc
 }
 #[no_mangle]
@@ -499,7 +525,7 @@ fn suite_free(suite: *mut Suite) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_create(mut suite: *mut Suite) -> *mut SRunner {
-    let mut owned = Box::new(OwnedRunner {
+    let owned = Box::new(OwnedRunner {
         header: SRunner {
             suite,
             nchecks: 0,
@@ -507,7 +533,7 @@ pub unsafe extern "C" fn srunner_create(mut suite: *mut Suite) -> *mut SRunner {
         },
     });
     let runner = runner_ptr(owned.as_ref());
-    runners().push(owned);
+    with_runners_mut(|runners| runners.push(owned));
     runner
 }
 static mut env: jmp_buf = [__jmp_buf_tag {
@@ -521,62 +547,33 @@ pub unsafe extern "C" fn _check_set_test_info(
     mut filename: *const ::core::ffi::c_char,
     mut lineno: ::core::ffi::c_int,
 ) {
-    let mut state = check_state();
-    state.current_function = function as usize;
-    state.current_lineno = lineno;
-    state.current_filename = filename as usize;
-    state.current_subtest = [0; SUBTEST_LEN as usize];
+    with_check_state_mut(|state| {
+        state.current_function = function as usize;
+        state.current_lineno = lineno;
+        state.current_filename = filename as usize;
+        state.current_subtest = [0; SUBTEST_LEN as usize];
+    });
 }
 #[no_mangle]
 pub unsafe extern "C" fn set_subtest(mut fmt: *const ::core::ffi::c_char, mut c2rust_args: ...) {
     let mut ap: ::core::ffi::VaListImpl = c2rust_args.clone();
-    let mut state = check_state();
-    unsafe {
-        vsnprintf(
-            state.current_subtest.as_mut_ptr(),
-            SUBTEST_LEN as size_t,
-            fmt,
-            ap.as_va_list(),
-        );
-    }
-    for ch in state.current_subtest.iter_mut() {
-        if *ch as ::core::ffi::c_int == '\n' as i32 {
-            *ch = ' ' as i32 as ::core::ffi::c_char;
+    with_check_state_mut(|state| {
+        unsafe {
+            vsnprintf(
+                state.current_subtest.as_mut_ptr(),
+                SUBTEST_LEN as size_t,
+                fmt,
+                ap.as_va_list(),
+            );
         }
-    }
-    state.current_subtest[(SUBTEST_LEN - 1 as ::core::ffi::c_int) as usize] =
-        '\0' as i32 as ::core::ffi::c_char;
-}
-fn handle_success(verbosity: ::core::ffi::c_int) {
-    if verbosity >= CK_VERBOSE {
-        let state = check_state();
-        print_message(PrintMessage::Pass(check_state_function(&state)));
-    }
-}
-fn handle_failure(
-    runner: *mut SRunner,
-    verbosity: ::core::ffi::c_int,
-    context: *const ::core::ffi::c_char,
-    phase_info: *const ::core::ffi::c_char,
-) {
-    let _ = with_runner_mut(runner, |runner| {
-        runner.header.nfailures += 1;
+        for ch in state.current_subtest.iter_mut() {
+            if *ch as ::core::ffi::c_int == '\n' as i32 {
+                *ch = ' ' as i32 as ::core::ffi::c_char;
+            }
+        }
+        state.current_subtest[(SUBTEST_LEN - 1 as ::core::ffi::c_int) as usize] =
+            '\0' as i32 as ::core::ffi::c_char;
     });
-    if verbosity != CK_SILENT {
-        let state = check_state();
-        let phase_info = if state.current_subtest[0] != 0 {
-            state.current_subtest.as_ptr()
-        } else {
-            phase_info
-        };
-        print_message(PrintMessage::Fail {
-            context,
-            function: check_state_function(&state),
-            phase_info,
-            filename: check_state_filename(&state),
-            line: state.current_lineno,
-        });
-    }
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_run_all(
@@ -611,12 +608,25 @@ pub unsafe extern "C" fn srunner_run_all(
                 );
                 if (*tc).setup.is_some() {
                     if _setjmp(&raw mut env as *mut __jmp_buf_tag) != 0 {
-                        handle_failure(
-                            runner,
-                            verbosity,
-                            context,
-                            b"during setup\0".as_ptr() as *const ::core::ffi::c_char,
-                        );
+                        let _ = with_runner_mut(runner, |runner| {
+                            runner.header.nfailures += 1;
+                        });
+                        if verbosity != CK_SILENT {
+                            with_check_state(|state| {
+                                let phase_info = if state.current_subtest[0] != 0 {
+                                    state.current_subtest.as_ptr()
+                                } else {
+                                    b"during setup\0".as_ptr() as *const ::core::ffi::c_char
+                                };
+                                print_fail!(
+                                    context,
+                                    check_state_function(state),
+                                    phase_info,
+                                    check_state_filename(state),
+                                    state.current_lineno,
+                                );
+                            });
+                        }
                         c2rust_current_block_13 = 715039052867723359;
                     } else {
                         (*tc).setup.expect("non-null function pointer")();
@@ -628,12 +638,26 @@ pub unsafe extern "C" fn srunner_run_all(
                 match c2rust_current_block_13 {
                     2868539653012386629 => {
                         if _setjmp(&raw mut env as *mut __jmp_buf_tag) != 0 {
-                            handle_failure(
-                                runner,
-                                verbosity,
-                                context,
-                                b"during actual test\0".as_ptr() as *const ::core::ffi::c_char,
-                            );
+                            let _ = with_runner_mut(runner, |runner| {
+                                runner.header.nfailures += 1;
+                            });
+                            if verbosity != CK_SILENT {
+                                with_check_state(|state| {
+                                    let phase_info = if state.current_subtest[0] != 0 {
+                                        state.current_subtest.as_ptr()
+                                    } else {
+                                        b"during actual test\0".as_ptr()
+                                            as *const ::core::ffi::c_char
+                                    };
+                                    print_fail!(
+                                        context,
+                                        check_state_function(state),
+                                        phase_info,
+                                        check_state_filename(state),
+                                        state.current_lineno,
+                                    );
+                                });
+                            }
                         } else {
                             (*(*tc).tests.offset(i as isize)).expect("non-null function pointer")();
                             set_subtest(
@@ -642,12 +666,26 @@ pub unsafe extern "C" fn srunner_run_all(
                             );
                             if (*tc).teardown.is_some() {
                                 if _setjmp(&raw mut env as *mut __jmp_buf_tag) != 0 {
-                                    handle_failure(
-                                        runner,
-                                        verbosity,
-                                        context,
-                                        b"during teardown\0".as_ptr() as *const ::core::ffi::c_char,
-                                    );
+                                    let _ = with_runner_mut(runner, |runner| {
+                                        runner.header.nfailures += 1;
+                                    });
+                                    if verbosity != CK_SILENT {
+                                        with_check_state(|state| {
+                                            let phase_info = if state.current_subtest[0] != 0 {
+                                                state.current_subtest.as_ptr()
+                                            } else {
+                                                b"during teardown\0".as_ptr()
+                                                    as *const ::core::ffi::c_char
+                                            };
+                                            print_fail!(
+                                                context,
+                                                check_state_function(state),
+                                                phase_info,
+                                                check_state_filename(state),
+                                                state.current_lineno,
+                                            );
+                                        });
+                                    }
                                     c2rust_current_block_13 = 715039052867723359;
                                 } else {
                                     (*tc).teardown.expect("non-null function pointer")();
@@ -659,7 +697,11 @@ pub unsafe extern "C" fn srunner_run_all(
                             match c2rust_current_block_13 {
                                 715039052867723359 => {}
                                 _ => {
-                                    handle_success(verbosity);
+                                    if verbosity >= CK_VERBOSE {
+                                        with_check_state(|state| {
+                                            print_pass!(check_state_function(state));
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -692,11 +734,7 @@ pub unsafe extern "C" fn srunner_summarize(
             passed as ::core::ffi::c_double / nchecks as ::core::ffi::c_double;
         let display: ::core::ffi::c_int =
             (percentage * 100 as ::core::ffi::c_int as ::core::ffi::c_double) as ::core::ffi::c_int;
-        print_message(PrintMessage::Summary {
-            display,
-            nchecks,
-            nfailures,
-        });
+        print_summary!(display, nchecks, nfailures);
     }
 }
 #[no_mangle]
@@ -705,11 +743,10 @@ pub unsafe extern "C" fn _fail(
     mut line: ::core::ffi::c_int,
     mut msg: *const ::core::ffi::c_char,
 ) -> ! {
-    {
-        let mut state = check_state();
+    with_check_state_mut(|state| {
         state.current_filename = file as usize;
         state.current_lineno = line;
-    }
+    });
     if !msg.is_null() {
         let has_newline: ::core::ffi::c_int = unsafe {
             (*msg.offset(strlen(msg).wrapping_sub(1 as size_t) as isize) as ::core::ffi::c_int
