@@ -5661,26 +5661,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_scanLt(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let chars = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = little2_scan_lt_result(normal, input, chars);
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
-    }
-
     enum Little2ContentToken {
         Result(::core::ffi::c_int, Option<usize>),
         ScanLt,
@@ -11687,7 +11667,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanDecl;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanEndTag;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanLit;
-pub use crate::src::xmltok::xmltok_impl_c::little2_scanLt;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
