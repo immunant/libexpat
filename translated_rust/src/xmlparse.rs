@@ -1,4 +1,5 @@
 use ::c2rust_bitfields;
+use ::core::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use ::std::ffi::CStr;
 
 pub mod siphash_h {
@@ -1567,10 +1568,10 @@ pub const EXPAND_SPARE: ::core::ffi::c_int = 24 as ::core::ffi::c_int;
 pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 #[no_mangle]
 
-pub static mut g_reparseDeferralEnabledDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
+pub static g_reparseDeferralEnabledDefault: AtomicU8 = AtomicU8::new(crate::expat_h::XML_TRUE);
 #[no_mangle]
 
-pub static mut g_bytesScanned: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
+pub static g_bytesScanned: AtomicU32 = AtomicU32::new(0 as ::core::ffi::c_uint);
 
 unsafe extern "C" fn expat_heap_stat(
     mut rootParser: crate::expat_h::XML_Parser,
@@ -2187,7 +2188,7 @@ unsafe extern "C" fn callProcessor(
             return crate::expat_h::XML_ERROR_NONE;
         }
     }
-    g_bytesScanned = g_bytesScanned.wrapping_add(have_now as ::core::ffi::c_uint);
+    g_bytesScanned.fetch_add(have_now as ::core::ffi::c_uint, Ordering::Relaxed);
     let mut ret: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     *endPtr = start;
     loop {
@@ -2585,7 +2586,7 @@ unsafe extern "C" fn parserInit(
     (*parser).m_parseEndByteIndex = 0 as crate::expat_external_h::XML_Index;
     (*parser).m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
     (*parser).m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
-    (*parser).m_reparseDeferralEnabled = g_reparseDeferralEnabledDefault;
+    (*parser).m_reparseDeferralEnabled = g_reparseDeferralEnabledDefault.load(Ordering::Relaxed);
     (*parser).m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
     (*parser).m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     (*parser).m_declAttributeId = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
