@@ -3466,200 +3466,225 @@ unsafe extern "C" fn parserCreate(
     return parser;
 }
 
-unsafe extern "C" fn parserInit(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
+fn parser_init(
+    parser: &mut XML_ParserStruct,
+    parser_key: usize,
+    reparse_deferral_enabled: crate::expat_h::XML_Bool,
+    accounting_debug_level: ::core::ffi::c_ulong,
+    entity_debug_level: ::core::ffi::c_ulong,
 ) {
-    (*parser).m_processor = ProcessorState::PrologInit;
-    crate::src::xmlrole::prolog_state_init(&mut (*parser).m_prologState);
-    if !encodingName.is_null() {
-        (*parser).m_protocolEncodingName = copyString(encodingName, parser);
-    }
-    (*parser).m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    let mut initialized_encoding = ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-    crate::src::xmltok::xmltok_ns_c::XmlInitEncoding(
-        &raw mut (*parser).m_initEncoding as *mut _ as *mut crate::src::xmltok::INIT_ENCODING,
-        &raw mut initialized_encoding,
-        ::core::ptr::null::<::core::ffi::c_char>(),
-    );
-    (*parser).m_encoding = EncodingState::Initial;
-    (*parser).m_userData = crate::__stddef_null_h::NULL;
-    (*parser).m_handlerArg = crate::__stddef_null_h::NULL;
-    (*parser).m_startElementHandler = false;
+    parser.m_processor = ProcessorState::PrologInit;
+    crate::src::xmlrole::prolog_state_init(&mut parser.m_prologState);
+    parser.m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_initEncoding.initEnc.isUtf16 = crate::src::xmltok::NO_ENC as ::core::ffi::c_char;
+    parser.m_initEncoding.initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] =
+        crate::src::xmltok::Scanner::InitProlog;
+    parser.m_initEncoding.initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] =
+        crate::src::xmltok::Scanner::InitContent;
+    parser.m_initEncoding.initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
+    parser.m_initEncoding.selected_encoding = None;
+    parser.m_encoding = EncodingState::Initial;
+    parser.m_userData = crate::__stddef_null_h::NULL;
+    parser.m_handlerArg = crate::__stddef_null_h::NULL;
+    parser.m_startElementHandler = false;
     START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_endElementHandler = false;
+        .remove(&parser_key);
+    parser.m_endElementHandler = false;
     END_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_characterDataHandler = false;
+        .remove(&parser_key);
+    parser.m_characterDataHandler = false;
     CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_processingInstructionHandler = false;
+        .remove(&parser_key);
+    parser.m_processingInstructionHandler = false;
     PROCESSING_INSTRUCTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_commentHandler = false;
+        .remove(&parser_key);
+    parser.m_commentHandler = false;
     COMMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_startCdataSectionHandler = None;
-    (*parser).m_endCdataSectionHandler = None;
-    (*parser).m_defaultHandler = false;
+        .remove(&parser_key);
+    parser.m_startCdataSectionHandler = None;
+    parser.m_endCdataSectionHandler = None;
+    parser.m_defaultHandler = false;
     DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_startDoctypeDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_startDoctypeDeclHandler = false;
     START_DOCTYPE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_endDoctypeDeclHandler = None;
-    (*parser).m_unparsedEntityDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_endDoctypeDeclHandler = None;
+    parser.m_unparsedEntityDeclHandler = false;
     UNPARSED_ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_notationDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_notationDeclHandler = false;
     NOTATION_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_startNamespaceDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_startNamespaceDeclHandler = false;
     START_NAMESPACE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_endNamespaceDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_endNamespaceDeclHandler = false;
     END_NAMESPACE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_notStandaloneHandler = None;
-    (*parser).m_externalEntityRefHandler = false;
+        .remove(&parser_key);
+    parser.m_notStandaloneHandler = None;
+    parser.m_externalEntityRefHandler = false;
     EXTERNAL_ENTITY_REF_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_externalEntityRefHandlerArg = parser;
-    (*parser).m_skippedEntityHandler = false;
+        .remove(&parser_key);
+    parser.m_skippedEntityHandler = false;
     SKIPPED_ENTITY_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_elementDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_elementDeclHandler = false;
     ELEMENT_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_attlistDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_attlistDeclHandler = false;
     ATTLIST_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_entityDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_entityDeclHandler = false;
     ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_xmlDeclHandler = false;
+        .remove(&parser_key);
+    parser.m_xmlDeclHandler = false;
     XML_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    (*parser).m_bufferPtr = (*parser).m_buffer;
-    (*parser).m_bufferEnd = (*parser).m_buffer;
-    (*parser).m_parseEndByteIndex = 0 as crate::expat_external_h::XML_Index;
-    (*parser).m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    (*parser).m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
-    (*parser).m_reparseDeferralEnabled = g_reparseDeferralEnabledDefault;
-    (*parser).m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
-    (*parser).m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    (*parser).m_declAttributeId = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-    (*parser).m_doctypeName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*parser).m_doctypeSysid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*parser).m_doctypePubid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*parser).m_declAttributeType = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*parser).m_declNotationName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*parser).m_declNotationPublicId = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*parser).m_declAttributeIsCdata = crate::expat_h::XML_FALSE;
-    (*parser).m_declAttributeIsId = crate::expat_h::XML_FALSE;
-    (*parser).m_position = crate::src::xmltok::POSITION {
+        .remove(&parser_key);
+    parser.m_bufferPtr = parser.m_buffer;
+    parser.m_bufferEnd = parser.m_buffer;
+    parser.m_parseEndByteIndex = 0 as crate::expat_external_h::XML_Index;
+    parser.m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
+    parser.m_reparseDeferralEnabled = reparse_deferral_enabled;
+    parser.m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
+    parser.m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    parser.m_declAttributeId = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    parser.m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+    parser.m_doctypeName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_doctypeSysid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_doctypePubid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_declAttributeType = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_declNotationName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_declNotationPublicId = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_declAttributeIsCdata = crate::expat_h::XML_FALSE;
+    parser.m_declAttributeIsId = crate::expat_h::XML_FALSE;
+    parser.m_position = crate::src::xmltok::POSITION {
         lineNumber: 0,
         columnNumber: 0,
     };
-    (*parser).m_errorCode = crate::expat_h::XML_ERROR_NONE;
-    (*parser).m_eventPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    (*parser).m_eventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    (*parser).m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    (*parser).m_openInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-    (*parser).m_openAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-    (*parser).m_openValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-    (*parser).m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
-    (*parser).m_tagLevel = 0 as ::core::ffi::c_int;
-    (*parser).m_tagStack = ::core::ptr::null_mut::<TAG>();
-    (*parser).m_inheritedBindings = ::core::ptr::null_mut::<BINDING>();
-    (*parser).m_nSpecifiedAtts = 0 as ::core::ffi::c_int;
-    (*parser).m_unknownEncodingMem = crate::__stddef_null_h::NULL;
-    (*parser).m_unknownEncodingRelease = None;
-    (*parser).m_unknownEncodingData = crate::__stddef_null_h::NULL;
-    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_INITIALIZED;
-    (*parser).m_reenter = crate::expat_h::XML_FALSE;
-    (*parser).m_isParamEntity = crate::expat_h::XML_FALSE;
-    (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
-    (*parser).m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
-    (*parser).m_hash_secret_salt = 0 as ::core::ffi::c_ulong;
-    (*parser).m_accounting = ACCOUNTING {
+    parser.m_errorCode = crate::expat_h::XML_ERROR_NONE;
+    parser.m_eventPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_eventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_openInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    parser.m_openAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    parser.m_openValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    parser.m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
+    parser.m_tagLevel = 0 as ::core::ffi::c_int;
+    parser.m_tagStack = ::core::ptr::null_mut::<TAG>();
+    parser.m_inheritedBindings = ::core::ptr::null_mut::<BINDING>();
+    parser.m_nSpecifiedAtts = 0 as ::core::ffi::c_int;
+    parser.m_unknownEncodingMem = crate::__stddef_null_h::NULL;
+    parser.m_unknownEncodingRelease = None;
+    parser.m_unknownEncodingData = crate::__stddef_null_h::NULL;
+    parser.m_parsingStatus.parsing = crate::expat_h::XML_INITIALIZED;
+    parser.m_reenter = crate::expat_h::XML_FALSE;
+    parser.m_isParamEntity = crate::expat_h::XML_FALSE;
+    parser.m_useForeignDTD = crate::expat_h::XML_FALSE;
+    parser.m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+    parser.m_hash_secret_salt = 0 as ::core::ffi::c_ulong;
+    parser.m_accounting = ACCOUNTING {
         countBytesDirect: 0,
         countBytesIndirect: 0,
         debugLevel: 0,
         maximumAmplificationFactor: 0.0,
         activationThresholdBytes: 0,
     };
-    (*parser).m_accounting.debugLevel = getDebugLevel(
-        b"EXPAT_ACCOUNTING_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-        0 as ::core::ffi::c_ulong,
-    );
-    (*parser).m_accounting.maximumAmplificationFactor =
+    parser.m_accounting.debugLevel = accounting_debug_level;
+    parser.m_accounting.maximumAmplificationFactor =
         crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
-    (*parser).m_accounting.activationThresholdBytes =
+    parser.m_accounting.activationThresholdBytes =
         crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT
             as ::core::ffi::c_ulonglong;
-    (*parser).m_entity_stats = ENTITY_STATS {
+    parser.m_entity_stats = ENTITY_STATS {
         countEverOpened: 0,
         currentDepth: 0,
         maximumDepthSeen: 0,
         debugLevel: 0,
     };
-    (*parser).m_entity_stats.debugLevel = getDebugLevel(
+    parser.m_entity_stats.debugLevel = entity_debug_level;
+}
+
+unsafe extern "C" fn parserInit(
+    mut parser: crate::expat_h::XML_Parser,
+    mut encodingName: *const crate::expat_external_h::XML_Char,
+) {
+    let protocol_encoding_name = if encodingName.is_null() {
+        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>()
+    } else {
+        copyString(encodingName, parser)
+    };
+    let accounting_debug_level = getDebugLevel(
+        b"EXPAT_ACCOUNTING_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
+        0 as ::core::ffi::c_ulong,
+    );
+    let entity_debug_level = getDebugLevel(
         b"EXPAT_ENTITY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
         0 as ::core::ffi::c_ulong,
+    );
+    let reparse_deferral_enabled = g_reparseDeferralEnabledDefault;
+    let parser_key = parser as usize;
+    let parser_state = &mut *parser;
+    parser_state.m_protocolEncodingName = protocol_encoding_name;
+    parser_state.m_externalEntityRefHandlerArg = parser;
+    parser_init(
+        parser_state,
+        parser_key,
+        reparse_deferral_enabled,
+        accounting_debug_level,
+        entity_debug_level,
     );
 }
 
