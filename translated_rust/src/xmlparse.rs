@@ -11810,18 +11810,6 @@ fn store_raw_names_impl(
     return crate::expat_h::XML_TRUE;
 }
 
-unsafe extern "C" fn storeRawNames(
-    parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Bool {
-    let Some(parser) = parser.as_mut() else {
-        return crate::expat_h::XML_FALSE;
-    };
-    let Some(dtd_owner) = parser.m_dtd.clone() else {
-        return crate::expat_h::XML_FALSE;
-    };
-    dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd))
-}
-
 /// Returns the tokenizer encoding selected by the parser state.
 ///
 /// `Initial` deliberately consults `INIT_ENCODING.selected_encoding` on each
