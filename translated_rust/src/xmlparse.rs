@@ -11552,13 +11552,22 @@ static XML_FEATURE_LIST: StaticFeatureList = StaticFeatureList([
 },
 ]);
 
-pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
-    XML_FEATURE_LIST.0.as_ptr()
+#[derive(Copy, Clone)]
+enum FeatureListHandle {
+    Global,
+}
+
+/// Selects the process-lifetime feature table without exposing its ABI
+/// pointer to implementation code.
+fn XML_GetFeatureList() -> FeatureListHandle {
+    FeatureListHandle::Global
 }
 #[export_name = "XML_GetFeatureList"]
 
 pub unsafe extern "C" fn XML_GetFeatureList_ffi() -> *const crate::expat_h::XML_Feature {
-    XML_GetFeatureList()
+    match XML_GetFeatureList() {
+        FeatureListHandle::Global => XML_FEATURE_LIST.0.as_ptr(),
+    }
 }
 /// Updates the root parser's amplification limit after the opaque parser
 /// handle has been validated at the ABI boundary.
