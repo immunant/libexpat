@@ -20896,18 +20896,33 @@ unsafe extern "C" fn getContext(
 }
 
 unsafe extern "C" fn setContext(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: crate::expat_h::XML_Parser,
     context: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
-    if context.is_null() {
+    if parser.is_null() || context.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    // Context values are produced by getContext or accepted by the public C API
-    // as NUL-terminated XML_Char data.  Read the terminator once, then keep all
-    // delimiter handling inside this bounded byte slice.
     let context = ::core::ffi::CStr::from_ptr(context).to_bytes();
     let parser = &mut *parser;
-    let dtd = &mut *parser_dtd_ptr!(parser);
+    let Some(dtd_owner) = parser.m_dtd.clone() else {
+        return crate::expat_h::XML_FALSE;
+    };
+    set_context_impl(parser, &mut *dtd_owner.value.get(), context)
+}
+
+/// Restores the parser state encoded by `getContext` from a bounded C-string
+/// payload.  Raw parser and C-string conversion stay at the caller boundary;
+/// this implementation only handles owned parser state and checked slices.
+fn set_context_impl(
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
+    context: &[u8],
+) -> crate::expat_h::XML_Bool {
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
     let mut position = 0usize;
 
     while position < context.len() {
@@ -20922,28 +20937,26 @@ unsafe extern "C" fn setContext(
                 let Some(pool_start) = parser.m_tempPool.start_ref(true) else {
                     return crate::expat_h::XML_FALSE;
                 };
-                let pool_start = parser
-                    .m_tempPool
-                    .chars_from(pool_start)
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                if pool_start.is_null() {
-                    return crate::expat_h::XML_FALSE;
-                }
-                let entity = lookup(
-                    parser as *mut XML_ParserStruct,
-                    &raw mut dtd.generalEntities,
-                    pool_start as KEY,
-                    0 as crate::__stddef_size_t_h::size_t,
-                ) as *mut ENTITY;
-                if !entity.is_null() {
-                    (*entity).open = crate::expat_h::XML_TRUE;
+                {
+                    let Some(name) = pool_terminated_chars(&parser.m_tempPool, pool_start) else {
+                        return crate::expat_h::XML_FALSE;
+                    };
+                    if let Some(NamedRecord::Entity(entity)) = lookup_impl(
+                        &mut dtd.pool,
+                        &mut dtd.generalEntities,
+                        LookupName::Borrowed(name),
+                        0,
+                        salt,
+                    ) {
+                        entity.as_mut().open = crate::expat_h::XML_TRUE;
+                    }
                 }
                 parser.m_tempPool.rewind();
                 position += 1;
             }
             0x3d => {
                 let prefix = if parser.m_tempPool.ptr_offset == 0 {
-                    &raw mut dtd.defaultPrefix
+                    dtd.defaultPrefix
                 } else {
                     if !pool_append_context_char(
                         &mut parser.m_tempPool,
@@ -20954,22 +20967,22 @@ unsafe extern "C" fn setContext(
                     let Some(pool_start) = parser.m_tempPool.start_ref(true) else {
                         return crate::expat_h::XML_FALSE;
                     };
-                    let pool_start = parser
-                        .m_tempPool
-                        .chars_from(pool_start)
-                        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                    if pool_start.is_null() {
-                        return crate::expat_h::XML_FALSE;
-                    }
-                    let prefix = lookup(
-                        parser as *mut XML_ParserStruct,
-                        &raw mut dtd.prefixes,
-                        pool_start as KEY,
-                        ::core::mem::size_of::<PREFIX>(),
-                    ) as *mut PREFIX;
-                    if prefix.is_null() {
-                        return crate::expat_h::XML_FALSE;
-                    }
+                    let prefix = {
+                        let Some(name) = pool_terminated_chars(&parser.m_tempPool, pool_start)
+                        else {
+                            return crate::expat_h::XML_FALSE;
+                        };
+                        let Some(NamedRecord::Prefix(prefix)) = lookup_impl(
+                            &mut dtd.pool,
+                            &mut dtd.prefixes,
+                            LookupName::Borrowed(name),
+                            ::core::mem::size_of::<PREFIX>(),
+                            salt,
+                        ) else {
+                            return crate::expat_h::XML_FALSE;
+                        };
+                        prefix.as_ref().clone()
+                    };
                     parser.m_tempPool.rewind();
                     prefix
                 };
@@ -20993,22 +21006,40 @@ unsafe extern "C" fn setContext(
                 let Some(pool_start) = parser.m_tempPool.start_ref(true) else {
                     return crate::expat_h::XML_FALSE;
                 };
-                let pool_start = parser
-                    .m_tempPool
-                    .chars_from(pool_start)
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                if pool_start.is_null() {
+                let Some(uri_chars) = pool_terminated_chars(&parser.m_tempPool, pool_start) else {
+                    return crate::expat_h::XML_FALSE;
+                };
+                let mut uri = Vec::new();
+                if uri.try_reserve_exact(uri_chars.len()).is_err() {
                     return crate::expat_h::XML_FALSE;
                 }
+                uri.extend_from_slice(uri_chars);
+                let prefix_name = if let Some(name) = prefix.name {
+                    let Some(name_chars) = pool_terminated_chars(&dtd.pool, name) else {
+                        return crate::expat_h::XML_FALSE;
+                    };
+                    let mut name_copy = Vec::new();
+                    if name_copy.try_reserve_exact(name_chars.len()).is_err() {
+                        return crate::expat_h::XML_FALSE;
+                    }
+                    name_copy.extend_from_slice(name_chars);
+                    Some(name_copy)
+                } else {
+                    None
+                };
                 let mut inherited_bindings = parser
                     .m_inheritedBindings
                     .and_then(|index| parser.m_activeBindings.get(index))
                     .map(|storage| storage.id);
-                let inherited_binding_result = addBinding(
-                    parser as *mut XML_ParserStruct,
-                    prefix,
-                    ::core::ptr::null::<ATTRIBUTE_ID>(),
-                    pool_start,
+                let inherited_binding_result = add_binding_impl(
+                    parser,
+                    &prefix,
+                    NamespaceBindingInput {
+                        attribute_name: None,
+                        prefix_name,
+                        uri,
+                        is_default_prefix: prefix.name.is_none(),
+                    },
                     &mut inherited_bindings,
                 );
                 if inherited_binding_result as ::core::ffi::c_uint
@@ -21048,21 +21079,19 @@ unsafe extern "C" fn setContext(
         let Some(pool_start) = parser.m_tempPool.start_ref(true) else {
             return crate::expat_h::XML_FALSE;
         };
-        let pool_start = parser
-            .m_tempPool
-            .chars_from(pool_start)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-        if pool_start.is_null() {
-            return crate::expat_h::XML_FALSE;
-        }
-        let entity = lookup(
-            parser as *mut XML_ParserStruct,
-            &raw mut dtd.generalEntities,
-            pool_start as KEY,
-            0 as crate::__stddef_size_t_h::size_t,
-        ) as *mut ENTITY;
-        if !entity.is_null() {
-            (*entity).open = crate::expat_h::XML_TRUE;
+        {
+            let Some(name) = pool_terminated_chars(&parser.m_tempPool, pool_start) else {
+                return crate::expat_h::XML_FALSE;
+            };
+            if let Some(NamedRecord::Entity(entity)) = lookup_impl(
+                &mut dtd.pool,
+                &mut dtd.generalEntities,
+                LookupName::Borrowed(name),
+                0,
+                salt,
+            ) {
+                entity.as_mut().open = crate::expat_h::XML_TRUE;
+            }
         }
         parser.m_tempPool.rewind();
     }
