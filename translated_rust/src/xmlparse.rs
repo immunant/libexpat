@@ -5487,10 +5487,7 @@ unsafe extern "C" fn parserCreate(
             bytesAllocated: 0 as XmlBigCount,
             peakBytesAllocated: 0 as XmlBigCount,
             debugLevel: if parentParser.is_null() {
-                getDebugLevel(
-                    b"EXPAT_MALLOC_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-                    0 as ::core::ffi::c_ulong,
-                )
+                environment_decimal_debug_level("EXPAT_MALLOC_DEBUG", 0)
             } else {
                 0 as ::core::ffi::c_ulong
             },
@@ -5680,6 +5677,58 @@ unsafe extern "C" fn parserCreate(
         parser.m_internalEncoding = InternalEncoding::Utf8;
     }
     return parser;
+}
+
+/// Read the decimal debug switches using the same accepted input as
+/// `strtoul(value, &end, 10)`: optional ASCII whitespace and sign followed by
+/// an otherwise complete decimal number.  An overflow or any trailing byte
+/// retains Expat's default value.
+fn environment_decimal_debug_level(
+    variable_name: &str,
+    default_debug_level: ::core::ffi::c_ulong,
+) -> ::core::ffi::c_ulong {
+    let Ok(value) = std::env::var(variable_name) else {
+        return default_debug_level;
+    };
+    let bytes = value.as_bytes();
+    let mut offset = 0;
+    while bytes
+        .get(offset)
+        .is_some_and(|byte| byte.is_ascii_whitespace())
+    {
+        offset += 1;
+    }
+
+    let negative = match bytes.get(offset) {
+        Some(b'+') => {
+            offset += 1;
+            false
+        }
+        Some(b'-') => {
+            offset += 1;
+            true
+        }
+        _ => false,
+    };
+    let digits = &bytes[offset..];
+    if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
+        return default_debug_level;
+    }
+    let Some(value) = digits
+        .iter()
+        .try_fold(0 as ::core::ffi::c_ulong, |value, byte| {
+            value
+                .checked_mul(10)
+                .and_then(|value| value.checked_add((byte - b'0') as ::core::ffi::c_ulong))
+        })
+    else {
+        return default_debug_level;
+    };
+    if negative {
+        (0 as ::core::ffi::c_ulong).wrapping_sub(value)
+    } else {
+        value
+    }
 }
 
 fn parser_init(
