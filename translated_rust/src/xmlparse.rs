@@ -18832,32 +18832,53 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
     Some(std::sync::Arc::new(SharedDtd::new(dtd)))
 }
 
-unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_Parser) {
-    let p = &mut *p;
-    let parser = &mut *_parser;
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        table: None,
-        next: 0 as crate::__stddef_size_t_h::size_t,
+/// Releases the allocator tokens held by records in the element-type table.
+///
+/// # Safety
+///
+/// `table` must be the DTD's element-type table.  Its entries are allocated
+/// by `lookup` with `ELEMENT_TYPE` storage, so their owned word buffers have
+/// the layout and alignment required for `ELEMENT_TYPE`.
+unsafe fn release_element_default_attributes(
+    table: &mut HASH_TABLE,
+    parser: &mut XML_ParserStruct,
+) {
+    let Some(slots) = table.v.as_mut() else {
+        return;
     };
-    let table = &p.elementTypes;
-    hashTableIterInit(&raw mut iter, table);
-    loop {
-        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
-        if e.is_null() {
-            break;
-        }
-        if let Some(mut default_atts) = (*e).defaultAtts.take() {
+
+    for entry in slots.entries.iter_mut().flatten() {
+        let element = &mut *entry.bytes.as_mut_ptr().cast::<ELEMENT_TYPE>();
+        if let Some(mut default_atts) = element.defaultAtts.take() {
             (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7539));
         }
     }
-    hashTableClear(&raw mut p.generalEntities);
+}
+
+/// Clears a table's owned records while preserving its allocation for reuse.
+fn hash_table_clear_owned(table: &mut HASH_TABLE) {
+    if let Some(slots) = table.v.as_mut() {
+        for entry in &mut slots.entries {
+            if let Some(mut entry) = entry.take() {
+                (entry.backing)(7927 as ::core::ffi::c_int);
+            }
+        }
+    }
+    table.used = 0;
+}
+
+unsafe extern "C" fn dtdReset(p: *mut DTD, parser: crate::expat_h::XML_Parser) {
+    let p = &mut *p;
+    let parser = &mut *parser;
+    release_element_default_attributes(&mut p.elementTypes, parser);
+    hash_table_clear_owned(&mut p.generalEntities);
     p.paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableClear(&raw mut p.paramEntities);
-    hashTableClear(&raw mut p.elementTypes);
-    hashTableClear(&raw mut p.attributeIds);
-    hashTableClear(&raw mut p.prefixes);
-    poolClear(&raw mut p.pool);
-    poolClear(&raw mut p.entityValuePool);
+    hash_table_clear_owned(&mut p.paramEntities);
+    hash_table_clear_owned(&mut p.elementTypes);
+    hash_table_clear_owned(&mut p.attributeIds);
+    hash_table_clear_owned(&mut p.prefixes);
+    p.pool.clear();
+    p.entityValuePool.clear();
     p.defaultPrefix.name = None;
     p.in_eldecl = crate::expat_h::XML_FALSE;
     p.scaffIndex = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
