@@ -2143,7 +2143,7 @@ impl AttributeStorage {
 
     fn blank_record() -> crate::src::xmltok::ATTRIBUTE {
         crate::src::xmltok::ATTRIBUTE {
-            name: ::core::ptr::null(),
+            name: 0,
             valuePtr: ::core::ptr::null(),
             valueEnd: ::core::ptr::null(),
             normalized: 0,
@@ -9522,7 +9522,7 @@ unsafe extern "C" fn storeAtts(
                         };
                         match action {
                             crate::src::xmltok::Big2AttributeAction::Name { offset, .. } => {
-                                slot.name = attStr.add(offset);
+                                slot.name = offset;
                             }
                             crate::src::xmltok::Big2AttributeAction::ValueStart { offset, .. } => {
                                 slot.valuePtr = attStr.add(offset);
@@ -9636,7 +9636,7 @@ unsafe extern "C" fn storeAtts(
                                 crate::src::xmltok::Big2AttributeAction::Name {
                                     offset, ..
                                 } => {
-                                    slot.name = attStr.add(offset);
+                                    slot.name = offset;
                                 }
                                 crate::src::xmltok::Big2AttributeAction::ValueStart {
                                     offset,
@@ -9682,13 +9682,12 @@ unsafe extern "C" fn storeAtts(
         // The scanner has completed before the name/value view is formed.
         // Copy this record before its storage is reused by `appAtts`.
         let currAtt = (&(*parser).m_atts.records)[i as usize];
+        let name = attStr.add(currAtt.name);
         let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
             parser,
             enc,
-            currAtt.name,
-            currAtt
-                .name
-                .offset(crate::src::xmltok::name_length(enc, currAtt.name) as isize),
+            name,
+            name.offset(crate::src::xmltok::name_length(enc, name) as isize),
             None,
         );
         if attId.is_null() {
@@ -9700,7 +9699,7 @@ unsafe extern "C" fn storeAtts(
         }
         if *att_id_name.offset(-1 as isize) != 0 {
             if enc == parser_encoding(parser) {
-                set_parser_event_start!(&mut *parser, currAtt.name);
+                set_parser_event_start!(&mut *parser, name);
             }
             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
         }

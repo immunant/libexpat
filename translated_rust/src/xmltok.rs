@@ -203,7 +203,10 @@ pub struct position {
 #[repr(C)]
 
 pub struct ATTRIBUTE {
-    pub name: *const ::core::ffi::c_char,
+    /// Offset of the attribute name within the start-tag token passed to the
+    /// attribute scanner.  Keeping this as an offset prevents the scanner's
+    /// transient input address from escaping into parser scratch state.
+    pub name: usize,
     pub valuePtr: *const ::core::ffi::c_char,
     pub valueEnd: *const ::core::ffi::c_char,
     pub normalized: ::core::ffi::c_char,
@@ -3971,7 +3974,7 @@ pub mod xmltok_impl_c {
             }
             let slot = atts.add(attribute as usize);
             match action {
-                NormalAttributeAction::Name { offset, .. } => (*slot).name = ptr.add(offset),
+                NormalAttributeAction::Name { offset, .. } => (*slot).name = offset,
                 NormalAttributeAction::ValueStart { offset, .. } => {
                     (*slot).valuePtr = ptr.add(offset)
                 }
@@ -7333,7 +7336,7 @@ pub mod xmltok_impl_c {
             let slot = atts.add(attribute as usize);
             match action {
                 Little2AttributeAction::Name { offset, .. } => {
-                    (*slot).name = ptr.add(offset);
+                    (*slot).name = offset;
                 }
                 Little2AttributeAction::ValueStart { offset, .. } => {
                     (*slot).valuePtr = ptr.add(offset);
