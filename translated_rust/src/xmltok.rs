@@ -506,6 +506,30 @@ fn public_id_bad_offset(
     None
 }
 
+/// Validates a quoted public identifier and reports the offset of its first
+/// invalid code unit.  The quote delimiters occupy one encoded character at
+/// each end, so malformed or incomplete delimiters remain valid here just as
+/// the historical scanner treated them.
+pub fn quoted_public_id_bad_offset(
+    quoted: &[u8],
+    byte_types: &[::core::ffi::c_uchar; 256],
+    checker: PublicIdChecker,
+) -> Option<usize> {
+    let width = match checker {
+        PublicIdChecker::Normal => 1,
+        PublicIdChecker::Little2 | PublicIdChecker::Big2 => 2,
+    };
+    let Some(contents_end) = quoted.len().checked_sub(width) else {
+        return None;
+    };
+    let contents_start = width;
+    if contents_start > contents_end {
+        return None;
+    }
+    public_id_bad_offset(&quoted[contents_start..contents_end], byte_types, checker)
+        .map(|offset| contents_start + offset)
+}
+
 #[derive(Copy, Clone)]
 pub enum NameMatcher {
     Normal,
@@ -3940,30 +3964,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_isPublicId(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        badPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let span_len = end.offset_from(ptr);
-        if span_len < 2 {
-            return 1;
-        }
-        let contents =
-            ::core::slice::from_raw_parts(ptr.add(1).cast::<u8>(), (span_len - 2) as usize);
-        let byte_types = &(*(enc as *const normal_encoding)).type_0;
-        if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
-            contents,
-            byte_types,
-            crate::src::xmltok::PublicIdChecker::Normal,
-        ) {
-            *badPtr = ptr.add(1 + offset);
-            return 0;
-        }
-        1
-    }
-
     #[derive(Copy, Clone)]
     enum NormalAttributeAction {
         Name {
@@ -7256,30 +7256,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_isPublicId(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        badPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let span_len = end.offset_from(ptr);
-        if span_len < 4 {
-            return 1;
-        }
-        let contents =
-            ::core::slice::from_raw_parts(ptr.add(2).cast::<u8>(), (span_len - 4) as usize);
-        let byte_types = &(*(enc as *const normal_encoding)).type_0;
-        if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
-            contents,
-            byte_types,
-            crate::src::xmltok::PublicIdChecker::Little2,
-        ) {
-            *badPtr = ptr.add(2 + offset);
-            return 0;
-        }
-        1
-    }
-
     #[derive(Copy, Clone)]
     enum Little2AttributeAction {
         Name {
@@ -10528,30 +10504,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_isPublicId(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        badPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let span_len = end.offset_from(ptr);
-        if span_len < 4 {
-            return 1;
-        }
-        let contents =
-            ::core::slice::from_raw_parts(ptr.add(2).cast::<u8>(), (span_len - 4) as usize);
-        let byte_types = &(*(enc as *const normal_encoding)).type_0;
-        if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
-            contents,
-            byte_types,
-            crate::src::xmltok::PublicIdChecker::Big2,
-        ) {
-            *badPtr = ptr.add(2 + offset);
-            return 0;
-        }
-        1
-    }
-
     #[derive(Copy, Clone)]
     pub enum Big2AttributeAction {
         Name {
@@ -12188,7 +12140,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::big2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::big2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanCdataSection;
@@ -12209,7 +12160,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::little2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::little2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::little2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanCdataSection;
@@ -12231,7 +12181,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::normal_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;

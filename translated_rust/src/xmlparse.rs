@@ -12964,19 +12964,33 @@ unsafe extern "C" fn doProlog(
                                             Some(DeclaredEntity::ExternalSubset);
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                         if (*parser).m_startDoctypeDeclHandler {
-                                            let is_public_id = match (*enc).isPublicId {
-                                                crate::src::xmltok::PublicIdChecker::Normal => {
-                                                    crate::src::xmltok::normal_isPublicId
-                                                }
-                                                crate::src::xmltok::PublicIdChecker::Little2 => {
-                                                    crate::src::xmltok::little2_isPublicId
-                                                }
-                                                crate::src::xmltok::PublicIdChecker::Big2 => {
-                                                    crate::src::xmltok::big2_isPublicId
-                                                }
+                                            let public_id_checker = (*enc).isPublicId;
+                                            let public_id_width = match public_id_checker {
+                                                crate::src::xmltok::PublicIdChecker::Normal => 1,
+                                                crate::src::xmltok::PublicIdChecker::Little2
+                                                | crate::src::xmltok::PublicIdChecker::Big2 => 2,
                                             };
-                                            let mut bad_ptr = s;
-                                            if is_public_id(enc, s, next, &raw mut bad_ptr) == 0 {
+                                            let public_id_length = next.offset_from(s);
+                                            let bad_offset = if public_id_length
+                                                < (2 * public_id_width) as isize
+                                            {
+                                                None
+                                            } else {
+                                                let quoted = ::core::slice::from_raw_parts(
+                                                    s.cast::<u8>(),
+                                                    public_id_length as usize,
+                                                );
+                                                let byte_types = &(*(enc
+                                                    as *const crate::src::xmltok::normal_encoding))
+                                                    .type_0;
+                                                crate::src::xmltok::quoted_public_id_bad_offset(
+                                                    quoted,
+                                                    byte_types,
+                                                    public_id_checker,
+                                                )
+                                            };
+                                            if let Some(bad_offset) = bad_offset {
+                                                let bad_ptr = s.add(bad_offset);
                                                 if parser_events {
                                                     set_parser_event_start!(
                                                         parser,
@@ -14328,19 +14342,32 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     21 => {
-                                        let is_public_id = match (*enc).isPublicId {
-                                            crate::src::xmltok::PublicIdChecker::Normal => {
-                                                crate::src::xmltok::normal_isPublicId
-                                            }
-                                            crate::src::xmltok::PublicIdChecker::Little2 => {
-                                                crate::src::xmltok::little2_isPublicId
-                                            }
-                                            crate::src::xmltok::PublicIdChecker::Big2 => {
-                                                crate::src::xmltok::big2_isPublicId
-                                            }
+                                        let public_id_checker = (*enc).isPublicId;
+                                        let public_id_width = match public_id_checker {
+                                            crate::src::xmltok::PublicIdChecker::Normal => 1,
+                                            crate::src::xmltok::PublicIdChecker::Little2
+                                            | crate::src::xmltok::PublicIdChecker::Big2 => 2,
                                         };
-                                        let mut bad_ptr = s;
-                                        if is_public_id(enc, s, next, &raw mut bad_ptr) == 0 {
+                                        let public_id_length = next.offset_from(s);
+                                        let bad_offset =
+                                            if public_id_length < (2 * public_id_width) as isize {
+                                                None
+                                            } else {
+                                                let quoted = ::core::slice::from_raw_parts(
+                                                    s.cast::<u8>(),
+                                                    public_id_length as usize,
+                                                );
+                                                let byte_types = &(*(enc
+                                                    as *const crate::src::xmltok::normal_encoding))
+                                                    .type_0;
+                                                crate::src::xmltok::quoted_public_id_bad_offset(
+                                                    quoted,
+                                                    byte_types,
+                                                    public_id_checker,
+                                                )
+                                            };
+                                        if let Some(bad_offset) = bad_offset {
+                                            let bad_ptr = s.add(bad_offset);
                                             if parser_events {
                                                 set_parser_event_start!(parser, parser_event_ptr);
                                             } else {
@@ -15225,19 +15252,32 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                 }
-                                let is_public_id = match (*enc).isPublicId {
-                                    crate::src::xmltok::PublicIdChecker::Normal => {
-                                        crate::src::xmltok::normal_isPublicId
-                                    }
-                                    crate::src::xmltok::PublicIdChecker::Little2 => {
-                                        crate::src::xmltok::little2_isPublicId
-                                    }
-                                    crate::src::xmltok::PublicIdChecker::Big2 => {
-                                        crate::src::xmltok::big2_isPublicId
-                                    }
+                                let public_id_checker = (*enc).isPublicId;
+                                let public_id_width = match public_id_checker {
+                                    crate::src::xmltok::PublicIdChecker::Normal => 1,
+                                    crate::src::xmltok::PublicIdChecker::Little2
+                                    | crate::src::xmltok::PublicIdChecker::Big2 => 2,
                                 };
-                                let mut bad_ptr = s;
-                                if is_public_id(enc, s, next, &raw mut bad_ptr) == 0 {
+                                let public_id_length = next.offset_from(s);
+                                let bad_offset =
+                                    if public_id_length < (2 * public_id_width) as isize {
+                                        None
+                                    } else {
+                                        let quoted = ::core::slice::from_raw_parts(
+                                            s.cast::<u8>(),
+                                            public_id_length as usize,
+                                        );
+                                        let byte_types = &(*(enc
+                                            as *const crate::src::xmltok::normal_encoding))
+                                            .type_0;
+                                        crate::src::xmltok::quoted_public_id_bad_offset(
+                                            quoted,
+                                            byte_types,
+                                            public_id_checker,
+                                        )
+                                    };
+                                if let Some(bad_offset) = bad_offset {
+                                    let bad_ptr = s.add(bad_offset);
                                     if parser_events {
                                         set_parser_event_start!(parser, parser_event_ptr);
                                     } else {
