@@ -3479,6 +3479,20 @@ fn expect_binding_ref_ptr<'a>(ptr: *const BINDING) -> &'a BINDING {
 }
 
 #[inline]
+fn binding_mut<'a>(ptr: *mut BINDING) -> Option<&'a mut BINDING> {
+    if ptr.is_null() {
+        None
+    } else {
+        Some(helper_unsafe!(&mut *ptr))
+    }
+}
+
+#[inline]
+fn expect_binding_mut_ptr<'a>(ptr: *mut BINDING) -> &'a mut BINDING {
+    binding_mut(ptr).expect("non-null binding")
+}
+
+#[inline]
 fn expect_prefix_ref_ptr<'a>(ptr: *const PREFIX) -> &'a PREFIX {
     expect_prefix_ref!(ptr)
 }
@@ -7041,145 +7055,48 @@ extern "C" fn is_rfc3986_uri_char(
     };
 }
 
-unsafe extern "C" fn addBinding(
+fn addBinding(
     mut parser: crate::expat_h::XML_Parser,
     mut prefix: *mut PREFIX,
     mut attId: *const ATTRIBUTE_ID,
     mut uri: *const crate::expat_external_h::XML_Char,
     mut bindingsPtr: *mut *mut BINDING,
 ) -> crate::expat_h::XML_Error {
-    static mut xmlNamespace: [crate::expat_external_h::XML_Char; 37] = [
-        crate::ascii_h::ASCII_h as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_p as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_COLON as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_PERIOD as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_3 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_PERIOD as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_o as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_r as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_g as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_X as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_L as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_1 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_9 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_9 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_8 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_n as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_a as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_m as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_e as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_s as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_p as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_a as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_c as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_e as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
-    static mut xmlnsNamespace: [crate::expat_external_h::XML_Char; 30] = [
-        crate::ascii_h::ASCII_h as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_p as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_COLON as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_PERIOD as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_w as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_3 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_PERIOD as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_o as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_r as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_g as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_2 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_0 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_0 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_0 as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_x as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_m as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_l as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_n as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_s as crate::expat_external_h::XML_Char,
-        crate::ascii_h::ASCII_SLASH as crate::expat_external_h::XML_Char,
-        '\0' as i32 as crate::expat_external_h::XML_Char,
-    ];
+    const XML_NAMESPACE: &[u8] = b"http://www.w3.org/XML/1998/namespace";
+    const XMLNS_NAMESPACE: &[u8] = b"http://www.w3.org/2000/xmlns/";
+
+    let parser_state = expect_parser_mut(parser);
+    let dtd = expect_dtd_mut(parser_state.m_dtd);
+    let prefix_ref = expect_prefix_ref_ptr(prefix);
+    let uri_bytes = helper_unsafe!(::core::ffi::CStr::from_ptr(uri)).to_bytes();
     let mut mustBeXML: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
-    let mut isXML: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
-    let mut isXMLNS: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
-    let mut b: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
-    let mut len: ::core::ffi::c_int = 0;
-    if *uri as ::core::ffi::c_int == '\0' as i32 && !(*prefix).name.is_null() {
+    let mut len: ::core::ffi::c_int = uri_bytes.len() as ::core::ffi::c_int;
+
+    if uri_bytes.is_empty() && !prefix_ref.name.is_null() {
         return crate::expat_h::XML_ERROR_UNDECLARING_PREFIX;
     }
-    if !(*prefix).name.is_null()
-        && *(*prefix).name.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0x78 as ::core::ffi::c_int
-        && *(*prefix).name.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0x6d as ::core::ffi::c_int
-        && *(*prefix).name.offset(2 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0x6c as ::core::ffi::c_int
-    {
-        if *(*prefix).name.offset(3 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0x6e as ::core::ffi::c_int
-            && *(*prefix).name.offset(4 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x73 as ::core::ffi::c_int
-            && *(*prefix).name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == '\0' as i32
-        {
+    if !prefix_ref.name.is_null() {
+        let prefix_name =
+            helper_unsafe!(::core::ffi::CStr::from_ptr(prefix_ref.name)).to_bytes_with_nul();
+        if prefix_name == b"xmlns\0" {
             return crate::expat_h::XML_ERROR_RESERVED_PREFIX_XMLNS;
         }
-        if *(*prefix).name.offset(3 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == '\0' as i32
-        {
+        if prefix_name == b"xml\0" {
             mustBeXML = crate::expat_h::XML_TRUE;
         }
     }
-    len = 0 as ::core::ffi::c_int;
-    while *uri.offset(len as isize) != 0 {
-        if isXML as ::core::ffi::c_int != 0
-            && (len > xmlLen
-                || *uri.offset(len as isize) as ::core::ffi::c_int
-                    != xmlNamespace[len as usize] as ::core::ffi::c_int)
-        {
-            isXML = crate::expat_h::XML_FALSE;
-        }
-        if mustBeXML == 0
-            && isXMLNS as ::core::ffi::c_int != 0
-            && (len > xmlnsLen
-                || *uri.offset(len as isize) as ::core::ffi::c_int
-                    != xmlnsNamespace[len as usize] as ::core::ffi::c_int)
-        {
-            isXMLNS = crate::expat_h::XML_FALSE;
-        }
-        if (*parser).m_ns as ::core::ffi::c_int != 0
-            && *uri.offset(len as isize) as ::core::ffi::c_int
-                == (*parser).m_namespaceSeparator as ::core::ffi::c_int
-            && is_rfc3986_uri_char(*uri.offset(len as isize)) == 0
+    for &uri_char in uri_bytes {
+        let uri_char = uri_char as crate::expat_external_h::XML_Char;
+        if parser_state.m_ns as ::core::ffi::c_int != 0
+            && uri_char as ::core::ffi::c_int
+                == parser_state.m_namespaceSeparator as ::core::ffi::c_int
+            && is_rfc3986_uri_char(uri_char) == 0
         {
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
-        len += 1;
     }
-    isXML = (isXML as ::core::ffi::c_int != 0 && len == xmlLen) as ::core::ffi::c_int
-        as crate::expat_h::XML_Bool;
-    isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == xmlnsLen) as ::core::ffi::c_int
-        as crate::expat_h::XML_Bool;
+    let isXML = (uri_bytes == XML_NAMESPACE) as ::core::ffi::c_int as crate::expat_h::XML_Bool;
+    let isXMLNS = (uri_bytes == XMLNS_NAMESPACE) as ::core::ffi::c_int as crate::expat_h::XML_Bool;
     if mustBeXML as ::core::ffi::c_int != isXML as ::core::ffi::c_int {
         return (if mustBeXML as ::core::ffi::c_int != 0 {
             crate::expat_h::XML_ERROR_RESERVED_PREFIX_XML as ::core::ffi::c_int
@@ -7190,35 +7107,38 @@ unsafe extern "C" fn addBinding(
     if isXMLNS != 0 {
         return crate::expat_h::XML_ERROR_RESERVED_NAMESPACE_URI;
     }
-    if (*parser).m_namespaceSeparator != 0 {
+    if parser_state.m_namespaceSeparator != 0 {
         len += 1;
     }
-    if !(*parser).m_freeBindingList.is_null() {
-        b = (*parser).m_freeBindingList;
-        if len > (*b).uriAlloc {
+    let b = if !parser_state.m_freeBindingList.is_null() {
+        let b = parser_state.m_freeBindingList;
+        let old_free_list = expect_binding_ref_ptr(b).nextTagBinding;
+        if len > expect_binding_ref_ptr(b).uriAlloc {
             if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
-            let mut temp: *mut crate::expat_external_h::XML_Char = expat_realloc(
+            let binding = expect_binding_ref_ptr(b);
+            let temp = expat_realloc(
                 parser,
-                (*b).uri as *mut ::core::ffi::c_void,
+                binding.uri as *mut ::core::ffi::c_void,
                 (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                     as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(
                         (len + 24 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t,
                     ),
                 4517 as ::core::ffi::c_int,
-            )
-                as *mut crate::expat_external_h::XML_Char;
+            ) as *mut crate::expat_external_h::XML_Char;
             if temp.is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
-            (*b).uri = temp;
-            (*b).uriAlloc = len + EXPAND_SPARE;
+            let binding = expect_binding_mut_ptr(b);
+            binding.uri = temp;
+            binding.uriAlloc = len + EXPAND_SPARE;
         }
-        (*parser).m_freeBindingList = (*b).nextTagBinding as *mut BINDING;
+        parser_state.m_freeBindingList = old_free_list;
+        b
     } else {
-        b = expat_malloc(
+        let b = expat_malloc(
             parser,
             ::core::mem::size_of::<BINDING>() as crate::__stddef_size_t_h::size_t,
             4525 as ::core::ffi::c_int,
@@ -7229,14 +7149,14 @@ unsafe extern "C" fn addBinding(
         if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        (*b).uri = expat_malloc(
+        let uri_buffer = expat_malloc(
             parser,
             (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                 as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul((len + 24 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t),
             4543 as ::core::ffi::c_int,
         ) as *mut crate::expat_external_h::XML_Char;
-        if (*b).uri.is_null() {
+        if uri_buffer.is_null() {
             expat_free(
                 parser,
                 b as *mut ::core::ffi::c_void,
@@ -7244,43 +7164,51 @@ unsafe extern "C" fn addBinding(
             );
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        (*b).uriAlloc = len + EXPAND_SPARE;
-    }
-    (*b).uriLen = len;
-    crate::stdlib::memcpy(
-        (*b).uri as *mut ::core::ffi::c_void,
+        let binding = expect_binding_mut_ptr(b);
+        binding.uri = uri_buffer;
+        binding.uriAlloc = len + EXPAND_SPARE;
+        b
+    };
+    let binding = expect_binding_mut_ptr(b);
+    binding.uriLen = len;
+    helper_unsafe!(crate::stdlib::memcpy(
+        binding.uri as *mut ::core::ffi::c_void,
         uri as *const ::core::ffi::c_void,
         (len as crate::__stddef_size_t_h::size_t)
             .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                 as crate::__stddef_size_t_h::size_t),
-    );
-    if (*parser).m_namespaceSeparator != 0 {
-        *(*b).uri.offset((len - 1 as ::core::ffi::c_int) as isize) = (*parser).m_namespaceSeparator;
-    }
-    (*b).prefix = prefix as *mut prefix;
-    (*b).attId = attId as *const attribute_id;
-    (*b).prevPrefixBinding = (*prefix).binding as *mut binding;
-    if *uri as ::core::ffi::c_int == '\0' as i32
-        && prefix == &raw mut (*(*parser).m_dtd).defaultPrefix
-    {
-        (*prefix).binding = ::core::ptr::null_mut::<BINDING>();
-    } else {
-        (*prefix).binding = b;
-    }
-    (*b).nextTagBinding = *bindingsPtr as *mut binding;
-    *bindingsPtr = b;
-    if !attId.is_null() && (*parser).m_startNamespaceDeclHandler.is_some() {
-        (*parser)
-            .m_startNamespaceDeclHandler
-            .expect("non-null function pointer")(
-            (*parser).m_handlerArg,
-            (*prefix).name,
-            if !(*prefix).binding.is_null() {
-                uri
-            } else {
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>()
-            },
+    ));
+    if parser_state.m_namespaceSeparator != 0 {
+        helper_unsafe!(
+            *binding
+                .uri
+                .wrapping_offset((len - 1 as ::core::ffi::c_int) as isize) =
+                parser_state.m_namespaceSeparator
         );
+    }
+    binding.prefix = prefix as *mut prefix;
+    binding.attId = attId as *const attribute_id;
+    binding.prevPrefixBinding = prefix_ref.binding as *mut binding;
+    let prefix_mut = expect_prefix_mut_ptr(prefix);
+    if uri_bytes.is_empty() && ::core::ptr::eq(prefix, &raw mut dtd.defaultPrefix) {
+        prefix_mut.binding = ::core::ptr::null_mut::<BINDING>();
+    } else {
+        prefix_mut.binding = b;
+    }
+    binding.nextTagBinding = helper_unsafe!(*bindingsPtr) as *mut binding;
+    helper_unsafe!(*bindingsPtr = b);
+    if !attId.is_null() {
+        if let Some(handler) = parser_state.m_startNamespaceDeclHandler {
+            helper_unsafe!(handler(
+                parser_state.m_handlerArg,
+                prefix_mut.name,
+                if !prefix_mut.binding.is_null() {
+                    uri
+                } else {
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>()
+                },
+            ));
+        }
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
