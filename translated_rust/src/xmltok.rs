@@ -845,8 +845,8 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_scanCdataSection(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    pub extern "C" fn normal_scanCdataSection(
+        mut _enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
@@ -859,22 +859,17 @@ pub mod xmltok_impl_c {
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
             crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
         ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
+        if super::byte_distance(ptr, end) < 6 as ::core::ffi::c_long {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr as ::core::ffi::c_int == CDATA_LSQB[i as usize] as ::core::ffi::c_int) {
-                *nextTokPtr = ptr;
+        for expected in CDATA_LSQB {
+            if super::normal_ascii_byte(ptr) != expected as ::core::ffi::c_int {
+                super::set_next_tok_ptr(nextTokPtr, ptr);
                 return crate::src::xmltok::XML_TOK_INVALID_1;
             }
-            i += 1;
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+            ptr = ptr.wrapping_add(1);
         }
-        *nextTokPtr = ptr;
+        super::set_next_tok_ptr(nextTokPtr, ptr);
         return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
@@ -4984,8 +4979,8 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanCdataSection(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    pub extern "C" fn little2_scanCdataSection(
+        mut _enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
@@ -4998,26 +4993,17 @@ pub mod xmltok_impl_c {
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
             crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
         ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
+        if super::byte_distance(ptr, end) < 12 as ::core::ffi::c_long {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
+        for expected in CDATA_LSQB {
+            if super::little2_ascii_byte(ptr) != expected as ::core::ffi::c_int {
+                super::set_next_tok_ptr(nextTokPtr, ptr);
                 return crate::src::xmltok::XML_TOK_INVALID_1;
             }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+            ptr = ptr.wrapping_add(2);
         }
-        *nextTokPtr = ptr;
+        super::set_next_tok_ptr(nextTokPtr, ptr);
         return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
@@ -9272,8 +9258,8 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanCdataSection(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    pub extern "C" fn big2_scanCdataSection(
+        mut _enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
@@ -9286,26 +9272,17 @@ pub mod xmltok_impl_c {
             crate::ascii_h::ASCII_A as ::core::ffi::c_char,
             crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
         ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
+        if super::byte_distance(ptr, end) < 12 as ::core::ffi::c_long {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
+        for expected in CDATA_LSQB {
+            if super::big2_ascii_byte(ptr) != expected as ::core::ffi::c_int {
+                super::set_next_tok_ptr(nextTokPtr, ptr);
                 return crate::src::xmltok::XML_TOK_INVALID_1;
             }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+            ptr = ptr.wrapping_add(2);
         }
-        *nextTokPtr = ptr;
+        super::set_next_tok_ptr(nextTokPtr, ptr);
         return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
     }
 
@@ -14875,6 +14852,15 @@ fn set_bad_public_id_ptr(
 ) {
     unsafe {
         *bad_ptr = ptr;
+    }
+}
+
+fn set_next_tok_ptr(
+    next_tok_ptr: *mut *const ::core::ffi::c_char,
+    ptr: *const ::core::ffi::c_char,
+) {
+    unsafe {
+        *next_tok_ptr = ptr;
     }
 }
 
