@@ -4527,36 +4527,89 @@ enum NormalCharCheck {
     NameStart,
 }
 
+enum EncodingDataLookup {
+    NormalByteType(::core::ffi::c_int),
+    NormalCharCheck {
+        p: *const ::core::ffi::c_char,
+        width: usize,
+        check: NormalCharCheck,
+    },
+    Unknown(UnknownEncodingLookup),
+}
+
+enum EncodingDataValue {
+    Int(::core::ffi::c_int),
+    Bool(bool),
+    Unknown(UnknownEncodingValue),
+}
+
+fn encoding_data_lookup(
+    enc: *const crate::src::xmltok::ENCODING,
+    lookup: EncodingDataLookup,
+) -> EncodingDataValue {
+    unsafe {
+        match lookup {
+            EncodingDataLookup::NormalByteType(byte) => {
+                let normal = &*(enc as *const normal_encoding);
+                EncodingDataValue::Int(
+                    normal.type_0[byte as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int,
+                )
+            }
+            EncodingDataLookup::NormalCharCheck { p, width, check } => {
+                let normal = &*(enc as *const normal_encoding);
+                let callback = match check {
+                    NormalCharCheck::Invalid => match width {
+                        2 => normal.isInvalid2,
+                        3 => normal.isInvalid3,
+                        4 => normal.isInvalid4,
+                        _ => None,
+                    },
+                    NormalCharCheck::Name => match width {
+                        2 => normal.isName2,
+                        3 => normal.isName3,
+                        4 => normal.isName4,
+                        _ => None,
+                    },
+                    NormalCharCheck::NameStart => match width {
+                        2 => normal.isNmstrt2,
+                        3 => normal.isNmstrt3,
+                        4 => normal.isNmstrt4,
+                        _ => None,
+                    },
+                };
+                EncodingDataValue::Bool(match callback {
+                    Some(callback) => callback(enc, p) != 0,
+                    None => false,
+                })
+            }
+            EncodingDataLookup::Unknown(lookup) => {
+                let uenc = &*(enc as *const unknown_encoding);
+                EncodingDataValue::Unknown(match lookup {
+                    UnknownEncodingLookup::Convert(p) => {
+                        let convert = uenc.convert.expect("non-null function pointer");
+                        UnknownEncodingValue::Code(convert(uenc.userData, p))
+                    }
+                    UnknownEncodingLookup::Utf8(byte) => {
+                        UnknownEncodingValue::Utf8(uenc.utf8[byte])
+                    }
+                    UnknownEncodingLookup::Utf16(byte) => {
+                        UnknownEncodingValue::Utf16(uenc.utf16[byte])
+                    }
+                })
+            }
+        }
+    }
+}
+
 fn normal_char_check(
     enc: *const crate::src::xmltok::ENCODING,
     p: *const ::core::ffi::c_char,
     width: usize,
     check: NormalCharCheck,
 ) -> bool {
-    let normal = normal_encoding_ref(enc);
-    let callback = match check {
-        NormalCharCheck::Invalid => match width {
-            2 => normal.isInvalid2,
-            3 => normal.isInvalid3,
-            4 => normal.isInvalid4,
-            _ => None,
-        },
-        NormalCharCheck::Name => match width {
-            2 => normal.isName2,
-            3 => normal.isName3,
-            4 => normal.isName4,
-            _ => None,
-        },
-        NormalCharCheck::NameStart => match width {
-            2 => normal.isNmstrt2,
-            3 => normal.isNmstrt3,
-            4 => normal.isNmstrt4,
-            _ => None,
-        },
-    };
-    match callback {
-        Some(callback) => callback(enc, p) != 0,
-        None => false,
+    match encoding_data_lookup(enc, EncodingDataLookup::NormalCharCheck { p, width, check }) {
+        EncodingDataValue::Bool(matches) => matches,
+        _ => unreachable!(),
     }
 }
 
@@ -7087,17 +7140,14 @@ fn byte_distance(
     (to as isize).wrapping_sub(from as isize) as ::core::ffi::c_long
 }
 
-fn normal_encoding_ref<'a>(
-    enc: *const crate::src::xmltok::ENCODING,
-) -> &'a crate::src::xmltok::normal_encoding {
-    unsafe { &*(enc as *const normal_encoding) }
-}
-
 fn normal_byte_type(
     enc: *const crate::src::xmltok::ENCODING,
     byte: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    normal_encoding_ref(enc).type_0[byte as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+    match encoding_data_lookup(enc, EncodingDataLookup::NormalByteType(byte)) {
+        EncodingDataValue::Int(value) => value,
+        _ => unreachable!(),
+    }
 }
 
 fn convert_raw_from_bytes<T, F>(
@@ -14240,16 +14290,9 @@ fn unknown_encoding_lookup(
     enc: *const crate::src::xmltok::ENCODING,
     lookup: UnknownEncodingLookup,
 ) -> UnknownEncodingValue {
-    unsafe {
-        let uenc = &*(enc as *const unknown_encoding);
-        match lookup {
-            UnknownEncodingLookup::Convert(p) => {
-                let convert = uenc.convert.expect("non-null function pointer");
-                UnknownEncodingValue::Code(convert(uenc.userData, p))
-            }
-            UnknownEncodingLookup::Utf8(byte) => UnknownEncodingValue::Utf8(uenc.utf8[byte]),
-            UnknownEncodingLookup::Utf16(byte) => UnknownEncodingValue::Utf16(uenc.utf16[byte]),
-        }
+    match encoding_data_lookup(enc, EncodingDataLookup::Unknown(lookup)) {
+        EncodingDataValue::Unknown(value) => value,
+        _ => unreachable!(),
     }
 }
 
