@@ -349,29 +349,30 @@ pub mod xmltok_impl_c {
         ptr: *const ::core::ffi::c_char,
         unit: EncodingUnit,
     ) -> ::core::ffi::c_int {
-        unsafe {
-            let normal = &*(enc as *const normal_encoding);
-            match unit {
-                EncodingUnit::Normal => {
-                    normal.type_0[*ptr as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+        let type_table = (enc as *const ::core::ffi::c_char)
+            .wrapping_add(::core::mem::size_of::<crate::src::xmltok::ENCODING>());
+
+        match unit {
+            EncodingUnit::Normal => {
+                let byte = super::utf8_byte_at(ptr, 0);
+                super::utf8_byte_at(type_table, byte as usize)
+            }
+            EncodingUnit::Little2 => {
+                let low = super::utf8_byte_at(ptr, 0) as ::core::ffi::c_char;
+                let high = super::utf8_byte_at(ptr, 1) as ::core::ffi::c_char;
+                if high as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                    super::utf8_byte_at(type_table, low as ::core::ffi::c_uchar as usize)
+                } else {
+                    unicode_byte_type(high, low)
                 }
-                EncodingUnit::Little2 => {
-                    let low = *ptr.offset(0 as ::core::ffi::c_int as isize);
-                    let high = *ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if high as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
-                    } else {
-                        unicode_byte_type(high, low)
-                    }
-                }
-                EncodingUnit::Big2 => {
-                    let high = *ptr.offset(0 as ::core::ffi::c_int as isize);
-                    let low = *ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if high as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
-                    } else {
-                        unicode_byte_type(high, low)
-                    }
+            }
+            EncodingUnit::Big2 => {
+                let high = super::utf8_byte_at(ptr, 0) as ::core::ffi::c_char;
+                let low = super::utf8_byte_at(ptr, 1) as ::core::ffi::c_char;
+                if high as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                    super::utf8_byte_at(type_table, low as ::core::ffi::c_uchar as usize)
+                } else {
+                    unicode_byte_type(high, low)
                 }
             }
         }
@@ -416,26 +417,28 @@ pub mod xmltok_impl_c {
         ascii_offset: isize,
         zero_offset: Option<isize>,
     ) -> ::core::ffi::c_int {
-        unsafe {
-            while *ptr2 != 0 {
-                if (end1.offset_from(ptr1) as ::core::ffi::c_long)
-                    < unit_width as ::core::ffi::c_long
+        while super::utf8_byte_at(ptr2, 0) != 0 {
+            let ptr1_addr = ptr1 as usize;
+            let end1_addr = end1 as usize;
+            if ptr1_addr > end1_addr || end1_addr.wrapping_sub(ptr1_addr) < unit_width as usize {
+                return 0 as ::core::ffi::c_int;
+            }
+            if let Some(zero_offset) = zero_offset {
+                if super::utf8_byte_at(ptr1.wrapping_offset(zero_offset), 0)
+                    != 0 as ::core::ffi::c_int
                 {
                     return 0 as ::core::ffi::c_int;
                 }
-                if let Some(zero_offset) = zero_offset {
-                    if *ptr1.offset(zero_offset) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
-                        return 0 as ::core::ffi::c_int;
-                    }
-                }
-                if *ptr1.offset(ascii_offset) as ::core::ffi::c_int != *ptr2 as ::core::ffi::c_int {
-                    return 0 as ::core::ffi::c_int;
-                }
-                ptr1 = ptr1.offset(unit_width);
-                ptr2 = ptr2.offset(1);
             }
-            (ptr1 == end1) as ::core::ffi::c_int
+            if super::utf8_byte_at(ptr1.wrapping_offset(ascii_offset), 0)
+                != super::utf8_byte_at(ptr2, 0)
+            {
+                return 0 as ::core::ffi::c_int;
+            }
+            ptr1 = ptr1.wrapping_offset(unit_width);
+            ptr2 = ptr2.wrapping_offset(1);
         }
+        (ptr1 == end1) as ::core::ffi::c_int
     }
 
     pub unsafe extern "C" fn normal_scanComment(
