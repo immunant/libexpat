@@ -10042,8 +10042,21 @@ unsafe extern "C" fn externalEntityInitProcessor3(
     set_parser_event_end_address(parser, next.addr());
     let early_return = match tok {
         crate::src::xmltok::XML_TOK_XML_DECL => {
-            let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-            result = processXmlDecl(parser, 1 as ::core::ffi::c_int, start, next);
+            let declaration_input = match declaration_token_bytes(parser, start.addr(), next.addr()) {
+                Ok(input) => input,
+                Err(error) => return error,
+            };
+            let declaration_encoding = current_parser_encoding(parser);
+            let declaration_encoding_address = std::ptr::from_ref(declaration_encoding).addr();
+            let declaration_encoding = *declaration_encoding;
+            let result = process_xml_decl(
+                parser,
+                1 as ::core::ffi::c_int,
+                &declaration_encoding,
+                declaration_encoding_address,
+                start,
+                &declaration_input,
+            );
             if result as ::core::ffi::c_uint
                 != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
@@ -14639,32 +14652,28 @@ unsafe extern "C" fn initializeEncoding(
     return handleUnknownEncoding(parser, s);
 }
 
-// Keeps the raw token window at the parser-dispatch boundary.  Everything
-// below this adapter works with the already-bounded input slice, which makes
-// declaration pseudo-attribute offsets ordinary slice ranges.
-unsafe extern "C" fn processXmlDecl(
-    parser: crate::expat_h::XML_Parser,
-    isGeneralTextEntity: ::core::ffi::c_int,
-    s: *const ::core::ffi::c_char,
-    next: *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() || s.is_null() || next.addr() < s.addr() {
-        return if isGeneralTextEntity != 0 {
-            crate::expat_h::XML_ERROR_TEXT_DECL
-        } else {
-            crate::expat_h::XML_ERROR_XML_DECL
-        };
+/// Copies a declaration token from the parser-owned input buffer.
+///
+/// The copy ends the immutable buffer borrow before declaration processing can
+/// mutate parser state or invoke a callback.  It also turns cursor validation
+/// into a single checked range conversion at the processor boundary.
+fn declaration_token_bytes(
+    parser: &XML_ParserStruct,
+    start_address: usize,
+    end_address: usize,
+) -> Result<Vec<u8>, crate::expat_h::XML_Error> {
+    let Some(input) = parser
+        .m_buffer
+        .window_from_addresses(start_address, end_address)
+    else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    let mut token = Vec::new();
+    if token.try_reserve_exact(input.len()).is_err() {
+        return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
     }
-    let encoding = &*parser_encoding(parser);
-    let input = ::core::slice::from_raw_parts(s.cast::<u8>(), next.addr() - s.addr());
-    process_xml_decl(
-        &mut *parser,
-        isGeneralTextEntity,
-        encoding,
-        s,
-        next,
-        input,
-    )
+    token.extend_from_slice(input);
+    Ok(token)
 }
 
 /// Processes a declaration from the tokenizer's validated token window.
@@ -14676,8 +14685,8 @@ unsafe fn process_xml_decl(
     parser: &mut XML_ParserStruct,
     isGeneralTextEntity: ::core::ffi::c_int,
     encoding: &crate::src::xmltok::ENCODING,
+    encoding_address: usize,
     s: *const ::core::ffi::c_char,
-    next: *const ::core::ffi::c_char,
     input: &[u8],
 ) -> crate::expat_h::XML_Error {
     // The tokenizer returns bounded ranges into the declaration token.  Keep
@@ -14811,7 +14820,14 @@ unsafe fn process_xml_decl(
             callback.invoke(handler_arg, storedversion, storedEncName, standalone);
         }
     } else if default_handler {
-        reportDefault(parser_handle, encoding, s, next);
+        report_default_impl(
+            parser_handle.addr(),
+            parser,
+            encoding,
+            encoding_address,
+            s.addr(),
+            input,
+        );
     }
     let has_no_protocol_encoding = parser.m_protocolEncodingName.is_none();
     if has_no_protocol_encoding {
@@ -14833,7 +14849,7 @@ unsafe fn process_xml_decl(
             };
             if new_encoding.minBytesPerChar != parsed_encoding_info.min_bytes_per_char
                 || new_encoding.minBytesPerChar == 2 as ::core::ffi::c_int
-                    && !std::ptr::eq(new_encoding, encoding)
+                    && std::ptr::from_ref(new_encoding).addr() != encoding_address
             {
                 let encoding_name_ptr = encoding_name
                     .as_ref()
@@ -15137,12 +15153,20 @@ unsafe fn entity_value_init_processor_impl(
             )
             .error;
         } else if tok == crate::src::xmltok::XML_TOK_XML_DECL {
-            let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-            result = processXmlDecl(
-                std::ptr::from_mut(parser),
+            let declaration_input = match declaration_token_bytes(parser, start.addr(), next.addr()) {
+                Ok(input) => input,
+                Err(error) => return error,
+            };
+            let declaration_encoding = current_parser_encoding(parser);
+            let declaration_encoding_address = std::ptr::from_ref(declaration_encoding).addr();
+            let declaration_encoding = *declaration_encoding;
+            let result = process_xml_decl(
+                parser,
                 0 as ::core::ffi::c_int,
+                &declaration_encoding,
+                declaration_encoding_address,
                 start,
-                next,
+                &declaration_input,
             );
             if result as ::core::ffi::c_uint
                 != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -15695,11 +15719,17 @@ unsafe fn doProlog(
                             'c_12793: {
                                 match role {
                                     1 => {
-                                        let mut result: crate::expat_h::XML_Error = processXmlDecl(
+                                        let declaration_encoding = current_parser_encoding(parser);
+                                        let declaration_encoding_address =
+                                            std::ptr::from_ref(declaration_encoding).addr();
+                                        let declaration_encoding = *declaration_encoding;
+                                        let result = process_xml_decl(
                                             parser,
                                             0 as ::core::ffi::c_int,
+                                            &declaration_encoding,
+                                            declaration_encoding_address,
                                             s,
-                                            next,
+                                            &token_bytes,
                                         );
                                         if result as ::core::ffi::c_uint
                                             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
@@ -15826,13 +15856,18 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     57 => {
-                                        let mut result_0: crate::expat_h::XML_Error =
-                                            processXmlDecl(
-                                                parser,
-                                                1 as ::core::ffi::c_int,
-                                                s,
-                                                next,
-                                            );
+                                        let declaration_encoding = current_parser_encoding(parser);
+                                        let declaration_encoding_address =
+                                            std::ptr::from_ref(declaration_encoding).addr();
+                                        let declaration_encoding = *declaration_encoding;
+                                        let result_0 = process_xml_decl(
+                                            parser,
+                                            1 as ::core::ffi::c_int,
+                                            &declaration_encoding,
+                                            declaration_encoding_address,
+                                            s,
+                                            &token_bytes,
+                                        );
                                         if result_0 as ::core::ffi::c_uint
                                             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                                                 as ::core::ffi::c_uint
