@@ -6796,6 +6796,79 @@ enum ParserProcessorKind {
     Section(SectionProcessorKind),
 }
 
+macro_rules! handle_unknown_encoding {
+    ($parser:expr, $encodingName:expr) => {{
+        let parser = $parser;
+        let encodingName = $encodingName;
+        'handle_unknown_encoding: loop {
+            if (*parser).m_unknownEncodingHandler.is_some() {
+                let mut info: crate::expat_h::XML_Encoding = crate::expat_h::XML_Encoding {
+                    map: [0; 256],
+                    data: ::core::ptr::null_mut::<::core::ffi::c_void>(),
+                    convert: None,
+                    release: None,
+                };
+                let mut i: ::core::ffi::c_int = 0;
+                i = 0 as ::core::ffi::c_int;
+                while i < 256 as ::core::ffi::c_int {
+                    info.map[i as usize] = -1 as ::core::ffi::c_int;
+                    i += 1;
+                }
+                info.convert = None;
+                info.data = crate::__stddef_null_h::NULL;
+                info.release = None;
+                if (*parser)
+                    .m_unknownEncodingHandler
+                    .expect("non-null function pointer")(
+                    (*parser).m_unknownEncodingHandlerData,
+                    encodingName,
+                    &raw mut info,
+                ) != 0
+                {
+                    let enc: *mut crate::src::xmltok::ENCODING;
+                    (*parser).m_unknownEncodingMem = expat_malloc(
+                        parser,
+                        crate::src::xmltok::XmlSizeOfUnknownEncoding()
+                            as crate::__stddef_size_t_h::size_t,
+                        4963 as ::core::ffi::c_int,
+                    );
+                    if (*parser).m_unknownEncodingMem.is_null() {
+                        if info.release.is_some() {
+                            info.release.expect("non-null function pointer")(info.data);
+                        }
+                        break 'handle_unknown_encoding crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                    enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
+                        crate::src::xmltok::XmlInitUnknownEncodingNS_ffi(
+                            (*parser).m_unknownEncodingMem,
+                            &raw mut info.map as *mut ::core::ffi::c_int,
+                            info.convert as crate::src::xmltok::CONVERTER,
+                            info.data,
+                        )
+                    } else {
+                        crate::src::xmltok::XmlInitUnknownEncoding_ffi(
+                            (*parser).m_unknownEncodingMem,
+                            &raw mut info.map as *mut ::core::ffi::c_int,
+                            info.convert as crate::src::xmltok::CONVERTER,
+                            info.data,
+                        )
+                    };
+                    if !enc.is_null() {
+                        (*parser).m_unknownEncodingData = info.data;
+                        (*parser).m_unknownEncodingRelease = info.release;
+                        (*parser).m_encoding = enc;
+                        break 'handle_unknown_encoding crate::expat_h::XML_ERROR_NONE;
+                    }
+                }
+                if info.release.is_some() {
+                    info.release.expect("non-null function pointer")(info.data);
+                }
+            }
+            break 'handle_unknown_encoding crate::expat_h::XML_ERROR_UNKNOWN_ENCODING;
+        }
+    }};
+}
+
 fn parser_processor_impl(
     kind: ParserProcessorKind,
     parser: crate::expat_h::XML_Parser,
@@ -7551,7 +7624,7 @@ fn parser_processor_impl(
                 let result: crate::expat_h::XML_Error = if initialize_encoding(&mut *parser, name) {
                     crate::expat_h::XML_ERROR_NONE
                 } else {
-                    handleUnknownEncoding(parser, (*parser).m_protocolEncodingName)
+                    handle_unknown_encoding!(parser, (*parser).m_protocolEncodingName)
                 };
                 if result as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -8203,7 +8276,7 @@ unsafe extern "C" fn processXmlDecl(
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
             }
-            result = handleUnknownEncoding(parser, storedEncName);
+            result = handle_unknown_encoding!(parser, storedEncName);
             pool_clear!(&mut (*parser).m_temp2Pool);
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
@@ -8218,90 +8291,6 @@ unsafe extern "C" fn processXmlDecl(
         pool_clear!(&mut (*parser).m_temp2Pool);
     }
     return crate::expat_h::XML_ERROR_NONE;
-}
-
-unsafe extern "C" fn handleUnknownEncoding(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Error {
-    if (*parser).m_unknownEncodingHandler.is_some() {
-        let mut info: crate::expat_h::XML_Encoding = crate::expat_h::XML_Encoding {
-            map: [0; 256],
-            data: ::core::ptr::null_mut::<::core::ffi::c_void>(),
-            convert: None,
-            release: None,
-        };
-        let mut i: ::core::ffi::c_int = 0;
-        i = 0 as ::core::ffi::c_int;
-        while i < 256 as ::core::ffi::c_int {
-            info.map[i as usize] = -1 as ::core::ffi::c_int;
-            i += 1;
-        }
-        info.convert = None;
-        info.data = crate::__stddef_null_h::NULL;
-        info.release = None;
-        if (*parser)
-            .m_unknownEncodingHandler
-            .expect("non-null function pointer")(
-            (*parser).m_unknownEncodingHandlerData,
-            encodingName,
-            &raw mut info,
-        ) != 0
-        {
-            let mut enc: *mut crate::src::xmltok::ENCODING =
-                ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
-            (*parser).m_unknownEncodingMem = expat_malloc(
-                parser,
-                crate::src::xmltok::XmlSizeOfUnknownEncoding() as crate::__stddef_size_t_h::size_t,
-                4963 as ::core::ffi::c_int,
-            );
-            if (*parser).m_unknownEncodingMem.is_null() {
-                if info.release.is_some() {
-                    info.release.expect("non-null function pointer")(info.data);
-                }
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
-            }
-            enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
-                Some(
-                    crate::src::xmltok::XmlInitUnknownEncodingNS_ffi
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const ::core::ffi::c_int,
-                            crate::src::xmltok::CONVERTER,
-                            *mut ::core::ffi::c_void,
-                        )
-                            -> *mut crate::src::xmltok::ENCODING,
-                )
-            } else {
-                Some(
-                    crate::src::xmltok::XmlInitUnknownEncoding_ffi
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const ::core::ffi::c_int,
-                            crate::src::xmltok::CONVERTER,
-                            *mut ::core::ffi::c_void,
-                        )
-                            -> *mut crate::src::xmltok::ENCODING,
-                )
-            }
-            .expect("non-null function pointer")(
-                (*parser).m_unknownEncodingMem,
-                &raw mut info.map as *mut ::core::ffi::c_int,
-                info.convert as crate::src::xmltok::CONVERTER,
-                info.data,
-            );
-            if !enc.is_null() {
-                (*parser).m_unknownEncodingData = info.data;
-                (*parser).m_unknownEncodingRelease = info.release;
-                (*parser).m_encoding = enc;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-        }
-        if info.release.is_some() {
-            info.release.expect("non-null function pointer")(info.data);
-        }
-    }
-    return crate::expat_h::XML_ERROR_UNKNOWN_ENCODING;
 }
 
 extern "C" fn prologInitProcessor(
