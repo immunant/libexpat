@@ -297,6 +297,94 @@ impl Scanner {
         end: *const ::core::ffi::c_char,
         next_tok_ptr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        if let Self::NormalProlog = self {
+            let input_len = if ptr >= end {
+                0
+            } else {
+                end.offset_from(ptr) as usize
+            };
+            let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
+            let normal = &*(enc as *const normal_encoding);
+            let action =
+                xmltok_impl_c::normal_prolog_tok_impl(normal, input, |kind, offset, width| {
+                    let kind = match kind {
+                        xmltok_impl_c::NormalPrologCharCheck::Invalid => {
+                            xmltok_impl_c::NormalCharCheck::Invalid
+                        }
+                        xmltok_impl_c::NormalPrologCharCheck::NameStart => {
+                            xmltok_impl_c::NormalCharCheck::NameStart
+                        }
+                        xmltok_impl_c::NormalPrologCharCheck::Name => {
+                            xmltok_impl_c::NormalCharCheck::Name
+                        }
+                    };
+                    xmltok_impl_c::normal_char_check(
+                        normal,
+                        kind,
+                        width,
+                        enc,
+                        ptr.add(offset),
+                        &input[offset..],
+                    )
+                });
+            return match action {
+                xmltok_impl_c::NormalPrologAction::Token(token, next) => {
+                    if token >= crate::src::xmltok::XML_TOK_INVALID_1
+                        || token == -crate::src::xmltok::XML_TOK_PROLOG_S_1
+                    {
+                        *next_tok_ptr = ptr.add(next);
+                    }
+                    token
+                }
+                xmltok_impl_c::NormalPrologAction::Literal(open, start) => {
+                    xmltok_impl_c::normal_scanLit(open, enc, ptr.add(start), end, next_tok_ptr)
+                }
+                xmltok_impl_c::NormalPrologAction::Declaration(start) => {
+                    match xmltok_impl_c::normal_scan_decl_impl(&normal.type_0, &input[start..]) {
+                        xmltok_impl_c::NormalScanDeclAction::Comment => {
+                            let comment_start = start + 1;
+                            let (token, next) = xmltok_impl_c::normal_scan_comment_impl(
+                                &normal.type_0,
+                                &input[comment_start..],
+                                |offset, width| {
+                                    xmltok_impl_c::normal_char_check(
+                                        normal,
+                                        xmltok_impl_c::NormalCharCheck::Invalid,
+                                        width,
+                                        enc,
+                                        ptr.add(comment_start + offset),
+                                        &input[comment_start + offset..],
+                                    )
+                                },
+                            );
+                            if let Some(next) = next {
+                                *next_tok_ptr = ptr.add(comment_start + next);
+                            }
+                            token
+                        }
+                        xmltok_impl_c::NormalScanDeclAction::Token(token, next) => {
+                            if let Some(offset) = next {
+                                *next_tok_ptr = ptr.add(start + offset);
+                            }
+                            token
+                        }
+                    }
+                }
+                xmltok_impl_c::NormalPrologAction::ProcessingInstruction(start) => {
+                    let (token, next) = xmltok_impl_c::normal_scan_pi_impl(normal, &input[start..]);
+                    if let Some(next) = next {
+                        *next_tok_ptr = ptr.add(start + next);
+                    }
+                    token
+                }
+                xmltok_impl_c::NormalPrologAction::Percent(start) => {
+                    xmltok_impl_c::normal_scanPercent(enc, ptr.add(start), end, next_tok_ptr)
+                }
+                xmltok_impl_c::NormalPrologAction::PoundName(start) => {
+                    xmltok_impl_c::normal_scanPoundName(enc, ptr.add(start), end, next_tok_ptr)
+                }
+            };
+        }
         if let Self::Big2Prolog = self {
             if ptr >= end {
                 return crate::src::xmltok::XML_TOK_NONE_1;
@@ -316,7 +404,7 @@ impl Scanner {
             *const ::core::ffi::c_char,
             *mut *const ::core::ffi::c_char,
         ) -> ::core::ffi::c_int = match self {
-            Self::NormalProlog => xmltok_impl_c::normal_prologTok,
+            Self::NormalProlog => unreachable!("handled before raw scanner dispatch"),
             Self::NormalContent => xmltok_impl_c::normal_contentTok,
             Self::NormalCdataSection => xmltok_impl_c::normal_cdataSectionTok,
             Self::NormalIgnoreSection => xmltok_impl_c::normal_ignoreSectionTok,
@@ -680,13 +768,13 @@ pub fn unregister_unknown_encoding_converter(storage_id: usize) {
 
 pub mod xmltok_impl_c {
 
-    enum NormalCharCheck {
+    pub(super) enum NormalCharCheck {
         Invalid,
         NameStart,
         Name,
     }
 
-    unsafe fn normal_char_check(
+    pub(super) unsafe fn normal_char_check(
         normal: &normal_encoding,
         kind: NormalCharCheck,
         width: usize,
@@ -773,7 +861,7 @@ pub mod xmltok_impl_c {
         function.expect("non-null function pointer")(enc, ptr) != 0
     }
 
-    fn normal_scan_comment_impl(
+    pub(super) fn normal_scan_comment_impl(
         byte_types: &[::core::ffi::c_uchar; 256],
         input: &[u8],
         is_invalid: impl Fn(usize, usize) -> bool,
@@ -825,7 +913,7 @@ pub mod xmltok_impl_c {
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    enum NormalScanDeclAction {
+    pub(super) enum NormalScanDeclAction {
         Comment,
         Token(::core::ffi::c_int, Option<usize>),
     }
@@ -833,7 +921,7 @@ pub mod xmltok_impl_c {
     /// Scans the portion following a declaration opener using a bounded input
     /// window.  The pointer adapter only translates the resulting offset back
     /// to Expat's cursor ABI.
-    fn normal_scan_decl_impl(
+    pub(super) fn normal_scan_decl_impl(
         byte_types: &[::core::ffi::c_uchar; 256],
         input: &[u8],
     ) -> NormalScanDeclAction {
@@ -1070,7 +1158,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    fn normal_scan_pi_impl(
+    pub(super) fn normal_scan_pi_impl(
         enc: &normal_encoding,
         input: &[u8],
     ) -> (::core::ffi::c_int, Option<usize>) {
@@ -2699,13 +2787,13 @@ pub mod xmltok_impl_c {
         token
     }
 
-    enum NormalPrologCharCheck {
+    pub(super) enum NormalPrologCharCheck {
         Invalid,
         NameStart,
         Name,
     }
 
-    enum NormalPrologAction {
+    pub(super) enum NormalPrologAction {
         Token(::core::ffi::c_int, usize),
         Literal(::core::ffi::c_int, usize),
         Declaration(usize),
@@ -2757,7 +2845,7 @@ pub mod xmltok_impl_c {
         }
     }
 
-    fn normal_prolog_tok_impl<F>(
+    pub(super) fn normal_prolog_tok_impl<F>(
         enc: &normal_encoding,
         input: &[u8],
         check: F,
@@ -3018,86 +3106,6 @@ pub mod xmltok_impl_c {
             }
         }
         NormalPrologAction::Token(-tok, ptr)
-    }
-
-    pub unsafe extern "C" fn normal_prologTok(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = if ptr >= end {
-            0
-        } else {
-            end.offset_from(ptr) as usize
-        };
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
-        let normal = &*(enc as *const normal_encoding);
-        let action = normal_prolog_tok_impl(normal, input, |kind, offset, width| {
-            let kind = match kind {
-                NormalPrologCharCheck::Invalid => NormalCharCheck::Invalid,
-                NormalPrologCharCheck::NameStart => NormalCharCheck::NameStart,
-                NormalPrologCharCheck::Name => NormalCharCheck::Name,
-            };
-            normal_char_check(normal, kind, width, enc, ptr.add(offset), &input[offset..])
-        });
-        match action {
-            NormalPrologAction::Token(token, next) => {
-                if token >= crate::src::xmltok::XML_TOK_INVALID_1
-                    || token == -crate::src::xmltok::XML_TOK_PROLOG_S_1
-                {
-                    *nextTokPtr = ptr.add(next);
-                }
-                token
-            }
-            NormalPrologAction::Literal(open, start) => {
-                normal_scanLit(open, enc, ptr.add(start), end, nextTokPtr)
-            }
-            NormalPrologAction::Declaration(start) => {
-                match normal_scan_decl_impl(&normal.type_0, &input[start..]) {
-                    NormalScanDeclAction::Comment => {
-                        let comment_start = start + 1;
-                        let (token, next) = normal_scan_comment_impl(
-                            &normal.type_0,
-                            &input[comment_start..],
-                            |offset, width| {
-                                normal_char_check(
-                                    normal,
-                                    NormalCharCheck::Invalid,
-                                    width,
-                                    enc,
-                                    ptr.add(comment_start + offset),
-                                    &input[comment_start + offset..],
-                                )
-                            },
-                        );
-                        if let Some(next) = next {
-                            *nextTokPtr = ptr.add(comment_start + next);
-                        }
-                        token
-                    }
-                    NormalScanDeclAction::Token(token, next) => {
-                        if let Some(offset) = next {
-                            *nextTokPtr = ptr.add(start + offset);
-                        }
-                        token
-                    }
-                }
-            }
-            NormalPrologAction::ProcessingInstruction(start) => {
-                let (token, next) = normal_scan_pi_impl(normal, &input[start..]);
-                if let Some(next) = next {
-                    *nextTokPtr = ptr.add(start + next);
-                }
-                token
-            }
-            NormalPrologAction::Percent(start) => {
-                normal_scanPercent(enc, ptr.add(start), end, nextTokPtr)
-            }
-            NormalPrologAction::PoundName(start) => {
-                normal_scanPoundName(enc, ptr.add(start), end, nextTokPtr)
-            }
-        }
     }
 
     struct NormalAttributeValueToken {
@@ -12057,7 +12065,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;
-pub use crate::src::xmltok::xmltok_impl_c::normal_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
