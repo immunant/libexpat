@@ -1868,6 +1868,99 @@ trait EntityDeclCallback: Send + Sync {
     );
 }
 
+// Entity declaration callbacks are described with pool handles until the
+// final ABI boundary.  This keeps the prolog state machine from assembling
+// raw callback arguments while preserving the callback's transient views.
+#[derive(Copy, Clone)]
+enum EntityDeclValue {
+    None,
+    Internal {
+        text: PoolStringRef,
+        length: ::core::ffi::c_int,
+    },
+}
+
+#[derive(Copy, Clone)]
+struct EntityDeclCallbackEvent {
+    name: PoolStringRef,
+    is_parameter_entity: ::core::ffi::c_int,
+    value: EntityDeclValue,
+    base: Option<PoolStringRef>,
+    system_id: Option<PoolStringRef>,
+    public_id: Option<PoolStringRef>,
+    notation: Option<PoolStringRef>,
+}
+
+fn entity_decl_handler(parser: &XML_ParserStruct) -> Option<std::sync::Arc<dyn EntityDeclCallback>> {
+    ENTITY_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned()
+}
+
+/// Dispatches a declaration from stable DTD pool handles.
+///
+/// The pool owns every identifier and internal replacement text through the
+/// callback.  The raw ABI views are materialized only for this call, after
+/// which callback re-entry cannot leave a prolog borrow outstanding.
+fn dispatch_entity_decl_callback(
+    callback: &dyn EntityDeclCallback,
+    parser: &XML_ParserStruct,
+    dtd: &DTD,
+    event: EntityDeclCallbackEvent,
+) {
+    let name = dtd
+        .pool
+        .chars_from(event.name)
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let (value, value_length) = match event.value {
+        EntityDeclValue::None => (::core::ptr::null(), 0),
+        EntityDeclValue::Internal { text, length } => (
+            dtd.entityValuePool
+                .chars_from(text)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            length,
+        ),
+    };
+    let base = event
+        .base
+        .map_or(::core::ptr::null(), |base| {
+            dtd.pool
+                .chars_from(base)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+    let system_id = event.system_id.map_or(::core::ptr::null(), |system_id| {
+        dtd.pool
+            .chars_from(system_id)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    });
+    let public_id = event.public_id.map_or(::core::ptr::null(), |public_id| {
+        dtd.pool
+            .chars_from(public_id)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    });
+    let notation = event.notation.map_or(::core::ptr::null(), |notation| {
+        dtd.pool
+            .chars_from(notation)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    });
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            name,
+            event.is_parameter_entity,
+            value,
+            value_length,
+            base,
+            system_id,
+            public_id,
+            notation,
+        );
+    }
+}
+
 impl EntityDeclCallback
     for unsafe extern "C" fn(
         *mut ::core::ffi::c_void,
@@ -1962,6 +2055,62 @@ static UNPARSED_ENTITY_DECL_HANDLERS: std::sync::OnceLock<
         std::collections::HashMap<usize, std::sync::Arc<dyn UnparsedEntityDeclCallback>>,
     >,
 > = std::sync::OnceLock::new();
+
+fn unparsed_entity_decl_handler(
+    parser: &XML_ParserStruct,
+) -> Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>> {
+    UNPARSED_ENTITY_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned()
+}
+
+/// Dispatches an unparsed declaration from pool-backed identifier handles.
+fn dispatch_unparsed_entity_decl_callback(
+    callback: &dyn UnparsedEntityDeclCallback,
+    parser: &XML_ParserStruct,
+    dtd: &DTD,
+    event: EntityDeclCallbackEvent,
+) {
+    let name = dtd
+        .pool
+        .chars_from(event.name)
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let base = event
+        .base
+        .map_or(::core::ptr::null(), |base| {
+            dtd.pool
+                .chars_from(base)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+    let system_id = event.system_id.map_or(::core::ptr::null(), |system_id| {
+        dtd.pool
+            .chars_from(system_id)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    });
+    let public_id = event.public_id.map_or(::core::ptr::null(), |public_id| {
+        dtd.pool
+            .chars_from(public_id)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    });
+    let notation = event.notation.map_or(::core::ptr::null(), |notation| {
+        dtd.pool
+            .chars_from(notation)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    });
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            name,
+            base,
+            system_id,
+            public_id,
+            notation,
+        );
+    }
+}
 
 trait NotationDeclCallback: Send + Sync {
     unsafe fn invoke(
@@ -16923,12 +17072,6 @@ unsafe fn doProlog(
                                                 else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
-                                                let entity_text = dtd_ref
-                                                    .entityValuePool
-                                                    .chars_from(entity_text_ref)
-                                                    .map_or(::core::ptr::null(), |chars| {
-                                                        chars.as_ptr()
-                                                    });
                                                 let Ok(text_len) = ::core::ffi::c_int::try_from(
                                                     dtd_ref.entityValuePool.ptr_offset,
                                                 ) else {
@@ -16955,49 +17098,24 @@ unsafe fn doProlog(
                                                         internal_event_window,
                                                         s.addr(),
                                                     );
-                                                    let callback = ENTITY_DECL_HANDLERS
-                                                        .get_or_init(|| {
-                                                            std::sync::Mutex::new(
-                                                                std::collections::HashMap::new(),
-                                                            )
-                                                        })
-                                                        .lock()
-                                                        .unwrap_or_else(|poisoned| {
-                                                            poisoned.into_inner()
-                                                        })
-                                                        .get(&parser_key)
-                                                        .cloned();
-                                                    if let Some(callback) = callback {
-                                                        callback.invoke(
-                                                            handler_arg_from_state!(parser),
-                                                            pool_string_pointer!(
-                                                                &dtd.pool,
-                                                                entity_name,
-                                                            ),
-                                                            entity_is_param
-                                                                as ::core::ffi::c_int,
-                                                            entity_text,
-                                                            entity_text_len,
-                                                            parser
-                                                                .m_curBase
-                                                                .map(|base| {
-                                                                    pool_string_pointer!(
-                                                                        &dtd.pool, base,
-                                                                    )
-                                                                })
-                                                                .unwrap_or(::core::ptr::null()),
-                                                            ::core::ptr::null::<
-                                                                crate::expat_external_h::XML_Char,
-                                                            >(
-                                                            ),
-                                                            ::core::ptr::null::<
-                                                                crate::expat_external_h::XML_Char,
-                                                            >(
-                                                            ),
-                                                            ::core::ptr::null::<
-                                                                crate::expat_external_h::XML_Char,
-                                                            >(
-                                                            ),
+                                                    if let Some(callback) = entity_decl_handler(parser) {
+                                                        dispatch_entity_decl_callback(
+                                                            callback.as_ref(),
+                                                            parser,
+                                                            dtd,
+                                                            EntityDeclCallbackEvent {
+                                                                name: entity_name,
+                                                                is_parameter_entity: entity_is_param
+                                                                    as ::core::ffi::c_int,
+                                                                value: EntityDeclValue::Internal {
+                                                                    text: entity_text_ref,
+                                                                    length: entity_text_len,
+                                                                },
+                                                                base: parser.m_curBase,
+                                                                system_id: None,
+                                                                public_id: None,
+                                                                notation: None,
+                                                            },
                                                         );
                                                     }
                                                     handleDefault = crate::expat_h::XML_FALSE;
@@ -17093,19 +17211,9 @@ unsafe fn doProlog(
                                                 internal_event_window,
                                                 s.addr(),
                                             );
-                                            let callback = ENTITY_DECL_HANDLERS
-                                                .get_or_init(|| {
-                                                    std::sync::Mutex::new(
-                                                        std::collections::HashMap::new(),
-                                                    )
-                                                })
-                                                .lock()
-                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&parser_key)
-                                                .cloned();
+                                            let callback = entity_decl_handler(parser);
                                             if let Some(callback) = callback {
                                                 let (
-                                                    handler_arg,
                                                     entity_name_ref,
                                                     entity_is_param,
                                                     entity_base,
@@ -17118,7 +17226,6 @@ unsafe fn doProlog(
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     };
                                                     (
-                                                        handler_arg_from_state!(parser),
                                                         entity.named.name,
                                                         entity.is_param as ::core::ffi::c_int,
                                                         entity.base,
@@ -17126,43 +17233,19 @@ unsafe fn doProlog(
                                                         entity.publicId,
                                                     )
                                                 };
-                                                let entity_name =
-                                                    pool_string_pointer!(&dtd.pool, entity_name_ref,);
-                                                callback.invoke(
-                                                    handler_arg,
-                                                    entity_name,
-                                                    entity_is_param,
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    ),
-                                                    0 as ::core::ffi::c_int,
-                                                    entity_base.map_or(
-                                                        ::core::ptr::null(),
-                                                        |base| {
-                                                            pool_string_pointer!(&dtd.pool, base,)
-                                                        },
-                                                    ),
-                                                    entity_system_id.map_or(
-                                                        ::core::ptr::null(),
-                                                        |system_id| {
-                                                            pool_string_pointer!(
-                                                                &dtd.pool, system_id,
-                                                            )
-                                                        },
-                                                    ),
-                                                    entity_public_id.map_or(
-                                                        ::core::ptr::null(),
-                                                        |public_id| {
-                                                            pool_string_pointer!(
-                                                                &dtd.pool, public_id,
-                                                            )
-                                                        },
-                                                    ),
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    ),
+                                                dispatch_entity_decl_callback(
+                                                    callback.as_ref(),
+                                                    parser,
+                                                    dtd,
+                                                    EntityDeclCallbackEvent {
+                                                        name: entity_name_ref,
+                                                        is_parameter_entity: entity_is_param,
+                                                        value: EntityDeclValue::None,
+                                                        base: entity_base,
+                                                        system_id: entity_system_id,
+                                                        public_id: entity_public_id,
+                                                        notation: None,
+                                                    },
                                                 );
                                             }
                                             handleDefault = crate::expat_h::XML_FALSE;
@@ -17204,52 +17287,16 @@ unsafe fn doProlog(
                                                     entity.publicId,
                                                 )
                                             };
-                                            let callback = UNPARSED_ENTITY_DECL_HANDLERS
-                                                .get_or_init(|| {
-                                                    std::sync::Mutex::new(
-                                                        std::collections::HashMap::new(),
-                                                    )
-                                                })
-                                                .lock()
-                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&parser_key)
-                                                .cloned();
-                                            let (
-                                                handler_arg,
-                                                entity_name,
-                                                entity_base,
-                                                entity_system_id,
-                                                entity_public_id,
-                                                entity_notation,
-                                            ) = {
-                                                (
-                                                    handler_arg_from_state!(parser),
-                                                    pool_string_pointer!(
-                                                        &dtd.pool,
-                                                        entity_name_ref,
-                                                    ),
-                                                    entity_base_ref,
-                                                    entity_system_id_ref,
-                                                    entity_public_id_ref,
-                                                    pool_string_pointer!(&dtd.pool, notation),
-                                                )
+                                            let event = EntityDeclCallbackEvent {
+                                                name: entity_name_ref,
+                                                is_parameter_entity: 0,
+                                                value: EntityDeclValue::None,
+                                                base: entity_base_ref,
+                                                system_id: entity_system_id_ref,
+                                                public_id: entity_public_id_ref,
+                                                notation: Some(notation),
                                             };
-                                            let entity_base = entity_base
-                                                .map_or(::core::ptr::null(), |base| {
-                                                    pool_string_pointer!(&dtd.pool, base,)
-                                                });
-                                            let entity_system_id = entity_system_id.map_or(
-                                                ::core::ptr::null(),
-                                                |system_id| {
-                                                    pool_string_pointer!(&dtd.pool, system_id,)
-                                                },
-                                            );
-                                            let entity_public_id = entity_public_id.map_or(
-                                                ::core::ptr::null(),
-                                                |public_id| {
-                                                    pool_string_pointer!(&dtd.pool, public_id,)
-                                                },
-                                            );
+                                            let callback = unparsed_entity_decl_handler(parser);
                                             if let Some(callback) = callback {
                                                 event_target.set_end(
                                                     parser,
@@ -17257,13 +17304,11 @@ unsafe fn doProlog(
                                                     internal_event_window,
                                                     s.addr(),
                                                 );
-                                                callback.invoke(
-                                                    handler_arg,
-                                                    entity_name,
-                                                    entity_base,
-                                                    entity_system_id,
-                                                    entity_public_id,
-                                                    entity_notation,
+                                                dispatch_unparsed_entity_decl_callback(
+                                                    callback.as_ref(),
+                                                    parser,
+                                                    dtd,
+                                                    event,
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             } else if parser.m_entityDeclHandler {
@@ -17273,32 +17318,13 @@ unsafe fn doProlog(
                                                     internal_event_window,
                                                     s.addr(),
                                                 );
-                                                let callback = ENTITY_DECL_HANDLERS
-                                                    .get_or_init(|| {
-                                                        std::sync::Mutex::new(
-                                                            std::collections::HashMap::new(),
-                                                        )
-                                                    })
-                                                    .lock()
-                                                    .unwrap_or_else(|poisoned| {
-                                                        poisoned.into_inner()
-                                                    })
-                                                    .get(&parser_key)
-                                                    .cloned();
+                                                let callback = entity_decl_handler(parser);
                                                 if let Some(callback) = callback {
-                                                    callback.invoke(
-                                                        handler_arg,
-                                                        entity_name,
-                                                        0 as ::core::ffi::c_int,
-                                                        ::core::ptr::null::<
-                                                            crate::expat_external_h::XML_Char,
-                                                        >(
-                                                        ),
-                                                        0 as ::core::ffi::c_int,
-                                                        entity_base,
-                                                        entity_system_id,
-                                                        entity_public_id,
-                                                        entity_notation,
+                                                    dispatch_entity_decl_callback(
+                                                        callback.as_ref(),
+                                                        parser,
+                                                        dtd,
+                                                        event,
                                                     );
                                                 }
                                                 handleDefault = crate::expat_h::XML_FALSE;
