@@ -9676,19 +9676,14 @@ struct BaseLookup {
     base: Option<PoolStringRef>,
 }
 
-unsafe fn xml_get_base_impl(
+fn xml_get_base_impl<R>(
     lookup: BaseLookup,
-) -> *const crate::expat_external_h::XML_Char {
+    inspect: impl FnOnce(Option<&[crate::expat_external_h::XML_Char]>) -> R,
+) -> R {
     let Some(dtd) = lookup.dtd.as_ref() else {
-        return ::core::ptr::null();
+        return inspect(None);
     };
-    dtd.inspect(|dtd| {
-        lookup
-            .base
-            .and_then(|base| dtd.pool.chars_from(base))
-            .map(|chars| chars.as_ptr())
-            .unwrap_or(::core::ptr::null())
-    })
+    dtd.inspect(|dtd| inspect(lookup.base.and_then(|base| dtd.pool.chars_from(base))))
 }
 #[export_name = "XML_GetBase"]
 
@@ -9701,10 +9696,13 @@ pub unsafe extern "C" fn XML_GetBase_ffi(
         return ::core::ptr::null();
     }
     let parser = &*parser;
-    xml_get_base_impl(BaseLookup {
-        dtd: parser.m_dtd.clone(),
-        base: parser.m_curBase,
-    })
+    xml_get_base_impl(
+        BaseLookup {
+            dtd: parser.m_dtd.clone(),
+            base: parser.m_curBase,
+        },
+        |base| base.map_or(::core::ptr::null(), <[_]>::as_ptr),
+    )
 }
 /// The specified-attribute count copied from a validated parser handle.
 ///
