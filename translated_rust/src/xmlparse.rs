@@ -9616,6 +9616,18 @@ pub unsafe extern "C" fn XML_FreeContentModel(
     if parser.is_null() {
         return;
     }
+    let owned_model = CONTENT_MODEL_STORAGE.get().and_then(|models| {
+        models
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&model.addr())
+    });
+    if let Some(mut owned_model) = owned_model {
+        if let Some(mut backing) = owned_model.backing.take() {
+            backing();
+        }
+        return;
+    }
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(model as *mut ::core::ffi::c_void);
 }
 #[export_name = "XML_FreeContentModel"]
@@ -24787,6 +24799,52 @@ enum ContentModelSource {
     Simple(crate::expat_h::XML_Content_Type),
 }
 
+// Content models are assembled in Rust-owned storage. The configured Expat
+// allocation remains an opaque token, preserving allocator observability
+// while callback-visible bytes stay under Rust ownership.
+struct ContentModelStorage {
+    contents: Vec<crate::expat_h::XML_Content>,
+    _strings: Box<[crate::expat_external_h::XML_Char]>,
+    backing: Option<Box<dyn FnMut()>>,
+}
+
+// `contents` points only into the allocations owned by this value. Moving the
+// registry entry does not move those allocations; the allocator callback has
+// the same cross-thread contract as the former C-owned model allocation.
+unsafe impl Send for ContentModelStorage {}
+
+static CONTENT_MODEL_STORAGE: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, ContentModelStorage>>,
+> = std::sync::OnceLock::new();
+
+fn content_model_allocation_backing(
+    parser: &mut XML_ParserStruct,
+    size: crate::__stddef_size_t_h::size_t,
+) -> Option<Box<dyn FnMut()>> {
+    let free = parser.m_mem.free_fcn.expect("non-null function pointer");
+    let allocation = unsafe { parser.m_mem.malloc_fcn.expect("non-null function pointer")(size) };
+    if allocation.is_null() {
+        return None;
+    }
+    Some(Box::new(move || unsafe { free(allocation) }))
+}
+
+fn register_content_model(model_key: usize, mut model: ContentModelStorage) -> bool {
+    let mut models = CONTENT_MODEL_STORAGE
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if models.try_reserve(1).is_err() {
+        drop(models);
+        if let Some(mut backing) = model.backing.take() {
+            backing();
+        }
+        return false;
+    }
+    models.insert(model_key, model);
+    true
+}
+
 // `build_model` is reached from the parser's declaration state machine with
 // its exclusive parser borrow already established.  Keep that typed borrow at
 // this internal boundary; only the final ABI-owned model allocation remains
@@ -24795,27 +24853,27 @@ unsafe fn build_model(
     parser: &mut XML_ParserStruct,
     dtd: &mut DTD,
     source: ContentModelSource,
-) -> *mut crate::expat_h::XML_Content {
+) -> Option<ContentModelStorage> {
     let (content_count, string_count) = match source {
         ContentModelSource::Scaffold => (dtd.scaffCount as usize, dtd.contentStringLen as usize),
         ContentModelSource::Simple(_) => (1, 0),
     };
     let Some(content_bytes) =
         content_count.checked_mul(::core::mem::size_of::<crate::expat_h::XML_Content>())
-    else {
-        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    };
+   else {
+        return None;
+   };
     let Some(string_bytes) =
         string_count.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())
-    else {
-        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    };
-    let Some(allocsize) = content_bytes.checked_add(string_bytes) else {
-        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    };
-    if content_count == 0 {
-        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    }
+   else {
+        return None;
+   };
+   let Some(allocsize) = content_bytes.checked_add(string_bytes) else {
+        return None;
+   };
+   if content_count == 0 {
+        return None;
+   }
 
     // Stage the model in owned Rust storage first.  The final allocation must
     // still use Expat's configured allocator because XML_FreeContentModel
@@ -24835,9 +24893,9 @@ unsafe fn build_model(
         || child_starts.try_reserve_exact(content_count).is_err()
         || name_offsets.try_reserve_exact(content_count).is_err()
         || names.try_reserve_exact(string_count).is_err()
-    {
-        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    }
+   {
+        return None;
+   }
     contents.resize(content_count, empty_content);
     child_starts.resize(content_count, None::<usize>);
     name_offsets.resize(content_count, None::<usize>);
@@ -24853,99 +24911,93 @@ unsafe fn build_model(
             contents[0].numchildren = 0;
             for dest_index in 0..content_count {
                 let source_index = contents[dest_index].numchildren as usize;
-                let Some(source) = scaffold.nodes.get(source_index) else {
-                    return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                };
+               let Some(source) = scaffold.nodes.get(source_index) else {
+                    return None;
+               };
                 contents[dest_index].type_0 = source.type_0;
                 contents[dest_index].quant = source.quant;
                 if source.type_0 == crate::expat_h::XML_CTYPE_NAME {
                     let name_ref = source
                         .name
                         .expect("name content scaffold must have a pool name");
-                    let Some(block_index) = name_ref.block_from_tail.get().checked_sub(1) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    let Some(block) = dtd.pool.storage.active.get(block_index) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    let Some(name) = block.chars.get(name_ref.offset..) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    let Some(nul_offset) = name.iter().position(|&ch| ch == 0) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    let Some(name_len) = nul_offset.checked_add(1) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    let Some(name_end) = names.len().checked_add(name_len) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    if name_end > string_count {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    }
+                   let Some(block_index) = name_ref.block_from_tail.get().checked_sub(1) else {
+                        return None;
+                   };
+                   let Some(block) = dtd.pool.storage.active.get(block_index) else {
+                        return None;
+                   };
+                   let Some(name) = block.chars.get(name_ref.offset..) else {
+                        return None;
+                   };
+                   let Some(nul_offset) = name.iter().position(|&ch| ch == 0) else {
+                        return None;
+                   };
+                   let Some(name_len) = nul_offset.checked_add(1) else {
+                        return None;
+                   };
+                   let Some(name_end) = names.len().checked_add(name_len) else {
+                        return None;
+                   };
+                   if name_end > string_count {
+                        return None;
+                   }
                     name_offsets[dest_index] = Some(names.len());
                     names.extend_from_slice(&name[..name_len]);
                     contents[dest_index].numchildren = 0;
                 } else {
-                    let Ok(child_count) = usize::try_from(source.childcnt) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    let Some(next_job_dest) = job_dest.checked_add(child_count) else {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    };
-                    if next_job_dest > content_count {
-                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                    }
+                   let Ok(child_count) = usize::try_from(source.childcnt) else {
+                        return None;
+                   };
+                   let Some(next_job_dest) = job_dest.checked_add(child_count) else {
+                        return None;
+                   };
+                   if next_job_dest > content_count {
+                        return None;
+                   }
                     contents[dest_index].numchildren = child_count as ::core::ffi::c_uint;
                     if child_count != 0 {
                         child_starts[dest_index] = Some(job_dest);
                     }
                     let mut child_index = source.firstchild;
                     for child_dest in job_dest..next_job_dest {
-                        let Ok(child_index_usize) = usize::try_from(child_index) else {
-                            return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                        };
-                        let Some(child) = scaffold.nodes.get(child_index_usize) else {
-                            return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                        };
+                       let Ok(child_index_usize) = usize::try_from(child_index) else {
+                            return None;
+                       };
+                       let Some(child) = scaffold.nodes.get(child_index_usize) else {
+                            return None;
+                       };
                         contents[child_dest].numchildren = child_index as ::core::ffi::c_uint;
                         child_index = child.nextsib;
                     }
                     job_dest = next_job_dest;
                 }
             }
-            if job_dest != content_count || names.len() != string_count {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            }
+           if job_dest != content_count || names.len() != string_count {
+                return None;
+           }
         }
     }
 
-    let ret = parser
-        .m_mem
-        .malloc_fcn
-        .expect("non-null function pointer")(allocsize)
-        as *mut crate::expat_h::XML_Content;
-    if ret.is_null() {
-        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    }
-    let string_start = ret
-        .cast::<u8>()
-        .wrapping_add(content_bytes)
-        .cast::<crate::expat_external_h::XML_Char>();
-    // Fill the ABI-relative links while the model is still owned by its Vec.
-    // The final allocator copy then transfers a fully initialized model,
-    // avoiding a mutable slice reconstructed from the raw allocation.
+    let mut strings = names.into_boxed_slice();
+    let string_start = strings.as_mut_ptr();
+    let content_start = contents.as_mut_ptr();
+    // Fill links only after both owned allocations have reached their stable
+    // final locations. The registry retains these owners for the documented
+    // callback-visible lifetime of the model.
     for (index, content) in contents.iter_mut().enumerate() {
         if let Some(name_offset) = name_offsets[index] {
             content.name = string_start.wrapping_add(name_offset);
         }
         if let Some(child_start) = child_starts[index] {
-            content.children = ret.wrapping_add(child_start);
+            content.children = content_start.wrapping_add(child_start);
         }
     }
-    ::core::ptr::copy_nonoverlapping(contents.as_ptr(), ret, content_count);
-    ::core::ptr::copy_nonoverlapping(names.as_ptr(), string_start, string_count);
-    ret
+    let backing = content_model_allocation_backing(parser, allocsize)?;
+    Some(ContentModelStorage {
+        contents,
+        _strings: strings,
+        backing: Some(backing),
+    })
 }
 
 /// Builds the ABI-owned declaration model and hands it to the installed
@@ -24961,10 +25013,14 @@ unsafe fn build_model_and_dispatch(
     internal_event_window: Option<(usize, usize)>,
     event_end: usize,
 ) -> bool {
-    let model = build_model(parser, dtd, source);
-    if model.is_null() {
+    let Some(mut model) = build_model(parser, dtd, source) else {
+        return false;
+    };
+    let model_ptr = model.contents.as_mut_ptr();
+    if !register_content_model(model_ptr.addr(), model) {
         return false;
     }
+    let model = model_ptr;
     let name = dtd
         .pool
         .chars_from(
