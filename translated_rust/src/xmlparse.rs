@@ -2352,13 +2352,13 @@ pub struct XML_ParserStruct {
     // existing C-compatible open list points into these slots only while they
     // are active; closing or resetting moves the owner back to the free list.
     m_activeInternalEntities: Vec<InternalEntityStorage>,
-    // Attribute-entity nodes are allocator-backed.  Model an absent list
-    // explicitly, keeping the non-null invariant for a present head.
-    pub m_openAttributeEntities: Option<::core::ptr::NonNull<OPEN_INTERNAL_ENTITY>>,
-    // Attribute-entity free-list nodes are allocated through Expat's configured
-    // allocator.  The head is nullable, but never a valid null node, so model
-    // that state explicitly instead of retaining a nullable raw pointer.
-    pub m_freeAttributeEntities: Option<::core::ptr::NonNull<OPEN_INTERNAL_ENTITY>>,
+    // Attribute-entity nodes are Rust-owned stable slots.  The last active
+    // entry is the current entity, preserving the former linked list's LIFO
+    // traversal without retaining raw list heads in parser state.
+    m_openAttributeEntities: Vec<InternalEntityStorage>,
+    // Reusable attribute-entity slots retain their configured-allocator token
+    // while parked here.  Popping from the end preserves Expat's LIFO reuse.
+    m_freeAttributeEntities: Vec<InternalEntityStorage>,
     pub m_openValueEntities: *mut OPEN_INTERNAL_ENTITY,
     // Value-entity nodes use the same nullable free-list representation as
     // internal and attribute entities.  A present entry is always a live,
@@ -4139,8 +4139,8 @@ fn initial_parser_struct(
         m_openInternalEntities: None,
         m_freeInternalEntities: Vec::new(),
         m_activeInternalEntities: Vec::new(),
-        m_openAttributeEntities: None,
-        m_freeAttributeEntities: None,
+        m_openAttributeEntities: Vec::new(),
+        m_freeAttributeEntities: Vec::new(),
         m_openValueEntities: ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>(),
         m_freeValueEntities: None,
         m_defaultExpandInternalEntities: crate::expat_h::XML_TRUE,
@@ -4395,7 +4395,7 @@ unsafe extern "C" fn parserCreate(
     parser.m_freeTagList = FreeTagList::empty();
     parser.m_freeInternalEntities = Vec::new();
     parser.m_activeInternalEntities = Vec::new();
-    parser.m_freeAttributeEntities = None;
+    parser.m_freeAttributeEntities = Vec::new();
     parser.m_freeValueEntities = None;
     parser.m_groupSize = 0 as ::core::ffi::c_uint;
     parser.m_groupConnector = GroupConnectorStorage::empty();
@@ -4611,7 +4611,7 @@ fn parser_init(
     parser.m_eventEndPtr = None;
     parser.m_positionPtr = None;
     parser.m_openInternalEntities = None;
-    parser.m_openAttributeEntities = None;
+    parser.m_openAttributeEntities = Vec::new();
     parser.m_openValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
     parser.m_tagLevel = 0 as ::core::ffi::c_int;
@@ -4727,17 +4727,13 @@ pub unsafe extern "C" fn XML_ParserReset(
         for storage in parser_state.m_activeInternalEntities.drain(..).rev() {
             parser_state.m_freeInternalEntities.push(storage);
         }
-        let mut open_attribute_entity_list = parser_state.m_openAttributeEntities.take();
-        while let Some(open_entity) = open_attribute_entity_list {
-            let open_entity = open_entity.as_ptr();
-            open_attribute_entity_list = ::core::ptr::NonNull::new(
-                (*open_entity).next as *mut OPEN_INTERNAL_ENTITY,
-            );
-            (*open_entity).next = parser_state
-                .m_freeAttributeEntities
-                .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-                as *mut open_internal_entity;
-            parser_state.m_freeAttributeEntities = ::core::ptr::NonNull::new(open_entity);
+        // Active entries are oldest to newest.  Moving them in reverse makes
+        // the oldest the next reusable slot, matching the old list walk.
+        for storage in std::mem::take(&mut parser_state.m_openAttributeEntities)
+            .into_iter()
+            .rev()
+        {
+            parser_state.m_freeAttributeEntities.push(storage);
         }
         let mut open_value_entity_list = parser_state.m_openValueEntities;
         while !open_value_entity_list.is_null() {
@@ -5452,28 +5448,13 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     for storage in free_internal_entities.into_iter().rev() {
         storage.release(1958 as ::core::ffi::c_int);
     }
-    entityList = parser
-        .m_openAttributeEntities
-        .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr);
-    loop {
-        let mut openEntity_0: *mut OPEN_INTERNAL_ENTITY =
-            ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        if entityList.is_null() {
-            if parser.m_freeAttributeEntities.is_none() {
-                break;
-            }
-            entityList = parser
-                .m_freeAttributeEntities
-                .take()
-                .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr);
-        }
-        openEntity_0 = entityList;
-        entityList = (*entityList).next as *mut OPEN_INTERNAL_ENTITY;
-        expat_free(
-            parser as *mut XML_ParserStruct,
-            openEntity_0 as *mut ::core::ffi::c_void,
-            1972 as ::core::ffi::c_int,
-        );
+    let active_attribute_entities = std::mem::take(&mut parser.m_openAttributeEntities);
+    for storage in active_attribute_entities.into_iter().rev() {
+        storage.release(1972 as ::core::ffi::c_int);
+    }
+    let free_attribute_entities = std::mem::take(&mut parser.m_freeAttributeEntities);
+    for storage in free_attribute_entities.into_iter().rev() {
+        storage.release(1972 as ::core::ffi::c_int);
     }
     entityList = parser.m_openValueEntities;
     loop {
@@ -14233,9 +14214,44 @@ unsafe extern "C" fn processEntity(
         1 => {
             is_attribute_entity = true;
             uses_nullable_free_list = true;
-            if let Some(free_entity) = parser_state.m_freeAttributeEntities.take() {
-                openEntity = free_entity.as_ptr();
+            if parser_state.m_openAttributeEntities.try_reserve(1).is_err() {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
+            let mut storage = if let Some(storage) = parser_state.m_freeAttributeEntities.pop() {
+                storage
+            } else {
+                // Reset moves every active node to the free stack.  Reserve
+                // that future slot before observing the configured allocator.
+                let Some(free_capacity) = parser_state
+                    .m_freeAttributeEntities
+                    .len()
+                    .checked_add(1)
+                else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                if parser_state
+                    .m_freeAttributeEntities
+                    .try_reserve(free_capacity)
+                    .is_err()
+                {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
+                let Some(backing) = allocation_backing(
+                    parser,
+                    ::core::mem::size_of::<OPEN_INTERNAL_ENTITY>(),
+                    6382 as ::core::ffi::c_int,
+                ) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                let Some(storage) =
+                    internal_entity_storage_new(backing, 6382 as ::core::ffi::c_int)
+                else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                storage
+            };
+            openEntity = std::ptr::from_mut(storage.node_mut());
+            parser_state.m_openAttributeEntities.push(storage);
         }
         2 => {
             openEntityList = &raw mut parser_state.m_openValueEntities;
@@ -14278,17 +14294,14 @@ unsafe extern "C" fn processEntity(
             .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
             as *mut open_internal_entity
     } else if is_attribute_entity {
-        parser_state
-            .m_openAttributeEntities
-            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-            as *mut open_internal_entity
+        ::core::ptr::null_mut()
     } else {
         *openEntityList as *mut open_internal_entity
     };
     if is_internal_entity {
         parser_state.m_openInternalEntities = ::core::ptr::NonNull::new(openEntity);
     } else if is_attribute_entity {
-        parser_state.m_openAttributeEntities = ::core::ptr::NonNull::new(openEntity);
+        // The vector itself is the active attribute-entity stack.
     } else {
         *openEntityList = openEntity;
     }
@@ -14461,7 +14474,7 @@ unsafe extern "C" fn storeAttributeValue(
     let mut next: *const ::core::ffi::c_char = ptr;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
-        if (*parser).m_openAttributeEntities.is_none() {
+        if (*parser).m_openAttributeEntities.is_empty() {
             let (append_result, append_next) = appendAttributeValue(
                 parser,
                 &*enc,
@@ -14478,11 +14491,10 @@ unsafe extern "C" fn storeAttributeValue(
                 next = append_next;
             }
         } else {
-            let Some(open_entity) = (*parser).m_openAttributeEntities else {
+            let Some(open_entity) = (*parser).m_openAttributeEntities.last() else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let openEntity = open_entity.as_ptr();
-            let entity: *mut ENTITY = (*openEntity).entity;
+            let entity: *mut ENTITY = open_entity.node().entity;
             let Some(text) = (*entity).textPtr.present() else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -14540,7 +14552,8 @@ unsafe extern "C" fn storeAttributeValue(
                 '_c2rust_label: {
                     if (*parser)
                         .m_openAttributeEntities
-                        .is_some_and(|head| head.as_ptr() == openEntity)
+                        .last()
+                        .is_some_and(|head| head.node().entity == entity)
                     {
                     } else {
                         crate::stdlib::__assert_fail(
@@ -14555,18 +14568,14 @@ unsafe extern "C" fn storeAttributeValue(
                     }
                 };
                 (*entity).open = crate::expat_h::XML_FALSE;
-                (*parser).m_openAttributeEntities = ::core::ptr::NonNull::new(
-                    (*openEntity).next as *mut OPEN_INTERNAL_ENTITY,
-                );
-                (*openEntity).next = (*parser)
-                    .m_freeAttributeEntities
-                    .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-                    as *mut open_internal_entity;
-                (*parser).m_freeAttributeEntities = ::core::ptr::NonNull::new(openEntity);
+                let Some(storage) = (*parser).m_openAttributeEntities.pop() else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                (*parser).m_freeAttributeEntities.push(storage);
             }
         }
         if result as ::core::ffi::c_uint != 0
-            || (*parser).m_openAttributeEntities.is_none() && end == next
+            || (*parser).m_openAttributeEntities.is_empty() && end == next
         {
             break;
         }
