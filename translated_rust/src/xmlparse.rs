@@ -7570,7 +7570,7 @@ unsafe extern "C" fn doContent(
                         reportDefault(parser, enc, s, next);
                     }
                     result_2 =
-                        doCdataSection(parser, enc, &raw mut next, end, nextPtr, haveMore, account);
+                        doCdataSection(parser, enc, &mut next, end, nextPtr, haveMore, account);
                     if result_2 as ::core::ffi::c_uint
                         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                             as ::core::ffi::c_uint
@@ -8683,7 +8683,7 @@ unsafe extern "C" fn cdataSectionProcessor(
     let mut result: crate::expat_h::XML_Error = doCdataSection(
         parser,
         parser_encoding(parser),
-        &raw mut start,
+        &mut start,
         end,
         endPtr,
         ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
@@ -8710,7 +8710,7 @@ unsafe extern "C" fn cdataSectionProcessor(
 unsafe extern "C" fn doCdataSection(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
-    mut startPtr: *mut *const ::core::ffi::c_char,
+    startPtr: &mut *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
     mut haveMore: crate::expat_h::XML_Bool,
