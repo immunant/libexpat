@@ -184,7 +184,11 @@ pub mod siphash_h {
         }
 
         let remainder = chunks.remainder();
-        let mut final_block = (input.len() as crate::stdlib::uint64_t) << 56;
+        // SipHash encodes only the low byte of the input length here.  Reduce
+        // before converting so the conversion is lossless on every target.
+        let mut final_block = crate::stdlib::uint64_t::try_from(input.len() & 0xff)
+            .expect("the low byte of a length fits in u64")
+            << 56;
         for (index, byte) in remainder.iter().copied().enumerate() {
             final_block |= (byte as crate::stdlib::uint64_t) << (index * 8);
         }
