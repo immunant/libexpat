@@ -5868,8 +5868,8 @@ unsafe fn allocate_parser_storage(
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .cast::<XML_ParserStruct>();
     ::core::ptr::write(parser_ptr, initial_parser_struct(memory_suite));
+    let parser = &mut *parser_ptr;
     let root_owner = {
-        let parser = &mut *parser_ptr;
         let alloc_tracker = MALLOC_TRACKER {
             bytesAllocated: 0 as XmlBigCount,
             peakBytesAllocated: 0 as XmlBigCount,
@@ -5954,7 +5954,6 @@ unsafe fn allocate_parser_storage(
     // allocator-backed member has been installed.  In particular, each
     // failure below releases exactly the tokens acquired so far before the
     // parser allocation itself is returned to the configured allocator.
-    let parser = &mut *parser_ptr;
     let storage_result = (|| -> Result<(), ::core::ffi::c_int> {
         parser.m_buffer = InputBuffer::empty();
         parser.m_bufferLim = 0;
