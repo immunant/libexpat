@@ -9253,235 +9253,172 @@ extern "C" fn test_ext_entity_ref_parameter() {
     }
 }
 extern "C" fn test_empty_parse() {
-    unsafe {
-        _check_set_test_info(
-            b"test_empty_parse\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2908 as ::core::ffi::c_int,
+    set_test_info(b"test_empty_parse\0", 2908 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<doc></doc>\0");
+    let partial = bytes_as_c_char_ptr(b"<doc>\0");
+
+    if parser_status_is_error(parser_parse(
+        ::core::ptr::null::<::core::ffi::c_char>(),
+        0 as ::core::ffi::c_int,
+        XML_FALSE as ::core::ffi::c_int,
+    )) {
+        fail_test(
+            2913 as ::core::ffi::c_int,
+            b"Parsing empty string faulted\0",
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut partial: *const ::core::ffi::c_char =
-            b"<doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        if XML_Parse(
-            g_parser,
-            ::core::ptr::null::<::core::ffi::c_char>(),
-            0 as ::core::ffi::c_int,
-            XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2913 as ::core::ffi::c_int,
-                b"Parsing empty string faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_Parse(
-            g_parser,
-            ::core::ptr::null::<::core::ffi::c_char>(),
-            0 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2915 as ::core::ffi::c_int,
-                b"Parsing final empty string not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetErrorCode(g_parser) as ::core::ffi::c_uint
-            != XML_ERROR_NO_ELEMENTS as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2917 as ::core::ffi::c_int,
-                b"Parsing final empty string faulted for wrong reason\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2923 as ::core::ffi::c_int,
-            );
-        }
-        if XML_Parse(
-            g_parser,
-            ::core::ptr::null::<::core::ffi::c_char>(),
-            0 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2925 as ::core::ffi::c_int,
-                b"Parsing final empty string faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
+    }
+
+    if !parser_status_is_error(parser_parse(
+        ::core::ptr::null::<::core::ffi::c_char>(),
+        0 as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    )) {
+        fail_test(
+            2915 as ::core::ffi::c_int,
+            b"Parsing final empty string not faulted\0",
+        );
+    }
+
+    if parser_error_code() as ::core::ffi::c_uint
+        != XML_ERROR_NO_ELEMENTS as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_test(
+            2917 as ::core::ffi::c_int,
+            b"Parsing final empty string faulted for wrong reason\0",
+        );
+    }
+
+    parser_reset();
+    ensure_parser_success(
+        parse_single_bytes_with_final(text, c_string_len(text), XML_FALSE as ::core::ffi::c_int),
+        2923 as ::core::ffi::c_int,
+    );
+
+    if parser_status_is_error(parser_parse(
+        ::core::ptr::null::<::core::ffi::c_char>(),
+        0 as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    )) {
+        fail_test(
+            2925 as ::core::ffi::c_int,
+            b"Parsing final empty string faulted\0",
+        );
+    }
+
+    parser_reset();
+    ensure_parser_success(
+        parse_single_bytes_with_final(
             partial,
-            strlen(partial) as ::core::ffi::c_int,
+            c_string_len(partial),
             XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2932 as ::core::ffi::c_int,
-            );
-        }
-        if XML_Parse(
-            g_parser,
-            ::core::ptr::null::<::core::ffi::c_char>(),
-            0 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2934 as ::core::ffi::c_int,
-                b"Parsing final incomplete empty string not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+        ),
+        2932 as ::core::ffi::c_int,
+    );
+
+    if !parser_status_is_error(parser_parse(
+        ::core::ptr::null::<::core::ffi::c_char>(),
+        0 as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    )) {
+        fail_test(
+            2934 as ::core::ffi::c_int,
+            b"Parsing final incomplete empty string not faulted\0",
+        );
     }
 }
 extern "C" fn test_negative_len_parse() {
-    unsafe {
-        _check_set_test_info(
-            b"test_negative_len_parse\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2939 as ::core::ffi::c_int,
-        );
-        let doc: *const ::core::ffi::c_char = b"<root/>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut isFinal: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while isFinal < 2 as ::core::ffi::c_int {
-            set_subtest(
-                b"isFinal=%d\0".as_ptr() as *const ::core::ffi::c_char,
-                isFinal,
+    set_test_info(b"test_negative_len_parse\0", 2939 as ::core::ffi::c_int);
+    let doc = bytes_as_c_char_ptr(b"<root/>\0");
+    let mut is_final = 0 as ::core::ffi::c_int;
+
+    while is_final < 2 as ::core::ffi::c_int {
+        set_subtest_message(&format!("isFinal={is_final}"));
+        let parser = create_parser_or_fail(2947 as ::core::ffi::c_int);
+
+        if parser_error_code_for(parser) as ::core::ffi::c_uint
+            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_free(parser);
+            fail_test(
+                2947 as ::core::ffi::c_int,
+                b"There was not supposed to be any initial parse error.\0",
             );
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if XML_GetErrorCode(parser) as ::core::ffi::c_uint
-                != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2947 as ::core::ffi::c_int,
-                    b"There was not supposed to be any initial parse error.\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            let status: XML_Status =
-                XML_Parse(parser, doc, -(1 as ::core::ffi::c_int), isFinal) as XML_Status;
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2952 as ::core::ffi::c_int,
-                    b"Negative len was expected to fail the parse but did not.\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_GetErrorCode(parser) as ::core::ffi::c_uint
-                != XML_ERROR_INVALID_ARGUMENT as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2955 as ::core::ffi::c_int,
-                    b"Parse error does not match XML_ERROR_INVALID_ARGUMENT.\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            XML_ParserFree(parser);
-            isFinal += 1;
         }
+
+        let status = parser_parse_for(parser, doc, -(1 as ::core::ffi::c_int), is_final);
+        if !parser_status_is_error(status) {
+            parser_free(parser);
+            fail_test(
+                2952 as ::core::ffi::c_int,
+                b"Negative len was expected to fail the parse but did not.\0",
+            );
+        }
+
+        if parser_error_code_for(parser) as ::core::ffi::c_uint
+            != XML_ERROR_INVALID_ARGUMENT as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_free(parser);
+            fail_test(
+                2955 as ::core::ffi::c_int,
+                b"Parse error does not match XML_ERROR_INVALID_ARGUMENT.\0",
+            );
+        }
+
+        parser_free(parser);
+        is_final += 1;
     }
 }
 extern "C" fn test_negative_len_parse_buffer() {
-    unsafe {
-        _check_set_test_info(
-            b"test_negative_len_parse_buffer\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2963 as ::core::ffi::c_int,
-        );
-        let doc: *const ::core::ffi::c_char = b"<root/>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut isFinal: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while isFinal < 2 as ::core::ffi::c_int {
-            set_subtest(
-                b"isFinal=%d\0".as_ptr() as *const ::core::ffi::c_char,
-                isFinal,
+    set_test_info(
+        b"test_negative_len_parse_buffer\0",
+        2963 as ::core::ffi::c_int,
+    );
+    let doc = bytes_as_c_char_ptr(b"<root/>\0");
+    let mut is_final = 0 as ::core::ffi::c_int;
+
+    while is_final < 2 as ::core::ffi::c_int {
+        set_subtest_message(&format!("isFinal={is_final}"));
+        let parser = create_parser_or_fail(2971 as ::core::ffi::c_int);
+
+        if parser_error_code_for(parser) as ::core::ffi::c_uint
+            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_free(parser);
+            fail_test(
+                2971 as ::core::ffi::c_int,
+                b"There was not supposed to be any initial parse error.\0",
             );
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if XML_GetErrorCode(parser) as ::core::ffi::c_uint
-                != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2971 as ::core::ffi::c_int,
-                    b"There was not supposed to be any initial parse error.\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            let buffer: *mut ::core::ffi::c_void =
-                XML_GetBuffer(parser, strlen(doc) as ::core::ffi::c_int)
-                    as *mut ::core::ffi::c_void;
-            if buffer.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2976 as ::core::ffi::c_int,
-                    b"XML_GetBuffer failed.\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            memcpy(buffer, doc as *const ::core::ffi::c_void, strlen(doc));
-            let status: XML_Status =
-                XML_ParseBuffer(parser, -(1 as ::core::ffi::c_int), isFinal) as XML_Status;
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2983 as ::core::ffi::c_int,
-                    b"Negative len was expected to fail the parse but did not.\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_GetErrorCode(parser) as ::core::ffi::c_uint
-                != XML_ERROR_INVALID_ARGUMENT as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2986 as ::core::ffi::c_int,
-                    b"Parse error does not match XML_ERROR_INVALID_ARGUMENT.\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            XML_ParserFree(parser);
-            isFinal += 1;
         }
+
+        let buffer = parser_buffer_for(parser, c_string_len(doc));
+        if buffer.is_null() {
+            parser_free(parser);
+            fail_test(2976 as ::core::ffi::c_int, b"XML_GetBuffer failed.\0");
+        }
+
+        copy_buffer_from_c_string(buffer, doc, c_string_len(doc));
+
+        let status = parser_parse_buffer_for(parser, -(1 as ::core::ffi::c_int), is_final);
+        if !parser_status_is_error(status) {
+            parser_free(parser);
+            fail_test(
+                2983 as ::core::ffi::c_int,
+                b"Negative len was expected to fail the parse but did not.\0",
+            );
+        }
+
+        if parser_error_code_for(parser) as ::core::ffi::c_uint
+            != XML_ERROR_INVALID_ARGUMENT as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_free(parser);
+            fail_test(
+                2986 as ::core::ffi::c_int,
+                b"Parse error does not match XML_ERROR_INVALID_ARGUMENT.\0",
+            );
+        }
+
+        parser_free(parser);
+        is_final += 1;
     }
 }
 fn get_feature(feature_id: XML_FeatureEnum) -> Option<::core::ffi::c_long> {
