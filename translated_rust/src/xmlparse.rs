@@ -7237,20 +7237,23 @@ unsafe fn XML_ExternalEntityParserCreate(
     parser_ref.m_paramEntityParsing = oldParamEntityParsing;
     parser_ref.m_prologState.inEntityValue = oldInEntityValue;
     if let Some(context) = context {
-        // Keep the shared owners alive while borrowing their contained DTDs.
-        // `dtdCopy` itself operates only on these typed references; this is
-        // the sole ownership-boundary conversion for inherited DTD state.
+        // Keep both shared owners alive for the complete copy and context
+        // restoration.  `SharedDtd::inspect` confines the `UnsafeCell`
+        // conversion to its ownership facade, so this constructor works only
+        // with scoped DTD references.
         let old_dtd_owner = old.m_dtd.clone();
         let new_dtd_owner = parser_ref.m_dtd.clone();
         let (Some(old_dtd_owner), Some(new_dtd_owner)) = (old_dtd_owner, new_dtd_owner) else {
             XML_ParserFree(parser);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         };
-        let old_dtd = &*old_dtd_owner.value.get();
-        let new_dtd = &mut *new_dtd_owner.value.get();
-        if dtdCopy(new_dtd, old_dtd, parser_ref) == 0
-            || setContext(parser, context.as_ptr()) == 0
-        {
+        let copied_and_restored = old_dtd_owner.inspect(|old_dtd| {
+            new_dtd_owner.inspect(|new_dtd| {
+                dtdCopy(new_dtd, old_dtd, parser_ref) != 0
+                    && set_context_impl(parser_ref, new_dtd, context.to_bytes()) != 0
+            })
+        });
+        if !copied_and_restored {
             XML_ParserFree(parser);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
