@@ -2359,10 +2359,10 @@ pub struct XML_ParserStruct {
     // Reusable attribute-entity slots retain their configured-allocator token
     // while parked here.  Popping from the end preserves Expat's LIFO reuse.
     m_freeAttributeEntities: Vec<AttributeEntityStorage>,
-    // Value-entity expansion is either inactive or points at a live stable
-    // slot.  Represent the nullable list head explicitly; the linked node's
-    // C-compatible `next` field remains raw at the boundary.
-    pub m_openValueEntities: Option<::core::ptr::NonNull<OPEN_INTERNAL_ENTITY>>,
+    // Value-entity expansion is either inactive or names a live entry in the
+    // owned LIFO stack below.  Keeping an index here avoids retaining a raw
+    // address across nested entity expansion and vector growth.
+    pub m_openValueEntities: Option<usize>,
     // Value-entity nodes have the same stable Rust storage and opaque
     // configured-allocator tokens as internal entities.  The active open
     // chain remains C-compatible, but reusable nodes are owned slots rather
@@ -14377,14 +14377,17 @@ unsafe extern "C" fn processEntity(
     } else {
         parser_state
             .m_openValueEntities
-            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-            as *mut open_internal_entity
+            .and_then(|index| parser_state.m_activeValueEntities.get(index))
+            .map_or(::core::ptr::null_mut(), |storage| {
+                std::ptr::from_ref(storage.node()).cast_mut()
+            })
     };
     if is_internal_entity {
         parser_state.m_openInternalEntities =
             parser_state.m_activeInternalEntities.len().checked_sub(1);
     } else {
-        parser_state.m_openValueEntities = ::core::ptr::NonNull::new(openEntity);
+        parser_state.m_openValueEntities =
+            parser_state.m_activeValueEntities.len().checked_sub(1);
     }
     (*openEntity).entity = std::ptr::from_mut(entity);
     (*openEntity).type_0 = type_0;
@@ -15213,10 +15216,19 @@ unsafe extern "C" fn callStoreEntityValue(
         if (*parser).m_openValueEntities.is_none() {
             result = storeEntityValue(parser, enc, next, entityTextEnd, account, &raw mut next);
         } else {
-            let openEntity = (*parser)
-                .m_openValueEntities
-                .expect("value-entity processing requires an open entity")
-                .as_ptr();
+            let (open_entity_index, openEntity) = {
+                let parser_state = &*parser;
+                let open_entity_index = parser_state
+                    .m_openValueEntities
+                    .expect("value-entity processing requires an open entity");
+                let Some(storage) = parser_state.m_activeValueEntities.get(open_entity_index) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                (
+                    open_entity_index,
+                    std::ptr::from_ref(storage.node()).cast_mut(),
+                )
+            };
             let entity: *mut ENTITY = (*openEntity).entity;
             let Some(text) = (*entity).textPtr.present() else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -15270,7 +15282,7 @@ unsafe extern "C" fn callStoreEntityValue(
             } else {
                 entityTrackingOnClose(parser, entity, 6998 as ::core::ffi::c_int);
                 '_c2rust_label: {
-                    if (*parser).m_openValueEntities == ::core::ptr::NonNull::new(openEntity) {
+                    if (*parser).m_openValueEntities == Some(open_entity_index) {
                     } else {
                         crate::stdlib::__assert_fail(
                             b"parser->m_openValueEntities == openEntity\0".as_ptr()
@@ -15284,14 +15296,14 @@ unsafe extern "C" fn callStoreEntityValue(
                     }
                 };
                 (*entity).open = crate::expat_h::XML_FALSE;
-                (*parser).m_openValueEntities =
-                    ::core::ptr::NonNull::new((*openEntity).next as *mut OPEN_INTERNAL_ENTITY);
                 let Some(storage) = (*parser).m_activeValueEntities.pop() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
                 if !std::ptr::eq(storage.node(), &*openEntity) {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
+                (*parser).m_openValueEntities =
+                    (*parser).m_activeValueEntities.len().checked_sub(1);
                 (*parser).m_freeValueEntities.push(storage);
             }
         }
