@@ -1968,7 +1968,9 @@ pub struct XML_ParserStruct {
     pub m_handlerArg: *mut ::core::ffi::c_void,
     m_buffer: InputBuffer,
     pub m_mem: crate::expat_h::XML_Memory_Handling_Suite,
-    pub m_bufferPtr: *const ::core::ffi::c_char,
+    // The current input cursor is an offset into `m_buffer.bytes`.  `None`
+    // denotes that no input buffer has been allocated yet.
+    pub m_bufferPtr: Option<usize>,
     // The end of initialized input is an offset into `m_buffer.bytes`.  It
     // used to be an interior pointer, which became stale whenever the
     // Rust-owned buffer moved during growth.
@@ -3299,13 +3301,7 @@ unsafe extern "C" fn callProcessor(
     {
         let had_before: crate::__stddef_size_t_h::size_t = (*parser).m_partialTokenBytesBefore;
         let mut available_buffer: crate::__stddef_size_t_h::size_t =
-            (if !(*parser).m_bufferPtr.is_null() && (*parser).m_buffer.bytes.is_some() {
-                (*parser)
-                    .m_bufferPtr
-                    .offset_from((*parser).m_buffer.bytes.as_ref().unwrap().as_ptr())
-            } else {
-                0 as isize
-            }) as crate::__stddef_size_t_h::size_t;
+            (*parser).m_bufferPtr.unwrap_or(0) as crate::__stddef_size_t_h::size_t;
         available_buffer = available_buffer.wrapping_sub(
             if available_buffer < 1024 as crate::__stddef_size_t_h::size_t {
                 available_buffer
@@ -3493,7 +3489,7 @@ fn initial_parser_struct(
         m_handlerArg: crate::__stddef_null_h::NULL,
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
-        m_bufferPtr: ::core::ptr::null::<::core::ffi::c_char>(),
+        m_bufferPtr: None,
         m_bufferEnd: 0,
         m_bufferLim: ::core::ptr::null::<::core::ffi::c_char>(),
         m_parseEndByteIndex: 0,
@@ -3969,11 +3965,7 @@ fn parser_init(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
-    if let Some(bytes) = parser.m_buffer.bytes.as_mut() {
-        parser.m_bufferPtr = bytes.as_ptr();
-    } else {
-        parser.m_bufferPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    }
+    parser.m_bufferPtr = parser.m_buffer.bytes.as_ref().map(|_| 0);
     parser.m_bufferEnd = 0;
     parser.m_parseEndByteIndex = 0 as crate::expat_external_h::XML_Index;
     parser.m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
@@ -5945,7 +5937,7 @@ unsafe fn parse_buffer_impl(
                 return crate::expat_h::XML_STATUS_ERROR;
             }
             0 => {
-                if parser_ref.m_bufferPtr.is_null() {
+                if parser_ref.m_bufferPtr.is_none() {
                     parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
                     return crate::expat_h::XML_STATUS_ERROR;
                 }
@@ -5961,7 +5953,13 @@ unsafe fn parse_buffer_impl(
     let (start, parse_end) = {
         let parser_ref = &mut *parser;
         parser_ref.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-        let start = parser_ref.m_bufferPtr;
+        let start = parser_ref
+            .m_buffer
+            .bytes
+            .as_ref()
+            .unwrap()
+            .as_ptr()
+            .wrapping_add(parser_ref.m_bufferPtr.unwrap());
         parser_ref.m_positionPtr = start;
         parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_add(len as usize);
         parser_ref.m_parseEndPtr = parser_ref
@@ -5978,10 +5976,21 @@ unsafe fn parse_buffer_impl(
 
     // The setup borrow has ended before a user callback can re-enter through
     // callProcessor.
-    let error = callProcessor(parser, start, parse_end, &raw mut (*parser).m_bufferPtr);
+    let mut processed_to = start;
+    let error = callProcessor(parser, start, parse_end, &raw mut processed_to);
     {
         let parser_ref = &mut *parser;
-        parser_ref.m_errorCode = error;
+        let buffer_start = parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr();
+        match processed_to.addr().checked_sub(buffer_start.addr()) {
+            Some(cursor) if cursor <= parser_ref.m_bufferEnd => {
+                parser_ref.m_bufferPtr = Some(cursor);
+                parser_ref.m_errorCode = error;
+            }
+            _ => {
+                parser_ref.m_bufferPtr = None;
+                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
+        }
         if parser_ref.m_errorCode as ::core::ffi::c_uint
             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
         {
@@ -6006,7 +6015,13 @@ unsafe fn parse_buffer_impl(
     let encoding = parser_encoding(parser);
     let parser_ref = &mut *parser;
     let position_ptr = parser_ref.m_positionPtr;
-    let buffer_ptr = parser_ref.m_bufferPtr;
+    let buffer_ptr = parser_ref
+        .m_buffer
+        .bytes
+        .as_ref()
+        .unwrap()
+        .as_ptr()
+        .wrapping_add(parser_ref.m_bufferPtr.unwrap());
     crate::src::xmltok::initUpdatePosition(
         (*encoding).updatePosition,
         encoding,
@@ -6061,35 +6076,20 @@ pub unsafe extern "C" fn XML_GetBuffer(
     }
     parser_ref.m_lastBufferRequestSize = len;
     if len as usize
-        > parser_ref
-            .m_buffer
-            .bytes
-            .as_ref()
-            .map_or(0, |bytes| bytes.len().saturating_sub(parser_ref.m_bufferEnd))
+        > parser_ref.m_buffer.bytes.as_ref().map_or(0, |bytes| {
+            bytes.len().saturating_sub(parser_ref.m_bufferEnd)
+        })
         || parser_ref.m_buffer.bytes.is_none()
     {
-        let mut keep: ::core::ffi::c_int = 0;
-        let mut neededSize: ::core::ffi::c_int = (len as ::core::ffi::c_uint).wrapping_add(
-            (if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
-                parser_ref.m_bufferEnd as isize
-                    - parser_ref
-                        .m_bufferPtr
-                        .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-            } else {
-                0 as isize
-            }) as ::core::ffi::c_uint,
-        ) as ::core::ffi::c_int;
+        let cursor = parser_ref.m_bufferPtr.unwrap_or(0);
+        let mut keep = cursor as ::core::ffi::c_int;
+        let mut neededSize: ::core::ffi::c_int = (len as ::core::ffi::c_uint)
+            .wrapping_add(parser_ref.m_bufferEnd.saturating_sub(cursor) as ::core::ffi::c_uint)
+            as ::core::ffi::c_int;
         if neededSize < 0 as ::core::ffi::c_int {
             parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
             return crate::__stddef_null_h::NULL;
         }
-        keep = (if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
-            parser_ref
-                .m_bufferPtr
-                .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-        } else {
-            0 as isize
-        }) as ::core::ffi::c_int;
         if keep > crate::stdlib::XML_CONTEXT_BYTES {
             keep = crate::stdlib::XML_CONTEXT_BYTES;
         }
@@ -6099,54 +6099,22 @@ pub unsafe extern "C" fn XML_GetBuffer(
         }
         neededSize += keep;
         if parser_ref.m_buffer.bytes.is_some()
-            && !parser_ref.m_bufferPtr.is_null()
-            && neededSize as isize
-                <= (if !parser_ref.m_bufferLim.is_null() && parser_ref.m_buffer.bytes.is_some() {
-                    parser_ref
-                        .m_bufferLim
-                        .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-                } else {
-                    0 as isize
-                })
+            && parser_ref.m_bufferPtr.is_some()
+            && neededSize as usize <= parser_ref.m_buffer.bytes.as_ref().unwrap().len()
         {
-            if (keep as isize)
-                < (if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
-                    parser_ref
-                        .m_bufferPtr
-                        .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-                } else {
-                    0 as isize
-                })
-            {
-                let mut offset: ::core::ffi::c_int =
-                    (if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
-                        parser_ref
-                            .m_bufferPtr
-                            .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-                    } else {
-                        0 as isize
-                    }) as ::core::ffi::c_int
-                        - keep;
-                let base = parser_ref.m_buffer.bytes.as_mut().unwrap().as_mut_ptr();
-                crate::stdlib::memmove(
-                    base as *mut ::core::ffi::c_void,
-                    base.offset(offset as isize) as *const ::core::ffi::c_void,
-                    (parser_ref.m_bufferEnd as isize
-                        - parser_ref.m_bufferPtr.offset_from(base)
-                        + keep as isize) as crate::__stddef_size_t_h::size_t,
-                );
-                parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_sub(offset as usize);
-                parser_ref.m_bufferPtr = parser_ref.m_bufferPtr.offset(-(offset as isize));
+            if (keep as usize) < cursor {
+                let offset = cursor - keep as usize;
+                let buffer = parser_ref.m_buffer.bytes.as_mut().unwrap();
+                buffer.copy_within(offset..parser_ref.m_bufferEnd, 0);
+                parser_ref.m_bufferEnd -= offset;
+                parser_ref.m_bufferPtr = Some(keep as usize);
             }
         } else {
-            let mut bufferSize: ::core::ffi::c_int =
-                (if !parser_ref.m_bufferLim.is_null() && parser_ref.m_buffer.bytes.is_some() {
-                    parser_ref
-                        .m_bufferLim
-                        .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-                } else {
-                    0 as isize
-                }) as ::core::ffi::c_int;
+            let mut bufferSize: ::core::ffi::c_int = parser_ref
+                .m_buffer
+                .bytes
+                .as_ref()
+                .map_or(0, |bytes| bytes.len() as ::core::ffi::c_int);
             if bufferSize == 0 as ::core::ffi::c_int {
                 bufferSize = INIT_BUFFER_SIZE;
             }
@@ -6182,43 +6150,31 @@ pub unsafe extern "C" fn XML_GetBuffer(
                 return crate::__stddef_null_h::NULL;
             }
             new_bytes.resize(bufferSize as usize, 0);
-            let new_buf = new_bytes.as_mut_ptr();
-            parser_ref.m_bufferLim = new_buf.offset(bufferSize as isize);
-            if !parser_ref.m_bufferPtr.is_null() {
-                crate::stdlib::memcpy(
-                    new_buf as *mut ::core::ffi::c_void,
-                    parser_ref.m_bufferPtr.offset(-keep as isize) as *const ::core::ffi::c_void,
-                    ((if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
-                        parser_ref.m_bufferEnd as isize
-                            - parser_ref
-                                .m_bufferPtr
-                                .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-                    } else {
-                        0 as isize
-                    }) + keep as isize) as crate::__stddef_size_t_h::size_t,
+            if let Some(cursor) = parser_ref.m_bufferPtr {
+                let buffered = parser_ref.m_bufferEnd - cursor;
+                let copy_start = cursor - keep as usize;
+                new_bytes[..buffered + keep as usize].copy_from_slice(
+                    &parser_ref.m_buffer.bytes.as_ref().unwrap()
+                        [copy_start..parser_ref.m_bufferEnd],
                 );
-                let buffered =
-                    (if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
-                        parser_ref.m_bufferEnd as isize
-                            - parser_ref
-                                .m_bufferPtr
-                                .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
-                    } else {
-                        0 as isize
-                    }) as usize;
                 if let Some(mut release) = parser_ref.m_buffer.release.take() {
                     release();
                 }
                 parser_ref.m_buffer.bytes = Some(new_bytes);
-                let base = parser_ref.m_buffer.bytes.as_mut().unwrap().as_mut_ptr();
                 parser_ref.m_bufferEnd = buffered + keep as usize;
-                parser_ref.m_bufferPtr = base.add(keep as usize);
+                parser_ref.m_bufferPtr = Some(keep as usize);
             } else {
                 parser_ref.m_buffer.bytes = Some(new_bytes);
-                let base = parser_ref.m_buffer.bytes.as_mut().unwrap().as_mut_ptr();
                 parser_ref.m_bufferEnd = 0;
-                parser_ref.m_bufferPtr = base;
+                parser_ref.m_bufferPtr = Some(0);
             }
+            parser_ref.m_bufferLim = parser_ref
+                .m_buffer
+                .bytes
+                .as_ref()
+                .unwrap()
+                .as_ptr()
+                .wrapping_add(bufferSize as usize);
             let free_fcn = parser_ref
                 .m_mem
                 .free_fcn
@@ -6312,47 +6268,76 @@ pub unsafe extern "C" fn XML_ResumeParser(
     if parser.is_null() {
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-        != crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+    let (start, parse_end) = {
+        let parser_ref = &mut *parser;
+        if parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint
+            != crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NOT_SUSPENDED;
+            return crate::expat_h::XML_STATUS_ERROR;
+        }
+        parser_ref.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+        let start = parser_ref
+            .m_buffer
+            .bytes
+            .as_ref()
+            .unwrap()
+            .as_ptr()
+            .wrapping_add(parser_ref.m_bufferPtr.unwrap());
+        (start, parser_ref.m_parseEndPtr)
+    };
+    let mut processed_to = start;
+    let error = callProcessor(parser, start, parse_end, &raw mut processed_to);
     {
-        (*parser).m_errorCode = crate::expat_h::XML_ERROR_NOT_SUSPENDED;
-        return crate::expat_h::XML_STATUS_ERROR;
-    }
-    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    (*parser).m_errorCode = callProcessor(
-        parser,
-        (*parser).m_bufferPtr,
-        (*parser).m_parseEndPtr,
-        &raw mut (*parser).m_bufferPtr,
-    );
-    if (*parser).m_errorCode as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = ProcessorState::Error;
-        return crate::expat_h::XML_STATUS_ERROR;
-    } else {
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+        let parser_ref = &mut *parser;
+        let buffer_start = parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr();
+        match processed_to.addr().checked_sub(buffer_start.addr()) {
+            Some(cursor) if cursor <= parser_ref.m_bufferEnd => {
+                parser_ref.m_bufferPtr = Some(cursor);
+                parser_ref.m_errorCode = error;
+            }
+            _ => {
+                parser_ref.m_bufferPtr = None;
+                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
+        }
+        if parser_ref.m_errorCode as ::core::ffi::c_uint
+            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_ref.m_eventEndPtr = parser_ref.m_eventPtr;
+            parser_ref.m_processor = ProcessorState::Error;
+            return crate::expat_h::XML_STATUS_ERROR;
+        }
+        match parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
                 result = crate::expat_h::XML_STATUS_SUSPENDED;
             }
             0 | 1 => {
-                if (*parser).m_parsingStatus.finalBuffer != 0 {
-                    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+                if parser_ref.m_parsingStatus.finalBuffer != 0 {
+                    parser_ref.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
                     return result;
                 }
             }
             _ => {}
         }
     }
+    let encoding = parser_encoding(parser);
+    let parser_ref = &mut *parser;
+    let buffer_ptr = parser_ref
+        .m_buffer
+        .bytes
+        .as_ref()
+        .unwrap()
+        .as_ptr()
+        .wrapping_add(parser_ref.m_bufferPtr.unwrap());
     crate::src::xmltok::initUpdatePosition(
-        (*parser_encoding(parser)).updatePosition,
-        parser_encoding(parser),
-        (*parser).m_positionPtr,
-        (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
+        (*encoding).updatePosition,
+        encoding,
+        parser_ref.m_positionPtr,
+        buffer_ptr,
+        &raw mut parser_ref.m_position,
     );
-    (*parser).m_positionPtr = (*parser).m_bufferPtr;
+    parser_ref.m_positionPtr = buffer_ptr;
     return result;
 }
 #[export_name = "XML_ResumeParser"]
