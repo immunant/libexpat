@@ -6019,13 +6019,43 @@ unsafe fn call_processor_impl(
             let result = cdata_section_processor_impl(parser, next, input.end);
             checked_next_offset = Some(result.next_offset);
             result.error
+        } else if matches!(parser.m_processor, ProcessorState::ExternalEntityInit3) {
+            let encoding = parser_encoding(parser);
+            let scan = scanner_context_from_raw(
+                (*encoding).scanners[1],
+                encoding,
+                start,
+                end,
+            )
+            .scan();
+            match external_entity_init_processor3_transition(
+                parser,
+                scan,
+                start.addr(),
+                input.end.saturating_sub(next),
+            ) {
+                ExternalEntityInit3Action::Return(error, offset) => {
+                    next_pointer = start.wrapping_add(offset);
+                    error
+                }
+                ExternalEntityInit3Action::ContinueContent(offset) => {
+                    externalEntityContentProcessor(
+                        std::ptr::from_mut(parser),
+                        start.wrapping_add(offset),
+                        end,
+                        &raw mut next_pointer,
+                    )
+                }
+            }
         } else {
             let processor: Processor = match parser.m_processor {
                 ProcessorState::PrologInit => prologInitProcessor,
                 ProcessorState::Content => unreachable!("content dispatch is handled above"),
                 ProcessorState::ExternalEntityInit => externalEntityInitProcessor,
                 ProcessorState::ExternalEntityInit2 => externalEntityInitProcessor2,
-                ProcessorState::ExternalEntityInit3 => externalEntityInitProcessor3,
+                ProcessorState::ExternalEntityInit3 => {
+                    unreachable!("external entity init processor 3 is dispatched directly")
+                }
                 ProcessorState::ExternalEntityContent => externalEntityContentProcessor,
                 ProcessorState::ExternalParEntInit => externalParEntInitProcessor,
                 ProcessorState::ExternalParEnt => externalParEntProcessor,
@@ -10772,42 +10802,95 @@ unsafe extern "C" fn externalEntityInitProcessor2(
         }
         ExternalEntityInit2Action::Abort(result) => result,
         ExternalEntityInit2Action::Continue(offset) => {
-            externalEntityInitProcessor3(parser, start.wrapping_add(offset), end, endPtr)
+            let Some(remaining) = input.get(offset..) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            match external_entity_init_processor3_impl(parser_state, remaining) {
+                ExternalEntityInit3Action::Return(result, continuation) => {
+                    let Some(cursor) = offset
+                        .checked_add(continuation)
+                        .filter(|cursor| *cursor <= input.len())
+                    else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    *endPtr = start.wrapping_add(cursor);
+                    result
+                }
+                ExternalEntityInit3Action::ContinueContent(continuation) => {
+                    let Some(content_start) = offset
+                        .checked_add(continuation)
+                        .filter(|cursor| *cursor <= input.len())
+                    else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    externalEntityContentProcessor(
+                        parser,
+                        start.wrapping_add(content_start),
+                        end,
+                        endPtr,
+                    )
+                }
+            }
         }
     }
 }
 
-unsafe extern "C" fn externalEntityInitProcessor3(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let mut tok: ::core::ffi::c_int = 0;
-    let mut next: *const ::core::ffi::c_char = start;
-    // The processor dispatch keeps the parser allocation alive and exclusive
-    // for this call.  Borrow it once at the raw boundary so the state-machine
-    // transition below uses checked Rust field access throughout.
-    let parser = &mut *parser;
-    set_parser_event_start_address(parser, start.addr());
-    let encoding = parser_encoding(parser);
-    let scan = scanner_context_from_raw(
-        (*encoding).scanners[1 as usize],
-        encoding,
-        start,
-        end,
-    )
-    .scan();
-    tok = scan.token;
-    if let Some(offset) = scan.next {
-        next = start.wrapping_add(offset);
+/// Outcome of processing the external entity's first complete token.
+///
+/// The state machine keeps its cursor as an offset into the bounded input;
+/// only the raw processor adapter reconstructs the legacy C cursor.
+enum ExternalEntityInit3Action {
+    Return(crate::expat_h::XML_Error, usize),
+    ContinueContent(usize),
+}
+
+/// Advance an external entity from its initial scanner to content processing.
+///
+/// The input comes from the processor adapter after it has validated the raw
+/// cursor pair.  Keeping the scan and parser transition here means declaration
+/// handling works with a bounded slice and checked cursor offsets throughout.
+fn external_entity_init_processor3_impl(
+    parser: &mut XML_ParserStruct,
+    input: &[::core::ffi::c_char],
+) -> ExternalEntityInit3Action {
+    let Some(scan) = external_entity_init_scan(parser, input) else {
+        return ExternalEntityInit3Action::Return(
+            crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            0,
+        );
+    };
+    external_entity_init_processor3_transition(parser, scan, input.as_ptr().addr(), input.len())
+}
+
+/// Apply the post-scan external-entity state transition using a bounded
+/// cursor result.  Both raw and slice-backed processor paths use this same
+/// offset-based logic.
+fn external_entity_init_processor3_transition(
+    parser: &mut XML_ParserStruct,
+    scan: crate::src::xmltok::ScannerResult,
+    start_address: usize,
+    input_len: usize,
+) -> ExternalEntityInit3Action {
+    set_parser_event_start_address(parser, start_address);
+    let next_offset = scan.next.unwrap_or(0);
+    if next_offset > input_len {
+        return ExternalEntityInit3Action::Return(
+            crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            0,
+        );
     }
-    set_parser_event_end_address(parser, next.addr());
-    let early_return = match tok {
+    let Some(next_address) = start_address.checked_add(next_offset) else {
+        return ExternalEntityInit3Action::Return(
+            crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            0,
+        );
+    };
+    set_parser_event_end_address(parser, next_address);
+    let continuation_offset = match scan.token {
         crate::src::xmltok::XML_TOK_XML_DECL => {
-            let declaration_input = match declaration_token_bytes(parser, start.addr(), next.addr()) {
+            let declaration_input = match declaration_token_bytes(parser, start_address, next_address) {
                 Ok(input) => input,
-                Err(error) => return error,
+                Err(error) => return ExternalEntityInit3Action::Return(error, 0),
             };
             let declaration_encoding = current_parser_encoding(parser);
             let declaration_encoding_address = std::ptr::from_ref(declaration_encoding).addr();
@@ -10817,53 +10900,64 @@ unsafe extern "C" fn externalEntityInitProcessor3(
                 1 as ::core::ffi::c_int,
                 &declaration_encoding,
                 declaration_encoding_address,
-                start.addr(),
+                start_address,
                 &declaration_input,
             );
             if result as ::core::ffi::c_uint
                 != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
-                return result;
+                return ExternalEntityInit3Action::Return(result, 0);
             }
             match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
-                3 => Some((crate::expat_h::XML_ERROR_NONE, next)),
-                2 => return crate::expat_h::XML_ERROR_ABORTED,
+                3 => {
+                    return ExternalEntityInit3Action::Return(
+                        crate::expat_h::XML_ERROR_NONE,
+                        next_offset,
+                    );
+                }
+                2 => {
+                    return ExternalEntityInit3Action::Return(
+                        crate::expat_h::XML_ERROR_ABORTED,
+                        0,
+                    );
+                }
                 1 => {
                     if parser.m_reenter != 0 {
-                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        return ExternalEntityInit3Action::Return(
+                            crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            0,
+                        );
                     }
-                    start = next;
-                    None
+                    next_offset
                 }
-                _ => {
-                    start = next;
-                    None
-                }
+                _ => next_offset,
             }
         }
         crate::src::xmltok::XML_TOK_PARTIAL => {
             if parser.m_parsingStatus.finalBuffer == 0 {
-                Some((crate::expat_h::XML_ERROR_NONE, start))
+                return ExternalEntityInit3Action::Return(crate::expat_h::XML_ERROR_NONE, 0);
             } else {
-                return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+                return ExternalEntityInit3Action::Return(
+                    crate::expat_h::XML_ERROR_UNCLOSED_TOKEN,
+                    0,
+                );
             }
         }
         crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
             if parser.m_parsingStatus.finalBuffer == 0 {
-                Some((crate::expat_h::XML_ERROR_NONE, start))
+                return ExternalEntityInit3Action::Return(crate::expat_h::XML_ERROR_NONE, 0);
             } else {
-                return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
+                return ExternalEntityInit3Action::Return(
+                    crate::expat_h::XML_ERROR_PARTIAL_CHAR,
+                    0,
+                );
             }
         }
-        _ => None,
+        _ => 0,
     };
-    if let Some((result, cursor)) = early_return {
-        *endPtr = cursor;
-        return result;
-    }
     parser.m_processor = ProcessorState::ExternalEntityContent;
     parser.m_tagLevel = 1 as ::core::ffi::c_int;
-    return externalEntityContentProcessor(parser, start, end, endPtr);
+    ExternalEntityInit3Action::ContinueContent(continuation_offset)
 }
 
 unsafe extern "C" fn externalEntityContentProcessor(
