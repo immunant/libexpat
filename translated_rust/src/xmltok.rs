@@ -1497,32 +1497,6 @@ pub mod xmltok_impl_c {
         normal_scan_end_tag_result(crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    pub unsafe extern "C" fn normal_scanEndTag(
-        normal: &normal_encoding,
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let result = normal_scan_end_tag_impl(normal, input, |kind, offset, width| {
-            let kind = match kind {
-                NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
-                NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
-                NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
-            };
-            normal_char_check(normal, kind, width, enc, ptr.add(offset), &input[offset..])
-        });
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
-    }
-
     fn normal_scan_hex_char_ref_impl(
         enc: &normal_encoding,
         input: &[::core::ffi::c_char],
@@ -2240,7 +2214,26 @@ pub mod xmltok_impl_c {
                 normal_scanPi(enc, ptr.add(start), end, nextTokPtr)
             }
             NormalScanLtAction::EndTag(start) => {
-                normal_scanEndTag(normal, enc, ptr.add(start), end, nextTokPtr)
+                let end_tag_input = &input[start..];
+                let result = normal_scan_end_tag_impl(normal, end_tag_input, |kind, offset, width| {
+                    let kind = match kind {
+                        NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
+                        NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
+                        NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
+                    };
+                    normal_char_check(
+                        normal,
+                        kind,
+                        width,
+                        enc,
+                        ptr.add(start + offset),
+                        &end_tag_input[offset..],
+                    )
+                });
+                if let Some(next) = result.next {
+                    *nextTokPtr = ptr.add(start + next);
+                }
+                result.token
             }
             NormalScanLtAction::Attributes(start) => {
                 let attributes = &input[start..];
@@ -11901,7 +11894,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanComment;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanDecl;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanEndTag;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
