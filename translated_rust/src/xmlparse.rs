@@ -1840,6 +1840,65 @@ pub struct ELEMENT_TYPE {
     pub defaultAtts: *mut DEFAULT_ATTRIBUTE,
 }
 
+impl ELEMENT_TYPE {
+    fn default_atts(&self) -> &[DEFAULT_ATTRIBUTE] {
+        if self.defaultAtts.is_null() || self.nDefaultAtts == 0 {
+            &[]
+        } else {
+            unsafe { ::core::slice::from_raw_parts(self.defaultAtts, self.nDefaultAtts as usize) }
+        }
+    }
+
+    fn default_att_slots_mut(&mut self) -> &mut [DEFAULT_ATTRIBUTE] {
+        if self.defaultAtts.is_null() || self.allocDefaultAtts == 0 {
+            &mut []
+        } else {
+            unsafe {
+                ::core::slice::from_raw_parts_mut(self.defaultAtts, self.allocDefaultAtts as usize)
+            }
+        }
+    }
+
+    fn ensure_default_att_capacity(&mut self, allocator: &ExpatAllocator) -> bool {
+        if self.nDefaultAtts != self.allocDefaultAtts {
+            return true;
+        }
+
+        if self.allocDefaultAtts == 0 as ::core::ffi::c_int {
+            self.allocDefaultAtts = 8 as ::core::ffi::c_int;
+            self.defaultAtts = allocator.malloc(
+                (self.allocDefaultAtts as crate::__stddef_size_t_h::size_t)
+                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
+                        as crate::__stddef_size_t_h::size_t),
+                7182 as ::core::ffi::c_int,
+            ) as *mut DEFAULT_ATTRIBUTE;
+            if self.defaultAtts.is_null() {
+                self.allocDefaultAtts = 0 as ::core::ffi::c_int;
+                return false;
+            }
+        } else {
+            if self.allocDefaultAtts > crate::limits_h::INT_MAX / 2 as ::core::ffi::c_int {
+                return false;
+            }
+            let count = self.allocDefaultAtts * 2 as ::core::ffi::c_int;
+            let temp = allocator.realloc(
+                self.defaultAtts as *mut ::core::ffi::c_void,
+                (count as crate::__stddef_size_t_h::size_t)
+                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
+                        as crate::__stddef_size_t_h::size_t),
+                7208 as ::core::ffi::c_int,
+            ) as *mut DEFAULT_ATTRIBUTE;
+            if temp.is_null() {
+                return false;
+            }
+            self.allocDefaultAtts = count;
+            self.defaultAtts = temp;
+        }
+
+        true
+    }
+}
+
 impl DTD {
     fn new(parser: crate::expat_h::XML_Parser) -> Self {
         Self {
@@ -9105,12 +9164,12 @@ unsafe extern "C" fn doProlog(
             35 | 36 => {
                 if (*dtd).keepProcessing != 0 {
                     if defineAttribute(
-                        (*parser).m_declElementType,
-                        (*parser).m_declAttributeId,
+                        &mut *(*parser).m_declElementType,
+                        &mut *(*parser).m_declAttributeId,
                         (*parser).m_declAttributeIsCdata,
                         (*parser).m_declAttributeIsId,
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                        parser,
+                        &mut *parser,
                     ) == 0
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -9198,12 +9257,12 @@ unsafe extern "C" fn doProlog(
                     attVal = (*dtd).pool.start;
                     (*dtd).pool.start = (*dtd).pool.ptr;
                     if defineAttribute(
-                        (*parser).m_declElementType,
-                        (*parser).m_declAttributeId,
+                        &mut *(*parser).m_declElementType,
+                        &mut *(*parser).m_declAttributeId,
                         (*parser).m_declAttributeIsCdata,
                         crate::expat_h::XML_FALSE,
                         attVal,
-                        parser,
+                        &mut *parser,
                     ) == 0
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -11447,74 +11506,37 @@ fn normalizeLines(s: &mut [crate::expat_external_h::XML_Char]) {
     }
 }
 
-unsafe extern "C" fn defineAttribute(
-    mut type_0: *mut ELEMENT_TYPE,
-    mut attId: *mut ATTRIBUTE_ID,
-    mut isCdata: crate::expat_h::XML_Bool,
-    mut isId: crate::expat_h::XML_Bool,
-    mut value: *const crate::expat_external_h::XML_Char,
-    mut parser: crate::expat_h::XML_Parser,
+fn defineAttribute(
+    type_0: &mut ELEMENT_TYPE,
+    attId: &mut ATTRIBUTE_ID,
+    isCdata: crate::expat_h::XML_Bool,
+    isId: crate::expat_h::XML_Bool,
+    value: *const crate::expat_external_h::XML_Char,
+    parser: &mut XML_ParserStruct,
 ) -> ::core::ffi::c_int {
-    let mut att: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
     if !value.is_null() || isId as ::core::ffi::c_int != 0 {
-        let mut i: ::core::ffi::c_int = 0;
-        i = 0 as ::core::ffi::c_int;
-        while i < (*type_0).nDefaultAtts {
-            if attId == (*(*type_0).defaultAtts.offset(i as isize)).id as *mut ATTRIBUTE_ID {
+        for att in type_0.default_atts() {
+            if ::core::ptr::eq(attId as *const ATTRIBUTE_ID, att.id) {
                 return 1 as ::core::ffi::c_int;
             }
-            i += 1;
         }
-        if isId as ::core::ffi::c_int != 0 && (*type_0).idAtt.is_null() && (*attId).xmlns == 0 {
-            (*type_0).idAtt = attId;
-        }
-    }
-    if (*type_0).nDefaultAtts == (*type_0).allocDefaultAtts {
-        if (*type_0).allocDefaultAtts == 0 as ::core::ffi::c_int {
-            (*type_0).allocDefaultAtts = 8 as ::core::ffi::c_int;
-            (*type_0).defaultAtts = expat_malloc(
-                parser,
-                ((*type_0).allocDefaultAtts as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
-                        as crate::__stddef_size_t_h::size_t),
-                7182 as ::core::ffi::c_int,
-            ) as *mut DEFAULT_ATTRIBUTE;
-            if (*type_0).defaultAtts.is_null() {
-                (*type_0).allocDefaultAtts = 0 as ::core::ffi::c_int;
-                return 0 as ::core::ffi::c_int;
-            }
-        } else {
-            let mut temp: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
-            if (*type_0).allocDefaultAtts > crate::limits_h::INT_MAX / 2 as ::core::ffi::c_int {
-                return 0 as ::core::ffi::c_int;
-            }
-            let mut count: ::core::ffi::c_int =
-                (*type_0).allocDefaultAtts * 2 as ::core::ffi::c_int;
-            temp = expat_realloc(
-                parser,
-                (*type_0).defaultAtts as *mut ::core::ffi::c_void,
-                (count as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
-                        as crate::__stddef_size_t_h::size_t),
-                7208 as ::core::ffi::c_int,
-            ) as *mut DEFAULT_ATTRIBUTE;
-            if temp.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            (*type_0).allocDefaultAtts = count;
-            (*type_0).defaultAtts = temp;
+        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_null() && attId.xmlns == 0 {
+            type_0.idAtt = attId as *const ATTRIBUTE_ID;
         }
     }
-    att = (*type_0)
-        .defaultAtts
-        .offset((*type_0).nDefaultAtts as isize);
-    (*att).id = attId;
-    (*att).value = value;
-    (*att).isCdata = isCdata;
+    let allocator = ExpatAllocator::new(parser.as_raw_parser());
+    if !type_0.ensure_default_att_capacity(&allocator) {
+        return 0 as ::core::ffi::c_int;
+    }
+    let default_att_index = type_0.nDefaultAtts as usize;
+    let att = &mut type_0.default_att_slots_mut()[default_att_index];
+    att.id = attId;
+    att.value = value;
+    att.isCdata = isCdata;
     if isCdata == 0 {
-        (*attId).maybeTokenized = crate::expat_h::XML_TRUE;
+        attId.maybeTokenized = crate::expat_h::XML_TRUE;
     }
-    (*type_0).nDefaultAtts += 1 as ::core::ffi::c_int;
+    type_0.nDefaultAtts += 1 as ::core::ffi::c_int;
     return 1 as ::core::ffi::c_int;
 }
 
