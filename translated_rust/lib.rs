@@ -707,7 +707,11 @@ pub mod expat_h {
         pub map: [::core::ffi::c_int; 256],
         pub data: *mut ::core::ffi::c_void,
         pub convert: Option<
-            unsafe extern "C" fn(
+            // `XML_Encoding` is filled by an unknown-encoding handler before
+            // Expat retains it.  Its `convert` callback receives only the
+            // opaque `data` token and a pointer into parser-owned input; the
+            // parser-side adapter establishes both parts of that contract.
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const ::core::ffi::c_char,
             ) -> ::core::ffi::c_int,

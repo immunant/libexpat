@@ -18459,7 +18459,7 @@ impl UnknownEncodingConverterCallbackAdapter {
         let callback = info.convert?;
         let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
         Some(Self {
-            invoke: std::sync::Arc::new(move |input: &[u8]| unsafe {
+            invoke: std::sync::Arc::new(move |input: &[u8]| {
                 callback(
                     callback_arg.load(std::sync::atomic::Ordering::Relaxed),
                     input.as_ptr().cast::<::core::ffi::c_char>(),
