@@ -7141,27 +7141,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_scanDecl(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
-        let normal = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = big2_scan_decl_impl(normal, input);
-        if let Some(offset) = next {
-            if offset <= input.len() {
-                unsafe { *nextTokPtr = ptr.add(offset) };
-            }
-        }
-        token
-    }
-
     fn big2_scan_outcome_result(
         outcome: Big2ScanOutcome,
         base: usize,
@@ -7176,8 +7155,8 @@ pub mod xmltok_impl_c {
     }
 
     /// Scans the part of a declaration following `<!` using offsets into the
-    /// supplied UTF-16BE input.  The raw-pointer adapter retains the legacy
-    /// ABI; prolog scanning uses this bounded form directly.
+    /// supplied UTF-16BE input. Prolog scanning uses this bounded form
+    /// directly.
     fn big2_scan_decl_impl(
         enc: &normal_encoding,
         input: &[::core::ffi::c_char],
@@ -11649,7 +11628,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
-pub use crate::src::xmltok::xmltok_impl_c::big2_scanDecl;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPercent;
