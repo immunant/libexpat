@@ -10447,28 +10447,22 @@ unsafe fn doContent(
                     // characters, so a local byte view covers both UTF-8
                     // and UTF-16 without manufacturing a slice from a raw
                     // cursor.
-                    let predefined = match event_raw_name_source(
-                        parser,
-                        &*dtd,
-                        parser_events,
+                    // `source` is the checked, owned window for this token
+                    // scan.  Reuse it for the entity name rather than
+                    // recovering a second borrowed view of the DTD-backed
+                    // entity text.  The address range is still checked
+                    // against this exact snapshot before it reaches the
+                    // tokenizer's encoding-specific matcher.
+                    let predefined = content_token_chars_between(
+                        &source,
+                        s.addr(),
                         entity_start.addr(),
                         entity_end.addr(),
-                    ) {
-                        Some(RawNameSource::Chars(chars)) => {
-                            crate::src::xmltok::predefined_entity_name(entity_name_matcher, chars)
-                        }
-                        Some(RawNameSource::Bytes(bytes)) if bytes.len() <= 8 => {
-                            let mut name = [0 as ::core::ffi::c_char; 8];
-                            for (destination, &source) in name.iter_mut().zip(bytes.iter()) {
-                                *destination = source as ::core::ffi::c_char;
-                            }
-                            crate::src::xmltok::predefined_entity_name(
-                                entity_name_matcher,
-                                &name[..bytes.len()],
-                            )
-                        }
-                        _ => 0,
-                    };
+                    )
+                    .filter(|name| name.len() <= 8)
+                    .map_or(0, |name| {
+                        crate::src::xmltok::predefined_entity_name(entity_name_matcher, name)
+                    });
                     let ch: crate::expat_external_h::XML_Char =
                         predefined as crate::expat_external_h::XML_Char;
                     if ch != 0 {
@@ -11274,16 +11268,16 @@ unsafe fn doContent(
                     // token, so resolve the cursor range through the parser
                     // or active entity that owns it before decoding.  This
                     // avoids manufacturing a byte slice from raw cursors.
-                    let Some(token) = event_raw_name_source(
-                        parser,
-                        &*dtd,
-                        parser_events,
+                    let Some(token) = content_token_chars_between(
+                        &source,
+                        s.addr(),
                         s.addr(),
                         next.addr(),
                     ) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let mut n: ::core::ffi::c_int = token.decode_char_ref(encoding.charRefNumber);
+                    let mut n: ::core::ffi::c_int =
+                        RawNameSource::Chars(token).decode_char_ref(encoding.charRefNumber);
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }
