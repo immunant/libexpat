@@ -1881,6 +1881,30 @@ enum EncodingState {
     Unknown,
 }
 
+// The conversion scratch buffer is Rust-owned, while the allocation token
+// preserves the configured Expat allocator's allocation/free accounting.
+// The token's memory is deliberately never dereferenced.
+struct DataBuffer {
+    chars: Vec<crate::expat_external_h::XML_Char>,
+    backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
+}
+
+impl DataBuffer {
+    fn empty() -> Self {
+        Self {
+            chars: Vec::new(),
+            backing: None,
+        }
+    }
+
+    fn release(&mut self, source_line: ::core::ffi::c_int) {
+        if let Some(mut backing) = self.backing.take() {
+            backing(source_line);
+        }
+        self.chars = Vec::new();
+    }
+}
+
 #[repr(C)]
 pub struct XML_ParserStruct {
     pub m_userData: *mut ::core::ffi::c_void,
@@ -1895,8 +1919,8 @@ pub struct XML_ParserStruct {
     pub m_partialTokenBytesBefore: crate::__stddef_size_t_h::size_t,
     pub m_reparseDeferralEnabled: crate::expat_h::XML_Bool,
     pub m_lastBufferRequestSize: ::core::ffi::c_int,
-    pub m_dataBuf: *mut crate::expat_external_h::XML_Char,
-    pub m_dataBufEnd: *mut crate::expat_external_h::XML_Char,
+    m_dataBuf: DataBuffer,
+    m_dataBufEnd: usize,
     pub m_startElementHandler: bool,
     pub m_endElementHandler: bool,
     pub m_characterDataHandler: bool,
@@ -3404,8 +3428,8 @@ fn initial_parser_struct(
         m_partialTokenBytesBefore: 0,
         m_reparseDeferralEnabled: crate::expat_h::XML_FALSE,
         m_lastBufferRequestSize: 0,
-        m_dataBuf: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
-        m_dataBufEnd: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
+        m_dataBuf: DataBuffer::empty(),
+        m_dataBufEnd: 0,
         m_startElementHandler: false,
         m_endElementHandler: false,
         m_characterDataHandler: false,
@@ -3654,13 +3678,33 @@ unsafe extern "C" fn parserCreate(
         );
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
-    parser.m_dataBuf = expat_malloc(
+    let mut data_buf_backing = match allocation_backing(
         parser,
-        (1024 as crate::__stddef_size_t_h::size_t)
+        (INIT_DATA_BUF_SIZE as crate::__stddef_size_t_h::size_t)
             .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
         1462 as ::core::ffi::c_int,
-    ) as *mut crate::expat_external_h::XML_Char;
-    if parser.m_dataBuf.is_null() {
+    ) {
+        Some(backing) => backing,
+        None => {
+            expat_free(
+                parser,
+                parser.m_atts as *mut ::core::ffi::c_void,
+                1464 as ::core::ffi::c_int,
+            );
+            expat_free(
+                parser,
+                parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
+                1468 as ::core::ffi::c_int,
+            );
+            return ::core::ptr::null_mut::<XML_ParserStruct>();
+        }
+    };
+    let mut data_buf_chars = Vec::new();
+    if data_buf_chars
+        .try_reserve_exact(INIT_DATA_BUF_SIZE as usize)
+        .is_err()
+    {
+        data_buf_backing(1464 as ::core::ffi::c_int);
         expat_free(
             parser,
             parser.m_atts as *mut ::core::ffi::c_void,
@@ -3673,17 +3717,18 @@ unsafe extern "C" fn parserCreate(
         );
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
-    parser.m_dataBufEnd = parser.m_dataBuf.offset(INIT_DATA_BUF_SIZE as isize);
+    data_buf_chars.resize(INIT_DATA_BUF_SIZE as usize, 0);
+    parser.m_dataBuf = DataBuffer {
+        chars: data_buf_chars,
+        backing: Some(data_buf_backing),
+    };
+    parser.m_dataBufEnd = INIT_DATA_BUF_SIZE as usize;
     if !dtd.is_null() {
         parser.m_dtd = dtd;
     } else {
         parser.m_dtd = dtdCreate(parser);
         if parser.m_dtd.is_null() {
-            expat_free(
-                parser,
-                parser.m_dataBuf as *mut ::core::ffi::c_void,
-                1478 as ::core::ffi::c_int,
-            );
+            parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
             expat_free(
                 parser,
                 parser.m_atts as *mut ::core::ffi::c_void,
@@ -4733,11 +4778,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     parser.m_mem.free_fcn.expect("non-null function pointer")(
         parser.m_buffer as *mut ::core::ffi::c_void,
     );
-    expat_free(
-        parser as *mut XML_ParserStruct,
-        parser.m_dataBuf as *mut ::core::ffi::c_void,
-        2011 as ::core::ffi::c_int,
-    );
+    parser.m_dataBuf.release(2011 as ::core::ffi::c_int);
     expat_free(
         parser as *mut XML_ParserStruct,
         parser.m_nsAtts as *mut ::core::ffi::c_void,
@@ -7795,7 +7836,7 @@ unsafe extern "C" fn doContent(
                     } else if false && (*parser).m_characterDataHandler {
                         callCharacterDataHandler(
                             parser,
-                            (*parser).m_dataBuf,
+                            (*parser).m_dataBuf.chars.as_ptr(),
                             0 as ::core::ffi::c_int,
                         );
                     } else if (*parser).m_defaultHandler {
@@ -7820,19 +7861,26 @@ unsafe extern "C" fn doContent(
                     }
                     if (*parser).m_characterDataHandler {
                         if (*enc).isUtf8 == 0 {
-                            let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
+                            let (data_start, data_end) = {
+                                let parser_ref = &mut *parser;
+                                let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
+                                (
+                                    data_start,
+                                    data_start.wrapping_add(parser_ref.m_dataBufEnd),
+                                )
+                            };
+                            let mut dataPtr: *mut ICHAR = data_start;
                             crate::src::xmltok::convert_to_utf8(
                                 enc,
                                 &raw mut s,
                                 end,
                                 &raw mut dataPtr,
-                                (*parser).m_dataBufEnd as *mut ICHAR,
+                                data_end,
                             );
                             callCharacterDataHandler(
                                 parser,
-                                (*parser).m_dataBuf,
-                                dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
-                                    as ::core::ffi::c_int,
+                                data_start,
+                                dataPtr.offset_from(data_start) as ::core::ffi::c_int,
                             );
                         } else {
                             callCharacterDataHandler(
@@ -7866,22 +7914,29 @@ unsafe extern "C" fn doContent(
                         .cloned();
                     if let Some(charDataHandler) = charDataHandler {
                         if (*enc).isUtf8 == 0 {
+                            let (data_start, data_end) = {
+                                let parser_ref = &mut *parser;
+                                let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
+                                (
+                                    data_start,
+                                    data_start.wrapping_add(parser_ref.m_dataBufEnd),
+                                )
+                            };
                             loop {
-                                let mut dataPtr_0: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
+                                let mut dataPtr_0: *mut ICHAR = data_start;
                                 let convert_res_0: crate::src::xmltok::XML_Convert_Result =
                                     crate::src::xmltok::convert_to_utf8(
                                         enc,
                                         &raw mut s,
                                         next,
                                         &raw mut dataPtr_0,
-                                        (*parser).m_dataBufEnd as *mut ICHAR,
+                                        data_end,
                                     );
                                 *eventEndPP = s;
                                 charDataHandler.invoke(
                                     (*parser).m_handlerArg,
-                                    (*parser).m_dataBuf,
-                                    dataPtr_0.offset_from((*parser).m_dataBuf as *mut ICHAR)
-                                        as ::core::ffi::c_int,
+                                    data_start,
+                                    dataPtr_0.offset_from(data_start) as ::core::ffi::c_int,
                                 );
                                 if convert_res_0 as ::core::ffi::c_uint
                                     == crate::src::xmltok::XML_CONVERT_COMPLETED
@@ -9180,7 +9235,11 @@ unsafe extern "C" fn doCdataSection(
                         (*parser).m_handlerArg
                     );
                 } else if false && (*parser).m_characterDataHandler {
-                    callCharacterDataHandler(parser, (*parser).m_dataBuf, 0 as ::core::ffi::c_int);
+                    callCharacterDataHandler(
+                        parser,
+                        (*parser).m_dataBuf.chars.as_ptr(),
+                        0 as ::core::ffi::c_int,
+                    );
                 } else if (*parser).m_defaultHandler {
                     reportDefault(parser, enc, s, next);
                 }
@@ -9212,22 +9271,29 @@ unsafe extern "C" fn doCdataSection(
                     .cloned();
                 if let Some(charDataHandler) = charDataHandler {
                     if (*enc).isUtf8 == 0 {
+                        let (data_start, data_end) = {
+                            let parser_ref = &mut *parser;
+                            let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
+                            (
+                                data_start,
+                                data_start.wrapping_add(parser_ref.m_dataBufEnd),
+                            )
+                        };
                         loop {
-                            let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
+                            let mut dataPtr: *mut ICHAR = data_start;
                             let convert_res: crate::src::xmltok::XML_Convert_Result =
                                 crate::src::xmltok::convert_to_utf8(
                                     enc,
                                     &raw mut s,
                                     next,
                                     &raw mut dataPtr,
-                                    (*parser).m_dataBufEnd as *mut ICHAR,
+                                data_end,
                                 );
                             *eventEndPP = next;
                             charDataHandler.invoke(
                                 (*parser).m_handlerArg,
-                                (*parser).m_dataBuf,
-                                dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
-                                    as ::core::ffi::c_int,
+                                data_start,
+                                dataPtr.offset_from(data_start) as ::core::ffi::c_int,
                             );
                             if convert_res as ::core::ffi::c_uint
                                 == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
@@ -13340,14 +13406,22 @@ unsafe extern "C" fn reportDefault(
             eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
             eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
         }
+        let (data_start, data_end) = {
+            let parser_ref = &mut *parser;
+            let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
+            (
+                data_start,
+                data_start.wrapping_add(parser_ref.m_dataBufEnd),
+            )
+        };
         loop {
-            let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
+            let mut dataPtr: *mut ICHAR = data_start;
             convert_res = crate::src::xmltok::convert_to_utf8(
                 enc,
                 &raw mut s,
                 end,
                 &raw mut dataPtr,
-                (*parser).m_dataBufEnd as *mut ICHAR,
+                data_end,
             );
             *eventEndPP = s;
             let callback = DEFAULT_HANDLERS
@@ -13359,8 +13433,8 @@ unsafe extern "C" fn reportDefault(
                 .expect("default callback must be registered when installed");
             callback.invoke(
                 (*parser).m_handlerArg,
-                (*parser).m_dataBuf,
-                dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR) as ::core::ffi::c_int,
+                data_start,
+                dataPtr.offset_from(data_start) as ::core::ffi::c_int,
             );
             *eventPP = s;
             if !(convert_res as ::core::ffi::c_uint
