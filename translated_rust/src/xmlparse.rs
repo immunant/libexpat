@@ -3420,6 +3420,27 @@ fn entity_text_chars(
     }
 }
 
+// A shared DTD is held in an `UnsafeCell` only because parent and child
+// parsers share it.  Entity-event consumers never retain the returned slice:
+// they resolve it for one token and release it before a callback can re-enter
+// the parser.  Keep the one cell access here rather than repeating raw DTD
+// dereferences at every cursor boundary.
+unsafe fn shared_entity_text_chars(
+    dtd: &SharedDtd,
+    text: EntityTextRef,
+    length: ::core::ffi::c_int,
+) -> Option<&[crate::expat_external_h::XML_Char]> {
+    entity_text_chars(&*dtd.value.get(), text, length)
+}
+
+unsafe fn shared_event_text_window(
+    dtd: &SharedDtd,
+    entity: &OPEN_INTERNAL_ENTITY,
+) -> Option<(usize, usize)> {
+    let text = shared_entity_text_chars(dtd, entity.eventText, entity.eventTextLen)?;
+    Some((text.as_ptr().addr(), text.len()))
+}
+
 // Internal-entity events are locations in the entity's replacement text, not
 // addresses into its growable pool.  This representation remains valid when a
 // callback grows that pool and moves its backing allocation.
@@ -7569,8 +7590,8 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
             let (event_start, event_end) = {
                 let parser_state = &*parser;
                 let event = parser_state.m_dtd.as_ref().and_then(|dtd| {
-                    let text = entity_text_chars(
-                        &*dtd.value.get(),
+                    let text = shared_entity_text_chars(
+                        dtd,
                         open_entity.node().eventText,
                         open_entity.node().eventTextLen,
                     )?;
@@ -10700,7 +10721,7 @@ unsafe extern "C" fn doCdataSection(
                 dtd,
             ));
             let (text_ref, text_len, dtd) = internal_event_text.as_ref().expect("internal event text was set");
-            let Some(text) = entity_text_chars(&*dtd.value.get(), *text_ref, *text_len) else {
+            let Some(text) = shared_entity_text_chars(dtd, *text_ref, *text_len) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             internal_event_window = Some((text.as_ptr().addr(), text.len()));
@@ -10740,8 +10761,7 @@ unsafe extern "C" fn doCdataSection(
                 let Some((text_ref, text_len, dtd)) = internal_event_text.as_ref() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                let dtd = &*dtd.value.get();
-                let Some(text) = entity_text_chars(dtd, *text_ref, *text_len) else {
+                let Some(text) = shared_entity_text_chars(dtd, *text_ref, *text_len) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
                 let Some(start) = s.addr().checked_sub(text.as_ptr().addr()) else {
@@ -11020,7 +11040,7 @@ unsafe extern "C" fn doIgnoreSection(
             .m_dtd
             .as_ref()
             .expect("internal entity parsing requires a DTD");
-        let Some(window) = event_text_window(&*dtd.value.get(), open_entity) else {
+        let Some(window) = shared_event_text_window(dtd, open_entity) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         internal_event_window = Some(window);
@@ -11842,15 +11862,15 @@ unsafe extern "C" fn doProlog(
     // dereferencing its raw handle.
     let parser = &mut *parser;
     let parser_key = parser as *mut XML_ParserStruct as usize;
-    let dtd = parser_dtd_ptr!(parser);
-    let dtd_pool: *mut STRING_POOL = &raw mut (*dtd).pool;
+    let dtd = &mut *parser_dtd_ptr!(parser);
+    let dtd_pool: *mut STRING_POOL = &raw mut dtd.pool;
     let parser_handle: crate::expat_h::XML_Parser = parser;
-    let dtd_handle = dtd;
+    let dtd_handle = dtd as *mut DTD;
     // The declaration cursor stores a pool key instead of an address into a
     // hash-table slot.  Resolve that key only while the current prolog token
     // is being handled; a later table growth cannot leave parser state with a
     // stale slot address.
-    let resolve_declared_entity = move |declaration: DeclaredEntity| {
+    let mut resolve_declared_entity = move |declaration: DeclaredEntity| {
         let dtd = &mut *dtd_handle;
         let (is_parameter, name) = match declaration {
             DeclaredEntity::General(name) => (
@@ -11920,10 +11940,7 @@ unsafe extern "C" fn doProlog(
             )
         };
         let open_entity = &mut *open_entity;
-        let Some(window) = event_text_window(
-            &*dtd,
-            open_entity,
-        ) else {
+        let Some(window) = event_text_window(dtd, open_entity) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         internal_event_window = Some(window);
@@ -16072,7 +16089,7 @@ unsafe extern "C" fn reportDefault(
                 .m_dtd
                 .as_ref()
                 .expect("internal entity default reporting requires a DTD");
-            let Some(window) = event_text_window(&*dtd.value.get(), open_entity) else {
+            let Some(window) = shared_event_text_window(dtd, open_entity) else {
                 return;
             };
             internal_event_window = Some(window);
