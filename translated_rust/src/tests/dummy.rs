@@ -1,0 +1,275 @@
+extern "C" {
+    pub type XML_ParserStruct;
+    fn XML_FreeContentModel(parser: XML_Parser, model: *mut XML_Content);
+    static mut g_parser: XML_Parser;
+}
+pub type XML_Char = ::core::ffi::c_char;
+pub type XML_Parser = *mut XML_ParserStruct;
+pub type XML_Content_Type = ::core::ffi::c_uint;
+pub const XML_CTYPE_SEQ: XML_Content_Type = 6;
+pub const XML_CTYPE_CHOICE: XML_Content_Type = 5;
+pub const XML_CTYPE_NAME: XML_Content_Type = 4;
+pub const XML_CTYPE_MIXED: XML_Content_Type = 3;
+pub const XML_CTYPE_ANY: XML_Content_Type = 2;
+pub const XML_CTYPE_EMPTY: XML_Content_Type = 1;
+pub type XML_Content_Quant = ::core::ffi::c_uint;
+pub const XML_CQUANT_PLUS: XML_Content_Quant = 3;
+pub const XML_CQUANT_REP: XML_Content_Quant = 2;
+pub const XML_CQUANT_OPT: XML_Content_Quant = 1;
+pub const XML_CQUANT_NONE: XML_Content_Quant = 0;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct XML_cp {
+    pub type_0: XML_Content_Type,
+    pub quant: XML_Content_Quant,
+    pub name: *mut XML_Char,
+    pub numchildren: ::core::ffi::c_uint,
+    pub children: *mut XML_Content,
+}
+pub type XML_Content = XML_cp;
+pub const DUMMY_START_DOCTYPE_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 0 as ::core::ffi::c_int;
+pub const DUMMY_END_DOCTYPE_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 1 as ::core::ffi::c_int;
+pub const DUMMY_ENTITY_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 2 as ::core::ffi::c_int;
+pub const DUMMY_NOTATION_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 3 as ::core::ffi::c_int;
+pub const DUMMY_ELEMENT_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 4 as ::core::ffi::c_int;
+pub const DUMMY_ATTLIST_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 5 as ::core::ffi::c_int;
+pub const DUMMY_COMMENT_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 6 as ::core::ffi::c_int;
+pub const DUMMY_PI_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 7 as ::core::ffi::c_int;
+pub const DUMMY_START_ELEMENT_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 8 as ::core::ffi::c_int;
+pub const DUMMY_START_CDATA_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 9 as ::core::ffi::c_int;
+pub const DUMMY_END_CDATA_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 10 as ::core::ffi::c_int;
+pub const DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 11 as ::core::ffi::c_int;
+pub const DUMMY_START_NS_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 12 as ::core::ffi::c_int;
+pub const DUMMY_END_NS_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 13 as ::core::ffi::c_int;
+pub const DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 14 as ::core::ffi::c_int;
+pub const DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 15 as ::core::ffi::c_int;
+pub const DUMMY_SKIP_HANDLER_FLAG: ::core::ffi::c_ulong =
+    (1 as ::core::ffi::c_ulong) << 16 as ::core::ffi::c_int;
+static mut dummy_handler_flags: ::core::ffi::c_ulong = 0 as ::core::ffi::c_ulong;
+#[no_mangle]
+pub unsafe extern "C" fn init_dummy_handlers() {
+    unsafe {
+        dummy_handler_flags = 0 as ::core::ffi::c_ulong;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn get_dummy_handler_flags() -> ::core::ffi::c_ulong {
+    unsafe {
+        return dummy_handler_flags;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_xdecl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut version: *const XML_Char,
+    mut encoding: *const XML_Char,
+    mut standalone: ::core::ffi::c_int,
+) {
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_start_doctype_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut doctypeName: *const XML_Char,
+    mut sysid: *const XML_Char,
+    mut pubid: *const XML_Char,
+    mut has_internal_subset: ::core::ffi::c_int,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_START_DOCTYPE_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_end_doctype_handler(mut userData: *mut ::core::ffi::c_void) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_END_DOCTYPE_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_entity_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut entityName: *const XML_Char,
+    mut is_parameter_entity: ::core::ffi::c_int,
+    mut value: *const XML_Char,
+    mut value_length: ::core::ffi::c_int,
+    mut base: *const XML_Char,
+    mut systemId: *const XML_Char,
+    mut publicId: *const XML_Char,
+    mut notationName: *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_ENTITY_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_notation_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut notationName: *const XML_Char,
+    mut base: *const XML_Char,
+    mut systemId: *const XML_Char,
+    mut publicId: *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_NOTATION_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_element_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut name: *const XML_Char,
+    mut model: *mut XML_Content,
+) {
+    unsafe {
+        XML_FreeContentModel(g_parser, model);
+        dummy_handler_flags |= DUMMY_ELEMENT_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_attlist_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut elname: *const XML_Char,
+    mut attname: *const XML_Char,
+    mut att_type: *const XML_Char,
+    mut dflt: *const XML_Char,
+    mut isrequired: ::core::ffi::c_int,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_ATTLIST_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_comment_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut data: *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_COMMENT_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_pi_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut target: *const XML_Char,
+    mut data: *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_PI_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_start_element(
+    mut userData: *mut ::core::ffi::c_void,
+    mut name: *const XML_Char,
+    mut atts: *mut *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_START_ELEMENT_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_end_element(
+    mut userData: *mut ::core::ffi::c_void,
+    mut name: *const XML_Char,
+) {
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_start_cdata_handler(mut userData: *mut ::core::ffi::c_void) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_START_CDATA_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_end_cdata_handler(mut userData: *mut ::core::ffi::c_void) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_END_CDATA_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_cdata_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut s: *const XML_Char,
+    mut len: ::core::ffi::c_int,
+) {
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_start_namespace_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut prefix: *const XML_Char,
+    mut uri: *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_START_NS_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_end_namespace_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut prefix: *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_END_NS_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_unparsed_entity_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut entityName: *const XML_Char,
+    mut base: *const XML_Char,
+    mut systemId: *const XML_Char,
+    mut publicId: *const XML_Char,
+    mut notationName: *const XML_Char,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_default_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut s: *const XML_Char,
+    mut len: ::core::ffi::c_int,
+) {
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_start_doctype_decl_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut doctypeName: *const XML_Char,
+    mut sysid: *const XML_Char,
+    mut pubid: *const XML_Char,
+    mut has_internal_subset: ::core::ffi::c_int,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_end_doctype_decl_handler(mut userData: *mut ::core::ffi::c_void) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn dummy_skip_handler(
+    mut userData: *mut ::core::ffi::c_void,
+    mut entityName: *const XML_Char,
+    mut is_parameter_entity: ::core::ffi::c_int,
+) {
+    unsafe {
+        dummy_handler_flags |= DUMMY_SKIP_HANDLER_FLAG;
+    }
+}
