@@ -2303,20 +2303,7 @@ fn dispatch_character_data_slice(
     }
 }
 
-trait EntityDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        entity_name: *const crate::expat_external_h::XML_Char,
-        is_parameter_entity: ::core::ffi::c_int,
-        value: *const crate::expat_external_h::XML_Char,
-        value_length: ::core::ffi::c_int,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-        notation_name: *const crate::expat_external_h::XML_Char,
-    );
-}
+trait EntityDeclCallback: Send + Sync + std::any::Any {}
 
 // Entity declaration callbacks are described with pool handles until the
 // final ABI boundary.  This keeps the prolog state machine from assembling
@@ -2341,7 +2328,18 @@ struct EntityDeclCallbackEvent {
     notation: Option<PoolStringRef>,
 }
 
-fn entity_decl_handler(parser: &XML_ParserStruct) -> Option<std::sync::Arc<dyn EntityDeclCallback>> {
+/// The safe side of an entity-declaration callback.  All pool references stay
+/// borrowed until the concrete ABI callback materializes their transient
+/// pointers for the synchronous foreign call.
+struct EntityDeclCallbackInvocation<'a> {
+    parser: &'a XML_ParserStruct,
+    dtd: &'a DTD,
+    event: EntityDeclCallbackEvent,
+}
+
+fn entity_decl_handler(
+    parser: &XML_ParserStruct,
+) -> Option<std::sync::Arc<EntityDeclCallbackAdapter>> {
     ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -2356,59 +2354,12 @@ fn entity_decl_handler(parser: &XML_ParserStruct) -> Option<std::sync::Arc<dyn E
 /// callback.  The raw ABI views are materialized only for this call, after
 /// which callback re-entry cannot leave a prolog borrow outstanding.
 fn dispatch_entity_decl_callback(
-    callback: &dyn EntityDeclCallback,
+    callback: &EntityDeclCallbackAdapter,
     parser: &XML_ParserStruct,
     dtd: &DTD,
     event: EntityDeclCallbackEvent,
 ) {
-    let name = dtd
-        .pool
-        .chars_from(event.name)
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-    let (value, value_length) = match event.value {
-        EntityDeclValue::None => (::core::ptr::null(), 0),
-        EntityDeclValue::Internal { text, length } => (
-            dtd.entityValuePool
-                .chars_from(text)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            length,
-        ),
-    };
-    let base = event
-        .base
-        .map_or(::core::ptr::null(), |base| {
-            dtd.pool
-                .chars_from(base)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-        });
-    let system_id = event.system_id.map_or(::core::ptr::null(), |system_id| {
-        dtd.pool
-            .chars_from(system_id)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    let public_id = event.public_id.map_or(::core::ptr::null(), |public_id| {
-        dtd.pool
-            .chars_from(public_id)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    let notation = event.notation.map_or(::core::ptr::null(), |notation| {
-        dtd.pool
-            .chars_from(notation)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            name,
-            event.is_parameter_entity,
-            value,
-            value_length,
-            base,
-            system_id,
-            public_id,
-            notation,
-        );
-    }
+    callback.invoke(EntityDeclCallbackInvocation { parser, dtd, event });
 }
 
 impl EntityDeclCallback
@@ -2424,36 +2375,107 @@ impl EntityDeclCallback
         *const crate::expat_external_h::XML_Char,
     )
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        entity_name: *const crate::expat_external_h::XML_Char,
-        is_parameter_entity: ::core::ffi::c_int,
-        value: *const crate::expat_external_h::XML_Char,
-        value_length: ::core::ffi::c_int,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-        notation_name: *const crate::expat_external_h::XML_Char,
-    ) {
-        self(
-            user_data,
-            entity_name,
-            is_parameter_entity,
-            value,
-            value_length,
-            base,
-            system_id,
-            public_id,
-            notation_name,
-        );
+}
+
+/// Converts an erased entity-declaration callback into a typed dispatch
+/// closure.  The callback ABI is reached only after the event has retained
+/// every transient input in parser-owned storage.
+fn entity_decl_callback_adapter(
+    callback: std::sync::Arc<dyn EntityDeclCallback>,
+) -> std::sync::Arc<dyn for<'a> Fn(EntityDeclCallbackInvocation<'a>) + Send + Sync> {
+    std::sync::Arc::new(move |invocation: EntityDeclCallbackInvocation<'_>| {
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return;
+        };
+        let EntityDeclCallbackInvocation { parser, dtd, event } = invocation;
+        let name = dtd
+            .pool
+            .chars_from(event.name)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        let (value, value_length) = match event.value {
+            EntityDeclValue::None => (::core::ptr::null(), 0),
+            EntityDeclValue::Internal { text, length } => (
+                dtd.entityValuePool
+                    .chars_from(text)
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                length,
+            ),
+        };
+        let base = event.base.map_or(::core::ptr::null(), |base| {
+            dtd.pool
+                .chars_from(base)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+        let system_id = event.system_id.map_or(::core::ptr::null(), |system_id| {
+            dtd.pool
+                .chars_from(system_id)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+        let public_id = event.public_id.map_or(::core::ptr::null(), |public_id| {
+            dtd.pool
+                .chars_from(public_id)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+        let notation = event.notation.map_or(::core::ptr::null(), |notation| {
+            dtd.pool
+                .chars_from(notation)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+        // The invocation holds the parser and DTD pools alive while these
+        // synchronous ABI views are passed to the callback.
+        unsafe {
+            callback(
+                handler_arg_from_state!(parser),
+                name,
+                event.is_parameter_entity,
+                value,
+                value_length,
+                base,
+                system_id,
+                public_id,
+                notation,
+            );
+        }
+    })
+}
+
+/// Owns the erased C callback while parser-side declaration processing uses
+/// only the typed invocation above.
+struct EntityDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn for<'a> Fn(EntityDeclCallbackInvocation<'a>) + Send + Sync>,
+}
+
+impl EntityDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: EntityDeclCallback + 'static,
+    {
+        Self {
+            callback: entity_decl_callback_adapter(std::sync::Arc::new(callback)),
+        }
+    }
+
+    fn invoke(&self, invocation: EntityDeclCallbackInvocation<'_>) {
+        (self.callback)(invocation);
     }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an entity-declaration callback is installed.
 static ENTITY_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EntityDeclCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<EntityDeclCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 /// An entity-declaration handler registration prepared from an ABI callback.
@@ -2461,7 +2483,7 @@ static ENTITY_DECL_HANDLERS: std::sync::OnceLock<
 /// The parser retains this typed callback only in the boundary registry; its
 /// state records just whether a handler is installed.
 struct EntityDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn EntityDeclCallback>>,
+    callback: Option<std::sync::Arc<EntityDeclCallbackAdapter>>,
 }
 
 fn entity_decl_handler_registration<Callback>(
@@ -2471,7 +2493,7 @@ where
     Callback: EntityDeclCallback + 'static,
 {
     EntityDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(EntityDeclCallbackAdapter::new(callback))),
     }
 }
 
@@ -8888,7 +8910,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldElementDeclCallback: Option<std::sync::Arc<ElementDeclCallbackAdapter>> = None;
     let mut oldAttlistDeclHandler = false;
     let mut oldAttlistDeclCallback: Option<std::sync::Arc<AttlistDeclCallbackAdapter>> = None;
-    let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
+    let mut oldEntityDeclHandler: Option<std::sync::Arc<EntityDeclCallbackAdapter>> = None;
     let mut oldXmlDeclHandler: Option<std::sync::Arc<XmlDeclCallbackAdapter>> = None;
     let mut oldDeclElementType: Option<PoolStringRef> = None;
     let mut oldUserData = CallbackContextToken::EMPTY;
@@ -10778,6 +10800,20 @@ fn set_entity_decl_handler(
         }
     }
 }
+
+/// Installs an entity-declaration callback after the export wrapper has
+/// converted the opaque parser pointer into its checked Rust borrow.
+fn configure_entity_decl_handler<Callback>(
+    parser: &mut XML_ParserStruct,
+    parser_key: usize,
+    handler: Option<Callback>,
+) where
+    Callback: EntityDeclCallback + 'static,
+{
+    let registration = entity_decl_handler_registration(handler);
+    set_entity_decl_handler(parser, parser_key, registration);
+}
+
 #[export_name = "XML_SetEntityDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetEntityDeclHandler_ffi(
@@ -10789,8 +10825,7 @@ pub unsafe extern "C" fn XML_SetEntityDeclHandler_ffi(
     }
     let parser_key = parser.addr();
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    let registration = entity_decl_handler_registration(handler);
-    set_entity_decl_handler(parser, parser_key, registration)
+    configure_entity_decl_handler(parser, parser_key, handler)
 }
 fn set_xml_decl_handler(
     parser: &mut XML_ParserStruct,
