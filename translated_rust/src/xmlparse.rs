@@ -22700,17 +22700,6 @@ unsafe fn copyEntityTable(
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 
-unsafe extern "C" fn keyeq(mut s1: KEY, mut s2: KEY) -> crate::expat_h::XML_Bool {
-    while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int {
-        if *s1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            return crate::expat_h::XML_TRUE;
-        }
-        s1 = s1.offset(1);
-        s2 = s2.offset(1);
-    }
-    return crate::expat_h::XML_FALSE;
-}
-
 unsafe extern "C" fn keylen(mut s: KEY) -> crate::__stddef_size_t_h::size_t {
     let mut len: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
     while *s != 0 {
