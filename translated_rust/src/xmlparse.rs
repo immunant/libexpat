@@ -1340,6 +1340,34 @@ macro_rules! pool_destroy {
         }
     }};
 }
+
+macro_rules! root_parser_of {
+    ($parser:expr, $out_level_diff:expr $(,)?) => {{
+        let mut root_parser: crate::expat_h::XML_Parser = $parser;
+        let mut steps_taken_upwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
+        while !(*root_parser).m_parentParser.is_null() {
+            root_parser = (*root_parser).m_parentParser;
+            steps_taken_upwards = steps_taken_upwards.wrapping_add(1);
+        }
+        '_c2rust_label: {
+            if (*root_parser).m_parentParser.is_null() {
+            } else {
+                crate::stdlib::__assert_fail(
+                    b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
+                    b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
+                    8672 as ::core::ffi::c_uint,
+                    b"XML_Parser getRootParserOf(XML_Parser, unsigned int *)\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                );
+            }
+        };
+        let out_level_diff = $out_level_diff;
+        if !out_level_diff.is_null() {
+            *out_level_diff = steps_taken_upwards;
+        }
+        root_parser
+    }};
+}
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -1657,7 +1685,7 @@ pub unsafe extern "C" fn expat_malloc(
         return crate::__stddef_null_h::NULL;
     }
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+        root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
             as crate::expat_h::XML_Parser;
     '_c2rust_label: {
         if (*rootParser).m_parentParser.is_null() {
@@ -1742,7 +1770,7 @@ pub unsafe extern "C" fn expat_free(
         return;
     }
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+        root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
             as crate::expat_h::XML_Parser;
     '_c2rust_label_0: {
         if (*rootParser).m_parentParser.is_null() {
@@ -1821,7 +1849,7 @@ pub unsafe extern "C" fn expat_realloc(
         return crate::__stddef_null_h::NULL;
     }
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+        root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
             as crate::expat_h::XML_Parser;
     '_c2rust_label_0: {
         if (*rootParser).m_parentParser.is_null() {
@@ -2168,7 +2196,7 @@ unsafe extern "C" fn parserCreate(
         );
     if !parentParser.is_null() {
         let rootParser: crate::expat_h::XML_Parser =
-            getRootParserOf(parentParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+            root_parser_of!(parentParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
                 as crate::expat_h::XML_Parser;
         if !expat_heap_increase_tolerable(
             &*rootParser,
@@ -2276,7 +2304,7 @@ unsafe extern "C" fn parserCreate(
         (*parser).m_parentParser = parentParser;
     }
     let rootParser_0: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+        root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
             as crate::expat_h::XML_Parser;
     '_c2rust_label: {
         if (*rootParser_0).m_parentParser.is_null() {
@@ -3735,7 +3763,7 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
         return XML_SetHashSalt(None, hash_salt);
     }
     let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+        root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
             as crate::expat_h::XML_Parser;
     XML_SetHashSalt(rootParser.as_mut(), hash_salt)
 }
@@ -5051,7 +5079,7 @@ unsafe extern "C" fn externalEntityInitProcessor2(
         crate::src::xmltok::XML_TOK_BOM => {
             let mut accounting_levels: ::core::ffi::c_uint = 0;
             let accounting_root =
-                getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+                root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
             if accountingDiffTolerated(
                 &mut *accounting_root,
                 accounting_levels,
@@ -5231,7 +5259,7 @@ unsafe extern "C" fn doContent(
         };
         let mut accounting_levels: ::core::ffi::c_uint = 0;
         let accounting_root =
-            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+            root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
             &mut *accounting_root,
             accounting_levels,
@@ -5327,7 +5355,7 @@ unsafe extern "C" fn doContent(
                     as crate::expat_external_h::XML_Char;
                 if ch != 0 {
                     let mut accounting_levels: ::core::ffi::c_uint = 0;
-                    let accounting_root = getRootParserOf(parser, &raw mut accounting_levels)
+                    let accounting_root = root_parser_of!(parser, &raw mut accounting_levels)
                         as crate::expat_h::XML_Parser;
                     let ch_start = &raw mut ch as *mut ::core::ffi::c_char;
                     let ch_end = ch_start.offset(::core::mem::size_of::<
@@ -6381,7 +6409,7 @@ unsafe extern "C" fn storeAtts(
                 };
                 let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
                 let root_parser: crate::expat_h::XML_Parser =
-                    getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+                    root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
                         as crate::expat_h::XML_Parser;
                 '_c2rust_label: {
                     if (*root_parser).m_parentParser.is_null() {
@@ -7076,7 +7104,7 @@ unsafe extern "C" fn doCdataSection(
         );
         let mut accounting_levels: ::core::ffi::c_uint = 0;
         let accounting_root =
-            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+            root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
             &mut *accounting_root,
             accounting_levels,
@@ -7277,7 +7305,7 @@ unsafe extern "C" fn doIgnoreSection(
     );
     let mut accounting_levels: ::core::ffi::c_uint = 0;
     let accounting_root =
-        getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+        root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
     if accountingDiffTolerated(
         &mut *accounting_root,
         accounting_levels,
@@ -7378,7 +7406,7 @@ unsafe extern "C" fn processXmlDecl(
     let mut standalone: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
     let mut accounting_levels: ::core::ffi::c_uint = 0;
     let accounting_root =
-        getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+        root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
     if accountingDiffTolerated(
         &mut *accounting_root,
         accounting_levels,
@@ -7701,7 +7729,7 @@ unsafe extern "C" fn entityValueInitProcessor(
         } else if tok == crate::src::xmltok::XML_TOK_BOM {
             let mut accounting_levels: ::core::ffi::c_uint = 0;
             let accounting_root =
-                getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+                root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
             if accountingDiffTolerated(
                 &mut *accounting_root,
                 accounting_levels,
@@ -7758,7 +7786,7 @@ unsafe extern "C" fn externalParEntProcessor(
     } else if tok == crate::src::xmltok::XML_TOK_BOM {
         let mut accounting_levels: ::core::ffi::c_uint = 0;
         let accounting_root =
-            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+            root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
             &mut *accounting_root,
             accounting_levels,
@@ -8072,7 +8100,7 @@ unsafe extern "C" fn doProlog(
             2 | 1 | 57 => {}
             _ => {
                 let mut accounting_levels: ::core::ffi::c_uint = 0;
-                let accounting_root = getRootParserOf(parser, &raw mut accounting_levels)
+                let accounting_root = root_parser_of!(parser, &raw mut accounting_levels)
                     as crate::expat_h::XML_Parser;
                 if accountingDiffTolerated(
                     &mut *accounting_root,
@@ -9199,7 +9227,7 @@ unsafe extern "C" fn doProlog(
                             } else if (*parser).m_externalEntityRefHandler.is_some() {
                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                 (*entity_1).open = crate::expat_h::XML_TRUE;
-                                let entity_root_parser = getRootParserOf(
+                                let entity_root_parser = root_parser_of!(
                                     parser,
                                     ::core::ptr::null_mut::<::core::ffi::c_uint>(),
                                 )
@@ -9646,7 +9674,7 @@ unsafe extern "C" fn epilogProcessor(
         );
         let mut accounting_levels: ::core::ffi::c_uint = 0;
         let accounting_root =
-            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+            root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
             &mut *accounting_root,
             accounting_levels,
@@ -9801,7 +9829,7 @@ unsafe extern "C" fn processEntity(
     }
     (*entity).open = crate::expat_h::XML_TRUE;
     (*entity).hasMore = crate::expat_h::XML_TRUE;
-    let entity_root_parser = getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+    let entity_root_parser = root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
         as crate::expat_h::XML_Parser;
     entityTrackingOnOpen(&mut *entity_root_parser);
     entityTrackingReportStats(
@@ -9905,7 +9933,7 @@ unsafe extern "C" fn internalEntityProcessor(
         triggerReenter(&mut *parser);
         return result;
     }
-    let entity_root_parser = getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+    let entity_root_parser = root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
         as crate::expat_h::XML_Parser;
     entityTrackingReportStats(
         &*entity_root_parser,
@@ -10031,7 +10059,7 @@ unsafe extern "C" fn storeAttributeValue(
                 }
             } else {
                 let entity_root_parser =
-                    getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+                    root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
                         as crate::expat_h::XML_Parser;
                 entityTrackingReportStats(
                     &*entity_root_parser,
@@ -10112,7 +10140,7 @@ unsafe extern "C" fn appendAttributeValue(
                 .expect("non-null function pointer")(enc, ptr, end, &raw mut next);
         let mut accounting_levels: ::core::ffi::c_uint = 0;
         let accounting_root =
-            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+            root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
             &mut *accounting_root,
             accounting_levels,
@@ -10222,7 +10250,7 @@ unsafe extern "C" fn appendAttributeValue(
                     as crate::expat_external_h::XML_Char;
                 if ch != 0 {
                     let mut accounting_levels: ::core::ffi::c_uint = 0;
-                    let accounting_root = getRootParserOf(parser, &raw mut accounting_levels)
+                    let accounting_root = root_parser_of!(parser, &raw mut accounting_levels)
                         as crate::expat_h::XML_Parser;
                     let ch_start = &raw mut ch as *mut ::core::ffi::c_char;
                     let ch_end = ch_start.offset(::core::mem::size_of::<
@@ -10403,7 +10431,7 @@ unsafe extern "C" fn storeEntityValue(
         );
         let mut accounting_levels: ::core::ffi::c_uint = 0;
         let accounting_root =
-            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+            root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
             &mut *accounting_root,
             accounting_levels,
@@ -10463,7 +10491,7 @@ unsafe extern "C" fn storeEntityValue(
                                 if (*parser).m_externalEntityRefHandler.is_some() {
                                     (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                     (*entity).open = crate::expat_h::XML_TRUE;
-                                    let entity_root_parser = getRootParserOf(
+                                    let entity_root_parser = root_parser_of!(
                                         parser,
                                         ::core::ptr::null_mut::<::core::ffi::c_uint>(),
                                     )
@@ -10686,7 +10714,7 @@ unsafe extern "C" fn callStoreEntityValue(
                 }
             } else {
                 let entity_root_parser =
-                    getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+                    root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
                         as crate::expat_h::XML_Parser;
                 entityTrackingReportStats(
                     &*entity_root_parser,
@@ -12029,7 +12057,7 @@ unsafe extern "C" fn lookup(
     mut createSize: crate::__stddef_size_t_h::size_t,
 ) -> *mut NAMED {
     let mut i: crate::__stddef_size_t_h::size_t = 0;
-    let root_parser = &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
+    let root_parser = &*root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     let name_bytes = std::ffi::CStr::from_ptr(name).to_bytes();
     if (*table).size == 0 as crate::__stddef_size_t_h::size_t {
         let mut tsize: crate::__stddef_size_t_h::size_t = 0;
@@ -12941,33 +12969,6 @@ fn entityTrackingOnClose(rootParser: &mut XML_ParserStruct) {
     rootParser.m_entity_stats.currentDepth = rootParser.m_entity_stats.currentDepth.wrapping_sub(1);
 }
 
-unsafe extern "C" fn getRootParserOf(
-    mut parser: crate::expat_h::XML_Parser,
-    mut outLevelDiff: *mut ::core::ffi::c_uint,
-) -> crate::expat_h::XML_Parser {
-    let mut rootParser: crate::expat_h::XML_Parser = parser;
-    let mut stepsTakenUpwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
-    while !(*rootParser).m_parentParser.is_null() {
-        rootParser = (*rootParser).m_parentParser;
-        stepsTakenUpwards = stepsTakenUpwards.wrapping_add(1);
-    }
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8672 as ::core::ffi::c_uint,
-                b"XML_Parser getRootParserOf(XML_Parser, unsigned int *)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    if !outLevelDiff.is_null() {
-        *outLevelDiff = stepsTakenUpwards;
-    }
-    return rootParser;
-}
 pub extern "C" fn unsignedCharToPrintable(
     mut c: ::core::ffi::c_uchar,
 ) -> *const ::core::ffi::c_char {
