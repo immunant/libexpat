@@ -20114,6 +20114,108 @@ unsafe extern "C" fn errorProcessor(
     return (*parser).m_errorCode;
 }
 
+/// Applies the post-scan state change for the attribute entity at the top of
+/// the expansion stack.  The entity table owns the record, so resolve it by
+/// its stable pool key for each update instead of carrying a raw table-record
+/// address across `appendAttributeValue` (which may grow parser storage).
+fn update_attribute_entity(
+    parser: &mut XML_ParserStruct,
+    entity_name: PoolStringRef,
+    update: AttributeEntityUpdate,
+) -> bool {
+    if matches!(update, AttributeEntityUpdate::Finish) {
+        return close_attribute_entity(parser, entity_name);
+    }
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let Some(dtd_owner) = parser.m_dtd.clone() else {
+        return false;
+    };
+    dtd_owner.inspect(|dtd| {
+        let Some(entity) = general_entity_mut(dtd, entity_name, salt) else {
+            return false;
+        };
+        match update {
+            AttributeEntityUpdate::Advance(processed) => {
+                entity.processed = entity.processed.saturating_add(processed);
+            }
+            AttributeEntityUpdate::MarkExhausted => {
+                entity.hasMore = crate::expat_h::XML_FALSE;
+            }
+            AttributeEntityUpdate::Finish => unreachable!("finish is handled before DTD update"),
+        }
+        true
+    })
+}
+
+#[derive(Copy, Clone)]
+enum AttributeEntityUpdate {
+    Advance(::core::ffi::c_int),
+    MarkExhausted,
+    Finish,
+}
+
+/// Closes the resolved attribute entity and emits the optional diagnostic
+/// directly from the DTD-owned name.  The table-record borrow ends before the
+/// name is read, avoiding a nested `SharedDtd::inspect` just for reporting.
+fn close_attribute_entity(parser: &mut XML_ParserStruct, entity_name: PoolStringRef) -> bool {
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let Some(dtd_owner) = parser.m_dtd.clone() else {
+        return false;
+    };
+    dtd_owner.inspect(|dtd| {
+        let Some(entity) = general_entity_mut(dtd, entity_name, salt) else {
+            return false;
+        };
+        let entity_name = entity.named.name;
+        let is_parameter = entity.is_param != 0;
+        let text_length = entity.textLen;
+        entity.open = crate::expat_h::XML_FALSE;
+
+        let statistics = {
+            let root = parser
+                .m_root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            (root.entity_stats.debugLevel != 0).then_some((
+                root.entity_stats.countEverOpened,
+                root.entity_stats.currentDepth,
+                root.entity_stats.maximumDepthSeen,
+            ))
+        };
+        if let Some((count_ever_opened, current_depth, maximum_depth_seen)) = statistics {
+            if let Some(name) = pool_terminated_chars(&dtd.pool, entity_name)
+                .and_then(|name| name.strip_suffix(&[0]))
+            {
+                entityTrackingReportStats(EntityTrackingReport {
+                    root_parser_address: std::ptr::from_ref(parser).addr(),
+                    count_ever_opened,
+                    current_depth,
+                    maximum_depth_seen,
+                    is_parameter,
+                    entity_name: bytemuck::cast_slice(name),
+                    action: EntityTrackingAction::Close,
+                    text_length,
+                    source_line: 6547 as ::core::ffi::c_int,
+                });
+            }
+        }
+        let mut root = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_sub(1);
+        true
+    })
+}
+
 unsafe extern "C" fn storeAttributeValue(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -20186,7 +20288,7 @@ unsafe extern "C" fn storeAttributeValue(
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let (entity, entity_has_more, entity_input) = {
+            let (entity_has_more, entity_input) = {
                 let dtd = parser_dtd_ptr!(parser);
                 if dtd.is_null() {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -20207,7 +20309,6 @@ unsafe extern "C" fn storeAttributeValue(
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
                 let entity = entity.as_mut();
-                let entity_ptr = std::ptr::from_mut(entity);
                 let Some(text_ref) = entity.textPtr.present() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
@@ -20223,7 +20324,7 @@ unsafe extern "C" fn storeAttributeValue(
                 let Some(unprocessed) = text.get(processed..) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                (entity_ptr, entity_has_more, unprocessed)
+                (entity_has_more, unprocessed)
             };
             if entity_has_more != 0 {
                 let (append_result, append_next) = appendAttributeValue(
@@ -20248,20 +20349,28 @@ unsafe extern "C" fn storeAttributeValue(
                     let Ok(processed) = ::core::ffi::c_int::try_from(append_next) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let entity = &mut *entity;
-                    entity.processed = entity.processed.saturating_add(processed);
+                    if !update_attribute_entity(
+                        parser,
+                        entity_name,
+                        AttributeEntityUpdate::Advance(processed),
+                    ) {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    }
                     continue;
                 } else {
-                    (&mut *entity).hasMore = crate::expat_h::XML_FALSE;
+                    if !update_attribute_entity(
+                        parser,
+                        entity_name,
+                        AttributeEntityUpdate::MarkExhausted,
+                    ) {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    }
                     continue;
                 }
             } else {
-                let entity = &mut *entity;
-                entityTrackingOnClose(
-                    std::ptr::from_mut(parser),
-                    std::ptr::from_mut(entity),
-                    6547 as ::core::ffi::c_int,
-                );
+                if !update_attribute_entity(parser, entity_name, AttributeEntityUpdate::Finish) {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
                 if !parser
                     .m_openAttributeEntities
                     .last()
@@ -20269,7 +20378,6 @@ unsafe extern "C" fn storeAttributeValue(
                 {
                     std::process::abort();
                 };
-                entity.open = crate::expat_h::XML_FALSE;
                 let Some(storage) = parser.m_openAttributeEntities.pop() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
