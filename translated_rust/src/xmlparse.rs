@@ -14348,16 +14348,21 @@ unsafe extern "C" fn storeAttributeValue(
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
         if (*parser).m_openAttributeEntities.is_null() {
-            result = appendAttributeValue(
+            let (append_result, append_next) = appendAttributeValue(
                 parser,
-                enc,
+                &*enc,
                 isCdata,
                 next,
                 end,
                 pool,
                 account,
-                &raw mut next,
             );
+            result = append_result;
+            if result as ::core::ffi::c_uint
+                == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                next = append_next;
+            }
         } else {
             let openEntity: *mut OPEN_INTERNAL_ENTITY = (*parser).m_openAttributeEntities;
             if openEntity.is_null() {
@@ -14387,21 +14392,22 @@ unsafe extern "C" fn storeAttributeValue(
                 .cast::<::core::ffi::c_char>();
             let mut nextInEntity: *const ::core::ffi::c_char = textStart;
             if (*entity).hasMore != 0 {
-                result = appendAttributeValue(
+                let (append_result, append_next) = appendAttributeValue(
                     parser,
-                    internal_encoding((*parser).m_internalEncoding) as *const _,
+                    internal_encoding((*parser).m_internalEncoding),
                     isCdata,
                     textStart,
                     textEnd,
                     pool,
                     XML_ACCOUNT_ENTITY_EXPANSION,
-                    &raw mut nextInEntity,
                 );
+                result = append_result;
                 if result as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     break;
                 }
+                nextInEntity = append_next;
                 if textEnd != nextInEntity {
                     let Some(processed) = nextInEntity.addr().checked_sub(textStart.addr()) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -14515,19 +14521,17 @@ fn pool_append_char(pool: &mut STRING_POOL, value: crate::expat_external_h::XML_
     pool.write_cursor(value)
 }
 
-unsafe extern "C" fn appendAttributeValue(
+unsafe fn appendAttributeValue(
     mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
+    enc: &crate::src::xmltok::ENCODING,
     mut isCdata: crate::expat_h::XML_Bool,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut pool: *mut STRING_POOL,
     mut account: XML_Account,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
+) -> (crate::expat_h::XML_Error, *const ::core::ffi::c_char) {
     let parser = &mut *parser;
-    let enc_ptr = enc;
-    let enc = &*enc;
+    let enc_ptr: *const crate::src::xmltok::ENCODING = enc;
     let dtd = &mut *parser_dtd_ptr!(parser);
     let pool_is_dtd_pool = ::core::ptr::eq(pool, &raw mut dtd.pool);
     let pool = &mut *pool;
@@ -14549,27 +14553,24 @@ unsafe extern "C" fn appendAttributeValue(
         if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
         {
             accountingOnAbort(parser);
-            return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+            return (crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH, ptr);
         }
         's_350: {
             match tok {
                 crate::src::xmltok::XML_TOK_NONE => {
-                    if !nextPtr.is_null() {
-                        *nextPtr = next;
-                    }
-                    return crate::expat_h::XML_ERROR_NONE;
+                    return (crate::expat_h::XML_ERROR_NONE, next);
                 }
                 crate::src::xmltok::XML_TOK_INVALID => {
                     if enc_ptr == parser_encoding(parser) {
                         set_parser_event_start!(&mut *parser, next);
                     }
-                    return crate::expat_h::XML_ERROR_INVALID_TOKEN;
+                    return (crate::expat_h::XML_ERROR_INVALID_TOKEN, ptr);
                 }
                 crate::src::xmltok::XML_TOK_PARTIAL => {
                     if enc_ptr == parser_encoding(parser) {
                         set_parser_event_start!(&mut *parser, ptr);
                     }
-                    return crate::expat_h::XML_ERROR_INVALID_TOKEN;
+                    return (crate::expat_h::XML_ERROR_INVALID_TOKEN, ptr);
                 }
                 crate::src::xmltok::XML_TOK_CHAR_REF => {
                     let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
@@ -14579,7 +14580,7 @@ unsafe extern "C" fn appendAttributeValue(
                         if enc_ptr == parser_encoding(parser) {
                             set_parser_event_start!(&mut *parser, ptr);
                         }
-                        return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
+                        return (crate::expat_h::XML_ERROR_BAD_CHAR_REF, ptr);
                     }
                     if isCdata == 0
                         && n == 0x20 as ::core::ffi::c_int
@@ -14593,7 +14594,7 @@ unsafe extern "C" fn appendAttributeValue(
                         i = 0 as ::core::ffi::c_int;
                         while i < n {
                             if !pool_append_char(pool, buf[i as usize]) {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                             }
                             i += 1;
                         }
@@ -14602,7 +14603,7 @@ unsafe extern "C" fn appendAttributeValue(
                 }
                 crate::src::xmltok::XML_TOK_DATA_CHARS => {
                     if poolAppend(pool, enc_ptr, ptr, next).is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                     }
                     break 's_350;
                 }
@@ -14635,7 +14636,7 @@ unsafe extern "C" fn appendAttributeValue(
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
                         if !pool_append_char(pool, ch) {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                         }
                         break 's_350;
                     } else {
@@ -14646,7 +14647,7 @@ unsafe extern "C" fn appendAttributeValue(
                             next.offset(-(enc.minBytesPerChar as isize)),
                         );
                         if name.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                         }
                         entity = lookup(
                             parser,
@@ -14668,9 +14669,9 @@ unsafe extern "C" fn appendAttributeValue(
                         }
                         if checkEntityDecl {
                             if entity.is_null() {
-                                return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
+                                return (crate::expat_h::XML_ERROR_UNDEFINED_ENTITY, ptr);
                             } else if (*entity).is_internal == 0 {
-                                return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
+                                return (crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE, ptr);
                             }
                         } else if entity.is_null() {
                             break 's_350;
@@ -14679,19 +14680,19 @@ unsafe extern "C" fn appendAttributeValue(
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, ptr);
                             }
-                            return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
+                            return (crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF, ptr);
                         }
                         if (*entity).notation.is_some() {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, ptr);
                             }
-                            return crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
+                            return (crate::expat_h::XML_ERROR_BINARY_ENTITY_REF, ptr);
                         }
                         if (*entity).textPtr.is_none() {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, ptr);
                             }
-                            return crate::expat_h::XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
+                            return (crate::expat_h::XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF, ptr);
                         } else {
                             let mut result: crate::expat_h::XML_Error =
                                 crate::expat_h::XML_ERROR_NONE;
@@ -14701,14 +14702,7 @@ unsafe extern "C" fn appendAttributeValue(
                                 crate::expat_h::XML_FALSE,
                                 ENTITY_ATTRIBUTE,
                             );
-                            if result as ::core::ffi::c_uint
-                                == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                                && !nextPtr.is_null()
-                            {
-                                *nextPtr = next;
-                            }
-                            return result;
+                            return (result, next);
                         }
                     }
                 }
@@ -14716,7 +14710,7 @@ unsafe extern "C" fn appendAttributeValue(
                     if enc_ptr == parser_encoding(parser) {
                         set_parser_event_start!(&mut *parser, ptr);
                     }
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                 }
             }
             if !(isCdata == 0
@@ -14725,7 +14719,7 @@ unsafe extern "C" fn appendAttributeValue(
                         == Some(0x20 as crate::expat_external_h::XML_Char)))
             {
                 if !pool_append_char(pool, 0x20 as crate::expat_external_h::XML_Char) {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                 }
             }
         }
