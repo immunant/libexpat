@@ -5037,142 +5037,34 @@ extern "C" fn externalEntityInitProcessor(
     )
 }
 
-unsafe extern "C" fn externalEntityInitProcessor2(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
+extern "C" fn externalEntityInitProcessor2(
+    parser: crate::expat_h::XML_Parser,
+    start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut next: *const ::core::ffi::c_char = start;
-    let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners
-        [1 as ::core::ffi::c_int as usize]
-        .expect("non-null function pointer")(
-        (*parser).m_encoding, start, end, &raw mut next
-    );
-    match tok {
-        crate::src::xmltok::XML_TOK_BOM => {
-            let mut accounting_levels: ::core::ffi::c_uint = 0;
-            let accounting_root =
-                root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
-            if accountingDiffTolerated(
-                &mut *accounting_root,
-                accounting_levels,
-                parser == accounting_root,
-                tok,
-                || {
-                    ::core::slice::from_raw_parts(
-                        start as *const ::core::ffi::c_uchar,
-                        byte_offset(next, start) as usize,
-                    )
-                },
-                3208 as ::core::ffi::c_int,
-                XML_ACCOUNT_DIRECT,
-            ) == 0
-            {
-                accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
-                return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-            }
-            if next == end && (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = next;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            start = next;
-        }
-        crate::src::xmltok::XML_TOK_PARTIAL => {
-            if (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = start;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            (*parser).m_eventPtr = start;
-            return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
-        }
-        crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-            if (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = start;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            (*parser).m_eventPtr = start;
-            return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
-        }
-        _ => {}
-    }
-    (*parser).m_processor = Some(
-        externalEntityInitProcessor3
-            as unsafe extern "C" fn(
-                crate::expat_h::XML_Parser,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *mut *const ::core::ffi::c_char,
-            ) -> crate::expat_h::XML_Error,
-    );
-    return externalEntityInitProcessor3(parser, start, end, endPtr);
+    parser_processor_impl(
+        ParserProcessorKind::ExternalEntityInit2,
+        parser,
+        start,
+        end,
+        endPtr,
+    )
 }
 
-unsafe extern "C" fn externalEntityInitProcessor3(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
+extern "C" fn externalEntityInitProcessor3(
+    parser: crate::expat_h::XML_Parser,
+    start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut tok: ::core::ffi::c_int = 0;
-    let mut next: *const ::core::ffi::c_char = start;
-    (*parser).m_eventPtr = start;
-    tok = (*(*parser).m_encoding).scanners[1 as ::core::ffi::c_int as usize]
-        .expect("non-null function pointer")(
-        (*parser).m_encoding, start, end, &raw mut next
-    );
-    (*parser).m_eventEndPtr = next;
-    match tok {
-        crate::src::xmltok::XML_TOK_XML_DECL => {
-            let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-            result = processXmlDecl(parser, 1 as ::core::ffi::c_int, start, next);
-            if result as ::core::ffi::c_uint
-                != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                return result;
-            }
-            match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-                3 => {
-                    *endPtr = next;
-                    return crate::expat_h::XML_ERROR_NONE;
-                }
-                2 => return crate::expat_h::XML_ERROR_ABORTED,
-                1 => {
-                    if (*parser).m_reenter != 0 {
-                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                    }
-                }
-                _ => {}
-            }
-            start = next;
-        }
-        crate::src::xmltok::XML_TOK_PARTIAL => {
-            if (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = start;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
-        }
-        crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-            if (*parser).m_parsingStatus.finalBuffer == 0 {
-                *endPtr = start;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
-        }
-        _ => {}
-    }
-    (*parser).m_processor = Some(
-        externalEntityContentProcessor
-            as unsafe extern "C" fn(
-                crate::expat_h::XML_Parser,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *mut *const ::core::ffi::c_char,
-            ) -> crate::expat_h::XML_Error,
-    );
-    (*parser).m_tagLevel = 1 as ::core::ffi::c_int;
-    return externalEntityContentProcessor(parser, start, end, endPtr);
+    parser_processor_impl(
+        ParserProcessorKind::ExternalEntityInit3,
+        parser,
+        start,
+        end,
+        endPtr,
+    )
 }
 
 extern "C" fn externalEntityContentProcessor(
@@ -6958,6 +6850,8 @@ enum SectionProcessorKind {
 enum ParserProcessorKind {
     Content(ContentProcessorKind),
     Error,
+    ExternalEntityInit2,
+    ExternalEntityInit3,
     Init(InitProcessorKind),
     Section(SectionProcessorKind),
 }
@@ -7006,6 +6900,141 @@ fn parser_processor_impl(
                 result
             }
             ParserProcessorKind::Error => (*parser).m_errorCode,
+            ParserProcessorKind::ExternalEntityInit2 => {
+                let mut next: *const ::core::ffi::c_char = start;
+                let tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners
+                    [1 as ::core::ffi::c_int as usize]
+                    .expect("non-null function pointer")(
+                    (*parser).m_encoding,
+                    start,
+                    end,
+                    &raw mut next,
+                );
+                match tok {
+                    crate::src::xmltok::XML_TOK_BOM => {
+                        let mut accounting_levels: ::core::ffi::c_uint = 0;
+                        let accounting_root = root_parser_of!(parser, &raw mut accounting_levels)
+                            as crate::expat_h::XML_Parser;
+                        if accountingDiffTolerated(
+                            &mut *accounting_root,
+                            accounting_levels,
+                            parser == accounting_root,
+                            tok,
+                            || {
+                                ::core::slice::from_raw_parts(
+                                    start as *const ::core::ffi::c_uchar,
+                                    byte_offset(next, start) as usize,
+                                )
+                            },
+                            3208 as ::core::ffi::c_int,
+                            XML_ACCOUNT_DIRECT,
+                        ) == 0
+                        {
+                            accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
+                            return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+                        }
+                        if next == end && (*parser).m_parsingStatus.finalBuffer == 0 {
+                            *endPtr = next;
+                            return crate::expat_h::XML_ERROR_NONE;
+                        }
+                        start = next;
+                    }
+                    crate::src::xmltok::XML_TOK_PARTIAL => {
+                        if (*parser).m_parsingStatus.finalBuffer == 0 {
+                            *endPtr = start;
+                            return crate::expat_h::XML_ERROR_NONE;
+                        }
+                        (*parser).m_eventPtr = start;
+                        return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+                    }
+                    crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
+                        if (*parser).m_parsingStatus.finalBuffer == 0 {
+                            *endPtr = start;
+                            return crate::expat_h::XML_ERROR_NONE;
+                        }
+                        (*parser).m_eventPtr = start;
+                        return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
+                    }
+                    _ => {}
+                }
+                (*parser).m_processor = Some(
+                    externalEntityInitProcessor3
+                        as unsafe extern "C" fn(
+                            crate::expat_h::XML_Parser,
+                            *const ::core::ffi::c_char,
+                            *const ::core::ffi::c_char,
+                            *mut *const ::core::ffi::c_char,
+                        )
+                            -> crate::expat_h::XML_Error,
+                );
+                externalEntityInitProcessor3(parser, start, end, endPtr)
+            }
+            ParserProcessorKind::ExternalEntityInit3 => {
+                let mut next: *const ::core::ffi::c_char = start;
+                (*parser).m_eventPtr = start;
+                let tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners
+                    [1 as ::core::ffi::c_int as usize]
+                    .expect("non-null function pointer")(
+                    (*parser).m_encoding,
+                    start,
+                    end,
+                    &raw mut next,
+                );
+                (*parser).m_eventEndPtr = next;
+                match tok {
+                    crate::src::xmltok::XML_TOK_XML_DECL => {
+                        let result: crate::expat_h::XML_Error =
+                            processXmlDecl(parser, 1 as ::core::ffi::c_int, start, next);
+                        if result as ::core::ffi::c_uint
+                            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                                as ::core::ffi::c_uint
+                        {
+                            return result;
+                        }
+                        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+                            3 => {
+                                *endPtr = next;
+                                return crate::expat_h::XML_ERROR_NONE;
+                            }
+                            2 => return crate::expat_h::XML_ERROR_ABORTED,
+                            1 => {
+                                if (*parser).m_reenter != 0 {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                }
+                            }
+                            _ => {}
+                        }
+                        start = next;
+                    }
+                    crate::src::xmltok::XML_TOK_PARTIAL => {
+                        if (*parser).m_parsingStatus.finalBuffer == 0 {
+                            *endPtr = start;
+                            return crate::expat_h::XML_ERROR_NONE;
+                        }
+                        return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
+                    }
+                    crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
+                        if (*parser).m_parsingStatus.finalBuffer == 0 {
+                            *endPtr = start;
+                            return crate::expat_h::XML_ERROR_NONE;
+                        }
+                        return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
+                    }
+                    _ => {}
+                }
+                (*parser).m_processor = Some(
+                    externalEntityContentProcessor
+                        as unsafe extern "C" fn(
+                            crate::expat_h::XML_Parser,
+                            *const ::core::ffi::c_char,
+                            *const ::core::ffi::c_char,
+                            *mut *const ::core::ffi::c_char,
+                        )
+                            -> crate::expat_h::XML_Error,
+                );
+                (*parser).m_tagLevel = 1 as ::core::ffi::c_int;
+                externalEntityContentProcessor(parser, start, end, endPtr)
+            }
             ParserProcessorKind::Init(kind) => {
                 let encoding_name = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
                 let name = if encoding_name.is_null() {
