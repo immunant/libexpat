@@ -2951,36 +2951,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_contentTok(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if enc.is_null()
-            || ptr.is_null()
-            || end.is_null()
-            || !enc.cast::<normal_encoding>().is_aligned()
-        {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let Some(input_len) = end.addr().checked_sub(ptr.addr()) else {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        };
-        if input_len == 0 || input_len > isize::MAX as usize {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
-        let normal = &*(enc as *const normal_encoding);
-        let result = normal_content_result(normal, input);
-        if let Some(next) = result.next {
-            if !nextTokPtr.is_null() && nextTokPtr.is_aligned() {
-                nextTokPtr.write(ptr.wrapping_add(next));
-            }
-        }
-        result.token
-    }
-
     pub(super) fn normal_scan_percent_impl<T: XmlTokenByte>(
         enc: &normal_encoding,
         input: &[T],
@@ -12257,7 +12227,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::normal_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
-pub use crate::src::xmltok::xmltok_impl_c::normal_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
