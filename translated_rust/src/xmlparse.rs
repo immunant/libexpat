@@ -1695,6 +1695,17 @@ impl NotStandaloneCallback
     }
 }
 
+/// Invokes the not-standalone callback after the parser has captured the
+/// callback's typed view of its handler context.  Keeping the ABI call here
+/// lets parser state machines report the event without directly invoking a
+/// foreign callback.
+fn dispatch_not_standalone_callback(
+    callback: &dyn NotStandaloneCallback,
+    parser: &XML_ParserStruct,
+) -> ::core::ffi::c_int {
+    unsafe { callback.invoke(parser) }
+}
+
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a not-standalone callback is installed.
 static NOT_STANDALONE_HANDLERS: std::sync::OnceLock<
@@ -16189,7 +16200,10 @@ unsafe fn doProlog(
                                                             .expect(
                                                                 "installed not-standalone handler",
                                                             );
-                                                        if callback.invoke(&*parser) == 0 {
+                                                        if dispatch_not_standalone_callback(
+                                                            callback.as_ref(),
+                                                            parser,
+                                                        ) == 0 {
                                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                                         }
                                                     }
@@ -16288,7 +16302,10 @@ unsafe fn doProlog(
                                                             .expect(
                                                                 "installed not-standalone handler",
                                                             );
-                                                        if callback.invoke(&*parser) == 0 {
+                                                        if dispatch_not_standalone_callback(
+                                                            callback.as_ref(),
+                                                            parser,
+                                                        ) == 0 {
                                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                                         }
                                                     }
@@ -16886,7 +16903,10 @@ unsafe fn doProlog(
                                                 .get(&(parser as *mut XML_ParserStruct as usize))
                                                 .cloned()
                                                 .expect("installed not-standalone handler");
-                                            if callback.invoke(&*parser) == 0 {
+                                            if dispatch_not_standalone_callback(
+                                                callback.as_ref(),
+                                                parser,
+                                            ) == 0 {
                                                 return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                             }
                                         }
@@ -18066,7 +18086,10 @@ unsafe fn doProlog(
                                                 .get(&(parser as *mut XML_ParserStruct as usize))
                                                 .cloned()
                                                 .expect("installed not-standalone handler");
-                                            if callback.invoke(&*parser) == 0 {
+                                            if dispatch_not_standalone_callback(
+                                                callback.as_ref(),
+                                                parser,
+                                            ) == 0 {
                                                 return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                             }
                                         }
