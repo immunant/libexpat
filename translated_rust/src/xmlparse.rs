@@ -4395,6 +4395,24 @@ pub struct accounting {
     pub maximumAmplificationFactor: ::core::ffi::c_float,
     pub activationThresholdBytes: ::core::ffi::c_ulonglong,
 }
+
+/// Calculates the entity-expansion amplification from the owned accounting
+/// counters.  This is independent of a parser handle, so callers do not need
+/// to recover a parser reference merely to inspect the root accounting state.
+fn accountingGetCurrentAmplification(accounting: &ACCOUNTING) -> ::core::ffi::c_float {
+    // `<!ENTITY a SYSTEM 'b'>` is the shortest include counted by Expat.
+    const SHORTEST_INCLUDE_LEN: XmlBigCount = 23 - 1;
+
+    let output = accounting
+        .countBytesDirect
+        .wrapping_add(accounting.countBytesIndirect);
+    if accounting.countBytesDirect != 0 {
+        output as ::core::ffi::c_float / accounting.countBytesDirect as ::core::ffi::c_float
+    } else {
+        SHORTEST_INCLUDE_LEN.wrapping_add(accounting.countBytesIndirect) as ::core::ffi::c_float
+            / SHORTEST_INCLUDE_LEN as ::core::ffi::c_float
+    }
+}
 #[repr(C)]
 
 pub struct STRING_POOL {
@@ -27147,31 +27165,6 @@ fn protocol_encoding_name_for_parser(
         .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
     let backing = parser_allocation_backing(parser, allocation_size, 8456)?;
     protocol_encoding_name_from_cstr(encoding_name, backing)
-}
-
-unsafe extern "C" fn accountingGetCurrentAmplification(
-    mut rootParser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_float {
-    let lenOfShortestInclude: crate::__stddef_size_t_h::size_t =
-        ::core::mem::size_of::<[::core::ffi::c_char; 23]>()
-            .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
-    let root = (*rootParser)
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let countBytesOutput: XmlBigCount = root
-        .accounting
-        .countBytesDirect
-        .wrapping_add(root.accounting.countBytesIndirect);
-    let amplificationFactor: ::core::ffi::c_float = if root.accounting.countBytesDirect != 0 {
-        countBytesOutput as ::core::ffi::c_float
-            / root.accounting.countBytesDirect as ::core::ffi::c_float
-    } else {
-        (lenOfShortestInclude as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
-            as ::core::ffi::c_float
-            / lenOfShortestInclude as ::core::ffi::c_float
-    };
-    return amplificationFactor;
 }
 
 fn append_printable_byte(output: &mut Vec<u8>, byte: u8) {
