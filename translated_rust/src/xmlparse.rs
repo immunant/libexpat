@@ -17583,40 +17583,6 @@ fn prolog_processor_from_offsets(
     }
 }
 
-unsafe extern "C" fn prologProcessor(
-    parser: crate::expat_h::XML_Parser,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let Some(parser) = parser.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(next_ptr) = nextPtr.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(start_offset) = parser.m_buffer.offset_from_address(s.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(end_offset) = parser.m_buffer.offset_from_address(end.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let result = prolog_processor_from_offsets(parser, start_offset, end_offset);
-    if let PrologCursorUpdate::Cursor(cursor) = result.cursor {
-        *next_ptr = match cursor {
-            Some(offset) => {
-                let Some(window) = parser.m_buffer.window_from_offsets(offset, offset)
-                else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                window.as_ptr().cast::<::core::ffi::c_char>()
-            }
-            None => ::core::ptr::null(),
-        };
-    }
-    result.error
-}
-
 fn prolog_quoted_token_contents(
     token: &[u8],
     min_bytes_per_char: ::core::ffi::c_int,
