@@ -8088,7 +8088,44 @@ unsafe extern "C" fn storeAtts(
             (*parser).m_atts,
         ),
         crate::src::xmltok::AttributeScanner::Big2 => {
-            crate::src::xmltok::big2_getAtts(enc, attStr, (*parser).m_attsSize, (*parser).m_atts)
+            let source_len = eventEnd.offset_from(attStr);
+            if source_len < 0 {
+                0
+            } else {
+                let source =
+                    ::core::slice::from_raw_parts(attStr.cast::<u8>(), source_len as usize);
+                let byte_types = &(*(enc as *const crate::src::xmltok::normal_encoding)).type_0;
+                crate::src::xmltok::big2_getAtts(byte_types, source, |action| {
+                    let attribute = match action {
+                        crate::src::xmltok::Big2AttributeAction::Name { attribute, .. }
+                        | crate::src::xmltok::Big2AttributeAction::ValueStart {
+                            attribute, ..
+                        }
+                        | crate::src::xmltok::Big2AttributeAction::ValueEnd { attribute, .. }
+                        | crate::src::xmltok::Big2AttributeAction::Normalized {
+                            attribute, ..
+                        } => attribute,
+                    };
+                    if attribute < 0 || attribute >= (*parser).m_attsSize {
+                        return;
+                    }
+                    let slot = (*parser).m_atts.add(attribute as usize);
+                    match action {
+                        crate::src::xmltok::Big2AttributeAction::Name { offset, .. } => {
+                            (*slot).name = attStr.add(offset);
+                        }
+                        crate::src::xmltok::Big2AttributeAction::ValueStart { offset, .. } => {
+                            (*slot).valuePtr = attStr.add(offset);
+                        }
+                        crate::src::xmltok::Big2AttributeAction::ValueEnd { offset, .. } => {
+                            (*slot).valueEnd = attStr.add(offset);
+                        }
+                        crate::src::xmltok::Big2AttributeAction::Normalized { value, .. } => {
+                            (*slot).normalized = value;
+                        }
+                    }
+                })
+            }
         }
     };
     if n > crate::limits_h::INT_MAX - nDefaultAtts {
@@ -8137,7 +8174,61 @@ unsafe extern "C" fn storeAtts(
                     );
                 }
                 crate::src::xmltok::AttributeScanner::Big2 => {
-                    crate::src::xmltok::big2_getAtts(enc, attStr, n, (*parser).m_atts);
+                    let source_len = eventEnd.offset_from(attStr);
+                    if source_len >= 0 {
+                        let source =
+                            ::core::slice::from_raw_parts(attStr.cast::<u8>(), source_len as usize);
+                        let byte_types =
+                            &(*(enc as *const crate::src::xmltok::normal_encoding)).type_0;
+                        crate::src::xmltok::big2_getAtts(byte_types, source, |action| {
+                            let attribute = match action {
+                                crate::src::xmltok::Big2AttributeAction::Name {
+                                    attribute, ..
+                                }
+                                | crate::src::xmltok::Big2AttributeAction::ValueStart {
+                                    attribute,
+                                    ..
+                                }
+                                | crate::src::xmltok::Big2AttributeAction::ValueEnd {
+                                    attribute,
+                                    ..
+                                }
+                                | crate::src::xmltok::Big2AttributeAction::Normalized {
+                                    attribute,
+                                    ..
+                                } => attribute,
+                            };
+                            if attribute < 0 || attribute >= n {
+                                return;
+                            }
+                            let slot = (*parser).m_atts.add(attribute as usize);
+                            match action {
+                                crate::src::xmltok::Big2AttributeAction::Name {
+                                    offset, ..
+                                } => {
+                                    (*slot).name = attStr.add(offset);
+                                }
+                                crate::src::xmltok::Big2AttributeAction::ValueStart {
+                                    offset,
+                                    ..
+                                } => {
+                                    (*slot).valuePtr = attStr.add(offset);
+                                }
+                                crate::src::xmltok::Big2AttributeAction::ValueEnd {
+                                    offset,
+                                    ..
+                                } => {
+                                    (*slot).valueEnd = attStr.add(offset);
+                                }
+                                crate::src::xmltok::Big2AttributeAction::Normalized {
+                                    value,
+                                    ..
+                                } => {
+                                    (*slot).normalized = value;
+                                }
+                            }
+                        });
+                    }
                 }
             }
         }
