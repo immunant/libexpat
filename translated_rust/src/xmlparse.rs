@@ -10229,6 +10229,22 @@ unsafe extern "C" fn doCdataSection(
     let enc = &*enc;
     let parser_handle = parser;
     let mut s: *const ::core::ffi::c_char = *startPtr;
+    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    // All exits from this processor update the caller's cursors through this
+    // single completion path.  Keeping the boundary writes together makes the
+    // token loop operate exclusively on local cursors and preserves the C
+    // contract that an unset cursor is left unchanged.
+    let mut finish = |error: crate::expat_h::XML_Error,
+                  start: Option<*const ::core::ffi::c_char>,
+                  next: Option<*const ::core::ffi::c_char>| {
+        if let Some(start) = start {
+            *startPtr = start;
+        }
+        if let Some(next) = next {
+            *nextPtr = next;
+        }
+        error
+    };
     let parser_events = ::core::ptr::eq(enc, parser_encoding(parser_handle));
     let mut eventPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
@@ -10258,7 +10274,6 @@ unsafe extern "C" fn doCdataSection(
         }
     };
     update_event_start(s);
-    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
     loop {
         let mut next: *const ::core::ffi::c_char = s;
         let mut tok: ::core::ffi::c_int =
@@ -10283,14 +10298,20 @@ unsafe extern "C" fn doCdataSection(
                 } else if handler_flags.default {
                     reportDefault(parser_handle, enc, s, next);
                 }
-                *startPtr = next;
-                *nextPtr = next;
                 if cdata_parsing_state(&*parser_handle).parsing as ::core::ffi::c_uint
                     == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
-                    return crate::expat_h::XML_ERROR_ABORTED;
+                    return finish(
+                        crate::expat_h::XML_ERROR_ABORTED,
+                        Some(next),
+                        Some(next),
+                    );
                 } else {
-                    return crate::expat_h::XML_ERROR_NONE;
+                    return finish(
+                        crate::expat_h::XML_ERROR_NONE,
+                        Some(next),
+                        Some(next),
+                    );
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
@@ -10380,15 +10401,13 @@ unsafe extern "C" fn doCdataSection(
             }
             crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
                 if haveMore != 0 {
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
+                    return finish(crate::expat_h::XML_ERROR_NONE, None, Some(s));
                 }
                 return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
             }
             crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
                 if haveMore != 0 {
-                    *nextPtr = s;
-                    return crate::expat_h::XML_ERROR_NONE;
+                    return finish(crate::expat_h::XML_ERROR_NONE, None, Some(s));
                 }
                 return crate::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION;
             }
@@ -10401,8 +10420,7 @@ unsafe extern "C" fn doCdataSection(
         match parsing_state.parsing as ::core::ffi::c_uint {
             3 => {
                 update_event_start(next);
-                *nextPtr = next;
-                return crate::expat_h::XML_ERROR_NONE;
+                return finish(crate::expat_h::XML_ERROR_NONE, None, Some(next));
             }
             2 => {
                 update_event_start(next);
