@@ -7844,9 +7844,22 @@ unsafe extern "C" fn doContent(
                                     .wrapping_offset((*tag).bufSize as isize)
                                     .wrapping_offset(-(1 as ::core::ffi::c_int as isize)),
                             );
-                        convLen = toPtr
-                            .offset_from((*tag).bufEnd as *mut crate::expat_external_h::XML_Char)
-                            as ::core::ffi::c_int;
+                        // The converter's output cursor is produced against this
+                        // tag's configured allocator-backed buffer.  Calculate
+                        // the length in address space so this conversion does
+                        // not invoke `offset_from`'s same-allocation
+                        // precondition.
+                        convLen = match toPtr
+                            .addr()
+                            .checked_sub(
+                                ((*tag).bufEnd as *mut crate::expat_external_h::XML_Char)
+                                    .addr(),
+                            )
+                            .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
+                        {
+                            Some(len) => len,
+                            None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+                        };
                         if fromPtr >= rawNameEnd
                             || convert_res as ::core::ffi::c_uint
                                 == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
@@ -8258,10 +8271,14 @@ unsafe extern "C" fn doContent(
                     }
                     if (*parser).m_characterDataHandler {
                         if (*enc).isUtf8 == 0 {
-                            let (data_start, data_end) = {
+                            let (data_start, data_end, data_capacity) = {
                                 let parser_ref = &mut *parser;
                                 let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
-                                (data_start, data_start.wrapping_add(parser_ref.m_dataBufEnd))
+                                (
+                                    data_start,
+                                    data_start.wrapping_add(parser_ref.m_dataBufEnd),
+                                    parser_ref.m_dataBufEnd,
+                                )
                             };
                             let mut dataPtr: *mut ICHAR = data_start;
                             crate::src::xmltok::convert_to_utf8(
@@ -8271,18 +8288,29 @@ unsafe extern "C" fn doContent(
                                 &raw mut dataPtr,
                                 data_end,
                             );
-                            callCharacterDataHandler(
-                                parser,
-                                data_start,
-                                dataPtr.offset_from(data_start) as ::core::ffi::c_int,
-                            );
+                            let data_len = match dataPtr
+                                .addr()
+                                .checked_sub(data_start.addr())
+                                .filter(|&len| len <= data_capacity)
+                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
+                            {
+                                Some(len) => len,
+                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            };
+                            callCharacterDataHandler(parser, data_start, data_len);
                         } else {
+                            let data_len = match end
+                                .addr()
+                                .checked_sub(s.addr())
+                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
+                            {
+                                Some(len) => len,
+                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            };
                             callCharacterDataHandler(
                                 parser,
                                 s as *const crate::expat_external_h::XML_Char,
-                                (end as *const crate::expat_external_h::XML_Char)
-                                    .offset_from(s as *const crate::expat_external_h::XML_Char)
-                                    as ::core::ffi::c_int,
+                                data_len,
                             );
                         }
                     } else if (*parser).m_defaultHandler {
@@ -8308,10 +8336,14 @@ unsafe extern "C" fn doContent(
                         .cloned();
                     if let Some(charDataHandler) = charDataHandler {
                         if (*enc).isUtf8 == 0 {
-                            let (data_start, data_end) = {
+                            let (data_start, data_end, data_capacity) = {
                                 let parser_ref = &mut *parser;
                                 let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
-                                (data_start, data_start.wrapping_add(parser_ref.m_dataBufEnd))
+                                (
+                                    data_start,
+                                    data_start.wrapping_add(parser_ref.m_dataBufEnd),
+                                    parser_ref.m_dataBufEnd,
+                                )
                             };
                             loop {
                                 let mut dataPtr_0: *mut ICHAR = data_start;
@@ -8324,11 +8356,16 @@ unsafe extern "C" fn doContent(
                                         data_end,
                                     );
                                 set_event_end!(parser, parser_events, eventEndPP, s);
-                                charDataHandler.invoke(
-                                    (*parser).m_handlerArg,
-                                    data_start,
-                                    dataPtr_0.offset_from(data_start) as ::core::ffi::c_int,
-                                );
+                                let data_len = match dataPtr_0
+                                    .addr()
+                                    .checked_sub(data_start.addr())
+                                    .filter(|&len| len <= data_capacity)
+                                    .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
+                                {
+                                    Some(len) => len,
+                                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                };
+                                charDataHandler.invoke((*parser).m_handlerArg, data_start, data_len);
                                 if convert_res_0 as ::core::ffi::c_uint
                                     == crate::src::xmltok::XML_CONVERT_COMPLETED
                                         as ::core::ffi::c_int
@@ -8343,12 +8380,18 @@ unsafe extern "C" fn doContent(
                                 update_event_start(s);
                             }
                         } else {
+                            let data_len = match next
+                                .addr()
+                                .checked_sub(s.addr())
+                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
+                            {
+                                Some(len) => len,
+                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            };
                             charDataHandler.invoke(
                                 (*parser).m_handlerArg,
                                 s as *const crate::expat_external_h::XML_Char,
-                                (next as *const crate::expat_external_h::XML_Char)
-                                    .offset_from(s as *const crate::expat_external_h::XML_Char)
-                                    as ::core::ffi::c_int,
+                                data_len,
                             );
                         }
                     } else if (*parser).m_defaultHandler {
