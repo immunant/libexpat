@@ -20144,30 +20144,40 @@ unsafe extern "C" fn internalEntityProcessor(
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
     if entity_state.has_more {
-        let dtd = parser_state
-            .m_dtd
-            .as_ref()
-            .map_or(::core::ptr::null_mut(), |dtd| dtd.value.get());
-        if dtd.is_null() {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        }
-        let Some(text) = entity_state
-            .text
-            .present()
-            .and_then(|text| entity_text_chars(&*dtd, text, entity_state.text_len))
-        else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
         let Ok(processed) = usize::try_from(entity_state.processed) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let Some(unprocessed) = text.get(processed..) else {
+        // Do not retain a DTD borrow across `doProlog`/`doContent`: either
+        // processor can dispatch a handler which re-enters this parser and
+        // changes the shared DTD.  The cursor addresses identify the retained
+        // entity text, while the bounded view below is used only for the
+        // immediate parameter-entity token scan.
+        let Some((text_start, text_len, parameter_scan)) = dtd_owner.inspect(|dtd| {
+            let text = entity_state
+                .text
+                .present()
+                .and_then(|text| entity_text_chars(dtd, text, entity_state.text_len))?;
+            let unprocessed = text.get(processed..)?;
+            let parameter_scan = entity_state.is_parameter.then(|| {
+                let internal_encoding = crate::src::xmltok::internal_utf8_normal_encoding(
+                    matches!(entity_state.internal_encoding, InternalEncoding::Utf8Ns),
+                );
+                crate::src::xmltok::ScannerContext::normal(
+                    internal_encoding.enc.scanners[0 as usize],
+                    internal_encoding,
+                    unprocessed,
+                )
+                .scan()
+            });
+            Some((text.as_ptr(), text.len(), parameter_scan))
+        }) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let textStart = unprocessed.as_ptr().cast::<::core::ffi::c_char>();
-        let textEnd = text
-            .as_ptr()
-            .wrapping_add(text.len())
+        let textStart = text_start
+            .wrapping_add(processed)
+            .cast::<::core::ffi::c_char>();
+        let textEnd = text_start
+            .wrapping_add(text_len)
             .cast::<::core::ffi::c_char>();
         let mut next = textStart;
         let mut result: crate::expat_h::XML_Error;
@@ -20176,12 +20186,9 @@ unsafe extern "C" fn internalEntityProcessor(
                 entity_state.internal_encoding,
                 InternalEncoding::Utf8Ns
             ));
-            let scan = crate::src::xmltok::ScannerContext::normal(
-                internal_encoding.enc.scanners[0 as usize],
-                internal_encoding,
-                unprocessed,
-            )
-            .scan();
+            let Some(scan) = parameter_scan else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
             let mut tok: ::core::ffi::c_int = scan.token;
             if let Some(offset) = scan.next {
                 next = textStart.wrapping_add(offset);
