@@ -328,6 +328,35 @@ pub type CONVERTER = Option<
 >;
 
 pub mod xmltok_impl_c {
+    fn name_matches_ascii_unit(
+        mut ptr1: *const ::core::ffi::c_char,
+        end1: *const ::core::ffi::c_char,
+        mut ptr2: *const ::core::ffi::c_char,
+        unit_width: isize,
+        ascii_offset: isize,
+        zero_offset: Option<isize>,
+    ) -> ::core::ffi::c_int {
+        unsafe {
+            while *ptr2 != 0 {
+                if (end1.offset_from(ptr1) as ::core::ffi::c_long)
+                    < unit_width as ::core::ffi::c_long
+                {
+                    return 0 as ::core::ffi::c_int;
+                }
+                if let Some(zero_offset) = zero_offset {
+                    if *ptr1.offset(zero_offset) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
+                        return 0 as ::core::ffi::c_int;
+                    }
+                }
+                if *ptr1.offset(ascii_offset) as ::core::ffi::c_int != *ptr2 as ::core::ffi::c_int {
+                    return 0 as ::core::ffi::c_int;
+                }
+                ptr1 = ptr1.offset(unit_width);
+                ptr2 = ptr2.offset(1);
+            }
+            (ptr1 == end1) as ::core::ffi::c_int
+        }
+    }
 
     pub unsafe extern "C" fn normal_scanComment(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -4496,24 +4525,12 @@ pub mod xmltok_impl_c {
     }
 
     pub extern "C" fn normal_nameMatchesAscii(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr1: *const ::core::ffi::c_char,
-        mut end1: *const ::core::ffi::c_char,
-        mut ptr2: *const ::core::ffi::c_char,
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr1: *const ::core::ffi::c_char,
+        end1: *const ::core::ffi::c_char,
+        ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        unsafe {
-            while *ptr2 != 0 {
-                if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 1 as ::core::ffi::c_long {
-                    return 0 as ::core::ffi::c_int;
-                }
-                if !(*ptr1 as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int) {
-                    return 0 as ::core::ffi::c_int;
-                }
-                ptr1 = ptr1.offset(1 as ::core::ffi::c_int as isize);
-                ptr2 = ptr2.offset(1);
-            }
-            return (ptr1 == end1) as ::core::ffi::c_int;
-        }
+        name_matches_ascii_unit(ptr1, end1, ptr2, 1, 0, None)
     }
 
     pub unsafe extern "C" fn normal_nameLength(
@@ -9034,28 +9051,12 @@ pub mod xmltok_impl_c {
     }
 
     pub extern "C" fn little2_nameMatchesAscii(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr1: *const ::core::ffi::c_char,
-        mut end1: *const ::core::ffi::c_char,
-        mut ptr2: *const ::core::ffi::c_char,
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr1: *const ::core::ffi::c_char,
+        end1: *const ::core::ffi::c_char,
+        ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        unsafe {
-            while *ptr2 != 0 {
-                if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    return 0 as ::core::ffi::c_int;
-                }
-                if !(*ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == *ptr2 as ::core::ffi::c_int)
-                {
-                    return 0 as ::core::ffi::c_int;
-                }
-                ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-                ptr2 = ptr2.offset(1);
-            }
-            return (ptr1 == end1) as ::core::ffi::c_int;
-        }
+        name_matches_ascii_unit(ptr1, end1, ptr2, 2, 0, Some(1))
     }
 
     pub unsafe extern "C" fn little2_nameLength(
@@ -13672,28 +13673,12 @@ pub mod xmltok_impl_c {
     }
 
     pub extern "C" fn big2_nameMatchesAscii(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr1: *const ::core::ffi::c_char,
-        mut end1: *const ::core::ffi::c_char,
-        mut ptr2: *const ::core::ffi::c_char,
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr1: *const ::core::ffi::c_char,
+        end1: *const ::core::ffi::c_char,
+        ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        unsafe {
-            while *ptr2 != 0 {
-                if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    return 0 as ::core::ffi::c_int;
-                }
-                if !(*ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == *ptr2 as ::core::ffi::c_int)
-                {
-                    return 0 as ::core::ffi::c_int;
-                }
-                ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-                ptr2 = ptr2.offset(1);
-            }
-            return (ptr1 == end1) as ::core::ffi::c_int;
-        }
+        name_matches_ascii_unit(ptr1, end1, ptr2, 2, 1, Some(0))
     }
 
     pub unsafe extern "C" fn big2_nameLength(
