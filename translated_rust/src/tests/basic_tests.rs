@@ -1418,6 +1418,14 @@ fn parser_set_default_handler(handler: XML_DefaultHandler) {
     ffi_call2(XML_SetDefaultHandler, current_parser(), handler);
 }
 
+fn parser_set_start_cdata_section_handler(handler: XML_StartCdataSectionHandler) {
+    ffi_call2(XML_SetStartCdataSectionHandler, current_parser(), handler);
+}
+
+fn parser_set_end_cdata_section_handler(handler: XML_EndCdataSectionHandler) {
+    ffi_call2(XML_SetEndCdataSectionHandler, current_parser(), handler);
+}
+
 fn parser_set_xml_decl_handler(handler: XML_XmlDeclHandler) {
     ffi_call2(XML_SetXmlDeclHandler, current_parser(), handler);
 }
@@ -1581,6 +1589,10 @@ fn external_entity_faulter_handler_for_tests() -> XML_ExternalEntityRefHandler {
     Some(external_entity_faulter)
 }
 
+fn external_entity_good_cdata_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_good_cdata_ascii)
+}
+
 fn reject_not_standalone_handler_for_tests() -> XML_NotStandaloneHandler {
     Some(reject_not_standalone_handler)
 }
@@ -1647,6 +1659,14 @@ fn dummy_cdata_handler_for_tests() -> XML_CharacterDataHandler {
     )
 }
 
+fn start_cdata_handler_for_tests() -> XML_StartCdataSectionHandler {
+    Some(dummy_start_cdata_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ())
+}
+
+fn end_cdata_handler_for_tests() -> XML_EndCdataSectionHandler {
+    Some(dummy_end_cdata_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ())
+}
+
 fn attr_whitespace_handler_for_tests() -> XML_StartElementHandler {
     Some(
         check_attr_contains_normalized_whitespace
@@ -1660,6 +1680,37 @@ fn attr_whitespace_handler_for_tests() -> XML_StartElementHandler {
 
 fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     ffi_call1(strlen, text) as ::core::ffi::c_int
+}
+
+fn set_subtest_text(text: *const ::core::ffi::c_char) {
+    unsafe {
+        set_subtest(bytes_as_c_char_ptr(b"%s\0"), text);
+    }
+}
+
+fn set_subtest_case_number(case_number: usize) {
+    unsafe {
+        set_subtest(
+            bytes_as_c_char_ptr(b"case %lu\0"),
+            case_number as ::core::ffi::c_ulong,
+        );
+    }
+}
+
+fn xml_error_string(error: XML_Error) -> *const XML_LChar {
+    ffi_call1(XML_ErrorString, error)
+}
+
+fn c_string_lossy(text: *const ::core::ffi::c_char) -> String {
+    unsafe {
+        std::ffi::CStr::from_ptr(text)
+            .to_string_lossy()
+            .into_owned()
+    }
+}
+
+fn xml_error_string_lossy(error: XML_Error) -> String {
+    c_string_lossy(xml_error_string(error).cast())
 }
 
 macro_rules! content_model_slice {
@@ -4494,98 +4545,35 @@ extern "C" fn test_repeated_stop_parser_between_char_data_calls() {
     }
 }
 unsafe extern "C" fn test_good_cdata_ascii() {
-    unsafe {
-        _check_set_test_info(
-            b"test_good_cdata_ascii\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1571 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<a><![CDATA[<greeting>Hello, world!</greeting>]]></a>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"<greeting>Hello, world!</greeting>\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                accumulate_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetStartCdataSectionHandler(
-            g_parser,
-            Some(dummy_start_cdata_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
-        );
-        XML_SetEndCdataSectionHandler(
-            g_parser,
-            Some(dummy_end_cdata_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1585 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                accumulate_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                dummy_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1597 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_good_cdata_ascii\0", 1571 as ::core::ffi::c_int);
+    let text = b"<a><![CDATA[<greeting>Hello, world!</greeting>]]></a>\0";
+    let expected = bytes_as_xml_char_ptr(b"<greeting>Hello, world!</greeting>\0");
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_user_data((&raw mut storage).cast());
+    parser_set_character_data_handler(accumulating_character_handler());
+    parser_set_start_cdata_section_handler(start_cdata_handler_for_tests());
+    parser_set_end_cdata_section_handler(end_cdata_handler_for_tests());
+    ensure_parser_success(
+        parse_single_bytes_buffer(text, XML_TRUE as ::core::ffi::c_int),
+        1585 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
+
+    parser_reset();
+    char_data_init(&mut storage);
+    parser_set_user_data((&raw mut storage).cast());
+    parser_set_character_data_handler(accumulating_character_handler());
+    parser_set_default_handler(default_handler());
+    ensure_parser_success(
+        parse_single_bytes_buffer(text, XML_TRUE as ::core::ffi::c_int),
+        1597 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
 }
 unsafe extern "C" fn test_good_cdata_utf16() {
     unsafe {
@@ -4637,53 +4625,23 @@ unsafe extern "C" fn test_good_cdata_utf16() {
     }
 }
 unsafe extern "C" fn test_good_cdata_utf16_le() {
-    unsafe {
-        _check_set_test_info(
-            b"test_good_cdata_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1629 as ::core::ffi::c_int,
-        );
-        let text: [::core::ffi::c_char; 129] = ::core::mem::transmute::<
-            [u8; 129],
-            [::core::ffi::c_char; 129],
-        >(
-            *b"<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0u\0t\0f\0-\x001\x006\0'\0?\0>\0\n\0<\0a\0>\0<\0!\0[\0C\0D\0A\0T\0A\0[\0h\0e\0l\0l\0o\0]\0]\0>\0<\0/\0a\0>\0\0",
-        );
-        let mut expected: *const XML_Char = b"hello\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                accumulate_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw const text as *const ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 129]>() as ::core::ffi::c_int
-                - 1 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1651 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    set_test_info(b"test_good_cdata_utf16_le\0", 1629 as ::core::ffi::c_int);
+    let text =
+        b"<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0u\0t\0f\0-\x001\x006\0'\0?\0>\0\n\0<\0a\0>\0<\0!\0[\0C\0D\0A\0T\0A\0[\0h\0e\0l\0l\0o\0]\0]\0>\0<\0/\0a\0>\0\0";
+    let expected = bytes_as_xml_char_ptr(b"hello\0");
+    let mut storage: CharData = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_user_data((&raw mut storage).cast());
+    parser_set_character_data_handler(accumulating_character_handler());
+    ensure_parser_success(
+        parse_single_bytes_buffer(text, XML_TRUE as ::core::ffi::c_int),
+        1651 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
 }
 unsafe extern "C" fn test_long_cdata_utf16() {
     unsafe {
@@ -4853,363 +4811,275 @@ unsafe extern "C" fn test_utf16_bad_surrogate_pair() {
     }
 }
 unsafe extern "C" fn test_bad_cdata() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_cdata\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1799 as ::core::ffi::c_int,
-        );
-        let mut cases: [CaseData_0; 21] = [
-            CaseData_0 {
-                text: b"<a><\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><!\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![C\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CD\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDA\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDAT\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA[\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA[]\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA[]]\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData_0 {
-                text: b"<a><!<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_INVALID_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![C<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CD<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_INVALID_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDA<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_INVALID_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDAT<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_INVALID_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_INVALID_TOKEN,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA[<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA[]<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData_0 {
-                text: b"<a><![CDATA[]]<a/>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-        ];
-        let mut i: size_t = 0 as size_t;
-        while i
-            < (::core::mem::size_of::<[CaseData_0; 21]>() as usize)
-                .wrapping_div(::core::mem::size_of::<CaseData_0>() as usize)
-        {
-            set_subtest(
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                cases[i as usize].text,
+    set_test_info(b"test_bad_cdata\0", 1799 as ::core::ffi::c_int);
+    let cases = [
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><!\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![C\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CD\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDA\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDAT\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA[\0"),
+            expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA[]\0"),
+            expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA[]]\0"),
+            expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><!<a/>\0"),
+            expectedError: XML_ERROR_INVALID_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![<a/>\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![C<a/>\0"),
+            expectedError: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CD<a/>\0"),
+            expectedError: XML_ERROR_INVALID_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDA<a/>\0"),
+            expectedError: XML_ERROR_INVALID_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDAT<a/>\0"),
+            expectedError: XML_ERROR_INVALID_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA<a/>\0"),
+            expectedError: XML_ERROR_INVALID_TOKEN,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA[<a/>\0"),
+            expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA[]<a/>\0"),
+            expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData_0 {
+            text: bytes_as_c_char_ptr(b"<a><![CDATA[]]<a/>\0"),
+            expectedError: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+    ];
+
+    for (index, case_data) in cases.iter().enumerate() {
+        set_subtest_text(case_data.text);
+        let actual_status = parse_single_bytes_c_string(case_data.text);
+        ensure_parser_error(actual_status, 1838 as ::core::ffi::c_int);
+
+        let actual_error = parser_error_code();
+        if actual_error as ::core::ffi::c_uint != case_data.expectedError as ::core::ffi::c_uint {
+            fail_test_message(
+                1846 as ::core::ffi::c_int,
+                format!(
+                    "Expected error {} but got error {} for case {}: \"{}\"",
+                    case_data.expectedError as ::core::ffi::c_uint,
+                    actual_error as ::core::ffi::c_uint,
+                    index + 1,
+                    c_string_lossy(case_data.text),
+                ),
             );
-            let actualStatus: XML_Status = _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                cases[i as usize].text,
-                strlen(cases[i as usize].text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as XML_Status;
-            let actualError: XML_Error = XML_GetErrorCode(g_parser) as XML_Error;
-            if actualStatus as ::core::ffi::c_uint
-                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-            } else {
-                __assert_fail(
-                    b"actualStatus == XML_STATUS_ERROR\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1838 as ::core::ffi::c_uint,
-                    b"void test_bad_cdata(void)\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            };
-            if actualError as ::core::ffi::c_uint
-                != cases[i as usize].expectedError as ::core::ffi::c_uint
-            {
-                let mut message: [::core::ffi::c_char; 100] = [0; 100];
-                snprintf(
-                    &raw mut message as *mut ::core::ffi::c_char,
-                    ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as size_t,
-                    b"Expected error %d but got error %d for case %u: \"%s\"\n\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    cases[i as usize].expectedError as ::core::ffi::c_uint,
-                    actualError as ::core::ffi::c_uint,
-                    (i as ::core::ffi::c_uint).wrapping_add(1 as ::core::ffi::c_uint),
-                    cases[i as usize].text,
-                );
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1846 as ::core::ffi::c_int,
-                    &raw mut message as *mut ::core::ffi::c_char,
-                );
-            }
-            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            i = i.wrapping_add(1);
         }
+
+        parser_reset();
     }
 }
 unsafe extern "C" fn test_bad_cdata_utf16() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1855 as ::core::ffi::c_int,
+    set_test_info(b"test_bad_cdata_utf16\0", 1855 as ::core::ffi::c_int);
+    let prolog =
+        b"\0<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0u\0t\0f\0-\x001\x006\0'\0?\0>\0\n\0<\0a\0>\0";
+    let cases = [
+        CaseData {
+            text_bytes: 1 as size_t,
+            text: b"\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 2 as size_t,
+            text: b"\0<\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 3 as size_t,
+            text: b"\0<\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 4 as size_t,
+            text: b"\0<\0!\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 5 as size_t,
+            text: b"\0<\0!\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 6 as size_t,
+            text: b"\0<\0!\0[\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 7 as size_t,
+            text: b"\0<\0!\0[\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 8 as size_t,
+            text: b"\0<\0!\0[\0C\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 9 as size_t,
+            text: b"\0<\0!\0[\0C\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 10 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 11 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 12 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 13 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 14 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 15 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 16 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 17 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        CaseData {
+            text_bytes: 18 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData {
+            text_bytes: 19 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData {
+            text_bytes: 20 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData {
+            text_bytes: 21 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD8\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+        CaseData {
+            text_bytes: 22 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD84\0".as_ptr() as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_PARTIAL_CHAR,
+        },
+        CaseData {
+            text_bytes: 23 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD84\xDD\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_PARTIAL_CHAR,
+        },
+        CaseData {
+            text_bytes: 24 as size_t,
+            text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD84\xDD^\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
+        },
+    ];
+
+    for (index, case_data) in cases.iter().enumerate() {
+        set_subtest_case_number(index + 1);
+        ensure_parser_success(
+            parse_single_bytes_buffer(prolog, XML_FALSE as ::core::ffi::c_int),
+            1908 as ::core::ffi::c_int,
         );
-        let prolog: [::core::ffi::c_char; 87] = ::core::mem::transmute::<
-            [u8; 87],
-            [::core::ffi::c_char; 87],
-        >(
-            *b"\0<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0u\0t\0f\0-\x001\x006\0'\0?\0>\0\n\0<\0a\0>\0",
+
+        let actual_status = parse_single_bytes_with_final(
+            case_data.text,
+            case_data.text_bytes as ::core::ffi::c_int,
+            XML_TRUE as ::core::ffi::c_int,
         );
-        let mut cases: [CaseData; 24] = [
-            CaseData {
-                text_bytes: 1 as size_t,
-                text: b"\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 2 as size_t,
-                text: b"\0<\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 3 as size_t,
-                text: b"\0<\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 4 as size_t,
-                text: b"\0<\0!\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 5 as size_t,
-                text: b"\0<\0!\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 6 as size_t,
-                text: b"\0<\0!\0[\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 7 as size_t,
-                text: b"\0<\0!\0[\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 8 as size_t,
-                text: b"\0<\0!\0[\0C\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 9 as size_t,
-                text: b"\0<\0!\0[\0C\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 10 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 11 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 12 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 13 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 14 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 15 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 16 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 17 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            CaseData {
-                text_bytes: 18 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData {
-                text_bytes: 19 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData {
-                text_bytes: 20 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\0".as_ptr() as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData {
-                text_bytes: 21 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD8\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-            CaseData {
-                text_bytes: 22 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD84\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_PARTIAL_CHAR,
-            },
-            CaseData {
-                text_bytes: 23 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD84\xDD\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_PARTIAL_CHAR,
-            },
-            CaseData {
-                text_bytes: 24 as size_t,
-                text: b"\0<\0!\0[\0C\0D\0A\0T\0A\0[\0Z\xD84\xDD^\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                expected_error: XML_ERROR_UNCLOSED_CDATA_SECTION,
-            },
-        ];
-        let mut i: size_t = 0;
-        i = 0 as size_t;
-        while i
-            < (::core::mem::size_of::<[CaseData; 24]>() as usize)
-                .wrapping_div(::core::mem::size_of::<CaseData>() as usize)
-        {
-            set_subtest(
-                b"case %lu\0".as_ptr() as *const ::core::ffi::c_char,
-                i.wrapping_add(1 as size_t) as ::core::ffi::c_ulong,
-            );
-            let mut actual_status: XML_Status = XML_STATUS_ERROR;
-            let mut actual_error: XML_Error = XML_ERROR_NONE;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                &raw const prolog as *const ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 87]>() as ::core::ffi::c_int
-                    - 1 as ::core::ffi::c_int,
-                XML_FALSE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    g_parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1908 as ::core::ffi::c_int,
-                );
-            }
-            actual_status = _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                cases[i as usize].text,
-                cases[i as usize].text_bytes as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            );
-            if actual_status as ::core::ffi::c_uint
-                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-            } else {
-                __assert_fail(
-                    b"actual_status == XML_STATUS_ERROR\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1911 as ::core::ffi::c_uint,
-                    b"void test_bad_cdata_utf16(void)\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            };
-            actual_error = XML_GetErrorCode(g_parser);
-            if actual_error as ::core::ffi::c_uint
-                != cases[i as usize].expected_error as ::core::ffi::c_uint
-            {
-                let mut message: [::core::ffi::c_char; 1024] = [0; 1024];
-                snprintf(
-                    &raw mut message as *mut ::core::ffi::c_char,
-                    ::core::mem::size_of::<[::core::ffi::c_char; 1024]>() as size_t,
-                    b"Expected error %d (%s), got %d (%s) for case %lu\n\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    cases[i as usize].expected_error as ::core::ffi::c_uint,
-                    XML_ErrorString(cases[i as usize].expected_error),
+        ensure_parser_error(actual_status, 1911 as ::core::ffi::c_int);
+
+        let actual_error = parser_error_code();
+        if actual_error as ::core::ffi::c_uint != case_data.expected_error as ::core::ffi::c_uint {
+            fail_test_message(
+                1922 as ::core::ffi::c_int,
+                format!(
+                    "Expected error {} ({}), got {} ({}) for case {}",
+                    case_data.expected_error as ::core::ffi::c_uint,
+                    xml_error_string_lossy(case_data.expected_error),
                     actual_error as ::core::ffi::c_uint,
-                    XML_ErrorString(actual_error),
-                    i.wrapping_add(1 as size_t) as ::core::ffi::c_ulong,
-                );
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1922 as ::core::ffi::c_int,
-                    &raw mut message as *mut ::core::ffi::c_char,
-                );
-            }
-            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            i = i.wrapping_add(1);
+                    xml_error_string_lossy(actual_error),
+                    index + 1,
+                ),
+            );
         }
+
+        parser_reset();
     }
 }
 extern "C" fn test_stop_parser_between_cdata_calls() {
@@ -9461,43 +9331,13 @@ unsafe extern "C" fn test_ext_entity_trailing_rsqb() {
     }
 }
 unsafe extern "C" fn test_ext_entity_good_cdata() {
-    unsafe {
-        _check_set_test_info(
-            b"test_ext_entity_good_cdata\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2818 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_good_cdata_ascii
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2828 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(b"test_ext_entity_good_cdata\0", 2818 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0",
+    );
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_good_cdata_handler_for_tests());
+    ensure_parser_success(parser_parse_c_string(text), 2828 as ::core::ffi::c_int);
 }
 unsafe extern "C" fn test_user_parameters() {
     unsafe {
