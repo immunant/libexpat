@@ -2154,9 +2154,10 @@ pub struct DTD {
 pub struct CONTENT_SCAFFOLD {
     pub type_0: crate::expat_h::XML_Content_Type,
     pub quant: crate::expat_h::XML_Content_Quant,
-    // Name scaffolds borrow a non-null, NUL-terminated value committed in the
-    // DTD string pool.  Other scaffold kinds do not have a name.
-    pub name: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>>,
+    // Name scaffolds refer to a NUL-terminated value committed in the DTD
+    // string pool.  The handle keeps the custom-allocator-owned block alive
+    // without retaining a raw address; other scaffold kinds have no name.
+    pub name: Option<PoolStringRef>,
     pub firstchild: ::core::ffi::c_int,
     pub lastchild: ::core::ffi::c_int,
     pub childcnt: ::core::ffi::c_int,
@@ -11274,14 +11275,15 @@ unsafe extern "C" fn doProlog(
                         if el.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        let name_2 = std::ptr::NonNull::new((*el).named.name as *mut _)
-                            .expect("element type table entries always have a pool name");
-                        (*(*dtd).scaffold.offset(myindex_0 as isize)).name = Some(name_2);
+                        let name_2 = (*el).named.name;
+                        let name_ref = pool_string_ref(&raw const (*dtd).pool, name_2)
+                            .expect("element type table entries always have a DTD pool name");
+                        (*(*dtd).scaffold.offset(myindex_0 as isize)).name = Some(name_ref);
                         nameLen = 0 as crate::__stddef_size_t_h::size_t;
                         loop {
                             let c2rust_fresh5 = nameLen;
                             nameLen = nameLen.wrapping_add(1);
-                            if *name_2.as_ptr().offset(c2rust_fresh5 as isize) == 0 {
+                            if *name_2.offset(c2rust_fresh5 as isize) == 0 {
                                 break;
                             }
                         }
@@ -14326,25 +14328,25 @@ unsafe extern "C" fn nextScaffoldPart(
 unsafe extern "C" fn build_model(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *mut crate::expat_h::XML_Content {
-    let dtd: *mut DTD = (*parser).m_dtd;
+    let dtd: &mut DTD = &mut *(*parser).m_dtd;
     let mut ret: *mut crate::expat_h::XML_Content =
         ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
     let mut str: *mut crate::expat_external_h::XML_Char =
         ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    if ((*dtd).scaffCount as usize)
+    if (dtd.scaffCount as usize)
         .wrapping_mul(::core::mem::size_of::<crate::expat_h::XML_Content>())
         > (crate::stdlib::SIZE_MAX as usize).wrapping_sub(
-            ((*dtd).contentStringLen as usize)
+            (dtd.contentStringLen as usize)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
         )
     {
         return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
     }
-    let allocsize: crate::__stddef_size_t_h::size_t = ((*dtd).scaffCount
+    let allocsize: crate::__stddef_size_t_h::size_t = (dtd.scaffCount
         as crate::__stddef_size_t_h::size_t)
         .wrapping_mul(::core::mem::size_of::<crate::expat_h::XML_Content>())
         .wrapping_add(
-            ((*dtd).contentStringLen as crate::__stddef_size_t_h::size_t)
+            (dtd.contentStringLen as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
         );
     ret = (*parser)
@@ -14356,7 +14358,7 @@ unsafe extern "C" fn build_model(
         return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
     }
     let mut dest: *mut crate::expat_h::XML_Content = ret;
-    let destLimit: *mut crate::expat_h::XML_Content = ret.offset((*dtd).scaffCount as isize);
+    let destLimit: *mut crate::expat_h::XML_Content = ret.offset(dtd.scaffCount as isize);
     let mut jobDest: *mut crate::expat_h::XML_Content = ret;
     str = ret.offset((*dtd).scaffCount as isize) as *mut crate::expat_external_h::XML_Char;
     let c2rust_fresh10 = jobDest;
@@ -14364,8 +14366,8 @@ unsafe extern "C" fn build_model(
     (*c2rust_fresh10).numchildren = 0 as ::core::ffi::c_uint;
     while dest < destLimit {
         let src_node: ::core::ffi::c_int = (*dest).numchildren as ::core::ffi::c_int;
-        (*dest).type_0 = (*(*dtd).scaffold.offset(src_node as isize)).type_0;
-        (*dest).quant = (*(*dtd).scaffold.offset(src_node as isize)).quant;
+        (*dest).type_0 = (*dtd.scaffold.offset(src_node as isize)).type_0;
+        (*dest).quant = (*dtd.scaffold.offset(src_node as isize)).quant;
         if (*dest).type_0 as ::core::ffi::c_uint
             == crate::expat_h::XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
         {
@@ -14374,10 +14376,14 @@ unsafe extern "C" fn build_model(
             (*dest).name = str;
             // A name content node is populated from ELEMENT_TYPE.name when it
             // is scaffolded; non-name nodes never enter this branch.
-            src = (*(*dtd).scaffold.offset(src_node as isize))
+            let name_ref = (*dtd.scaffold.offset(src_node as isize))
                 .name
-                .expect("name content scaffold must have a pool name")
-                .as_ptr();
+                .expect("name content scaffold must have a pool name");
+            src = pool_string_pointer(&raw const dtd.pool, name_ref);
+            assert!(
+                !src.is_null(),
+                "name content scaffold must reference a live DTD pool string"
+            );
             loop {
                 let c2rust_fresh11 = str;
                 str = str.offset(1);
@@ -14394,16 +14400,16 @@ unsafe extern "C" fn build_model(
             let mut cn: ::core::ffi::c_int = 0;
             (*dest).name = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
             (*dest).numchildren =
-                (*(*dtd).scaffold.offset(src_node as isize)).childcnt as ::core::ffi::c_uint;
+                (*dtd.scaffold.offset(src_node as isize)).childcnt as ::core::ffi::c_uint;
             (*dest).children = jobDest;
             i = 0 as ::core::ffi::c_uint;
-            cn = (*(*dtd).scaffold.offset(src_node as isize)).firstchild;
+            cn = (*dtd.scaffold.offset(src_node as isize)).firstchild;
             while i < (*dest).numchildren {
                 let c2rust_fresh12 = jobDest;
                 jobDest = jobDest.offset(1);
                 (*c2rust_fresh12).numchildren = cn as ::core::ffi::c_uint;
                 i = i.wrapping_add(1);
-                cn = (*(*dtd).scaffold.offset(cn as isize)).nextsib;
+                cn = (*dtd.scaffold.offset(cn as isize)).nextsib;
             }
         }
         dest = dest.offset(1);
