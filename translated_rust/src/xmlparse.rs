@@ -8792,30 +8792,26 @@ pub unsafe extern "C" fn XML_GetCurrentByteCount_ffi(
 ) -> ::core::ffi::c_int {
     XML_GetCurrentByteCount(parser)
 }
-pub unsafe extern "C" fn XML_GetInputContext(
-    mut parser: crate::expat_h::XML_Parser,
-    mut offset: *mut ::core::ffi::c_int,
-    mut size: *mut ::core::ffi::c_int,
-) -> *const ::core::ffi::c_char {
-    if parser.is_null() {
-        return ::core::ptr::null::<::core::ffi::c_char>();
-    }
-    if let (Some(event_start), Some(bytes)) =
-        ((*parser).m_eventPtr, (*parser).m_buffer.bytes.as_ref())
-    {
-        if event_start > bytes.len() {
-            return ::core::ptr::null::<::core::ffi::c_char>();
-        }
-        if !offset.is_null() {
-            *offset = event_start as ::core::ffi::c_int;
-        }
-        if !size.is_null() {
-            *size = (*parser).m_bufferEnd as ::core::ffi::c_int;
-        }
-        return bytes.as_ptr().cast();
-    }
-    return ::core::ptr::null::<::core::ffi::c_char>();
+/// The bounded input context exposed by `XML_GetInputContext`.
+///
+/// The buffer is borrowed from the parser, so the ABI wrapper can return its
+/// address without reconstructing a slice from an untrusted pointer.
+struct InputContext<'input> {
+    bytes: &'input [u8],
+    event_offset: usize,
+    buffer_end: usize,
 }
+
+fn input_context(parser: &XML_ParserStruct) -> Option<InputContext<'_>> {
+    let event_offset = parser.m_eventPtr?;
+    let bytes = parser.m_buffer.bytes.as_deref()?;
+    (event_offset <= bytes.len()).then_some(InputContext {
+        bytes,
+        event_offset,
+        buffer_end: parser.m_bufferEnd,
+    })
+}
+
 #[export_name = "XML_GetInputContext"]
 
 pub unsafe extern "C" fn XML_GetInputContext_ffi(
@@ -8823,7 +8819,19 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
     mut offset: *mut ::core::ffi::c_int,
     mut size: *mut ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    XML_GetInputContext(parser, offset, size)
+    let Some(parser) = parser.as_ref() else {
+        return ::core::ptr::null();
+    };
+    let Some(context) = input_context(parser) else {
+        return ::core::ptr::null();
+    };
+    if let Some(offset) = offset.as_mut() {
+        *offset = context.event_offset as ::core::ffi::c_int;
+    }
+    if let Some(size) = size.as_mut() {
+        *size = context.buffer_end as ::core::ffi::c_int;
+    }
+    context.bytes.as_ptr().cast()
 }
 /// The safe, value-only state needed to update a parser's current line.
 /// It deliberately excludes the ABI-shaped parser, whose unrelated callback
