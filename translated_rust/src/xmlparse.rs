@@ -13691,14 +13691,22 @@ unsafe fn storeAtts(
                     }
                 }
             }
-            let temp_pool = &raw mut parser.m_tempPool;
+            let Some(input) = event_raw_name_source(
+                &*parser,
+                dtd,
+                parser_events,
+                value_start.addr(),
+                value_end.addr(),
+            )
+            .and_then(|source| attribute_value_input_from_source(source, parser_events)) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
             result = storeAttributeValue(
                 parser,
-                enc,
+                &normal_encoding,
                 isCdata,
-                value_start,
-                value_end,
-                temp_pool,
+                input,
+                AttributeValuePool::Temp,
                 account,
             );
             if result as u64 != 0 {
@@ -18183,14 +18191,45 @@ unsafe fn doProlog(
                                     }
                                     37 | 38 => {
                                         if dtd.keepProcessing != 0 {
+                                            let Some(value_start) = s
+                                                .addr()
+                                                .checked_add(encoding.minBytesPerChar as usize)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            let Some(value_end) = next
+                                                .addr()
+                                                .checked_sub(encoding.minBytesPerChar as usize)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            let Some(input) = event_raw_name_source(
+                                                parser,
+                                                dtd,
+                                                parser_events,
+                                                value_start,
+                                                value_end,
+                                            )
+                                            .and_then(|source| {
+                                                attribute_value_input_from_source(
+                                                    source,
+                                                    parser_events,
+                                                )
+                                            }) else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            let Some(normal_encoding) =
+                                                entity_value_normal_encoding(parser, enc.addr())
+                                            else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
                                             let mut result_1: crate::expat_h::XML_Error =
                                                 storeAttributeValue(
                                                     parser,
-                                                    enc,
+                                                    &normal_encoding,
                                                     parser.m_declAttributeIsCdata,
-                                                    s.wrapping_add(encoding.minBytesPerChar as usize),
-                                                    next.wrapping_sub(encoding.minBytesPerChar as usize),
-                                                    std::ptr::from_mut(&mut dtd.pool),
+                                                    input,
+                                                    AttributeValuePool::Dtd(&mut dtd.pool),
                                                     XML_ACCOUNT_NONE,
                                                 );
                                             if result_1 as u64 != 0 {
@@ -21012,71 +21051,78 @@ fn close_attribute_entity(parser: &mut XML_ParserStruct, entity_name: PoolString
     })
 }
 
+/// A copied, validated attribute-value token.  The source may be released or
+/// moved while entity expansion invokes callbacks, so scanning uses this
+/// owned copy; `parser_event_start` retains the original checked buffer
+/// address for error reporting.
+struct AttributeValueInput {
+    chars: Vec<::core::ffi::c_char>,
+    parser_event_start: Option<usize>,
+}
+
+/// Selects the string pool that receives normalized attribute text without
+/// retaining a raw pointer to either owner.
+enum AttributeValuePool<'a> {
+    Temp,
+    Dtd(&'a mut STRING_POOL),
+}
+
+fn with_attribute_value_pool<R>(
+    parser: &mut XML_ParserStruct,
+    pool: &mut AttributeValuePool<'_>,
+    action: impl FnOnce(&mut STRING_POOL) -> R,
+) -> R {
+    match pool {
+        AttributeValuePool::Temp => action(&mut parser.m_tempPool),
+        AttributeValuePool::Dtd(pool) => action(pool),
+    }
+}
+
+fn attribute_value_input_from_source(
+    source: RawNameSource<'_>,
+    parser_events: bool,
+) -> Option<AttributeValueInput> {
+    let source_chars = source.chars();
+    let mut chars = Vec::new();
+    chars.try_reserve_exact(source_chars.len()).ok()?;
+    chars.extend_from_slice(source_chars);
+    Some(AttributeValueInput {
+        chars,
+        parser_event_start: parser_events.then_some(source_chars.as_ptr().addr()),
+    })
+}
+
 unsafe fn storeAttributeValue(
     parser: &mut XML_ParserStruct,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut isCdata: crate::expat_h::XML_Bool,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pool: *mut STRING_POOL,
-    mut account: XML_Account,
+    enc: &crate::src::xmltok::normal_encoding,
+    isCdata: crate::expat_h::XML_Bool,
+    input: AttributeValueInput,
+    mut pool: AttributeValuePool<'_>,
+    account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    // Attribute scanning needs the complete normal-encoding table, not just
-    // its ABI-visible `ENCODING` prefix.  The parser owns every table it may
-    // select, so resolve this cursor against that owned set before scanning
-    // rather than reinterpreting the prefix as a larger raw object.
-    let Some(enc) = entity_value_normal_encoding(parser, enc.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let pool = &mut *pool;
-    let mut next: *const ::core::ffi::c_char = ptr;
+    let mut input_cursor = 0;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
         if parser.m_openAttributeEntities.is_empty() {
-            let input_len = end.addr().checked_sub(next.addr());
-            // Arithmetic alone does not establish that a cursor pair belongs
-            // to the same readable allocation.  Attribute values may come
-            // from parser input or from the active replacement-text frame, so
-            // first resolve this exact window through its owner.  The view is
-            // immediately dropped before `appendAttributeValue` mutates parser
-            // state, leaving the legacy scanner only the checked short-lived
-            // raw slice it expects.
-            let input = input_len.and_then(|len| {
-                let parser_input = parser
-                    .m_buffer
-                    .window_from_addresses(next.addr(), end.addr())
-                    .is_some_and(|input| input.len() == len);
-                let entity_input = (|| {
-                    let dtd = parser.m_dtd.as_ref()?;
-                    let entity = parser
-                        .m_openValueEntities
-                        .and_then(|index| parser.m_activeValueEntities.get(index))
-                        .map(InternalEntityStorage::node)
-                        .or_else(|| {
-                            parser
-                                .m_openInternalEntities
-                                .and_then(|index| parser.m_activeInternalEntities.get(index))
-                                .map(InternalEntityStorage::node)
-                        })?;
-                    let (start, input_len) = dtd.inspect(|dtd| event_text_window(dtd, entity))?;
-                    let start_offset = next.addr().checked_sub(start)?;
-                    let end_offset = end.addr().checked_sub(start)?;
-                    (start_offset <= end_offset && end_offset <= input_len).then_some(())
-                })()
-                .is_some();
-                ((parser_input || entity_input) && len <= isize::MAX as usize)
-                    .then(|| ::core::slice::from_raw_parts(next, len))
-            });
-            let Some(input) = input else {
+            if input_cursor > input.chars.len() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
+            }
             let (append_result, append_next) =
-                appendAttributeValue(parser, &enc, isCdata, input, 0, pool, account);
+                appendAttributeValue(
+                    parser,
+                    enc,
+                    isCdata,
+                    &input.chars,
+                    input_cursor,
+                    input.parser_event_start,
+                    &mut pool,
+                    account,
+                );
             result = append_result;
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
-                next = input.as_ptr().wrapping_add(append_next).cast();
+                input_cursor = append_next;
             }
         } else {
             let Some(entity_name) = parser
@@ -21134,7 +21180,8 @@ unsafe fn storeAttributeValue(
                     isCdata,
                     entity_input,
                     0,
-                    pool,
+                    None,
+                    &mut pool,
                     XML_ACCOUNT_ENTITY_EXPANSION,
                 );
                 result = append_result;
@@ -21183,7 +21230,7 @@ unsafe fn storeAttributeValue(
             }
         }
         if result as ::core::ffi::c_uint != 0
-            || parser.m_openAttributeEntities.is_empty() && end == next
+            || parser.m_openAttributeEntities.is_empty() && input_cursor == input.chars.len()
         {
             break;
         }
@@ -21192,12 +21239,18 @@ unsafe fn storeAttributeValue(
         return result;
     }
     if isCdata == 0
-        && pool.ptr_offset != 0
-        && pool.last_cursor_char() == Some(0x20 as crate::expat_external_h::XML_Char)
+        && with_attribute_value_pool(parser, &mut pool, |pool| {
+            pool.ptr_offset != 0
+                && pool.last_cursor_char() == Some(0x20 as crate::expat_external_h::XML_Char)
+        })
     {
-        pool.discard_last_cursor_char();
+        with_attribute_value_pool(parser, &mut pool, |pool| {
+            pool.discard_last_cursor_char();
+        });
     }
-    if !pool_append_char(pool, '\0' as crate::expat_external_h::XML_Char) {
+    if !with_attribute_value_pool(parser, &mut pool, |pool| {
+        pool_append_char(pool, '\0' as crate::expat_external_h::XML_Char)
+    }) {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     return crate::expat_h::XML_ERROR_NONE;
@@ -21295,13 +21348,31 @@ fn pool_store_xml_decl_ascii(
     pool.start_ref(true)
 }
 
+/// Restores an attribute scanner error location from the checked address of
+/// its original parser-buffer token.  Entity replacement text intentionally
+/// has no parser-buffer event position.
+fn set_attribute_value_event_start(
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::normal_encoding,
+    input_start: Option<usize>,
+    offset: usize,
+) {
+    if !parser_uses_encoding!(parser, encoding) {
+        return;
+    }
+    if let Some(address) = input_start.and_then(|start| start.checked_add(offset)) {
+        set_parser_event_start_address(parser, address);
+    }
+}
+
 unsafe fn appendAttributeValue(
     parser: &mut XML_ParserStruct,
     enc: &crate::src::xmltok::normal_encoding,
     mut isCdata: crate::expat_h::XML_Bool,
     input: &[::core::ffi::c_char],
     mut cursor: usize,
-    pool: &mut STRING_POOL,
+    parser_event_start: Option<usize>,
+    pool: &mut AttributeValuePool<'_>,
     mut account: XML_Account,
 ) -> (crate::expat_h::XML_Error, usize) {
     // The exported processor owns the raw cursor conversion.  Once here,
@@ -21317,7 +21388,7 @@ unsafe fn appendAttributeValue(
     // entity-name subrange.
     let mut ptr = input_start.wrapping_add(cursor);
     let dtd = &mut *parser_dtd_ptr!(parser);
-    let pool_is_dtd_pool = ::core::ptr::eq(pool, &mut dtd.pool);
+    let pool_is_dtd_pool = matches!(pool, AttributeValuePool::Dtd(_));
     loop {
         let Ok(char_width) = usize::try_from(enc.enc.minBytesPerChar) else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
@@ -21368,13 +21439,18 @@ unsafe fn appendAttributeValue(
                 }
                 crate::src::xmltok::XML_TOK_INVALID => {
                     if parser_uses_encoding!(parser, enc) {
-                        set_parser_event_start!(&mut *parser, next);
+                        set_attribute_value_event_start(
+                            parser,
+                            enc,
+                            parser_event_start,
+                            scanned_next_offset,
+                        );
                     }
                     return (crate::expat_h::XML_ERROR_INVALID_TOKEN, ptr);
                 }
                 crate::src::xmltok::XML_TOK_PARTIAL => {
                     if parser_uses_encoding!(parser, enc) {
-                        set_parser_event_start!(&mut *parser, ptr);
+                        set_attribute_value_event_start(parser, enc, parser_event_start, cursor);
                     }
                     return (crate::expat_h::XML_ERROR_INVALID_TOKEN, ptr);
                 }
@@ -21398,22 +21474,26 @@ unsafe fn appendAttributeValue(
                         .decode(bytemuck::cast_slice(token));
                     if n < 0 as ::core::ffi::c_int {
                         if parser_uses_encoding!(parser, enc) {
-                            set_parser_event_start!(&mut *parser, ptr);
+                            set_attribute_value_event_start(parser, enc, parser_event_start, cursor);
                         }
                         return (crate::expat_h::XML_ERROR_BAD_CHAR_REF, ptr);
                     }
                     if isCdata == 0
                         && n == 0x20 as ::core::ffi::c_int
-                        && (pool.ptr_offset == 0
-                            || pool.last_cursor_char()
-                                == Some(0x20 as crate::expat_external_h::XML_Char))
+                        && with_attribute_value_pool(parser, pool, |pool| {
+                            pool.ptr_offset == 0
+                                || pool.last_cursor_char()
+                                    == Some(0x20 as crate::expat_external_h::XML_Char)
+                        })
                     {
                         break 's_350;
                     } else {
                         (buf, n) = encode_xml_char_ref(n);
                         i = 0 as ::core::ffi::c_int;
                         while i < n {
-                            if !pool_append_char(pool, buf[i as usize]) {
+                            if !with_attribute_value_pool(parser, pool, |pool| {
+                                pool_append_char(pool, buf[i as usize])
+                            }) {
                                 return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                             }
                             i += 1;
@@ -21443,12 +21523,14 @@ unsafe fn appendAttributeValue(
                     {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                     }
-                    if pool_append_source(
-                        pool,
-                        &enc.enc,
-                        unknown_encoding.as_ref(),
-                        bytemuck::cast_slice(data),
-                    )
+                    if with_attribute_value_pool(parser, pool, |pool| {
+                        pool_append_source(
+                            pool,
+                            &enc.enc,
+                            unknown_encoding.as_ref(),
+                            bytemuck::cast_slice(data),
+                        )
+                    })
                     .is_none()
                     {
                         return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
@@ -21506,7 +21588,9 @@ unsafe fn appendAttributeValue(
                             XML_ACCOUNT_ENTITY_EXPANSION,
                             Some(ch_bytes),
                         );
-                        if !pool_append_char(pool, ch) {
+                        if !with_attribute_value_pool(parser, pool, |pool| {
+                            pool_append_char(pool, ch)
+                        }) {
                             return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                         }
                         break 's_350;
@@ -21581,19 +21665,19 @@ unsafe fn appendAttributeValue(
                         }
                         if entity.open != 0 {
                             if parser_uses_encoding!(parser, enc) {
-                                set_parser_event_start!(&mut *parser, ptr);
+                                set_attribute_value_event_start(parser, enc, parser_event_start, cursor);
                             }
                             return (crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF, ptr);
                         }
                         if entity.notation.is_some() {
                             if parser_uses_encoding!(parser, enc) {
-                                set_parser_event_start!(&mut *parser, ptr);
+                                set_attribute_value_event_start(parser, enc, parser_event_start, cursor);
                             }
                             return (crate::expat_h::XML_ERROR_BINARY_ENTITY_REF, ptr);
                         }
                         if entity.textPtr.is_none() {
                             if parser_uses_encoding!(parser, enc) {
-                                set_parser_event_start!(&mut *parser, ptr);
+                                set_attribute_value_event_start(parser, enc, parser_event_start, cursor);
                             }
                             return (crate::expat_h::XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF, ptr);
                         } else {
@@ -21611,16 +21695,21 @@ unsafe fn appendAttributeValue(
                 }
                 _ => {
                     if parser_uses_encoding!(parser, enc) {
-                        set_parser_event_start!(&mut *parser, ptr);
+                        set_attribute_value_event_start(parser, enc, parser_event_start, cursor);
                     }
                     return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                 }
             }
             if !(isCdata == 0
-                && (pool.ptr_offset == 0
-                    || pool.last_cursor_char() == Some(0x20 as crate::expat_external_h::XML_Char)))
+                && with_attribute_value_pool(parser, pool, |pool| {
+                    pool.ptr_offset == 0
+                        || pool.last_cursor_char()
+                            == Some(0x20 as crate::expat_external_h::XML_Char)
+                }))
             {
-                if !pool_append_char(pool, 0x20 as crate::expat_external_h::XML_Char) {
+                if !with_attribute_value_pool(parser, pool, |pool| {
+                    pool_append_char(pool, 0x20 as crate::expat_external_h::XML_Char)
+                }) {
                     return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                 }
             }
