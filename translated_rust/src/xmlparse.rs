@@ -16124,136 +16124,132 @@ unsafe extern "C" fn dtdCopy(
     // references to them makes the field-level copy below ordinary Rust access.
     let old_dtd = &*oldDtd;
     let new_dtd = &mut *newDtd;
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        table: None,
-        next: 0 as crate::__stddef_size_t_h::size_t,
-    };
-    let table = &old_dtd.prefixes;
-    hashTableIterInit(&raw mut iter, table);
-    loop {
-        let old_p = hashTableIterNext(&raw mut iter) as *const PREFIX;
-        if old_p.is_null() {
-            break;
-        }
-        let old_p = &*old_p;
-        let name = poolCopyString(&raw mut new_dtd.pool, old_p.name).0;
-        if name.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        if lookup(
-            oldParser,
-            &raw mut new_dtd.prefixes,
-            name as KEY,
-            ::core::mem::size_of::<PREFIX>(),
-        )
-        .is_null()
-        {
-            return 0 as ::core::ffi::c_int;
-        }
-    }
-    let table = &old_dtd.attributeIds;
-    hashTableIterInit(&raw mut iter, table);
-    loop {
-        let old_a = hashTableIterNext(&raw mut iter) as *const ATTRIBUTE_ID;
-        if old_a.is_null() {
-            break;
-        }
-        let old_a = &*old_a;
-        if if new_dtd.pool.is_full() && poolGrow(&mut new_dtd.pool) == 0 {
-            0 as ::core::ffi::c_int
-        } else {
-            if new_dtd
-                .pool
-                .write_cursor('\0' as crate::expat_external_h::XML_Char)
-            {
-                1 as ::core::ffi::c_int
-            } else {
-                0 as ::core::ffi::c_int
-            }
-        } == 0
-        {
-            return 0 as ::core::ffi::c_int;
-        }
-        let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.named.name).0;
-        if name_0.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        let name_0 = name_0.offset(1);
-        let new_a = lookup(
-            oldParser,
-            &raw mut new_dtd.attributeIds,
-            name_0 as KEY,
-            ::core::mem::size_of::<ATTRIBUTE_ID>(),
-        ) as *mut ATTRIBUTE_ID;
-        if new_a.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        let new_a = &mut *new_a;
-        new_a.maybeTokenized = old_a.maybeTokenized;
-        if !old_a.prefix.is_null() {
-            new_a.xmlns = old_a.xmlns;
-            if old_a.prefix == &raw const old_dtd.defaultPrefix as *mut PREFIX {
-                new_a.prefix = &raw mut new_dtd.defaultPrefix;
-            } else {
-                let old_prefix = &*old_a.prefix;
-                new_a.prefix = lookup(
-                    oldParser,
-                    &raw mut new_dtd.prefixes,
-                    old_prefix.name as KEY,
-                    0 as crate::__stddef_size_t_h::size_t,
-                ) as *mut PREFIX;
-            }
-        }
-    }
-    let table = &old_dtd.elementTypes;
-    hashTableIterInit(&raw mut iter, table);
-    loop {
-        let old_e = hashTableIterNext(&raw mut iter) as *const ELEMENT_TYPE;
-        if old_e.is_null() {
-            break;
-        }
-        let old_e = &*old_e;
-        let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.named.name).0;
-        if name_1.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        let new_e = lookup(
-            oldParser,
-            &raw mut new_dtd.elementTypes,
-            name_1 as KEY,
-            ::core::mem::size_of::<ELEMENT_TYPE>(),
-        ) as *mut ELEMENT_TYPE;
-        if new_e.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        let new_e = &mut *new_e;
-        if old_e.nDefaultAtts != 0 {
-            let Some(storage) =
-                default_attribute_storage_new(&mut *parser, old_e.nDefaultAtts as usize, 7683)
-            else {
-                return 0 as ::core::ffi::c_int;
+    // Slots are the table's owned iteration order.  Reading them directly
+    // keeps this copy within the owned storage model instead of round-tripping
+    // each entry through the legacy raw iterator adapter.
+    if let Some(slots) = old_dtd.prefixes.v.as_ref() {
+        for entry in &slots.entries {
+            let Some(entry) = entry.as_ref() else {
+                continue;
             };
-            new_e.defaultAtts = Some(storage);
-        }
-        if let Some(old_id_att) = old_e.idAtt {
-            let old_id_att = pool_string_pointer(&raw const old_dtd.pool, old_id_att);
-            if old_id_att.is_null() {
+            let old_p = &*(entry.bytes.as_ptr() as *const PREFIX);
+            let name = poolCopyString(&raw mut new_dtd.pool, old_p.name).0;
+            if name.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            let new_id_att = lookup(
+            if lookup(
+                oldParser,
+                &raw mut new_dtd.prefixes,
+                name as KEY,
+                ::core::mem::size_of::<PREFIX>(),
+            )
+            .is_null()
+            {
+                return 0 as ::core::ffi::c_int;
+            }
+        }
+    }
+    if let Some(slots) = old_dtd.attributeIds.v.as_ref() {
+        for entry in &slots.entries {
+            let Some(entry) = entry.as_ref() else {
+                continue;
+            };
+            let old_a = &*(entry.bytes.as_ptr() as *const ATTRIBUTE_ID);
+            if if new_dtd.pool.is_full() && poolGrow(&mut new_dtd.pool) == 0 {
+                0 as ::core::ffi::c_int
+            } else {
+                if new_dtd
+                    .pool
+                    .write_cursor('\0' as crate::expat_external_h::XML_Char)
+                {
+                    1 as ::core::ffi::c_int
+                } else {
+                    0 as ::core::ffi::c_int
+                }
+            } == 0
+            {
+                return 0 as ::core::ffi::c_int;
+            }
+            let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.named.name).0;
+            if name_0.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let name_0 = name_0.offset(1);
+            let new_a = lookup(
                 oldParser,
                 &raw mut new_dtd.attributeIds,
-                old_id_att as KEY,
-                0 as crate::__stddef_size_t_h::size_t,
+                name_0 as KEY,
+                ::core::mem::size_of::<ATTRIBUTE_ID>(),
             ) as *mut ATTRIBUTE_ID;
-            if new_id_att.is_null() {
+            if new_a.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            new_e.idAtt = pool_string_ref(&raw const new_dtd.pool, (*new_id_att).named.name, false);
-            if new_e.idAtt.is_none() {
-                return 0 as ::core::ffi::c_int;
+            let new_a = &mut *new_a;
+            new_a.maybeTokenized = old_a.maybeTokenized;
+            if !old_a.prefix.is_null() {
+                new_a.xmlns = old_a.xmlns;
+                if old_a.prefix == &raw const old_dtd.defaultPrefix as *mut PREFIX {
+                    new_a.prefix = &raw mut new_dtd.defaultPrefix;
+                } else {
+                    let old_prefix = &*old_a.prefix;
+                    new_a.prefix = lookup(
+                        oldParser,
+                        &raw mut new_dtd.prefixes,
+                        old_prefix.name as KEY,
+                        0 as crate::__stddef_size_t_h::size_t,
+                    ) as *mut PREFIX;
+                }
             }
         }
+    }
+    if let Some(slots) = old_dtd.elementTypes.v.as_ref() {
+        for entry in &slots.entries {
+            let Some(entry) = entry.as_ref() else {
+                continue;
+            };
+            let old_e = &*(entry.bytes.as_ptr() as *const ELEMENT_TYPE);
+            let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.named.name).0;
+            if name_1.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let new_e = lookup(
+                oldParser,
+                &raw mut new_dtd.elementTypes,
+                name_1 as KEY,
+                ::core::mem::size_of::<ELEMENT_TYPE>(),
+            ) as *mut ELEMENT_TYPE;
+            if new_e.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let new_e = &mut *new_e;
+            if old_e.nDefaultAtts != 0 {
+                let Some(storage) =
+                    default_attribute_storage_new(&mut *parser, old_e.nDefaultAtts as usize, 7683)
+                else {
+                    return 0 as ::core::ffi::c_int;
+                };
+                new_e.defaultAtts = Some(storage);
+            }
+            if let Some(old_id_att) = old_e.idAtt {
+                let old_id_att = pool_string_pointer(&raw const old_dtd.pool, old_id_att);
+                if old_id_att.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                let new_id_att = lookup(
+                    oldParser,
+                    &raw mut new_dtd.attributeIds,
+                    old_id_att as KEY,
+                    0 as crate::__stddef_size_t_h::size_t,
+                ) as *mut ATTRIBUTE_ID;
+                if new_id_att.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                new_e.idAtt =
+                    pool_string_ref(&raw const new_dtd.pool, (*new_id_att).named.name, false);
+                if new_e.idAtt.is_none() {
+                    return 0 as ::core::ffi::c_int;
+                }
+            }
         if old_e.hasPrefix != 0 {
             let old_prefix_name = pool_string_pointer(&raw const old_dtd.pool, old_e.prefix);
             if old_prefix_name.is_null() {
@@ -16342,6 +16338,7 @@ unsafe extern "C" fn dtdCopy(
         }
         new_e.nDefaultAtts = old_e.nDefaultAtts;
         new_e.allocDefaultAtts = old_e.nDefaultAtts;
+    }
     }
     if copyEntityTable(
         oldParser,
