@@ -6197,8 +6197,46 @@ unsafe fn parser_create_ownership_facade(
     let parser_ptr = std::ptr::from_mut(parser_owner.as_mut());
     let parser = parser_owner.as_mut();
     parser.m_allocationBackingFactory = Some(AllocationBackingFactory {
-        allocate: std::sync::Arc::new(move |size, source_line| unsafe {
-            allocation_backing_from_handle(parser_ptr, size, source_line)
+        // This constructor is the one point where the opaque parser handle
+        // is known live.  The resulting factory exposes only allocation
+        // tokens, so all later parser implementation code stays handle-free.
+        allocate: std::sync::Arc::new(move |size, source_line| {
+            let allocation = expat_malloc(parser_ptr, size, source_line);
+            if allocation.is_null() {
+                return None;
+            }
+            let mut allocation = allocation;
+            Some(AllocationBacking {
+                actions: Box::new(move |action| match action {
+                    ParserAllocationAction::Grow { size, source_line } => {
+                        let reallocated = expat_realloc(parser_ptr, allocation, size, source_line);
+                        if reallocated.is_null() {
+                            false
+                        } else {
+                            allocation = reallocated;
+                            true
+                        }
+                    }
+                    ParserAllocationAction::Replace {
+                        size,
+                        allocation_source_line,
+                        free_source_line,
+                    } => {
+                        let replacement = expat_malloc(parser_ptr, size, allocation_source_line);
+                        if replacement.is_null() {
+                            false
+                        } else {
+                            expat_free(parser_ptr, allocation, free_source_line);
+                            allocation = replacement;
+                            true
+                        }
+                    }
+                    ParserAllocationAction::Free(source_line) => {
+                        expat_free(parser_ptr, allocation, source_line);
+                        true
+                    }
+                }),
+            })
         }),
     });
     let allocation_size = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
@@ -23696,52 +23734,6 @@ fn allocation_backing(
     source_line: ::core::ffi::c_int,
 ) -> Option<AllocationBacking> {
     factory.allocation_backing(size, source_line)
-}
-
-/// Performs the legacy raw-handle allocator work behind the typed factory.
-/// Every caller reaches this only through `AllocationBackingFactory`, which
-/// is installed while the parser handle is live during construction.
-unsafe fn allocation_backing_from_handle(
-    parser: crate::expat_h::XML_Parser,
-    size: crate::__stddef_size_t_h::size_t,
-    source_line: ::core::ffi::c_int,
-) -> Option<AllocationBacking> {
-    let allocation = expat_malloc(parser, size, source_line);
-    if allocation.is_null() {
-        return None;
-    }
-    let mut allocation = allocation;
-    Some(AllocationBacking {
-        actions: Box::new(move |action| match action {
-            ParserAllocationAction::Grow { size, source_line } => {
-                let reallocated = expat_realloc(parser, allocation, size, source_line);
-                if reallocated.is_null() {
-                    false
-                } else {
-                    allocation = reallocated;
-                    true
-                }
-            }
-            ParserAllocationAction::Replace {
-                size,
-                allocation_source_line,
-                free_source_line,
-            } => {
-                let replacement = expat_malloc(parser, size, allocation_source_line);
-                if replacement.is_null() {
-                    false
-                } else {
-                    expat_free(parser, allocation, free_source_line);
-                    allocation = replacement;
-                    true
-                }
-            }
-            ParserAllocationAction::Free(source_line) => {
-                expat_free(parser, allocation, source_line);
-                true
-            }
-        }),
-    })
 }
 
 fn internal_entity_storage_new(
