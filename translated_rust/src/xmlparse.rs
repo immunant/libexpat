@@ -2968,7 +2968,10 @@ pub struct binding {
     pub prefix: *mut prefix,
     pub nextTagBinding: *mut binding,
     pub prevPrefixBinding: *mut binding,
-    pub attId: *const attribute_id,
+    // A binding only needs its namespace-declaration attribute's stable DTD
+    // pool name when it is unwound.  Retaining that location avoids keeping a
+    // raw pointer into the hash table across later table growth.
+    pub attId: Option<PoolStringRef>,
     pub uri: *mut crate::expat_external_h::XML_Char,
     pub uriLen: ::core::ffi::c_int,
     pub uriAlloc: ::core::ffi::c_int,
@@ -10001,10 +10004,10 @@ unsafe extern "C" fn storeAtts(
     binding = *bindingsPtr;
     while !binding.is_null() {
         let binding_ref = &*binding;
-        let binding_name = pool_string_pointer!(
-            &(*dtd).pool,
-            (*binding_ref.attId).named.name,
-        );
+        let Some(attribute_name) = binding_ref.attId else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let binding_name = pool_string_pointer!(&(*dtd).pool, attribute_name);
         if binding_name.is_null() {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
@@ -10193,6 +10196,11 @@ unsafe extern "C" fn addBinding(
     let parser = &mut *parser;
     let parser_ptr = parser as *mut XML_ParserStruct;
     let prefix = &mut *prefix;
+    let attribute_name = if attId.is_null() {
+        None
+    } else {
+        Some((*attId).named.name)
+    };
     let uri = ::core::ffi::CStr::from_ptr(uri).to_bytes();
     let dtd = &*parser_dtd_ptr!(parser_ptr);
     let prefix_name_pointer = prefix.name.map_or(::core::ptr::null(), |name| {
@@ -10273,7 +10281,7 @@ unsafe extern "C" fn addBinding(
                 prefix: ::core::ptr::null_mut(),
                 nextTagBinding: ::core::ptr::null_mut(),
                 prevPrefixBinding: ::core::ptr::null_mut(),
-                attId: ::core::ptr::null(),
+                attId: None,
                 uri: binding_uri,
                 uriLen: 0,
                 uriAlloc: len + EXPAND_SPARE,
@@ -10288,7 +10296,7 @@ unsafe extern "C" fn addBinding(
         b.uri.add(uri.len()).write(parser.m_namespaceSeparator);
     }
     b.prefix = prefix;
-    b.attId = attId;
+    b.attId = attribute_name;
     b.prevPrefixBinding = prefix.binding;
     let is_default_prefix = ::core::ptr::eq(
         prefix as *const PREFIX,
@@ -10301,7 +10309,7 @@ unsafe extern "C" fn addBinding(
     }
     b.nextTagBinding = *bindingsPtr;
     *bindingsPtr = b;
-    if !attId.is_null() && parser.m_startNamespaceDeclHandler {
+    if attribute_name.is_some() && parser.m_startNamespaceDeclHandler {
         let callback = START_NAMESPACE_DECL_HANDLERS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
