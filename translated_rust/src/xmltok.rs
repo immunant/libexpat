@@ -660,7 +660,12 @@ pub mod xmltok_impl_c {
                         Name3Checker::Unknown => unknown_isName(enc, ptr) != 0,
                     };
                 }
-                4 => normal.isName4,
+                4 => match normal.isName4 {
+                    Name4Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
+                    Name4Checker::Unknown => {
+                        Some(unknown_isName as unsafe extern "C" fn(_, _) -> _)
+                    }
+                },
                 _ => unreachable!(),
             },
         };
@@ -10272,6 +10277,7 @@ pub mod xmltok_impl_c {
     use crate::src::xmltok::Invalid4Checker;
     use crate::src::xmltok::Name2Checker;
     use crate::src::xmltok::Name3Checker;
+    use crate::src::xmltok::Name4Checker;
 }
 
 pub mod xmltok_ns_c {
@@ -11708,12 +11714,7 @@ pub struct normal_encoding {
     pub type_0: [::core::ffi::c_uchar; 256],
     pub isName2: Name2Checker,
     pub isName3: Name3Checker,
-    pub isName4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub isName4: Name4Checker,
     pub isNmstrt2: Option<
         unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
@@ -11748,6 +11749,12 @@ pub enum Name2Checker {
 pub enum Name3Checker {
     Never,
     Utf8,
+    Unknown,
+}
+
+#[derive(Copy, Clone)]
+pub enum Name4Checker {
+    Never,
     Unknown,
 }
 
@@ -12441,13 +12448,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Utf8,
     isName3: Name3Checker::Utf8,
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName4: Name4Checker::Never,
     isNmstrt2: Some(
         utf8_isNmstrt2
             as unsafe extern "C" fn(
@@ -12760,13 +12761,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Utf8,
     isName3: Name3Checker::Utf8,
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName4: Name4Checker::Never,
     isNmstrt2: Some(
         utf8_isNmstrt2
             as unsafe extern "C" fn(
@@ -13079,13 +13074,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Utf8,
     isName3: Name3Checker::Utf8,
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName4: Name4Checker::Never,
     isNmstrt2: Some(
         utf8_isNmstrt2
             as unsafe extern "C" fn(
@@ -13398,13 +13387,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Utf8,
     isName3: Name3Checker::Utf8,
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName4: Name4Checker::Never,
     isNmstrt2: Some(
         utf8_isNmstrt2
             as unsafe extern "C" fn(
@@ -13778,7 +13761,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -14073,7 +14056,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -14389,7 +14372,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -14684,7 +14667,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -15244,7 +15227,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -15539,7 +15522,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -15834,7 +15817,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -16129,7 +16112,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -16424,7 +16407,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -16719,7 +16702,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
     ],
     isName2: Name2Checker::Never,
     isName3: Name3Checker::Never,
-    isName4: None,
+    isName4: Name4Checker::Never,
     isNmstrt2: None,
     isNmstrt3: None,
     isNmstrt4: None,
@@ -17536,7 +17519,7 @@ fn initialize_unknown_encoding(
 fn install_unknown_name_checks(encoding: &mut unknown_encoding) {
     encoding.normal.isName2 = Name2Checker::Unknown;
     encoding.normal.isName3 = Name3Checker::Unknown;
-    encoding.normal.isName4 = Some(unknown_isName);
+    encoding.normal.isName4 = Name4Checker::Unknown;
     encoding.normal.isNmstrt2 = Some(unknown_isNmstrt);
     encoding.normal.isNmstrt3 = Some(unknown_isNmstrt);
     encoding.normal.isNmstrt4 = Some(unknown_isNmstrt);
