@@ -17601,23 +17601,23 @@ pub unsafe extern "C" fn XmlUtf8Encode_ffi(
     let buf = unsafe { &mut *(buf as *mut [::core::ffi::c_char; 4]) };
     XmlUtf8Encode(c, buf)
 }
-pub unsafe extern "C" fn XmlUtf16Encode(
+pub fn XmlUtf16Encode(
     mut charNum: ::core::ffi::c_int,
-    mut buf: *mut ::core::ffi::c_ushort,
+    buf: &mut [::core::ffi::c_ushort; 2],
 ) -> ::core::ffi::c_int {
     if charNum < 0 as ::core::ffi::c_int {
         return 0 as ::core::ffi::c_int;
     }
     if charNum < 0x10000 as ::core::ffi::c_int {
-        *buf.offset(0 as isize) = charNum as ::core::ffi::c_ushort;
+        buf[0] = charNum as ::core::ffi::c_ushort;
         return 1 as ::core::ffi::c_int;
     }
     if charNum < 0x110000 as ::core::ffi::c_int {
         charNum -= 0x10000 as ::core::ffi::c_int;
-        *buf.offset(0 as isize) = ((charNum >> 10 as ::core::ffi::c_int)
+        buf[0] = ((charNum >> 10 as ::core::ffi::c_int)
             + 0xd800 as ::core::ffi::c_int)
             as ::core::ffi::c_ushort;
-        *buf.offset(1 as isize) = ((charNum & 0x3ff as ::core::ffi::c_int)
+        buf[1] = ((charNum & 0x3ff as ::core::ffi::c_int)
             + 0xdc00 as ::core::ffi::c_int)
             as ::core::ffi::c_ushort;
         return 2 as ::core::ffi::c_int;
@@ -17630,6 +17630,10 @@ pub unsafe extern "C" fn XmlUtf16Encode_ffi(
     mut charNum: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_ushort,
 ) -> ::core::ffi::c_int {
+    if buf.is_null() {
+        return 0;
+    }
+    let buf = unsafe { &mut *(buf as *mut [::core::ffi::c_ushort; 2]) };
     XmlUtf16Encode(charNum, buf)
 }
 pub extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
