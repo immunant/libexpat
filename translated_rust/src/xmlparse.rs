@@ -15303,6 +15303,9 @@ unsafe fn appendAttributeValue(
     let pool_is_dtd_pool = ::core::ptr::eq(pool, &raw mut dtd.pool);
     let pool = &mut *pool;
     loop {
+        let Ok(char_width) = usize::try_from(enc.minBytesPerChar) else {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+        };
         let mut next: *const ::core::ffi::c_char = ptr;
         let scanner = match enc.literalScanners[0] {
             crate::src::xmltok::LiteralScanner::NormalAttributeValue => {
@@ -15344,10 +15347,10 @@ unsafe fn appendAttributeValue(
                     let mut i: ::core::ffi::c_int = 0;
                     // `next` is the end of the complete token just returned
                     // by the literal scanner.
-                    let token = ::core::slice::from_raw_parts(
-                        ptr.cast::<u8>(),
-                        next.offset_from(ptr) as usize,
-                    );
+                    let Some(token_len) = next.addr().checked_sub(ptr.addr()) else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    };
+                    let token = ::core::slice::from_raw_parts(ptr.cast::<u8>(), token_len);
                     let mut n: ::core::ffi::c_int = enc.charRefNumber.decode(token);
                     if n < 0 as ::core::ffi::c_int {
                         if enc_ptr == parser_encoding(parser) {
@@ -15381,7 +15384,7 @@ unsafe fn appendAttributeValue(
                     break 's_350;
                 }
                 crate::src::xmltok::XML_TOK_TRAILING_CR => {
-                    next = ptr.offset(enc.minBytesPerChar as isize);
+                    next = ptr.wrapping_add(char_width);
                 }
                 crate::src::xmltok::XML_TOK_ATTRIBUTE_VALUE_S
                 | crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
@@ -15390,8 +15393,8 @@ unsafe fn appendAttributeValue(
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                     let mut checkEntityDecl: bool = false;
-                    let entity_start = ptr.offset(enc.minBytesPerChar as isize);
-                    let entity_end = next.offset(-(enc.minBytesPerChar as isize));
+                    let entity_start = ptr.wrapping_add(char_width);
+                    let entity_end = next.wrapping_sub(char_width);
                     // The literal scanner returned the complete token, so
                     // this interior span is readable for the match below.
                     let entity_len = entity_end.addr().checked_sub(entity_start.addr()).unwrap_or(0);
@@ -15415,10 +15418,12 @@ unsafe fn appendAttributeValue(
                             parser,
                             tok,
                             &raw mut ch as *mut ::core::ffi::c_char,
-                            (&raw mut ch as *mut ::core::ffi::c_char).offset(
-                                ::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-                                    as isize,
-                            ),
+                            (&raw mut ch)
+                                .cast::<u8>()
+                                .wrapping_add(::core::mem::size_of::<
+                                    crate::expat_external_h::XML_Char,
+                                >())
+                                .cast::<::core::ffi::c_char>(),
                             6663 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
@@ -15430,8 +15435,8 @@ unsafe fn appendAttributeValue(
                         name = poolStoreString(
                             &raw mut parser.m_temp2Pool,
                             enc_ptr,
-                            ptr.offset(enc.minBytesPerChar as isize),
-                            next.offset(-(enc.minBytesPerChar as isize)),
+                            ptr.wrapping_add(char_width),
+                            next.wrapping_sub(char_width),
                         );
                         if name.is_null() {
                             return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
@@ -15454,28 +15459,33 @@ unsafe fn appendAttributeValue(
                             checkEntityDecl = dtd.hasParamEntityRefs == 0
                                 || dtd.standalone as ::core::ffi::c_int != 0;
                         }
-                        if checkEntityDecl {
-                            if entity.is_null() {
+                        if entity.is_null() {
+                            if checkEntityDecl {
                                 return (crate::expat_h::XML_ERROR_UNDEFINED_ENTITY, ptr);
-                            } else if (*entity).is_internal == 0 {
-                                return (crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE, ptr);
                             }
-                        } else if entity.is_null() {
                             break 's_350;
                         }
-                        if (*entity).open != 0 {
+                        // `lookup` returned a live hash-table record.  Keep the
+                        // reference scoped to this branch; `processEntity` is
+                        // its only possible re-entrant operation and receives
+                        // the record's address explicitly below.
+                        let entity = &mut *entity;
+                        if checkEntityDecl && entity.is_internal == 0 {
+                            return (crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE, ptr);
+                        }
+                        if entity.open != 0 {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, ptr);
                             }
                             return (crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF, ptr);
                         }
-                        if (*entity).notation.is_some() {
+                        if entity.notation.is_some() {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, ptr);
                             }
                             return (crate::expat_h::XML_ERROR_BINARY_ENTITY_REF, ptr);
                         }
-                        if (*entity).textPtr.is_none() {
+                        if entity.textPtr.is_none() {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, ptr);
                             }
@@ -15485,7 +15495,7 @@ unsafe fn appendAttributeValue(
                                 crate::expat_h::XML_ERROR_NONE;
                             result = processEntity(
                                 parser,
-                                entity,
+                                std::ptr::from_mut(entity),
                                 crate::expat_h::XML_FALSE,
                                 ENTITY_ATTRIBUTE,
                             );
