@@ -564,15 +564,14 @@ static CONDITIONAL_SECTION_KEYWORDS: [Keyword; 2] = [
     (TokenName::Ignore, &KW_IGNORE),
 ];
 
-// The tokenizer supplies validated token bounds.  Translate the raw span and
-// encoding callback into a small value that the role state machine can use
-// without retaining pointers or invoking callbacks itself.
-unsafe fn classify_token_name(
+// The parser supplies the tokenizer's validated token span.  Translate it
+// into a small value that the role state machine can use without retaining
+// pointers or invoking encoding callbacks itself.
+fn classify_token_name(
     handler: PrologHandler,
     tok: ::core::ffi::c_int,
-    ptr: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    enc: *const crate::src::xmltok::ENCODING,
+    token: &[::core::ffi::c_char],
+    min_bytes_per_char: ::core::ffi::c_int,
 ) -> TokenName {
     let (offset, keywords): (::core::ffi::c_int, &[Keyword]) = match (handler, tok) {
         (PrologHandler::Prolog0 | PrologHandler::Prolog1, crate::src::xmltok::XML_TOK_DECL_OPEN) => {
@@ -609,14 +608,53 @@ unsafe fn classify_token_name(
         }
         _ => return TokenName::Unknown,
     };
-    let name = ptr.offset((offset * (*enc).minBytesPerChar) as isize);
-    let matches_ascii = (*enc).nameMatchesAscii.expect("non-null function pointer");
+    let min_bytes_per_char = match usize::try_from(min_bytes_per_char) {
+        Ok(min_bytes_per_char) => min_bytes_per_char,
+        Err(_) => return TokenName::Unknown,
+    };
+    let name_offset = match usize::try_from(offset)
+        .ok()
+        .and_then(|offset| offset.checked_mul(min_bytes_per_char))
+    {
+        Some(name_offset) => name_offset,
+        None => return TokenName::Unknown,
+    };
+    let name = match token.get(name_offset..) {
+        Some(name) => name,
+        None => return TokenName::Unknown,
+    };
     for &(kind, keyword) in keywords {
-        if matches_ascii(enc, name, end, keyword.as_ptr()) != 0 {
+        if token_name_matches_ascii(name, keyword, min_bytes_per_char) {
             return kind;
         }
     }
     TokenName::Unknown
+}
+
+fn token_name_matches_ascii(
+    name: &[::core::ffi::c_char],
+    keyword: &[::core::ffi::c_char],
+    min_bytes_per_char: usize,
+) -> bool {
+    let keyword = match keyword.strip_suffix(&[0]) {
+        Some(keyword) => keyword,
+        None => return false,
+    };
+    match min_bytes_per_char {
+        1 => name == keyword,
+        2 if name.len() == keyword.len().saturating_mul(2) => {
+            if name.first() == Some(&0) {
+                name.chunks_exact(2)
+                    .zip(keyword)
+                    .all(|(bytes, &ascii)| bytes == [0, ascii])
+            } else {
+                name.chunks_exact(2)
+                    .zip(keyword)
+                    .all(|(bytes, &ascii)| bytes == [ascii, 0])
+            }
+        }
+        _ => false,
+    }
 }
 
 fn prolog0(
@@ -1811,15 +1849,14 @@ fn error() -> ::core::ffi::c_int {
     return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
 }
 
-pub unsafe fn prolog_handler_dispatch(
+pub fn prolog_handler_dispatch(
     handler: PrologHandler,
     state: &mut crate::src::xmlrole::PROLOG_STATE,
     tok: ::core::ffi::c_int,
-    ptr: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    enc: *const crate::src::xmltok::ENCODING,
+    token: &[::core::ffi::c_char],
+    min_bytes_per_char: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    let name = classify_token_name(handler, tok, ptr, end, enc);
+    let name = classify_token_name(handler, tok, token, min_bytes_per_char);
     match handler {
         PrologHandler::Prolog0 => return prolog0(state, tok, name == TokenName::Doctype),
         PrologHandler::Prolog1 => return prolog1(state, tok, name == TokenName::Doctype),
@@ -1899,9 +1936,6 @@ pub fn prolog_state_init(state: &mut crate::src::xmlrole::PROLOG_STATE) {
     state.inEntityValue = 0 as ::core::ffi::c_int;
 }
 
-pub unsafe extern "C" fn XmlPrologStateInit(mut state: *mut crate::src::xmlrole::PROLOG_STATE) {
-    prolog_state_init(&mut *state);
-}
 #[export_name = "XmlPrologStateInit"]
 
 pub unsafe extern "C" fn XmlPrologStateInit_ffi(mut state: *mut crate::src::xmlrole::PROLOG_STATE) {
@@ -1909,12 +1943,6 @@ pub unsafe extern "C" fn XmlPrologStateInit_ffi(mut state: *mut crate::src::xmlr
         prolog_state_init(state);
     }
 }
-pub unsafe extern "C" fn XmlPrologStateInitExternalEntity(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
-) {
-    prolog_state_init_external_entity(&mut *state);
-}
-
 pub fn prolog_state_init_external_entity(state: &mut crate::src::xmlrole::PROLOG_STATE) {
     state.handler = Some(PrologHandler::ExternalSubset0);
     state.documentEntity = 0 as ::core::ffi::c_int;

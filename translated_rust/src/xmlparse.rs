@@ -7926,15 +7926,16 @@ unsafe extern "C" fn doProlog(
                         || enc != (*parser).m_encoding
                     {
                         let prolog_state = &mut (*parser).m_prologState;
+                        let token: &[::core::ffi::c_char] = &[];
+                        let min_bytes_per_char = (*enc).minBytesPerChar;
                         if crate::src::xmlrole::prolog_handler_dispatch(
                             prolog_state
                                 .handler
                                 .expect("prolog state must have a handler"),
                             prolog_state,
                             -4 as ::core::ffi::c_int,
-                            end,
-                            end,
-                            enc,
+                            token,
+                            min_bytes_per_char,
                         ) == crate::src::xmlrole::XML_ROLE_ERROR as ::core::ffi::c_int
                         {
                             return crate::expat_h::XML_ERROR_INCOMPLETE_PE;
@@ -7951,15 +7952,16 @@ unsafe extern "C" fn doProlog(
             }
         }
         let prolog_state = &mut (*parser).m_prologState;
+        let token = ::core::slice::from_raw_parts(s, next.offset_from(s) as usize);
+        let min_bytes_per_char = (*enc).minBytesPerChar;
         role = crate::src::xmlrole::prolog_handler_dispatch(
             prolog_state
                 .handler
                 .expect("prolog state must have a handler"),
             prolog_state,
             tok,
-            s,
-            next,
-            enc,
+            token,
+            min_bytes_per_char,
         );
         match role {
             2 | 1 | 57 => {}
