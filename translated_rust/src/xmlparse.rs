@@ -13932,41 +13932,13 @@ unsafe extern "C" fn doProlog(
     // dereferencing its raw handle.
     let parser = &mut *parser;
     let parser_key = parser as *mut XML_ParserStruct as usize;
+    let hash_salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
     let dtd = &mut *parser_dtd_ptr!(parser);
     let dtd_pool: *mut STRING_POOL = &raw mut dtd.pool;
-    let parser_handle: crate::expat_h::XML_Parser = parser;
-    // The declaration cursor stores a pool key instead of an address into a
-    // hash-table slot.  Resolve that key only while the current prolog token
-    // is being handled; a later table growth cannot leave parser state with a
-    // stale slot address.
-    let mut resolve_declared_entity = |dtd: &mut DTD, declaration: DeclaredEntity| {
-        let (is_parameter, name) = match declaration {
-            DeclaredEntity::General(name) => (
-                false,
-                dtd.pool
-                    .chars_from(name)
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            ),
-            DeclaredEntity::Parameter(name) => (
-                true,
-                dtd.pool
-                    .chars_from(name)
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            ),
-            DeclaredEntity::ExternalSubset => (true, EXTERNAL_SUBSET_NAME.as_ptr()),
-        };
-        if name.is_null() {
-            None
-        } else {
-            let table = if is_parameter {
-                &raw mut dtd.paramEntities
-            } else {
-                &raw mut dtd.generalEntities
-            };
-            let entity = lookup(parser_handle, table, name as KEY, 0) as *mut ENTITY;
-            (!entity.is_null()).then_some(entity)
-        }
-    };
     let mut active_parser_encoding = match parser.m_encoding {
         EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
             Some(index) if index < 7 => {
@@ -15212,13 +15184,8 @@ unsafe extern "C" fn doProlog(
                                                     s.offset((*enc).minBytesPerChar as isize),
                                                     next.offset(-((*enc).minBytesPerChar as isize)),
                                                     XML_ACCOUNT_NONE,
-                                                );
+                                            );
                                             if let Some(declaration) = (*parser).m_declEntity {
-                                                let Some(entity) =
-                                                    resolve_declared_entity(dtd, declaration)
-                                                else {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                };
                                                 let dtd_ref = &mut *dtd;
                                                 let Some(entity_text_ref) =
                                                     dtd_ref.entityValuePool.start_ref(true)
@@ -15231,17 +15198,22 @@ unsafe extern "C" fn doProlog(
                                                     .map_or(::core::ptr::null(), |chars| {
                                                         chars.as_ptr()
                                                     });
-                                                (*entity).textPtr = EntityTextRef {
-                                                    pool: EntityTextPool::EntityValue,
-                                                    string: Some(entity_text_ref),
-                                                };
                                                 let Ok(text_len) = ::core::ffi::c_int::try_from(
                                                     dtd_ref.entityValuePool.ptr_offset,
                                                 ) else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
-                                                (*entity).textLen = text_len;
                                                 dtd_ref.entityValuePool.commit();
+                                                let Some(entity) =
+                                                    declared_entity_mut(dtd, declaration, hash_salt)
+                                                else {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
+                                                entity.textPtr = EntityTextRef {
+                                                    pool: EntityTextPool::EntityValue,
+                                                    string: Some(entity_text_ref),
+                                                };
+                                                entity.textLen = text_len;
                                                 if (*parser).m_entityDeclHandler {
                                                     set_event_end!(
                                                         parser,
@@ -15268,12 +15240,12 @@ unsafe extern "C" fn doProlog(
                                                             handler_arg_from_state!(parser),
                                                             pool_string_pointer!(
                                                                 &*dtd_pool,
-                                                                (*entity).named.name,
+                                                                entity.named.name,
                                                             ),
-                                                            (*entity).is_param
+                                                            entity.is_param
                                                                 as ::core::ffi::c_int,
                                                             entity_text,
-                                                            (*entity).textLen,
+                                                            entity.textLen,
                                                             (*parser)
                                                                 .m_curBase
                                                                 .map(|base| {
@@ -15385,7 +15357,7 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let Some(entity) = resolve_declared_entity(dtd, declaration)
+                                            let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt)
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
@@ -15416,7 +15388,6 @@ unsafe extern "C" fn doProlog(
                                                     entity_system_id,
                                                     entity_public_id,
                                                 ) = {
-                                                    let entity = &*entity;
                                                     (
                                                         handler_arg_from_state!(parser),
                                                         pool_string_pointer!(
@@ -15477,10 +15448,6 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let Some(entity) = resolve_declared_entity(dtd, declaration)
-                                            else {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            };
                                             let notation_pointer =
                                                 poolStoreString(dtd_pool, enc, s, next);
                                             let Some(notation) = pool_string_ref(
@@ -15490,8 +15457,13 @@ unsafe extern "C" fn doProlog(
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            (*entity).notation = Some(notation);
                                             (*dtd).pool.commit();
+                                            let Some(entity) =
+                                                declared_entity_mut(dtd, declaration, hash_salt)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
+                                            entity.notation = Some(notation);
                                             let callback = UNPARSED_ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -15510,7 +15482,6 @@ unsafe extern "C" fn doProlog(
                                                 entity_public_id,
                                                 entity_notation,
                                             ) = {
-                                                let entity = &*entity;
                                                 (
                                                     handler_arg_from_state!(parser),
                                                     pool_string_pointer!(
@@ -16709,7 +16680,7 @@ unsafe extern "C" fn doProlog(
                                 let declaration = (*parser)
                                     .m_declEntity
                                     .expect("entity declaration must be set");
-                                let Some(entity) = resolve_declared_entity(dtd, declaration) else {
+                                let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
                                 let system_id = poolStoreString(
@@ -16725,8 +16696,8 @@ unsafe extern "C" fn doProlog(
                                 ) else {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
-                                (*entity).systemId = Some(system_id);
-                                (*entity).base = (*parser).m_curBase;
+                                entity.systemId = Some(system_id);
+                                entity.base = (*parser).m_curBase;
                                 (*dtd).pool.commit();
                                 if (*parser).m_entityDeclHandler
                                     && role
@@ -16874,9 +16845,6 @@ unsafe extern "C" fn doProlog(
                 let declaration = (*parser)
                     .m_declEntity
                     .expect("entity declaration must be set");
-                let Some(entity) = resolve_declared_entity(dtd, declaration) else {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                };
                 let stored_public_id = poolStoreString(
                     dtd_pool,
                     enc,
@@ -16894,8 +16862,11 @@ unsafe extern "C" fn doProlog(
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
                 normalizePublicId(public_id_chars);
-                (*entity).publicId = Some(public_id);
                 dtd_ref.pool.commit();
+                let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                entity.publicId = Some(public_id);
                 if (*parser).m_entityDeclHandler
                     && role == crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
                 {
@@ -20802,6 +20773,29 @@ fn lookup_impl<'a>(
     let entry = table.v.as_mut()?.entries.get_mut(index)?;
     *entry = Some(NamedAllocation { record, backing });
     entry.as_mut().map(|entry| &mut entry.record)
+}
+
+// Entity declarations are retained by a pool key, so resolving one through
+// the DTD's owned hash tables never needs to recreate a raw name pointer.
+// The table selection is part of the declaration kind; matching the record
+// variant keeps a malformed table entry from being treated as an entity.
+fn declared_entity_mut(
+    dtd: &mut DTD,
+    declaration: DeclaredEntity,
+    salt: ::core::ffi::c_ulong,
+) -> Option<&mut ENTITY> {
+    let (table, name) = match declaration {
+        DeclaredEntity::General(name) => (&mut dtd.generalEntities, LookupName::Retained(name)),
+        DeclaredEntity::Parameter(name) => (&mut dtd.paramEntities, LookupName::Retained(name)),
+        DeclaredEntity::ExternalSubset => (
+            &mut dtd.paramEntities,
+            LookupName::Borrowed(&EXTERNAL_SUBSET_NAME),
+        ),
+    };
+    let NamedRecord::Entity(entity) = lookup_impl(&mut dtd.pool, table, name, 0, salt)? else {
+        return None;
+    };
+    Some(entity.as_mut())
 }
 
 unsafe extern "C" fn lookup(
