@@ -15514,10 +15514,9 @@ fn ignore_section_token_and_account(
     tolerated.then_some(outcome).ok_or(())
 }
 
-unsafe extern "C" fn initializeEncoding(
-    mut parser: crate::expat_h::XML_Parser,
+fn initialize_encoding_impl(
+    parser_state: &mut XML_ParserStruct,
 ) -> crate::expat_h::XML_Error {
-    let parser_state = &mut *parser;
     let initialized = {
         let protocol_name = parser_state.m_protocolEncodingName.as_ref().map(|name| {
             let bytes: &[u8] = bytemuck::cast_slice(name.chars.as_slice());
@@ -15547,6 +15546,16 @@ unsafe extern "C" fn initializeEncoding(
         None => None,
     };
     handle_unknown_encoding(parser_state, encoding_name.as_deref())
+}
+
+unsafe extern "C" fn initializeEncoding(
+    parser: crate::expat_h::XML_Parser,
+) -> crate::expat_h::XML_Error {
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let parser = &mut *parser;
+    initialize_encoding_impl(parser)
 }
 
 /// Copies a declaration token from the parser-owned input buffer.
@@ -16019,26 +16028,57 @@ unsafe extern "C" fn prologInitProcessor(
     return prologProcessor(parser, s, end, nextPtr);
 }
 
-unsafe extern "C" fn externalParEntInitProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initializeEncoding(parser);
+enum ExternalParEntInitAction {
+    EntityValue,
+    ExternalParameterEntity,
+}
+
+/// Initializes a parameter-entity parser and records the next processor
+/// state.  The shared DTD is owned by the parser, so this transition only
+/// needs ordinary parser and DTD borrows; C cursors are handled by the thin
+/// processor adapter below.
+fn external_par_ent_init_processor_impl(
+    parser: &mut XML_ParserStruct,
+) -> Result<ExternalParEntInitAction, crate::expat_h::XML_Error> {
+    let result = initialize_encoding_impl(parser);
     if result as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        return result;
+        return Err(result);
     }
-    (*parser_dtd_ptr!(parser)).paramEntityRead = crate::expat_h::XML_TRUE;
-    if (*parser).m_prologState.inEntityValue != 0 {
-        (*parser).m_processor = ProcessorState::EntityValueInit;
-        return entityValueInitProcessor(parser, s, end, nextPtr);
-    } else {
-        (*parser).m_processor = ProcessorState::ExternalParEnt;
-        return externalParEntProcessor(parser, s, end, nextPtr);
+    let Some(dtd) = parser.m_dtd.clone() else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
     };
+    dtd.inspect(|dtd| dtd.paramEntityRead = crate::expat_h::XML_TRUE);
+    if parser.m_prologState.inEntityValue != 0 {
+        parser.m_processor = ProcessorState::EntityValueInit;
+        Ok(ExternalParEntInitAction::EntityValue)
+    } else {
+        parser.m_processor = ProcessorState::ExternalParEnt;
+        Ok(ExternalParEntInitAction::ExternalParameterEntity)
+    }
+}
+
+unsafe extern "C" fn externalParEntInitProcessor(
+    parser: crate::expat_h::XML_Parser,
+    s: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    nextPtr: *mut *const ::core::ffi::c_char,
+) -> crate::expat_h::XML_Error {
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let parser = &mut *parser;
+    match external_par_ent_init_processor_impl(parser) {
+        Err(error) => error,
+        Ok(action) => {
+            let processor: Processor = match action {
+                ExternalParEntInitAction::EntityValue => entityValueInitProcessor,
+                ExternalParEntInitAction::ExternalParameterEntity => externalParEntProcessor,
+            };
+            processor(std::ptr::from_mut(parser), s, end, nextPtr)
+        }
+    }
 }
 
 /// Scans one entity-value prolog token from the parser-owned input buffer.
