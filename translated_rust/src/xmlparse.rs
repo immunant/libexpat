@@ -8249,8 +8249,22 @@ unsafe extern "C" fn doProlog(
                             enumValueStart.as_ptr()
                         };
                     }
-                    if poolAppendString(&raw mut (*parser).m_tempPool, prefix).is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    while *prefix != 0 {
+                        if if (*parser).m_tempPool.ptr
+                            == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                            && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                        {
+                            0 as ::core::ffi::c_int
+                        } else {
+                            let c2rust_fresh74 = (*parser).m_tempPool.ptr;
+                            (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                            *c2rust_fresh74 = *prefix;
+                            1 as ::core::ffi::c_int
+                        } == 0
+                        {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        prefix = prefix.offset(1);
                     }
                     if poolAppend(&raw mut (*parser).m_tempPool, enc, s, next).is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -12167,29 +12181,6 @@ unsafe extern "C" fn poolCopyStringN(
     s = (*pool).start;
     (*pool).start = (*pool).ptr;
     return s;
-}
-
-unsafe extern "C" fn poolAppendString(
-    mut pool: *mut STRING_POOL,
-    mut s: *const crate::expat_external_h::XML_Char,
-) -> *const crate::expat_external_h::XML_Char {
-    while *s != 0 {
-        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(pool) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh74 = (*pool).ptr;
-            (*pool).ptr = (*pool).ptr.offset(1);
-            *c2rust_fresh74 = *s;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        s = s.offset(1);
-    }
-    return (*pool).start;
 }
 
 unsafe extern "C" fn poolStoreString(
