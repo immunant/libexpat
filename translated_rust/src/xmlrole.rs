@@ -208,6 +208,8 @@ pub use crate::src::xmltok::XML_TOK_POUND_NAME;
 pub use crate::src::xmltok::XML_TOK_PREFIXED_NAME;
 pub use crate::src::xmltok::XML_TOK_PROLOG_S;
 pub use crate::src::xmltok::XML_TOK_XML_DECL;
+use core::ops::{Deref, DerefMut};
+use core::ptr::NonNull;
 
 pub type PROLOG_HANDLER = extern "C" fn(
     *mut crate::src::xmlrole::PROLOG_STATE,
@@ -449,25 +451,86 @@ static KW_SYSTEM: [::core::ffi::c_char; 7] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
+struct PrologStatePtr(NonNull<crate::src::xmlrole::PROLOG_STATE>);
+
+impl PrologStatePtr {
+    #[inline]
+    fn new(state: *mut crate::src::xmlrole::PROLOG_STATE) -> Self {
+        debug_assert!(!state.is_null());
+        Self(NonNull::new(state).expect("non-null PROLOG_STATE"))
+    }
+
+    #[inline]
+    fn as_ptr(self) -> *mut crate::src::xmlrole::PROLOG_STATE {
+        self.0.as_ptr()
+    }
+}
+
+impl Deref for PrologStatePtr {
+    type Target = crate::src::xmlrole::PROLOG_STATE;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.0.as_ref() }
+    }
+}
+
+impl DerefMut for PrologStatePtr {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.0.as_mut() }
+    }
+}
+
+struct EncodingPtr(NonNull<crate::src::xmltok::ENCODING>);
+
+impl EncodingPtr {
+    #[inline]
+    fn new(enc: *const crate::src::xmltok::ENCODING) -> Self {
+        debug_assert!(!enc.is_null());
+        Self(NonNull::new(enc.cast_mut()).expect("non-null ENCODING"))
+    }
+
+    #[inline]
+    fn as_ptr(self) -> *const crate::src::xmltok::ENCODING {
+        self.0.as_ptr() as *const crate::src::xmltok::ENCODING
+    }
+}
+
+impl Deref for EncodingPtr {
+    type Target = crate::src::xmltok::ENCODING;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.0.as_ref() }
+    }
+}
+
+#[inline]
+fn state_ptr(state: *mut crate::src::xmlrole::PROLOG_STATE) -> PrologStatePtr {
+    PrologStatePtr::new(state)
+}
+
+#[inline]
+fn enc_ptr(enc: *const crate::src::xmltok::ENCODING) -> EncodingPtr {
+    EncodingPtr::new(enc)
+}
+
 macro_rules! state_mut {
     ($state:expr) => {{
-        let state = $state;
-        debug_assert!(!state.is_null());
-        unsafe { state.as_mut().expect("non-null PROLOG_STATE") }
+        state_ptr($state)
     }};
 }
 
 macro_rules! enc_ref {
     ($enc:expr) => {{
-        let enc = $enc;
-        debug_assert!(!enc.is_null());
-        unsafe { enc.as_ref().expect("non-null ENCODING") }
+        enc_ptr($enc)
     }};
 }
 
 macro_rules! name_matches_ascii_at {
     ($enc:expr, $ptr:expr, $end:expr, $keyword:expr $(,)?) => {{
-        let enc = $enc;
+        let enc: &crate::src::xmltok::ENCODING = &*$enc;
         let name_matches = enc.nameMatchesAscii.expect("non-null function pointer");
         unsafe {
             name_matches(
@@ -481,7 +544,7 @@ macro_rules! name_matches_ascii_at {
 }
 
 #[inline]
-fn set_handler(state: &mut crate::src::xmlrole::PROLOG_STATE, handler: PROLOG_HANDLER) {
+fn set_handler(state: &mut PrologStatePtr, handler: PROLOG_HANDLER) {
     state.handler = Some(handler);
 }
 
@@ -508,7 +571,7 @@ extern "C" fn prolog0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -665,7 +728,7 @@ extern "C" fn prolog1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -743,7 +806,7 @@ extern "C" fn prolog2(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -789,7 +852,7 @@ extern "C" fn doctype0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -829,7 +892,7 @@ extern "C" fn doctype1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -947,7 +1010,7 @@ extern "C" fn doctype2(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -987,7 +1050,7 @@ extern "C" fn doctype3(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1027,7 +1090,7 @@ extern "C" fn doctype4(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1089,7 +1152,7 @@ extern "C" fn doctype5(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1129,7 +1192,7 @@ extern "C" fn internalSubset(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1291,7 +1354,7 @@ extern "C" fn externalSubset0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     state.handler = Some(
         externalSubset1
@@ -1315,7 +1378,7 @@ extern "C" fn externalSubset0(
     if tok == crate::src::xmltok::XML_TOK_XML_DECL {
         return crate::src::xmlrole::XML_ROLE_TEXT_DECL as ::core::ffi::c_int;
     }
-    return externalSubset1(state, tok, ptr, end, enc);
+    return externalSubset1(state.as_ptr(), tok, ptr, end, enc.as_ptr());
 }
 
 extern "C" fn externalSubset1(
@@ -1325,7 +1388,7 @@ extern "C" fn externalSubset1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_COND_SECT_OPEN => {
@@ -1365,7 +1428,7 @@ extern "C" fn externalSubset1(
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
         }
-        _ => return internalSubset(state, tok, ptr, end, enc),
+        _ => return internalSubset(state.as_ptr(), tok, ptr, end, enc.as_ptr()),
     }
     return common(state, tok);
 }
@@ -1377,7 +1440,7 @@ extern "C" fn entity0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1439,7 +1502,7 @@ extern "C" fn entity1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1479,7 +1542,7 @@ extern "C" fn entity2(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1576,7 +1639,7 @@ extern "C" fn entity3(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1616,7 +1679,7 @@ extern "C" fn entity4(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1656,7 +1719,7 @@ extern "C" fn entity5(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1738,7 +1801,7 @@ extern "C" fn entity6(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1779,7 +1842,7 @@ extern "C" fn entity7(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1876,7 +1939,7 @@ extern "C" fn entity8(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1916,7 +1979,7 @@ extern "C" fn entity9(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -1956,7 +2019,7 @@ extern "C" fn entity10(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2009,7 +2072,7 @@ extern "C" fn notation0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2049,7 +2112,7 @@ extern "C" fn notation1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2123,7 +2186,7 @@ extern "C" fn notation2(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2163,7 +2226,7 @@ extern "C" fn notation3(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2204,7 +2267,7 @@ extern "C" fn notation4(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2280,7 +2343,7 @@ extern "C" fn attlist0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2320,7 +2383,7 @@ extern "C" fn attlist1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2395,7 +2458,7 @@ extern "C" fn attlist2(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2507,7 +2570,7 @@ extern "C" fn attlist3(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2549,7 +2612,7 @@ extern "C" fn attlist4(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2611,7 +2674,7 @@ extern "C" fn attlist5(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2651,7 +2714,7 @@ extern "C" fn attlist6(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2691,7 +2754,7 @@ extern "C" fn attlist7(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2753,7 +2816,7 @@ extern "C" fn attlist8(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2877,7 +2940,7 @@ extern "C" fn attlist9(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2917,7 +2980,7 @@ extern "C" fn element0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -2957,7 +3020,7 @@ extern "C" fn element1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3056,7 +3119,7 @@ extern "C" fn element2(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3214,7 +3277,7 @@ extern "C" fn element3(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3300,7 +3363,7 @@ extern "C" fn element4(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3340,7 +3403,7 @@ extern "C" fn element5(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3403,7 +3466,7 @@ extern "C" fn element6(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3513,7 +3576,7 @@ extern "C" fn element7(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3679,7 +3742,7 @@ extern "C" fn condSect0(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3753,7 +3816,7 @@ extern "C" fn condSect1(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3794,7 +3857,7 @@ extern "C" fn condSect2(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
@@ -3834,7 +3897,7 @@ extern "C" fn declClose(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => return state.role_none,
@@ -3885,25 +3948,21 @@ extern "C" fn error(
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+    let mut state = state_mut!(state);
     let enc = enc_ref!(enc);
     return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
 }
 
-extern "C" fn common(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
-    mut tok: ::core::ffi::c_int,
-) -> ::core::ffi::c_int {
-    let state = state_mut!(state);
+fn common(mut state: PrologStatePtr, mut tok: ::core::ffi::c_int) -> ::core::ffi::c_int {
     if state.documentEntity == 0 && tok == crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF_1 {
         return crate::src::xmlrole::XML_ROLE_INNER_PARAM_ENTITY_REF as ::core::ffi::c_int;
     }
-    set_handler(state, error);
+    set_handler(&mut state, error);
     return crate::src::xmlrole::XML_ROLE_ERROR as ::core::ffi::c_int;
 }
 pub extern "C" fn XmlPrologStateInit(mut state: *mut crate::src::xmlrole::PROLOG_STATE) {
-    let state = state_mut!(state);
-    set_handler(state, prolog0);
+    let mut state = state_mut!(state);
+    set_handler(&mut state, prolog0);
     state.documentEntity = 1 as ::core::ffi::c_int;
     state.includeLevel = 0 as ::core::ffi::c_uint;
     state.inEntityValue = 0 as ::core::ffi::c_int;
@@ -3916,8 +3975,8 @@ pub unsafe extern "C" fn XmlPrologStateInit_ffi(mut state: *mut crate::src::xmlr
 pub extern "C" fn XmlPrologStateInitExternalEntity(
     mut state: *mut crate::src::xmlrole::PROLOG_STATE,
 ) {
-    let state = state_mut!(state);
-    set_handler(state, externalSubset0);
+    let mut state = state_mut!(state);
+    set_handler(&mut state, externalSubset0);
     state.documentEntity = 0 as ::core::ffi::c_int;
     state.includeLevel = 0 as ::core::ffi::c_uint;
 }

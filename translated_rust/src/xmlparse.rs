@@ -4351,13 +4351,12 @@ pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
 ) {
     XML_GetParsingStatus(parser, status)
 }
-pub unsafe extern "C" fn XML_GetErrorCode(
+pub extern "C" fn XML_GetErrorCode(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
-    if parser.is_null() {
-        return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
-    }
-    return (*parser).m_errorCode;
+    parser_ref(parser)
+        .map(|parser| parser.m_errorCode)
+        .unwrap_or(crate::expat_h::XML_ERROR_INVALID_ARGUMENT)
 }
 #[export_name = "XML_GetErrorCode"]
 
@@ -4366,17 +4365,18 @@ pub unsafe extern "C" fn XML_GetErrorCode_ffi(
 ) -> crate::expat_h::XML_Error {
     XML_GetErrorCode(parser)
 }
-pub unsafe extern "C" fn XML_GetCurrentByteIndex(
+pub extern "C" fn XML_GetCurrentByteIndex(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Index {
-    if parser.is_null() {
+    let Some(parser) = parser_ref(parser) else {
         return -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index;
+    };
+    if !parser.m_eventPtr.is_null() {
+        return parser.m_parseEndByteIndex as ::core::ffi::c_long
+            - unsafe { parser.m_parseEndPtr.offset_from(parser.m_eventPtr) }
+                as ::core::ffi::c_long;
     }
-    if !(*parser).m_eventPtr.is_null() {
-        return (*parser).m_parseEndByteIndex as ::core::ffi::c_long
-            - (*parser).m_parseEndPtr.offset_from((*parser).m_eventPtr) as ::core::ffi::c_long;
-    }
-    return -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index;
+    -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index
 }
 #[export_name = "XML_GetCurrentByteIndex"]
 
@@ -4385,17 +4385,17 @@ pub unsafe extern "C" fn XML_GetCurrentByteIndex_ffi(
 ) -> crate::expat_external_h::XML_Index {
     XML_GetCurrentByteIndex(parser)
 }
-pub unsafe extern "C" fn XML_GetCurrentByteCount(
+pub extern "C" fn XML_GetCurrentByteCount(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    if parser.is_null() {
+    let Some(parser) = parser_ref(parser) else {
         return 0 as ::core::ffi::c_int;
-    }
-    if !(*parser).m_eventEndPtr.is_null() && !(*parser).m_eventPtr.is_null() {
-        return (*parser).m_eventEndPtr.offset_from((*parser).m_eventPtr) as ::core::ffi::c_long
+    };
+    if !parser.m_eventEndPtr.is_null() && !parser.m_eventPtr.is_null() {
+        return unsafe { parser.m_eventEndPtr.offset_from(parser.m_eventPtr) } as ::core::ffi::c_long
             as ::core::ffi::c_int;
     }
-    return 0 as ::core::ffi::c_int;
+    0 as ::core::ffi::c_int
 }
 #[export_name = "XML_GetCurrentByteCount"]
 
