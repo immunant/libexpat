@@ -2359,7 +2359,10 @@ pub struct XML_ParserStruct {
     // Reusable attribute-entity slots retain their configured-allocator token
     // while parked here.  Popping from the end preserves Expat's LIFO reuse.
     m_freeAttributeEntities: Vec<AttributeEntityStorage>,
-    pub m_openValueEntities: *mut OPEN_INTERNAL_ENTITY,
+    // Value-entity expansion is either inactive or points at a live stable
+    // slot.  Represent the nullable list head explicitly; the linked node's
+    // C-compatible `next` field remains raw at the boundary.
+    pub m_openValueEntities: Option<::core::ptr::NonNull<OPEN_INTERNAL_ENTITY>>,
     // Value-entity nodes have the same stable Rust storage and opaque
     // configured-allocator tokens as internal entities.  The active open
     // chain remains C-compatible, but reusable nodes are owned slots rather
@@ -4160,7 +4163,7 @@ fn initial_parser_struct(
         m_activeInternalEntities: Vec::new(),
         m_openAttributeEntities: Vec::new(),
         m_freeAttributeEntities: Vec::new(),
-        m_openValueEntities: ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>(),
+        m_openValueEntities: None,
         m_freeValueEntities: Vec::new(),
         m_activeValueEntities: Vec::new(),
         m_defaultExpandInternalEntities: crate::expat_h::XML_TRUE,
@@ -4633,7 +4636,7 @@ fn parser_init(
     parser.m_positionPtr = None;
     parser.m_openInternalEntities = None;
     parser.m_openAttributeEntities = Vec::new();
-    parser.m_openValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    parser.m_openValueEntities = None;
     parser.m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
     parser.m_tagLevel = 0 as ::core::ffi::c_int;
     parser.m_tagStack = None;
@@ -4756,7 +4759,7 @@ pub unsafe extern "C" fn XML_ParserReset(
         {
             parser_state.m_freeAttributeEntities.push(storage);
         }
-        parser_state.m_openValueEntities = ::core::ptr::null_mut();
+        parser_state.m_openValueEntities = None;
         // Active value entries are oldest to newest.  Moving them in reverse
         // preserves the former free-list reuse order: the oldest entry is
         // next returned after a parser reset.
@@ -14162,8 +14165,6 @@ unsafe extern "C" fn processEntity(
     let parser_state = &mut *parser;
     let entity = &mut *entity;
     let mut openEntity: *mut OPEN_INTERNAL_ENTITY = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-    let mut openEntityList: *mut *mut OPEN_INTERNAL_ENTITY =
-        ::core::ptr::null_mut::<*mut OPEN_INTERNAL_ENTITY>();
     let mut is_internal_entity = false;
     let mut is_attribute_entity = false;
     match type_0 as ::core::ffi::c_uint {
@@ -14263,7 +14264,6 @@ unsafe extern "C" fn processEntity(
             parser_state.m_openAttributeEntities.push(storage);
         }
         2 => {
-            openEntityList = &raw mut parser_state.m_openValueEntities;
             let mut storage = if let Some(storage) = parser_state.m_freeValueEntities.pop() {
                 if parser_state.m_activeValueEntities.try_reserve(1).is_err() {
                     parser_state.m_freeValueEntities.push(storage);
@@ -14329,12 +14329,15 @@ unsafe extern "C" fn processEntity(
             .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
             as *mut open_internal_entity
     } else {
-        *openEntityList as *mut open_internal_entity
+        parser_state
+            .m_openValueEntities
+            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
+            as *mut open_internal_entity
     };
     if is_internal_entity {
         parser_state.m_openInternalEntities = ::core::ptr::NonNull::new(openEntity);
     } else {
-        *openEntityList = openEntity;
+        parser_state.m_openValueEntities = ::core::ptr::NonNull::new(openEntity);
     }
     (*openEntity).entity = std::ptr::from_mut(entity);
     (*openEntity).type_0 = type_0;
@@ -15164,13 +15167,13 @@ unsafe extern "C" fn callStoreEntityValue(
     let mut next: *const ::core::ffi::c_char = entityTextPtr;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
-        if (*parser).m_openValueEntities.is_null() {
+        if (*parser).m_openValueEntities.is_none() {
             result = storeEntityValue(parser, enc, next, entityTextEnd, account, &raw mut next);
         } else {
-            let openEntity: *mut OPEN_INTERNAL_ENTITY = (*parser).m_openValueEntities;
-            if openEntity.is_null() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
+            let openEntity = (*parser)
+                .m_openValueEntities
+                .expect("value-entity processing requires an open entity")
+                .as_ptr();
             let entity: *mut ENTITY = (*openEntity).entity;
             let Some(text) = (*entity).textPtr.present() else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -15224,7 +15227,7 @@ unsafe extern "C" fn callStoreEntityValue(
             } else {
                 entityTrackingOnClose(parser, entity, 6998 as ::core::ffi::c_int);
                 '_c2rust_label: {
-                    if (*parser).m_openValueEntities == openEntity {
+                    if (*parser).m_openValueEntities == ::core::ptr::NonNull::new(openEntity) {
                     } else {
                         crate::stdlib::__assert_fail(
                             b"parser->m_openValueEntities == openEntity\0".as_ptr()
@@ -15239,7 +15242,7 @@ unsafe extern "C" fn callStoreEntityValue(
                 };
                 (*entity).open = crate::expat_h::XML_FALSE;
                 (*parser).m_openValueEntities =
-                    (*(*parser).m_openValueEntities).next as *mut OPEN_INTERNAL_ENTITY;
+                    ::core::ptr::NonNull::new((*openEntity).next as *mut OPEN_INTERNAL_ENTITY);
                 let Some(storage) = (*parser).m_activeValueEntities.pop() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
@@ -15250,7 +15253,7 @@ unsafe extern "C" fn callStoreEntityValue(
             }
         }
         if result as ::core::ffi::c_uint != 0
-            || (*parser).m_openValueEntities.is_null() && entityTextEnd == next
+            || (*parser).m_openValueEntities.is_none() && entityTextEnd == next
         {
             break;
         }
