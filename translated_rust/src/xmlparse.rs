@@ -18629,7 +18629,7 @@ unsafe fn doProlog(
                                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                             };
                                             let mut result_1: crate::expat_h::XML_Error =
-                                                storeAttributeValue(
+                                                store_attribute_value_impl(
                                                     parser,
                                                     &normal_encoding,
                                                     parser.m_declAttributeIsCdata,
@@ -21457,7 +21457,7 @@ fn attribute_value_input_from_source(
     })
 }
 
-unsafe fn storeAttributeValue(
+fn store_attribute_value_impl(
     parser: &mut XML_ParserStruct,
     enc: &crate::src::xmltok::normal_encoding,
     isCdata: crate::expat_h::XML_Bool,
@@ -21473,7 +21473,7 @@ unsafe fn storeAttributeValue(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
             let (append_result, append_next) =
-                appendAttributeValue(
+                append_attribute_value_impl(
                     parser,
                     enc,
                     isCdata,
@@ -21536,7 +21536,7 @@ unsafe fn storeAttributeValue(
                 Err(error) => return error,
             };
             if entity_has_more != 0 {
-                let (append_result, append_next) = appendAttributeValue(
+                let (append_result, append_next) = append_attribute_value_impl(
                     parser,
                     crate::src::xmltok::internal_utf8_normal_encoding(matches!(
                         parser.m_internalEncoding,
@@ -21619,6 +21619,19 @@ unsafe fn storeAttributeValue(
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     return crate::expat_h::XML_ERROR_NONE;
+}
+
+/// Legacy boundary retained while callers migrate to the safe, checked
+/// attribute-value implementation above.
+unsafe fn storeAttributeValue(
+    parser: &mut XML_ParserStruct,
+    enc: &crate::src::xmltok::normal_encoding,
+    isCdata: crate::expat_h::XML_Bool,
+    input: AttributeValueInput,
+    pool: AttributeValuePool<'_>,
+    account: XML_Account,
+) -> crate::expat_h::XML_Error {
+    store_attribute_value_impl(parser, enc, isCdata, input, pool, account)
 }
 
 /// Encodes a validated XML character reference without exposing the temporary
@@ -21730,7 +21743,7 @@ fn set_attribute_value_event_start(
     }
 }
 
-unsafe fn appendAttributeValue(
+fn append_attribute_value_impl(
     parser: &mut XML_ParserStruct,
     enc: &crate::src::xmltok::normal_encoding,
     mut isCdata: crate::expat_h::XML_Bool,
@@ -22091,6 +22104,29 @@ unsafe fn appendAttributeValue(
         .filter(|offset| *offset <= input.len())
         .unwrap_or(cursor);
     (error, offset)
+}
+
+/// Legacy boundary retained while callers use the checked slice implementation.
+unsafe fn appendAttributeValue(
+    parser: &mut XML_ParserStruct,
+    enc: &crate::src::xmltok::normal_encoding,
+    isCdata: crate::expat_h::XML_Bool,
+    input: &[::core::ffi::c_char],
+    cursor: usize,
+    parser_event_start: Option<usize>,
+    pool: &mut AttributeValuePool<'_>,
+    account: XML_Account,
+) -> (crate::expat_h::XML_Error, usize) {
+    append_attribute_value_impl(
+        parser,
+        enc,
+        isCdata,
+        input,
+        cursor,
+        parser_event_start,
+        pool,
+        account,
+    )
 }
 
 /// Accounts for one already-bounded attribute-value token.  This is the same
