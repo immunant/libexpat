@@ -135,7 +135,6 @@ extern "C" {
     fn CharData_Init(storage: *mut CharData);
     fn CharData_CheckXMLChars(storage: *mut CharData, s: *const XML_Char) -> ::core::ffi::c_int;
     static mut g_parser: XML_Parser;
-    static mut get_buffer_test_text: *const ::core::ffi::c_char;
     fn tcase_add_test__ifdef_xml_dtd(tc: *mut TCase, test: tcase_test_function);
     fn tcase_add_test__if_xml_ge(tc: *mut TCase, test: tcase_test_function);
     fn basic_teardown();
@@ -879,7 +878,7 @@ fn current_parser_error_code() -> XML_Error {
 }
 
 fn buffer_test_text() -> &'static CStr {
-    unsafe { CStr::from_ptr(get_buffer_test_text) }
+    crate::src::tests::common::get_buffer_test_text_cstr()
 }
 
 fn expect_failure(text: &CStr, error: XML_Error, message: &'static CStr, line: ::core::ffi::c_int) {
