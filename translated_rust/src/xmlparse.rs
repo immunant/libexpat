@@ -15547,17 +15547,16 @@ unsafe extern "C" fn doProlog(
                                                 crate::src::xmltok::PublicIdChecker::Little2
                                                 | crate::src::xmltok::PublicIdChecker::Big2 => 2,
                                             };
+                                            let byte_types =
+                                                prolog_public_id_byte_types(parser, parser_events);
                                             let bad_offset = if token_bytes.len()
                                                 < 2 * public_id_width
                                             {
                                                 None
                                             } else {
-                                                let byte_types = &(*(enc
-                                                    as *const crate::src::xmltok::normal_encoding))
-                                                    .type_0;
                                                 crate::src::xmltok::quoted_public_id_bad_offset(
                                                     &token_bytes,
-                                                    byte_types,
+                                                    &byte_types,
                                                     public_id_checker,
                                                 )
                                             };
