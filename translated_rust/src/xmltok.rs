@@ -3840,95 +3840,86 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
+    enum Little2ScanDeclAction {
+        ScanComment,
+        Return { token: ::core::ffi::c_int, next: Option<usize> },
+    }
+
+    /// Scan the declaration prefix using bounded UTF-16LE code units.  The
+    /// boundary adapter owns converting the returned cursor offset to a C
+    /// pointer (and the comment scanner still has its own boundary adapter).
+    fn little2_scan_decl_impl(
+        byte_types: &[::core::ffi::c_uchar; 256],
+        input: &[::core::ffi::c_char],
+    ) -> Little2ScanDeclAction {
+        let partial = crate::src::xmltok::XML_TOK_PARTIAL_1;
+        let invalid = crate::src::xmltok::XML_TOK_INVALID_1;
+        if input.len() < 2 {
+            return Little2ScanDeclAction::Return { token: partial, next: None };
+        }
+
+        match little2_byte_type(byte_types, input, 0) {
+            27 => return Little2ScanDeclAction::ScanComment,
+            20 => {
+                return Little2ScanDeclAction::Return {
+                    token: crate::src::xmltok::XML_TOK_COND_SECT_OPEN_1,
+                    next: Some(2),
+                };
+            }
+            22 | 24 => {}
+            _ => return Little2ScanDeclAction::Return { token: invalid, next: Some(0) },
+        }
+
+        let mut ptr = 2;
+        while input.len().saturating_sub(ptr) >= 2 {
+            match little2_byte_type(byte_types, input, ptr) {
+                30 => {
+                    if input.len().saturating_sub(ptr) < 4 {
+                        return Little2ScanDeclAction::Return { token: partial, next: None };
+                    }
+                    if matches!(little2_byte_type(byte_types, input, ptr + 2), 21 | 9 | 10 | 30) {
+                        return Little2ScanDeclAction::Return { token: invalid, next: Some(ptr) };
+                    }
+                    return Little2ScanDeclAction::Return {
+                        token: crate::src::xmltok::XML_TOK_DECL_OPEN_1,
+                        next: Some(ptr),
+                    };
+                }
+                21 | 9 | 10 => {
+                    return Little2ScanDeclAction::Return {
+                        token: crate::src::xmltok::XML_TOK_DECL_OPEN_1,
+                        next: Some(ptr),
+                    };
+                }
+                22 | 24 => ptr += 2,
+                _ => return Little2ScanDeclAction::Return { token: invalid, next: Some(ptr) },
+            }
+        }
+
+        Little2ScanDeclAction::Return { token: partial, next: None }
+    }
+
     pub unsafe extern "C" fn little2_scanDecl(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if !(end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize) {
+        let input_len = end.offset_from(ptr);
+        if input_len < 0 {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-        } else {
-            unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-        } {
-            27 => {
-                return little2_scanComment(
-                    enc,
-                    ptr.offset(2 as ::core::ffi::c_int as isize),
-                    end,
-                    nextTokPtr,
-                );
-            }
-            20 => {
-                *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                return crate::src::xmltok::XML_TOK_COND_SECT_OPEN_1;
-            }
-            22 | 24 => {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-            _ => {
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
-            }
-        }
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            's_129: {
-                match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                } {
-                    30 => {
-                        if !(end.offset_from(ptr)
-                            >= (2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                        }
-                        match if *ptr
-                            .offset(2 as ::core::ffi::c_int as isize)
-                            .offset(1 as isize)
-                            as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as isize),
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(0 as isize),
-                            )
-                        } {
-                            21 | 9 | 10 | 30 => {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            _ => {}
-                        }
-                    }
-                    21 | 9 | 10 => {}
-                    22 | 24 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        break 's_129;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        match little2_scan_decl_impl(&normal.type_0, input) {
+            Little2ScanDeclAction::ScanComment => little2_scanComment(enc, ptr.add(2), end, nextTokPtr),
+            Little2ScanDeclAction::Return { token, next } => {
+                if let Some(offset) = next {
+                    *nextTokPtr = ptr.add(offset);
                 }
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_DECL_OPEN_1;
+                token
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
     pub unsafe extern "C" fn little2_checkPiTarget(
