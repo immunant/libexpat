@@ -10779,16 +10779,38 @@ pub unsafe extern "C" fn XML_GetErrorCode_ffi(
     }
     XML_GetErrorCode(Some(error_code_state(&*parser)))
 }
-pub unsafe fn XML_GetCurrentByteIndex(
-    parser: Option<&XML_ParserStruct>,
+/// The copied, value-only state used by `XML_GetCurrentByteIndex`.
+///
+/// The ABI-shaped parser carries callback fields unrelated to this query, so
+/// copy only the cursor and byte-index values needed for the calculation.
+struct CurrentByteIndexState {
+    event_start: Option<usize>,
+    buffer_end: usize,
+    parse_end_byte_index: crate::expat_external_h::XML_Index,
+}
+
+fn current_byte_index_state(
+    event_start: Option<usize>,
+    buffer_end: usize,
+    parse_end_byte_index: crate::expat_external_h::XML_Index,
+) -> CurrentByteIndexState {
+    CurrentByteIndexState {
+        event_start,
+        buffer_end,
+        parse_end_byte_index,
+    }
+}
+
+fn XML_GetCurrentByteIndex(
+    state: Option<CurrentByteIndexState>,
 ) -> crate::expat_external_h::XML_Index {
-    let Some(parser) = parser else {
+    let Some(state) = state else {
         return -1 as crate::expat_external_h::XML_Index;
     };
-    if let Some(event_start) = parser.m_eventPtr {
-        if event_start <= parser.m_bufferEnd {
-            return parser.m_parseEndByteIndex.wrapping_sub(
-                (parser.m_bufferEnd - event_start) as crate::expat_external_h::XML_Index,
+    if let Some(event_start) = state.event_start {
+        if event_start <= state.buffer_end {
+            return state.parse_end_byte_index.wrapping_sub(
+                (state.buffer_end - event_start) as crate::expat_external_h::XML_Index,
             );
         }
     }
@@ -10799,7 +10821,15 @@ pub unsafe fn XML_GetCurrentByteIndex(
 pub unsafe extern "C" fn XML_GetCurrentByteIndex_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Index {
-    XML_GetCurrentByteIndex(parser.as_ref())
+    if parser.is_null() || !parser.is_aligned() {
+        return XML_GetCurrentByteIndex(None);
+    }
+    let parser = parser.as_ref().expect("non-null parser was checked");
+    XML_GetCurrentByteIndex(Some(current_byte_index_state(
+        parser.m_eventPtr,
+        parser.m_bufferEnd,
+        parser.m_parseEndByteIndex,
+    )))
 }
 /// The copied, value-only state used by `XML_GetCurrentByteCount`.
 ///
