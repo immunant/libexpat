@@ -11368,7 +11368,29 @@ unsafe fn doContent(
                         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                             as ::core::ffi::c_uint
                     {
-                        freeBindings(parser, bindings);
+                        while let Some(binding_id) = bindings {
+                            let event = binding_release_event(parser, binding_id);
+                            if parser.m_endNamespaceDeclHandler {
+                                let prefix = match event.prefix {
+                                    BindingPrefix::Default => Some(None),
+                                    BindingPrefix::Named(name) => Some(
+                                        parser.m_dtd.as_ref().and_then(|dtd| {
+                                            dtd.inspect(|dtd| {
+                                                dtd.pool.chars_from(name).map(ToOwned::to_owned)
+                                            })
+                                        }),
+                                    ),
+                                };
+                                if let Some(prefix) = prefix {
+                                    dispatch_end_namespace_decl_callback(
+                                        parser,
+                                        prefix.as_deref(),
+                                    );
+                                }
+                            }
+                            bindings = event.next;
+                            release_binding(parser, binding_id);
+                        }
                         return result_1;
                     }
                     if let Some(update) = tag_name_update {
@@ -11457,7 +11479,26 @@ unsafe fn doContent(
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                     poolClear(&mut parser.m_tempPool);
-                    freeBindings(parser, bindings);
+                    while let Some(binding_id) = bindings {
+                        let event = binding_release_event(parser, binding_id);
+                        if parser.m_endNamespaceDeclHandler {
+                            let prefix = match event.prefix {
+                                BindingPrefix::Default => Some(None),
+                                BindingPrefix::Named(name) => Some(
+                                    parser.m_dtd.as_ref().and_then(|dtd| {
+                                        dtd.inspect(|dtd| {
+                                            dtd.pool.chars_from(name).map(ToOwned::to_owned)
+                                        })
+                                    }),
+                                ),
+                            };
+                            if let Some(prefix) = prefix {
+                                dispatch_end_namespace_decl_callback(parser, prefix.as_deref());
+                            }
+                        }
+                        bindings = event.next;
+                        release_binding(parser, binding_id);
+                    }
                     if close_element_epilog_action(parser) {
                         return epilogProcessor(parser, next, end, nextPtr);
                     }
@@ -11517,7 +11558,7 @@ unsafe fn doContent(
                             uses_namespaces,
                             uses_ns_triplets,
                             namespace_separator,
-                            bindings,
+                            mut bindings,
                             storage: mut tag_storage,
                         } = close_content_tag(parser, tag_index);
                         let mut end_element_name = None;
@@ -11684,7 +11725,29 @@ unsafe fn doContent(
                         } else if parser.m_defaultHandler {
                             report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                         }
-                        freeBindings(parser, bindings);
+                        while let Some(binding_id) = bindings {
+                            let event = binding_release_event(parser, binding_id);
+                            if parser.m_endNamespaceDeclHandler {
+                                let prefix = match event.prefix {
+                                    BindingPrefix::Default => Some(None),
+                                    BindingPrefix::Named(name) => Some(
+                                        parser.m_dtd.as_ref().and_then(|dtd| {
+                                            dtd.inspect(|dtd| {
+                                                dtd.pool.chars_from(name).map(ToOwned::to_owned)
+                                            })
+                                        }),
+                                    ),
+                                };
+                                if let Some(prefix) = prefix {
+                                    dispatch_end_namespace_decl_callback(
+                                        parser,
+                                        prefix.as_deref(),
+                                    );
+                                }
+                            }
+                            bindings = event.next;
+                            release_binding(parser, binding_id);
+                        }
                         if close_element_epilog_action(parser) {
                             return epilogProcessor(parser, next, end, nextPtr);
                         }
@@ -12078,31 +12141,28 @@ fn release_binding(parser: &mut XML_ParserStruct, binding_id: BindingId) {
     parser.m_freeBindingList.bindings.push(storage);
 }
 
-unsafe fn freeBindings(
-    parser: crate::expat_h::XML_Parser,
-    mut bindings: Option<BindingId>,
+/// Dispatch an end-namespace callback from a prefix snapshot.
+///
+/// Binding release must make its storage reusable after the callback, and the
+/// callback can re-enter and grow the DTD pool.  Copy a named prefix before
+/// dispatch so the transient C pointer stays valid for the complete call.
+fn dispatch_end_namespace_decl_callback(
+    parser: &XML_ParserStruct,
+    prefix: Option<&[crate::expat_external_h::XML_Char]>,
 ) {
-    let parser_state = &mut *parser;
-    while let Some(binding_id) = bindings {
-        let event = binding_release_event(parser_state, binding_id);
-        if parser_state.m_endNamespaceDeclHandler {
-            let callback = END_NAMESPACE_DECL_HANDLERS
-                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .get(&std::ptr::from_ref(parser_state).addr())
-                .cloned();
-            if let Some(callback) = callback {
-                let dtd = parser_dtd_ptr!(parser_state);
-                let prefix_name = match event.prefix {
-                    BindingPrefix::Default => ::core::ptr::null(),
-                    BindingPrefix::Named(name) => pool_string_pointer!(&(*dtd).pool, name),
-                };
-                callback.invoke(handler_arg_from_state!(parser_state), prefix_name);
-            }
+    let callback = END_NAMESPACE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned();
+    if let Some(callback) = callback {
+        unsafe {
+            callback.invoke(
+                handler_arg_from_state!(parser),
+                prefix.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            );
         }
-        bindings = event.next;
-        release_binding(parser_state, binding_id);
     }
 }
 
