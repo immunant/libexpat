@@ -267,6 +267,63 @@ pub enum LiteralScanner {
     Big2EntityValue,
 }
 
+/// Selects one of the fixed tokenizer scanners without retaining an internal
+/// C callback in every encoding table.
+#[derive(Copy, Clone)]
+pub enum Scanner {
+    NormalProlog,
+    NormalContent,
+    NormalCdataSection,
+    NormalIgnoreSection,
+    Little2Prolog,
+    Little2Content,
+    Little2CdataSection,
+    Little2IgnoreSection,
+    Big2Prolog,
+    Big2Content,
+    Big2CdataSection,
+    Big2IgnoreSection,
+    InitProlog,
+    InitContent,
+    InitPrologNS,
+    InitContentNS,
+}
+
+impl Scanner {
+    pub unsafe fn scan(
+        self,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        next_tok_ptr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let scanner: unsafe extern "C" fn(
+            *const crate::src::xmltok::ENCODING,
+            *const ::core::ffi::c_char,
+            *const ::core::ffi::c_char,
+            *mut *const ::core::ffi::c_char,
+        ) -> ::core::ffi::c_int = match self {
+            Self::NormalProlog => xmltok_impl_c::normal_prologTok,
+            Self::NormalContent => xmltok_impl_c::normal_contentTok,
+            Self::NormalCdataSection => xmltok_impl_c::normal_cdataSectionTok,
+            Self::NormalIgnoreSection => xmltok_impl_c::normal_ignoreSectionTok,
+            Self::Little2Prolog => xmltok_impl_c::little2_prologTok,
+            Self::Little2Content => xmltok_impl_c::little2_contentTok,
+            Self::Little2CdataSection => xmltok_impl_c::little2_cdataSectionTok,
+            Self::Little2IgnoreSection => xmltok_impl_c::little2_ignoreSectionTok,
+            Self::Big2Prolog => xmltok_impl_c::big2_prologTok,
+            Self::Big2Content => xmltok_impl_c::big2_contentTok,
+            Self::Big2CdataSection => xmltok_impl_c::big2_cdataSectionTok,
+            Self::Big2IgnoreSection => xmltok_impl_c::big2_ignoreSectionTok,
+            Self::InitProlog => xmltok_ns_c::initScanProlog,
+            Self::InitContent => xmltok_ns_c::initScanContent,
+            Self::InitPrologNS => xmltok_ns_c::initScanPrologNS,
+            Self::InitContentNS => xmltok_ns_c::initScanContentNS,
+        };
+        scanner(enc, ptr, end, next_tok_ptr)
+    }
+}
+
 /// The tokenizer has exactly three public-identifier scanners.  Keeping the
 /// selection as data avoids retaining an internal C callback in every
 /// encoding table.
@@ -381,7 +438,7 @@ impl NameMatcher {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct encoding {
-    pub scanners: [crate::src::xmltok::SCANNER; 4],
+    pub scanners: [crate::src::xmltok::Scanner; 4],
     pub literalScanners: [crate::src::xmltok::LiteralScanner; 2],
     pub nameMatchesAscii: crate::src::xmltok::NameMatcher,
     pub nameLength: Option<
@@ -12316,26 +12373,10 @@ pub mod xmltok_ns_c {
             return 0 as ::core::ffi::c_int;
         }
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] = Some(
-            initScanProlog
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as crate::src::xmltok::SCANNER;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] = Some(
-            initScanContent
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as crate::src::xmltok::SCANNER;
+        (*p).initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] =
+            crate::src::xmltok::Scanner::InitProlog;
+        (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] =
+            crate::src::xmltok::Scanner::InitContent;
         (*p).initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
         (*p).encPtr = encPtr;
         *encPtr = &raw mut (*p).initEnc;
@@ -12513,26 +12554,10 @@ pub mod xmltok_ns_c {
             return 0 as ::core::ffi::c_int;
         }
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] = Some(
-            initScanPrologNS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as crate::src::xmltok::SCANNER;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] = Some(
-            initScanContentNS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as crate::src::xmltok::SCANNER;
+        (*p).initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] =
+            crate::src::xmltok::Scanner::InitPrologNS;
+        (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] =
+            crate::src::xmltok::Scanner::InitContentNS;
         (*p).initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
         (*p).encPtr = encPtr;
         *encPtr = &raw mut (*p).initEnc;
@@ -14222,42 +14247,10 @@ unsafe extern "C" fn utf8_toUtf16(
 static mut utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -14636,42 +14629,10 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
 static mut utf8_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -15050,42 +15011,10 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
 static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -15464,42 +15393,10 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
 static mut internal_utf8_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -15939,42 +15836,10 @@ unsafe extern "C" fn latin1_toUtf16(
 static mut latin1_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -16299,42 +16164,10 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
 static mut latin1_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -16680,42 +16513,10 @@ unsafe extern "C" fn ascii_toUtf8(
 static mut ascii_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -17040,42 +16841,10 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
 static mut ascii_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                normal_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                normal_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::NormalProlog,
+            crate::src::xmltok::Scanner::NormalContent,
+            crate::src::xmltok::Scanner::NormalCdataSection,
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::NormalAttributeValue,
@@ -17748,42 +17517,10 @@ unsafe extern "C" fn big2_toUtf16(
 static mut little2_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                little2_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::Little2Prolog,
+            crate::src::xmltok::Scanner::Little2Content,
+            crate::src::xmltok::Scanner::Little2CdataSection,
+            crate::src::xmltok::Scanner::Little2IgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::Little2AttributeValue,
@@ -18108,42 +17845,10 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
 static mut little2_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                little2_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::Little2Prolog,
+            crate::src::xmltok::Scanner::Little2Content,
+            crate::src::xmltok::Scanner::Little2CdataSection,
+            crate::src::xmltok::Scanner::Little2IgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::Little2AttributeValue,
@@ -18468,42 +18173,10 @@ static mut little2_encoding: normal_encoding = normal_encoding {
 static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                little2_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::Little2Prolog,
+            crate::src::xmltok::Scanner::Little2Content,
+            crate::src::xmltok::Scanner::Little2CdataSection,
+            crate::src::xmltok::Scanner::Little2IgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::Little2AttributeValue,
@@ -18828,42 +18501,10 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
 static mut internal_little2_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                little2_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                little2_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::Little2Prolog,
+            crate::src::xmltok::Scanner::Little2Content,
+            crate::src::xmltok::Scanner::Little2CdataSection,
+            crate::src::xmltok::Scanner::Little2IgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::Little2AttributeValue,
@@ -19188,42 +18829,10 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
 static mut big2_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                big2_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::Big2Prolog,
+            crate::src::xmltok::Scanner::Big2Content,
+            crate::src::xmltok::Scanner::Big2CdataSection,
+            crate::src::xmltok::Scanner::Big2IgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::Big2AttributeValue,
@@ -19548,42 +19157,10 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
 static mut big2_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
-            Some(
-                big2_prologTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_contentTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_cdataSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            Some(
-                big2_ignoreSectionTok
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            ),
+            crate::src::xmltok::Scanner::Big2Prolog,
+            crate::src::xmltok::Scanner::Big2Content,
+            crate::src::xmltok::Scanner::Big2CdataSection,
+            crate::src::xmltok::Scanner::Big2IgnoreSection,
         ],
         literalScanners: [
             LiteralScanner::Big2AttributeValue,
@@ -20846,16 +20423,14 @@ static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
 ];
 
 unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    static mut encodingNames: [*const ::core::ffi::c_char; 6] = unsafe {
-        [
-            &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
-            &raw const KW_US_ASCII as *const ::core::ffi::c_char,
-            &raw const KW_UTF_8 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
-        ]
-    };
+    let encoding_names: [*const ::core::ffi::c_char; 6] = [
+        &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
+        &raw const KW_US_ASCII as *const ::core::ffi::c_char,
+        &raw const KW_UTF_8 as *const ::core::ffi::c_char,
+        &raw const KW_UTF_16 as *const ::core::ffi::c_char,
+        &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
+        &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
+    ];
     let mut i: ::core::ffi::c_int = 0;
     if name.is_null() {
         return NO_ENC as ::core::ffi::c_int;
@@ -20865,7 +20440,7 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> :
         .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>())
         as ::core::ffi::c_int
     {
-        if streqci(name, encodingNames[i as usize]) != 0 {
+        if streqci(name, encoding_names[i as usize]) != 0 {
             return i;
         }
         i += 1;
@@ -20936,7 +20511,7 @@ unsafe extern "C" fn initScan(
                         *encPtr =
                             *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
                         return (**encPtr).scanners[state as usize]
-                            .expect("non-null function pointer")(
+                            .scan(
                             *encPtr, ptr, end, nextTokPtr
                         );
                     }
@@ -20984,7 +20559,7 @@ unsafe extern "C" fn initScan(
                             *encPtr =
                                 *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
                             return (**encPtr).scanners[state as usize]
-                                .expect("non-null function pointer")(
+                                .scan(
                                 *encPtr, ptr, end, nextTokPtr,
                             );
                         }
@@ -20995,7 +20570,7 @@ unsafe extern "C" fn initScan(
                             *encPtr =
                                 *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
                             return (**encPtr).scanners[state as usize]
-                                .expect("non-null function pointer")(
+                                .scan(
                                 *encPtr, ptr, end, nextTokPtr,
                             );
                         }
@@ -21005,7 +20580,7 @@ unsafe extern "C" fn initScan(
         }
     }
     *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
-    return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
+    return (**encPtr).scanners[state as usize].scan(
         *encPtr, ptr, end, nextTokPtr,
     );
 }

@@ -5019,7 +5019,7 @@ unsafe extern "C" fn externalEntityInitProcessor2(
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = start;
     let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[1 as usize]
-        .expect("non-null function pointer")(
+        .scan(
         (*parser).m_encoding, start, end, &raw mut next
     );
     match tok {
@@ -5073,7 +5073,7 @@ unsafe extern "C" fn externalEntityInitProcessor3(
     let mut tok: ::core::ffi::c_int = 0;
     let mut next: *const ::core::ffi::c_char = start;
     (*parser).m_eventPtr = start;
-    tok = (*(*parser).m_encoding).scanners[1 as usize].expect("non-null function pointer")(
+    tok = (*(*parser).m_encoding).scanners[1 as usize].scan(
         (*parser).m_encoding,
         start,
         end,
@@ -5178,7 +5178,7 @@ unsafe extern "C" fn doContent(
     loop {
         let mut next: *const ::core::ffi::c_char = s;
         let mut tok: ::core::ffi::c_int = (*enc).scanners[1 as usize]
-            .expect("non-null function pointer")(
+        .scan(
             enc, s, end, &raw mut next
         );
         let mut accountAfter: *const ::core::ffi::c_char = if tok
@@ -6843,7 +6843,7 @@ unsafe extern "C" fn doCdataSection(
     loop {
         let mut next: *const ::core::ffi::c_char = s;
         let mut tok: ::core::ffi::c_int = (*enc).scanners[2 as usize]
-            .expect("non-null function pointer")(
+            .scan(
             enc, s, end, &raw mut next
         );
         if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
@@ -7039,8 +7039,7 @@ unsafe extern "C" fn doIgnoreSection(
     }
     *eventPP = s;
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    tok =
-        (*enc).scanners[3 as usize].expect("non-null function pointer")(enc, s, end, &raw mut next);
+    tok = (*enc).scanners[3 as usize].scan(enc, s, end, &raw mut next);
     if accountingDiffTolerated(
         parser,
         tok,
@@ -7434,7 +7433,7 @@ unsafe extern "C" fn entityValueInitProcessor(
     let mut next: *const ::core::ffi::c_char = start;
     (*parser).m_eventPtr = start;
     loop {
-        tok = (*(*parser).m_encoding).scanners[0 as usize].expect("non-null function pointer")(
+        tok = (*(*parser).m_encoding).scanners[0 as usize].scan(
             (*parser).m_encoding,
             start,
             end,
@@ -7516,7 +7515,7 @@ unsafe extern "C" fn externalParEntProcessor(
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = s;
     let mut tok: ::core::ffi::c_int = 0;
-    tok = (*(*parser).m_encoding).scanners[0 as usize].expect("non-null function pointer")(
+    tok = (*(*parser).m_encoding).scanners[0 as usize].scan(
         (*parser).m_encoding,
         s,
         end,
@@ -7550,7 +7549,7 @@ unsafe extern "C" fn externalParEntProcessor(
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
-        tok = (*(*parser).m_encoding).scanners[0 as usize].expect("non-null function pointer")(
+        tok = (*(*parser).m_encoding).scanners[0 as usize].scan(
             (*parser).m_encoding,
             s,
             end,
@@ -7584,7 +7583,7 @@ unsafe extern "C" fn entityValueProcessor(
     let mut enc: *const crate::src::xmltok::ENCODING = (*parser).m_encoding;
     let mut tok: ::core::ffi::c_int = 0;
     loop {
-        tok = (*enc).scanners[0 as usize].expect("non-null function pointer")(
+        tok = (*enc).scanners[0 as usize].scan(
             enc,
             start,
             end,
@@ -7630,7 +7629,7 @@ unsafe extern "C" fn prologProcessor(
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = s;
     let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[0 as usize]
-        .expect("non-null function pointer")(
+        .scan(
         (*parser).m_encoding, s, end, &raw mut next
     );
     return doProlog(
@@ -9496,7 +9495,7 @@ unsafe extern "C" fn doProlog(
             _ => {}
         }
         s = next;
-        tok = (*enc).scanners[0 as usize].expect("non-null function pointer")(
+        tok = (*enc).scanners[0 as usize].scan(
             enc,
             s,
             end,
@@ -9516,7 +9515,7 @@ unsafe extern "C" fn epilogProcessor(
     loop {
         let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
         let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[0 as usize]
-            .expect("non-null function pointer")(
+            .scan(
             (*parser).m_encoding, s, end, &raw mut next
         );
         if accountingDiffTolerated(
@@ -9700,7 +9699,7 @@ unsafe extern "C" fn internalEntityProcessor(
         next = textStart;
         if (*entity).is_param != 0 {
             let mut tok: ::core::ffi::c_int = (*(*parser).m_internalEncoding).scanners[0 as usize]
-                .expect("non-null function pointer")(
+                                .scan(
                 (*parser).m_internalEncoding,
                 textStart,
                 textEnd,
