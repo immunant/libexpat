@@ -1227,6 +1227,108 @@ macro_rules! c_str_bytes_with_nul_impl {
     }};
 }
 
+macro_rules! parser_encoding {
+    ($parser:expr $(,)?) => {{
+        unsafe { (*$parser).m_encoding }
+    }};
+}
+
+macro_rules! parser_final_buffer {
+    ($parser:expr $(,)?) => {{
+        unsafe { (*$parser).m_parsingStatus.finalBuffer }
+    }};
+}
+
+macro_rules! parser_parsing {
+    ($parser:expr $(,)?) => {{
+        unsafe { (*$parser).m_parsingStatus.parsing }
+    }};
+}
+
+macro_rules! parser_reenter {
+    ($parser:expr $(,)?) => {{
+        unsafe { (*$parser).m_reenter }
+    }};
+}
+
+macro_rules! parser_has_default_handler {
+    ($parser:expr $(,)?) => {{
+        unsafe { (*$parser).m_defaultHandler.is_some() }
+    }};
+}
+
+macro_rules! set_parser_processor {
+    ($parser:expr, $processor:ident $(,)?) => {{
+        unsafe {
+            (*$parser).m_processor = Some(
+                $processor
+                    as extern "C" fn(
+                        XML_Parser,
+                        *const ::core::ffi::c_char,
+                        *const ::core::ffi::c_char,
+                        *mut *const ::core::ffi::c_char,
+                    ) -> XML_Error,
+            );
+        }
+    }};
+}
+
+macro_rules! set_parser_event_ptr {
+    ($parser:expr, $value:expr $(,)?) => {{
+        unsafe {
+            (*$parser).m_eventPtr = $value;
+        }
+    }};
+}
+
+macro_rules! set_parser_event_end_ptr {
+    ($parser:expr, $value:expr $(,)?) => {{
+        unsafe {
+            (*$parser).m_eventEndPtr = $value;
+        }
+    }};
+}
+
+macro_rules! accounting_diff_tolerated_parser {
+    ($parser:expr, $tok:expr, $start:expr, $end:expr, $line:expr, $account:expr $(,)?) => {{
+        unsafe { accountingDiffTolerated(&mut *$parser, $tok, $start, $end, $line, $account) }
+    }};
+}
+
+macro_rules! accounting_on_abort_parser {
+    ($parser:expr $(,)?) => {{
+        unsafe { accountingOnAbort(&mut *$parser) }
+    }};
+}
+
+macro_rules! prolog_processor_body {
+    ($parser:expr, $s:expr, $end:expr, $next_ptr:expr $(,)?) => {{
+        unsafe {
+            let mut next: *const ::core::ffi::c_char = $s;
+            let mut tok: ::core::ffi::c_int = (*(*$parser).m_encoding).scanners
+                [0 as ::core::ffi::c_int as usize]
+                .expect("non-null function pointer")(
+                (*$parser).m_encoding,
+                $s,
+                $end,
+                &raw mut next,
+            );
+            doProlog(
+                $parser,
+                (*$parser).m_encoding,
+                $s,
+                $end,
+                tok,
+                next,
+                $next_ptr,
+                ((*$parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
+                XML_TRUE,
+                XML_ACCOUNT_DIRECT,
+            )
+        }
+    }};
+}
+
 fn write_stderr_bytes(bytes: &[u8]) {
     let _ = io::stderr().write_all(bytes);
 }
@@ -6682,26 +6784,7 @@ extern "C" fn prologProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners
-            [0 as ::core::ffi::c_int as usize]
-            .expect("non-null function pointer")(
-            (*parser).m_encoding, s, end, &raw mut next
-        );
-        return doProlog(
-            parser,
-            (*parser).m_encoding,
-            s,
-            end,
-            tok,
-            next,
-            nextPtr,
-            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
-            XML_TRUE,
-            XML_ACCOUNT_DIRECT,
-        );
-    }
+    prolog_processor_body!(parser, s, end, nextPtr)
 }
 extern "C" fn doProlog(
     mut parser: XML_Parser,
