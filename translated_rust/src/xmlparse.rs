@@ -2526,7 +2526,22 @@ unsafe extern "C" fn parserInit(
     );
     crate::src::xmlrole::XmlPrologStateInit(&mut (*parser).m_prologState);
     if !encodingName.is_null() {
-        (*parser).m_protocolEncodingName = copyString(encodingName, parser);
+        let encoding_name = CStr::from_ptr(encodingName as *const ::core::ffi::c_char);
+        let chars_required: crate::__stddef_size_t_h::size_t =
+            encoding_name.to_bytes_with_nul().len();
+        let bytes_required = chars_required
+            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+                as crate::__stddef_size_t_h::size_t);
+        let copied_encoding_name = expat_malloc(parser, bytes_required, 8456 as ::core::ffi::c_int)
+            as *mut crate::expat_external_h::XML_Char;
+        if !copied_encoding_name.is_null() {
+            crate::stdlib::memcpy(
+                copied_encoding_name as *mut ::core::ffi::c_void,
+                encodingName as *const ::core::ffi::c_void,
+                bytes_required,
+            );
+        }
+        (*parser).m_protocolEncodingName = copied_encoding_name;
     }
     (*parser).m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     crate::src::xmltok::xmltok_ns_c::XmlInitEncoding(
@@ -2748,12 +2763,25 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
     let protocol_encoding_name = if encodingName.is_null() {
         ::core::ptr::null::<crate::expat_external_h::XML_Char>()
     } else {
-        let protocol_encoding_name = copyString(encodingName, parser);
+        let encoding_name = CStr::from_ptr(encodingName as *const ::core::ffi::c_char);
+        let chars_required: crate::__stddef_size_t_h::size_t =
+            encoding_name.to_bytes_with_nul().len();
+        let bytes_required = chars_required
+            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+                as crate::__stddef_size_t_h::size_t);
+        let protocol_encoding_name =
+            expat_malloc(parser, bytes_required, 8456 as ::core::ffi::c_int)
+                as *mut crate::expat_external_h::XML_Char;
         if protocol_encoding_name.is_null() {
             (*parser).m_protocolEncodingName =
                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
             return crate::expat_h::XML_STATUS_ERROR;
         }
+        crate::stdlib::memcpy(
+            protocol_encoding_name as *mut ::core::ffi::c_void,
+            encodingName as *const ::core::ffi::c_void,
+            bytes_required,
+        );
         protocol_encoding_name
     };
 
@@ -12590,35 +12618,6 @@ unsafe extern "C" fn getElementType(
         }
     }
     return ret;
-}
-
-unsafe extern "C" fn copyString(
-    mut s: *const crate::expat_external_h::XML_Char,
-    mut parser: crate::expat_h::XML_Parser,
-) -> *mut crate::expat_external_h::XML_Char {
-    let mut charsRequired: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    let mut result: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    while *s.offset(charsRequired as isize) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
-        charsRequired = charsRequired.wrapping_add(1);
-    }
-    charsRequired = charsRequired.wrapping_add(1);
-    result = expat_malloc(
-        parser,
-        charsRequired.wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-            as crate::__stddef_size_t_h::size_t),
-        8456 as ::core::ffi::c_int,
-    ) as *mut crate::expat_external_h::XML_Char;
-    if result.is_null() {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    }
-    crate::stdlib::memcpy(
-        result as *mut ::core::ffi::c_void,
-        s as *const ::core::ffi::c_void,
-        charsRequired.wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-            as crate::__stddef_size_t_h::size_t),
-    );
-    return result;
 }
 
 fn accountingGetCurrentAmplification(rootParser: &XML_ParserStruct) -> ::core::ffi::c_float {
