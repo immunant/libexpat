@@ -7094,7 +7094,14 @@ unsafe fn parser_create_ownership_facade(
     );
     pool_init(&mut parser.m_tempPool, string_pool_allocator.clone());
     pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
-    if !parser_initialize_from_cstr(parser, parser_ptr.addr(), encoding_name) {
+    if !parser_init(
+        parser,
+        parser_ptr.addr(),
+        g_reparseDeferralEnabledDefault.load(std::sync::atomic::Ordering::Relaxed),
+        environment_decimal_debug_level("EXPAT_ACCOUNTING_DEBUG", 0),
+        environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0),
+        encoding_name,
+    ) {
         cleanup_failed_parser_construction(parser);
         return None;
     }
@@ -7366,7 +7373,16 @@ fn parser_init(
     reparse_deferral_enabled: crate::expat_h::XML_Bool,
     accounting_debug_level: ::core::ffi::c_ulong,
     entity_debug_level: ::core::ffi::c_ulong,
-) {
+    encoding_name: Option<&std::ffi::CStr>,
+) -> bool {
+    parser.m_protocolEncodingName = encoding_name.and_then(|encoding_name| {
+        let allocation_size = encoding_name
+            .to_bytes_with_nul()
+            .len()
+            .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
+        let backing = parser_allocation_backing(parser, allocation_size, 8456)?;
+        protocol_encoding_name_from_cstr(encoding_name, backing)
+    });
     parser.m_processor = ProcessorState::PrologInit;
     crate::src::xmlrole::prolog_state_init(&mut parser.m_prologState);
     parser.m_curBase = None;
@@ -7577,31 +7593,6 @@ fn parser_init(
             debugLevel: entity_debug_level,
         };
     }
-}
-
-/// Complete parser initialization once its allocator-backed storage exists.
-/// The parser handle is confined to this legacy allocator adapter; all parser
-/// state initialization below it uses the exclusive typed borrow.
-unsafe fn parser_initialize_from_cstr(
-    parser: &mut XML_ParserStruct,
-    parser_key: usize,
-    encoding_name: Option<&std::ffi::CStr>,
-) -> bool {
-    parser.m_protocolEncodingName = encoding_name.and_then(|encoding_name| {
-        let allocation_size = encoding_name
-            .to_bytes_with_nul()
-            .len()
-            .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
-        let backing = parser_allocation_backing(parser, allocation_size, 8456)?;
-        protocol_encoding_name_from_cstr(encoding_name, backing)
-    });
-    parser_init(
-        parser,
-        parser_key,
-        g_reparseDeferralEnabledDefault.load(std::sync::atomic::Ordering::Relaxed),
-        environment_decimal_debug_level("EXPAT_ACCOUNTING_DEBUG", 0),
-        environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0),
-    );
     encoding_name.is_none() || parser.m_protocolEncodingName.is_some()
 }
 
@@ -7728,19 +7719,25 @@ fn parser_reset_impl(
             backing(1686 as ::core::ffi::c_int);
         }
         if let Some(info) = unknown_encoding_mem.info.take() {
-            if let Some(release) = info.release {
-                // The handler registered this paired release callback and
-                // opaque data token when it initialized the encoding.  The
-                // token is passed back exactly once as part of reset.
-                unsafe { release(info.data) };
-            }
+            // The handler registered this paired release callback and opaque
+            // data token when it initialized the encoding.  Use the common
+            // release boundary so reset and destruction return that token in
+            // exactly the same way.
+            release_unknown_encoding_info(&info);
         }
     }
     ParserResetState { parser }.finish();
     if let Some(protocol_encoding_name) = protocol_encoding_name {
         protocol_encoding_name.release(1691);
     }
-    unsafe { parser_initialize_from_cstr(parser, parser_key, encoding_name) };
+    parser_init(
+        parser,
+        parser_key,
+        g_reparseDeferralEnabledDefault.load(std::sync::atomic::Ordering::Relaxed),
+        environment_decimal_debug_level("EXPAT_ACCOUNTING_DEBUG", 0),
+        environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0),
+        encoding_name,
+    );
     dtd.inspect(|dtd| unsafe { dtdReset(dtd, parser) });
     return crate::expat_h::XML_TRUE;
 }
