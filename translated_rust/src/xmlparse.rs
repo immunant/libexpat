@@ -12688,7 +12688,12 @@ unsafe extern "C" fn doCdataSection(
     }
     let parser_state = &mut *parser;
     let start = *startPtr;
-    let normal = &*(enc as *const crate::src::xmltok::normal_encoding);
+    // `enc` is either the selected parser table or the fixed UTF-8 internal
+    // entity table.  Resolve that identity through parser-owned tables rather
+    // than reinterpreting its ABI prefix as a `normal_encoding`.
+    let Some(normal) = entity_value_normal_encoding(parser_state, enc.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     let mut entity_text: Option<(EntityTextRef, ::core::ffi::c_int, std::sync::Arc<SharedDtd>)> =
         None;
     let (input, event_target) = if let Some(window) = parser_state
@@ -12753,7 +12758,7 @@ unsafe extern "C" fn doCdataSection(
     let mut dispatch = |parser_state: &mut XML_ParserStruct,
                         event: CdataCallbackEvent|
      -> Result<(), crate::expat_h::XML_Error> {
-        let Some(chars) = dispatch_cdata_callback(parser.addr(), parser_state, normal, event)? else {
+        let Some(chars) = dispatch_cdata_callback(parser.addr(), parser_state, &normal, event)? else {
             return Ok(());
         };
         // `reportDefault` must retain the original encoding-table address
@@ -12769,7 +12774,7 @@ unsafe extern "C" fn doCdataSection(
     };
     let result = do_cdata_section_impl(
         parser_state,
-        normal,
+        &normal,
         &input,
         event_target,
         haveMore != 0,
