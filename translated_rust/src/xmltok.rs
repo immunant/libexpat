@@ -7174,25 +7174,30 @@ pub mod xmltok_impl_c {
         })
     }
 
-    pub unsafe extern "C" fn little2_charRefNumber(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
+    /// Reads an ASCII code unit from a validated UTF-16LE character reference.
+    ///
+    /// The tokenizer has already established that the reference is terminated by
+    /// a UTF-16 semicolon.  Keeping the raw read here lets the decoder below use
+    /// ordinary code-unit values without manufacturing a slice of unknown size.
+    unsafe fn little2_char_ref_unit(
+        ptr: *const ::core::ffi::c_char,
+        unit_index: usize,
     ) -> ::core::ffi::c_int {
-        let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset((2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize);
-        if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-            && *ptr.offset(0 as isize) as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int
-        {
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while !(*ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as isize) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c: ::core::ffi::c_int =
-                    if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        *ptr.offset(0 as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    };
+        let byte_index = unit_index * 2;
+        let low = unsafe { *ptr.wrapping_add(byte_index) } as ::core::ffi::c_int;
+        let high = unsafe { *ptr.wrapping_add(byte_index + 1) } as ::core::ffi::c_int;
+        if high == 0 { low } else { -1 }
+    }
+
+    fn decode_char_ref_number(mut next_unit: impl FnMut() -> ::core::ffi::c_int) -> ::core::ffi::c_int {
+        let mut result: ::core::ffi::c_int = 0;
+        let first = next_unit();
+        if first == crate::ascii_h::ASCII_x {
+            loop {
+                let c = next_unit();
+                if c == 0x3b {
+                    break;
+                }
                 match c {
                     crate::ascii_h::ASCII_0
                     | crate::ascii_h::ASCII_1_1
@@ -7204,7 +7209,7 @@ pub mod xmltok_impl_c {
                     | crate::ascii_h::ASCII_7
                     | crate::ascii_h::ASCII_8_1
                     | crate::ascii_h::ASCII_9_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
+                        result <<= 4;
                         result |= c - crate::ascii_h::ASCII_0;
                     }
                     crate::ascii_h::ASCII_A
@@ -7213,8 +7218,8 @@ pub mod xmltok_impl_c {
                     | crate::ascii_h::ASCII_D
                     | crate::ascii_h::ASCII_E_1
                     | crate::ascii_h::ASCII_F_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_A);
+                        result <<= 4;
+                        result += 10 + (c - crate::ascii_h::ASCII_A);
                     }
                     crate::ascii_h::ASCII_a_1
                     | crate::ascii_h::ASCII_b
@@ -7222,35 +7227,39 @@ pub mod xmltok_impl_c {
                     | crate::ascii_h::ASCII_d
                     | crate::ascii_h::ASCII_e_1
                     | crate::ascii_h::ASCII_f => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_a_1);
+                        result <<= 4;
+                        result += 10 + (c - crate::ascii_h::ASCII_a_1);
                     }
                     _ => {}
                 }
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
+                if result >= 0x110000 {
+                    return -1;
                 }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
             }
         } else {
-            while !(*ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as isize) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c_0: ::core::ffi::c_int =
-                    if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        *ptr.offset(0 as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    };
-                result *= 10 as ::core::ffi::c_int;
-                result += c_0 - crate::ascii_h::ASCII_0;
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
+            let mut c = first;
+            while c != 0x3b {
+                result *= 10;
+                result += c - crate::ascii_h::ASCII_0;
+                if result >= 0x110000 {
+                    return -1;
                 }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                c = next_unit();
             }
         }
-        return checkCharRefNumber(result);
+        checkCharRefNumber(result)
+    }
+
+    pub unsafe extern "C" fn little2_charRefNumber(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let mut unit_index = 2;
+        decode_char_ref_number(|| {
+            let unit = unsafe { little2_char_ref_unit(ptr, unit_index) };
+            unit_index += 1;
+            unit
+        })
     }
 
     pub unsafe extern "C" fn little2_nameLength(
