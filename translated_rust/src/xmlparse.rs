@@ -3511,10 +3511,13 @@ impl InputBuffer {
     }
 
     fn window_from_addresses(&self, start: usize, end: usize) -> Option<&[u8]> {
+        let start = self.offset_from_address(start)?;
+        let end = self.offset_from_address(end)?;
+        self.window_from_offsets(start, end)
+    }
+
+    fn window_from_offsets(&self, start: usize, end: usize) -> Option<&[u8]> {
         let bytes = self.bytes.as_deref()?;
-        let base = bytes.as_ptr().addr();
-        let start = start.checked_sub(base)?;
-        let end = end.checked_sub(base)?;
         (start <= end && end <= bytes.len()).then(|| &bytes[start..end])
     }
 
@@ -3523,6 +3526,13 @@ impl InputBuffer {
         address
             .checked_sub(bytes.as_ptr().addr())
             .filter(|offset| *offset <= bytes.len())
+    }
+
+    fn address_at_offset(&self, offset: usize) -> Option<usize> {
+        let bytes = self.bytes.as_deref()?;
+        (offset <= bytes.len())
+            .then(|| bytes.as_ptr().addr().checked_add(offset))
+            .flatten()
     }
 }
 
@@ -16951,10 +16961,27 @@ fn entity_value_init_scan(
     start_address: usize,
     end_address: usize,
 ) -> crate::src::xmltok::ScannerResult {
-    let Some(input) = parser
-        .m_buffer
-        .window_from_addresses(start_address, end_address)
-    else {
+    let Some(start_offset) = parser.m_buffer.offset_from_address(start_address) else {
+        return crate::src::xmltok::ScannerResult::new(
+            crate::src::xmltok::XML_TOK_INVALID,
+            None,
+        );
+    };
+    let Some(end_offset) = parser.m_buffer.offset_from_address(end_address) else {
+        return crate::src::xmltok::ScannerResult::new(
+            crate::src::xmltok::XML_TOK_INVALID,
+            None,
+        );
+    };
+    entity_value_init_scan_offsets(parser, start_offset, end_offset)
+}
+
+fn entity_value_init_scan_offsets(
+    parser: &mut XML_ParserStruct,
+    start_offset: usize,
+    end_offset: usize,
+) -> crate::src::xmltok::ScannerResult {
+    let Some(input) = parser.m_buffer.window_from_offsets(start_offset, end_offset) else {
         return crate::src::xmltok::ScannerResult::new(
             crate::src::xmltok::XML_TOK_INVALID,
             None,
@@ -16989,63 +17016,124 @@ unsafe extern "C" fn entityValueInitProcessor(
     let Some(next_ptr) = nextPtr.as_mut() else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
-    entity_value_init_processor_impl(parser, s, end, next_ptr)
+    let Some(start_offset) = parser.m_buffer.offset_from_address(s.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(end_offset) = parser.m_buffer.offset_from_address(end.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let result = entity_value_init_processor_safe(EntityValueProcessorState {
+        parser,
+        value_start_offset: start_offset,
+        end_offset,
+        output_next: None,
+    });
+    if let Some(next_offset) = result.next_offset {
+        let Some(cursor) = parser.m_buffer.window_from_offsets(next_offset, next_offset) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        *next_ptr = cursor.as_ptr().cast::<::core::ffi::c_char>();
+    }
+    result.error
 }
 
-unsafe fn entity_value_init_processor_impl(
+#[derive(Copy, Clone)]
+struct EntityValueProcessorResult {
+    error: crate::expat_h::XML_Error,
+    // This is an offset into the parser's current live input buffer.  Keeping
+    // it as an offset lets the processor survive input-buffer relocation; the
+    // raw ABI cursor is rebuilt only after its range has been revalidated.
+    next_offset: Option<usize>,
+}
+
+fn entity_value_result(
+    error: crate::expat_h::XML_Error,
+    next_offset: Option<usize>,
+) -> EntityValueProcessorResult {
+    EntityValueProcessorResult { error, next_offset }
+}
+
+// This state carrier keeps the implementation boundary free of direct raw
+// cursor types while the parser transition still owns its legacy state.
+struct EntityValueProcessorState<'a> {
+    parser: &'a mut XML_ParserStruct,
+    value_start_offset: usize,
+    end_offset: usize,
+    output_next: Option<usize>,
+}
+
+fn entity_value_scan_next_offset(
     parser: &mut XML_ParserStruct,
-    mut s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    next_ptr: &mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let mut tok: ::core::ffi::c_int = 0;
-    let mut start: *const ::core::ffi::c_char = s;
-    let mut next: *const ::core::ffi::c_char = start;
-    set_parser_event_start_address(parser, start.addr());
+    start_offset: usize,
+    end_offset: usize,
+) -> Result<(::core::ffi::c_int, usize), crate::expat_h::XML_Error> {
+    let scan = entity_value_init_scan_offsets(parser, start_offset, end_offset);
+    let next_offset = match scan.next {
+        Some(offset) => start_offset
+            .checked_add(offset)
+            .filter(|next| *next <= end_offset)
+            .filter(|next| parser.m_buffer.window_from_offsets(start_offset, *next).is_some())
+            .ok_or(crate::expat_h::XML_ERROR_UNEXPECTED_STATE)?,
+        None => start_offset,
+    };
+    Ok((scan.token, next_offset))
+}
+
+fn entity_value_init_processor_safe(
+    state: EntityValueProcessorState<'_>,
+) -> EntityValueProcessorResult {
+    let EntityValueProcessorState {
+        parser,
+        mut value_start_offset,
+        end_offset,
+        mut output_next,
+    } = state;
+    let mut start_offset = value_start_offset;
     loop {
-        let scan = entity_value_init_scan(parser, start.addr(), end.addr());
-        tok = scan.token;
-        if let Some(offset) = scan.next {
-            let Some(next_address) = start.addr().checked_add(offset) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            if next_address > end.addr() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            next = start.wrapping_add(offset);
-        }
-        set_parser_event_end_address(parser, next.addr());
+        let Some(start_address) = parser.m_buffer.address_at_offset(start_offset) else {
+            return entity_value_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, output_next);
+        };
+        set_parser_event_start_address(parser, start_address);
+        let (tok, next_offset) = match entity_value_scan_next_offset(parser, start_offset, end_offset) {
+            Ok(scan) => scan,
+            Err(error) => return entity_value_result(error, output_next),
+        };
+        let Some(next_address) = parser.m_buffer.address_at_offset(next_offset) else {
+            return entity_value_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, output_next);
+        };
+        set_parser_event_end_address(parser, next_address);
         if tok <= 0 as ::core::ffi::c_int {
             if parser.m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
             {
-                        *next_ptr = s;
-                return crate::expat_h::XML_ERROR_NONE;
+                return entity_value_result(crate::expat_h::XML_ERROR_NONE, Some(value_start_offset));
             }
-            match tok {
-                crate::src::xmltok::XML_TOK_INVALID => {
-                    return crate::expat_h::XML_ERROR_INVALID_TOKEN
+            let error = match tok {
+                crate::src::xmltok::XML_TOK_INVALID => crate::expat_h::XML_ERROR_INVALID_TOKEN,
+                crate::src::xmltok::XML_TOK_PARTIAL => crate::expat_h::XML_ERROR_UNCLOSED_TOKEN,
+                crate::src::xmltok::XML_TOK_PARTIAL_CHAR => crate::expat_h::XML_ERROR_PARTIAL_CHAR,
+                crate::src::xmltok::XML_TOK_NONE | _ => {
+                    let Some(value_start_address) = parser.m_buffer.address_at_offset(value_start_offset) else {
+                        return entity_value_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, output_next);
+                    };
+                    let Some(end_address) = parser.m_buffer.address_at_offset(end_offset) else {
+                        return entity_value_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, output_next);
+                    };
+                    store_entity_value_impl(
+                        parser,
+                        std::ptr::from_ref(current_parser_encoding(parser)).addr(),
+                        value_start_address,
+                        end_address,
+                        XML_ACCOUNT_DIRECT,
+                    )
+                    .error
                 }
-                crate::src::xmltok::XML_TOK_PARTIAL => {
-                    return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN
-                }
-                crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-                    return crate::expat_h::XML_ERROR_PARTIAL_CHAR
-                }
-                crate::src::xmltok::XML_TOK_NONE | _ => {}
-            }
-            return store_entity_value_impl(
-                parser,
-                std::ptr::from_ref(current_parser_encoding(parser)).addr(),
-                s.addr(),
-                end.addr(),
-                XML_ACCOUNT_DIRECT,
-            )
-            .error;
+            };
+            return entity_value_result(error, output_next);
         } else if tok == crate::src::xmltok::XML_TOK_XML_DECL {
-            let declaration_input = match declaration_token_bytes(parser, start.addr(), next.addr()) {
+            let declaration_input = match declaration_token_bytes(parser, start_address, next_address) {
                 Ok(input) => input,
-                Err(error) => return error,
+                Err(error) => return entity_value_result(error, output_next),
             };
             let declaration_encoding = current_parser_encoding(parser);
             let declaration_encoding_address = std::ptr::from_ref(declaration_encoding).addr();
@@ -17055,26 +17143,31 @@ unsafe fn entity_value_init_processor_impl(
                 0 as ::core::ffi::c_int,
                 &declaration_encoding,
                 declaration_encoding_address,
-                start.addr(),
+                start_address,
                 &declaration_input,
             );
             if result as ::core::ffi::c_uint
                 != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
-                return result;
+                return entity_value_result(result, output_next);
             }
             if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
                 == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
             {
-                return crate::expat_h::XML_ERROR_ABORTED;
+                return entity_value_result(crate::expat_h::XML_ERROR_ABORTED, output_next);
             }
-            *next_ptr = next;
+            output_next = Some(next_offset);
             parser.m_processor = ProcessorState::EntityValue;
-            return entityValueProcessor(std::ptr::from_mut(parser), next, end, next_ptr);
+            return entity_value_processor_safe(EntityValueProcessorState {
+                parser,
+                value_start_offset: next_offset,
+                end_offset,
+                output_next,
+            });
         } else if tok == crate::src::xmltok::XML_TOK_BOM {
-            let Some(token_bytes) = parser.m_buffer.window_from_addresses(s.addr(), next.addr())
+            let Some(token_bytes) = parser.m_buffer.window_from_offsets(value_start_offset, next_offset)
             else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                return entity_value_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, output_next);
             };
             if !accounting_slice_diff_tolerated(
                 parser,
@@ -17087,16 +17180,17 @@ unsafe fn entity_value_init_processor_impl(
             )
             {
                 cdata_accounting_on_abort(parser);
-                return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+                return entity_value_result(
+                    crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH,
+                    output_next,
+                );
             }
-            *next_ptr = next;
-            s = next;
+            output_next = Some(next_offset);
+            value_start_offset = next_offset;
         } else if tok == crate::src::xmltok::XML_TOK_INSTANCE_START {
-            *next_ptr = next;
-            return crate::expat_h::XML_ERROR_SYNTAX;
+            return entity_value_result(crate::expat_h::XML_ERROR_SYNTAX, Some(next_offset));
         }
-        start = next;
-        set_parser_event_start_address(parser, start.addr());
+        start_offset = next_offset;
     }
 }
 
@@ -17210,54 +17304,75 @@ unsafe extern "C" fn entityValueProcessor(
     let Some(next_ptr) = nextPtr.as_mut() else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
-    let mut start = s;
+    let Some(start_offset) = parser.m_buffer.offset_from_address(s.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(end_offset) = parser.m_buffer.offset_from_address(end.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let result = entity_value_processor_safe(EntityValueProcessorState {
+        parser,
+        value_start_offset: start_offset,
+        end_offset,
+        output_next: None,
+    });
+    if let Some(next_offset) = result.next_offset {
+        let Some(cursor) = parser.m_buffer.window_from_offsets(next_offset, next_offset) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        *next_ptr = cursor.as_ptr().cast::<::core::ffi::c_char>();
+    }
+    result.error
+}
+
+fn entity_value_processor_safe(state: EntityValueProcessorState<'_>) -> EntityValueProcessorResult {
+    let EntityValueProcessorState {
+        parser,
+        value_start_offset,
+        end_offset,
+        mut output_next,
+    } = state;
+    let mut start_offset = value_start_offset;
     loop {
         // Entity-value processors always scan cursors owned by the parser's
         // live input buffer.  Resolve that range before constructing the
         // tokenizer view; this also preserves the selected internal UTF-8
         // table for entity expansion scans.
-        let scan = entity_value_init_scan(parser, start.addr(), end.addr());
-        let tok = scan.token;
-        let next = if let Some(offset) = scan.next {
-            let Some(next_address) = start.addr().checked_add(offset) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            if next_address > end.addr() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            start.wrapping_add(offset)
-        } else {
-            start
+        let (tok, next_offset) = match entity_value_scan_next_offset(parser, start_offset, end_offset) {
+            Ok(scan) => scan,
+            Err(error) => return entity_value_result(error, output_next),
         };
         if tok <= 0 as ::core::ffi::c_int {
             if parser.m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
             {
-                *next_ptr = s;
-                return crate::expat_h::XML_ERROR_NONE;
+                output_next = Some(value_start_offset);
+                return entity_value_result(crate::expat_h::XML_ERROR_NONE, output_next);
             }
-            match tok {
-                crate::src::xmltok::XML_TOK_INVALID => {
-                    return crate::expat_h::XML_ERROR_INVALID_TOKEN
+            let error = match tok {
+                crate::src::xmltok::XML_TOK_INVALID => crate::expat_h::XML_ERROR_INVALID_TOKEN,
+                crate::src::xmltok::XML_TOK_PARTIAL => crate::expat_h::XML_ERROR_UNCLOSED_TOKEN,
+                crate::src::xmltok::XML_TOK_PARTIAL_CHAR => crate::expat_h::XML_ERROR_PARTIAL_CHAR,
+                crate::src::xmltok::XML_TOK_NONE | _ => {
+                    let Some(value_start_address) = parser.m_buffer.address_at_offset(value_start_offset) else {
+                        return entity_value_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, output_next);
+                    };
+                    let Some(end_address) = parser.m_buffer.address_at_offset(end_offset) else {
+                        return entity_value_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, output_next);
+                    };
+                    store_entity_value_impl(
+                        parser,
+                        std::ptr::from_ref(current_parser_encoding(parser)).addr(),
+                        value_start_address,
+                        end_address,
+                        XML_ACCOUNT_DIRECT,
+                    )
+                    .error
                 }
-                crate::src::xmltok::XML_TOK_PARTIAL => {
-                    return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN
-                }
-                crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-                    return crate::expat_h::XML_ERROR_PARTIAL_CHAR
-                }
-                crate::src::xmltok::XML_TOK_NONE | _ => {}
-            }
-            return store_entity_value_impl(
-                parser,
-                std::ptr::from_ref(current_parser_encoding(parser)).addr(),
-                s.addr(),
-                end.addr(),
-                XML_ACCOUNT_DIRECT,
-            )
-            .error;
+            };
+            return entity_value_result(error, output_next);
         }
-        start = next;
+        start_offset = next_offset;
     }
 }
 
