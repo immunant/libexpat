@@ -9663,6 +9663,38 @@ unsafe extern "C" fn cdataSectionProcessor(
     return result;
 }
 
+#[derive(Copy, Clone)]
+struct CdataHandlerFlags {
+    end: bool,
+    character_data: bool,
+    default: bool,
+}
+
+// Callback registrations can be snapshotted between tokens.  The snapshot is
+// deliberately short-lived: callbacks may re-enter the parser and change the
+// registrations before the next token is processed.
+fn cdata_handler_flags(parser: &XML_ParserStruct) -> CdataHandlerFlags {
+    CdataHandlerFlags {
+        end: parser.m_endCdataSectionHandler,
+        character_data: parser.m_characterDataHandler,
+        default: parser.m_defaultHandler,
+    }
+}
+
+#[derive(Copy, Clone)]
+struct CdataParsingState {
+    parsing: crate::expat_h::XML_Parsing,
+    reenter: crate::expat_h::XML_Bool,
+}
+
+// As with the callback flags, only inspect parser state between callbacks.
+fn cdata_parsing_state(parser: &XML_ParserStruct) -> CdataParsingState {
+    CdataParsingState {
+        parsing: parser.m_parsingStatus.parsing,
+        reenter: parser.m_reenter,
+    }
+}
+
 unsafe extern "C" fn doCdataSection(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -9706,9 +9738,10 @@ unsafe extern "C" fn doCdataSection(
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         set_event_end!(parser, parser_events, eventEndPP, next);
+        let handler_flags = cdata_handler_flags(&*parser);
         match tok {
             crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE => {
-                if (*parser).m_endCdataSectionHandler {
+                if handler_flags.end {
                     let callback = END_CDATA_SECTION_HANDLERS
                         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                         .lock()
@@ -9717,12 +9750,12 @@ unsafe extern "C" fn doCdataSection(
                         .cloned()
                         .expect("installed end CDATA handler");
                     callback.invoke((*parser).m_handlerArg);
-                } else if (*parser).m_defaultHandler {
+                } else if handler_flags.default {
                     reportDefault(parser, enc, s, next);
                 }
                 *startPtr = next;
                 *nextPtr = next;
-                if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                if cdata_parsing_state(&*parser).parsing as ::core::ffi::c_uint
                     == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     return crate::expat_h::XML_ERROR_ABORTED;
@@ -9731,11 +9764,11 @@ unsafe extern "C" fn doCdataSection(
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                if (*parser).m_characterDataHandler {
+                if handler_flags.character_data {
                     let mut c: crate::expat_external_h::XML_Char =
                         0xa as crate::expat_external_h::XML_Char;
                     callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
-                } else if (*parser).m_defaultHandler {
+                } else if handler_flags.default {
                     reportDefault(parser, enc, s, next);
                 }
             }
@@ -9807,7 +9840,7 @@ unsafe extern "C" fn doCdataSection(
                             data_len,
                         );
                     }
-                } else if (*parser).m_defaultHandler {
+                } else if handler_flags.default {
                     reportDefault(parser, enc, s, next);
                 }
             }
@@ -9834,7 +9867,8 @@ unsafe extern "C" fn doCdataSection(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
         }
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+        let parsing_state = cdata_parsing_state(&*parser);
+        match parsing_state.parsing as ::core::ffi::c_uint {
             3 => {
                 update_event_start(next);
                 *nextPtr = next;
@@ -9845,7 +9879,7 @@ unsafe extern "C" fn doCdataSection(
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
             1 => {
-                if (*parser).m_reenter != 0 {
+                if parsing_state.reenter != 0 {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
             }
