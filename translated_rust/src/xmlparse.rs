@@ -6782,31 +6782,35 @@ unsafe extern "C" fn parserBusy(
         0 | 2 | _ => return crate::expat_h::XML_FALSE,
     };
 }
-pub unsafe extern "C" fn XML_SetEncoding(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
+fn parser_is_busy(parser: &XML_ParserStruct) -> bool {
+    matches!(parser.m_parsingStatus.parsing as ::core::ffi::c_uint, 1 | 3)
+}
+
+/// Replaces the protocol encoding name after the FFI wrapper has validated
+/// the opaque parser handle and converted the optional C string.
+fn xml_set_encoding_impl(
+    parser: &mut XML_ParserStruct,
+    encoding_name: Option<&std::ffi::CStr>,
 ) -> crate::expat_h::XML_Status {
-    if parser.is_null() {
+    if parser_is_busy(parser) {
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    if parserBusy(parser) != 0 {
-        return crate::expat_h::XML_STATUS_ERROR;
-    }
-    let protocol_encoding_name = (&mut *parser).m_protocolEncodingName.take();
+    let protocol_encoding_name = parser.m_protocolEncodingName.take();
     if let Some(protocol_encoding_name) = protocol_encoding_name {
         protocol_encoding_name.release(1723);
     }
-    let protocol_encoding_name = if encodingName.is_null() {
-        None
-    } else {
-        let protocol_encoding_name = copyString(encodingName, parser);
-        if protocol_encoding_name.is_none() {
-            return crate::expat_h::XML_STATUS_ERROR;
+    let protocol_encoding_name = match encoding_name {
+        Some(encoding_name) => {
+            let protocol_encoding_name = protocol_encoding_name_for_parser(parser, encoding_name);
+            if protocol_encoding_name.is_none() {
+                return crate::expat_h::XML_STATUS_ERROR;
+            }
+            protocol_encoding_name
         }
-        protocol_encoding_name
+        None => None,
     };
-    (&mut *parser).m_protocolEncodingName = protocol_encoding_name;
-    return crate::expat_h::XML_STATUS_OK;
+    parser.m_protocolEncodingName = protocol_encoding_name;
+    crate::expat_h::XML_STATUS_OK
 }
 #[export_name = "XML_SetEncoding"]
 
@@ -6814,7 +6818,12 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Status {
-    XML_SetEncoding(parser, encodingName)
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
+    let encoding_name = (!encodingName.is_null())
+        .then(|| std::ffi::CStr::from_ptr(encodingName));
+    xml_set_encoding_impl(parser, encoding_name)
 }
 unsafe fn XML_ExternalEntityParserCreate(
     old: &XML_ParserStruct,
@@ -15739,6 +15748,17 @@ fn release_unknown_encoding_info(info: &crate::expat_h::XML_Encoding) {
     }
 }
 
+/// Acquires the observable Expat allocation paired with a typed parser owner.
+/// The parser reference establishes the validity requirement of the legacy
+/// allocator adapter; the returned closure retains only its opaque token.
+fn parser_allocation_backing(
+    parser: &mut XML_ParserStruct,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
+    unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }
+}
+
 /// Acquires the observable Expat allocation paired with the typed Rust owner
 /// that is installed for an unknown encoding.
 fn unknown_encoding_allocation_backing(
@@ -15746,7 +15766,7 @@ fn unknown_encoding_allocation_backing(
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
-    unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }
+    parser_allocation_backing(parser, size, source_line)
 }
 
 /// Builds the tokenizer callback adapter from the callback result.  Its raw
@@ -25226,16 +25246,17 @@ fn protocol_encoding_name_from_cstr(
     })
 }
 
-unsafe fn copyString(
-    s: *const crate::expat_external_h::XML_Char,
-    parser: crate::expat_h::XML_Parser,
+/// Allocates and copies a protocol encoding name after its C representation
+/// has been checked at the API boundary.
+fn protocol_encoding_name_for_parser(
+    parser: &mut XML_ParserStruct,
+    encoding_name: &std::ffi::CStr,
 ) -> Option<ProtocolEncodingName> {
-    let encoding_name = std::ffi::CStr::from_ptr(s);
     let allocation_size = encoding_name
         .to_bytes_with_nul()
         .len()
         .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
-    let backing = allocation_backing(parser, allocation_size, 8456)?;
+    let backing = parser_allocation_backing(parser, allocation_size, 8456)?;
     protocol_encoding_name_from_cstr(encoding_name, backing)
 }
 
