@@ -1084,6 +1084,20 @@ macro_rules! call_xml_init_encoding_for_parser {
     }};
 }
 
+macro_rules! init_prolog_state {
+    ($state:expr $(,)?) => {{
+        unsafe {
+            XmlPrologStateInit($state);
+        }
+    }};
+}
+
+macro_rules! default_reparse_deferral_enabled {
+    () => {{
+        unsafe { g_reparseDeferralEnabledDefault }
+    }};
+}
+
 fn xmlparse_assert_fail(
     assertion: &'static [u8],
     line: ::core::ffi::c_uint,
@@ -1985,113 +1999,107 @@ extern "C" fn parserCreate(
     }
 }
 extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const XML_Char) {
-    unsafe {
-        (*parser).m_processor = Some(
-            prologInitProcessor
-                as extern "C" fn(
-                    XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> XML_Error,
-        );
-        XmlPrologStateInit(&raw mut (*parser).m_prologState);
-        if !encodingName.is_null() {
-            (*parser).m_protocolEncodingName = copyString(encodingName, parser);
-        }
-        (*parser).m_curBase = ::core::ptr::null::<XML_Char>();
-        call_xml_init_encoding_for_parser!(
-            &mut *parser,
-            ::core::ptr::null::<::core::ffi::c_char>()
-        );
-        (*parser).m_userData = NULL;
-        (*parser).m_handlerArg = NULL;
-        (*parser).m_startElementHandler = None;
-        (*parser).m_endElementHandler = None;
-        (*parser).m_characterDataHandler = None;
-        (*parser).m_processingInstructionHandler = None;
-        (*parser).m_commentHandler = None;
-        (*parser).m_startCdataSectionHandler = None;
-        (*parser).m_endCdataSectionHandler = None;
-        (*parser).m_defaultHandler = None;
-        (*parser).m_startDoctypeDeclHandler = None;
-        (*parser).m_endDoctypeDeclHandler = None;
-        (*parser).m_unparsedEntityDeclHandler = None;
-        (*parser).m_notationDeclHandler = None;
-        (*parser).m_startNamespaceDeclHandler = None;
-        (*parser).m_endNamespaceDeclHandler = None;
-        (*parser).m_notStandaloneHandler = None;
-        (*parser).m_externalEntityRefHandler = None;
-        (*parser).m_externalEntityRefHandlerArg = parser;
-        (*parser).m_skippedEntityHandler = None;
-        (*parser).m_elementDeclHandler = None;
-        (*parser).m_attlistDeclHandler = None;
-        (*parser).m_entityDeclHandler = None;
-        (*parser).m_xmlDeclHandler = None;
-        (*parser).m_bufferPtr = (*parser).m_buffer;
-        (*parser).m_bufferEnd = (*parser).m_buffer;
-        (*parser).m_parseEndByteIndex = 0 as XML_Index;
-        (*parser).m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        (*parser).m_partialTokenBytesBefore = 0 as size_t;
-        (*parser).m_reparseDeferralEnabled = g_reparseDeferralEnabledDefault;
-        (*parser).m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
-        (*parser).m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        (*parser).m_declAttributeId = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-        (*parser).m_doctypeName = ::core::ptr::null::<XML_Char>();
-        (*parser).m_doctypeSysid = ::core::ptr::null::<XML_Char>();
-        (*parser).m_doctypePubid = ::core::ptr::null::<XML_Char>();
-        (*parser).m_declAttributeType = ::core::ptr::null::<XML_Char>();
-        (*parser).m_declNotationName = ::core::ptr::null::<XML_Char>();
-        (*parser).m_declNotationPublicId = ::core::ptr::null::<XML_Char>();
-        (*parser).m_declAttributeIsCdata = XML_FALSE;
-        (*parser).m_declAttributeIsId = XML_FALSE;
-        memset(
-            &raw mut (*parser).m_position as *mut ::core::ffi::c_void,
-            0 as ::core::ffi::c_int,
-            ::core::mem::size_of::<POSITION>() as size_t,
-        );
-        (*parser).m_errorCode = XML_ERROR_NONE;
-        (*parser).m_eventPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        (*parser).m_eventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        (*parser).m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        (*parser).m_openInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        (*parser).m_openAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        (*parser).m_openValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        (*parser).m_defaultExpandInternalEntities = XML_TRUE;
-        (*parser).m_tagLevel = 0 as ::core::ffi::c_int;
-        (*parser).m_tagStack = ::core::ptr::null_mut::<TAG>();
-        (*parser).m_inheritedBindings = ::core::ptr::null_mut::<BINDING>();
-        (*parser).m_nSpecifiedAtts = 0 as ::core::ffi::c_int;
-        (*parser).m_unknownEncodingMem = NULL;
-        (*parser).m_unknownEncodingRelease = None;
-        (*parser).m_unknownEncodingData = NULL;
-        (*parser).m_parsingStatus.parsing = XML_INITIALIZED;
-        (*parser).m_reenter = XML_FALSE;
-        (*parser).m_isParamEntity = XML_FALSE;
-        (*parser).m_useForeignDTD = XML_FALSE;
-        (*parser).m_paramEntityParsing = XML_PARAM_ENTITY_PARSING_NEVER;
-        (*parser).m_hash_secret_salt = 0 as ::core::ffi::c_ulong;
-        memset(
-            &raw mut (*parser).m_accounting as *mut ::core::ffi::c_void,
-            0 as ::core::ffi::c_int,
-            ::core::mem::size_of::<ACCOUNTING>() as size_t,
-        );
-        (*parser).m_accounting.debugLevel =
-            getDebugLevel(b"EXPAT_ACCOUNTING_DEBUG\0", 0 as ::core::ffi::c_ulong);
-        (*parser).m_accounting.maximumAmplificationFactor =
-            EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
-        (*parser).m_accounting.activationThresholdBytes =
-            EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT
-                as ::core::ffi::c_ulonglong;
-        memset(
-            &raw mut (*parser).m_entity_stats as *mut ::core::ffi::c_void,
-            0 as ::core::ffi::c_int,
-            ::core::mem::size_of::<ENTITY_STATS>() as size_t,
-        );
-        (*parser).m_entity_stats.debugLevel =
-            getDebugLevel(b"EXPAT_ENTITY_DEBUG\0", 0 as ::core::ffi::c_ulong);
+    let parser = ptr_mut(parser);
+    let parser_ptr = parser as *mut XML_ParserStruct;
+
+    parser.m_processor = Some(
+        prologInitProcessor
+            as extern "C" fn(
+                XML_Parser,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> XML_Error,
+    );
+    init_prolog_state!(&raw mut parser.m_prologState);
+    if !encodingName.is_null() {
+        parser.m_protocolEncodingName = copyString(encodingName, parser_ptr);
     }
+    parser.m_curBase = ::core::ptr::null::<XML_Char>();
+    call_xml_init_encoding_for_parser!(parser, ::core::ptr::null::<::core::ffi::c_char>());
+    parser.m_userData = NULL;
+    parser.m_handlerArg = NULL;
+    parser.m_startElementHandler = None;
+    parser.m_endElementHandler = None;
+    parser.m_characterDataHandler = None;
+    parser.m_processingInstructionHandler = None;
+    parser.m_commentHandler = None;
+    parser.m_startCdataSectionHandler = None;
+    parser.m_endCdataSectionHandler = None;
+    parser.m_defaultHandler = None;
+    parser.m_startDoctypeDeclHandler = None;
+    parser.m_endDoctypeDeclHandler = None;
+    parser.m_unparsedEntityDeclHandler = None;
+    parser.m_notationDeclHandler = None;
+    parser.m_startNamespaceDeclHandler = None;
+    parser.m_endNamespaceDeclHandler = None;
+    parser.m_notStandaloneHandler = None;
+    parser.m_externalEntityRefHandler = None;
+    parser.m_externalEntityRefHandlerArg = parser_ptr;
+    parser.m_skippedEntityHandler = None;
+    parser.m_elementDeclHandler = None;
+    parser.m_attlistDeclHandler = None;
+    parser.m_entityDeclHandler = None;
+    parser.m_xmlDeclHandler = None;
+    parser.m_bufferPtr = parser.m_buffer;
+    parser.m_bufferEnd = parser.m_buffer;
+    parser.m_parseEndByteIndex = 0 as XML_Index;
+    parser.m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_partialTokenBytesBefore = 0 as size_t;
+    parser.m_reparseDeferralEnabled = default_reparse_deferral_enabled!();
+    parser.m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
+    parser.m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    parser.m_declAttributeId = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    parser.m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+    parser.m_doctypeName = ::core::ptr::null::<XML_Char>();
+    parser.m_doctypeSysid = ::core::ptr::null::<XML_Char>();
+    parser.m_doctypePubid = ::core::ptr::null::<XML_Char>();
+    parser.m_declAttributeType = ::core::ptr::null::<XML_Char>();
+    parser.m_declNotationName = ::core::ptr::null::<XML_Char>();
+    parser.m_declNotationPublicId = ::core::ptr::null::<XML_Char>();
+    parser.m_declAttributeIsCdata = XML_FALSE;
+    parser.m_declAttributeIsId = XML_FALSE;
+    parser.m_position = POSITION {
+        lineNumber: 0 as XML_Size,
+        columnNumber: 0 as XML_Size,
+    };
+    parser.m_errorCode = XML_ERROR_NONE;
+    parser.m_eventPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_eventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_openInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    parser.m_openAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    parser.m_openValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    parser.m_defaultExpandInternalEntities = XML_TRUE;
+    parser.m_tagLevel = 0 as ::core::ffi::c_int;
+    parser.m_tagStack = ::core::ptr::null_mut::<TAG>();
+    parser.m_inheritedBindings = ::core::ptr::null_mut::<BINDING>();
+    parser.m_nSpecifiedAtts = 0 as ::core::ffi::c_int;
+    parser.m_unknownEncodingMem = NULL;
+    parser.m_unknownEncodingRelease = None;
+    parser.m_unknownEncodingData = NULL;
+    parser.m_parsingStatus.parsing = XML_INITIALIZED;
+    parser.m_reenter = XML_FALSE;
+    parser.m_isParamEntity = XML_FALSE;
+    parser.m_useForeignDTD = XML_FALSE;
+    parser.m_paramEntityParsing = XML_PARAM_ENTITY_PARSING_NEVER;
+    parser.m_hash_secret_salt = 0 as ::core::ffi::c_ulong;
+    parser.m_accounting = ACCOUNTING {
+        countBytesDirect: 0,
+        countBytesIndirect: 0,
+        debugLevel: getDebugLevel(b"EXPAT_ACCOUNTING_DEBUG\0", 0 as ::core::ffi::c_ulong),
+        maximumAmplificationFactor:
+            EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
+        activationThresholdBytes:
+            EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT
+                as ::core::ffi::c_ulonglong,
+    };
+    parser.m_entity_stats = ENTITY_STATS {
+        countEverOpened: 0,
+        currentDepth: 0,
+        maximumDepthSeen: 0,
+        debugLevel: getDebugLevel(b"EXPAT_ENTITY_DEBUG\0", 0 as ::core::ffi::c_ulong),
+    };
 }
 #[no_mangle]
 pub unsafe extern "C" fn XML_ParserReset(
