@@ -16812,68 +16812,61 @@ unsafe extern "C" fn doProlog(
                                             (*parser).m_declEntity = None;
                                             break 's_2375;
                                         } else {
-                                            if (*dtd).keepProcessing != 0 {
-                                                let mut name: *const crate::expat_external_h::XML_Char = poolStoreString(
-                                                    dtd_pool,
-                                                    enc,
-                                                    s,
-                                                    next,
-                                                );
-                                                if name.is_null() {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                }
-                                                let entity = lookup(
-                                                    parser,
-                                                    &raw mut (*dtd).generalEntities,
-                                                    name as KEY,
-                                                    ::core::mem::size_of::<ENTITY>(),
-                                                )
-                                                    as *mut ENTITY;
-                                                if entity.is_null() {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                }
-                                                let Some(entity_name) =
-                                                    pool_string_ref_from_address(
-                                                        &dtd.pool,
-                                                        name.addr(),
-                                                        false,
-                                                    )
-                                                else {
+                                            if dtd.keepProcessing != 0 {
+                                                let Some(declaration_name) = pool_store_name_source(
+                                                    &mut dtd.pool,
+                                                    &encoding,
+                                                    unknown_encoding.as_ref(),
+                                                    &token_bytes,
+                                                ) else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
-                                                if (*entity).named.name != entity_name {
-                                                    (*dtd).pool.rewind();
-                                                    (*parser).m_declEntity = None;
+                                                let already_declared = lookup_existing(
+                                                    &dtd.pool,
+                                                    &dtd.generalEntities,
+                                                    LookupName::Retained(declaration_name),
+                                                    hash_salt,
+                                                )
+                                                .is_some();
+                                                if !matches!(
+                                                    lookup_impl(
+                                                        &mut dtd.pool,
+                                                        &mut dtd.generalEntities,
+                                                        LookupName::Retained(declaration_name),
+                                                        ::core::mem::size_of::<ENTITY>(),
+                                                        hash_salt,
+                                                    ),
+                                                    Some(NamedRecord::Entity(_)),
+                                                ) {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                }
+                                                if already_declared {
+                                                    dtd.pool.rewind();
+                                                    parser.m_declEntity = None;
                                                 } else {
-                                                    let Some(declaration_name) =
-                                                        pool_string_ref_from_address(
-                                                            &dtd.pool,
-                                                            name.addr(),
-                                                            false,
-                                                        )
-                                                    else {
+                                                    dtd.pool.commit();
+                                                    let Some(entity) = declared_entity_mut(
+                                                        dtd,
+                                                        DeclaredEntity::General(declaration_name),
+                                                        hash_salt,
+                                                    ) else {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     };
-                                                    (*dtd).pool.commit();
-                                                    (*entity).publicId = None;
-                                                    (*entity).is_param = crate::expat_h::XML_FALSE;
-                                                    (*entity).is_internal =
-                                                        !((*parser).m_parentParser.is_some()
-                                                            || (*parser)
-                                                                .m_openInternalEntities
-                                                                .is_some())
-                                                            as ::core::ffi::c_int
-                                                            as crate::expat_h::XML_Bool;
-                                                    (*parser).m_declEntity = Some(
-                                                        DeclaredEntity::General(declaration_name),
-                                                    );
-                                                    if (*parser).m_entityDeclHandler {
+                                                    entity.publicId = None;
+                                                    entity.is_param = crate::expat_h::XML_FALSE;
+                                                    entity.is_internal = !(parser.m_parentParser.is_some()
+                                                        || parser.m_openInternalEntities.is_some())
+                                                        as ::core::ffi::c_int
+                                                        as crate::expat_h::XML_Bool;
+                                                    parser.m_declEntity =
+                                                        Some(DeclaredEntity::General(declaration_name));
+                                                    if parser.m_entityDeclHandler {
                                                         handleDefault = crate::expat_h::XML_FALSE;
                                                     }
                                                 }
                                             } else {
-                                                (*dtd).pool.rewind();
-                                                (*parser).m_declEntity = None;
+                                                dtd.pool.rewind();
+                                                parser.m_declEntity = None;
                                             }
                                             break 's_2375;
                                         }
