@@ -10854,15 +10854,12 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        if streqci(
-            &raw mut buf as *mut ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-        ) != 0
+        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
+        if i == UTF_16_ENC as ::core::ffi::c_int
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
@@ -11042,15 +11039,12 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        if streqci(
-            &raw mut buf as *mut ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-        ) != 0
+        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
+        if i == UTF_16_ENC as ::core::ffi::c_int
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
@@ -11124,11 +11118,8 @@ pub mod xmltok_ns_c {
     use crate::src::xmltok::internal_little2_encoding_ns;
     use crate::src::xmltok::internal_utf8_encoding;
     use crate::src::xmltok::internal_utf8_encoding_ns;
-    use crate::src::xmltok::streqci;
-
-    use crate::src::xmltok::KW_UTF_16;
-
     use crate::src::xmltok::UNKNOWN_ENC;
+    use crate::src::xmltok::UTF_16_ENC;
 }
 
 pub mod nametab_h {
@@ -17163,37 +17154,13 @@ static big2_encoding: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-unsafe extern "C" fn streqci(
-    mut s1: *const ::core::ffi::c_char,
-    mut s2: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    loop {
-        let c2rust_fresh34 = s1;
-        s1 = s1.offset(1);
-        let mut c1: ::core::ffi::c_char = *c2rust_fresh34;
-        let c2rust_fresh35 = s2;
-        s2 = s2.offset(1);
-        let mut c2: ::core::ffi::c_char = *c2rust_fresh35;
-        if crate::ascii_h::ASCII_a_1 <= c1 as ::core::ffi::c_int
-            && c1 as ::core::ffi::c_int <= crate::ascii_h::ASCII_z
-        {
-            c1 = (c1 as ::core::ffi::c_int + (crate::ascii_h::ASCII_A - crate::ascii_h::ASCII_a_1))
-                as ::core::ffi::c_char;
-        }
-        if crate::ascii_h::ASCII_a_1 <= c2 as ::core::ffi::c_int
-            && c2 as ::core::ffi::c_int <= crate::ascii_h::ASCII_z
-        {
-            c2 = (c2 as ::core::ffi::c_int + (crate::ascii_h::ASCII_A - crate::ascii_h::ASCII_a_1))
-                as ::core::ffi::c_char;
-        }
-        if c1 as ::core::ffi::c_int != c2 as ::core::ffi::c_int {
-            return 0 as ::core::ffi::c_int;
-        }
-        if c1 == 0 {
-            break;
-        }
-    }
-    return 1 as ::core::ffi::c_int;
+fn ascii_case_insensitive_eq(left: &[u8], right: &[u8]) -> bool {
+    left.len() == right.len()
+        && left.iter().zip(right).all(|(&left, &right)| {
+            let left = left.to_ascii_uppercase();
+            let right = right.to_ascii_uppercase();
+            left == right
+        })
 }
 
 pub(crate) unsafe fn initUpdatePosition(
@@ -18111,99 +18078,31 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding_ffi(
 ) -> *mut crate::src::xmltok::ENCODING {
     XmlInitUnknownEncoding(mem, table, convert, userData)
 }
-static KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
-    crate::ascii_h::ASCII_I as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_S as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_O as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_8_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_8_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_5 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_9_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_1_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
-
-static KW_US_ASCII: [::core::ffi::c_char; 9] = [
-    crate::ascii_h::ASCII_U as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_S as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_S as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_C as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_I as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_I as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
-
-static KW_UTF_8: [::core::ffi::c_char; 6] = [
-    crate::ascii_h::ASCII_U as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_8_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
-
-static KW_UTF_16: [::core::ffi::c_char; 7] = [
-    crate::ascii_h::ASCII_U as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_1_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_6 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
-
-static KW_UTF_16BE: [::core::ffi::c_char; 9] = [
-    crate::ascii_h::ASCII_U as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_1_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_6 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_B_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_E_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
-
-static KW_UTF_16LE: [::core::ffi::c_char; 9] = [
-    crate::ascii_h::ASCII_U as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_1_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_6 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_L_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_E_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
-
-unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    let encoding_names: [*const ::core::ffi::c_char; 6] = [
-        &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
-        &raw const KW_US_ASCII as *const ::core::ffi::c_char,
-        &raw const KW_UTF_8 as *const ::core::ffi::c_char,
-        &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-        &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
-        &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
+fn encoding_index(name: &[u8]) -> ::core::ffi::c_int {
+    const ENCODING_NAMES: [&[u8]; 6] = [
+        b"iso-8859-1",
+        b"us-ascii",
+        b"utf-8",
+        b"utf-16",
+        b"utf-16be",
+        b"utf-16le",
     ];
-    let mut i: ::core::ffi::c_int = 0;
+
+    ENCODING_NAMES
+        .iter()
+        .position(|candidate| ascii_case_insensitive_eq(name, candidate))
+        .map_or(UNKNOWN_ENC as ::core::ffi::c_int, |index| index as ::core::ffi::c_int)
+}
+
+/// # Safety
+///
+/// `name` is either null or points to a readable, NUL-terminated C string.
+unsafe extern "C" fn getEncodingIndex(name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     if name.is_null() {
         return NO_ENC as ::core::ffi::c_int;
     }
-    i = 0 as ::core::ffi::c_int;
-    while i < ::core::mem::size_of::<[*const ::core::ffi::c_char; 6]>()
-        .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>())
-        as ::core::ffi::c_int
-    {
-        if streqci(name, encoding_names[i as usize]) != 0 {
-            return i;
-        }
-        i += 1;
-    }
-    return UNKNOWN_ENC as ::core::ffi::c_int;
+    let name = unsafe { core::ffi::CStr::from_ptr(name) }.to_bytes();
+    encoding_index(name)
 }
 
 #[derive(Copy, Clone)]
