@@ -17863,12 +17863,16 @@ unsafe fn doProlog(
                                     }
                                     40 => {
                                         if (*parser).m_elementDeclHandler {
-                                            let element = getElementType(parser, enc, s, next);
-                                            if element.is_null() {
+                                            let Some(element_name) = get_element_type_from_token(
+                                                dtd,
+                                                &encoding,
+                                                unknown_encoding.as_ref(),
+                                                &token_bytes,
+                                                hash_salt,
+                                            ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            (*parser).m_declElementType =
-                                                Some((*element).named.name);
+                                            };
+                                            (*parser).m_declElementType = Some(element_name);
                                             (*dtd).scaffLevel = 0 as ::core::ffi::c_int;
                                             (*dtd).scaffCount = 0 as ::core::ffi::c_uint;
                                             (*dtd).in_eldecl = crate::expat_h::XML_TRUE;
@@ -18146,15 +18150,6 @@ unsafe fn doProlog(
                         break 's_2375;
                     }
                     if (*dtd).in_eldecl != 0 {
-                        let mut el: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-                        let mut nxt: *const ::core::ffi::c_char = if quant as ::core::ffi::c_uint
-                            == crate::expat_h::XML_CQUANT_NONE as ::core::ffi::c_int
-                                as ::core::ffi::c_uint
-                        {
-                            next
-                        } else {
-                            next.wrapping_sub(encoding.minBytesPerChar as usize)
-                        };
                         let mut myindex_0: ::core::ffi::c_int = nextScaffoldPart(parser);
                         if myindex_0 < 0 as ::core::ffi::c_int {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -18170,11 +18165,32 @@ unsafe fn doProlog(
                             node.type_0 = crate::expat_h::XML_CTYPE_NAME;
                             node.quant = quant;
                         }
-                        el = getElementType(parser, enc, s, nxt);
-                        if el.is_null() {
+                        let name_token = if quant as ::core::ffi::c_uint
+                            == crate::expat_h::XML_CQUANT_NONE as ::core::ffi::c_int
+                                as ::core::ffi::c_uint
+                        {
+                            token_bytes.as_slice()
+                        } else {
+                            let Ok(quantifier_width) =
+                                usize::try_from(encoding.minBytesPerChar)
+                            else {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            };
+                            let Some(name_end) = token_bytes.len().checked_sub(quantifier_width)
+                            else {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            };
+                            &token_bytes[..name_end]
+                        };
+                        let Some(name_ref) = get_element_type_from_token(
+                            dtd,
+                            &encoding,
+                            unknown_encoding.as_ref(),
+                            name_token,
+                            hash_salt,
+                        ) else {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        let name_ref = (*el).named.name;
+                        };
                         // Element names are retained as NUL-terminated XML_Char
                         // sequences in the DTD pool.  Count the terminator from
                         // the pool's checked slice rather than walking an
