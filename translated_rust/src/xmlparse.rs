@@ -4889,19 +4889,25 @@ unsafe extern "C" fn externalEntityInitProcessor2(
     );
     match tok {
         crate::src::xmltok::XML_TOK_BOM => {
+            let mut accounting_levels: ::core::ffi::c_uint = 0;
+            let accounting_root =
+                getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
             if accountingDiffTolerated(
-                parser,
+                &mut *accounting_root,
+                accounting_levels,
+                parser == accounting_root,
                 tok,
-                start,
-                next,
+                || {
+                    ::core::slice::from_raw_parts(
+                        start as *const ::core::ffi::c_uchar,
+                        byte_offset(next, start) as usize,
+                    )
+                },
                 3208 as ::core::ffi::c_int,
                 XML_ACCOUNT_DIRECT,
             ) == 0
             {
-                accountingReportStats(
-                    &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                    ACCOUNTING_ABORTING_EPILOG,
-                );
+                accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
             if next == end && (*parser).m_parsingStatus.finalBuffer == 0 {
@@ -5075,19 +5081,25 @@ unsafe extern "C" fn doContent(
         } else {
             next
         };
+        let mut accounting_levels: ::core::ffi::c_uint = 0;
+        let accounting_root =
+            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
-            parser,
+            &mut *accounting_root,
+            accounting_levels,
+            parser == accounting_root,
             tok,
-            s,
-            accountAfter,
+            || {
+                ::core::slice::from_raw_parts(
+                    s as *const ::core::ffi::c_uchar,
+                    byte_offset(accountAfter, s) as usize,
+                )
+            },
             3337 as ::core::ffi::c_int,
             account,
         ) == 0
         {
-            accountingReportStats(
-                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                ACCOUNTING_ABORTING_EPILOG,
-            );
+            accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         *eventEndPP = next;
@@ -5166,15 +5178,24 @@ unsafe extern "C" fn doContent(
                 )
                     as crate::expat_external_h::XML_Char;
                 if ch != 0 {
+                    let mut accounting_levels: ::core::ffi::c_uint = 0;
+                    let accounting_root = getRootParserOf(parser, &raw mut accounting_levels)
+                        as crate::expat_h::XML_Parser;
+                    let ch_start = &raw mut ch as *mut ::core::ffi::c_char;
+                    let ch_end = ch_start.offset(::core::mem::size_of::<
+                        crate::expat_external_h::XML_Char,
+                    >() as usize as isize);
                     accountingDiffTolerated(
-                        parser,
+                        &mut *accounting_root,
+                        accounting_levels,
+                        parser == accounting_root,
                         tok,
-                        &raw mut ch as *mut ::core::ffi::c_char,
-                        (&raw mut ch as *mut ::core::ffi::c_char).offset(::core::mem::size_of::<
-                            crate::expat_external_h::XML_Char,
-                        >()
-                            as usize
-                            as isize),
+                        || {
+                            ::core::slice::from_raw_parts(
+                                ch_start as *const ::core::ffi::c_uchar,
+                                byte_offset(ch_end, ch_start) as usize,
+                            )
+                        },
                         3403 as ::core::ffi::c_int,
                         XML_ACCOUNT_ENTITY_EXPANSION,
                     );
@@ -6843,11 +6864,25 @@ unsafe extern "C" fn doCdataSection(
             .expect("non-null function pointer")(
             enc, s, end, &raw mut next
         );
-        if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
-            accountingReportStats(
-                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                ACCOUNTING_ABORTING_EPILOG,
-            );
+        let mut accounting_levels: ::core::ffi::c_uint = 0;
+        let accounting_root =
+            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+        if accountingDiffTolerated(
+            &mut *accounting_root,
+            accounting_levels,
+            parser == accounting_root,
+            tok,
+            || {
+                ::core::slice::from_raw_parts(
+                    s as *const ::core::ffi::c_uchar,
+                    byte_offset(next, s) as usize,
+                )
+            },
+            4619 as ::core::ffi::c_int,
+            account,
+        ) == 0
+        {
+            accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         *eventEndPP = next;
@@ -7056,19 +7091,25 @@ unsafe extern "C" fn doIgnoreSection(
         end,
         &raw mut next,
     );
+    let mut accounting_levels: ::core::ffi::c_uint = 0;
+    let accounting_root =
+        getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
     if accountingDiffTolerated(
-        parser,
+        &mut *accounting_root,
+        accounting_levels,
+        parser == accounting_root,
         tok,
-        s,
-        next,
+        || {
+            ::core::slice::from_raw_parts(
+                s as *const ::core::ffi::c_uchar,
+                byte_offset(next, s) as usize,
+            )
+        },
         4778 as ::core::ffi::c_int,
         XML_ACCOUNT_DIRECT,
     ) == 0
     {
-        accountingReportStats(
-            &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-            ACCOUNTING_ABORTING_EPILOG,
-        );
+        accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     *eventEndPP = next;
@@ -7158,19 +7199,25 @@ unsafe extern "C" fn processXmlDecl(
     let mut storedversion: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut standalone: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
+    let mut accounting_levels: ::core::ffi::c_uint = 0;
+    let accounting_root =
+        getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
     if accountingDiffTolerated(
-        parser,
+        &mut *accounting_root,
+        accounting_levels,
+        parser == accounting_root,
         crate::src::xmltok::XML_TOK_XML_DECL,
-        s,
-        next,
+        || {
+            ::core::slice::from_raw_parts(
+                s as *const ::core::ffi::c_uchar,
+                byte_offset(next, s) as usize,
+            )
+        },
         4870 as ::core::ffi::c_int,
         XML_ACCOUNT_DIRECT,
     ) == 0
     {
-        accountingReportStats(
-            &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-            ACCOUNTING_ABORTING_EPILOG,
-        );
+        accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     if if (*parser).m_ns as ::core::ffi::c_int != 0 {
@@ -7513,19 +7560,25 @@ unsafe extern "C" fn entityValueInitProcessor(
             );
             return entityValueProcessor(parser, next, end, nextPtr);
         } else if tok == crate::src::xmltok::XML_TOK_BOM {
+            let mut accounting_levels: ::core::ffi::c_uint = 0;
+            let accounting_root =
+                getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
             if accountingDiffTolerated(
-                parser,
+                &mut *accounting_root,
+                accounting_levels,
+                parser == accounting_root,
                 tok,
-                s,
-                next,
+                || {
+                    ::core::slice::from_raw_parts(
+                        s as *const ::core::ffi::c_uchar,
+                        byte_offset(next, s) as usize,
+                    )
+                },
                 5077 as ::core::ffi::c_int,
                 XML_ACCOUNT_DIRECT,
             ) == 0
             {
-                accountingReportStats(
-                    &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                    ACCOUNTING_ABORTING_EPILOG,
-                );
+                accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
             *nextPtr = next;
@@ -7564,19 +7617,25 @@ unsafe extern "C" fn externalParEntProcessor(
             crate::src::xmltok::XML_TOK_NONE | _ => {}
         }
     } else if tok == crate::src::xmltok::XML_TOK_BOM {
+        let mut accounting_levels: ::core::ffi::c_uint = 0;
+        let accounting_root =
+            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
-            parser,
+            &mut *accounting_root,
+            accounting_levels,
+            parser == accounting_root,
             tok,
-            s,
-            next,
+            || {
+                ::core::slice::from_raw_parts(
+                    s as *const ::core::ffi::c_uchar,
+                    byte_offset(next, s) as usize,
+                )
+            },
             5130 as ::core::ffi::c_int,
             XML_ACCOUNT_DIRECT,
         ) == 0
         {
-            accountingReportStats(
-                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                ACCOUNTING_ABORTING_EPILOG,
-            );
+            accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
@@ -7877,19 +7936,25 @@ unsafe extern "C" fn doProlog(
         match role {
             2 | 1 | 57 => {}
             _ => {
+                let mut accounting_levels: ::core::ffi::c_uint = 0;
+                let accounting_root = getRootParserOf(parser, &raw mut accounting_levels)
+                    as crate::expat_h::XML_Parser;
                 if accountingDiffTolerated(
-                    parser,
+                    &mut *accounting_root,
+                    accounting_levels,
+                    parser == accounting_root,
                     tok,
-                    s,
-                    next,
+                    || {
+                        ::core::slice::from_raw_parts(
+                            s as *const ::core::ffi::c_uchar,
+                            byte_offset(next, s) as usize,
+                        )
+                    },
                     5301 as ::core::ffi::c_int,
                     account,
                 ) == 0
                 {
-                    accountingReportStats(
-                        &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                        ACCOUNTING_ABORTING_EPILOG,
-                    );
+                    accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
                     return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
                 }
             }
@@ -9444,19 +9509,25 @@ unsafe extern "C" fn epilogProcessor(
             .expect("non-null function pointer")(
             (*parser).m_encoding, s, end, &raw mut next
         );
+        let mut accounting_levels: ::core::ffi::c_uint = 0;
+        let accounting_root =
+            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
-            parser,
+            &mut *accounting_root,
+            accounting_levels,
+            parser == accounting_root,
             tok,
-            s,
-            next,
+            || {
+                ::core::slice::from_raw_parts(
+                    s as *const ::core::ffi::c_uchar,
+                    byte_offset(next, s) as usize,
+                )
+            },
             6279 as ::core::ffi::c_int,
             XML_ACCOUNT_DIRECT,
         ) == 0
         {
-            accountingReportStats(
-                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                ACCOUNTING_ABORTING_EPILOG,
-            );
+            accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         (*parser).m_eventEndPtr = next;
@@ -9904,12 +9975,25 @@ unsafe extern "C" fn appendAttributeValue(
         let mut tok: ::core::ffi::c_int =
             (*enc).literalScanners[0 as ::core::ffi::c_int as usize]
                 .expect("non-null function pointer")(enc, ptr, end, &raw mut next);
-        if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
+        let mut accounting_levels: ::core::ffi::c_uint = 0;
+        let accounting_root =
+            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+        if accountingDiffTolerated(
+            &mut *accounting_root,
+            accounting_levels,
+            parser == accounting_root,
+            tok,
+            || {
+                ::core::slice::from_raw_parts(
+                    ptr as *const ::core::ffi::c_uchar,
+                    byte_offset(next, ptr) as usize,
+                )
+            },
+            6591 as ::core::ffi::c_int,
+            account,
+        ) == 0
         {
-            accountingReportStats(
-                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                ACCOUNTING_ABORTING_EPILOG,
-            );
+            accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         let mut c2rust_current_block_70: u64;
@@ -10002,15 +10086,24 @@ unsafe extern "C" fn appendAttributeValue(
                 )
                     as crate::expat_external_h::XML_Char;
                 if ch != 0 {
+                    let mut accounting_levels: ::core::ffi::c_uint = 0;
+                    let accounting_root = getRootParserOf(parser, &raw mut accounting_levels)
+                        as crate::expat_h::XML_Parser;
+                    let ch_start = &raw mut ch as *mut ::core::ffi::c_char;
+                    let ch_end = ch_start.offset(::core::mem::size_of::<
+                        crate::expat_external_h::XML_Char,
+                    >() as usize as isize);
                     accountingDiffTolerated(
-                        parser,
+                        &mut *accounting_root,
+                        accounting_levels,
+                        parser == accounting_root,
                         tok,
-                        &raw mut ch as *mut ::core::ffi::c_char,
-                        (&raw mut ch as *mut ::core::ffi::c_char).offset(::core::mem::size_of::<
-                            crate::expat_external_h::XML_Char,
-                        >()
-                            as usize
-                            as isize),
+                        || {
+                            ::core::slice::from_raw_parts(
+                                ch_start as *const ::core::ffi::c_uchar,
+                                byte_offset(ch_end, ch_start) as usize,
+                            )
+                        },
                         6663 as ::core::ffi::c_int,
                         XML_ACCOUNT_ENTITY_EXPANSION,
                     );
@@ -10173,19 +10266,25 @@ unsafe extern "C" fn storeEntityValue(
             .expect("non-null function pointer")(
             enc, entityTextPtr, entityTextEnd, &raw mut next
         );
+        let mut accounting_levels: ::core::ffi::c_uint = 0;
+        let accounting_root =
+            getRootParserOf(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
         if accountingDiffTolerated(
-            parser,
+            &mut *accounting_root,
+            accounting_levels,
+            parser == accounting_root,
             tok,
-            entityTextPtr,
-            next,
+            || {
+                ::core::slice::from_raw_parts(
+                    entityTextPtr as *const ::core::ffi::c_uchar,
+                    byte_offset(next, entityTextPtr) as usize,
+                )
+            },
             6798 as ::core::ffi::c_int,
             account,
         ) == 0
         {
-            accountingReportStats(
-                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
-                ACCOUNTING_ABORTING_EPILOG,
-            );
+            accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
             result = crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             break;
         } else {
@@ -12613,14 +12712,18 @@ fn accountingReportDiff(
     let _ = stderr.write_all(b"\"\n");
 }
 
-unsafe extern "C" fn accountingDiffTolerated(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut tok: ::core::ffi::c_int,
-    mut before: *const ::core::ffi::c_char,
-    mut after: *const ::core::ffi::c_char,
-    mut source_line: ::core::ffi::c_int,
-    mut account: XML_Account,
-) -> crate::expat_h::XML_Bool {
+fn accountingDiffTolerated<'a, F>(
+    rootParser: &mut XML_ParserStruct,
+    levelsAwayFromRootParser: ::core::ffi::c_uint,
+    origin_is_root_parser: bool,
+    tok: ::core::ffi::c_int,
+    context: F,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+) -> crate::expat_h::XML_Bool
+where
+    F: FnOnce() -> &'a [::core::ffi::c_uchar],
+{
     match tok {
         crate::src::xmltok::XML_TOK_INVALID
         | crate::src::xmltok::XML_TOK_PARTIAL
@@ -12635,31 +12738,19 @@ unsafe extern "C" fn accountingDiffTolerated(
     {
         return crate::expat_h::XML_TRUE;
     }
-    let mut levelsAwayFromRootParser: ::core::ffi::c_uint = 0;
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, &raw mut levelsAwayFromRootParser)
-            as crate::expat_h::XML_Parser;
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8566 as ::core::ffi::c_uint,
-                b"XML_Bool accountingDiffTolerated(XML_Parser, int, const char *, const char *, int, enum XML_Account)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    };
+    if !rootParser.m_parentParser.is_null() {
+        std::process::abort();
+    }
     let isDirect: ::core::ffi::c_int = (account as ::core::ffi::c_uint
         == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
-        && originParser == rootParser) as ::core::ffi::c_int;
+        && origin_is_root_parser) as ::core::ffi::c_int;
+    let context = context();
     let bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t =
-        after.offset_from(before) as crate::__stddef_ptrdiff_t_h::ptrdiff_t;
-    let additionTarget: *mut XmlBigCount = if isDirect != 0 {
-        &raw mut (*rootParser).m_accounting.countBytesDirect
+        context.len() as crate::__stddef_ptrdiff_t_h::ptrdiff_t;
+    let additionTarget = if isDirect != 0 {
+        &mut rootParser.m_accounting.countBytesDirect
     } else {
-        &raw mut (*rootParser).m_accounting.countBytesIndirect
+        &mut rootParser.m_accounting.countBytesIndirect
     };
     if *additionTarget
         > (-1 as ::core::ffi::c_int as XmlBigCount).wrapping_sub(bytesMore as XmlBigCount)
@@ -12667,24 +12758,20 @@ unsafe extern "C" fn accountingDiffTolerated(
         return crate::expat_h::XML_FALSE;
     }
     *additionTarget = (*additionTarget).wrapping_add(bytesMore as XmlBigCount);
-    let countBytesOutput: XmlBigCount = (*rootParser)
+    let countBytesOutput: XmlBigCount = rootParser
         .m_accounting
         .countBytesDirect
-        .wrapping_add((*rootParser).m_accounting.countBytesIndirect);
+        .wrapping_add(rootParser.m_accounting.countBytesIndirect);
     let amplificationFactor: ::core::ffi::c_float =
-        accountingGetCurrentAmplification(&*rootParser) as ::core::ffi::c_float;
+        accountingGetCurrentAmplification(rootParser) as ::core::ffi::c_float;
     let tolerated: crate::expat_h::XML_Bool =
-        (countBytesOutput < (*rootParser).m_accounting.activationThresholdBytes
-            || amplificationFactor <= (*rootParser).m_accounting.maximumAmplificationFactor)
+        (countBytesOutput < rootParser.m_accounting.activationThresholdBytes
+            || amplificationFactor <= rootParser.m_accounting.maximumAmplificationFactor)
             as ::core::ffi::c_int as crate::expat_h::XML_Bool;
-    if (*rootParser).m_accounting.debugLevel >= 2 as ::core::ffi::c_ulong {
-        accountingReportStats(&*rootParser, "");
-        let context = ::core::slice::from_raw_parts(
-            before as *const ::core::ffi::c_uchar,
-            bytesMore as usize,
-        );
+    if rootParser.m_accounting.debugLevel >= 2 as ::core::ffi::c_ulong {
+        accountingReportStats(rootParser, "");
         accountingReportDiff(
-            &*rootParser,
+            rootParser,
             levelsAwayFromRootParser,
             context,
             bytesMore,
