@@ -5547,15 +5547,7 @@ pub unsafe fn expat_free(
     ptr: *mut ::core::ffi::c_void,
     sourceLine: ::core::ffi::c_int,
 ) {
-    if parser.is_null() {
-        crate::stdlib::__assert_fail(
-            b"parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-            906 as ::core::ffi::c_uint,
-            b"void expat_free(XML_Parser, void *, int)\0".as_ptr()
-                as *const ::core::ffi::c_char,
-        );
-    }
+    assert!(!parser.is_null(), "parser != NULL");
     if ptr.is_null() {
         return;
     }
