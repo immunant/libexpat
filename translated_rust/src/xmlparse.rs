@@ -1434,6 +1434,26 @@ static PROCESSING_INSTRUCTION_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+/// A processing-instruction handler registration prepared from the ABI
+/// callback value.
+///
+/// The parser-side setter retains only this typed registry entry and its
+/// opaque parser address key; it never retains the C callback representation.
+struct ProcessingInstructionHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn ProcessingInstructionCallback>>,
+}
+
+fn processing_instruction_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> ProcessingInstructionHandlerRegistration
+where
+    Callback: ProcessingInstructionCallback + 'static,
+{
+    ProcessingInstructionHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 // Start-namespace and processing-instruction handlers use the same C callback
 // ABI: an opaque user context followed by two XML character pointers.
 type TwoXmlCharCallback = dyn ProcessingInstructionCallback;
@@ -9091,33 +9111,38 @@ pub unsafe extern "C" fn XML_SetCharacterDataHandler_ffi(
         registration,
     )
 }
-pub unsafe extern "C" fn XML_SetProcessingInstructionHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_ProcessingInstructionHandler,
+fn set_processing_instruction_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: ProcessingInstructionHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_processingInstructionHandler = handler.is_some();
-        let mut handlers = PROCESSING_INSTRUCTION_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_processingInstructionHandler = registration.callback.is_some();
+    let mut handlers = PROCESSING_INSTRUCTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
 #[export_name = "XML_SetProcessingInstructionHandler"]
 
 pub unsafe extern "C" fn XML_SetProcessingInstructionHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_ProcessingInstructionHandler,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_ProcessingInstructionHandler,
 ) {
-    XML_SetProcessingInstructionHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = processing_instruction_handler_registration(handler);
+    let parser = unsafe { &mut *parser };
+    set_processing_instruction_handler(parser, parser_address, registration)
 }
 fn XML_SetCommentHandler(
     handler_enabled: &mut bool,
