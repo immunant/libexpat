@@ -6202,61 +6202,6 @@ struct ProcessorInput {
     end: usize,
 }
 
-/// Result of running the legacy content processor over a checked live-buffer
-/// range.  The returned cursor is converted back to an offset only after the
-/// processor has returned, because a callback is allowed to relocate the
-/// parser buffer while it runs.
-struct ContentProcessorResult {
-    error: crate::expat_h::XML_Error,
-    next_offset: usize,
-}
-
-/// Invoke the remaining cursor-based content loop from a bounded parser
-/// range.  This is the one place in the processor dispatcher that turns a
-/// live buffer range into legacy C cursors; all callers retain offsets before
-/// and after callbacks.
-fn do_content_from_live_range(
-    parser: &mut XML_ParserStruct,
-    start_tag_level: ::core::ffi::c_int,
-    normal_encoding: crate::src::xmltok::normal_encoding,
-    parser_events: bool,
-    range: std::ops::Range<usize>,
-    account: XML_Account,
-) -> Option<ContentProcessorResult> {
-    let (start, end) = {
-        let bytes = parser.m_buffer.bytes.as_ref()?;
-        bytes.get(range.clone())?;
-        (
-            bytes.as_ptr().wrapping_add(range.start).cast(),
-            bytes.as_ptr().wrapping_add(range.end).cast(),
-        )
-    };
-    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
-    let have_more =
-        (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as crate::expat_h::XML_Bool;
-    let mut next = start;
-    // The range above was obtained from the parser's live owned buffer.  The
-    // legacy content loop may call back into the application, so validate its
-    // returned cursor against the then-live buffer below rather than retaining
-    // the pre-callback borrow or assuming the original allocation survived.
-    let error = unsafe {
-        doContent(
-            parser,
-            start_tag_level,
-            normal_encoding,
-            encoding,
-            parser_events,
-            start,
-            end,
-            &mut next,
-            have_more,
-            account,
-        )
-    };
-    let next_offset = parser.m_buffer.offset_from_address(next.addr())?;
-    Some(ContentProcessorResult { error, next_offset })
-}
-
 /// Runs the parser's current processor against a checked input range.
 ///
 /// The parser can call user handlers while a processor runs, so every parser
@@ -6357,18 +6302,26 @@ unsafe fn call_processor_impl(
             } else {
                 0
             };
-            let Some(content_result) = do_content_from_live_range(
+            // This is the only remaining direct-content entry.  Its cursors
+            // are derived from the live range checked immediately above, and
+            // its result is converted back to a live-buffer offset below.
+            // Keep that small legacy boundary in the already-unsafe
+            // dispatcher instead of making a safe adapter call `doContent`.
+            let encoding = std::ptr::from_ref(current_parser_encoding(parser));
+            let have_more = (parser.m_parsingStatus.finalBuffer == 0)
+                as ::core::ffi::c_int as crate::expat_h::XML_Bool;
+            let mut result = doContent(
                 parser,
                 start_tag_level,
                 normal_encoding,
+                encoding,
                 true,
-                next..input.end,
+                start,
+                end,
+                &mut next_pointer,
+                have_more,
                 XML_ACCOUNT_DIRECT,
-            ) else {
-                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-            };
-            checked_next_offset = Some(content_result.next_offset);
-            let mut result = content_result.error;
+            );
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
@@ -6468,40 +6421,13 @@ unsafe fn call_processor_impl(
                             else {
                                 return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
                             };
-                            let Some(normal_encoding) = current_parser_normal_encoding(parser)
-                            else {
-                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                            };
-                            let Some(content_result) = do_content_from_live_range(
-                                parser,
-                                1,
-                                normal_encoding,
-                                true,
-                                content_offset..input.end,
-                                XML_ACCOUNT_ENTITY_EXPANSION,
-                            ) else {
-                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                            };
-                            let processed_offset = content_result.next_offset;
-                            if processed_offset < content_offset || processed_offset > input.end {
-                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                            }
-                            checked_next_offset = Some(processed_offset);
-                            let mut result = content_result.error;
-                            if result as ::core::ffi::c_uint
-                                == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                            {
-                                let raw_names_stored = match parser.m_dtd.clone() {
-                                    Some(dtd_owner) => dtd_owner
-                                        .inspect(|dtd| store_raw_names_impl(parser, dtd)),
-                                    None => crate::expat_h::XML_FALSE,
-                                };
-                                if raw_names_stored == 0 {
-                                    result = crate::expat_h::XML_ERROR_NO_MEMORY;
-                                }
-                            }
-                            result
+                            // Resume through the existing external-content
+                            // processor on the next checked dispatch.  That
+                            // processor owns its legacy cursor boundary and
+                            // preserves its post-content raw-name handling.
+                            parser.m_processor = ProcessorState::ExternalEntityContent;
+                            next = content_offset;
+                            continue;
                         }
                     }
                 }
@@ -6547,40 +6473,12 @@ unsafe fn call_processor_impl(
                     else {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
                     };
-                    let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
-                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                    };
-                    let Some(content_result) = do_content_from_live_range(
-                        parser,
-                        1,
-                        normal_encoding,
-                        true,
-                        content_offset..input.end,
-                        XML_ACCOUNT_ENTITY_EXPANSION,
-                    ) else {
-                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                    };
-                    let processed_offset = content_result.next_offset;
-                    if processed_offset < content_offset || processed_offset > input.end {
-                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                    }
-                    checked_next_offset = Some(processed_offset);
-                    let mut result = content_result.error;
-                    if result as ::core::ffi::c_uint
-                        == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
-                            as ::core::ffi::c_uint
-                    {
-                        let raw_names_stored = match parser.m_dtd.clone() {
-                            Some(dtd_owner) => {
-                                dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd))
-                            }
-                            None => crate::expat_h::XML_FALSE,
-                        };
-                        if raw_names_stored == 0 {
-                            result = crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                    }
-                    result
+                    // As above, continue through the dedicated external
+                    // content processor so the checked dispatcher does not
+                    // need a second safe-to-legacy content adapter.
+                    parser.m_processor = ProcessorState::ExternalEntityContent;
+                    next = content_offset;
+                    continue;
                 }
             }
         } else if matches!(parser.m_processor, ProcessorState::InternalEntity) {
