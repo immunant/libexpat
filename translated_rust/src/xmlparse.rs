@@ -1,4 +1,5 @@
 use ::c2rust_bitfields;
+use ::std::ffi::CStr;
 
 pub mod siphash_h {
     fn read_le_u64(bytes: &[::core::ffi::c_uchar]) -> crate::stdlib::uint64_t {
@@ -6383,12 +6384,8 @@ unsafe extern "C" fn storeAtts(
                         break;
                     }
                 }
-                let name_bytes = ::core::slice::from_raw_parts(
-                    s as *const ::core::ffi::c_uchar,
-                    keylen(s as KEY)
-                        .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-                            as crate::__stddef_size_t_h::size_t),
-                );
+                let name_key = CStr::from_ptr(s as *const ::core::ffi::c_char);
+                let name_bytes = &name_key.to_bytes()[..keylen(name_key)];
                 sip24_update(&mut sip_state, name_bytes);
                 loop {
                     if if (*parser).m_tempPool.ptr
@@ -11742,24 +11739,16 @@ unsafe extern "C" fn copyEntityTable(
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 
-unsafe extern "C" fn keyeq(mut s1: KEY, mut s2: KEY) -> crate::expat_h::XML_Bool {
-    while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int {
-        if *s1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            return crate::expat_h::XML_TRUE;
-        }
-        s1 = s1.offset(1);
-        s2 = s2.offset(1);
+fn keyeq(s1: &CStr, s2: &CStr) -> crate::expat_h::XML_Bool {
+    if s1.to_bytes() == s2.to_bytes() {
+        crate::expat_h::XML_TRUE
+    } else {
+        crate::expat_h::XML_FALSE
     }
-    return crate::expat_h::XML_FALSE;
 }
 
-unsafe extern "C" fn keylen(mut s: KEY) -> crate::__stddef_size_t_h::size_t {
-    let mut len: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    while *s != 0 {
-        s = s.offset(1);
-        len = len.wrapping_add(1);
-    }
-    return len;
+fn keylen(s: &CStr) -> crate::__stddef_size_t_h::size_t {
+    s.to_bytes().len()
 }
 
 unsafe extern "C" fn copy_salt_to_sipkey(
@@ -11787,11 +11776,8 @@ unsafe extern "C" fn hash(
     let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
     copy_salt_to_sipkey(parser, &raw mut key);
     sip24_init(&mut state, &key);
-    let key_bytes = ::core::slice::from_raw_parts(
-        s as *const ::core::ffi::c_uchar,
-        keylen(s).wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-            as crate::__stddef_size_t_h::size_t),
-    );
+    let key = CStr::from_ptr(s as *const ::core::ffi::c_char);
+    let key_bytes = &key.to_bytes()[..keylen(key)];
     sip24_update(&mut state, key_bytes);
     return sip24_final(&mut state) as ::core::ffi::c_ulong;
 }
@@ -11834,7 +11820,13 @@ unsafe extern "C" fn lookup(
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
         i = (h & mask) as crate::__stddef_size_t_h::size_t;
         while !(*(*table).v.offset(i as isize)).is_null() {
-            if keyeq(name, (**(*table).v.offset(i as isize)).name) != 0 {
+            if keyeq(
+                CStr::from_ptr(name as *const ::core::ffi::c_char),
+                CStr::from_ptr(
+                    (**(*table).v.offset(i as isize)).name as *const ::core::ffi::c_char,
+                ),
+            ) != 0
+            {
                 return *(*table).v.offset(i as isize);
             }
             if step == 0 {
