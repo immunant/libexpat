@@ -5551,7 +5551,9 @@ struct NamedAllocation {
 // means table clients that only need to inspect a record never have to
 // reinterpret an allocation as a different Rust type.
 enum NamedRecord {
-    Prefix(Box<PREFIX>),
+    // Hash-table entries already own each `NamedAllocation` in a `Box`, so
+    // a prefix record has a stable address without a second allocation.
+    Prefix(PREFIX),
     Attribute(Box<ATTRIBUTE_ID>),
     Element(Box<ELEMENT_TYPE>),
     Entity(Box<ENTITY>),
@@ -5560,7 +5562,7 @@ enum NamedRecord {
 impl NamedRecord {
     fn new(create_size: usize, name: PoolStringRef) -> Option<Self> {
         if create_size == ::core::mem::size_of::<PREFIX>() {
-            return Some(Self::Prefix(Box::new(PREFIX { name: Some(name) })));
+            return Some(Self::Prefix(PREFIX { name: Some(name) }));
         }
         if create_size == ::core::mem::size_of::<ATTRIBUTE_ID>() {
             return Some(Self::Attribute(Box::new(ATTRIBUTE_ID {
@@ -24632,7 +24634,7 @@ fn set_context_impl(
                         ) else {
                             return crate::expat_h::XML_FALSE;
                         };
-                        prefix.as_ref().clone()
+                        *prefix
                     };
                     parser.m_tempPool.rewind();
                     prefix
