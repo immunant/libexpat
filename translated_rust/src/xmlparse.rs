@@ -11306,150 +11306,122 @@ pub unsafe extern "C" fn XML_DefaultCurrent_ffi(parser: crate::expat_h::XML_Pars
     let parser = &mut *parser;
     xml_default_current_impl(parser)
 }
-pub unsafe extern "C" fn XML_ErrorString(
-    mut code: crate::expat_h::XML_Error,
-) -> *const crate::expat_external_h::XML_LChar {
+fn xml_error_string_impl(code: crate::expat_h::XML_Error) -> Option<&'static [u8]> {
     match code as ::core::ffi::c_uint {
-        0 => return ::core::ptr::null::<crate::expat_external_h::XML_LChar>(),
-        1 => return b"out of memory\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-        2 => return b"syntax error\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-        3 => return b"no element found\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        0 => None,
+        1 => Some(b"out of memory\0"),
+        2 => Some(b"syntax error\0"),
+        3 => Some(b"no element found\0"),
         4 => {
-            return b"not well-formed (invalid token)\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"not well-formed (invalid token)\0")
         }
-        5 => return b"unclosed token\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-        6 => return b"partial character\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-        7 => return b"mismatched tag\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-        8 => return b"duplicate attribute\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        5 => Some(b"unclosed token\0"),
+        6 => Some(b"partial character\0"),
+        7 => Some(b"mismatched tag\0"),
+        8 => Some(b"duplicate attribute\0"),
         9 => {
-            return b"junk after document element\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"junk after document element\0")
         }
         10 => {
-            return b"illegal parameter entity reference\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"illegal parameter entity reference\0")
         }
-        11 => return b"undefined entity\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        11 => Some(b"undefined entity\0"),
         12 => {
-            return b"recursive entity reference\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"recursive entity reference\0")
         }
         13 => {
-            return b"asynchronous entity\0".as_ptr() as *const crate::expat_external_h::XML_LChar
+            Some(b"asynchronous entity\0")
         }
         14 => {
-            return b"reference to invalid character number\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"reference to invalid character number\0")
         }
         15 => {
-            return b"reference to binary entity\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"reference to binary entity\0")
         }
         16 => {
-            return b"reference to external entity in attribute\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"reference to external entity in attribute\0")
         }
         17 => {
-            return b"XML or text declaration not at start of entity\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"XML or text declaration not at start of entity\0")
         }
-        18 => return b"unknown encoding\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        18 => Some(b"unknown encoding\0"),
         19 => {
-            return b"encoding specified in XML declaration is incorrect\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"encoding specified in XML declaration is incorrect\0")
         }
         20 => {
-            return b"unclosed CDATA section\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"unclosed CDATA section\0")
         }
         21 => {
-            return b"error in processing external entity reference\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"error in processing external entity reference\0")
         }
         22 => {
-            return b"document is not standalone\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"document is not standalone\0")
         }
         23 => {
-            return b"unexpected parser state - please send a bug report\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"unexpected parser state - please send a bug report\0")
         }
         24 => {
-            return b"entity declared in parameter entity\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"entity declared in parameter entity\0")
         }
         25 => {
-            return b"requested feature requires XML_DTD support in Expat\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"requested feature requires XML_DTD support in Expat\0")
         }
         26 => {
-            return b"cannot change setting once parsing has begun\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"cannot change setting once parsing has begun\0")
         }
-        27 => return b"unbound prefix\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        27 => Some(b"unbound prefix\0"),
         28 => {
-            return b"must not undeclare prefix\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"must not undeclare prefix\0")
         }
         29 => {
-            return b"incomplete markup in parameter entity\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"incomplete markup in parameter entity\0")
         }
         30 => {
-            return b"XML declaration not well-formed\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"XML declaration not well-formed\0")
         }
         31 => {
-            return b"text declaration not well-formed\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"text declaration not well-formed\0")
         }
         32 => {
-            return b"illegal character(s) in public id\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar
+            Some(b"illegal character(s) in public id\0")
         }
-        33 => return b"parser suspended\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        33 => Some(b"parser suspended\0"),
         34 => {
-            return b"parser not suspended\0".as_ptr() as *const crate::expat_external_h::XML_LChar
+            Some(b"parser not suspended\0")
         }
-        35 => return b"parsing aborted\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-        36 => return b"parsing finished\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        35 => Some(b"parsing aborted\0"),
+        36 => Some(b"parsing finished\0"),
         37 => {
-            return b"cannot suspend in external parameter entity\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"cannot suspend in external parameter entity\0")
         }
         38 => {
-            return b"reserved prefix (xml) must not be undeclared or bound to another namespace name\0"
-                .as_ptr() as *const crate::expat_external_h::XML_LChar;
+            Some(b"reserved prefix (xml) must not be undeclared or bound to another namespace name\0")
         }
         39 => {
-            return b"reserved prefix (xmlns) must not be declared or undeclared\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"reserved prefix (xmlns) must not be declared or undeclared\0")
         }
         40 => {
-            return b"prefix must not be bound to one of the reserved namespace names\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"prefix must not be bound to one of the reserved namespace names\0")
         }
-        41 => return b"invalid argument\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
+        41 => Some(b"invalid argument\0"),
         42 => {
-            return b"a successful prior call to function XML_GetBuffer is required\0".as_ptr()
-                as *const crate::expat_external_h::XML_LChar;
+            Some(b"a successful prior call to function XML_GetBuffer is required\0")
         }
         43 => {
-            return b"limit on input amplification factor (from DTD and entities) breached\0"
-                .as_ptr() as *const crate::expat_external_h::XML_LChar;
+            Some(b"limit on input amplification factor (from DTD and entities) breached\0")
         }
-        44 => return b"parser not started\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-        _ => {}
+        44 => Some(b"parser not started\0"),
+        _ => None,
     }
-    return ::core::ptr::null::<crate::expat_external_h::XML_LChar>();
 }
 #[export_name = "XML_ErrorString"]
 
 pub unsafe extern "C" fn XML_ErrorString_ffi(
-    mut code: crate::expat_h::XML_Error,
+    code: crate::expat_h::XML_Error,
 ) -> *const crate::expat_external_h::XML_LChar {
-    XML_ErrorString(code)
+    xml_error_string_impl(code).map_or(::core::ptr::null(), |message| {
+        message.as_ptr().cast::<crate::expat_external_h::XML_LChar>()
+    })
 }
 const EXPAT_VERSION: [crate::expat_external_h::XML_LChar; 12] =
     [101, 120, 112, 97, 116, 95, 50, 46, 55, 46, 52, 0];
