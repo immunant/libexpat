@@ -382,6 +382,17 @@ impl<'a> ScannerContext<'a> {
         }
     }
 
+    /// Returns the checked character view retained by this dispatch request.
+    /// A scanner result is an offset in precisely this slice, so boundary
+    /// adapters can recover a C cursor without performing raw arithmetic.
+    pub(crate) fn chars(&self) -> &'a [::core::ffi::c_char] {
+        match &self.0 {
+            ScannerContextKind::InvalidRange => &[],
+            ScannerContextKind::Initial { input, .. }
+            | ScannerContextKind::Normal { input, .. } => input.chars,
+        }
+    }
+
     pub(crate) fn scan(self) -> ScannerResult {
         match self.0 {
             ScannerContextKind::InvalidRange => {
@@ -3891,15 +3902,23 @@ pub mod xmltok_impl_c {
         end: *const ::core::ffi::c_char,
         nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let result = crate::src::xmltok::ScannerContext::from_raw(
+        let context = crate::src::xmltok::ScannerContext::from_raw(
             crate::src::xmltok::Scanner::NormalIgnoreSection,
             enc,
             ptr,
             end,
-        )
-        .scan();
+        );
+        let chars = context.chars();
+        let result = context.scan();
         if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
+            // `next` is meaningful only inside the scanner's checked input
+            // span.  `get` also admits the one-past-end cursor required by
+            // the tokenizer ABI without manufacturing a pointer by arithmetic.
+            if let Some(cursor) = chars.get(next..) {
+                let cursor: *const ::core::ffi::c_char =
+                    cursor.first().map_or(end, |char_| char_);
+                *nextTokPtr = cursor;
+            }
         }
         result.token
     }
