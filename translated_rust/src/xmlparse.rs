@@ -13013,7 +13013,7 @@ unsafe extern "C" fn getRootParserOf(
     }
     return rootParser;
 }
-pub unsafe extern "C" fn unsignedCharToPrintable(
+pub extern "C" fn unsignedCharToPrintable(
     mut c: ::core::ffi::c_uchar,
 ) -> *const ::core::ffi::c_char {
     match c as ::core::ffi::c_int {
@@ -13273,18 +13273,7 @@ pub unsafe extern "C" fn unsignedCharToPrintable(
         253 => return b"\\xFD\0".as_ptr() as *const ::core::ffi::c_char,
         254 => return b"\\xFE\0".as_ptr() as *const ::core::ffi::c_char,
         255 => return b"\\xFF\0".as_ptr() as *const ::core::ffi::c_char,
-        _ => {
-            '_c2rust_label: {
-                crate::stdlib::__assert_fail(
-                    b"0\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    9198 as ::core::ffi::c_uint,
-                    b"const char *unsignedCharToPrintable(unsigned char)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            };
-            return b"dead code\0".as_ptr() as *const ::core::ffi::c_char;
-        }
+        _ => unreachable!("c_uchar only contains byte values"),
     };
 }
 #[export_name = "unsignedCharToPrintable"]
