@@ -13918,7 +13918,7 @@ pub mod xmltok_ns_c {
         ]
     }
 
-    pub unsafe extern "C" fn initScanProlog(
+    pub extern "C" fn initScanProlog(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -13935,7 +13935,7 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub unsafe extern "C" fn initScanContent(
+    pub extern "C" fn initScanContent(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -14146,7 +14146,7 @@ pub mod xmltok_ns_c {
         ]
     }
 
-    pub unsafe extern "C" fn initScanPrologNS(
+    pub extern "C" fn initScanPrologNS(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -14163,7 +14163,7 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub unsafe extern "C" fn initScanContentNS(
+    pub extern "C" fn initScanContentNS(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -23459,7 +23459,7 @@ fn getEncodingIndex(name: Option<&[::core::ffi::c_char]>) -> ::core::ffi::c_int 
     return UNKNOWN_ENC as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn initScan(
+fn initScan(
     mut encodingTable: *const *const crate::src::xmltok::ENCODING,
     mut enc: *const crate::src::xmltok::INIT_ENCODING,
     mut state: ::core::ffi::c_int,
@@ -23467,133 +23467,67 @@ unsafe extern "C" fn initScan(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut encPtr: *mut *const crate::src::xmltok::ENCODING =
-        ::core::ptr::null_mut::<*const crate::src::xmltok::ENCODING>();
-    if ptr >= end {
-        return crate::src::xmltok::XML_TOK_NONE_1;
-    }
-    encPtr = (*enc).encPtr;
-    if ptr.offset(1 as ::core::ffi::c_int as isize) == end {
-        match (*enc).initEnc.isUtf16 as ::core::ffi::c_int {
-            3 | 5 | 4 => return crate::src::xmltok::XML_TOK_PARTIAL_1,
-            _ => {}
+    unsafe {
+        let mut encPtr: *mut *const crate::src::xmltok::ENCODING =
+            ::core::ptr::null_mut::<*const crate::src::xmltok::ENCODING>();
+        if ptr >= end {
+            return crate::src::xmltok::XML_TOK_NONE_1;
         }
-        let mut c2rust_current_block_5: u64;
-        match *ptr as ::core::ffi::c_uchar as ::core::ffi::c_int {
-            254 | 255 | 239 => {
-                if (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    == ISO_8859_1_ENC as ::core::ffi::c_int
-                    && state == crate::src::xmltok::XML_CONTENT_STATE
-                {
-                    c2rust_current_block_5 = 13183875560443969876;
-                } else {
+        encPtr = (*enc).encPtr;
+        if ptr.offset(1 as ::core::ffi::c_int as isize) == end {
+            match (*enc).initEnc.isUtf16 as ::core::ffi::c_int {
+                3 | 5 | 4 => return crate::src::xmltok::XML_TOK_PARTIAL_1,
+                _ => {}
+            }
+            let mut c2rust_current_block_5: u64;
+            match *ptr as ::core::ffi::c_uchar as ::core::ffi::c_int {
+                254 | 255 | 239 => {
+                    if (*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                        == ISO_8859_1_ENC as ::core::ffi::c_int
+                        && state == crate::src::xmltok::XML_CONTENT_STATE
+                    {
+                        c2rust_current_block_5 = 13183875560443969876;
+                    } else {
+                        c2rust_current_block_5 = 4739725401103608112;
+                    }
+                }
+                0 | 60 => {
                     c2rust_current_block_5 = 4739725401103608112;
                 }
-            }
-            0 | 60 => {
-                c2rust_current_block_5 = 4739725401103608112;
-            }
-            _ => {
-                c2rust_current_block_5 = 13183875560443969876;
-            }
-        }
-        match c2rust_current_block_5 {
-            13183875560443969876 => {}
-            _ => return crate::src::xmltok::XML_TOK_PARTIAL_1,
-        }
-    } else {
-        let mut c2rust_current_block_26: u64;
-        match (*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int)
-            << 8 as ::core::ffi::c_int
-            | *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int
-        {
-            65279 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    == ISO_8859_1_ENC as ::core::ffi::c_int
-                    && state == crate::src::xmltok::XML_CONTENT_STATE)
-                {
-                    *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    *encPtr = *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
-                    return crate::src::xmltok::XML_TOK_BOM_1;
+                _ => {
+                    c2rust_current_block_5 = 13183875560443969876;
                 }
             }
-            15360 => {
-                if !(((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    == UTF_16BE_ENC as ::core::ffi::c_int
-                    || (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                        == UTF_16_ENC as ::core::ffi::c_int)
-                    && state == crate::src::xmltok::XML_CONTENT_STATE)
-                {
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
-                    return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
-                        *encPtr, ptr, end, nextTokPtr,
-                    );
-                }
+            match c2rust_current_block_5 {
+                13183875560443969876 => {}
+                _ => return crate::src::xmltok::XML_TOK_PARTIAL_1,
             }
-            65534 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    == ISO_8859_1_ENC as ::core::ffi::c_int
-                    && state == crate::src::xmltok::XML_CONTENT_STATE)
-                {
-                    *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
-                    return crate::src::xmltok::XML_TOK_BOM_1;
-                }
-            }
-            61371 => {
-                if state == crate::src::xmltok::XML_CONTENT_STATE {
-                    let mut e: ::core::ffi::c_int = (*enc).initEnc.isUtf16 as ::core::ffi::c_int;
-                    if e == ISO_8859_1_ENC as ::core::ffi::c_int
-                        || e == UTF_16BE_ENC as ::core::ffi::c_int
-                        || e == UTF_16LE_ENC as ::core::ffi::c_int
-                        || e == UTF_16_ENC as ::core::ffi::c_int
+        } else {
+            let mut c2rust_current_block_26: u64;
+            match (*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
+                as ::core::ffi::c_int)
+                << 8 as ::core::ffi::c_int
+                | *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
+                    as ::core::ffi::c_int
+            {
+                65279 => {
+                    if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                        == ISO_8859_1_ENC as ::core::ffi::c_int
+                        && state == crate::src::xmltok::XML_CONTENT_STATE)
                     {
-                        c2rust_current_block_26 = 2604890879466389055;
-                    } else {
-                        c2rust_current_block_26 = 11307063007268554308;
-                    }
-                } else {
-                    c2rust_current_block_26 = 11307063007268554308;
-                }
-                match c2rust_current_block_26 {
-                    2604890879466389055 => {}
-                    _ => {
-                        if ptr.offset(2 as ::core::ffi::c_int as isize) == end {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(2 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int
-                            == 0xbf as ::core::ffi::c_int
-                        {
-                            *nextTokPtr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                            *encPtr =
-                                *encodingTable.offset(UTF_8_ENC as ::core::ffi::c_int as isize);
-                            return crate::src::xmltok::XML_TOK_BOM_1;
-                        }
-                    }
-                }
-            }
-            _ => {
-                if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == '\0' as i32
-                {
-                    if !(state == crate::src::xmltok::XML_CONTENT_STATE
-                        && (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                            == UTF_16LE_ENC as ::core::ffi::c_int)
-                    {
+                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
                         *encPtr =
                             *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
-                        return (**encPtr).scanners[state as usize]
-                            .expect("non-null function pointer")(
-                            *encPtr, ptr, end, nextTokPtr
-                        );
+                        return crate::src::xmltok::XML_TOK_BOM_1;
                     }
-                } else if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == '\0' as i32
-                {
-                    if !(state == crate::src::xmltok::XML_CONTENT_STATE) {
+                }
+                15360 => {
+                    if !(((*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                        == UTF_16BE_ENC as ::core::ffi::c_int
+                        || (*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                            == UTF_16_ENC as ::core::ffi::c_int)
+                        && state == crate::src::xmltok::XML_CONTENT_STATE)
+                    {
                         *encPtr =
                             *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
                         return (**encPtr).scanners[state as usize]
@@ -23602,13 +23536,86 @@ unsafe extern "C" fn initScan(
                         );
                     }
                 }
+                65534 => {
+                    if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                        == ISO_8859_1_ENC as ::core::ffi::c_int
+                        && state == crate::src::xmltok::XML_CONTENT_STATE)
+                    {
+                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                        *encPtr =
+                            *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
+                        return crate::src::xmltok::XML_TOK_BOM_1;
+                    }
+                }
+                61371 => {
+                    if state == crate::src::xmltok::XML_CONTENT_STATE {
+                        let mut e: ::core::ffi::c_int =
+                            (*enc).initEnc.isUtf16 as ::core::ffi::c_int;
+                        if e == ISO_8859_1_ENC as ::core::ffi::c_int
+                            || e == UTF_16BE_ENC as ::core::ffi::c_int
+                            || e == UTF_16LE_ENC as ::core::ffi::c_int
+                            || e == UTF_16_ENC as ::core::ffi::c_int
+                        {
+                            c2rust_current_block_26 = 2604890879466389055;
+                        } else {
+                            c2rust_current_block_26 = 11307063007268554308;
+                        }
+                    } else {
+                        c2rust_current_block_26 = 11307063007268554308;
+                    }
+                    match c2rust_current_block_26 {
+                        2604890879466389055 => {}
+                        _ => {
+                            if ptr.offset(2 as ::core::ffi::c_int as isize) == end {
+                                return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                            }
+                            if *ptr.offset(2 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
+                                as ::core::ffi::c_int
+                                == 0xbf as ::core::ffi::c_int
+                            {
+                                *nextTokPtr = ptr.offset(3 as ::core::ffi::c_int as isize);
+                                *encPtr =
+                                    *encodingTable.offset(UTF_8_ENC as ::core::ffi::c_int as isize);
+                                return crate::src::xmltok::XML_TOK_BOM_1;
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
+                        == '\0' as i32
+                    {
+                        if !(state == crate::src::xmltok::XML_CONTENT_STATE
+                            && (*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                                == UTF_16LE_ENC as ::core::ffi::c_int)
+                        {
+                            *encPtr =
+                                *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
+                            return (**encPtr).scanners[state as usize]
+                                .expect("non-null function pointer")(
+                                *encPtr, ptr, end, nextTokPtr,
+                            );
+                        }
+                    } else if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
+                        == '\0' as i32
+                    {
+                        if !(state == crate::src::xmltok::XML_CONTENT_STATE) {
+                            *encPtr =
+                                *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
+                            return (**encPtr).scanners[state as usize]
+                                .expect("non-null function pointer")(
+                                *encPtr, ptr, end, nextTokPtr,
+                            );
+                        }
+                    }
+                }
             }
         }
+        *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
+        return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
+            *encPtr, ptr, end, nextTokPtr,
+        );
     }
-    *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
-    return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
-        *encPtr, ptr, end, nextTokPtr,
-    );
 }
 pub fn XmlInitUnknownEncodingNS(
     mem: &mut ::core::mem::MaybeUninit<unknown_encoding>,
