@@ -1910,6 +1910,19 @@ enum EncodingState {
     Unknown,
 }
 
+// Internal entity text always uses UTF-8; namespace mode changes only the
+// tokenizer table selected for names.  Keep that choice as data instead of a
+// pointer to one of the static tokenizer tables.
+#[derive(Copy, Clone)]
+enum InternalEncoding {
+    Utf8,
+    Utf8Ns,
+}
+
+fn internal_encoding(encoding: InternalEncoding) -> &'static crate::src::xmltok::ENCODING {
+    crate::src::xmltok::internal_utf8_encoding_table(matches!(encoding, InternalEncoding::Utf8Ns))
+}
+
 // The conversion scratch buffer is Rust-owned, while the allocation token
 // preserves the configured Expat allocator's allocation/free accounting.
 // The token's memory is deliberately never dereferenced.
@@ -2070,7 +2083,7 @@ pub struct XML_ParserStruct {
     pub m_xmlDeclHandler: bool,
     m_encoding: EncodingState,
     pub m_initEncoding: crate::src::xmltok::INIT_ENCODING,
-    pub m_internalEncoding: *const crate::src::xmltok::ENCODING,
+    m_internalEncoding: InternalEncoding,
     pub m_protocolEncodingName: *const crate::expat_external_h::XML_Char,
     pub m_ns: crate::expat_h::XML_Bool,
     pub m_ns_triplets: crate::expat_h::XML_Bool,
@@ -3760,7 +3773,7 @@ fn initial_parser_struct(
         m_xmlDeclHandler: false,
         m_encoding: EncodingState::Initial,
         m_initEncoding: initial_encoding(),
-        m_internalEncoding: ::core::ptr::null::<crate::src::xmltok::ENCODING>(),
+        m_internalEncoding: InternalEncoding::Utf8,
         m_protocolEncodingName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_ns: crate::expat_h::XML_FALSE,
         m_ns_triplets: crate::expat_h::XML_FALSE,
@@ -4075,13 +4088,10 @@ unsafe extern "C" fn parserCreate(
     }
     if !nameSep.is_null() {
         (*parser).m_ns = crate::expat_h::XML_TRUE;
-        (*parser).m_internalEncoding =
-            crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS()
-                as *const crate::src::xmltok::encoding;
+        (*parser).m_internalEncoding = InternalEncoding::Utf8Ns;
         (*parser).m_namespaceSeparator = *nameSep;
     } else {
-        (*parser).m_internalEncoding = crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding()
-            as *const crate::src::xmltok::encoding;
+        (*parser).m_internalEncoding = InternalEncoding::Utf8;
     }
     return parser;
 }
@@ -6943,7 +6953,7 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
         if !(*parser).m_openInternalEntities.is_null() {
             reportDefault(
                 parser,
-                (*parser).m_internalEncoding,
+                internal_encoding((*parser).m_internalEncoding) as *const _,
                 (*(*parser).m_openInternalEntities).internalEventPtr,
                 (*(*parser).m_openInternalEntities).internalEventEndPtr,
             );
@@ -13495,16 +13505,17 @@ unsafe extern "C" fn internalEntityProcessor(
             .cast::<::core::ffi::c_char>();
         next = textStart;
         if (*entity).is_param != 0 {
-            let mut tok: ::core::ffi::c_int = (*(*parser).m_internalEncoding).scanners[0 as usize]
+            let internal_encoding = internal_encoding((*parser).m_internalEncoding);
+            let mut tok: ::core::ffi::c_int = internal_encoding.scanners[0 as usize]
                 .scan(
-                    (*parser).m_internalEncoding,
+                    internal_encoding as *const _,
                     textStart,
                     textEnd,
                     &raw mut next,
                 );
             result = doProlog(
                 parser,
-                (*parser).m_internalEncoding,
+                internal_encoding as *const _,
                 textStart,
                 textEnd,
                 tok,
@@ -13518,7 +13529,7 @@ unsafe extern "C" fn internalEntityProcessor(
             result = doContent(
                 parser,
                 (*openEntity).startTagLevel,
-                (*parser).m_internalEncoding,
+                internal_encoding((*parser).m_internalEncoding) as *const _,
                 textStart,
                 textEnd,
                 &raw mut next,
@@ -13647,7 +13658,7 @@ unsafe extern "C" fn storeAttributeValue(
             if (*entity).hasMore != 0 {
                 result = appendAttributeValue(
                     parser,
-                    (*parser).m_internalEncoding,
+                    internal_encoding((*parser).m_internalEncoding) as *const _,
                     isCdata,
                     textStart,
                     textEnd,
@@ -14279,7 +14290,7 @@ unsafe extern "C" fn callStoreEntityValue(
             if (*entity).hasMore != 0 {
                 result = storeEntityValue(
                     parser,
-                    (*parser).m_internalEncoding,
+                    internal_encoding((*parser).m_internalEncoding) as *const _,
                     textStart,
                     textEnd,
                     XML_ACCOUNT_ENTITY_EXPANSION,

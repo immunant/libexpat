@@ -13090,6 +13090,14 @@ static utf8_encoding: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Utf8,
 };
 
+pub(crate) fn internal_utf8_encoding_table(namespace_aware: bool) -> &'static ENCODING {
+    if namespace_aware {
+        &internal_utf8_encoding_ns.enc
+    } else {
+        &internal_utf8_encoding.enc
+    }
+}
+
 static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
