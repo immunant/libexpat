@@ -19046,7 +19046,12 @@ unsafe fn doProlog(
                                             IgnoreSectionRequest {
                                                 start_address: ignore_start.addr(),
                                                 end_address: end.addr(),
-                                                encoding_address: enc.addr(),
+                                                encoding_address: if parser_events {
+                                                    std::ptr::from_ref(current_parser_encoding(parser))
+                                                        .addr()
+                                                } else {
+                                                    enc.addr()
+                                                },
                                                 have_more: haveMore != 0,
                                             },
                                         );
@@ -20892,10 +20897,10 @@ unsafe extern "C" fn internalEntityProcessor(
         }) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let textStart = text_start
+        let mut textStart = text_start
             .wrapping_add(processed)
             .cast::<::core::ffi::c_char>();
-        let textEnd = text_start
+        let mut textEnd = text_start
             .wrapping_add(text_len)
             .cast::<::core::ffi::c_char>();
         let mut next = textStart;
@@ -20924,20 +20929,35 @@ unsafe extern "C" fn internalEntityProcessor(
             if let PrologCursorUpdate::Cursor(cursor) = prolog_cursor {
                 next = match cursor {
                     Some(address) => {
-                        let Some(source) = dtd_owner.inspect(|dtd| {
-                            event_raw_name_source(
-                                parser_state,
+                        let Some(offset) = address
+                            .checked_sub(textStart.addr())
+                            .filter(|offset| *offset <= text_len)
+                        else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        let Some((start, end, cursor)) = dtd_owner.inspect(|dtd| {
+                            let entity = parser_state
+                                .m_activeInternalEntities
+                                .get(entity_state.index)?
+                                .node();
+                            let text = entity_text_chars(
                                 dtd,
-                                false,
-                                address,
-                                address,
-                            )
-                            .map(|source| source.chars().as_ptr())
+                                entity.eventText,
+                                entity.eventTextLen,
+                            )?;
+                            let cursor = text.get(offset..)?.as_ptr().cast();
+                            Some((
+                                text.as_ptr().cast(),
+                                text.as_ptr().wrapping_add(text.len()).cast(),
+                                cursor,
+                            ))
                         })
                         else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
-                        source
+                        textStart = start;
+                        textEnd = end;
+                        cursor
                     }
                     None => ::core::ptr::null(),
                 };
