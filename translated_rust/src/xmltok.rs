@@ -659,47 +659,14 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    pub extern "C" fn normal_checkPiTarget(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        tokPtr: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (1 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            return 1 as ::core::ffi::c_int;
-        }
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
+        let _ = enc;
+        check_pi_target_impl(ptr, end, tokPtr, EncodedAscii::SingleByte)
     }
 
     pub unsafe extern "C" fn normal_scanPi(
@@ -4538,22 +4505,20 @@ pub mod xmltok_impl_c {
         ptr: *const ::core::ffi::c_char,
         encoding: EncodedAscii,
     ) -> ::core::ffi::c_int {
-        unsafe {
-            match encoding {
-                EncodedAscii::SingleByte => *ptr as ::core::ffi::c_int,
-                EncodedAscii::Utf16Le => {
-                    if *ptr.wrapping_offset(1) as ::core::ffi::c_int == 0 {
-                        *ptr as ::core::ffi::c_int
-                    } else {
-                        -1
-                    }
+        match encoding {
+            EncodedAscii::SingleByte => ptr_read!(ptr) as ::core::ffi::c_int,
+            EncodedAscii::Utf16Le => {
+                if ptr_read!(ptr.wrapping_offset(1)) as ::core::ffi::c_int == 0 {
+                    ptr_read!(ptr) as ::core::ffi::c_int
+                } else {
+                    -1
                 }
-                EncodedAscii::Utf16Be => {
-                    if *ptr as ::core::ffi::c_int == 0 {
-                        *ptr.wrapping_offset(1) as ::core::ffi::c_int
-                    } else {
-                        -1
-                    }
+            }
+            EncodedAscii::Utf16Be => {
+                if ptr_read!(ptr) as ::core::ffi::c_int == 0 {
+                    ptr_read!(ptr.wrapping_offset(1)) as ::core::ffi::c_int
+                } else {
+                    -1
                 }
             }
         }
@@ -4565,7 +4530,43 @@ pub mod xmltok_impl_c {
         end: *const ::core::ffi::c_char,
         encoding: EncodedAscii,
     ) -> usize {
-        unsafe { end.offset_from(ptr) as usize / encoding.unit_size() as usize }
+        ptr_offset_from!(end, ptr) as usize / encoding.unit_size() as usize
+    }
+
+    #[inline]
+    fn check_pi_target_impl(
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        tok_ptr: *mut ::core::ffi::c_int,
+        encoding: EncodedAscii,
+    ) -> ::core::ffi::c_int {
+        let mut ptr = ptr;
+        let mut saw_uppercase = false;
+
+        ptr_write!(tok_ptr, crate::src::xmltok::XML_TOK_PI_1);
+        if encoded_span_len(ptr, end, encoding) != 3 {
+            return 1;
+        }
+
+        for (lowercase, uppercase) in [
+            (crate::ascii_h::ASCII_x_1, crate::ascii_h::ASCII_X_1),
+            (crate::ascii_h::ASCII_m_1, crate::ascii_h::ASCII_M_1),
+            (crate::ascii_h::ASCII_l_1, crate::ascii_h::ASCII_L_1),
+        ] {
+            match encoded_ascii_at(ptr, encoding) {
+                c if c == lowercase => {}
+                c if c == uppercase => saw_uppercase = true,
+                _ => return 1,
+            }
+            ptr = ptr.wrapping_offset(encoding.unit_size());
+        }
+
+        if saw_uppercase {
+            0
+        } else {
+            ptr_write!(tok_ptr, crate::src::xmltok::XML_TOK_XML_DECL_1);
+            1
+        }
     }
 
     #[inline]
@@ -5080,65 +5081,14 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    pub extern "C" fn little2_checkPiTarget(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        tokPtr: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            return 1 as ::core::ffi::c_int;
-        }
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
+        let _ = enc;
+        check_pi_target_impl(ptr, end, tokPtr, EncodedAscii::Utf16Le)
     }
 
     pub unsafe extern "C" fn little2_scanPi(
@@ -9415,65 +9365,14 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    pub extern "C" fn big2_checkPiTarget(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        tokPtr: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            return 1 as ::core::ffi::c_int;
-        }
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
+        let _ = enc;
+        check_pi_target_impl(ptr, end, tokPtr, EncodedAscii::Utf16Be)
     }
 
     pub unsafe extern "C" fn big2_scanPi(
@@ -13658,12 +13557,14 @@ pub mod xmltok_ns_c {
     fn init_scan_encoding_table(
         namespace_aware: bool,
     ) -> *const *const crate::src::xmltok::ENCODING {
-        unsafe {
-            if namespace_aware {
-                &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING
-            } else {
-                &raw const encodings as *const *const crate::src::xmltok::ENCODING
-            }
+        if namespace_aware {
+            unsafe_expr!(
+                ::core::ptr::addr_of!(encodingsNS).cast::<*const crate::src::xmltok::ENCODING>()
+            )
+        } else {
+            unsafe_expr!(
+                ::core::ptr::addr_of!(encodings).cast::<*const crate::src::xmltok::ENCODING>()
+            )
         }
     }
 
