@@ -2990,8 +2990,44 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
     (*parser).m_paramEntityParsing = oldParamEntityParsing;
     (*parser).m_prologState.inEntityValue = oldInEntityValue;
     if !context.is_null() {
-        if dtdCopy(oldParser, (*parser).m_dtd, oldDtd, parser) == 0
-            || setContext(parser, context) == 0
+        let context_cstr = ::std::ffi::CStr::from_ptr(context);
+        let raw_parser = parser;
+        let raw_dtd = (*parser).m_dtd;
+        if dtdCopy(oldParser, raw_dtd, oldDtd, parser) == 0
+            || setContext(
+                &mut *raw_parser,
+                &mut *raw_dtd,
+                context_cstr,
+                |table, name, create_size| lookup(raw_parser, table, name, create_size),
+                |entity| {
+                    if !entity.is_null() {
+                        (*entity).open = crate::expat_h::XML_TRUE;
+                    }
+                },
+                |prefix, temp_start, pool| {
+                    if (*prefix).name == temp_start as *const crate::expat_external_h::XML_Char {
+                        let prefix_name_len = ::std::ffi::CStr::from_ptr((*prefix).name)
+                            .to_bytes_with_nul()
+                            .len();
+                        (*prefix).name = poolCopyString(
+                            pool,
+                            ::core::slice::from_raw_parts((*prefix).name, prefix_name_len),
+                        );
+                        !(*prefix).name.is_null()
+                    } else {
+                        true
+                    }
+                },
+                |prefix, uri, bindings| {
+                    addBinding(
+                        raw_parser,
+                        prefix,
+                        ::core::ptr::null::<ATTRIBUTE_ID>(),
+                        uri,
+                        bindings,
+                    )
+                },
+            ) == 0
         {
             XML_ParserFree_ffi(parser);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
@@ -3948,7 +3984,44 @@ pub unsafe extern "C" fn XML_Parse_ffi(
                     );
                     (*parser).m_hash_secret_salt = ENTROPY_DEBUG("arc4random_buf", entropy);
                 }
-                if (*parser).m_ns != 0 && setContext(parser, implicitContext.as_ptr()) == 0 {
+                if (*parser).m_ns != 0
+                    && setContext(
+                        &mut *parser,
+                        &mut *(*parser).m_dtd,
+                        ::std::ffi::CStr::from_ptr(implicitContext.as_ptr()),
+                        |table, name, create_size| lookup(parser, table, name, create_size),
+                        |entity| {
+                            if !entity.is_null() {
+                                (*entity).open = crate::expat_h::XML_TRUE;
+                            }
+                        },
+                        |prefix, temp_start, pool| {
+                            if (*prefix).name
+                                == temp_start as *const crate::expat_external_h::XML_Char
+                            {
+                                let prefix_name_len = ::std::ffi::CStr::from_ptr((*prefix).name)
+                                    .to_bytes_with_nul()
+                                    .len();
+                                (*prefix).name = poolCopyString(
+                                    pool,
+                                    ::core::slice::from_raw_parts((*prefix).name, prefix_name_len),
+                                );
+                                !(*prefix).name.is_null()
+                            } else {
+                                true
+                            }
+                        },
+                        |prefix, uri, bindings| {
+                            addBinding(
+                                parser,
+                                prefix,
+                                ::core::ptr::null::<ATTRIBUTE_ID>(),
+                                uri,
+                                bindings,
+                            )
+                        },
+                    ) == 0
+                {
                     (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                     return crate::expat_h::XML_STATUS_ERROR;
                 }
@@ -4022,7 +4095,44 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
                     );
                     (*parser).m_hash_secret_salt = ENTROPY_DEBUG("arc4random_buf", entropy);
                 }
-                if (*parser).m_ns != 0 && setContext(parser, implicitContext.as_ptr()) == 0 {
+                if (*parser).m_ns != 0
+                    && setContext(
+                        &mut *parser,
+                        &mut *(*parser).m_dtd,
+                        ::std::ffi::CStr::from_ptr(implicitContext.as_ptr()),
+                        |table, name, create_size| lookup(parser, table, name, create_size),
+                        |entity| {
+                            if !entity.is_null() {
+                                (*entity).open = crate::expat_h::XML_TRUE;
+                            }
+                        },
+                        |prefix, temp_start, pool| {
+                            if (*prefix).name
+                                == temp_start as *const crate::expat_external_h::XML_Char
+                            {
+                                let prefix_name_len = ::std::ffi::CStr::from_ptr((*prefix).name)
+                                    .to_bytes_with_nul()
+                                    .len();
+                                (*prefix).name = poolCopyString(
+                                    pool,
+                                    ::core::slice::from_raw_parts((*prefix).name, prefix_name_len),
+                                );
+                                !(*prefix).name.is_null()
+                            } else {
+                                true
+                            }
+                        },
+                        |prefix, uri, bindings| {
+                            addBinding(
+                                parser,
+                                prefix,
+                                ::core::ptr::null::<ATTRIBUTE_ID>(),
+                                uri,
+                                bindings,
+                            )
+                        },
+                    ) == 0
+                {
                     (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                     return crate::expat_h::XML_STATUS_ERROR;
                 }
@@ -12110,166 +12220,108 @@ fn finish_element_type_prefix(dtd: &mut DTD, element_type: &mut ELEMENT_TYPE, pr
     element_type.prefix = prefix;
 }
 
-unsafe extern "C" fn setContext(
-    mut parser: crate::expat_h::XML_Parser,
-    mut context: *const crate::expat_external_h::XML_Char,
+fn setContext(
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
+    context: &::std::ffi::CStr,
+    mut lookup_entry: impl FnMut(&mut HASH_TABLE, KEY, crate::__stddef_size_t_h::size_t) -> *mut NAMED,
+    mut mark_entity_open: impl FnMut(*mut ENTITY),
+    mut copy_prefix_name_if_needed: impl FnMut(
+        *mut PREFIX,
+        *mut crate::expat_external_h::XML_Char,
+        &mut STRING_POOL,
+    ) -> bool,
+    mut add_inherited_binding: impl FnMut(
+        *mut PREFIX,
+        *const crate::expat_external_h::XML_Char,
+        &mut *mut BINDING,
+    ) -> crate::expat_h::XML_Error,
 ) -> crate::expat_h::XML_Bool {
-    if context.is_null() {
-        return crate::expat_h::XML_FALSE;
+    fn xml_char(byte: u8) -> crate::expat_external_h::XML_Char {
+        byte as crate::expat_external_h::XML_Char
     }
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut s: *const crate::expat_external_h::XML_Char = context;
-    while *context as ::core::ffi::c_int != '\0' as i32 {
-        if *s as ::core::ffi::c_int == 0xc as ::core::ffi::c_int
-            || *s as ::core::ffi::c_int == '\0' as i32
-        {
-            let mut e: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-            if if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh76 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh76 = '\0' as i32 as crate::expat_external_h::XML_Char;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return crate::expat_h::XML_FALSE;
+
+    fn pool_push(pool: &mut STRING_POOL, byte: u8) -> bool {
+        poolGrow(pool, Some(xml_char(byte))) != 0
+    }
+
+    let bytes = context.to_bytes_with_nul();
+    let mut context_index = 0usize;
+    let mut scan_index = 0usize;
+    while bytes[context_index] != b'\0' {
+        match bytes[scan_index] {
+            b'\x0c' | b'\0' => {
+                if !pool_push(&mut parser.m_tempPool, b'\0') {
+                    return crate::expat_h::XML_FALSE;
+                }
+                let entity = lookup_entry(
+                    &mut dtd.generalEntities,
+                    parser.m_tempPool.start as KEY,
+                    0 as crate::__stddef_size_t_h::size_t,
+                ) as *mut ENTITY;
+                mark_entity_open(entity);
+                if bytes[scan_index] != b'\0' {
+                    scan_index += 1;
+                }
+                context_index = scan_index;
+                parser.m_tempPool.ptr = parser.m_tempPool.start;
             }
-            e = lookup(
-                parser,
-                &raw mut (*dtd).generalEntities,
-                (*parser).m_tempPool.start as KEY,
-                0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut ENTITY;
-            if !e.is_null() {
-                (*e).open = crate::expat_h::XML_TRUE;
-            }
-            if *s as ::core::ffi::c_int != '\0' as i32 {
-                s = s.offset(1);
-            }
-            context = s;
-            (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-        } else if *s as ::core::ffi::c_int == 0x3d as ::core::ffi::c_int {
-            let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
-            if (*parser)
-                .m_tempPool
-                .ptr
-                .offset_from((*parser).m_tempPool.start) as ::core::ffi::c_long
-                == 0 as ::core::ffi::c_long
-            {
-                prefix = &raw mut (*dtd).defaultPrefix;
-            } else {
-                if if (*parser).m_tempPool.ptr
-                    == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool, None) == 0
-                {
-                    0 as ::core::ffi::c_int
+            b'=' => {
+                let prefix = if parser.m_tempPool.ptr == parser.m_tempPool.start {
+                    &mut dtd.defaultPrefix as *mut PREFIX
                 } else {
-                    let c2rust_fresh77 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh77 = '\0' as i32 as crate::expat_external_h::XML_Char;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return crate::expat_h::XML_FALSE;
-                }
-                prefix = lookup(
-                    parser,
-                    &raw mut (*dtd).prefixes,
-                    (*parser).m_tempPool.start as KEY,
-                    ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
-                ) as *mut PREFIX;
-                if prefix.is_null() {
-                    return crate::expat_h::XML_FALSE;
-                }
-                if (*prefix).name
-                    == (*parser).m_tempPool.start as *const crate::expat_external_h::XML_Char
-                {
-                    let prefix_name_len = ::std::ffi::CStr::from_ptr((*prefix).name)
-                        .to_bytes_with_nul()
-                        .len();
-                    (*prefix).name = poolCopyString(
-                        &mut (*dtd).pool,
-                        ::core::slice::from_raw_parts((*prefix).name, prefix_name_len),
-                    );
-                    if (*prefix).name.is_null() {
+                    if !pool_push(&mut parser.m_tempPool, b'\0') {
                         return crate::expat_h::XML_FALSE;
                     }
+                    let prefix = lookup_entry(
+                        &mut dtd.prefixes,
+                        parser.m_tempPool.start as KEY,
+                        ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
+                    ) as *mut PREFIX;
+                    if prefix.is_null() {
+                        return crate::expat_h::XML_FALSE;
+                    }
+                    if !copy_prefix_name_if_needed(prefix, parser.m_tempPool.start, &mut dtd.pool) {
+                        return crate::expat_h::XML_FALSE;
+                    }
+                    parser.m_tempPool.ptr = parser.m_tempPool.start;
+                    prefix
+                };
+
+                context_index = scan_index + 1;
+                while bytes[context_index] != b'\x0c' && bytes[context_index] != b'\0' {
+                    if !pool_push(&mut parser.m_tempPool, bytes[context_index]) {
+                        return crate::expat_h::XML_FALSE;
+                    }
+                    context_index += 1;
                 }
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-            }
-            context = s.offset(1 as ::core::ffi::c_int as isize);
-            while *context as ::core::ffi::c_int != 0xc as ::core::ffi::c_int
-                && *context as ::core::ffi::c_int != '\0' as i32
-            {
-                if if (*parser).m_tempPool.ptr
-                    == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool, None) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh78 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh78 = *context;
-                    1 as ::core::ffi::c_int
-                } == 0
+                if !pool_push(&mut parser.m_tempPool, b'\0') {
+                    return crate::expat_h::XML_FALSE;
+                }
+                if add_inherited_binding(
+                    prefix,
+                    parser.m_tempPool.start,
+                    &mut parser.m_inheritedBindings,
+                ) as ::core::ffi::c_uint
+                    != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     return crate::expat_h::XML_FALSE;
                 }
-                context = context.offset(1);
+                parser.m_tempPool.ptr = parser.m_tempPool.start;
+                if bytes[context_index] != b'\0' {
+                    context_index += 1;
+                }
+                scan_index = context_index;
             }
-            if if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh79 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh79 = '\0' as i32 as crate::expat_external_h::XML_Char;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return crate::expat_h::XML_FALSE;
+            byte => {
+                if !pool_push(&mut parser.m_tempPool, byte) {
+                    return crate::expat_h::XML_FALSE;
+                }
+                scan_index += 1;
             }
-            if addBinding(
-                parser,
-                prefix,
-                ::core::ptr::null::<ATTRIBUTE_ID>(),
-                (*parser).m_tempPool.start,
-                &raw mut (*parser).m_inheritedBindings,
-            ) as ::core::ffi::c_uint
-                != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                return crate::expat_h::XML_FALSE;
-            }
-            (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-            if *context as ::core::ffi::c_int != '\0' as i32 {
-                context = context.offset(1);
-            }
-            s = context;
-        } else {
-            if if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh80 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh80 = *s;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return crate::expat_h::XML_FALSE;
-            }
-            s = s.offset(1);
         }
     }
-    return crate::expat_h::XML_TRUE;
+    crate::expat_h::XML_TRUE
 }
 
 fn normalizePublicId(public_id: &mut [crate::expat_external_h::XML_Char]) {
