@@ -7517,73 +7517,78 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
 ) -> ::core::ffi::c_int {
     XML_SetHashSalt(parser, hash_salt)
 }
-pub unsafe extern "C" fn XML_Parse(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut len: ::core::ffi::c_int,
+unsafe fn XML_Parse(
+    parser: &mut XML_ParserStruct,
+    input: &[u8],
     mut isFinal: ::core::ffi::c_int,
 ) -> crate::expat_h::XML_Status {
-    if parser.is_null()
-        || len < 0 as ::core::ffi::c_int
-        || s.is_null() && len != 0 as ::core::ffi::c_int
-    {
-        if !parser.is_null() {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
-        }
+    let Ok(len) = ::core::ffi::c_int::try_from(input.len()) else {
+        parser.m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
         return crate::expat_h::XML_STATUS_ERROR;
-    }
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+    };
+    let parser_ptr = std::ptr::from_mut(parser);
+    match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
         3 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         2 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         0 => {
-            if (*parser).m_parentParser.is_none() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+            if parser.m_parentParser.is_none() && startParsing(parser_ptr) == 0 {
+                parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
         }
         _ => {}
     }
-    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    let mut buff: *mut ::core::ffi::c_void = XML_GetBuffer(parser, len);
-    if buff.is_null() {
+    parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+    if XML_GetBuffer(parser_ptr, len).is_null() {
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    if len > 0 as ::core::ffi::c_int {
-        '_c2rust_label: {
-            if !s.is_null() {
-            } else {
-                crate::stdlib::__assert_fail(
-                    b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    2445 as ::core::ffi::c_uint,
-                    b"enum XML_Status XML_Parse(XML_Parser, const char *, int, int)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-        };
-        crate::stdlib::memcpy(
-            buff,
-            s as *const ::core::ffi::c_void,
-            len as crate::__stddef_size_t_h::size_t,
-        );
-    }
-    return XML_ParseBuffer(parser, len, isFinal);
+    let Some(end) = parser.m_bufferEnd.checked_add(input.len()) else {
+        parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
+    let Some(destination) = parser
+        .m_buffer
+        .bytes
+        .as_mut()
+        .and_then(|buffer| buffer.get_mut(parser.m_bufferEnd..end))
+    else {
+        parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
+    destination.copy_from_slice(input);
+    XML_ParseBuffer(parser_ptr, len, isFinal)
 }
-#[export_name = "XML_Parse"]
 
+#[export_name = "XML_Parse"]
 pub unsafe extern "C" fn XML_Parse_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut len: ::core::ffi::c_int,
-    mut isFinal: ::core::ffi::c_int,
+    parser: crate::expat_h::XML_Parser,
+    s: *const ::core::ffi::c_char,
+    len: ::core::ffi::c_int,
+    isFinal: ::core::ffi::c_int,
 ) -> crate::expat_h::XML_Status {
-    XML_Parse(parser, s, len, isFinal)
+    let Some(parser) = (unsafe { parser.as_mut() }) else {
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
+    let Ok(len) = usize::try_from(len) else {
+        parser.m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
+    if len > isize::MAX as usize || (len != 0 && s.is_null()) {
+        parser.m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+        return crate::expat_h::XML_STATUS_ERROR;
+    }
+    let input = if len == 0 {
+        &[]
+    } else {
+        unsafe { ::core::slice::from_raw_parts(s.cast::<u8>(), len) }
+    };
+    unsafe { XML_Parse(parser, input, isFinal) }
 }
 /// Processes the caller-owned portion of the parser input buffer.
 ///
