@@ -11458,8 +11458,11 @@ pub unsafe extern "C" fn XML_ErrorString_ffi(
 ) -> *const crate::expat_external_h::XML_LChar {
     XML_ErrorString(code)
 }
+const EXPAT_VERSION: [crate::expat_external_h::XML_LChar; 12] =
+    [101, 120, 112, 97, 116, 95, 50, 46, 55, 46, 52, 0];
+
 pub unsafe extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::XML_LChar {
-    return b"expat_2.7.4\0".as_ptr() as *const crate::expat_external_h::XML_LChar;
+    EXPAT_VERSION.as_ptr()
 }
 #[export_name = "XML_ExpatVersion"]
 
