@@ -9243,43 +9243,6 @@ pub unsafe extern "C" fn XML_GetIdAttributeIndex_ffi(
     }
     XML_GetIdAttributeIndex(Some(id_attribute_index_state(&*parser)))
 }
-/// Updates callback registrations for a live parser held exclusively by the
-/// caller.  The parser state still carries raw-pointer-backed state, so this
-/// remains an unsafe state-carrying implementation boundary.
-pub unsafe fn XML_SetElementHandler(
-    parser: &mut XML_ParserStruct,
-    mut start: crate::expat_h::XML_StartElementHandler,
-    mut end: crate::expat_h::XML_EndElementHandler,
-) {
-    let parser_key = parser as *mut XML_ParserStruct as usize;
-    let start_registration = start_element_handler_registration(start);
-    parser.m_startElementHandler = start_registration.callback.is_some();
-    let mut handlers = START_ELEMENT_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    match start_registration.callback {
-        Some(callback) => {
-            handlers.insert(parser_key, callback);
-        }
-        None => {
-            handlers.remove(&parser_key);
-        }
-    }
-    parser.m_endElementHandler = end.is_some();
-    let mut handlers = END_ELEMENT_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    match end {
-        Some(callback) => {
-            handlers.insert(parser_key, std::sync::Arc::new(callback));
-        }
-        None => {
-            handlers.remove(&parser_key);
-        }
-    }
-}
 #[export_name = "XML_SetElementHandler"]
 
 pub unsafe extern "C" fn XML_SetElementHandler_ffi(
@@ -9287,10 +9250,13 @@ pub unsafe extern "C" fn XML_SetElementHandler_ffi(
     mut start: crate::expat_h::XML_StartElementHandler,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
-    let Some(parser) = parser.as_mut() else {
+    if parser.is_null() || !parser.is_aligned() {
         return;
-    };
-    XML_SetElementHandler(parser, start, end)
+    }
+    let parser_address = parser.addr();
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_start_element_handler(parser, parser_address, start);
+    set_end_element_handler(parser, parser_address, end);
 }
 fn set_start_element_handler<Callback>(
     parser: &mut XML_ParserStruct,
@@ -9327,11 +9293,14 @@ pub unsafe extern "C" fn XML_SetStartElementHandler_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_start_element_handler(parser, parser_address, start)
 }
-fn set_end_element_handler(
+fn set_end_element_handler<Callback>(
     parser: &mut XML_ParserStruct,
     parser_address: usize,
-    registration: EndElementHandlerRegistration,
-) {
+    handler: Option<Callback>,
+) where
+    Callback: EndElementCallback + 'static,
+{
+    let registration = end_element_handler_registration(handler);
     parser.m_endElementHandler = registration.callback.is_some();
     let mut handlers = END_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -9356,9 +9325,8 @@ pub unsafe extern "C" fn XML_SetEndElementHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let registration = end_element_handler_registration(end);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    set_end_element_handler(parser, parser_address, registration)
+    set_end_element_handler(parser, parser_address, end)
 }
 struct CharacterDataHandlerRegistration {
     callback: Option<std::sync::Arc<CharacterDataCallbackAdapter>>,
