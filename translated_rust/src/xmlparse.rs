@@ -1340,6 +1340,17 @@ pub struct block {
 }
 
 impl STRING_POOL {
+    fn new(parser: crate::expat_h::XML_Parser) -> Self {
+        Self {
+            blocks: ::core::ptr::null_mut::<BLOCK>(),
+            freeBlocks: ::core::ptr::null_mut::<BLOCK>(),
+            start: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
+            ptr: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
+            end: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+            parser,
+        }
+    }
+
     fn push_into_writable_slot(&mut self, c: crate::expat_external_h::XML_Char) {
         let dest = self.ptr;
         self.ptr = self.ptr.wrapping_add(1);
@@ -1628,6 +1639,16 @@ pub struct HASH_TABLE {
 }
 
 impl HASH_TABLE {
+    fn new(parser: crate::expat_h::XML_Parser) -> Self {
+        Self {
+            v: ::core::ptr::null_mut::<*mut NAMED>(),
+            power: 0 as ::core::ffi::c_uchar,
+            size: 0 as crate::__stddef_size_t_h::size_t,
+            used: 0 as crate::__stddef_size_t_h::size_t,
+            parser,
+        }
+    }
+
     fn slots_mut(&mut self) -> &mut [*mut NAMED] {
         if self.v.is_null() || self.size == 0 {
             &mut []
@@ -1690,6 +1711,49 @@ pub struct ELEMENT_TYPE {
 }
 
 impl DTD {
+    fn new(parser: crate::expat_h::XML_Parser) -> Self {
+        Self {
+            generalEntities: HASH_TABLE::new(parser),
+            elementTypes: HASH_TABLE::new(parser),
+            attributeIds: HASH_TABLE::new(parser),
+            prefixes: HASH_TABLE::new(parser),
+            pool: STRING_POOL::new(parser),
+            entityValuePool: STRING_POOL::new(parser),
+            keepProcessing: crate::expat_h::XML_TRUE,
+            hasParamEntityRefs: crate::expat_h::XML_FALSE,
+            standalone: crate::expat_h::XML_FALSE,
+            paramEntityRead: crate::expat_h::XML_FALSE,
+            paramEntities: HASH_TABLE::new(parser),
+            defaultPrefix: PREFIX {
+                name: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                binding: ::core::ptr::null_mut::<BINDING>(),
+            },
+            in_eldecl: crate::expat_h::XML_FALSE,
+            scaffold: ::core::ptr::null_mut::<CONTENT_SCAFFOLD>(),
+            contentStringLen: 0 as ::core::ffi::c_uint,
+            scaffSize: 0 as ::core::ffi::c_uint,
+            scaffCount: 0 as ::core::ffi::c_uint,
+            scaffLevel: 0 as ::core::ffi::c_int,
+            scaffIndex: ::core::ptr::null_mut::<::core::ffi::c_int>(),
+        }
+    }
+
+    fn allocate_for_parser(parser: &mut XML_ParserStruct) -> *mut DTD {
+        let parser_ptr: crate::expat_h::XML_Parser = parser;
+        unsafe {
+            let p = expat_malloc(
+                parser_ptr,
+                ::core::mem::size_of::<DTD>() as crate::__stddef_size_t_h::size_t,
+                7500 as ::core::ffi::c_int,
+            ) as *mut DTD;
+            if p.is_null() {
+                return p;
+            }
+            ::core::ptr::write(p, DTD::new(parser_ptr));
+            p
+        }
+    }
+
     fn element_types_mut(&mut self) -> impl Iterator<Item = &mut ELEMENT_TYPE> + '_ {
         self.elementTypes.entries_mut().map(|entry| {
             // The elementTypes table stores only ELEMENT_TYPE allocations, and each slot is yielded once.
@@ -2878,7 +2942,7 @@ fn parserCreate(
         if !dtd.is_null() {
             (*parser).m_dtd = dtd;
         } else {
-            (*parser).m_dtd = dtdCreate(parser);
+            (*parser).m_dtd = dtdCreate(&mut *parser);
             if (*parser).m_dtd.is_null() {
                 expat_free(
                     parser,
@@ -11940,36 +12004,8 @@ fn normalize_public_id(public_id: &mut [crate::expat_external_h::XML_Char]) {
     }
 }
 
-unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut DTD {
-    let mut p: *mut DTD = expat_malloc(
-        parser,
-        ::core::mem::size_of::<DTD>() as crate::__stddef_size_t_h::size_t,
-        7500 as ::core::ffi::c_int,
-    ) as *mut DTD;
-    if p.is_null() {
-        return p;
-    }
-    poolInit(&mut (*p).pool, parser);
-    poolInit(&mut (*p).entityValuePool, parser);
-    hashTableInit(&mut (*p).generalEntities, parser);
-    hashTableInit(&mut (*p).elementTypes, parser);
-    hashTableInit(&mut (*p).attributeIds, parser);
-    hashTableInit(&mut (*p).prefixes, parser);
-    (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableInit(&mut (*p).paramEntities, parser);
-    (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
-    (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    (*p).scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
-    (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-    (*p).scaffLevel = 0 as ::core::ffi::c_int;
-    (*p).scaffSize = 0 as ::core::ffi::c_uint;
-    (*p).scaffCount = 0 as ::core::ffi::c_uint;
-    (*p).contentStringLen = 0 as ::core::ffi::c_uint;
-    (*p).keepProcessing = crate::expat_h::XML_TRUE;
-    (*p).hasParamEntityRefs = crate::expat_h::XML_FALSE;
-    (*p).standalone = crate::expat_h::XML_FALSE;
-    return p;
+fn dtdCreate(parser: &mut XML_ParserStruct) -> *mut DTD {
+    DTD::allocate_for_parser(parser)
 }
 
 fn dtdReset(p: &mut DTD, parser: crate::expat_h::XML_Parser) {
@@ -12621,20 +12657,11 @@ fn hashTableDestroy(table: &mut HASH_TABLE) {
 }
 
 fn hashTableInit(p: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
-    p.power = 0 as ::core::ffi::c_uchar;
-    p.size = 0 as crate::__stddef_size_t_h::size_t;
-    p.used = 0 as crate::__stddef_size_t_h::size_t;
-    p.v = ::core::ptr::null_mut::<*mut NAMED>();
-    p.parser = parser;
+    *p = HASH_TABLE::new(parser);
 }
 
 fn poolInit(pool: &mut STRING_POOL, parser: crate::expat_h::XML_Parser) {
-    pool.blocks = ::core::ptr::null_mut::<BLOCK>();
-    pool.freeBlocks = ::core::ptr::null_mut::<BLOCK>();
-    pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    pool.end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    pool.parser = parser;
+    *pool = STRING_POOL::new(parser);
 }
 
 enum PoolBlockAction<'a> {
