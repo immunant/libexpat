@@ -10870,28 +10870,28 @@ pub mod xmltok_ns_c {
             nextTokPtr,
         );
     }
-    pub unsafe extern "C" fn XmlInitEncoding(
-        mut p: *mut crate::src::xmltok::INIT_ENCODING,
-        mut encPtr: *mut *const crate::src::xmltok::ENCODING,
-        mut name: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut i: ::core::ffi::c_int = if name.is_null() {
-            NO_ENC as ::core::ffi::c_int
+    /// Initializes the parser's non-namespace encoding state from an
+    /// optional, already-bounded protocol encoding name.
+    pub(crate) fn init_encoding(
+        initial: &mut crate::src::xmltok::INIT_ENCODING,
+        name: Option<&[u8]>,
+    ) -> bool {
+        let i: ::core::ffi::c_int = if let Some(name) = name {
+            encoding_index(name)
         } else {
-            encoding_index(unsafe { core::ffi::CStr::from_ptr(name) }.to_bytes())
+            NO_ENC as ::core::ffi::c_int
         };
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return 0 as ::core::ffi::c_int;
+            return false;
         }
-        (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] =
+        initial.initEnc.isUtf16 = i as ::core::ffi::c_char;
+        initial.initEnc.scanners[crate::src::xmltok::XML_PROLOG_STATE as usize] =
             crate::src::xmltok::Scanner::InitProlog;
-        (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] =
+        initial.initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] =
             crate::src::xmltok::Scanner::InitContent;
-        (*p).initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
-        (*p).selected_encoding = None;
-        *encPtr = &raw mut (*p).initEnc;
-        return 1 as ::core::ffi::c_int;
+        initial.initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
+        initial.selected_encoding = None;
+        true
     }
     #[export_name = "XmlInitEncoding"]
 
@@ -10900,7 +10900,21 @@ pub mod xmltok_ns_c {
         mut encPtr: *mut *const crate::src::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        XmlInitEncoding(p, encPtr, name)
+        if p.is_null() || encPtr.is_null() || !p.is_aligned() || !encPtr.is_aligned() {
+            return 0;
+        }
+        let name = if name.is_null() {
+            None
+        } else {
+            Some(unsafe { core::ffi::CStr::from_ptr(name) }.to_bytes())
+        };
+        let initial = unsafe { &mut *p };
+        if init_encoding(initial, name) {
+            unsafe { *encPtr = &raw const initial.initEnc };
+            1
+        } else {
+            0
+        }
     }
     #[export_name = "XmlParseXmlDecl"]
 
@@ -12113,7 +12127,6 @@ pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf16InternalEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf16InternalEncodingNS;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
-pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS;
 pub use crate::xmltok_impl_c::inName;
 pub use crate::xmltok_impl_c::inName_0;

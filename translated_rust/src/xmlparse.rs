@@ -1149,7 +1149,6 @@ pub use crate::src::xmltok::encoding;
 pub use crate::src::xmltok::position;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
-pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS;
 pub use crate::src::xmltok::XML_Convert_Result;
 pub use crate::src::xmltok::XmlSizeOfUnknownEncoding;
@@ -12780,47 +12779,30 @@ fn ignore_section_token_and_account(
 unsafe extern "C" fn initializeEncoding(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
-    let mut s: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    s = (*parser)
-        .m_protocolEncodingName
-        .as_ref()
-        .map_or(::core::ptr::null(), |name| name.chars.as_ptr().cast());
-    let mut initialized_encoding = ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-    if if (*parser).m_ns as ::core::ffi::c_int != 0 {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS
-                as unsafe extern "C" fn(
-                    *mut crate::src::xmltok::INIT_ENCODING,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
+    let parser_state = &mut *parser;
+    let protocol_name = parser_state.m_protocolEncodingName.as_ref().map(|name| {
+        let bytes: &[u8] = bytemuck::cast_slice(name.chars.as_slice());
+        &bytes[..bytes.len().saturating_sub(1)]
+    });
+    let s = protocol_name.map_or(::core::ptr::null(), |name| name.as_ptr().cast());
+    let initialized = if parser_state.m_ns as ::core::ffi::c_int != 0 {
+        let mut initialized_encoding = ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+        crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS(
+            &raw mut parser_state.m_initEncoding,
+            &raw mut initialized_encoding,
+            s,
+        ) != 0
     } else {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlInitEncoding
-                as unsafe extern "C" fn(
-                    *mut crate::src::xmltok::INIT_ENCODING,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
+        crate::src::xmltok::xmltok_ns_c::init_encoding(
+            &mut parser_state.m_initEncoding,
+            protocol_name,
         )
-    }
-    .expect("non-null function pointer")(
-        &raw mut (*parser).m_initEncoding,
-        &raw mut initialized_encoding,
-        s,
-    ) != 0
-    {
-        (*parser).m_encoding = EncodingState::Initial;
+    };
+    if initialized {
+        parser_state.m_encoding = EncodingState::Initial;
         return crate::expat_h::XML_ERROR_NONE;
     }
-    return handleUnknownEncoding(
-        parser,
-        (*parser)
-            .m_protocolEncodingName
-            .as_ref()
-            .map_or(::core::ptr::null(), |name| name.chars.as_ptr()),
-    );
+    return handleUnknownEncoding(parser, s);
 }
 
 // Keeps the raw token window at the parser-dispatch boundary.  Everything
