@@ -409,6 +409,63 @@ pub mod xmltok_impl_c {
         }
     }
 
+    fn has_at_least_bytes(
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        len: usize,
+    ) -> bool {
+        let ptr = ptr as usize;
+        let end = end as usize;
+        end >= ptr && end - ptr >= len
+    }
+
+    fn update_position(
+        enc: *const crate::src::xmltok::ENCODING,
+        mut ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        pos: *mut crate::src::xmltok::POSITION,
+        unit: EncodingUnit,
+    ) {
+        let pos = unsafe { &mut *pos };
+        let min_bytes = unit.min_bytes();
+        while has_at_least_bytes(ptr, end, min_bytes as usize) {
+            match byte_type_at(enc, ptr, unit) {
+                5 => {
+                    ptr = ptr.wrapping_offset(2);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                6 => {
+                    ptr = ptr.wrapping_offset(3);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                7 => {
+                    ptr = ptr.wrapping_offset(4);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+                10 => {
+                    pos.columnNumber = 0 as crate::expat_external_h::XML_Size;
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(min_bytes);
+                }
+                9 => {
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
+                    ptr = ptr.wrapping_offset(min_bytes);
+                    if has_at_least_bytes(ptr, end, min_bytes as usize)
+                        && byte_type_at(enc, ptr, unit)
+                            == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
+                    {
+                        ptr = ptr.wrapping_offset(min_bytes);
+                    }
+                    pos.columnNumber = 0 as crate::expat_external_h::XML_Size;
+                }
+                _ => {
+                    ptr = ptr.wrapping_offset(min_bytes);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
+                }
+            }
+        }
+    }
+
     fn name_matches_ascii_unit(
         mut ptr1: *const ::core::ffi::c_char,
         end1: *const ::core::ffi::c_char,
@@ -4652,56 +4709,13 @@ pub mod xmltok_impl_c {
         skip_s(enc, ptr, EncodingUnit::Normal)
     }
 
-    pub unsafe extern "C" fn normal_updatePosition(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut pos: *mut crate::src::xmltok::POSITION,
+    pub extern "C" fn normal_updatePosition(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        pos: *mut crate::src::xmltok::POSITION,
     ) {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                10 => {
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                9 => {
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                        && (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                            == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    }
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
-                }
-                _ => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-            }
-        }
+        update_position(enc, ptr, end, pos, EncodingUnit::Normal);
     }
 
     pub unsafe extern "C" fn little2_scanComment(
@@ -9128,72 +9142,13 @@ pub mod xmltok_impl_c {
         skip_s(enc, ptr, EncodingUnit::Little2)
     }
 
-    pub unsafe extern "C" fn little2_updatePosition(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut pos: *mut crate::src::xmltok::POSITION,
+    pub extern "C" fn little2_updatePosition(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        pos: *mut crate::src::xmltok::POSITION,
     ) {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                10 => {
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                9 => {
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                        && (if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr as ::core::ffi::c_uchar as usize]
-                                as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(1 as ::core::ffi::c_int as isize),
-                                *ptr.offset(0 as ::core::ffi::c_int as isize),
-                            )
-                        }) == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    }
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-            }
-        }
+        update_position(enc, ptr, end, pos, EncodingUnit::Little2);
     }
 
     pub unsafe extern "C" fn big2_scanComment(
@@ -13684,74 +13639,13 @@ pub mod xmltok_impl_c {
         skip_s(enc, ptr, EncodingUnit::Big2)
     }
 
-    pub unsafe extern "C" fn big2_updatePosition(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut pos: *mut crate::src::xmltok::POSITION,
+    pub extern "C" fn big2_updatePosition(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        pos: *mut crate::src::xmltok::POSITION,
     ) {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                10 => {
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                9 => {
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                        && (if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(0 as ::core::ffi::c_int as isize),
-                                *ptr.offset(1 as ::core::ffi::c_int as isize),
-                            )
-                        }) == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    }
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-            }
-        }
+        update_position(enc, ptr, end, pos, EncodingUnit::Big2);
     }
     use crate::__stddef_size_t_h::size_t;
     use crate::ascii_h::ASCII_a_1;
