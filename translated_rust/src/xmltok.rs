@@ -12459,41 +12459,93 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
 ) {
     _INTERNAL_trim_to_complete_utf8_characters(from, fromLimRef)
 }
+/// Copies the largest UTF-8 prefix that fits in `output` without splitting a
+/// complete character.  This intentionally mirrors Expat's byte-oriented
+/// trailing-character trim: malformed bytes are copied unchanged, while an
+/// incomplete trailing lead sequence remains for the next conversion call.
+fn utf8_to_utf8_window(
+    input: &[u8],
+    output: &mut [::core::ffi::c_char],
+) -> (crate::src::xmltok::XML_Convert_Result, usize) {
+    let output_exhausted = input.len() > output.len();
+    let limited = &input[..input.len().min(output.len())];
+    let mut end = limited.len();
+    let mut walked = 0usize;
+
+    while end > 0 {
+        let previous = limited[end - 1];
+        let complete_width = match previous {
+            byte if byte & 0xf8 == 0xf0 => Some(4),
+            byte if byte & 0xf0 == 0xe0 => Some(3),
+            byte if byte & 0xe0 == 0xc0 => Some(2),
+            byte if byte & 0x80 == 0 => break,
+            _ => None,
+        };
+        if let Some(width) = complete_width {
+            if walked + 1 >= width {
+                end += width - 1;
+                break;
+            }
+            walked = 0;
+        }
+        end -= 1;
+        walked += 1;
+    }
+
+    output[..end]
+        .iter_mut()
+        .zip(&limited[..end])
+        .for_each(|(destination, &source)| *destination = source as ::core::ffi::c_char);
+
+    let result = if output_exhausted {
+        crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED
+    } else if end < limited.len() {
+        crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+    } else {
+        crate::src::xmltok::XML_CONVERT_COMPLETED
+    };
+    (result, end)
+}
+
+/// # Safety
+///
+/// `fromP`/`fromLim` and `toP`/`toLim` are bounded windows into readable and
+/// writable allocations respectively.  Empty windows may use null pointers;
+/// no slice is formed for either empty window.
 unsafe extern "C" fn utf8_toUtf8(
     _enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut input_incomplete: bool = crate::stdbool_h::false_0 != 0;
-    let mut output_exhausted: bool = crate::stdbool_h::false_0 != 0;
-    let bytesAvailable: crate::__stddef_ptrdiff_t_h::ptrdiff_t = fromLim.offset_from(*fromP);
-    let bytesStorable: crate::__stddef_ptrdiff_t_h::ptrdiff_t = toLim.offset_from(*toP);
-    if bytesAvailable > bytesStorable {
-        fromLim = (*fromP).offset(bytesStorable as isize);
-        output_exhausted = crate::stdbool_h::true_0 != 0;
-    }
-    let fromLimBefore: *const ::core::ffi::c_char = fromLim;
-    _INTERNAL_trim_to_complete_utf8_characters(*fromP, &raw mut fromLim);
-    if fromLim < fromLimBefore {
-        input_incomplete = crate::stdbool_h::true_0 != 0;
-    }
-    let bytesToCopy: crate::__stddef_ptrdiff_t_h::ptrdiff_t = fromLim.offset_from(*fromP);
-    crate::stdlib::memcpy(
-        *toP as *mut ::core::ffi::c_void,
-        *fromP as *const ::core::ffi::c_void,
-        bytesToCopy as crate::__stddef_size_t_h::size_t,
-    );
-    *fromP = (*fromP).offset(bytesToCopy as isize);
-    *toP = (*toP).offset(bytesToCopy as isize);
-    if output_exhausted {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    } else if input_incomplete {
-        return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+    let input_start = *fromP;
+    let input_len = if input_start == fromLim {
+        0
     } else {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
+        fromLim.offset_from(input_start) as usize
     };
+    if input_len == 0 {
+        return crate::src::xmltok::XML_CONVERT_COMPLETED;
+    }
+    let output_start = *toP;
+    let output_len = if output_start == toLim.cast_mut() {
+        0
+    } else {
+        toLim.offset_from(output_start) as usize
+    };
+    let input = core::slice::from_raw_parts(input_start.cast::<u8>(), input_len);
+    let output = if output_len == 0 {
+        &mut []
+    } else {
+        core::slice::from_raw_parts_mut(output_start, output_len)
+    };
+    let (result, copied) = utf8_to_utf8_window(input, output);
+    if copied != 0 {
+        *fromP = input_start.add(copied);
+        *toP = output_start.add(copied);
+    }
+    result
 }
 
 fn utf8_to_utf16(
