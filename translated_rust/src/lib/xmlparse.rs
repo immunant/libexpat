@@ -6409,24 +6409,23 @@ extern "C" fn prologInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut result: XML_Error = initializeEncoding(parser);
-        if result as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result;
-        }
-        (*parser).m_processor = Some(
-            prologProcessor
-                as extern "C" fn(
-                    XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> XML_Error,
-        );
-        return prologProcessor(parser, s, end, nextPtr);
+    let parser = ptr_mut(parser);
+    let parser_ptr = parser as *mut XML_ParserStruct;
+    let result = initializeEncoding(parser_ptr);
+    if result as ::core::ffi::c_uint != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return result;
     }
+    parser.m_processor = Some(
+        prologProcessor
+            as extern "C" fn(
+                XML_Parser,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> XML_Error,
+    );
+    prologProcessor(parser_ptr, s, end, nextPtr)
 }
 extern "C" fn externalParEntInitProcessor(
     mut parser: XML_Parser,
@@ -6434,37 +6433,36 @@ extern "C" fn externalParEntInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut result: XML_Error = initializeEncoding(parser);
-        if result as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result;
-        }
-        (*(*parser).m_dtd).paramEntityRead = XML_TRUE;
-        if (*parser).m_prologState.inEntityValue != 0 {
-            (*parser).m_processor = Some(
-                entityValueInitProcessor
-                    as extern "C" fn(
-                        XML_Parser,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> XML_Error,
-            );
-            return entityValueInitProcessor(parser, s, end, nextPtr);
-        } else {
-            (*parser).m_processor = Some(
-                externalParEntProcessor
-                    as extern "C" fn(
-                        XML_Parser,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> XML_Error,
-            );
-            return externalParEntProcessor(parser, s, end, nextPtr);
-        };
+    let parser = ptr_mut(parser);
+    let parser_ptr = parser as *mut XML_ParserStruct;
+    let result = initializeEncoding(parser_ptr);
+    if result as ::core::ffi::c_uint != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return result;
+    }
+    ptr_mut(parser.m_dtd).paramEntityRead = XML_TRUE;
+    if parser.m_prologState.inEntityValue != 0 {
+        parser.m_processor = Some(
+            entityValueInitProcessor
+                as extern "C" fn(
+                    XML_Parser,
+                    *const ::core::ffi::c_char,
+                    *const ::core::ffi::c_char,
+                    *mut *const ::core::ffi::c_char,
+                ) -> XML_Error,
+        );
+        entityValueInitProcessor(parser_ptr, s, end, nextPtr)
+    } else {
+        parser.m_processor = Some(
+            externalParEntProcessor
+                as extern "C" fn(
+                    XML_Parser,
+                    *const ::core::ffi::c_char,
+                    *const ::core::ffi::c_char,
+                    *mut *const ::core::ffi::c_char,
+                ) -> XML_Error,
+        );
+        externalParEntProcessor(parser_ptr, s, end, nextPtr)
     }
 }
 extern "C" fn entityValueInitProcessor(
