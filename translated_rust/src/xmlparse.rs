@@ -2837,6 +2837,21 @@ impl UnknownEncodingCallback
     }
 }
 
+/// The callback-owned part of a successful unknown-encoding result.  This
+/// preserves the `data`/`release` pairing without embedding the raw ABI DTO
+/// in parser state.
+struct UnknownEncodingReleaseRecord {
+    release: Option<Box<dyn FnOnce() + Send>>,
+}
+
+impl UnknownEncodingReleaseRecord {
+    fn invoke(mut self) {
+        if let Some(release) = self.release.take() {
+            release();
+        }
+    }
+}
+
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an unknown-encoding callback is installed.
 static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
@@ -2871,6 +2886,36 @@ where
 static UNKNOWN_ENCODING_HANDLER_ARGS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingHandlerRegistration>>,
 > = std::sync::OnceLock::new();
+
+// `XML_Encoding` is an ABI DTO supplied by the foreign unknown-encoding
+// callback.  Its `data` and `release` members must remain paired until reset
+// or destruction, but retaining that DTO in `XML_ParserStruct` would make
+// every safe parser borrow reach raw ABI fields.  Keep it at this callback
+// boundary, keyed by the stable address of the parser-owned tokenizer slot.
+static UNKNOWN_ENCODING_INFOS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingReleaseRecord>>,
+> = std::sync::OnceLock::new();
+
+fn register_unknown_encoding_info(
+    storage_key: usize,
+    info: UnknownEncodingReleaseRecord,
+) {
+    UNKNOWN_ENCODING_INFOS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(storage_key, info);
+}
+
+fn take_unknown_encoding_info(
+    storage_key: usize,
+) -> Option<UnknownEncodingReleaseRecord> {
+    UNKNOWN_ENCODING_INFOS.get().and_then(|infos| {
+        infos.lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&storage_key)
+    })
+}
 
 trait ExternalEntityRefCallback: std::any::Any + Send + Sync {}
 
@@ -4347,15 +4392,30 @@ struct UnknownEncodingMemory {
     // Expat still observes the allocation and matching free through its
     // configured allocator, even though Rust owns the typed tokenizer bytes.
     backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
-    info: Option<crate::expat_h::XML_Encoding>,
 }
 
 impl UnknownEncodingMemory {
     /// The callback result is retained only after its initialized tokenizer
     /// state and callback record have both been installed.
     fn initialized_encoding(&self) -> Option<&crate::src::xmltok::unknown_encoding> {
-        self.info.as_ref()?;
         self.storage.first()
+    }
+}
+
+/// Releases the parser-owned tokenizer slot and its paired callback-owned ABI
+/// record.  The slot address is stable for the lifetime of this one-element
+/// vector and is used only as an opaque registry key.
+fn release_unknown_encoding_memory(
+    memory: &mut UnknownEncodingMemory,
+    source_line: ::core::ffi::c_int,
+) {
+    let storage_key = memory.storage.as_ptr().addr();
+    crate::src::xmltok::unregister_unknown_encoding_converter(storage_key);
+    if let Some(mut backing) = memory.backing.take() {
+        backing(source_line);
+    }
+    if let Some(info) = take_unknown_encoding_info(storage_key) {
+        info.invoke();
     }
 }
 
@@ -8240,19 +8300,7 @@ fn parser_reset_impl(
         reset.prepare()
     };
     if let Some(mut unknown_encoding_mem) = unknown_encoding_mem {
-        crate::src::xmltok::unregister_unknown_encoding_converter(
-            unknown_encoding_mem.storage.as_ptr() as usize,
-        );
-        if let Some(mut backing) = unknown_encoding_mem.backing.take() {
-            backing(1686 as ::core::ffi::c_int);
-        }
-        if let Some(info) = unknown_encoding_mem.info.take() {
-            // The handler registered this paired release callback and opaque
-            // data token when it initialized the encoding.  Use the common
-            // release boundary so reset and destruction return that token in
-            // exactly the same way.
-            release_unknown_encoding_info(&info);
-        }
+        release_unknown_encoding_memory(&mut unknown_encoding_mem, 1686 as ::core::ffi::c_int);
     }
     ParserResetState { parser }.finish();
     if let Some(protocol_encoding_name) = protocol_encoding_name {
@@ -9023,15 +9071,7 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
     }
     parser.m_nsAtts.entries = Vec::new();
     if let Some(mut unknown_encoding_mem) = parser.m_unknownEncodingMem.take() {
-        crate::src::xmltok::unregister_unknown_encoding_converter(
-            unknown_encoding_mem.storage.as_ptr() as usize,
-        );
-        if let Some(mut backing) = unknown_encoding_mem.backing.take() {
-            backing(2013 as ::core::ffi::c_int);
-        }
-        if let Some(info) = unknown_encoding_mem.info.take() {
-            release_unknown_encoding_info(&info);
-        }
+        release_unknown_encoding_memory(&mut unknown_encoding_mem, 2013 as ::core::ffi::c_int);
     }
     release_parser_storage(parser, 2016 as ::core::ffi::c_int);
 }
@@ -17601,9 +17641,16 @@ fn call_unknown_encoding_handler(
 /// Releases foreign data returned by an unknown-encoding callback.  The data
 /// token stays opaque to Rust and is only passed back to its paired release
 /// callback.
-fn release_unknown_encoding_info(info: &crate::expat_h::XML_Encoding) {
-    if let Some(release) = info.release {
-        unsafe { release(info.data) };
+fn release_unknown_encoding_info(
+    info: &crate::expat_h::XML_Encoding,
+) -> UnknownEncodingReleaseRecord {
+    UnknownEncodingReleaseRecord {
+        release: info.release.map(|callback| {
+            let context = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
+            Box::new(move || unsafe {
+                callback(context.load(std::sync::atomic::Ordering::Relaxed));
+            }) as Box<dyn FnOnce() + Send>
+        }),
     }
 }
 
@@ -17700,13 +17747,13 @@ fn handle_unknown_encoding(
                 crate::src::xmltok::XmlSizeOfUnknownEncoding() as crate::__stddef_size_t_h::size_t,
                 4963 as ::core::ffi::c_int,
             ) else {
-                release_unknown_encoding_info(&info);
+                release_unknown_encoding_info(&info).invoke();
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             };
             let mut storage: Vec<crate::src::xmltok::unknown_encoding> = Vec::new();
             if storage.try_reserve_exact(1).is_err() {
                 backing(4963 as ::core::ffi::c_int);
-                release_unknown_encoding_info(&info);
+                release_unknown_encoding_info(&info).invoke();
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
             // Reserve the sole slot before deriving its stable registry key.
@@ -17723,16 +17770,16 @@ fn handle_unknown_encoding(
             );
             if let Some(encoding) = encoding {
                 storage.push(encoding);
+                register_unknown_encoding_info(storage_id, release_unknown_encoding_info(&info));
                 parser.m_unknownEncodingMem = Some(UnknownEncodingMemory {
                     storage,
                     backing: Some(backing),
-                    info: Some(info),
                 });
                 parser.m_encoding = EncodingState::Unknown;
                 return crate::expat_h::XML_ERROR_NONE;
             }
         }
-        release_unknown_encoding_info(&info);
+        release_unknown_encoding_info(&info).invoke();
     }
     return crate::expat_h::XML_ERROR_UNKNOWN_ENCODING;
 }
