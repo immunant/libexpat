@@ -1868,6 +1868,10 @@ fn parser_set_character_data_handler(handler: XML_CharacterDataHandler) {
     ffi_call2(XML_SetCharacterDataHandler, current_parser(), handler);
 }
 
+fn parser_set_character_data_handler_for(parser: XML_Parser, handler: XML_CharacterDataHandler) {
+    ffi_call2(XML_SetCharacterDataHandler, parser, handler);
+}
+
 fn parser_set_start_element_handler(handler: XML_StartElementHandler) {
     ffi_call2(XML_SetStartElementHandler, current_parser(), handler);
 }
@@ -2145,6 +2149,48 @@ fn char_data_check_xml_chars(storage: &mut CharData, expected: *const XML_Char) 
     ffi_call2(CharData_CheckXMLChars, storage as *mut CharData, expected);
 }
 
+fn nul_terminated_bytes(text: String) -> Vec<u8> {
+    let mut bytes = text.into_bytes();
+    bytes.push(0);
+    bytes
+}
+
+fn build_deep_nested_entity_text(n_lines: usize) -> Vec<u8> {
+    let mut text = String::with_capacity((n_lines + 4) * 50);
+    text.push_str("<!DOCTYPE foo [\n\t<!ENTITY s0 'deepText'>\n");
+    for i in 1..n_lines {
+        text.push_str(&format!("  <!ENTITY s{i} '&s{};'>\n", i - 1));
+    }
+    text.push_str(&format!("]> <foo>&s{};</foo>\n", n_lines - 1));
+    nul_terminated_bytes(text)
+}
+
+fn build_deep_nested_attribute_entity_text(n_lines: usize) -> Vec<u8> {
+    let mut text = String::with_capacity((n_lines + 4) * 100);
+    text.push_str("<!DOCTYPE foo [\n\t<!ENTITY s0 'deepText'>\n");
+    for i in 1..n_lines {
+        text.push_str(&format!("  <!ENTITY s{i} '&s{};'>\n", i - 1));
+    }
+    text.push_str(&format!(
+        "]> <foo name='&s{};'>mainText</foo>\n",
+        n_lines - 1
+    ));
+    nul_terminated_bytes(text)
+}
+
+fn build_deep_nested_delayed_interpretation_text(n_lines: usize) -> Vec<u8> {
+    let mut text = String::with_capacity((n_lines + 4) * 100);
+    text.push_str("<!DOCTYPE foo [\n\t<!ENTITY % s0 'deepText'>\n");
+    for i in 1..n_lines {
+        text.push_str(&format!("  <!ENTITY % s{i} '&#37;s{};'>\n", i - 1));
+    }
+    text.push_str(&format!(
+        "  <!ENTITY % define_g \"<!ENTITY g '&#37;s{};'>\">\n  %define_g;\n]>\n<foo/>\n",
+        n_lines - 1,
+    ));
+    nul_terminated_bytes(text)
+}
+
 fn set_up_accumulating_character_storage(storage: &mut CharData) {
     char_data_init(storage);
     parser_set_user_data((storage as *mut CharData).cast());
@@ -2331,6 +2377,17 @@ fn accumulating_character_handler() -> XML_CharacterDataHandler {
                 *mut ::core::ffi::c_void,
                 *const XML_Char,
                 ::core::ffi::c_int,
+            ) -> (),
+    )
+}
+
+fn counting_start_element_handler_for_tests() -> XML_StartElementHandler {
+    Some(
+        counting_start_element_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *mut *const XML_Char,
             ) -> (),
     )
 }
@@ -12740,262 +12797,91 @@ extern "C" fn test_entity_ref_no_elements() {
     parser_free(parser);
 }
 extern "C" fn test_deep_nested_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_deep_nested_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5471 as ::core::ffi::c_int,
-        );
-        let N_LINES: size_t = 60000 as size_t;
-        let SIZE_PER_LINE: size_t = 50 as size_t;
-        let text: *mut ::core::ffi::c_char = malloc(
-            N_LINES
-                .wrapping_add(4 as size_t)
-                .wrapping_mul(SIZE_PER_LINE),
-        ) as *mut ::core::ffi::c_char;
-        if text.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5477 as ::core::ffi::c_int,
-                b"malloc failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut textPtr: *mut ::core::ffi::c_char = text;
-        textPtr = textPtr.offset(snprintf(
-            textPtr,
-            SIZE_PER_LINE,
-            b"<!DOCTYPE foo [\n\t<!ENTITY s0 'deepText'>\n\0".as_ptr()
-                as *const ::core::ffi::c_char,
-        ) as isize);
-        let mut i: size_t = 1 as size_t;
-        while i < N_LINES {
-            textPtr = textPtr.offset(snprintf(
-                textPtr,
-                SIZE_PER_LINE,
-                b"  <!ENTITY s%lu '&s%lu;'>\n\0".as_ptr() as *const ::core::ffi::c_char,
-                i as ::core::ffi::c_ulong,
-                i.wrapping_sub(1 as size_t) as ::core::ffi::c_ulong,
-            ) as isize);
-            i = i.wrapping_add(1);
-        }
-        snprintf(
-            textPtr,
-            SIZE_PER_LINE,
-            b"]> <foo>&s%lu;</foo>\n\0".as_ptr() as *const ::core::ffi::c_char,
-            N_LINES.wrapping_sub(1 as size_t) as ::core::ffi::c_ulong,
-        );
-        let expected: *const XML_Char = b"deepText\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        XML_SetCharacterDataHandler(
-            parser,
-            Some(
-                accumulate_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data_for(parser, &raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5507 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-        parser_free(parser);
-        free(text as *mut ::core::ffi::c_void);
-    }
+    set_test_info(b"test_deep_nested_entity\0", 5471 as ::core::ffi::c_int);
+    let text = build_deep_nested_entity_text(60000);
+    let expected = bytes_as_xml_char_ptr(b"deepText\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    let parser = create_parser_or_fail(5477 as ::core::ffi::c_int);
+
+    char_data_init(&mut storage);
+    parser_set_character_data_handler_for(parser, accumulating_character_handler());
+    parser_set_user_data_for(parser, (&mut storage as *mut CharData).cast());
+    ensure_parser_success_for(
+        parser,
+        parse_single_bytes_c_string_for(parser, text.as_ptr().cast()),
+        5507 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, expected);
+    parser_free(parser);
 }
 extern "C" fn test_deep_nested_attribute_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_deep_nested_attribute_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5517 as ::core::ffi::c_int,
-        );
-        let N_LINES: size_t = 60000 as size_t;
-        let SIZE_PER_LINE: size_t = 100 as size_t;
-        let text: *mut ::core::ffi::c_char = malloc(
-            N_LINES
-                .wrapping_add(4 as size_t)
-                .wrapping_mul(SIZE_PER_LINE),
-        ) as *mut ::core::ffi::c_char;
-        if text.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5523 as ::core::ffi::c_int,
-                b"malloc failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut textPtr: *mut ::core::ffi::c_char = text;
-        textPtr = textPtr.offset(snprintf(
-            textPtr,
-            SIZE_PER_LINE,
-            b"<!DOCTYPE foo [\n\t<!ENTITY s0 'deepText'>\n\0".as_ptr()
-                as *const ::core::ffi::c_char,
-        ) as isize);
-        let mut i: size_t = 1 as size_t;
-        while i < N_LINES {
-            textPtr = textPtr.offset(snprintf(
-                textPtr,
-                SIZE_PER_LINE,
-                b"  <!ENTITY s%lu '&s%lu;'>\n\0".as_ptr() as *const ::core::ffi::c_char,
-                i as ::core::ffi::c_ulong,
-                i.wrapping_sub(1 as size_t) as ::core::ffi::c_ulong,
-            ) as isize);
-            i = i.wrapping_add(1);
-        }
-        snprintf(
-            textPtr,
-            SIZE_PER_LINE,
-            b"]> <foo name='&s%lu;'>mainText</foo>\n\0".as_ptr() as *const ::core::ffi::c_char,
-            N_LINES.wrapping_sub(1 as size_t) as ::core::ffi::c_ulong,
-        );
-        let mut doc_info: [AttrInfo; 2] = [
-            attrInfo {
-                name: b"name\0".as_ptr() as *const XML_Char,
-                value: b"deepText\0".as_ptr() as *const XML_Char,
-            },
-            attrInfo {
-                name: ::core::ptr::null::<XML_Char>(),
-                value: ::core::ptr::null::<XML_Char>(),
-            },
-        ];
-        let mut info: [ElementInfo; 2] = [
-            elementInfo {
-                name: b"foo\0".as_ptr() as *const XML_Char,
-                attr_count: 1 as ::core::ffi::c_int,
-                id_name: ::core::ptr::null::<XML_Char>(),
-                attributes: ::core::ptr::null_mut::<AttrInfo>(),
-            },
-            elementInfo {
-                name: ::core::ptr::null::<XML_Char>(),
-                attr_count: 0 as ::core::ffi::c_int,
-                id_name: ::core::ptr::null::<XML_Char>(),
-                attributes: ::core::ptr::null_mut::<AttrInfo>(),
-            },
-        ];
-        info[0 as ::core::ffi::c_int as usize].attributes = &raw mut doc_info as *mut AttrInfo;
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let mut parserPlusElemenInfo: ParserAndElementInfo = StructParserAndElementInfo {
-            parser: parser,
-            info: &raw mut info as *mut ElementInfo,
-        };
-        XML_SetStartElementHandler(
-            parser,
-            Some(
-                counting_start_element_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data_for(
-            parser,
-            &raw mut parserPlusElemenInfo as *mut ::core::ffi::c_void,
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5553 as ::core::ffi::c_int,
-            );
-        }
-        parser_free(parser);
-        free(text as *mut ::core::ffi::c_void);
-    }
+    set_test_info(
+        b"test_deep_nested_attribute_entity\0",
+        5517 as ::core::ffi::c_int,
+    );
+    let text = build_deep_nested_attribute_entity_text(60000);
+    let mut doc_info = [
+        attrInfo {
+            name: bytes_as_xml_char_ptr(b"name\0"),
+            value: bytes_as_xml_char_ptr(b"deepText\0"),
+        },
+        attrInfo {
+            name: ::core::ptr::null::<XML_Char>(),
+            value: ::core::ptr::null::<XML_Char>(),
+        },
+    ];
+    let mut info = [
+        elementInfo {
+            name: bytes_as_xml_char_ptr(b"foo\0"),
+            attr_count: 1 as ::core::ffi::c_int,
+            id_name: ::core::ptr::null::<XML_Char>(),
+            attributes: ::core::ptr::null_mut::<AttrInfo>(),
+        },
+        elementInfo {
+            name: ::core::ptr::null::<XML_Char>(),
+            attr_count: 0,
+            id_name: ::core::ptr::null::<XML_Char>(),
+            attributes: ::core::ptr::null_mut::<AttrInfo>(),
+        },
+    ];
+    info[0].attributes = doc_info.as_mut_ptr();
+
+    let parser = create_parser_or_fail(5523 as ::core::ffi::c_int);
+    let mut parser_plus_element_info = StructParserAndElementInfo {
+        parser,
+        info: info.as_mut_ptr(),
+    };
+
+    parser_set_start_element_handler_for(parser, counting_start_element_handler_for_tests());
+    parser_set_user_data_for(
+        parser,
+        (&mut parser_plus_element_info as *mut ParserAndElementInfo).cast(),
+    );
+    ensure_parser_success_for(
+        parser,
+        parse_single_bytes_c_string_for(parser, text.as_ptr().cast()),
+        5553 as ::core::ffi::c_int,
+    );
+    parser_free(parser);
 }
 extern "C" fn test_deep_nested_entity_delayed_interpretation() {
-    unsafe {
-        _check_set_test_info(
-            b"test_deep_nested_entity_delayed_interpretation\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5560 as ::core::ffi::c_int,
-        );
-        let N_LINES: size_t = 70000 as ::core::ffi::c_int as size_t;
-        let SIZE_PER_LINE: size_t = 100 as size_t;
-        let text: *mut ::core::ffi::c_char = malloc(
-            N_LINES
-                .wrapping_add(4 as size_t)
-                .wrapping_mul(SIZE_PER_LINE),
-        ) as *mut ::core::ffi::c_char;
-        if text.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5566 as ::core::ffi::c_int,
-                b"malloc failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut textPtr: *mut ::core::ffi::c_char = text;
-        textPtr = textPtr.offset(snprintf(
-            textPtr,
-            SIZE_PER_LINE,
-            b"<!DOCTYPE foo [\n\t<!ENTITY %% s0 'deepText'>\n\0".as_ptr()
-                as *const ::core::ffi::c_char,
-        ) as isize);
-        let mut i: size_t = 1 as size_t;
-        while i < N_LINES {
-            textPtr = textPtr.offset(snprintf(
-                textPtr,
-                SIZE_PER_LINE,
-                b"  <!ENTITY %% s%lu '&#37;s%lu;'>\n\0".as_ptr() as *const ::core::ffi::c_char,
-                i as ::core::ffi::c_ulong,
-                i.wrapping_sub(1 as size_t) as ::core::ffi::c_ulong,
-            ) as isize);
-            i = i.wrapping_add(1);
-        }
-        snprintf(
-            textPtr,
-            SIZE_PER_LINE,
-            b"  <!ENTITY %% define_g \"<!ENTITY g '&#37;s%lu;'>\">\n  %%define_g;\n]>\n<foo/>\n\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            N_LINES.wrapping_sub(1 as size_t) as ::core::ffi::c_ulong,
-        );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        if _XML_Parse_SINGLE_BYTES(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5594 as ::core::ffi::c_int,
-            );
-        }
-        parser_free(parser);
-        free(text as *mut ::core::ffi::c_void);
-    }
+    set_test_info(
+        b"test_deep_nested_entity_delayed_interpretation\0",
+        5560 as ::core::ffi::c_int,
+    );
+    let text = build_deep_nested_delayed_interpretation_text(70000);
+    let parser = create_parser_or_fail(5566 as ::core::ffi::c_int);
+
+    parser_set_param_entity_parsing_for(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+    ensure_parser_success_for(
+        parser,
+        parse_single_bytes_c_string_for(parser, text.as_ptr().cast()),
+        5594 as ::core::ffi::c_int,
+    );
+    parser_free(parser);
 }
 extern "C" fn test_nested_entity_suspend() {
     unsafe {
