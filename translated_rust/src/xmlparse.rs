@@ -18246,7 +18246,8 @@ unsafe fn doProlog(
                     }
                     if (*dtd).scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
-                            let mut model: *mut crate::expat_h::XML_Content = build_model(parser);
+                            let mut model: *mut crate::expat_h::XML_Content =
+                                build_model(parser, dtd);
                             if model.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
@@ -23693,11 +23694,14 @@ unsafe fn scaffold_allocator(
     }
 }
 
-unsafe extern "C" fn build_model(
-    mut parser: crate::expat_h::XML_Parser,
+// `build_model` is reached from the parser's declaration state machine with
+// its exclusive parser borrow already established.  Keep that typed borrow at
+// this internal boundary; only the final ABI-owned model allocation remains
+// pointer-based.
+unsafe fn build_model(
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
 ) -> *mut crate::expat_h::XML_Content {
-    let parser_ref = &mut *parser;
-    let dtd = &mut *parser_dtd_ptr!(parser_ref);
     let content_count = dtd.scaffCount as usize;
     let string_count = dtd.contentStringLen as usize;
     let Some(content_bytes) =
@@ -23816,7 +23820,7 @@ unsafe extern "C" fn build_model(
     }
     drop(scaffold);
 
-    let ret = parser_ref
+    let ret = parser
         .m_mem
         .malloc_fcn
         .expect("non-null function pointer")(allocsize)
