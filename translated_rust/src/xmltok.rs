@@ -4523,7 +4523,44 @@ enum NormalCharCheck {
     NameStart,
 }
 
-enum EncodingDataLookup {
+enum XmlDeclEncodingAction<'a> {
+    MinBytes,
+    ToAscii {
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+    },
+    NameMatchesAscii {
+        name: *const ::core::ffi::c_char,
+        name_end: *const ::core::ffi::c_char,
+        ascii: *const ::core::ffi::c_char,
+    },
+    ConvertToUtf8Name {
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+    },
+    FindEncoding {
+        finder: unsafe extern "C" fn(
+            *const crate::src::xmltok::ENCODING,
+            *const ::core::ffi::c_char,
+            *const ::core::ffi::c_char,
+        ) -> *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+    },
+    UpdatePosition {
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        pos: &'a mut crate::src::xmltok::POSITION,
+    },
+}
+
+enum XmlDeclEncodingResult {
+    Int(::core::ffi::c_int),
+    Encoding(*const crate::src::xmltok::ENCODING),
+    EncodingName(Option<[::core::ffi::c_char; 128]>),
+}
+
+enum EncodingDataLookup<'a> {
     RawByte {
         p: *const ::core::ffi::c_char,
         offset: usize,
@@ -4551,18 +4588,20 @@ enum EncodingDataLookup {
         end: *const ::core::ffi::c_char,
         next_tok_ptr: *mut *const ::core::ffi::c_char,
     },
+    XmlDecl(XmlDeclEncodingAction<'a>),
 }
 
 enum EncodingDataValue {
     Int(::core::ffi::c_int),
     Bool(bool),
     Unknown(UnknownEncodingValue),
+    XmlDecl(XmlDeclEncodingResult),
     Unit,
 }
 
 fn encoding_data_lookup(
     enc: *const crate::src::xmltok::ENCODING,
-    lookup: EncodingDataLookup,
+    lookup: EncodingDataLookup<'_>,
 ) -> EncodingDataValue {
     unsafe {
         match lookup {
@@ -4770,6 +4809,62 @@ fn encoding_data_lookup(
                     *enc_ptr, ptr, end, next_tok_ptr
                 ))
             }
+            EncodingDataLookup::XmlDecl(action) => EncodingDataValue::XmlDecl(match action {
+                XmlDeclEncodingAction::MinBytes => {
+                    XmlDeclEncodingResult::Int((*enc).minBytesPerChar)
+                }
+                XmlDeclEncodingAction::ToAscii { mut ptr, end } => {
+                    let mut buf: [::core::ffi::c_char; 1] = [0; 1];
+                    let mut p = buf.as_mut_ptr();
+                    let to_lim = p.wrapping_add(1);
+                    (*enc).utf8Convert.expect("non-null function pointer")(
+                        enc,
+                        &raw mut ptr,
+                        end,
+                        &raw mut p,
+                        to_lim,
+                    );
+                    XmlDeclEncodingResult::Int(if p == buf.as_mut_ptr() {
+                        -1 as ::core::ffi::c_int
+                    } else {
+                        buf[0] as ::core::ffi::c_int
+                    })
+                }
+                XmlDeclEncodingAction::NameMatchesAscii {
+                    name,
+                    name_end,
+                    ascii,
+                } => XmlDeclEncodingResult::Int((*enc)
+                    .nameMatchesAscii
+                    .expect("non-null function pointer")(
+                    enc, name, name_end, ascii
+                )),
+                XmlDeclEncodingAction::ConvertToUtf8Name { mut ptr, end } => {
+                    let mut buf: [::core::ffi::c_char; 128] = [0; 128];
+                    let mut p = buf.as_mut_ptr();
+                    let to_lim = p.wrapping_add(buf.len() - 1);
+                    (*enc).utf8Convert.expect("non-null function pointer")(
+                        enc,
+                        &raw mut ptr,
+                        end,
+                        &raw mut p,
+                        to_lim,
+                    );
+                    if ptr != end {
+                        XmlDeclEncodingResult::EncodingName(None)
+                    } else {
+                        *p = 0 as ::core::ffi::c_char;
+                        XmlDeclEncodingResult::EncodingName(Some(buf))
+                    }
+                }
+                XmlDeclEncodingAction::FindEncoding { finder, ptr, end } => {
+                    XmlDeclEncodingResult::Encoding(finder(enc, ptr, end))
+                }
+                XmlDeclEncodingAction::UpdatePosition { ptr, end, pos } => {
+                    (*enc).updatePosition.expect("non-null function pointer")(enc, ptr, end, pos);
+                    XmlDeclEncodingResult::Int(0)
+                }
+            }),
         }
     }
 }
@@ -13925,102 +14020,13 @@ extern "C" fn initUpdatePosition(
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }
 
-enum XmlDeclEncodingAction<'a> {
-    MinBytes,
-    ToAscii {
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    },
-    NameMatchesAscii {
-        name: *const ::core::ffi::c_char,
-        name_end: *const ::core::ffi::c_char,
-        ascii: *const ::core::ffi::c_char,
-    },
-    ConvertToUtf8Name {
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    },
-    FindEncoding {
-        finder: unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    },
-    UpdatePosition {
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        pos: &'a mut crate::src::xmltok::POSITION,
-    },
-}
-
-enum XmlDeclEncodingResult {
-    Int(::core::ffi::c_int),
-    Encoding(*const crate::src::xmltok::ENCODING),
-    EncodingName(Option<[::core::ffi::c_char; 128]>),
-}
-
 fn xml_decl_encoding_action(
-    mut enc: *const crate::src::xmltok::ENCODING,
+    enc: *const crate::src::xmltok::ENCODING,
     action: XmlDeclEncodingAction<'_>,
 ) -> XmlDeclEncodingResult {
-    unsafe {
-        match action {
-            XmlDeclEncodingAction::MinBytes => XmlDeclEncodingResult::Int((*enc).minBytesPerChar),
-            XmlDeclEncodingAction::ToAscii { mut ptr, end } => {
-                let mut buf: [::core::ffi::c_char; 1] = [0; 1];
-                let mut p = buf.as_mut_ptr();
-                let to_lim = p.wrapping_add(1);
-                (*enc).utf8Convert.expect("non-null function pointer")(
-                    enc,
-                    &raw mut ptr,
-                    end,
-                    &raw mut p,
-                    to_lim,
-                );
-                XmlDeclEncodingResult::Int(if p == buf.as_mut_ptr() {
-                    -1 as ::core::ffi::c_int
-                } else {
-                    buf[0] as ::core::ffi::c_int
-                })
-            }
-            XmlDeclEncodingAction::NameMatchesAscii {
-                name,
-                name_end,
-                ascii,
-            } => XmlDeclEncodingResult::Int((*enc)
-                .nameMatchesAscii
-                .expect("non-null function pointer")(
-                enc, name, name_end, ascii
-            )),
-            XmlDeclEncodingAction::ConvertToUtf8Name { mut ptr, end } => {
-                let mut buf: [::core::ffi::c_char; 128] = [0; 128];
-                let mut p = buf.as_mut_ptr();
-                let to_lim = p.wrapping_add(buf.len() - 1);
-                (*enc).utf8Convert.expect("non-null function pointer")(
-                    enc,
-                    &raw mut ptr,
-                    end,
-                    &raw mut p,
-                    to_lim,
-                );
-                if ptr != end {
-                    XmlDeclEncodingResult::EncodingName(None)
-                } else {
-                    *p = 0 as ::core::ffi::c_char;
-                    XmlDeclEncodingResult::EncodingName(Some(buf))
-                }
-            }
-            XmlDeclEncodingAction::FindEncoding { finder, ptr, end } => {
-                XmlDeclEncodingResult::Encoding(finder(enc, ptr, end))
-            }
-            XmlDeclEncodingAction::UpdatePosition { ptr, end, pos } => {
-                (*enc).updatePosition.expect("non-null function pointer")(enc, ptr, end, pos);
-                XmlDeclEncodingResult::Int(0)
-            }
-        }
+    match encoding_data_lookup(enc, EncodingDataLookup::XmlDecl(action)) {
+        EncodingDataValue::XmlDecl(result) => result,
+        _ => unreachable!(),
     }
 }
 
