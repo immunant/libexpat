@@ -310,7 +310,7 @@ pub mod siphash_h {
     }
 
     pub unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
-        pub static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
+        pub static vectors: [[::core::ffi::c_uchar; 8]; 64] = [
             [
                 0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
                 0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
