@@ -2723,14 +2723,7 @@ fn dispatch_notation_decl_callback(
     true
 }
 
-trait ElementDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        name: *const crate::expat_external_h::XML_Char,
-        model: *mut crate::expat_h::XML_Content,
-    );
-}
+trait ElementDeclCallback: Send + Sync + std::any::Any {}
 
 impl ElementDeclCallback
     for unsafe extern "C" fn(
@@ -2739,21 +2732,68 @@ impl ElementDeclCallback
         *mut crate::expat_h::XML_Content,
     )
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        name: *const crate::expat_external_h::XML_Char,
-        model: *mut crate::expat_h::XML_Content,
-    ) {
-        self(user_data, name, model);
-    }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an element-declaration callback is installed.
 static ELEMENT_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn ElementDeclCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<ElementDeclCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
+
+/// An element declaration staged for the C callback boundary.  The name is a
+/// DTD-owned, NUL-terminated slice and the key identifies a registered ABI
+/// content model that remains valid until the handler frees it.
+struct ElementDeclCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    name: &'a [crate::expat_external_h::XML_Char],
+    model_key: usize,
+}
+
+/// Owns the erased C callback while parser-side declaration handling works
+/// with a checked event instead of raw callback arguments.
+struct ElementDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn ElementDeclCallback>,
+}
+
+impl ElementDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: ElementDeclCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
+
+    fn invoke(&self, event: ElementDeclCallbackEvent<'_>) -> bool {
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *mut crate::expat_h::XML_Content,
+            ),
+        >() else {
+            return false;
+        };
+        let model = {
+            let models = CONTENT_MODEL_STORAGE
+                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let Some(model) = models.get(&event.model_key) else {
+                return false;
+            };
+            model.contents.as_ptr().cast_mut()
+        };
+        // The registry owns the model before its stable vector address is
+        // exposed, and the event's name is parser-owned and NUL-terminated.
+        // The handler may synchronously free the model, as the C API permits.
+        unsafe {
+            callback(handler_arg_from_state!(event.parser), event.name.as_ptr(), model);
+        }
+        true
+    }
+}
 
 /// A checked, transient attribute-declaration callback event.
 ///
@@ -8651,7 +8691,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldUnknownEncodingHandler: Option<std::sync::Arc<dyn UnknownEncodingCallback>> = None;
     let mut oldUnknownEncodingHandlerArg: Option<UnknownEncodingHandlerRegistration> = None;
     let mut oldElementDeclHandler = false;
-    let mut oldElementDeclCallback: Option<std::sync::Arc<dyn ElementDeclCallback>> = None;
+    let mut oldElementDeclCallback: Option<std::sync::Arc<ElementDeclCallbackAdapter>> = None;
     let mut oldAttlistDeclHandler = false;
     let mut oldAttlistDeclCallback: Option<std::sync::Arc<AttlistDeclCallbackAdapter>> = None;
     let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
@@ -10415,7 +10455,7 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler_ffi(
 fn set_element_decl_handler(
     parser: &mut XML_ParserStruct,
     parser_key: usize,
-    handler: Option<std::sync::Arc<dyn ElementDeclCallback>>,
+    handler: Option<std::sync::Arc<ElementDeclCallbackAdapter>>,
 ) {
     parser.m_elementDeclHandler = handler.is_some();
     let mut handlers = ELEMENT_DECL_HANDLERS
@@ -10428,19 +10468,31 @@ fn set_element_decl_handler(
         handlers.remove(&parser_key);
     }
 }
+
+/// Constructs the typed callback boundary before the export wrapper borrows
+/// the parser.  Parser state records only whether a handler is installed.
+fn element_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> Option<std::sync::Arc<ElementDeclCallbackAdapter>>
+where
+    Callback: ElementDeclCallback + 'static,
+{
+    handler.map(|callback| std::sync::Arc::new(ElementDeclCallbackAdapter::new(callback)))
+}
+
 #[export_name = "XML_SetElementDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetElementDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut eldecl: crate::expat_h::XML_ElementDeclHandler,
 ) {
-    let parser_key = parser as usize;
-    if let Some(parser) = parser.as_mut() {
-        let handler = eldecl.map(|callback| {
-            std::sync::Arc::new(callback) as std::sync::Arc<dyn ElementDeclCallback>
-        });
-        set_element_decl_handler(parser, parser_key, handler);
+    if parser.is_null() || !parser.is_aligned() {
+        return;
     }
+    let parser_key = parser.addr();
+    let handler = element_decl_handler_registration(eldecl);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_element_decl_handler(parser, parser_key, handler);
 }
 fn XML_SetAttlistDeclHandler(
     handler_enabled: &mut bool,
@@ -27163,26 +27215,16 @@ fn dispatch_content_model(request: ContentModelDispatchRequest<'_>) -> bool {
 /// the installed C handler.  The registry lock is released before the call so
 /// a handler may re-enter the parser or free the model, as Expat permits.
 fn dispatch_element_decl_callback(
-    callback: &dyn ElementDeclCallback,
+    callback: &ElementDeclCallbackAdapter,
     parser: &XML_ParserStruct,
     name: &[crate::expat_external_h::XML_Char],
     model_key: usize,
 ) -> bool {
-    let model = {
-        let models = CONTENT_MODEL_STORAGE
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let Some(model) = models.get(&model_key) else {
-            return false;
-        };
-        model.contents.as_ptr().cast_mut()
-    };
-    // The registry owns the model before this stable vector address is
-    // exposed, so the callback may retain or free the model exactly as the C
-    // API permits.
-    unsafe { callback.invoke(handler_arg_from_state!(parser), name.as_ptr(), model) };
-    true
+    callback.invoke(ElementDeclCallbackEvent {
+        parser,
+        name,
+        model_key,
+    })
 }
 
 /// Builds the ABI-owned declaration model and hands it to the installed
