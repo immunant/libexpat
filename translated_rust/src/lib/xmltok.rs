@@ -206,10 +206,7 @@ pub struct unknown_encoding {
     pub utf8: [[::core::ffi::c_char; 4]; 256],
 }
 pub type CONVERTER = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
+    extern "C" fn(*mut ::core::ffi::c_void, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
 >;
 pub type C2Rust_Unnamed_3 = ::core::ffi::c_uint;
 pub type C2Rust_Unnamed_4 = ::core::ffi::c_uint;
@@ -1657,7 +1654,7 @@ fn call_unknown_converter(
     uenc: &unknown_encoding,
     ptr: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe { uenc.convert.expect("non-null function pointer")(uenc.userData, ptr) }
+    uenc.convert.expect("non-null function pointer")(uenc.userData, ptr)
 }
 
 fn encode_utf8_bytes(

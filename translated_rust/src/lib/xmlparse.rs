@@ -203,7 +203,7 @@ pub struct XML_ParserStruct {
     pub m_unknownEncodingMem: *mut ::core::ffi::c_void,
     pub m_unknownEncodingData: *mut ::core::ffi::c_void,
     pub m_unknownEncodingHandlerData: *mut ::core::ffi::c_void,
-    pub m_unknownEncodingRelease: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+    pub m_unknownEncodingRelease: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
     pub m_prologState: PROLOG_STATE,
     pub m_processor: Option<Processor>,
     pub m_errorCode: XML_Error,
@@ -724,12 +724,9 @@ pub struct XML_Encoding {
     pub map: [::core::ffi::c_int; 256],
     pub data: *mut ::core::ffi::c_void,
     pub convert: Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
+        extern "C" fn(*mut ::core::ffi::c_void, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
     >,
-    pub release: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+    pub release: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
 }
 pub type XML_SkippedEntityHandler = Option<
     unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int) -> (),
@@ -894,10 +891,7 @@ pub const XML_ROLE_DOCTYPE_CLOSE: C2Rust_Unnamed_0 = 8;
 pub const XML_ROLE_ENTITY_PUBLIC_ID: C2Rust_Unnamed_0 = 14;
 pub const XML_ROLE_DOCTYPE_PUBLIC_ID: C2Rust_Unnamed_0 = 6;
 pub type CONVERTER = Option<
-    unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int,
+    extern "C" fn(*mut ::core::ffi::c_void, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
 >;
 pub const XML_ROLE_TEXT_DECL: C2Rust_Unnamed_0 = 57;
 pub const XML_ROLE_DOCTYPE_INTERNAL_SUBSET: C2Rust_Unnamed_0 = 7;

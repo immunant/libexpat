@@ -900,12 +900,9 @@ pub struct XML_Encoding {
     pub map: [::core::ffi::c_int; 256],
     pub data: *mut ::core::ffi::c_void,
     pub convert: Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
+        extern "C" fn(*mut ::core::ffi::c_void, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
     >,
-    pub release: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+    pub release: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
 }
 pub type XML_UnknownEncodingHandler = Option<
     unsafe extern "C" fn(

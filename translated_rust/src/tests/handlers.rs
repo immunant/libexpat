@@ -246,12 +246,9 @@ pub struct XML_Encoding {
     pub map: [::core::ffi::c_int; 256],
     pub data: *mut ::core::ffi::c_void,
     pub convert: Option<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
+        extern "C" fn(*mut ::core::ffi::c_void, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
     >,
-    pub release: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+    pub release: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
 }
 pub type XML_Parsing = ::core::ffi::c_uint;
 pub const XML_SUSPENDED: XML_Parsing = 3;
@@ -843,9 +840,8 @@ pub unsafe extern "C" fn UnrecognisedEncodingHandler(
     unsafe {
         (*info).data = NULL;
         (*info).convert = None;
-        (*info).release =
-            Some(dummy_release as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ())
-                as Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+        (*info).release = Some(dummy_release as extern "C" fn(*mut ::core::ffi::c_void) -> ())
+            as Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
 }
@@ -869,9 +865,8 @@ pub unsafe extern "C" fn unknown_released_encoding_handler(
             }
             (*info).data = NULL;
             (*info).convert = None;
-            (*info).release =
-                Some(dummy_release as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ())
-                    as Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+            (*info).release = Some(dummy_release as extern "C" fn(*mut ::core::ffi::c_void) -> ())
+                as Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
             return XML_STATUS_OK as ::core::ffi::c_int;
         }
         return XML_STATUS_ERROR as ::core::ffi::c_int;
@@ -988,13 +983,13 @@ pub unsafe extern "C" fn MiscEncodingHandler(
         {
             (*info).convert = Some(
                 failing_converter
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *mut ::core::ffi::c_void,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             )
                 as Option<
-                    unsafe extern "C" fn(
+                    extern "C" fn(
                         *mut ::core::ffi::c_void,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
@@ -1006,13 +1001,13 @@ pub unsafe extern "C" fn MiscEncodingHandler(
         {
             (*info).convert = Some(
                 prefix_converter
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *mut ::core::ffi::c_void,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             )
                 as Option<
-                    unsafe extern "C" fn(
+                    extern "C" fn(
                         *mut ::core::ffi::c_void,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
