@@ -14608,16 +14608,19 @@ unsafe extern "C" fn epilogProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    (*parser).m_processor = ProcessorState::Epilog;
-    set_parser_event_start!(&mut *parser, s);
+    {
+        let parser_state = &mut *parser;
+        parser_state.m_processor = ProcessorState::Epilog;
+        set_parser_event_start!(parser_state, s);
+    }
     loop {
         let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut tok: ::core::ffi::c_int = (*parser_encoding(parser)).scanners[0 as usize].scan(
-            parser_encoding(parser),
-            s,
-            end,
-            &raw mut next,
-        );
+        // Resolve the selected encoding once for this token.  User callbacks
+        // below may reset or re-enter the parser, so this pointer deliberately
+        // does not live beyond the current iteration.
+        let enc = parser_encoding(parser);
+        let scanner = (*enc).scanners[0];
+        let tok: ::core::ffi::c_int = scanner.scan(enc, s, end, &raw mut next);
         if accountingDiffTolerated(
             parser,
             tok,
@@ -14634,7 +14637,7 @@ unsafe extern "C" fn epilogProcessor(
         match tok {
             -15 => {
                 if (*parser).m_defaultHandler {
-                    reportDefault(parser, parser_encoding(parser), s, next);
+                    reportDefault(parser, enc, s, next);
                     if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
                         == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
                     {
@@ -14650,16 +14653,16 @@ unsafe extern "C" fn epilogProcessor(
             }
             crate::src::xmltok::XML_TOK_PROLOG_S => {
                 if (*parser).m_defaultHandler {
-                    reportDefault(parser, parser_encoding(parser), s, next);
+                    reportDefault(parser, enc, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_PI => {
-                if reportProcessingInstruction(parser, parser_encoding(parser), s, next) == 0 {
+                if reportProcessingInstruction(parser, enc, s, next) == 0 {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
             }
             crate::src::xmltok::XML_TOK_COMMENT => {
-                if reportComment(parser, parser_encoding(parser), s, next) == 0 {
+                if reportComment(parser, enc, s, next) == 0 {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
             }
