@@ -6329,6 +6329,21 @@ unsafe fn call_processor_impl(
             let result = cdata_section_processor_impl(parser, next, input.end);
             checked_next_offset = Some(result.next_offset);
             result.error
+        } else if matches!(parser.m_processor, ProcessorState::Epilog) {
+            // The epilog implementation is offset-based, so it can consume
+            // this already-validated live-buffer range without reconstructing
+            // the legacy raw processor cursors.
+            let result = epilog_processor_from_offsets(parser, next, input.end);
+            if let Some(cursor) = result.next {
+                let Some(offset) = next
+                    .checked_add(cursor)
+                    .filter(|offset| *offset <= input.end)
+                else {
+                    return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                };
+                checked_next_offset = Some(offset);
+            }
+            result.error
         } else if matches!(parser.m_processor, ProcessorState::ExternalEntityInit3) {
             // The current dispatch range has already been checked against
             // the live parser buffer.  Snapshot it before the state
@@ -6439,7 +6454,9 @@ unsafe fn call_processor_impl(
                 ProcessorState::CdataSection => unreachable!("CDATA dispatch is handled above"),
                 ProcessorState::IgnoreSection => ignoreSectionProcessor,
                 ProcessorState::Prolog => prologProcessor,
-                ProcessorState::Epilog => epilogProcessor,
+                ProcessorState::Epilog => {
+                    unreachable!("epilog dispatch is handled with checked offsets")
+                }
                 ProcessorState::InternalEntity => internalEntityProcessor,
                 ProcessorState::Error => {
                     unreachable!("error dispatch is handled without a raw cursor adapter")
@@ -20491,45 +20508,6 @@ fn epilog_processor_from_offsets(
         }
     };
     epilog_processor_impl(parser_state, &input, &mut scan, &mut account, &mut dispatch)
-}
-
-unsafe extern "C" fn epilogProcessor(
-    parser: crate::expat_h::XML_Parser,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let Some(parser_state) = parser.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(next_ptr) = nextPtr.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    if s.is_null() || end.is_null() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let Some(start_offset) = parser_state.m_buffer.offset_from_address(s.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(end_offset) = parser_state.m_buffer.offset_from_address(end.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let result = epilog_processor_from_offsets(parser_state, start_offset, end_offset);
-    if let Some(cursor) = result.next {
-        let Some(offset) = start_offset.checked_add(cursor) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        let Some(pointer) = parser_state
-            .m_buffer
-            .bytes
-            .as_deref()
-            .and_then(|bytes| bytes.get(offset..).map(|_| bytes.as_ptr().wrapping_add(offset).cast()))
-        else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        *next_ptr = pointer;
-    }
-    result.error
 }
 
 /// Expands an entity declaration already borrowed from the parser's DTD.
