@@ -5550,11 +5550,12 @@ struct NamedAllocation {
 // means table clients that only need to inspect a record never have to
 // reinterpret an allocation as a different Rust type.
 enum NamedRecord {
-    // Hash-table entries already own each `NamedAllocation` in a `Box`, so
-    // a prefix record has a stable address without a second allocation.
+    // Hash-table entries own each `NamedAllocation` directly.  Record access
+    // is scoped to the table borrow, so these values do not need a separate
+    // heap allocation for address stability.
     Prefix(PREFIX),
     Attribute,
-    Element(Box<ELEMENT_TYPE>),
+    Element(ELEMENT_TYPE),
     Entity(Box<ENTITY>),
 }
 
@@ -5572,7 +5573,7 @@ impl NamedRecord {
             })));
         }
         if create_size == ::core::mem::size_of::<ELEMENT_TYPE>() {
-            return Some((Self::Element(Box::new(ELEMENT_TYPE {
+            return Some((Self::Element(ELEMENT_TYPE {
                 named: NAMED { name },
                 // This value is ignored until `hasPrefix` is set.  Use the
                 // element's own valid pool handle rather than a zeroed,
@@ -5583,7 +5584,7 @@ impl NamedRecord {
                 nDefaultAtts: 0,
                 allocDefaultAtts: 0,
                 defaultAtts: None,
-            })), None));
+            }), None));
         }
         if create_size == ::core::mem::size_of::<ENTITY>() {
             return Some((Self::Entity(Box::new(ENTITY {
