@@ -3960,53 +3960,33 @@ pub mod xmltok_impl_c {
         return 1 as ::core::ffi::c_int;
     }
 
-    fn with_attribute_mut<R>(
-        atts: *mut crate::src::xmltok::ATTRIBUTE,
-        index: ::core::ffi::c_int,
-        f: impl FnOnce(&mut crate::src::xmltok::ATTRIBUTE) -> R,
-    ) -> R {
-        unsafe { f(&mut *atts.wrapping_offset(index as isize)) }
-    }
-
     fn set_attribute_name(
-        atts: *mut crate::src::xmltok::ATTRIBUTE,
-        index: ::core::ffi::c_int,
+        attribute: &mut crate::src::xmltok::ATTRIBUTE,
         name: *const ::core::ffi::c_char,
     ) {
-        with_attribute_mut(atts, index, |attribute| {
-            attribute.name = name;
-            attribute.normalized = 1 as ::core::ffi::c_char;
-        });
+        attribute.name = name;
+        attribute.normalized = 1 as ::core::ffi::c_char;
     }
 
     fn set_attribute_value_ptr(
-        atts: *mut crate::src::xmltok::ATTRIBUTE,
-        index: ::core::ffi::c_int,
+        attribute: &mut crate::src::xmltok::ATTRIBUTE,
         value_ptr: *const ::core::ffi::c_char,
     ) {
-        with_attribute_mut(atts, index, |attribute| {
-            attribute.valuePtr = value_ptr;
-        });
+        attribute.valuePtr = value_ptr;
     }
 
     fn set_attribute_value_end(
-        atts: *mut crate::src::xmltok::ATTRIBUTE,
-        index: ::core::ffi::c_int,
+        attribute: &mut crate::src::xmltok::ATTRIBUTE,
         value_end: *const ::core::ffi::c_char,
     ) {
-        with_attribute_mut(atts, index, |attribute| {
-            attribute.valueEnd = value_end;
-        });
+        attribute.valueEnd = value_end;
     }
 
     fn set_attribute_normalized(
-        atts: *mut crate::src::xmltok::ATTRIBUTE,
-        index: ::core::ffi::c_int,
+        attribute: &mut crate::src::xmltok::ATTRIBUTE,
         normalized: ::core::ffi::c_char,
     ) {
-        with_attribute_mut(atts, index, |attribute| {
-            attribute.normalized = normalized;
-        });
+        attribute.normalized = normalized;
     }
 
     fn get_atts_impl(
@@ -4020,7 +4000,12 @@ pub mod xmltok_impl_c {
         let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         let mut current_value_ptr: *const ::core::ffi::c_char = ::core::ptr::null();
-        let mut current_normalized: ::core::ffi::c_char = 0 as ::core::ffi::c_char;
+        let mut current_attribute = crate::src::xmltok::ATTRIBUTE {
+            name: ::core::ptr::null(),
+            valuePtr: ::core::ptr::null(),
+            valueEnd: ::core::ptr::null(),
+            normalized: 0 as ::core::ffi::c_char,
+        };
         let step = unit.min_bytes();
         ptr = ptr.wrapping_offset(step);
 
@@ -4029,8 +4014,7 @@ pub mod xmltok_impl_c {
                 5 => {
                     if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
-                            current_normalized = 1 as ::core::ffi::c_char;
-                            set_attribute_name(atts, nAtts, ptr);
+                            set_attribute_name(&mut current_attribute, ptr);
                         }
                         state = crate::xmltok_impl_c::inName;
                     }
@@ -4039,8 +4023,7 @@ pub mod xmltok_impl_c {
                 6 => {
                     if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
-                            current_normalized = 1 as ::core::ffi::c_char;
-                            set_attribute_name(atts, nAtts, ptr);
+                            set_attribute_name(&mut current_attribute, ptr);
                         }
                         state = crate::xmltok_impl_c::inName;
                     }
@@ -4049,8 +4032,7 @@ pub mod xmltok_impl_c {
                 7 => {
                     if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
-                            current_normalized = 1 as ::core::ffi::c_char;
-                            set_attribute_name(atts, nAtts, ptr);
+                            set_attribute_name(&mut current_attribute, ptr);
                         }
                         state = crate::xmltok_impl_c::inName;
                     }
@@ -4059,8 +4041,7 @@ pub mod xmltok_impl_c {
                 29 | 22 | 24 => {
                     if state == crate::xmltok_impl_c::other {
                         if nAtts < attsMax {
-                            current_normalized = 1 as ::core::ffi::c_char;
-                            set_attribute_name(atts, nAtts, ptr);
+                            set_attribute_name(&mut current_attribute, ptr);
                         }
                         state = crate::xmltok_impl_c::inName;
                     }
@@ -4069,14 +4050,18 @@ pub mod xmltok_impl_c {
                     if state != crate::xmltok_impl_c::inValue {
                         current_value_ptr = ptr.wrapping_offset(step);
                         if nAtts < attsMax {
-                            set_attribute_value_ptr(atts, nAtts, current_value_ptr);
+                            set_attribute_value_ptr(&mut current_attribute, current_value_ptr);
                         }
                         state = crate::xmltok_impl_c::inValue;
                         open = crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int;
                     } else if open == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int {
                         state = crate::xmltok_impl_c::other;
                         if nAtts < attsMax {
-                            set_attribute_value_end(atts, nAtts, ptr);
+                            set_attribute_value_end(&mut current_attribute, ptr);
+                            write_raw_pointee(
+                                atts.wrapping_offset(nAtts as isize),
+                                current_attribute,
+                            );
                         }
                         nAtts += 1;
                     }
@@ -4085,22 +4070,25 @@ pub mod xmltok_impl_c {
                     if state != crate::xmltok_impl_c::inValue {
                         current_value_ptr = ptr.wrapping_offset(step);
                         if nAtts < attsMax {
-                            set_attribute_value_ptr(atts, nAtts, current_value_ptr);
+                            set_attribute_value_ptr(&mut current_attribute, current_value_ptr);
                         }
                         state = crate::xmltok_impl_c::inValue;
                         open = crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int;
                     } else if open == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int {
                         state = crate::xmltok_impl_c::other;
                         if nAtts < attsMax {
-                            set_attribute_value_end(atts, nAtts, ptr);
+                            set_attribute_value_end(&mut current_attribute, ptr);
+                            write_raw_pointee(
+                                atts.wrapping_offset(nAtts as isize),
+                                current_attribute,
+                            );
                         }
                         nAtts += 1;
                     }
                 }
                 3 => {
                     if nAtts < attsMax {
-                        current_normalized = 0 as ::core::ffi::c_char;
-                        set_attribute_normalized(atts, nAtts, current_normalized);
+                        set_attribute_normalized(&mut current_attribute, 0 as ::core::ffi::c_char);
                     }
                 }
                 21 => {
@@ -4108,23 +4096,21 @@ pub mod xmltok_impl_c {
                         state = crate::xmltok_impl_c::other;
                     } else if state == crate::xmltok_impl_c::inValue
                         && nAtts < attsMax
-                        && current_normalized as ::core::ffi::c_int != 0
+                        && current_attribute.normalized as ::core::ffi::c_int != 0
                         && (ptr == current_value_ptr
                             || encoded_ascii_at(ptr, unit) != crate::ascii_h::ASCII_SPACE
                             || encoded_ascii_at(ptr.wrapping_offset(step), unit)
                                 == crate::ascii_h::ASCII_SPACE
                             || byte_type_at(enc, ptr.wrapping_offset(step), unit) == open)
                     {
-                        current_normalized = 0 as ::core::ffi::c_char;
-                        set_attribute_normalized(atts, nAtts, current_normalized);
+                        set_attribute_normalized(&mut current_attribute, 0 as ::core::ffi::c_char);
                     }
                 }
                 9 | 10 => {
                     if state == crate::xmltok_impl_c::inName {
                         state = crate::xmltok_impl_c::other;
                     } else if state == crate::xmltok_impl_c::inValue && nAtts < attsMax {
-                        current_normalized = 0 as ::core::ffi::c_char;
-                        set_attribute_normalized(atts, nAtts, current_normalized);
+                        set_attribute_normalized(&mut current_attribute, 0 as ::core::ffi::c_char);
                     }
                 }
                 11 | 17 => {
