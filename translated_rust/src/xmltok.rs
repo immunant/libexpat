@@ -4588,6 +4588,12 @@ enum EncodingDataLookup<'a> {
         end: *const ::core::ffi::c_char,
         next_tok_ptr: *mut *const ::core::ffi::c_char,
     },
+    Utf8Convert {
+        ptr: &'a mut *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        out: &'a mut *mut ::core::ffi::c_char,
+        out_end: *const ::core::ffi::c_char,
+    },
     XmlDecl(XmlDeclEncodingAction<'a>),
 }
 
@@ -4809,6 +4815,14 @@ fn encoding_data_lookup(
                     *enc_ptr, ptr, end, next_tok_ptr
                 ))
             }
+            EncodingDataLookup::Utf8Convert {
+                ptr,
+                end,
+                out,
+                out_end,
+            } => EncodingDataValue::Int((*enc).utf8Convert.expect("non-null function pointer")(
+                enc, ptr, end, out, out_end,
+            ) as ::core::ffi::c_int),
             EncodingDataLookup::XmlDecl(action) => EncodingDataValue::XmlDecl(match action {
                 XmlDeclEncodingAction::MinBytes => {
                     XmlDeclEncodingResult::Int((*enc).minBytesPerChar)
@@ -7450,6 +7464,27 @@ fn normal_byte_type(
 ) -> ::core::ffi::c_int {
     match encoding_data_lookup(enc, EncodingDataLookup::NormalByteType(byte)) {
         EncodingDataValue::Int(value) => value,
+        _ => unreachable!(),
+    }
+}
+
+pub(crate) fn encoding_utf8_convert(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: &mut *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    out: &mut *mut ::core::ffi::c_char,
+    out_end: *const ::core::ffi::c_char,
+) -> crate::src::xmltok::XML_Convert_Result {
+    match encoding_data_lookup(
+        enc,
+        EncodingDataLookup::Utf8Convert {
+            ptr,
+            end,
+            out,
+            out_end,
+        },
+    ) {
+        EncodingDataValue::Int(value) => value as crate::src::xmltok::XML_Convert_Result,
         _ => unreachable!(),
     }
 }

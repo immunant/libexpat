@@ -12696,34 +12696,31 @@ fn poolAppend(
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut crate::expat_external_h::XML_Char {
-    unsafe {
-        if pool.ptr.is_null() && poolGrow(pool, None) == 0 {
+    if pool.ptr.is_null() && poolGrow(pool, None) == 0 {
+        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    }
+    loop {
+        let convert_res = crate::src::xmltok::encoding_utf8_convert(
+            enc,
+            &mut ptr,
+            end,
+            &mut pool.ptr,
+            pool.end as *const ::core::ffi::c_char,
+        );
+        if convert_res as ::core::ffi::c_uint
+            == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
+                as ::core::ffi::c_uint
+            || convert_res as ::core::ffi::c_uint
+                == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
+                    as ::core::ffi::c_uint
+        {
+            break;
+        }
+        if poolGrow(pool, None) == 0 {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
         }
-        loop {
-            let convert_res: crate::src::xmltok::XML_Convert_Result =
-                (*enc).utf8Convert.expect("non-null function pointer")(
-                    enc,
-                    &raw mut ptr,
-                    end,
-                    &raw mut pool.ptr as *mut *mut ::core::ffi::c_char,
-                    pool.end as *const ::core::ffi::c_char,
-                ) as crate::src::xmltok::XML_Convert_Result;
-            if convert_res as ::core::ffi::c_uint
-                == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
-                    as ::core::ffi::c_uint
-                || convert_res as ::core::ffi::c_uint
-                    == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
-                        as ::core::ffi::c_uint
-            {
-                break;
-            }
-            if poolGrow(pool, None) == 0 {
-                return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-            }
-        }
-        return pool.start;
     }
+    return pool.start;
 }
 
 fn poolAppendChars(
