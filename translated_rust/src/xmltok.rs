@@ -3757,87 +3757,100 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_scanComment(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            if !(*ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as isize) as ::core::ffi::c_int == 0x2d as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr)
-                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize
-            {
-                match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                } {
-                    5 => {
-                        if end.offset_from(ptr) < 2 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+    enum Little2ScanOutcome {
+        Token(::core::ffi::c_int, usize),
+        Partial(::core::ffi::c_int),
+        Invalid(usize),
+    }
+
+    /// Scan a UTF-16LE comment body using offsets into the bounded input.
+    /// The caller translates the result back to the ABI cursor pointer.
+    fn little2_scan_comment_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> Little2ScanOutcome {
+        if input.len() < 2 {
+            return Little2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+        }
+        if input[0] != b'-' as ::core::ffi::c_char || input[1] != 0 {
+            return Little2ScanOutcome::Invalid(0);
+        }
+
+        let mut pos = 2;
+        while pos + 2 <= input.len() {
+            match little2_byte_type(&enc.type_0, input, pos) {
+                5 => {
+                    if input.len() - pos < 2 {
+                        return Little2ScanOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
                     }
-                    6 => {
-                        if end.offset_from(ptr) < 3 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    }
-                    7 => {
-                        if end.offset_from(ptr) < 4 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    }
-                    0 | 1 | 8 => {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    27 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                        }
-                        if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                == 0x2d as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if !(end.offset_from(ptr)
-                                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                            {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                            }
-                            if !(*ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                    == 0x3e as ::core::ffi::c_int)
-                            {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            return crate::src::xmltok::XML_TOK_COMMENT_1;
-                        }
-                    }
-                    _ => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    }
+                    pos += 2;
                 }
+                6 => {
+                    if input.len() - pos < 3 {
+                        return Little2ScanOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
+                    }
+                    pos += 3;
+                }
+                7 => {
+                    if input.len() - pos < 4 {
+                        return Little2ScanOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
+                    }
+                    pos += 4;
+                }
+                0 | 1 | 8 => return Little2ScanOutcome::Invalid(pos),
+                27 => {
+                    pos += 2;
+                    if pos + 2 > input.len() {
+                        return Little2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                    }
+                    if input[pos] != b'-' as ::core::ffi::c_char || input[pos + 1] != 0 {
+                        return Little2ScanOutcome::Invalid(pos);
+                    }
+                    pos += 2;
+                    if pos + 2 > input.len() {
+                        return Little2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                    }
+                    return if input[pos] == b'>' as ::core::ffi::c_char && input[pos + 1] == 0 {
+                        Little2ScanOutcome::Token(crate::src::xmltok::XML_TOK_COMMENT_1, pos + 2)
+                    } else {
+                        Little2ScanOutcome::Invalid(pos)
+                    };
+                }
+                _ => pos += 2,
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        Little2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
+    }
+
+    pub unsafe extern "C" fn little2_scanComment(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len < 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        match little2_scan_comment_impl(normal, input) {
+            Little2ScanOutcome::Token(token, next) => {
+                *nextTokPtr = ptr.add(next);
+                token
+            }
+            Little2ScanOutcome::Partial(token) => token,
+            Little2ScanOutcome::Invalid(at) => {
+                *nextTokPtr = ptr.add(at);
+                crate::src::xmltok::XML_TOK_INVALID_1
+            }
+        }
     }
 
     enum Little2ScanDeclAction {
