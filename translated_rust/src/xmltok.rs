@@ -913,45 +913,36 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_checkPiTarget(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    pub fn normal_checkPiTarget(
+        target: &[u8],
+        token: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) != (1 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as isize {
-            return 1 as ::core::ffi::c_int;
-        }
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
+        *token = crate::src::xmltok::XML_TOK_PI_1;
+        let [x, m, l] = target else {
+            return 1;
+        };
+
+        let mut has_uppercase = false;
+        for (byte, lowercase, uppercase) in [
+            (*x, crate::ascii_h::ASCII_x_1 as u8, crate::ascii_h::ASCII_X_1 as u8),
+            (*m, crate::ascii_h::ASCII_m_1 as u8, crate::ascii_h::ASCII_M_1 as u8),
+            (*l, crate::ascii_h::ASCII_l_1 as u8, crate::ascii_h::ASCII_L_1 as u8),
+        ] {
+            if byte == lowercase {
+                continue;
             }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
+            if byte == uppercase {
+                has_uppercase = true;
+                continue;
             }
-            _ => return 1 as ::core::ffi::c_int,
+            return 1;
         }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
+
+        if has_uppercase {
+            return 0;
         }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
+        *token = crate::src::xmltok::XML_TOK_XML_DECL_1;
+        1
     }
 
     fn normal_byte_type(
