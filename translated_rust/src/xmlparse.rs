@@ -10360,6 +10360,10 @@ unsafe extern "C" fn processXmlDecl(
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut standalone: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
     let mut declaration_encoding = None;
+    // Keep the tokenizer facts needed after parsing as ordinary values.  This
+    // avoids repeatedly dereferencing the encoding pointer while retaining
+    // the exact byte-width checks used by the C implementation.
+    let mut declaration_min_bytes_per_char = 0;
     if accountingDiffTolerated(
         parser,
         crate::src::xmltok::XML_TOK_XML_DECL,
@@ -10383,7 +10387,9 @@ unsafe extern "C" fn processXmlDecl(
         // once here, then keep the tokenizer's result as offsets so no
         // output pointer can outlive that window.
         let input = ::core::slice::from_raw_parts(s.cast::<u8>(), next.addr() - s.addr());
-        let encoding_info = (*encoding).xml_decl_info();
+        let encoding = &*encoding;
+        let encoding_info = encoding.xml_decl_info();
+        declaration_min_bytes_per_char = encoding.minBytesPerChar;
         declaration_encoding = Some(encoding_info);
         match crate::src::xmltok::parse_xml_decl_with_info(
             isGeneralTextEntity != 0,
@@ -10456,8 +10462,9 @@ unsafe extern "C" fn processXmlDecl(
                     &raw mut parser_state.m_temp2Pool,
                     encoding,
                     encodingName,
-                    encodingName
-                        .offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
+                    encodingName.wrapping_add(
+                        crate::src::xmltok::name_length(encoding, encodingName) as usize,
+                    ),
                 );
                 if storedEncName.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -10469,7 +10476,7 @@ unsafe extern "C" fn processXmlDecl(
                     &raw mut parser_state.m_temp2Pool,
                     encoding,
                     version,
-                    versionend.offset(-((*encoding).minBytesPerChar as isize)),
+                    versionend.wrapping_sub(declaration_min_bytes_per_char as usize),
                 );
                 if storedversion.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -10508,8 +10515,9 @@ unsafe extern "C" fn processXmlDecl(
         let declaration_encoding = declaration_encoding
             .expect("a parsed XML declaration always has encoding metadata");
         if !newEncoding.is_null() {
-            if (*newEncoding).minBytesPerChar != declaration_encoding.min_bytes_per_char
-                || (*newEncoding).minBytesPerChar == 2 as ::core::ffi::c_int
+            let new_encoding = &*newEncoding;
+            if new_encoding.minBytesPerChar != declaration_encoding.min_bytes_per_char
+                || new_encoding.minBytesPerChar == 2 as ::core::ffi::c_int
                     && newEncoding != encoding
             {
                 set_parser_event_start!(&mut *parser, encodingName);
@@ -10525,8 +10533,9 @@ unsafe extern "C" fn processXmlDecl(
                     &raw mut parser_state.m_temp2Pool,
                     encoding,
                     encodingName,
-                    encodingName
-                        .offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
+                    encodingName.wrapping_add(
+                        crate::src::xmltok::name_length(encoding, encodingName) as usize,
+                    ),
                 );
                 if storedEncName.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
