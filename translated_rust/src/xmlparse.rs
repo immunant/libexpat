@@ -2369,6 +2369,13 @@ impl STRING_POOL {
         self.ptr_offset = 0;
     }
 
+    fn clear(&mut self) {
+        self.storage.free.append(&mut self.storage.active);
+        self.blockCount = 0;
+        self.start = None;
+        self.ptr_offset = 0;
+    }
+
     fn write_cursor(&mut self, value: crate::expat_external_h::XML_Char) -> bool {
         let Some(start) = self.start_ref(true) else {
             return false;
@@ -10218,7 +10225,7 @@ unsafe extern "C" fn processXmlDecl(
             // to stage its name must end before the hook can re-enter.
             let result = handleUnknownEncoding(parser, storedEncName);
             let parser_state = &mut *parser;
-            poolClear(&raw mut parser_state.m_temp2Pool);
+            parser_state.m_temp2Pool.clear();
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
                     as ::core::ffi::c_uint
@@ -10230,7 +10237,7 @@ unsafe extern "C" fn processXmlDecl(
     }
     if !storedEncName.is_null() || !storedversion.is_null() {
         let parser_state = &mut *parser;
-        poolClear(&raw mut parser_state.m_temp2Pool);
+        parser_state.m_temp2Pool.clear();
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
@@ -16318,11 +16325,7 @@ unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::exp
 }
 
 unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
-    let pool = &mut *pool;
-    pool.storage.free.append(&mut pool.storage.active);
-    pool.blockCount = 0;
-    pool.start = None;
-    pool.ptr_offset = 0;
+    (&mut *pool).clear();
 }
 
 fn poolDestroy(pool: &mut STRING_POOL) {
