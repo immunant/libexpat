@@ -1064,6 +1064,26 @@ macro_rules! call_handler_one_arg {
     }};
 }
 
+macro_rules! call_xml_init_encoding_for_parser {
+    ($parser:expr, $name:expr $(,)?) => {{
+        unsafe {
+            if ($parser).m_ns != 0 {
+                XmlInitEncodingNS(
+                    &raw mut ($parser).m_initEncoding,
+                    &raw mut ($parser).m_encoding,
+                    $name,
+                )
+            } else {
+                XmlInitEncoding(
+                    &raw mut ($parser).m_initEncoding,
+                    &raw mut ($parser).m_encoding,
+                    $name,
+                )
+            }
+        }
+    }};
+}
+
 fn xmlparse_assert_fail(
     assertion: &'static [u8],
     line: ::core::ffi::c_uint,
@@ -1103,23 +1123,7 @@ fn init_protocol_encoding(
     parser: &mut XML_ParserStruct,
     protocol_encoding_name: *const ::core::ffi::c_char,
 ) -> bool {
-    let initializer: unsafe extern "C" fn(
-        *mut INIT_ENCODING,
-        *mut *const ENCODING,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int = if parser.m_ns != 0 {
-        XmlInitEncodingNS
-    } else {
-        XmlInitEncoding
-    };
-
-    unsafe {
-        initializer(
-            &mut parser.m_initEncoding,
-            &mut parser.m_encoding,
-            protocol_encoding_name,
-        ) != 0
-    }
+    call_xml_init_encoding_for_parser!(parser, protocol_encoding_name) != 0
 }
 
 fn c_str_bytes<'a>(ptr: *const ::core::ffi::c_char) -> &'a [u8] {
@@ -1996,10 +2000,9 @@ extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const XML_Ch
             (*parser).m_protocolEncodingName = copyString(encodingName, parser);
         }
         (*parser).m_curBase = ::core::ptr::null::<XML_Char>();
-        XmlInitEncoding(
-            &raw mut (*parser).m_initEncoding,
-            &raw mut (*parser).m_encoding,
-            ::core::ptr::null::<::core::ffi::c_char>(),
+        call_xml_init_encoding_for_parser!(
+            &mut *parser,
+            ::core::ptr::null::<::core::ffi::c_char>()
         );
         (*parser).m_userData = NULL;
         (*parser).m_handlerArg = NULL;
