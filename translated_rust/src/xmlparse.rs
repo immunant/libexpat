@@ -1883,6 +1883,39 @@ static EXTERNAL_ENTITY_REF_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+trait SkippedEntityCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        entity_name: *const crate::expat_external_h::XML_Char,
+        is_parameter_entity: ::core::ffi::c_int,
+    );
+}
+
+impl SkippedEntityCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+        ::core::ffi::c_int,
+    )
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        entity_name: *const crate::expat_external_h::XML_Char,
+        is_parameter_entity: ::core::ffi::c_int,
+    ) {
+        self(user_data, entity_name, is_parameter_entity);
+    }
+}
+
+// Foreign callback values live outside parser state.  The parser itself only
+// records whether a handler is installed, while this registry preserves the
+// C callback ABI and lets call sites clone the callback before re-entry.
+static SKIPPED_ENTITY_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn SkippedEntityCallback>>>,
+> = std::sync::OnceLock::new();
+
 // The initial tokenizer chooses a built-in encoding after inspecting the
 // first bytes.  Keep that choice as an index in INIT_ENCODING rather than
 // copying a pointer to a static encoding table into parser state.  An unknown
@@ -1927,7 +1960,7 @@ pub struct XML_ParserStruct {
     pub m_notStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler,
     pub m_externalEntityRefHandler: bool,
     pub m_externalEntityRefHandlerArg: crate::expat_h::XML_Parser,
-    pub m_skippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler,
+    pub m_skippedEntityHandler: bool,
     pub m_unknownEncodingHandler: bool,
     pub m_elementDeclHandler: bool,
     pub m_attlistDeclHandler: bool,
@@ -3370,7 +3403,12 @@ unsafe extern "C" fn parserInit(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     (*parser).m_externalEntityRefHandlerArg = parser;
-    (*parser).m_skippedEntityHandler = None;
+    (*parser).m_skippedEntityHandler = false;
+    SKIPPED_ENTITY_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_elementDeclHandler = false;
     ELEMENT_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -3631,7 +3669,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldNotStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler = None;
     let mut oldExternalEntityRefHandler: Option<std::sync::Arc<dyn ExternalEntityRefCallback>> =
         None;
-    let mut oldSkippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler = None;
+    let mut oldSkippedEntityCallback: Option<std::sync::Arc<dyn SkippedEntityCallback>> = None;
     let mut oldUnknownEncodingHandler: Option<std::sync::Arc<dyn UnknownEncodingCallback>> = None;
     let mut oldUnknownEncodingHandlerData: *mut ::core::ffi::c_void =
         ::core::ptr::null_mut::<::core::ffi::c_void>();
@@ -3736,7 +3774,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .get(&(parser as usize))
         .cloned();
-    oldSkippedEntityHandler = (*parser).m_skippedEntityHandler;
+    oldSkippedEntityCallback = SKIPPED_ENTITY_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldUnknownEncodingHandler = UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -3898,7 +3941,14 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(parser as usize, callback);
     }
-    (*parser).m_skippedEntityHandler = oldSkippedEntityHandler;
+    (*parser).m_skippedEntityHandler = oldSkippedEntityCallback.is_some();
+    if let Some(callback) = oldSkippedEntityCallback {
+        SKIPPED_ENTITY_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_unknownEncodingHandler = oldUnknownEncodingHandler.is_some();
     if let Some(callback) = oldUnknownEncodingHandler {
         UNKNOWN_ENCODING_HANDLERS
@@ -4092,6 +4142,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
     EXTERNAL_ENTITY_REF_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
+    SKIPPED_ENTITY_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -4984,7 +5039,19 @@ pub unsafe extern "C" fn XML_SetSkippedEntityHandler(
     mut handler: crate::expat_h::XML_SkippedEntityHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_skippedEntityHandler = handler;
+        (*parser).m_skippedEntityHandler = handler.is_some();
+        let mut handlers = SKIPPED_ENTITY_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match handler {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetSkippedEntityHandler"]
@@ -6700,14 +6767,20 @@ unsafe extern "C" fn doContent(
                                 return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
                         } else if entity.is_null() {
-                            if (*parser).m_skippedEntityHandler.is_some() {
-                                (*parser)
-                                    .m_skippedEntityHandler
-                                    .expect("non-null function pointer")(
-                                    (*parser).m_handlerArg,
-                                    name,
-                                    0 as ::core::ffi::c_int,
-                                );
+                            if (*parser).m_skippedEntityHandler {
+                                let callback = SKIPPED_ENTITY_HANDLERS
+                                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                    .lock()
+                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                    .get(&(parser as usize))
+                                    .cloned();
+                                if let Some(callback) = callback {
+                                    callback.invoke(
+                                        (*parser).m_handlerArg,
+                                        name,
+                                        0 as ::core::ffi::c_int,
+                                    );
+                                }
                             } else if (*parser).m_defaultHandler {
                                 reportDefault(parser, enc, s, next);
                             }
@@ -6723,14 +6796,20 @@ unsafe extern "C" fn doContent(
                             let mut result: crate::expat_h::XML_Error =
                                 crate::expat_h::XML_ERROR_NONE;
                             if (*parser).m_defaultExpandInternalEntities == 0 {
-                                if (*parser).m_skippedEntityHandler.is_some() {
-                                    (*parser)
-                                        .m_skippedEntityHandler
-                                        .expect("non-null function pointer")(
-                                        (*parser).m_handlerArg,
-                                        (*entity).name,
-                                        0 as ::core::ffi::c_int,
-                                    );
+                                if (*parser).m_skippedEntityHandler {
+                                    let callback = SKIPPED_ENTITY_HANDLERS
+                                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                        .lock()
+                                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                        .get(&(parser as usize))
+                                        .cloned();
+                                    if let Some(callback) = callback {
+                                        callback.invoke(
+                                            (*parser).m_handlerArg,
+                                            (*entity).name,
+                                            0 as ::core::ffi::c_int,
+                                        );
+                                    }
                                 } else if (*parser).m_defaultHandler {
                                     reportDefault(parser, enc, s, next);
                                 }
@@ -10596,15 +10675,21 @@ unsafe extern "C" fn doProlog(
                                                 if role
                                                     == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF
                                                         as ::core::ffi::c_int
-                                                    && (*parser).m_skippedEntityHandler.is_some()
+                                                    && (*parser).m_skippedEntityHandler
                                                 {
-                                                    (*parser)
-                                                        .m_skippedEntityHandler
-                                                        .expect("non-null function pointer")(
-                                                        (*parser).m_handlerArg,
-                                                        name_1,
-                                                        1 as ::core::ffi::c_int,
-                                                    );
+                                                    let callback = SKIPPED_ENTITY_HANDLERS
+                                                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                        .lock()
+                                                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                        .get(&(parser as usize))
+                                                        .cloned();
+                                                    if let Some(callback) = callback {
+                                                        callback.invoke(
+                                                            (*parser).m_handlerArg,
+                                                            name_1,
+                                                            1 as ::core::ffi::c_int,
+                                                        );
+                                                    }
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
                                                 break 's_2375;
