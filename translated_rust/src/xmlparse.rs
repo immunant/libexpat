@@ -9,36 +9,15 @@ pub mod siphash_h {
         ]);
     }
 
-    pub unsafe extern "C" fn sip_round(
-        mut H: *mut crate::siphash_h::siphash,
-        rounds: ::core::ffi::c_int,
-    ) {
-        let state = &mut *H;
-        let mut i: ::core::ffi::c_int = 0;
-        i = 0 as ::core::ffi::c_int;
-        while i < rounds {
-            state.v0 = state.v0.wrapping_add(state.v1);
-            state.v1 = state.v1 << 13 as ::core::ffi::c_int
-                | state.v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
-            state.v1 ^= state.v0;
-            state.v0 = state.v0 << 32 as ::core::ffi::c_int
-                | state.v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-            state.v2 = state.v2.wrapping_add(state.v3);
-            state.v3 = state.v3 << 16 as ::core::ffi::c_int
-                | state.v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
-            state.v3 ^= state.v2;
-            state.v0 = state.v0.wrapping_add(state.v3);
-            state.v3 = state.v3 << 21 as ::core::ffi::c_int
-                | state.v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
-            state.v3 ^= state.v0;
-            state.v2 = state.v2.wrapping_add(state.v1);
-            state.v1 = state.v1 << 17 as ::core::ffi::c_int
-                | state.v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
-            state.v1 ^= state.v2;
-            state.v2 = state.v2 << 32 as ::core::ffi::c_int
-                | state.v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-            i += 1;
-        }
+    /// Applies SipHash rounds to an already-borrowed state.  Non-positive
+    /// counts retain the original no-op behavior.
+    pub fn sip_round(state: &mut crate::siphash_h::siphash, rounds: ::core::ffi::c_int) {
+        let Ok(rounds) = usize::try_from(rounds) else {
+            return;
+        };
+        let mut values = [state.v0, state.v1, state.v2, state.v3];
+        sip_round_values(&mut values, rounds);
+        [state.v0, state.v1, state.v2, state.v3] = values;
     }
 
     /// Initializes a SipHash state from an already-borrowed key.  The state
