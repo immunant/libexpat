@@ -2258,9 +2258,12 @@ pub struct XML_ParserStruct {
     pub m_ns: crate::expat_h::XML_Bool,
     pub m_ns_triplets: crate::expat_h::XML_Bool,
     pub m_unknownEncodingMem: *mut ::core::ffi::c_void,
-    pub m_unknownEncodingData: *mut ::core::ffi::c_void,
     pub m_unknownEncodingHandlerData: *mut ::core::ffi::c_void,
-    pub m_unknownEncodingRelease: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+    // A successful unknown-encoding callback transfers this ABI record to
+    // the parser until reset/free.  Keeping the record intact ties its
+    // foreign data and release callback together, preventing one from being
+    // retained without the other.
+    m_unknownEncodingInfo: Option<crate::expat_h::XML_Encoding>,
     pub m_prologState: crate::src::xmlrole::PROLOG_STATE,
     pub m_processor: ProcessorState,
     pub m_errorCode: crate::expat_h::XML_Error,
@@ -3990,9 +3993,8 @@ fn initial_parser_struct(
         m_ns: crate::expat_h::XML_FALSE,
         m_ns_triplets: crate::expat_h::XML_FALSE,
         m_unknownEncodingMem: crate::__stddef_null_h::NULL,
-        m_unknownEncodingData: crate::__stddef_null_h::NULL,
         m_unknownEncodingHandlerData: crate::__stddef_null_h::NULL,
-        m_unknownEncodingRelease: None,
+        m_unknownEncodingInfo: None,
         m_prologState: crate::src::xmlrole::PROLOG_STATE {
             handler: None,
             level: 0,
@@ -4483,8 +4485,7 @@ fn parser_init(
     parser.m_inheritedBindings = ::core::ptr::null_mut::<BINDING>();
     parser.m_nSpecifiedAtts = 0 as ::core::ffi::c_int;
     parser.m_unknownEncodingMem = crate::__stddef_null_h::NULL;
-    parser.m_unknownEncodingRelease = None;
-    parser.m_unknownEncodingData = crate::__stddef_null_h::NULL;
+    parser.m_unknownEncodingInfo = None;
     parser.m_parsingStatus.parsing = crate::expat_h::XML_INITIALIZED;
     parser.m_reenter = crate::expat_h::XML_FALSE;
     parser.m_isParamEntity = crate::expat_h::XML_FALSE;
@@ -4572,8 +4573,7 @@ pub unsafe extern "C" fn XML_ParserReset(
     // invoking allocator or release callbacks below, which may inspect the parser.
     let (
         unknown_encoding_mem,
-        unknown_encoding_release,
-        unknown_encoding_data,
+        unknown_encoding_info,
         protocol_encoding_name,
         dtd,
     ) = {
@@ -4620,21 +4620,21 @@ pub unsafe extern "C" fn XML_ParserReset(
         }
         moveToFreeBindingList(parser_state, parser_state.m_inheritedBindings);
         let unknown_encoding_mem = parser_state.m_unknownEncodingMem;
-        let unknown_encoding_release = parser_state.m_unknownEncodingRelease;
-        let unknown_encoding_data = parser_state.m_unknownEncodingData;
+        let unknown_encoding_info = parser_state.m_unknownEncodingInfo.take();
         let protocol_encoding_name = parser_state.m_protocolEncodingName.take();
         (
             unknown_encoding_mem,
-            unknown_encoding_release,
-            unknown_encoding_data,
+            unknown_encoding_info,
             protocol_encoding_name,
             parser_dtd_ptr!(parser_state),
         )
     };
     crate::src::xmltok::unregister_unknown_encoding_converter(unknown_encoding_mem as usize);
     expat_free(parser, unknown_encoding_mem, 1686 as ::core::ffi::c_int);
-    if let Some(release) = unknown_encoding_release {
-        release(unknown_encoding_data);
+    if let Some(info) = unknown_encoding_info {
+        if let Some(release) = info.release {
+            release(info.data);
+        }
     }
     poolClear(&raw mut (*parser).m_tempPool);
     poolClear(&raw mut (*parser).m_temp2Pool);
@@ -5400,10 +5400,10 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         parser.m_unknownEncodingMem,
         2013 as ::core::ffi::c_int,
     );
-    if parser.m_unknownEncodingRelease.is_some() {
-        parser
-            .m_unknownEncodingRelease
-            .expect("non-null function pointer")(parser.m_unknownEncodingData);
+    if let Some(info) = parser.m_unknownEncodingInfo.take() {
+        if let Some(release) = info.release {
+            release(info.data);
+        }
     }
     expat_free(
         parser as *mut XML_ParserStruct,
@@ -10746,8 +10746,7 @@ unsafe extern "C" fn handleUnknownEncoding(
                 info.data,
             );
             if !enc.is_null() {
-                (*parser).m_unknownEncodingData = info.data;
-                (*parser).m_unknownEncodingRelease = info.release;
+                (*parser).m_unknownEncodingInfo = Some(info);
                 (*parser).m_encoding = EncodingState::Unknown;
                 return crate::expat_h::XML_ERROR_NONE;
             }
