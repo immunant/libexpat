@@ -11476,19 +11476,14 @@ unsafe fn doContent(
                             };
                             callCharacterDataHandler(parser, data_start, data_len);
                         } else {
-                            let data_len = match end
-                                .addr()
-                                .checked_sub(s.addr())
-                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
-                            {
-                                Some(len) => len,
-                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
-                            };
-                            callCharacterDataHandler(
-                                parser,
-                                s as *const crate::expat_external_h::XML_Char,
-                                data_len,
-                            );
+                            // `source` is the complete bounded window from
+                            // `s` through `end`.  Dispatch it directly from
+                            // that owned snapshot so the callback boundary
+                            // receives a checked slice rather than the
+                            // legacy raw cursor pair.
+                            let data: &[crate::expat_external_h::XML_Char] =
+                                bytemuck::cast_slice(&source);
+                            dispatch_character_data_slice(parser, data);
                         }
                     } else if handlers.default {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
@@ -11620,19 +11615,24 @@ unsafe fn doContent(
                                 );
                             }
                         } else {
-                            let data_len = match next
+                            let Some(token_len) = next
                                 .addr()
                                 .checked_sub(s.addr())
-                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
-                            {
-                                Some(len) => len,
-                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                .filter(|length| *length <= source.len())
+                            else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             };
-                            charDataHandler.invoke(
-                                handler_arg_from_state!(parser),
-                                s as *const crate::expat_external_h::XML_Char,
-                                data_len,
-                            );
+                            let Some(token) = source.get(..token_len) else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            // The token is retained by this loop-local
+                            // snapshot through callback return.  This has the
+                            // same byte representation as `XML_Char` for
+                            // UTF-8 input, without retaining a parser-buffer
+                            // pointer across a re-entrant callback.
+                            let data: &[crate::expat_external_h::XML_Char] =
+                                bytemuck::cast_slice(token);
+                            dispatch_character_data_slice(parser, data);
                         }
                     } else if parser.m_defaultHandler {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
