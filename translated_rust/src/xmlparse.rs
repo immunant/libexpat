@@ -8895,10 +8895,17 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
             // live child may still use.
             if let Ok(dtd) = std::sync::Arc::try_unwrap(dtd) {
                 let mut dtd = dtd.value.into_inner();
-                dtdDestroy(
+                let mut release_default_attributes =
+                    |_parser: &mut XML_ParserStruct, mut storage: DefaultAttributeStorage| {
+                        storage
+                            .backing
+                            .apply(_parser, ParserAllocationAction::Free(7580));
+                    };
+                dtd_destroy_impl(
                     &mut dtd,
                     parser.m_parentParser.is_none(),
                     parser,
+                    &mut release_default_attributes,
                 );
             }
         }
@@ -8938,10 +8945,10 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
 #[export_name = "XML_ParserFree"]
 
 pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Parser) {
-    if parser.is_null() {
+    if parser.is_null() || !parser.is_aligned() {
         return;
     }
-    let mut parser = Box::from_raw(parser);
+    let mut parser = unsafe { Box::from_raw(parser) };
     parser_free_owned(&mut parser)
 }
 fn XML_UseParserAsHandlerArg(handler_arg: &mut HandlerArg) {
