@@ -3384,7 +3384,7 @@ fn external_entity_ref_handler_arg_registration(
 trait SkippedEntityCallback: Send + Sync + std::any::Any {}
 
 impl SkippedEntityCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         ::core::ffi::c_int,
@@ -3418,7 +3418,7 @@ impl SkippedEntityCallbackAdapter {
 
     fn invoke(&self, event: SkippedEntityCallbackEvent<'_>) {
         let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 ::core::ffi::c_int,
@@ -3428,13 +3428,14 @@ impl SkippedEntityCallbackAdapter {
         };
         // The event keeps the parser context and terminated entity name live
         // for this synchronous foreign callback.
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event.entity_name.as_ptr(),
-                event.is_parameter_entity,
-            );
+        if event.entity_name.last().copied() != Some(0) {
+            return;
         }
+        callback(
+            handler_arg_from_state!(event.parser),
+            event.entity_name.as_ptr(),
+            event.is_parameter_entity,
+        );
     }
 }
 
@@ -10734,6 +10735,17 @@ pub unsafe extern "C" fn XML_SetSkippedEntityHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // The exported callback type marks invocation as unsafe because C
+    // arguments must be valid.  Dispatch only supplies a live parser context
+    // and a checked, terminated entity-name slice, so the registration keeps
+    // the equivalent safe callback representation internally.
+    let handler: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            ::core::ffi::c_int,
+        ),
+    > = unsafe { ::core::mem::transmute(handler) };
     let registration = skipped_entity_handler_registration(handler);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_skipped_entity_handler(parser, parser_address, registration)
