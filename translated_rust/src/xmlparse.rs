@@ -7925,12 +7925,12 @@ unsafe extern "C" fn doProlog(
                     if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
                         || enc != (*parser).m_encoding
                     {
+                        let prolog_state = &mut (*parser).m_prologState;
                         if crate::src::xmlrole::prolog_handler_dispatch(
-                            (*parser)
-                                .m_prologState
+                            prolog_state
                                 .handler
                                 .expect("prolog state must have a handler"),
-                            &raw mut (*parser).m_prologState,
+                            prolog_state,
                             -4 as ::core::ffi::c_int,
                             end,
                             end,
@@ -7950,12 +7950,12 @@ unsafe extern "C" fn doProlog(
                 }
             }
         }
+        let prolog_state = &mut (*parser).m_prologState;
         role = crate::src::xmlrole::prolog_handler_dispatch(
-            (*parser)
-                .m_prologState
+            prolog_state
                 .handler
                 .expect("prolog state must have a handler"),
-            &raw mut (*parser).m_prologState,
+            prolog_state,
             tok,
             s,
             next,
