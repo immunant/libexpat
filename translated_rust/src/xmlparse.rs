@@ -2194,9 +2194,11 @@ pub struct ELEMENT_TYPE {
     // pointer-bearing view of the same allocation while retaining the table's
     // layout and configured allocator.
     pub named: NAMED,
-    // Prefix records are owned by the DTD prefix table.  Element types only
-    // retain an optional non-null link into that table.
-    pub prefix: Option<std::ptr::NonNull<PREFIX>>,
+    // Prefix records are owned by the DTD prefix table.  Retain their
+    // pool-backed name rather than an address into that table, so the link
+    // remains allocator-neutral and can be resolved when needed.
+    pub prefix: PoolStringRef,
+    pub hasPrefix: crate::expat_h::XML_Bool,
     pub idAtt: *const ATTRIBUTE_ID,
     pub nDefaultAtts: ::core::ffi::c_int,
     pub allocDefaultAtts: ::core::ffi::c_int,
@@ -8132,8 +8134,21 @@ unsafe extern "C" fn storeAtts(
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
     }
-    if let Some(element_prefix) = (*elementType).prefix {
-        binding = (*element_prefix.as_ptr()).binding;
+    if (*elementType).hasPrefix != 0 {
+        let prefix_name = pool_string_pointer(&raw const (*dtd).pool, (*elementType).prefix);
+        if prefix_name.is_null() {
+            return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
+        }
+        let prefix = lookup(
+            parser,
+            &raw mut (*dtd).prefixes,
+            prefix_name as KEY,
+            0 as crate::__stddef_size_t_h::size_t,
+        ) as *mut PREFIX;
+        if prefix.is_null() {
+            return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
+        }
+        binding = (*prefix).binding;
         if binding.is_null() {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
         }
@@ -12724,7 +12739,12 @@ unsafe extern "C" fn setElementTypePrefix(
             } else {
                 (*dtd).pool.ptr = (*dtd).pool.start;
             }
-            (*elementType).prefix = std::ptr::NonNull::new(prefix);
+            let prefix_ref = pool_string_ref(&raw const (*dtd).pool, (*prefix).name);
+            let Some(prefix_ref) = prefix_ref else {
+                return 0 as ::core::ffi::c_int;
+            };
+            (*elementType).prefix = prefix_ref;
+            (*elementType).hasPrefix = crate::expat_h::XML_TRUE;
             break;
         } else {
             name = name.offset(1);
@@ -13402,14 +13422,26 @@ unsafe extern "C" fn dtdCopy(
         }
         new_e.nDefaultAtts = old_e.nDefaultAtts;
         new_e.allocDefaultAtts = new_e.nDefaultAtts;
-        if let Some(old_prefix) = old_e.prefix {
-            let old_prefix = &*old_prefix.as_ptr();
-            new_e.prefix = std::ptr::NonNull::new(lookup(
+        if old_e.hasPrefix != 0 {
+            let old_prefix_name = pool_string_pointer(&raw const old_dtd.pool, old_e.prefix);
+            if old_prefix_name.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let new_prefix = lookup(
                 oldParser,
                 &raw mut new_dtd.prefixes,
-                old_prefix.name as KEY,
+                old_prefix_name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut PREFIX);
+            ) as *mut PREFIX;
+            if new_prefix.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let prefix_ref = pool_string_ref(&raw const new_dtd.pool, (*new_prefix).name);
+            let Some(prefix_ref) = prefix_ref else {
+                return 0 as ::core::ffi::c_int;
+            };
+            new_e.prefix = prefix_ref;
+            new_e.hasPrefix = crate::expat_h::XML_TRUE;
         }
         let mut i = 0 as ::core::ffi::c_int;
         while i < new_e.nDefaultAtts {
@@ -14553,6 +14585,26 @@ unsafe extern "C" fn accountingOnAbort(mut originParser: crate::expat_h::XML_Par
     );
 }
 
+fn append_printable_byte(output: &mut Vec<u8>, byte: u8) {
+    match byte {
+        0 => output.extend_from_slice(b"\\0"),
+        b'\t' => output.extend_from_slice(b"\\t"),
+        b'\n' => output.extend_from_slice(b"\\n"),
+        b'\r' => output.extend_from_slice(b"\\r"),
+        b'"' => output.extend_from_slice(b"\\\""),
+        b'\\' => output.extend_from_slice(b"\\\\"),
+        0x20..=0x7e => output.push(byte),
+        _ => {
+            const HEX: &[u8; 16] = b"0123456789ABCDEF";
+            output.extend_from_slice(b"\\x");
+            if byte >= 16 {
+                output.push(HEX[(byte >> 4) as usize]);
+            }
+            output.push(HEX[(byte & 0x0f) as usize]);
+        }
+    }
+}
+
 unsafe extern "C" fn accountingReportDiff(
     mut rootParser: crate::expat_h::XML_Parser,
     mut levelsAwayFromRootParser: ::core::ffi::c_uint,
@@ -14574,29 +14626,30 @@ unsafe extern "C" fn accountingReportDiff(
             );
         }
     };
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b" (+%6ld bytes %s|%u, xmlparse.c:%d) %*s\"\0".as_ptr() as *const ::core::ffi::c_char,
+    use std::io::Write;
+
+    let mut stderr = std::io::stderr().lock();
+    let account_kind = if account as ::core::ffi::c_uint
+        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        "DIR"
+    } else {
+        "EXP"
+    };
+    let _ = write!(
+        stderr,
+        " (+{:>6} bytes {}|{}, xmlparse.c:{}) {:>10}\"",
         bytesMore,
-        if account as ::core::ffi::c_uint
-            == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            b"DIR\0".as_ptr() as *const ::core::ffi::c_char
-        } else {
-            b"EXP\0".as_ptr() as *const ::core::ffi::c_char
-        },
+        account_kind,
         levelsAwayFromRootParser,
         source_line,
-        10 as ::core::ffi::c_int,
-        b"\0".as_ptr() as *const ::core::ffi::c_char,
+        "",
     );
-    let ellipis: [::core::ffi::c_char; 5] =
-        ::core::mem::transmute::<[u8; 5], [::core::ffi::c_char; 5]>(*b"[..]\0");
     let ellipsisLength: crate::__stddef_size_t_h::size_t =
-        ::core::mem::size_of::<[::core::ffi::c_char; 5]>()
-            .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
+        b"[..]".len() as crate::__stddef_size_t_h::size_t;
     let contextLength: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
     let mut walker: *const ::core::ffi::c_char = before;
+    let mut rendered = Vec::new();
     if (*rootParser).m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
         || after.offset_from(before)
             <= (contextLength as crate::__stddef_size_t_h::size_t)
@@ -14605,40 +14658,23 @@ unsafe extern "C" fn accountingReportDiff(
                 as crate::__stddef_ptrdiff_t_h::ptrdiff_t
     {
         while walker < after {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(*walker.offset(0 as isize) as ::core::ffi::c_uchar),
-            );
+            append_printable_byte(&mut rendered, *walker as u8);
             walker = walker.offset(1);
         }
     } else {
         while walker < before.offset(contextLength as isize) {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(*walker.offset(0 as isize) as ::core::ffi::c_uchar),
-            );
+            append_printable_byte(&mut rendered, *walker as u8);
             walker = walker.offset(1);
         }
-        crate::stdlib::fprintf(
-            crate::stdlib::stderr,
-            &raw const ellipis as *const ::core::ffi::c_char,
-        );
+        rendered.extend_from_slice(b"[..]");
         walker = after.offset(-(contextLength as isize));
         while walker < after {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(*walker.offset(0 as isize) as ::core::ffi::c_uchar),
-            );
+            append_printable_byte(&mut rendered, *walker as u8);
             walker = walker.offset(1);
         }
     }
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"\"\n\0".as_ptr() as *const ::core::ffi::c_char,
-    );
+    let _ = stderr.write_all(&rendered);
+    let _ = stderr.write_all(b"\"\n");
 }
 
 unsafe extern "C" fn accountingDiffTolerated(
