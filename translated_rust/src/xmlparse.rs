@@ -12497,9 +12497,11 @@ unsafe extern "C" fn doIgnoreSection(
     mut nextPtr: *mut *const ::core::ffi::c_char,
     mut haveMore: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
-    let mut next: *const ::core::ffi::c_char = *startPtr;
-    let mut tok: ::core::ffi::c_int = 0;
-    let mut s: *const ::core::ffi::c_char = *startPtr;
+    if parser.is_null() || enc.is_null() || nextPtr.is_null() || (*startPtr).is_null() || end.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let s = *startPtr;
+    let parser_state = &mut *parser;
     let parser_events = enc == parser_encoding(parser);
     // Event cursors name either the parser buffer or a live internal-entity
     // slot.  Retain the slot index, rather than an interior pointer to its
@@ -12508,7 +12510,6 @@ unsafe extern "C" fn doIgnoreSection(
     let mut internal_event_window = None;
     if !parser_events {
         let open_entity_index = {
-            let parser_state = &mut *parser;
             let Some(open_entity_index) = parser_state.m_openInternalEntities else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -12529,42 +12530,72 @@ unsafe extern "C" fn doIgnoreSection(
         };
         event_target = EventCursorTarget::InternalEntity(open_entity_index);
     }
-    event_target.set_start(&mut *parser, internal_event_window, s.addr());
+    let encoding = &*(enc as *const crate::src::xmltok::normal_encoding);
+    let scanner = (*enc).scanners[3];
+    let outcome = if parser_events {
+        let Some(window) = parser_state.m_buffer.window_from_addresses(s.addr(), end.addr()) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        ignore_section_token_and_account(
+            parser_state,
+            encoding,
+            scanner,
+            IgnoreSectionInput::from_bytes(window),
+        )
+    } else {
+        let Some(index) = parser_state.m_openInternalEntities else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(dtd) = parser_state.m_dtd.clone() else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(entity) = parser_state.m_activeInternalEntities.get(index) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let entity = entity.node();
+        let Some(text) = shared_entity_text_chars(&dtd, entity.eventText, entity.eventTextLen) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(start) = s.addr().checked_sub(text.as_ptr().addr()) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(end) = end.addr().checked_sub(text.as_ptr().addr()) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(window) = text.get(start..end) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        ignore_section_token_and_account(
+            parser_state,
+            encoding,
+            scanner,
+            IgnoreSectionInput::from_chars(window),
+        )
+    };
+    let Ok(outcome) = outcome else {
+        cdata_accounting_on_abort(parser_state);
+        return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+    };
+    event_target.set_start(parser_state, internal_event_window, s.addr());
     let internal_event_start = (!parser_events)
         .then(|| internal_event_offset(internal_event_window, s.addr()))
         .flatten();
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    let scan = scanner_context_from_raw((*enc).scanners[3 as usize], enc, s, end).scan();
-    tok = scan.token;
-    if let Some(offset) = scan.next {
-        next = s.wrapping_add(offset);
-    }
-    if accountingDiffTolerated(
-        parser,
-        tok,
-        s,
-        next,
-        4778 as ::core::ffi::c_int,
-        XML_ACCOUNT_DIRECT,
-    ) == 0
-    {
-        accountingOnAbort(parser);
-        return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-    }
+    let next = s.wrapping_add(outcome.next_offset());
     event_target.set_end(
-        &mut *parser,
+        parser_state,
         internal_event_start,
         internal_event_window,
         next.addr(),
     );
-    match tok {
-        crate::src::xmltok::XML_TOK_IGNORE_SECT => {
-            if (*parser).m_defaultHandler {
+    match outcome {
+        IgnoreSectionOutcome::Closed { .. } => {
+            if parser_state.m_defaultHandler {
                 reportDefault(parser, enc, s, next);
             }
             *startPtr = next;
             *nextPtr = next;
-            if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+            if parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint
                 == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
             {
                 return crate::expat_h::XML_ERROR_ABORTED;
@@ -12572,29 +12603,178 @@ unsafe extern "C" fn doIgnoreSection(
                 return crate::expat_h::XML_ERROR_NONE;
             }
         }
-        crate::src::xmltok::XML_TOK_INVALID => {
-            event_target.set_start(&mut *parser, internal_event_window, next.addr());
+        IgnoreSectionOutcome::Invalid { .. } => {
+            event_target.set_start(parser_state, internal_event_window, next.addr());
             return crate::expat_h::XML_ERROR_INVALID_TOKEN;
         }
-        crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
+        IgnoreSectionOutcome::PartialChar { .. } => {
             if haveMore != 0 {
                 *nextPtr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
         }
-        crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
+        IgnoreSectionOutcome::Partial { .. } => {
             if haveMore != 0 {
                 *nextPtr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
-        _ => {
-            event_target.set_start(&mut *parser, internal_event_window, next.addr());
+        IgnoreSectionOutcome::Unexpected { .. } => {
+            event_target.set_start(parser_state, internal_event_window, next.addr());
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
     };
+}
+
+/// An owned, tokenizer-bounded view of an ignore-section token.  The C
+/// boundary validates the original cursor pair before constructing this
+/// value, so scanner dispatch needs neither raw cursors nor a fabricated
+/// lifetime.
+#[derive(Copy, Clone)]
+struct IgnoreSectionInput<'a> {
+    chars: &'a [::core::ffi::c_char],
+}
+
+impl<'a> IgnoreSectionInput<'a> {
+    fn from_bytes(bytes: &'a [u8]) -> Self {
+        Self {
+            chars: bytemuck::cast_slice(bytes),
+        }
+    }
+
+    fn from_chars(chars: &'a [::core::ffi::c_char]) -> Self {
+        Self { chars }
+    }
+}
+
+enum IgnoreSectionOutcome {
+    Closed { next: usize },
+    Invalid { next: usize },
+    PartialChar { next: usize },
+    Partial { next: usize },
+    Unexpected { next: usize, token: ::core::ffi::c_int },
+}
+
+impl IgnoreSectionOutcome {
+    fn next_offset(&self) -> usize {
+        match *self {
+            Self::Closed { next }
+            | Self::Invalid { next }
+            | Self::PartialChar { next }
+            | Self::Partial { next }
+            | Self::Unexpected { next, .. } => next,
+        }
+    }
+
+    fn token(&self) -> ::core::ffi::c_int {
+        match *self {
+            Self::Closed { .. } => crate::src::xmltok::XML_TOK_IGNORE_SECT,
+            Self::Invalid { .. } => crate::src::xmltok::XML_TOK_INVALID,
+            Self::PartialChar { .. } => crate::src::xmltok::XML_TOK_PARTIAL_CHAR,
+            Self::Partial { .. } => crate::src::xmltok::XML_TOK_PARTIAL,
+            Self::Unexpected { token, .. } => token,
+        }
+    }
+}
+
+/// Classifies the one ignore-section token using a checked, owned input
+/// window.  A scanner may omit its next offset for partial tokens; preserving
+/// the original cursor in that case matches Expat's incremental-input
+/// contract.
+fn ignore_section_outcome(
+    input: IgnoreSectionInput<'_>,
+    encoding: &crate::src::xmltok::normal_encoding,
+    scanner: crate::src::xmltok::Scanner,
+) -> IgnoreSectionOutcome {
+    let scan = crate::src::xmltok::ScannerContext::normal(scanner, encoding, &input.chars).scan();
+    let next = scan.next.filter(|&next| next <= input.chars.len()).unwrap_or(0);
+    match scan.token {
+        crate::src::xmltok::XML_TOK_IGNORE_SECT => IgnoreSectionOutcome::Closed { next },
+        crate::src::xmltok::XML_TOK_INVALID => IgnoreSectionOutcome::Invalid { next },
+        crate::src::xmltok::XML_TOK_PARTIAL_CHAR => IgnoreSectionOutcome::PartialChar { next },
+        crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
+            IgnoreSectionOutcome::Partial { next }
+        }
+        token => IgnoreSectionOutcome::Unexpected { next, token },
+    }
+}
+
+/// Accounts for a token whose bounds have already been checked by the
+/// tokenizer input view.  This mirrors the general accounting path without
+/// recovering the source range from raw cursors.
+fn ignore_section_token_and_account(
+    parser: &XML_ParserStruct,
+    encoding: &crate::src::xmltok::normal_encoding,
+    scanner: crate::src::xmltok::Scanner,
+    input: IgnoreSectionInput<'_>,
+) -> Result<IgnoreSectionOutcome, ()> {
+    let outcome = ignore_section_outcome(input, encoding, scanner);
+    let token = outcome.token();
+    match token {
+        crate::src::xmltok::XML_TOK_INVALID
+        | crate::src::xmltok::XML_TOK_PARTIAL
+        | crate::src::xmltok::XML_TOK_PARTIAL_CHAR
+        | crate::src::xmltok::XML_TOK_NONE => return Ok(outcome),
+        _ => {}
+    }
+    let Some(bytes) = bytemuck::cast_slice::<::core::ffi::c_char, u8>(input.chars)
+        .get(..outcome.next_offset())
+    else {
+        return Err(());
+    };
+    let levels_away_from_root = parser
+        .m_parentParser
+        .map_or(0, ::core::num::NonZeroU32::get);
+    let is_direct = parser.m_parentParser.is_none();
+    let bytes_more = bytes.len();
+    let (count_bytes_output, amplification_factor, threshold, maximum, debug_level) = {
+        let mut root = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let addition_target = if is_direct {
+            &mut root.accounting.countBytesDirect
+        } else {
+            &mut root.accounting.countBytesIndirect
+        };
+        if *addition_target > XmlBigCount::MAX.wrapping_sub(bytes_more as XmlBigCount) {
+            return Err(());
+        }
+        *addition_target = addition_target.wrapping_add(bytes_more as XmlBigCount);
+        let output = root
+            .accounting
+            .countBytesDirect
+            .wrapping_add(root.accounting.countBytesIndirect);
+        let amplification = if root.accounting.countBytesDirect != 0 {
+            output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
+        } else {
+            (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
+                as ::core::ffi::c_float
+                / 23.0
+        };
+        (
+            output,
+            amplification,
+            root.accounting.activationThresholdBytes,
+            root.accounting.maximumAmplificationFactor,
+            root.accounting.debugLevel,
+        )
+    };
+    let tolerated = count_bytes_output < threshold || amplification_factor <= maximum;
+    if debug_level >= 2 {
+        cdata_accounting_report_stats(parser, "");
+        cdata_accounting_report_diff(
+            debug_level,
+            levels_away_from_root,
+            bytes,
+            bytes_more,
+            4778,
+            XML_ACCOUNT_DIRECT,
+        );
+    }
+    tolerated.then_some(outcome).ok_or(())
 }
 
 unsafe extern "C" fn initializeEncoding(
