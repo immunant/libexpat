@@ -1910,6 +1910,53 @@ static NOTATION_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn NotationDeclCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// Dispatches a notation declaration after all of its names have been
+/// retained in parser-owned pools.  The nullable system identifier is a pool
+/// handle rather than a raw pointer, so the prolog state machine only needs
+/// to describe which form of declaration it observed.
+fn dispatch_notation_decl_callback(
+    parser: &XML_ParserStruct,
+    dtd: &DTD,
+    system_id: Option<PoolStringRef>,
+) -> bool {
+    let callback = NOTATION_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned();
+    let Some(callback) = callback else {
+        return false;
+    };
+
+    let notation_name = parser
+        .m_declNotationName
+        .and_then(|name| parser.m_tempPool.chars_from(name))
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let base = parser
+        .m_curBase
+        .and_then(|name| dtd.pool.chars_from(name))
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let system_id = system_id
+        .and_then(|name| parser.m_tempPool.chars_from(name))
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let public_id = parser
+        .m_declNotationPublicId
+        .and_then(|name| parser.m_tempPool.chars_from(name))
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            notation_name,
+            base,
+            system_id,
+            public_id,
+        );
+    }
+    true
+}
+
 trait ElementDeclCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -17374,79 +17421,17 @@ unsafe fn doProlog(
                                             }) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            let system_id = pool_string_pointer!(
-                                                &parser.m_tempPool,
-                                                system_id,
-                                            );
                                             event_target.set_end(
                                                 parser,
                                                 internal_event_start,
                                                 internal_event_window,
                                                 s.addr(),
                                             );
-                                            let callback = NOTATION_DECL_HANDLERS
-                                                .get_or_init(|| {
-                                                    std::sync::Mutex::new(
-                                                        std::collections::HashMap::new(),
-                                                    )
-                                                })
-                                                .lock()
-                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&parser_key)
-                                                .cloned();
-                                            if let Some(callback) = callback {
-                                                let (handler_arg, notation_name, base, public_id) = {
-                                                    let parser_ref = &*parser;
-                                                    (
-                                                        match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => {
-                                                                callback_context_pointer!(
-                                                                    parser_ref
-                                                                )
-                                                            }
-                                                            HandlerArg::Parser => {
-                                                                std::ptr::from_ref(parser_ref)
-                                                                    .cast_mut()
-                                                                    .cast()
-                                                            }
-                                                        },
-                                                        parser_ref
-                                                            .m_declNotationName
-                                                            .and_then(|notation_name| {
-                                                                parser_ref
-                                                                    .m_tempPool
-                                                                    .chars_from(notation_name)
-                                                            })
-                                                            .map_or(::core::ptr::null(), |chars| {
-                                                                chars.as_ptr()
-                                                            }),
-                                                        parser_ref
-                                                            .m_curBase
-                                                            .map(|base| {
-                                                                pool_string_pointer!(
-                                                                    &dtd.pool, base,
-                                                                )
-                                                            })
-                                                            .unwrap_or(::core::ptr::null()),
-                                                        parser_ref
-                                                            .m_declNotationPublicId
-                                                            .and_then(|public_id| {
-                                                                parser_ref
-                                                                    .m_tempPool
-                                                                    .chars_from(public_id)
-                                                            })
-                                                            .map_or(::core::ptr::null(), |chars| {
-                                                                chars.as_ptr()
-                                                            }),
-                                                    )
-                                                };
-                                                callback.invoke(
-                                                    handler_arg,
-                                                    notation_name,
-                                                    base,
-                                                    system_id,
-                                                    public_id,
-                                                );
+                                            if dispatch_notation_decl_callback(
+                                                parser,
+                                                dtd,
+                                                Some(system_id),
+                                            ) {
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
@@ -17463,72 +17448,7 @@ unsafe fn doProlog(
                                                 internal_event_window,
                                                 s.addr(),
                                             );
-                                            let callback = NOTATION_DECL_HANDLERS
-                                                .get_or_init(|| {
-                                                    std::sync::Mutex::new(
-                                                        std::collections::HashMap::new(),
-                                                    )
-                                                })
-                                                .lock()
-                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&parser_key)
-                                                .cloned();
-                                            if let Some(callback) = callback {
-                                                let (handler_arg, notation_name, base, public_id) = {
-                                                    let parser_ref = &*parser;
-                                                    (
-                                                        match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => {
-                                                                callback_context_pointer!(
-                                                                    parser_ref
-                                                                )
-                                                            }
-                                                            HandlerArg::Parser => {
-                                                                std::ptr::from_ref(parser_ref)
-                                                                    .cast_mut()
-                                                                    .cast()
-                                                            }
-                                                        },
-                                                        parser_ref
-                                                            .m_declNotationName
-                                                            .and_then(|notation_name| {
-                                                                parser_ref
-                                                                    .m_tempPool
-                                                                    .chars_from(notation_name)
-                                                            })
-                                                            .map_or(::core::ptr::null(), |chars| {
-                                                                chars.as_ptr()
-                                                            }),
-                                                        parser_ref
-                                                            .m_curBase
-                                                            .map(|base| {
-                                                                pool_string_pointer!(
-                                                                    &dtd.pool, base,
-                                                                )
-                                                            })
-                                                            .unwrap_or(::core::ptr::null()),
-                                                        parser_ref
-                                                            .m_declNotationPublicId
-                                                            .and_then(|public_id| {
-                                                                parser_ref
-                                                                    .m_tempPool
-                                                                    .chars_from(public_id)
-                                                            })
-                                                            .map_or(::core::ptr::null(), |chars| {
-                                                                chars.as_ptr()
-                                                            }),
-                                                    )
-                                                };
-                                                callback.invoke(
-                                                    handler_arg,
-                                                    notation_name,
-                                                    base,
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    ),
-                                                    public_id,
-                                                );
+                                            if dispatch_notation_decl_callback(parser, dtd, None) {
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
