@@ -4277,56 +4277,17 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber_ffi(
 ) -> crate::expat_external_h::XML_Size {
     XML_GetCurrentColumnNumber(parser.as_mut())
 }
-enum MemoryAction {
-    Malloc(crate::__stddef_size_t_h::size_t),
-    Realloc(*mut ::core::ffi::c_void, crate::__stddef_size_t_h::size_t),
-    Free(*mut ::core::ffi::c_void),
-}
-
-fn run_memory_action(parser: &XML_ParserStruct, action: MemoryAction) -> *mut ::core::ffi::c_void {
-    unsafe {
-        match action {
-            MemoryAction::Malloc(size) => {
-                parser.m_mem.malloc_fcn.expect("non-null function pointer")(size)
-            }
-            MemoryAction::Realloc(ptr, size) => {
-                parser.m_mem.realloc_fcn.expect("non-null function pointer")(ptr, size)
-            }
-            MemoryAction::Free(ptr) => {
-                parser.m_mem.free_fcn.expect("non-null function pointer")(ptr);
-                crate::__stddef_null_h::NULL
-            }
-        }
-    }
-}
-
-pub fn XML_FreeContentModel(
-    parser: Option<&XML_ParserStruct>,
-    model: *mut crate::expat_h::XML_Content,
-) {
-    if let Some(parser) = parser {
-        run_memory_action(
-            parser,
-            MemoryAction::Free(model as *mut ::core::ffi::c_void),
-        );
-    }
-}
 #[export_name = "XML_FreeContentModel"]
 
 pub unsafe extern "C" fn XML_FreeContentModel_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut model: *mut crate::expat_h::XML_Content,
 ) {
-    XML_FreeContentModel(parser.as_ref(), model)
-}
-pub fn XML_MemMalloc(
-    parser: Option<&XML_ParserStruct>,
-    mut size: crate::__stddef_size_t_h::size_t,
-) -> *mut ::core::ffi::c_void {
-    if let Some(parser) = parser {
-        return run_memory_action(parser, MemoryAction::Malloc(size));
+    if !parser.is_null() {
+        (*parser).m_mem.free_fcn.expect("non-null function pointer")(
+            model as *mut ::core::ffi::c_void,
+        );
     }
-    return crate::__stddef_null_h::NULL;
 }
 #[export_name = "XML_MemMalloc"]
 
@@ -4334,15 +4295,11 @@ pub unsafe extern "C" fn XML_MemMalloc_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    XML_MemMalloc(parser.as_ref(), size)
-}
-pub fn XML_MemRealloc(
-    parser: Option<&XML_ParserStruct>,
-    mut ptr: *mut ::core::ffi::c_void,
-    mut size: crate::__stddef_size_t_h::size_t,
-) -> *mut ::core::ffi::c_void {
-    if let Some(parser) = parser {
-        return run_memory_action(parser, MemoryAction::Realloc(ptr, size));
+    if !parser.is_null() {
+        return (*parser)
+            .m_mem
+            .malloc_fcn
+            .expect("non-null function pointer")(size);
     }
     return crate::__stddef_null_h::NULL;
 }
@@ -4353,12 +4310,13 @@ pub unsafe extern "C" fn XML_MemRealloc_ffi(
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    XML_MemRealloc(parser.as_ref(), ptr, size)
-}
-pub fn XML_MemFree(parser: Option<&XML_ParserStruct>, mut ptr: *mut ::core::ffi::c_void) {
-    if let Some(parser) = parser {
-        run_memory_action(parser, MemoryAction::Free(ptr));
+    if !parser.is_null() {
+        return (*parser)
+            .m_mem
+            .realloc_fcn
+            .expect("non-null function pointer")(ptr, size);
     }
+    return crate::__stddef_null_h::NULL;
 }
 #[export_name = "XML_MemFree"]
 
@@ -4366,7 +4324,9 @@ pub unsafe extern "C" fn XML_MemFree_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
 ) {
-    XML_MemFree(parser.as_ref(), ptr)
+    if !parser.is_null() {
+        (*parser).m_mem.free_fcn.expect("non-null function pointer")(ptr);
+    }
 }
 #[export_name = "XML_DefaultCurrent"]
 
