@@ -11742,7 +11742,7 @@ unsafe fn doContent(
                                     else {
                                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                     };
-                                    processEntity(
+                                    process_entity_impl(
                                         parser,
                                         entity,
                                         crate::expat_h::XML_FALSE,
@@ -20200,8 +20200,6 @@ unsafe extern "C" fn epilogProcessor(
 // This transition only operates on parser-owned state and the currently
 // borrowed declaration.  Keep it safe for prolog processing: it neither
 // dereferences nor exposes the raw handles that the parser state carries.
-// The legacy-shaped `processEntity` adapter below remains for call sites that
-// have not yet crossed that boundary.
 fn process_entity_impl(
     parser_state: &mut XML_ParserStruct,
     entity: &mut ENTITY,
@@ -20418,15 +20416,6 @@ fn process_entity_impl(
         trigger_reenter(parser_state);
     }
     return crate::expat_h::XML_ERROR_NONE;
-}
-
-unsafe fn processEntity(
-    parser_state: &mut XML_ParserStruct,
-    entity: &mut ENTITY,
-    betweenDecl: crate::expat_h::XML_Bool,
-    type_0: EntityType,
-) -> crate::expat_h::XML_Error {
-    process_entity_impl(parser_state, entity, betweenDecl, type_0)
 }
 
 // An active entity is re-resolved from its stable frame key before each
@@ -21369,9 +21358,8 @@ unsafe fn appendAttributeValue(
                             break 's_350;
                         };
                         // `lookup_impl` returned a live hash-table record.  Keep
-                        // the reference scoped to this branch; `processEntity` is
-                        // its only possible re-entrant operation and receives
-                        // the record's address explicitly below.
+                        // the reference scoped to this branch; entity expansion is
+                        // its only possible re-entrant operation.
                         if checkEntityDecl && entity.is_internal == 0 {
                             return (crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE, ptr);
                         }
@@ -21395,7 +21383,7 @@ unsafe fn appendAttributeValue(
                         } else {
                             let mut result: crate::expat_h::XML_Error =
                                 crate::expat_h::XML_ERROR_NONE;
-                            result = processEntity(
+                            result = process_entity_impl(
                                 parser,
                                 entity,
                                 crate::expat_h::XML_FALSE,
@@ -21737,7 +21725,7 @@ unsafe fn storeEntityValue(
                                         break 's_340;
                                     }
                                 } else {
-                                    result = processEntity(
+                                    result = process_entity_impl(
                                         parser,
                                         entity,
                                         crate::expat_h::XML_FALSE,
