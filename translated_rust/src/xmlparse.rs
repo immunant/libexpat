@@ -12756,13 +12756,14 @@ unsafe extern "C" fn cdataSectionProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
+    let encoding = current_parser_encoding(&*parser);
     let mut result: crate::expat_h::XML_Error = doCdataSection(
         parser,
-        parser_encoding(parser),
+        std::ptr::from_ref(encoding),
         &mut start,
         end,
         endPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+        ((&*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         XML_ACCOUNT_DIRECT,
     );
@@ -12771,16 +12772,38 @@ unsafe extern "C" fn cdataSectionProcessor(
     {
         return result;
     }
-    if !start.is_null() {
-        if (*parser).m_parentParser.is_some() {
-            (*parser).m_processor = ProcessorState::ExternalEntityContent;
-            return externalEntityContentProcessor(parser, start, end, endPtr);
-        } else {
-            (*parser).m_processor = ProcessorState::Content;
-            return contentProcessor(parser, start, end, endPtr);
+    match cdata_processor_continuation(&mut *parser, !start.is_null()) {
+        CdataProcessorContinuation::Complete => result,
+        CdataProcessorContinuation::ExternalEntityContent => {
+            externalEntityContentProcessor(parser, start, end, endPtr)
         }
+        CdataProcessorContinuation::Content => contentProcessor(parser, start, end, endPtr),
     }
-    return result;
+}
+
+/// Chooses the processor that resumes after a CDATA section has yielded a
+/// cursor.  This is parser-state-only work, so it remains independent of the
+/// raw cursor ABI used by the surrounding processor adapters.
+enum CdataProcessorContinuation {
+    Complete,
+    ExternalEntityContent,
+    Content,
+}
+
+fn cdata_processor_continuation(
+    parser: &mut XML_ParserStruct,
+    has_remaining_input: bool,
+) -> CdataProcessorContinuation {
+    if !has_remaining_input {
+        return CdataProcessorContinuation::Complete;
+    }
+    if parser.m_parentParser.is_some() {
+        parser.m_processor = ProcessorState::ExternalEntityContent;
+        CdataProcessorContinuation::ExternalEntityContent
+    } else {
+        parser.m_processor = ProcessorState::Content;
+        CdataProcessorContinuation::Content
+    }
 }
 
 #[derive(Copy, Clone)]
