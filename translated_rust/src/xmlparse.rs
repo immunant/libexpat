@@ -2187,6 +2187,30 @@ impl AttributeStorage {
     }
 }
 
+// Tag names are retained either in the tag's Rust-owned conversion buffer or
+// in the temporary string pool.  Resolve their terminated XML character view
+// before namespace expansion so the expansion can use checked slices rather
+// than raw string cursors.
+fn terminated_xml_chars(
+    chars: &[crate::expat_external_h::XML_Char],
+) -> Option<&[crate::expat_external_h::XML_Char]> {
+    let end = chars.iter().position(|&ch| ch == 0)?.checked_add(1)?;
+    chars.get(..end)
+}
+
+fn tag_name_chars<'a>(
+    parser: &'a XML_ParserStruct,
+    storage: TagNameStorage,
+    tag: Option<&'a TAG>,
+) -> Option<&'a [crate::expat_external_h::XML_Char]> {
+    let chars = match storage {
+        TagNameStorage::TagBuffer { offset } => tag?.buffer.bytes.get(offset..),
+        TagNameStorage::TempPool(name) => parser.m_tempPool.chars_from(name),
+        TagNameStorage::Unset | TagNameStorage::NamespaceUri => None,
+    }?;
+    terminated_xml_chars(chars)
+}
+
 impl NamespaceAttributeStorage {
     fn empty() -> Self {
         Self {
@@ -10082,31 +10106,19 @@ unsafe extern "C" fn storeAtts(
     let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     let mut nDefaultAtts: ::core::ffi::c_int = 0;
     let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let mut prefixLen: ::core::ffi::c_int = 0;
     let mut i: ::core::ffi::c_int = 0;
     let mut n: ::core::ffi::c_int = 0;
-    let mut uri: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     let mut nPrefixes: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let mut binding: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
-    let mut localPart: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    let mut localPartOffset: usize = 0;
     let tag_name_state = &mut *tagNamePtr;
-    let tag_name = match tag_name_state.str {
-        TagNameStorage::TagBuffer { offset } if !tagPtr.is_null() => {
-            ((*tagPtr).buffer.bytes.as_ptr() as *const crate::expat_external_h::XML_Char)
-                .offset(offset as isize)
-        }
-        TagNameStorage::TempPool(name) => (*parser)
-            .m_tempPool
-            .chars_from(name)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-        _ => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    let tag_name_storage = tag_name_state.str;
+    let tag_name = {
+        let parser_ref = &*parser;
+        let tag = tagPtr.as_ref();
+        let Some(chars) = tag_name_chars(parser_ref, tag_name_storage, tag) else {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        };
+        chars.as_ptr()
     };
-    if tag_name.is_null() {
-        return crate::expat_h::XML_ERROR_NO_MEMORY;
-    }
     elementType = lookup(
         parser,
         &raw mut dtd.elementTypes,
@@ -10889,7 +10901,7 @@ unsafe extern "C" fn storeAtts(
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
     }
-    if (*elementType).hasPrefix != 0 {
+    let (binding, local_part_offset) = if (*elementType).hasPrefix != 0 {
         let prefix_name = pool_string_pointer!(&dtd.pool, (*elementType).prefix);
         if prefix_name.is_null() {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
@@ -10900,75 +10912,88 @@ unsafe extern "C" fn storeAtts(
             prefix_name as KEY,
             0 as crate::__stddef_size_t_h::size_t,
         ) as *mut PREFIX;
-        if prefix.is_null() {
+        if prefix.is_null() || (*prefix).binding.is_null() {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
         }
-        binding = (*prefix).binding;
-        if binding.is_null() {
-            return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
-        }
-        localPart = tag_name;
-        loop {
-            let c2rust_fresh35 = localPart;
-            localPart = localPart.offset(1);
-            localPartOffset += 1;
-            if *c2rust_fresh35 as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
-                break;
-            }
-        }
+        let tag_name = {
+            let parser_ref = &*parser;
+            let tag = tagPtr.as_ref();
+            let Some(chars) = tag_name_chars(parser_ref, tag_name_storage, tag) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            chars
+        };
+        let Some(colon) = tag_name.iter().position(|&ch| ch == ':' as crate::expat_external_h::XML_Char)
+        else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        ((*prefix).binding, colon + 1)
     } else if !dtd.defaultPrefix.binding.is_null() {
-        binding = dtd.defaultPrefix.binding;
-        localPart = tag_name;
+        (dtd.defaultPrefix.binding, 0)
     } else {
         return crate::expat_h::XML_ERROR_NONE;
-    }
-    let parser_state = &mut *parser;
-    let Some(binding_index) = parser_state
-        .m_activeBindings
-        .iter()
-        .position(|storage| storage.binding.as_ptr() == binding)
-    else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
-    let binding_storage = &mut parser_state.m_activeBindings[binding_index];
-    let binding_ref = binding_storage.binding_mut();
-    prefixLen = 0 as ::core::ffi::c_int;
-    let prefix_name = (*binding_ref.prefix)
-        .name
-        .map_or(::core::ptr::null(), |name| {
-            pool_string_pointer!(&dtd.pool, name)
-        });
-    if (*parser).m_ns_triplets as ::core::ffi::c_int != 0 && !prefix_name.is_null() {
-        loop {
-            let c2rust_fresh36 = prefixLen;
-            prefixLen = prefixLen + 1;
-            if *prefix_name.offset(c2rust_fresh36 as isize) == 0 {
-                break;
-            }
-        }
+
+    let (binding_index, uri_len, uri_alloc, binding_prefix) = {
+        let parser_state = &mut *parser;
+        let Some(binding_index) = parser_state
+            .m_activeBindings
+            .iter()
+            .position(|storage| storage.binding.as_ptr() == binding)
+        else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let binding_ref = parser_state.m_activeBindings[binding_index].binding_mut();
+        (
+            binding_index,
+            binding_ref.uriLen,
+            binding_ref.uriAlloc,
+            binding_ref.prefix,
+        )
+    };
+    if binding_prefix.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
-    tag_name_state.localPart = Some(localPartOffset);
-    tag_name_state.uriLen = binding_ref.uriLen;
-    tag_name_state.prefixLen = prefixLen;
-    i = 0 as ::core::ffi::c_int;
-    loop {
-        let c2rust_fresh37 = i;
-        i = i + 1;
-        if *localPart.offset(c2rust_fresh37 as isize) == 0 {
-            break;
+    let prefix_name = (*binding_prefix).name.and_then(|name| dtd.pool.chars_from(name));
+    let prefix_name = if (*parser).m_ns_triplets != 0 {
+        match prefix_name.and_then(terminated_xml_chars) {
+            Some(name) => name,
+            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
         }
-    }
-    if binding_ref.uriLen > crate::limits_h::INT_MAX - prefixLen
-        || i > crate::limits_h::INT_MAX - (binding_ref.uriLen + prefixLen)
+    } else {
+        &[]
+    };
+    let local_part = {
+        let parser_ref = &*parser;
+        let tag = tagPtr.as_ref();
+        let Some(tag_name) = tag_name_chars(parser_ref, tag_name_storage, tag) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(local_part) = tag_name.get(local_part_offset..) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        local_part
+    };
+    let prefix_len = match ::core::ffi::c_int::try_from(prefix_name.len()) {
+        Ok(len) => len,
+        Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    };
+    let local_part_len = match ::core::ffi::c_int::try_from(local_part.len()) {
+        Ok(len) => len,
+        Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    };
+    if uri_len > crate::limits_h::INT_MAX - prefix_len
+        || local_part_len > crate::limits_h::INT_MAX - (uri_len + prefix_len)
     {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
-    n = i + binding_ref.uriLen + prefixLen;
-    if n > binding_ref.uriAlloc {
+    n = local_part_len + uri_len + prefix_len;
+    if n > uri_alloc {
         if n > crate::limits_h::INT_MAX - EXPAND_SPARE {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if !binding_storage.replace_uri(
+        let parser_state = &mut *parser;
+        if !parser_state.m_activeBindings[binding_index].replace_uri(
             (n + EXPAND_SPARE) as usize,
             4270 as ::core::ffi::c_int,
             4278 as ::core::ffi::c_int,
@@ -10976,24 +11001,39 @@ unsafe extern "C" fn storeAtts(
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
     }
-    let binding_ref = binding_storage.binding_mut();
-    uri = binding_ref.uri.offset(binding_ref.uriLen as isize);
-    crate::stdlib::memcpy(
-        uri as *mut ::core::ffi::c_void,
-        localPart as *const ::core::ffi::c_void,
-        (i as crate::__stddef_size_t_h::size_t)
-            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-    );
-    if prefixLen != 0 {
-        uri = uri.offset((i - 1 as ::core::ffi::c_int) as isize);
-        *uri = (*parser).m_namespaceSeparator;
-        crate::stdlib::memcpy(
-            uri.offset(1 as ::core::ffi::c_int as isize) as *mut ::core::ffi::c_void,
-            prefix_name as *const ::core::ffi::c_void,
-            (prefixLen as crate::__stddef_size_t_h::size_t)
-                .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-        );
+    let uri_start = match usize::try_from(uri_len) {
+        Ok(offset) => offset,
+        Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    };
+    let uri_end = match usize::try_from(n) {
+        Ok(offset) => offset,
+        Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    };
+    let namespace_separator = (*parser).m_namespaceSeparator;
+    {
+        let parser_state = &mut *parser;
+        let uri = &mut parser_state.m_activeBindings[binding_index].uri;
+        let Some(destination) = uri.get_mut(uri_start..uri_end) else {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        };
+        let Some(local_destination) = destination.get_mut(..local_part.len()) else {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        };
+        local_destination.copy_from_slice(local_part);
+        if !prefix_name.is_empty() {
+            let Some(separator) = local_destination.last_mut() else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            *separator = namespace_separator;
+            let Some(prefix_destination) = destination.get_mut(local_part.len()..) else {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            };
+            prefix_destination.copy_from_slice(prefix_name);
+        }
     }
+    tag_name_state.localPart = Some(local_part_offset);
+    tag_name_state.uriLen = uri_len;
+    tag_name_state.prefixLen = prefix_len;
     tag_name_state.str = TagNameStorage::NamespaceUri;
     return crate::expat_h::XML_ERROR_NONE;
 }
