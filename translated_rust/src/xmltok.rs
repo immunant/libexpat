@@ -22397,7 +22397,7 @@ fn streqci(s1: &[::core::ffi::c_char], s2: &[::core::ffi::c_char]) -> ::core::ff
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn initUpdatePosition(
+extern "C" fn initUpdatePosition(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
