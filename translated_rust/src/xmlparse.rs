@@ -6149,12 +6149,18 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     parser_ref.m_paramEntityParsing = oldParamEntityParsing;
     parser_ref.m_prologState.inEntityValue = oldInEntityValue;
     if !context.is_null() {
-        if dtdCopy(
-            oldParser,
-            parser_dtd_ptr!(parser),
-            parser_dtd_ptr!(oldParser),
-            parser_ref,
-        ) == 0
+        // Keep the shared owners alive while borrowing their contained DTDs.
+        // `dtdCopy` itself operates only on these typed references; this is
+        // the sole ownership-boundary conversion for inherited DTD state.
+        let old_dtd_owner = old.m_dtd.clone();
+        let new_dtd_owner = parser_ref.m_dtd.clone();
+        let (Some(old_dtd_owner), Some(new_dtd_owner)) = (old_dtd_owner, new_dtd_owner) else {
+            XML_ParserFree(parser);
+            return ::core::ptr::null_mut::<XML_ParserStruct>();
+        };
+        let old_dtd = &*old_dtd_owner.value.get();
+        let new_dtd = &mut *new_dtd_owner.value.get();
+        if dtdCopy(new_dtd, old_dtd, parser_ref) == 0
             || setContext(parser, context) == 0
         {
             XML_ParserFree(parser);
@@ -18970,17 +18976,13 @@ unsafe extern "C" fn dtdDestroy(
     }
 }
 
-unsafe extern "C" fn dtdCopy(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut newDtd: *mut DTD,
-    mut oldDtd: *const DTD,
+unsafe fn dtdCopy(
+    new_dtd: &mut DTD,
+    old_dtd: &DTD,
     parser: &mut XML_ParserStruct,
 ) -> ::core::ffi::c_int {
-    // These DTDs remain allocated for the whole copy operation: `oldDtd` belongs to
-    // the parent parser and `newDtd` to the parser being constructed.  Keeping
-    // references to them makes the field-level copy below ordinary Rust access.
-    let old_dtd = &*oldDtd;
-    let new_dtd = &mut *newDtd;
+    // Both DTD owners are retained by the caller throughout the copy.  This
+    // helper therefore needs no raw parser or DTD handles for its field work.
     let mut copied_prefixes = Vec::new();
     // Slots are the table's owned iteration order.  Reading them directly
     // keeps this copy within the owned storage model instead of round-tripping
@@ -19219,21 +19221,21 @@ unsafe extern "C" fn dtdCopy(
         }
     }
     if copyEntityTable(
-        oldParser,
+        old_dtd,
         parser,
-        &raw mut new_dtd.generalEntities,
+        &mut new_dtd.generalEntities,
         &mut new_dtd.pool,
-        &raw const old_dtd.generalEntities,
+        &old_dtd.generalEntities,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
     }
     if copyEntityTable(
-        oldParser,
+        old_dtd,
         parser,
-        &raw mut new_dtd.paramEntities,
+        &mut new_dtd.paramEntities,
         &mut new_dtd.pool,
-        &raw const old_dtd.paramEntities,
+        &old_dtd.paramEntities,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
@@ -19258,19 +19260,17 @@ fn copy_dtd_metadata(new_dtd: &mut DTD, old_dtd: &DTD) {
     new_dtd.scaffIndex = old_dtd.scaffIndex.clone();
 }
 
-unsafe extern "C" fn copyEntityTable(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut newParser: crate::expat_h::XML_Parser,
-    mut newTable: *mut HASH_TABLE,
+unsafe fn copyEntityTable(
+    old_dtd: &DTD,
+    new_parser: &mut XML_ParserStruct,
+    new_table: &mut HASH_TABLE,
     newPool: &mut STRING_POOL,
-    mut oldTable: *const HASH_TABLE,
+    old_table: &HASH_TABLE,
 ) -> ::core::ffi::c_int {
     let mut cachedOldBase: Option<PoolStringRef> = None;
     let mut cachedNewBase: Option<PoolStringRef> = None;
-    let table = &*oldTable;
     let new_pool = newPool;
-    let old_dtd = &*parser_dtd_ptr!(oldParser);
-    let Some(slots) = table.v.as_ref() else {
+    let Some(slots) = old_table.v.as_ref() else {
         return 1;
     };
     for entry in &slots.entries {
@@ -19294,8 +19294,8 @@ unsafe extern "C" fn copyEntityTable(
             return 0 as ::core::ffi::c_int;
         }
         newE = lookup(
-            newParser,
-            newTable,
+            std::ptr::from_mut(new_parser),
+            std::ptr::from_mut(new_table),
             name as KEY,
             ::core::mem::size_of::<ENTITY>(),
         ) as *mut ENTITY;
