@@ -995,10 +995,15 @@ pub unsafe fn convert_to_utf8(
         convert_to_utf8_window(converter, unknown_encoding, input, output);
 
     if input_used != 0 {
-        *from = input_start.add(input_used);
+        // `input_used` is produced from `input`, so this derives the next
+        // cursor from a checked slice tail instead of raw pointer arithmetic.
+        *from = input[input_used..].as_ptr().cast::<::core::ffi::c_char>();
     }
     if output_used != 0 {
-        *to = output_start.add(output_used);
+        // Likewise, `output_used` is bounded by the output slice.
+        *to = output[output_used..]
+            .as_mut_ptr()
+            .cast::<::core::ffi::c_char>();
     }
     result
 }
