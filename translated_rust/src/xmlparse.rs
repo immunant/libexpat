@@ -14122,14 +14122,20 @@ unsafe extern "C" fn doCdataSection(
         let Some(chars) = dispatch_cdata_callback(parser_ptr.addr(), parser_state, &normal, event)? else {
             return Ok(());
         };
-        // `reportDefault` must retain the original encoding-table address
-        // to distinguish parser input from replacement text.  This is the
-        // only callback path that cannot yet use the typed adapter above.
-        reportDefault(
-            parser_ptr,
-            enc,
-            chars.as_ptr(),
-            chars.as_ptr().wrapping_add(chars.len()),
+        // Keep the original encoding-table address to distinguish parser
+        // input from replacement text, but report the checked character slice
+        // directly instead of reconstructing a raw cursor pair.
+        let Some(chars_end) = chars.as_ptr().addr().checked_add(chars.len()) else {
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+        };
+        report_default_token(
+            parser_ptr.addr(),
+            parser_state,
+            &normal.enc,
+            enc.addr(),
+            chars.as_ptr().addr(),
+            chars_end,
+            bytemuck::cast_slice(&chars),
         );
         Ok(())
     };
@@ -14842,12 +14848,15 @@ unsafe extern "C" fn ignoreSectionProcessor(
             )
         };
         if let Some(default_range) = action.default_range {
-            reportDefault(
-                parser,
-                enc,
-                s.wrapping_add(default_range.start),
-                s.wrapping_add(default_range.end),
-            );
+            let parser_state = &mut *parser;
+            if let Err(error) = report_default_event_range(
+                parser_state,
+                enc.addr(),
+                s.addr(),
+                default_range,
+            ) {
+                return error;
+            }
         }
         start = action
             .start_offset
@@ -19312,26 +19321,37 @@ unsafe extern "C" fn epilogProcessor(
     let mut dispatch = move |parser_state: &mut XML_ParserStruct, event: EpilogEvent| {
         match event {
             EpilogEvent::Default(range) => {
-                let Some(bytes) = parser_state.m_buffer.bytes.as_deref() else {
-                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-                };
                 let Some(start_offset) = input_for_dispatch.input_start.checked_add(range.start)
                 else {
                     return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                let Some(end_offset) = input_for_dispatch.input_start.checked_add(range.end) else {
+                let Some(_end_offset) = input_for_dispatch.input_start.checked_add(range.end) else {
                     return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                let (Some(start), Some(end)) = (bytes.get(start_offset..), bytes.get(end_offset..))
+                let Some(token) = input_for_dispatch.bytes.get(range) else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let Some(input_start) = parser_state
+                    .m_buffer
+                    .bytes
+                    .as_deref()
+                    .and_then(|bytes| bytes.as_ptr().addr().checked_add(start_offset))
                 else {
                     return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
-                reportDefault(
-                    parser_for_dispatch,
-                    encoding,
-                    start.as_ptr().cast(),
-                    end.as_ptr().cast(),
+                let Some(input_end) = input_start.checked_add(token.len()) else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let encoding_address = std::ptr::from_ref(current_parser_encoding(parser_state)).addr();
+                let encoding = *current_parser_encoding(parser_state);
+                report_default_token(
+                    parser_for_dispatch.addr(),
+                    parser_state,
+                    &encoding,
+                    encoding_address,
+                    input_start,
+                    input_end,
+                    token,
                 );
                 Ok(())
             }
@@ -21416,54 +21436,6 @@ fn report_comment_token(
     Some(true)
 }
 
-unsafe fn reportDefault(
-    parser: crate::expat_h::XML_Parser,
-    enc: *const crate::src::xmltok::ENCODING,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-) {
-    if parser.is_null() || !parser.is_aligned() || enc.is_null() || !enc.is_aligned() {
-        return;
-    }
-    let Some(input_len) = end.addr().checked_sub(s.addr()) else {
-        return;
-    };
-    if input_len > isize::MAX as usize || (input_len != 0 && (s.is_null() || end.is_null())) {
-        return;
-    }
-    // The empty cursor range is permitted to contain null pointers.  Do not
-    // construct a slice for it, matching the former cursor adapter.
-    let input = if input_len == 0 {
-        &[]
-    } else {
-        core::slice::from_raw_parts(s.cast::<u8>(), input_len)
-    };
-    let parser_state = &mut *parser;
-    let encoding = &*enc;
-    // A zero-length UTF-8 token still reaches the default handler.  Preserve
-    // its original cursor (including a null cursor) rather than replacing it
-    // with the dangling pointer carried by Rust's empty slice.
-    if input.is_empty() && encoding.isUtf8 != 0 {
-        let callback = DEFAULT_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .get(&parser.addr())
-            .cloned()
-            .expect("default callback must be registered when installed");
-        callback.invoke(handler_arg_from_state!(parser_state), s.cast(), 0);
-        return;
-    }
-    report_default_impl(
-        parser.addr(),
-        parser_state,
-        encoding,
-        enc.addr(),
-        s.addr(),
-        input,
-    );
-}
-
 /// Reports a validated default-handler token.
 ///
 /// `reportDefault` owns the raw cursor boundary.  This helper receives only
@@ -21605,6 +21577,54 @@ unsafe fn report_default_impl(
     } else {
         report_chunk(parser, bytemuck::cast_slice(input));
     }
+}
+
+/// Resolves an ignore-section default range through the storage that owns its
+/// cursors before dispatching the default handler.  The copy is intentional:
+/// a default callback may re-enter and relocate the parser buffer.
+fn report_default_event_range(
+    parser: &mut XML_ParserStruct,
+    encoding_address: usize,
+    input_start: usize,
+    range: std::ops::Range<usize>,
+) -> Result<(), crate::expat_h::XML_Error> {
+    let Some(range_start) = input_start.checked_add(range.start) else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    let Some(range_end) = input_start.checked_add(range.end) else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    let parser_events = encoding_address == std::ptr::from_ref(current_parser_encoding(parser)).addr();
+    let Some(normal_encoding) = entity_value_normal_encoding(parser, encoding_address) else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    let Some(dtd) = parser.m_dtd.clone() else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    let input = dtd.inspect(|dtd| -> Result<Vec<u8>, crate::expat_h::XML_Error> {
+        let Some(source) = event_raw_name_source(parser, dtd, parser_events, range_start, range_end)
+        else {
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+        };
+        let bytes = source.bytes();
+        let mut copy = Vec::new();
+        if copy.try_reserve_exact(bytes.len()).is_err() {
+            return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+        }
+        copy.extend_from_slice(bytes);
+        Ok(copy)
+    });
+    let input = input?;
+    report_default_token(
+        std::ptr::from_mut(parser).addr(),
+        parser,
+        &normal_encoding.enc,
+        encoding_address,
+        range_start,
+        range_end,
+        &input,
+    );
+    Ok(())
 }
 
 /// Reports a token whose cursor range has already been resolved into the
