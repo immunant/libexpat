@@ -1510,7 +1510,7 @@ macro_rules! callback_context_pointer {
         let parser_ref: &XML_ParserStruct = $parser;
         parser_ref
             .m_userData
-            .load(std::sync::atomic::Ordering::Relaxed)
+            .map_or(::core::ptr::null_mut(), std::ptr::NonNull::as_ptr)
     }};
 }
 
@@ -2306,9 +2306,9 @@ enum DeclaredEntity {
 
 #[repr(C)]
 pub struct XML_ParserStruct {
-    // User data is an opaque foreign token. AtomicPtr carries it without
-    // dereferencing it; callback sites materialize it only for their call.
-    m_userData: std::sync::atomic::AtomicPtr<::core::ffi::c_void>,
+    // User data is an opaque foreign token.  It is never dereferenced by
+    // Rust; callback sites materialize it only for the duration of a call.
+    m_userData: Option<std::ptr::NonNull<::core::ffi::c_void>>,
     // The callback context is represented by its semantic source; no foreign
     // pointer is retained in parser state.
     pub m_handlerArg: HandlerArg,
@@ -4775,7 +4775,7 @@ fn initial_parser_struct(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> XML_ParserStruct {
     XML_ParserStruct {
-        m_userData: std::sync::atomic::AtomicPtr::new(::core::ptr::null_mut()),
+        m_userData: None,
         m_handlerArg: HandlerArg::UserData,
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
@@ -5158,10 +5158,7 @@ fn parser_init(
     parser.m_initEncoding.initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
     parser.m_initEncoding.selected_encoding = None;
     parser.m_encoding = EncodingState::Initial;
-    parser.m_userData.store(
-        ::core::ptr::null_mut(),
-        std::sync::atomic::Ordering::Relaxed,
-    );
+    parser.m_userData = None;
     parser.m_handlerArg = HandlerArg::UserData;
     parser.m_startElementHandler = false;
     START_ELEMENT_HANDLERS
@@ -5591,7 +5588,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
     let mut oldXmlDeclHandler: Option<std::sync::Arc<dyn XmlDeclCallback>> = None;
     let mut oldDeclElementType: Option<PoolStringRef> = None;
-    let mut oldUserData = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut oldUserData: Option<std::ptr::NonNull<::core::ffi::c_void>> = None;
     let mut oldHandlerArg = HandlerArg::UserData;
     let mut oldDefaultExpandInternalEntities: crate::expat_h::XML_Bool = 0;
     let mut oldExternalEntityRefHandlerArg: Option<ExternalEntityRefHandlerArgRegistration> = None;
@@ -5747,7 +5744,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .get(&(parser as usize))
         .cloned();
     oldDeclElementType = old.m_declElementType;
-    oldUserData = old.m_userData.load(std::sync::atomic::Ordering::Relaxed);
+    oldUserData = old.m_userData;
     oldHandlerArg = old.m_handlerArg;
     oldDefaultExpandInternalEntities = old.m_defaultExpandInternalEntities;
     oldExternalEntityRefHandlerArg = EXTERNAL_ENTITY_REF_HANDLER_ARGS
@@ -5955,7 +5952,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .insert(parser as usize, callback);
     }
     parser_ref.m_declElementType = oldDeclElementType;
-    parser_ref.m_userData = std::sync::atomic::AtomicPtr::new(oldUserData);
+    parser_ref.m_userData = oldUserData;
     parser_ref.m_handlerArg = oldHandlerArg;
     if let Some(arg) = oldExternalEntityRefHandlerArg.filter(|arg| arg.applies_to_child) {
         EXTERNAL_ENTITY_REF_HANDLER_ARGS
@@ -6312,9 +6309,7 @@ pub unsafe extern "C" fn XML_SetUserData(
     if parser.is_null() {
         return;
     }
-    (*parser)
-        .m_userData
-        .store(p, std::sync::atomic::Ordering::Relaxed);
+    (*parser).m_userData = std::ptr::NonNull::new(p);
 }
 #[export_name = "XML_SetUserData"]
 
