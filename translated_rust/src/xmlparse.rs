@@ -14593,6 +14593,11 @@ unsafe extern "C" fn doProlog(
     let mut internal_event_window = None;
     let mut parser_event_ptr = s;
     let mut quant: crate::expat_h::XML_Content_Quant = crate::expat_h::XML_CQUANT_NONE;
+    // `enc` is selected by the processor dispatch and remains valid for this
+    // prolog token.  Reborrow it only when an XML declaration selects a new
+    // parser encoding, so the state machine reads encoding metadata through
+    // this bounded view rather than repeatedly dereferencing the raw handle.
+    let mut encoding = &*enc;
     if !parser_events {
         let open_entity = {
             let parser_state = &mut *parser;
@@ -14668,7 +14673,7 @@ unsafe extern "C" fn doProlog(
                     {
                         let prolog_state = &mut (*parser).m_prologState;
                         let token: &[::core::ffi::c_char] = &[];
-                        let min_bytes_per_char = (*enc).minBytesPerChar;
+                        let min_bytes_per_char = encoding.minBytesPerChar;
                         if crate::src::xmlrole::prolog_handler_dispatch(
                             prolog_state
                                 .handler
@@ -14697,7 +14702,6 @@ unsafe extern "C" fn doProlog(
         // identifier validation below, so those paths never recreate a slice
         // from the raw processor cursors.  The copy also prevents the view
         // from surviving a parser mutation or callback re-entry.
-        let encoding = &*enc;
         let unknown_encoding = match parser.m_encoding {
             EncodingState::Initial => None,
             EncodingState::Unknown => parser
@@ -14801,6 +14805,7 @@ unsafe extern "C" fn doProlog(
                                         active_parser_encoding =
                                             std::ptr::from_ref(current_parser_encoding(parser));
                                         enc = active_parser_encoding;
+                                        encoding = &*enc;
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
@@ -14932,6 +14937,7 @@ unsafe extern "C" fn doProlog(
                                         active_parser_encoding =
                                             std::ptr::from_ref(current_parser_encoding(parser));
                                         enc = active_parser_encoding;
+                                        encoding = &*enc;
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
@@ -15587,8 +15593,8 @@ unsafe extern "C" fn doProlog(
                                                     parser,
                                                     enc,
                                                     (*parser).m_declAttributeIsCdata,
-                                                    s.offset((*enc).minBytesPerChar as isize),
-                                                    next.offset(-((*enc).minBytesPerChar as isize)),
+                                                    s.offset(encoding.minBytesPerChar as isize),
+                                                    next.offset(-(encoding.minBytesPerChar as isize)),
                                                     dtd_pool,
                                                     XML_ACCOUNT_NONE,
                                                 );
@@ -15788,8 +15794,8 @@ unsafe extern "C" fn doProlog(
                                                 callStoreEntityValue(
                                                     parser,
                                                     enc,
-                                                    s.offset((*enc).minBytesPerChar as isize),
-                                                    next.offset(-((*enc).minBytesPerChar as isize)),
+                                                    s.offset(encoding.minBytesPerChar as isize),
+                                                    next.offset(-(encoding.minBytesPerChar as isize)),
                                                     XML_ACCOUNT_NONE,
                                             );
                                             if let Some(declaration) = (*parser).m_declEntity {
@@ -15897,8 +15903,8 @@ unsafe extern "C" fn doProlog(
                                             if poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
-                                                s.offset((*enc).minBytesPerChar as isize),
-                                                next.offset(-((*enc).minBytesPerChar as isize)),
+                                                s.offset(encoding.minBytesPerChar as isize),
+                                                next.offset(-(encoding.minBytesPerChar as isize)),
                                             )
                                             .is_null()
                                             {
@@ -16326,7 +16332,7 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     21 => {
-                                        let public_id_checker = (*enc).isPublicId;
+                                        let public_id_checker = encoding.isPublicId;
                                         let public_id_width = match public_id_checker {
                                             crate::src::xmltok::PublicIdChecker::Normal => 1,
                                             crate::src::xmltok::PublicIdChecker::Little2
@@ -16369,8 +16375,8 @@ unsafe extern "C" fn doProlog(
                                             let stored_public_id = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
-                                                s.offset((*enc).minBytesPerChar as isize),
-                                                next.offset(-((*enc).minBytesPerChar as isize)),
+                                                s.offset(encoding.minBytesPerChar as isize),
+                                                next.offset(-(encoding.minBytesPerChar as isize)),
                                             );
                                             if stored_public_id.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -16400,8 +16406,8 @@ unsafe extern "C" fn doProlog(
                                             let mut systemId: *const crate::expat_external_h::XML_Char = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
-                                                s.offset((*enc).minBytesPerChar as isize),
-                                                next.offset(-((*enc).minBytesPerChar as isize)),
+                                                s.offset(encoding.minBytesPerChar as isize),
+                                                next.offset(-(encoding.minBytesPerChar as isize)),
                                             );
                                             if systemId.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -16878,8 +16884,8 @@ unsafe extern "C" fn doProlog(
                                             name_1 = poolStoreString(
                                                 dtd_pool,
                                                 enc,
-                                                s.offset((*enc).minBytesPerChar as isize),
-                                                next.offset(-((*enc).minBytesPerChar as isize)),
+                                                s.offset(encoding.minBytesPerChar as isize),
+                                                next.offset(-(encoding.minBytesPerChar as isize)),
                                             );
                                             if name_1.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -17240,7 +17246,7 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                 }
-                                let public_id_checker = (*enc).isPublicId;
+                                let public_id_checker = encoding.isPublicId;
                                 let public_id_width = match public_id_checker {
                                     crate::src::xmltok::PublicIdChecker::Normal => 1,
                                     crate::src::xmltok::PublicIdChecker::Little2
@@ -17293,8 +17299,8 @@ unsafe extern "C" fn doProlog(
                                 let system_id = poolStoreString(
                                     dtd_pool,
                                     enc,
-                                    s.offset((*enc).minBytesPerChar as isize),
-                                    next.offset(-((*enc).minBytesPerChar as isize)),
+                                    s.offset(encoding.minBytesPerChar as isize),
+                                    next.offset(-(encoding.minBytesPerChar as isize)),
                                 );
                                 let Some(system_id) = pool_string_ref(
                                     dtd_pool as *const STRING_POOL,
@@ -17331,7 +17337,7 @@ unsafe extern "C" fn doProlog(
                         {
                             next
                         } else {
-                            next.offset(-((*enc).minBytesPerChar as isize))
+                            next.offset(-(encoding.minBytesPerChar as isize))
                         };
                         let mut myindex_0: ::core::ffi::c_int = nextScaffoldPart(parser);
                         if myindex_0 < 0 as ::core::ffi::c_int {
@@ -17455,8 +17461,8 @@ unsafe extern "C" fn doProlog(
                 let stored_public_id = poolStoreString(
                     dtd_pool,
                     enc,
-                    s.offset((*enc).minBytesPerChar as isize),
-                    next.offset(-((*enc).minBytesPerChar as isize)),
+                    s.offset(encoding.minBytesPerChar as isize),
+                    next.offset(-(encoding.minBytesPerChar as isize)),
                 );
                 if stored_public_id.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -17499,7 +17505,7 @@ unsafe extern "C" fn doProlog(
             _ => {}
         }
         s = next;
-        let scan = scanner_context_from_raw((*enc).scanners[0 as usize], enc, s, end).scan();
+        let scan = scanner_context_from_raw(encoding.scanners[0 as usize], enc, s, end).scan();
         tok = scan.token;
         if let Some(offset) = scan.next {
             next = s.wrapping_add(offset);
