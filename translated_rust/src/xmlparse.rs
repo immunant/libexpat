@@ -15860,7 +15860,7 @@ unsafe fn doProlog(
                                                     doctype_sysid,
                                                     doctype_pubid,
                                                 ) = {
-                                                    let parser_ref = &mut *parser;
+                                                    let parser_ref: &mut XML_ParserStruct = parser;
                                                     let doctype_name = parser_ref
                                                         .m_doctypeName
                                                         .and_then(|name| {
@@ -16018,7 +16018,7 @@ unsafe fn doProlog(
                                             {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            let parser_ref = &mut *parser;
+                                            let parser_ref: &mut XML_ParserStruct = parser;
                                             let Some(pub_id) =
                                                 parser_ref.m_tempPool.start_ref(true)
                                             else {
@@ -16061,7 +16061,7 @@ unsafe fn doProlog(
                                                     doctype_sysid,
                                                     doctype_pubid,
                                                 ) = {
-                                                    let parser_ref = &mut *parser;
+                                                    let parser_ref: &mut XML_ParserStruct = parser;
                                                     let doctype_name = parser_ref
                                                         .m_doctypeName
                                                         .and_then(|name| {
@@ -16372,7 +16372,7 @@ unsafe fn doProlog(
                                                     &enumValueStart[..]
                                                 }
                                             };
-                                            let parser_ref = &mut *parser;
+                                            let parser_ref: &mut XML_ParserStruct = parser;
                                             if !pool_append_terminated_chars(
                                                 &mut parser_ref.m_tempPool,
                                                 prefix,
@@ -16463,7 +16463,7 @@ unsafe fn doProlog(
                                                     {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
-                                                    let parser_ref = &mut *parser;
+                                                    let parser_ref: &mut XML_ParserStruct = parser;
                                                     let Some(start) =
                                                         parser_ref.m_tempPool.start_ref(true)
                                                     else {
@@ -16580,7 +16580,7 @@ unsafe fn doProlog(
                                             if result_1 as u64 != 0 {
                                                 return result_1;
                                             }
-                                            let dtd_ref = &mut *dtd;
+                                            let dtd_ref: &mut DTD = dtd;
                                             let Some(start) = dtd_ref.pool.start_ref(true) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
@@ -16654,7 +16654,7 @@ unsafe fn doProlog(
                                                     {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
-                                                    let parser_ref = &mut *parser;
+                                                    let parser_ref: &mut XML_ParserStruct = parser;
                                                     let Some(start) =
                                                         parser_ref.m_tempPool.start_ref(true)
                                                     else {
@@ -16765,7 +16765,7 @@ unsafe fn doProlog(
                                                     XML_ACCOUNT_NONE,
                                             );
                                             if let Some(declaration) = parser.m_declEntity {
-                                                let dtd_ref = &mut *dtd;
+                                                let dtd_ref: &mut DTD = dtd;
                                                 let Some(entity_text_ref) =
                                                     dtd_ref.entityValuePool.start_ref(true)
                                                 else {
@@ -17605,7 +17605,7 @@ unsafe fn doProlog(
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
                                                 if !backing(
-                                                    &mut *parser,
+                                                    parser,
                                                     GroupConnectorAllocationAction::Grow(
                                                         new_group_size
                                                             as crate::__stddef_size_t_h::size_t,
@@ -17695,7 +17695,7 @@ unsafe fn doProlog(
                                                     .is_err()
                                                 {
                                                     backing(
-                                                        &mut *parser,
+                                                        parser,
                                                         GroupConnectorAllocationAction::Free(5944),
                                                     );
                                                     parser.m_groupSize = 0;
