@@ -2407,6 +2407,27 @@ static SKIPPED_ENTITY_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn SkippedEntityCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// Invokes a skipped-entity callback from a staged, terminated entity name.
+///
+/// Parameter-entity lookup uses a temporary DTD pool entry which is rewound
+/// before the callback can re-enter the parser.  Keeping the callback
+/// boundary slice-based makes that lifetime explicit and confines the C ABI
+/// call to this adapter.
+fn dispatch_skipped_entity_callback(
+    callback: &dyn SkippedEntityCallback,
+    parser: &XML_ParserStruct,
+    entity_name: &[crate::expat_external_h::XML_Char],
+    is_parameter_entity: ::core::ffi::c_int,
+) {
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            entity_name.as_ptr(),
+            is_parameter_entity,
+        );
+    }
+}
+
 // The initial tokenizer chooses a built-in encoding after inspecting the
 // first bytes.  Keep that choice as an index in INIT_ENCODING rather than
 // copying a pointer to a static encoding table into parser state.  An unknown
@@ -17908,10 +17929,29 @@ unsafe fn doProlog(
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            let name_1 = dtd
-                                                .pool
-                                                .chars_from(temporary_name)
-                                                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+                                            // The temporary spelling is rewound before an
+                                            // undeclared parameter-entity callback.  Stage a
+                                            // terminated owned copy now so callback re-entry
+                                            // never observes a pool cursor that has been
+                                            // invalidated by that rewind.
+                                            let skipped_entity_name = if role
+                                                == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF
+                                                    as ::core::ffi::c_int
+                                                && parser.m_skippedEntityHandler
+                                            {
+                                                let Some(name) = dtd.pool.chars_from(temporary_name)
+                                                else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                let mut staged_name = Vec::new();
+                                                if staged_name.try_reserve_exact(name.len()).is_err() {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                }
+                                                staged_name.extend_from_slice(name);
+                                                Some(staged_name)
+                                            } else {
+                                                None
+                                            };
                                             // Resolve the temporary pool spelling through the typed
                                             // parameter-entity table before rewinding that temporary
                                             // storage.  Keep only the entity's retained key across
@@ -17965,10 +18005,13 @@ unsafe fn doProlog(
                                                         .unwrap_or_else(|poisoned| poisoned.into_inner())
                                                         .get(&parser_key)
                                                         .cloned();
-                                                    if let Some(callback) = callback {
-                                                        callback.invoke(
-                                                            handler_arg_from_state!(parser),
-                                                            name_1,
+                                                    if let (Some(callback), Some(entity_name)) =
+                                                        (callback, skipped_entity_name.as_deref())
+                                                    {
+                                                        dispatch_skipped_entity_callback(
+                                                            callback.as_ref(),
+                                                            parser,
+                                                            entity_name,
                                                             1 as ::core::ffi::c_int,
                                                         );
                                                     }
