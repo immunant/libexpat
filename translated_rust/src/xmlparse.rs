@@ -2661,8 +2661,8 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
             .m_unknownEncodingRelease
             .expect("non-null function pointer")((*parser).m_unknownEncodingData);
     }
-    pool_clear!(&raw mut (*parser).m_tempPool);
-    pool_clear!(&raw mut (*parser).m_temp2Pool);
+    pool_clear!(&mut (*parser).m_tempPool);
+    pool_clear!(&mut (*parser).m_temp2Pool);
     expat_free(
         parser,
         (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
@@ -3128,8 +3128,8 @@ pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Pars
     }
     destroy_bindings((*parser).m_freeBindingList);
     destroy_bindings((*parser).m_inheritedBindings);
-    pool_destroy!(&raw mut (*parser).m_tempPool);
-    pool_destroy!(&raw mut (*parser).m_temp2Pool);
+    pool_destroy!(&mut (*parser).m_tempPool);
+    pool_destroy!(&mut (*parser).m_temp2Pool);
     expat_free(
         parser,
         (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
@@ -5254,7 +5254,7 @@ unsafe extern "C" fn doContent(
                     }
                 } else {
                     name = poolStoreString(
-                        &raw mut (*dtd).pool,
+                        &mut (*dtd).pool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -5480,7 +5480,7 @@ unsafe extern "C" fn doContent(
                 } else if (*parser).m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
-                pool_clear!(&raw mut (*parser).m_tempPool);
+                pool_clear!(&mut (*parser).m_tempPool);
             }
             crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
             | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
@@ -5498,7 +5498,7 @@ unsafe extern "C" fn doContent(
                     prefixLen: 0,
                 };
                 name_0.str = poolStoreString(
-                    &raw mut (*parser).m_tempPool,
+                    &mut (*parser).m_tempPool,
                     enc,
                     rawName,
                     rawName.offset((*enc).nameLength.expect("non-null function pointer")(
@@ -5563,7 +5563,7 @@ unsafe extern "C" fn doContent(
                 {
                     reportDefault(parser, enc, s, next);
                 }
-                pool_clear!(&raw mut (*parser).m_tempPool);
+                pool_clear!(&mut (*parser).m_tempPool);
                 while !bindings.is_null() {
                     let b: *mut BINDING = bindings;
                     if (*parser).m_endNamespaceDeclHandler.is_some() {
@@ -6082,7 +6082,7 @@ unsafe extern "C" fn storeAtts(
                 isCdata,
                 (*(*parser).m_atts.offset(i as isize)).valuePtr,
                 (*(*parser).m_atts.offset(i as isize)).valueEnd,
-                &raw mut (*parser).m_tempPool,
+                &mut (*parser).m_tempPool,
                 account,
             );
             if result as u64 != 0 {
@@ -6094,7 +6094,7 @@ unsafe extern "C" fn storeAtts(
         } else {
             let ref mut c2rust_fresh30 = *appAtts.offset(attIndex as isize);
             *c2rust_fresh30 = poolStoreString(
-                &raw mut (*parser).m_tempPool,
+                &mut (*parser).m_tempPool,
                 enc,
                 (*(*parser).m_atts.offset(i as isize)).valuePtr,
                 (*(*parser).m_atts.offset(i as isize)).valueEnd,
@@ -6315,7 +6315,7 @@ unsafe extern "C" fn storeAtts(
                     let c: crate::expat_external_h::XML_Char = *(*b).uri.offset(j_0 as isize);
                     if if (*parser).m_tempPool.ptr
                         == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                        && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                        && poolGrow(&mut (*parser).m_tempPool) == 0
                     {
                         0 as ::core::ffi::c_int
                     } else {
@@ -6357,7 +6357,7 @@ unsafe extern "C" fn storeAtts(
                 loop {
                     if if (*parser).m_tempPool.ptr
                         == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                        && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                        && poolGrow(&mut (*parser).m_tempPool) == 0
                     {
                         0 as ::core::ffi::c_int
                     } else {
@@ -6420,7 +6420,7 @@ unsafe extern "C" fn storeAtts(
                     loop {
                         if if (*parser).m_tempPool.ptr
                             == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                            && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                            && poolGrow(&mut (*parser).m_tempPool) == 0
                         {
                             0 as ::core::ffi::c_int
                         } else {
@@ -7994,7 +7994,7 @@ unsafe extern "C" fn processXmlDecl(
     if (*parser).m_xmlDeclHandler.is_some() {
         if !encodingName.is_null() {
             storedEncName = poolStoreString(
-                &raw mut (*parser).m_temp2Pool,
+                &mut (*parser).m_temp2Pool,
                 (*parser).m_encoding,
                 encodingName,
                 encodingName.offset((*(*parser).m_encoding)
@@ -8010,7 +8010,7 @@ unsafe extern "C" fn processXmlDecl(
         }
         if !version.is_null() {
             storedversion = poolStoreString(
-                &raw mut (*parser).m_temp2Pool,
+                &mut (*parser).m_temp2Pool,
                 (*parser).m_encoding,
                 version,
                 versionend.offset(-((*(*parser).m_encoding).minBytesPerChar as isize)),
@@ -8044,7 +8044,7 @@ unsafe extern "C" fn processXmlDecl(
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             if storedEncName.is_null() {
                 storedEncName = poolStoreString(
-                    &raw mut (*parser).m_temp2Pool,
+                    &mut (*parser).m_temp2Pool,
                     (*parser).m_encoding,
                     encodingName,
                     encodingName.offset((*(*parser).m_encoding)
@@ -8058,7 +8058,7 @@ unsafe extern "C" fn processXmlDecl(
                 }
             }
             result = handleUnknownEncoding(parser, storedEncName);
-            pool_clear!(&raw mut (*parser).m_temp2Pool);
+            pool_clear!(&mut (*parser).m_temp2Pool);
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
                     as ::core::ffi::c_uint
@@ -8069,7 +8069,7 @@ unsafe extern "C" fn processXmlDecl(
         }
     }
     if !storedEncName.is_null() || !storedversion.is_null() {
-        pool_clear!(&raw mut (*parser).m_temp2Pool);
+        pool_clear!(&mut (*parser).m_temp2Pool);
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
@@ -8451,7 +8451,7 @@ unsafe extern "C" fn doProlog(
             4 => {
                 if (*parser).m_startDoctypeDeclHandler.is_some() {
                     (*parser).m_doctypeName =
-                        poolStoreString(&raw mut (*parser).m_tempPool, enc, s, next);
+                        poolStoreString(&mut (*parser).m_tempPool, enc, s, next);
                     if (*parser).m_doctypeName.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -8476,7 +8476,7 @@ unsafe extern "C" fn doProlog(
                     );
                     (*parser).m_doctypeName =
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    pool_clear!(&raw mut (*parser).m_tempPool);
+                    pool_clear!(&mut (*parser).m_tempPool);
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
                 c2rust_current_block = 8258632986558375165;
@@ -8514,7 +8514,7 @@ unsafe extern "C" fn doProlog(
                         return crate::expat_h::XML_ERROR_PUBLICID;
                     }
                     pubId = poolStoreString(
-                        &raw mut (*parser).m_tempPool,
+                        &mut (*parser).m_tempPool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -8551,7 +8551,7 @@ unsafe extern "C" fn doProlog(
                         (*parser).m_doctypePubid,
                         0 as ::core::ffi::c_int,
                     );
-                    pool_clear!(&raw mut (*parser).m_tempPool);
+                    pool_clear!(&mut (*parser).m_tempPool);
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
                 if !(*parser).m_doctypeSysid.is_null()
@@ -8747,7 +8747,7 @@ unsafe extern "C" fn doProlog(
                     while *prefix != 0 {
                         if if (*parser).m_tempPool.ptr
                             == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                            && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                            && poolGrow(&mut (*parser).m_tempPool) == 0
                         {
                             0 as ::core::ffi::c_int
                         } else {
@@ -8761,7 +8761,7 @@ unsafe extern "C" fn doProlog(
                         }
                         prefix = prefix.offset(1);
                     }
-                    if poolAppend(&raw mut (*parser).m_tempPool, enc, s, next).is_null() {
+                    if poolAppend(&mut (*parser).m_tempPool, enc, s, next).is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
                     (*parser).m_declAttributeType = (*parser).m_tempPool.start;
@@ -8798,7 +8798,7 @@ unsafe extern "C" fn doProlog(
                             if (if (*parser).m_tempPool.ptr
                                 == (*parser).m_tempPool.end
                                     as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                                && poolGrow(&mut (*parser).m_tempPool) == 0
                             {
                                 0 as ::core::ffi::c_int
                             } else {
@@ -8810,7 +8810,7 @@ unsafe extern "C" fn doProlog(
                                 || (if (*parser).m_tempPool.ptr
                                     == (*parser).m_tempPool.end
                                         as *mut crate::expat_external_h::XML_Char
-                                    && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                                    && poolGrow(&mut (*parser).m_tempPool) == 0
                                 {
                                     0 as ::core::ffi::c_int
                                 } else {
@@ -8843,7 +8843,7 @@ unsafe extern "C" fn doProlog(
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
                 }
-                pool_clear!(&raw mut (*parser).m_tempPool);
+                pool_clear!(&mut (*parser).m_tempPool);
                 c2rust_current_block = 8258632986558375165;
             }
             37 | 38 => {
@@ -8856,7 +8856,7 @@ unsafe extern "C" fn doProlog(
                         (*parser).m_declAttributeIsCdata,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
-                        &raw mut (*dtd).pool,
+                        &mut (*dtd).pool,
                         XML_ACCOUNT_NONE,
                     );
                     if result_1 as u64 != 0 {
@@ -8891,7 +8891,7 @@ unsafe extern "C" fn doProlog(
                             if (if (*parser).m_tempPool.ptr
                                 == (*parser).m_tempPool.end
                                     as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                                && poolGrow(&mut (*parser).m_tempPool) == 0
                             {
                                 0 as ::core::ffi::c_int
                             } else {
@@ -8903,7 +8903,7 @@ unsafe extern "C" fn doProlog(
                                 || (if (*parser).m_tempPool.ptr
                                     == (*parser).m_tempPool.end
                                         as *mut crate::expat_external_h::XML_Char
-                                    && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                                    && poolGrow(&mut (*parser).m_tempPool) == 0
                                 {
                                     0 as ::core::ffi::c_int
                                 } else {
@@ -8933,7 +8933,7 @@ unsafe extern "C" fn doProlog(
                                     as ::core::ffi::c_int)
                                 as ::core::ffi::c_int,
                         );
-                        pool_clear!(&raw mut (*parser).m_tempPool);
+                        pool_clear!(&mut (*parser).m_tempPool);
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
                 }
@@ -8991,7 +8991,7 @@ unsafe extern "C" fn doProlog(
                 (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                 if (*parser).m_startDoctypeDeclHandler.is_some() {
                     (*parser).m_doctypeSysid = poolStoreString(
-                        &raw mut (*parser).m_tempPool,
+                        &mut (*parser).m_tempPool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -9061,7 +9061,7 @@ unsafe extern "C" fn doProlog(
                     && !(*parser).m_declEntity.is_null()
                 {
                     (*(*parser).m_declEntity).notation =
-                        poolStoreString(&raw mut (*dtd).pool, enc, s, next);
+                        poolStoreString(&mut (*dtd).pool, enc, s, next);
                     if (*(*parser).m_declEntity).notation.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -9108,7 +9108,7 @@ unsafe extern "C" fn doProlog(
                     (*parser).m_declEntity = ::core::ptr::null_mut::<ENTITY>();
                 } else if (*dtd).keepProcessing != 0 {
                     let mut name: *const crate::expat_external_h::XML_Char =
-                        poolStoreString(&raw mut (*dtd).pool, enc, s, next);
+                        poolStoreString(&mut (*dtd).pool, enc, s, next);
                     if name.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -9147,7 +9147,7 @@ unsafe extern "C" fn doProlog(
             10 => {
                 if (*dtd).keepProcessing != 0 {
                     let mut name_0: *const crate::expat_external_h::XML_Char =
-                        poolStoreString(&raw mut (*dtd).pool, enc, s, next);
+                        poolStoreString(&mut (*dtd).pool, enc, s, next);
                     if name_0.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -9190,7 +9190,7 @@ unsafe extern "C" fn doProlog(
                     ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                 if (*parser).m_notationDeclHandler.is_some() {
                     (*parser).m_declNotationName =
-                        poolStoreString(&raw mut (*parser).m_tempPool, enc, s, next);
+                        poolStoreString(&mut (*parser).m_tempPool, enc, s, next);
                     if (*parser).m_declNotationName.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -9206,7 +9206,7 @@ unsafe extern "C" fn doProlog(
                 }
                 if !(*parser).m_declNotationName.is_null() {
                     let mut tem_0: *mut crate::expat_external_h::XML_Char = poolStoreString(
-                        &raw mut (*parser).m_tempPool,
+                        &mut (*parser).m_tempPool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -9227,7 +9227,7 @@ unsafe extern "C" fn doProlog(
                     && (*parser).m_notationDeclHandler.is_some()
                 {
                     let mut systemId: *const crate::expat_external_h::XML_Char = poolStoreString(
-                        &raw mut (*parser).m_tempPool,
+                        &mut (*parser).m_tempPool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -9247,7 +9247,7 @@ unsafe extern "C" fn doProlog(
                     );
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
-                pool_clear!(&raw mut (*parser).m_tempPool);
+                pool_clear!(&mut (*parser).m_tempPool);
                 c2rust_current_block = 8258632986558375165;
             }
             20 => {
@@ -9266,7 +9266,7 @@ unsafe extern "C" fn doProlog(
                     );
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
-                pool_clear!(&raw mut (*parser).m_tempPool);
+                pool_clear!(&mut (*parser).m_tempPool);
                 c2rust_current_block = 8258632986558375165;
             }
             -1 => match tok {
@@ -9462,7 +9462,7 @@ unsafe extern "C" fn doProlog(
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     let mut entity_1: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                     name_1 = poolStoreString(
-                        &raw mut (*dtd).pool,
+                        &mut (*dtd).pool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -9796,7 +9796,7 @@ unsafe extern "C" fn doProlog(
                     && !(*parser).m_declEntity.is_null()
                 {
                     (*(*parser).m_declEntity).systemId = poolStoreString(
-                        &raw mut (*dtd).pool,
+                        &mut (*dtd).pool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -9913,7 +9913,7 @@ unsafe extern "C" fn doProlog(
                     && !(*parser).m_declEntity.is_null()
                 {
                     let mut tem: *mut crate::expat_external_h::XML_Char = poolStoreString(
-                        &raw mut (*dtd).pool,
+                        &mut (*dtd).pool,
                         enc,
                         s.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -10425,7 +10425,7 @@ unsafe extern "C" fn appendAttributeValue(
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                if poolAppend(pool, enc, ptr, next).is_null() {
+                if poolAppend(&mut *pool, enc, ptr, next).is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
                 c2rust_current_block_70 = 18038362259723567392;
@@ -10488,7 +10488,7 @@ unsafe extern "C" fn appendAttributeValue(
                     }
                 } else {
                     name = poolStoreString(
-                        &raw mut (*parser).m_temp2Pool,
+                        &mut (*parser).m_temp2Pool,
                         enc,
                         ptr.offset((*enc).minBytesPerChar as isize),
                         next.offset(-((*enc).minBytesPerChar as isize)),
@@ -10503,7 +10503,7 @@ unsafe extern "C" fn appendAttributeValue(
                         0 as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
                     (*parser).m_temp2Pool.ptr = (*parser).m_temp2Pool.start;
-                    if pool == &raw mut (*dtd).pool {
+                    if pool == &mut (*dtd).pool {
                         checkEntityDecl = (*parser).m_prologState.documentEntity != 0
                             && (if (*dtd).standalone as ::core::ffi::c_int != 0 {
                                 (*parser).m_openInternalEntities.is_null() as ::core::ffi::c_int
@@ -10663,7 +10663,7 @@ unsafe extern "C" fn storeEntityValue(
                             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                         let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                         name = poolStoreString(
-                            &raw mut (*parser).m_tempPool,
+                            &mut (*parser).m_tempPool,
                             enc,
                             entityTextPtr.offset((*enc).minBytesPerChar as isize),
                             next.offset(-((*enc).minBytesPerChar as isize)),
@@ -10773,7 +10773,7 @@ unsafe extern "C" fn storeEntityValue(
                     break;
                 }
                 crate::src::xmltok::XML_TOK_ENTITY_REF | crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                    if poolAppend(pool, enc, entityTextPtr, next).is_null() {
+                    if poolAppend(&mut *pool, enc, entityTextPtr, next).is_null() {
                         result = crate::expat_h::XML_ERROR_NO_MEMORY;
                         break;
                     } else {
@@ -11009,13 +11009,13 @@ unsafe extern "C" fn reportProcessingInstruction(
     }
     start = start.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
     tem = start.offset((*enc).nameLength.expect("non-null function pointer")(enc, start) as isize);
-    target = poolStoreString(&raw mut (*parser).m_tempPool, enc, start, tem);
+    target = poolStoreString(&mut (*parser).m_tempPool, enc, start, tem);
     if target.is_null() {
         return 0 as ::core::ffi::c_int;
     }
     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
     data = poolStoreString(
-        &raw mut (*parser).m_tempPool,
+        &mut (*parser).m_tempPool,
         enc,
         (*enc).skipS.expect("non-null function pointer")(enc, tem),
         end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize)),
@@ -11028,7 +11028,7 @@ unsafe extern "C" fn reportProcessingInstruction(
     (*parser)
         .m_processingInstructionHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
-    pool_clear!(&raw mut (*parser).m_tempPool);
+    pool_clear!(&mut (*parser).m_tempPool);
     return 1 as ::core::ffi::c_int;
 }
 
@@ -11047,7 +11047,7 @@ unsafe extern "C" fn reportComment(
         return 1 as ::core::ffi::c_int;
     }
     data = poolStoreString(
-        &raw mut (*parser).m_tempPool,
+        &mut (*parser).m_tempPool,
         enc,
         start.offset(((*enc).minBytesPerChar * 4 as ::core::ffi::c_int) as isize),
         end.offset(-(((*enc).minBytesPerChar * 3 as ::core::ffi::c_int) as isize)),
@@ -11060,7 +11060,7 @@ unsafe extern "C" fn reportComment(
     (*parser)
         .m_commentHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, data);
-    pool_clear!(&raw mut (*parser).m_tempPool);
+    pool_clear!(&mut (*parser).m_tempPool);
     return 1 as ::core::ffi::c_int;
 }
 
@@ -11213,7 +11213,7 @@ unsafe extern "C" fn setElementTypePrefix(
             s = (*elementType).name;
             while s != name {
                 if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(&raw mut (*dtd).pool) == 0
+                    && poolGrow(&mut (*dtd).pool) == 0
                 {
                     0 as ::core::ffi::c_int
                 } else {
@@ -11228,7 +11228,7 @@ unsafe extern "C" fn setElementTypePrefix(
                 s = s.offset(1);
             }
             if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*dtd).pool) == 0
+                && poolGrow(&mut (*dtd).pool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11274,7 +11274,7 @@ unsafe extern "C" fn getAttributeId(
     let mut name: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-        && poolGrow(&raw mut (*dtd).pool) == 0
+        && poolGrow(&mut (*dtd).pool) == 0
     {
         0 as ::core::ffi::c_int
     } else {
@@ -11286,7 +11286,7 @@ unsafe extern "C" fn getAttributeId(
     {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
-    name = poolStoreString(&raw mut (*dtd).pool, enc, start, end);
+    name = poolStoreString(&mut (*dtd).pool, enc, start, end);
     if name.is_null() {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
@@ -11344,7 +11344,7 @@ unsafe extern "C" fn getAttributeId(
                         while j < i {
                             if if (*dtd).pool.ptr
                                 == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(&raw mut (*dtd).pool) == 0
+                                && poolGrow(&mut (*dtd).pool) == 0
                             {
                                 0 as ::core::ffi::c_int
                             } else {
@@ -11360,7 +11360,7 @@ unsafe extern "C" fn getAttributeId(
                         }
                         if if (*dtd).pool.ptr
                             == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                            && poolGrow(&raw mut (*dtd).pool) == 0
+                            && poolGrow(&mut (*dtd).pool) == 0
                         {
                             0 as ::core::ffi::c_int
                         } else {
@@ -11429,7 +11429,7 @@ unsafe extern "C" fn getContext(
         let mut len: ::core::ffi::c_int = 0;
         if if (*parser).m_tempPool.ptr
             == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(&raw mut (*parser).m_tempPool) == 0
+            && poolGrow(&mut (*parser).m_tempPool) == 0
         {
             0 as ::core::ffi::c_int
         } else {
@@ -11449,7 +11449,7 @@ unsafe extern "C" fn getContext(
         while i < len {
             if if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11481,7 +11481,7 @@ unsafe extern "C" fn getContext(
         if needSep as ::core::ffi::c_int != 0
             && (if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11497,7 +11497,7 @@ unsafe extern "C" fn getContext(
         while *s != 0 {
             if if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11513,7 +11513,7 @@ unsafe extern "C" fn getContext(
         }
         if if (*parser).m_tempPool.ptr
             == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(&raw mut (*parser).m_tempPool) == 0
+            && poolGrow(&mut (*parser).m_tempPool) == 0
         {
             0 as ::core::ffi::c_int
         } else {
@@ -11533,7 +11533,7 @@ unsafe extern "C" fn getContext(
         while i_0 < len_0 {
             if if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11563,7 +11563,7 @@ unsafe extern "C" fn getContext(
         if needSep as ::core::ffi::c_int != 0
             && (if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11579,7 +11579,7 @@ unsafe extern "C" fn getContext(
         while *s_0 != 0 {
             if if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11597,7 +11597,7 @@ unsafe extern "C" fn getContext(
     }
     if if (*parser).m_tempPool.ptr
         == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-        && poolGrow(&raw mut (*parser).m_tempPool) == 0
+        && poolGrow(&mut (*parser).m_tempPool) == 0
     {
         0 as ::core::ffi::c_int
     } else {
@@ -11628,7 +11628,7 @@ unsafe extern "C" fn setContext(
             let mut e: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
             if if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11666,7 +11666,7 @@ unsafe extern "C" fn setContext(
             } else {
                 if if (*parser).m_tempPool.ptr
                     == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                    && poolGrow(&mut (*parser).m_tempPool) == 0
                 {
                     0 as ::core::ffi::c_int
                 } else {
@@ -11709,7 +11709,7 @@ unsafe extern "C" fn setContext(
             {
                 if if (*parser).m_tempPool.ptr
                     == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                    && poolGrow(&mut (*parser).m_tempPool) == 0
                 {
                     0 as ::core::ffi::c_int
                 } else {
@@ -11725,7 +11725,7 @@ unsafe extern "C" fn setContext(
             }
             if if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -11756,7 +11756,7 @@ unsafe extern "C" fn setContext(
         } else {
             if if (*parser).m_tempPool.ptr
                 == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                && poolGrow(&mut (*parser).m_tempPool) == 0
             {
                 0 as ::core::ffi::c_int
             } else {
@@ -12381,38 +12381,40 @@ fn poolInit(pool: &mut STRING_POOL, parser: crate::expat_h::XML_Parser) {
     pool.parser = parser;
 }
 
-unsafe extern "C" fn poolAppend(
-    mut pool: *mut STRING_POOL,
+fn poolAppend(
+    pool: &mut STRING_POOL,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut crate::expat_external_h::XML_Char {
-    if (*pool).ptr.is_null() && poolGrow(pool) == 0 {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    }
-    loop {
-        let convert_res: crate::src::xmltok::XML_Convert_Result =
-            (*enc).utf8Convert.expect("non-null function pointer")(
-                enc,
-                &raw mut ptr,
-                end,
-                &raw mut (*pool).ptr as *mut *mut ::core::ffi::c_char,
-                (*pool).end as *const ::core::ffi::c_char,
-            ) as crate::src::xmltok::XML_Convert_Result;
-        if convert_res as ::core::ffi::c_uint
-            == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
-                as ::core::ffi::c_uint
-            || convert_res as ::core::ffi::c_uint
-                == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
-                    as ::core::ffi::c_uint
-        {
-            break;
-        }
-        if poolGrow(pool) == 0 {
+    unsafe {
+        if pool.ptr.is_null() && poolGrow(pool) == 0 {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
         }
+        loop {
+            let convert_res: crate::src::xmltok::XML_Convert_Result =
+                (*enc).utf8Convert.expect("non-null function pointer")(
+                    enc,
+                    &raw mut ptr,
+                    end,
+                    &raw mut pool.ptr as *mut *mut ::core::ffi::c_char,
+                    pool.end as *const ::core::ffi::c_char,
+                ) as crate::src::xmltok::XML_Convert_Result;
+            if convert_res as ::core::ffi::c_uint
+                == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
+                    as ::core::ffi::c_uint
+                || convert_res as ::core::ffi::c_uint
+                    == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
+                        as ::core::ffi::c_uint
+            {
+                break;
+            }
+            if poolGrow(pool) == 0 {
+                return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+            }
+        }
+        return pool.start;
     }
-    return (*pool).start;
 }
 
 fn poolAppendChars(
@@ -12461,8 +12463,8 @@ fn poolCopyStringN(
     copied
 }
 
-unsafe extern "C" fn poolStoreString(
-    mut pool: *mut STRING_POOL,
+fn poolStoreString(
+    pool: &mut STRING_POOL,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -12470,13 +12472,10 @@ unsafe extern "C" fn poolStoreString(
     if poolAppend(pool, enc, ptr, end).is_null() {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char && poolGrow(pool) == 0 {
+    if !poolAppendChars(pool, &[0 as crate::expat_external_h::XML_Char], true) {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    let c2rust_fresh10 = (*pool).ptr;
-    (*pool).ptr = (*pool).ptr.offset(1);
-    *c2rust_fresh10 = 0 as crate::expat_external_h::XML_Char;
-    return (*pool).start;
+    return pool.start;
 }
 
 fn poolBytesToAllocateFor(mut blockSize: ::core::ffi::c_int) -> crate::__stddef_size_t_h::size_t {
@@ -12800,7 +12799,7 @@ unsafe extern "C" fn getElementType(
 ) -> *mut ELEMENT_TYPE {
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut name: *const crate::expat_external_h::XML_Char =
-        poolStoreString(&raw mut (*dtd).pool, enc, ptr, end);
+        poolStoreString(&mut (*dtd).pool, enc, ptr, end);
     let mut ret: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     if name.is_null() {
         return ::core::ptr::null_mut::<ELEMENT_TYPE>();
