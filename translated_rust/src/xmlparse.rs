@@ -18264,19 +18264,26 @@ fn call_unknown_encoding_handler(
     callback.invoke(callback_arg, encoding_name, info) != 0
 }
 
-/// Releases foreign data returned by an unknown-encoding callback.  The data
-/// token stays opaque to Rust and is only passed back to its paired release
-/// callback.
+/// Constructs the boundary adapter for releasing foreign data returned by an
+/// unknown-encoding callback.  The data token stays opaque to Rust and is
+/// only passed back to its paired release callback.
+fn unknown_encoding_release_callback_adapter(
+    info: &crate::expat_h::XML_Encoding,
+) -> Option<Box<dyn FnOnce() + Send>> {
+    info.release.map(|callback| {
+        let context = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
+        Box::new(move || unsafe {
+            callback(context.load(std::sync::atomic::Ordering::Relaxed));
+        }) as Box<dyn FnOnce() + Send>
+    })
+}
+
+/// Retains the callback-owned part of a successful unknown-encoding result.
 fn release_unknown_encoding_info(
     info: &crate::expat_h::XML_Encoding,
 ) -> UnknownEncodingReleaseRecord {
     UnknownEncodingReleaseRecord {
-        release: info.release.map(|callback| {
-            let context = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
-            Box::new(move || unsafe {
-                callback(context.load(std::sync::atomic::Ordering::Relaxed));
-            }) as Box<dyn FnOnce() + Send>
-        }),
+        release: unknown_encoding_release_callback_adapter(info),
     }
 }
 
