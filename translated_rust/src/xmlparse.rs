@@ -18231,8 +18231,37 @@ unsafe extern "C" fn storeAttributeValue(
     loop {
         if parser.m_openAttributeEntities.is_empty() {
             let input_len = end.addr().checked_sub(next.addr());
+            // Arithmetic alone does not establish that a cursor pair belongs
+            // to the same readable allocation.  Attribute values may come
+            // from parser input or from the active replacement-text frame, so
+            // first resolve this exact window through its owner.  The view is
+            // immediately dropped before `appendAttributeValue` mutates parser
+            // state, leaving the legacy scanner only the checked short-lived
+            // raw slice it expects.
             let input = input_len.and_then(|len| {
-                (!next.is_null() && !end.is_null() && len <= isize::MAX as usize)
+                let parser_input = parser
+                    .m_buffer
+                    .window_from_addresses(next.addr(), end.addr())
+                    .is_some_and(|input| input.len() == len);
+                let entity_input = (|| {
+                    let dtd = parser.m_dtd.as_ref()?;
+                    let entity = parser
+                        .m_openValueEntities
+                        .and_then(|index| parser.m_activeValueEntities.get(index))
+                        .map(InternalEntityStorage::node)
+                        .or_else(|| {
+                            parser
+                                .m_openInternalEntities
+                                .and_then(|index| parser.m_activeInternalEntities.get(index))
+                                .map(InternalEntityStorage::node)
+                        })?;
+                    let (start, input_len) = shared_event_text_window(dtd, entity)?;
+                    let start_offset = next.addr().checked_sub(start)?;
+                    let end_offset = end.addr().checked_sub(start)?;
+                    (start_offset <= end_offset && end_offset <= input_len).then_some(())
+                })()
+                .is_some();
+                ((parser_input || entity_input) && len <= isize::MAX as usize)
                     .then(|| ::core::slice::from_raw_parts(next, len))
             });
             let Some(input) = input else {
@@ -18260,33 +18289,38 @@ unsafe extern "C" fn storeAttributeValue(
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
                 let dtd = &mut *dtd;
-                let entity_name_pointer = pool_string_pointer!(&dtd.pool, entity_name);
-                if entity_name_pointer.is_null() {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                }
-                let entity = lookup(
-                    std::ptr::from_mut(parser),
+                let salt = parser
+                    .m_root
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .hash_secret_salt;
+                let Some(NamedRecord::Entity(entity)) = lookup_impl(
+                    &mut dtd.pool,
                     &mut dtd.generalEntities,
-                    entity_name_pointer as KEY,
+                    LookupName::Retained(entity_name),
                     0,
-                ) as *mut ENTITY;
-                if entity.is_null() {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                }
-                let entity = &mut *entity;
-                let Some(text) = entity.textPtr.present() else {
+                    salt,
+                ) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                let Some(text) = entity_text_chars(dtd, text, entity.textLen) else {
+                let entity = entity.as_mut();
+                let entity_ptr = std::ptr::from_mut(entity);
+                let Some(text_ref) = entity.textPtr.present() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                let Ok(processed) = usize::try_from(entity.processed) else {
+                let text_len = entity.textLen;
+                let processed = entity.processed;
+                let entity_has_more = entity.hasMore;
+                let Some(text) = entity_text_chars(dtd, text_ref, text_len) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Ok(processed) = usize::try_from(processed) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
                 let Some(unprocessed) = text.get(processed..) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                (std::ptr::from_mut(entity), entity.hasMore, unprocessed)
+                (entity_ptr, entity_has_more, unprocessed)
             };
             if entity_has_more != 0 {
                 let (append_result, append_next) = appendAttributeValue(
