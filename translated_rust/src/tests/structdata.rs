@@ -1,5 +1,5 @@
+use std::cell::RefCell;
 use std::ffi::{CStr, CString};
-use std::sync::{Mutex, MutexGuard};
 
 extern "C" {
     fn __assert_fail(
@@ -77,6 +77,7 @@ struct ExpectedEntry {
 
 struct StructDataModel {
     entries: Vec<OwnedEntry>,
+    c_entries: Box<[StructDataEntry]>,
     max_count: ::core::ffi::c_int,
 }
 
@@ -84,6 +85,7 @@ impl StructDataModel {
     fn new() -> Self {
         Self {
             entries: Vec::new(),
+            c_entries: Vec::new().into_boxed_slice(),
             max_count: 0 as ::core::ffi::c_int,
         }
     }
@@ -124,8 +126,9 @@ impl StructDataModel {
         });
     }
 
-    fn c_entries(&self) -> Box<[StructDataEntry]> {
-        self.entries
+    fn refresh_c_entries(&mut self) {
+        self.c_entries = self
+            .entries
             .iter()
             .map(|entry| StructDataEntry {
                 str: entry.text.as_ptr(),
@@ -134,7 +137,18 @@ impl StructDataModel {
                 data2: entry.data2,
             })
             .collect::<Vec<_>>()
-            .into_boxed_slice()
+            .into_boxed_slice();
+    }
+
+    fn sync_storage(&mut self, storage: &mut StructData) {
+        self.refresh_c_entries();
+        storage.count = self.count();
+        storage.max_count = self.max_count;
+        storage.entries = if self.c_entries.is_empty() {
+            ::core::ptr::null_mut::<StructDataEntry>()
+        } else {
+            self.c_entries.as_mut_ptr()
+        };
     }
 
     fn check_items(&self, expected: &[ExpectedEntry]) -> Result<(), StructDataError> {
@@ -185,12 +199,15 @@ struct RegistryEntry {
     model: StructDataModel,
 }
 
-static REGISTRY: Mutex<Vec<RegistryEntry>> = Mutex::new(Vec::new());
+thread_local! {
+    static REGISTRY: RefCell<Vec<RegistryEntry>> = const { RefCell::new(Vec::new()) };
+}
 
-fn registry() -> MutexGuard<'static, Vec<RegistryEntry>> {
-    REGISTRY
-        .lock()
-        .expect("structdata registry mutex should not be poisoned")
+fn with_registry<R>(f: impl FnOnce(&mut Vec<RegistryEntry>) -> R) -> R {
+    REGISTRY.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        f(&mut registry)
+    })
 }
 
 fn registry_index(entries: &[RegistryEntry], storage: usize) -> Option<usize> {
@@ -223,6 +240,21 @@ fn remove_model(entries: &mut Vec<RegistryEntry>, storage: &StructData) {
     }
 }
 
+fn reset_storage(storage: &mut StructData) {
+    storage.count = 0 as ::core::ffi::c_int;
+    storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+}
+
+fn reset_storage_for_init(storage: &mut StructData) {
+    reset_storage(storage);
+    storage.max_count = 0 as ::core::ffi::c_int;
+}
+
+fn clear_storage(entries: &mut Vec<RegistryEntry>, storage: &mut StructData) {
+    remove_model(entries, storage);
+    reset_storage(storage);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn StructData_Init(storage: *mut StructData) {
     let storage = if storage.is_null() {
@@ -238,25 +270,14 @@ pub unsafe extern "C" fn StructData_Init(storage: *mut StructData) {
         unsafe { &mut *storage }
     };
 
-    let mut registry = registry();
-    remove_model(&mut registry, storage);
-    registry.push(RegistryEntry {
-        storage: storage as *mut StructData as usize,
-        model: StructDataModel::new(),
+    with_registry(|registry| remove_model(registry, storage));
+    reset_storage_for_init(storage);
+    with_registry(|registry| {
+        registry.push(RegistryEntry {
+            storage: storage as *mut StructData as usize,
+            model: StructDataModel::new(),
+        });
     });
-
-    if !storage.entries.is_null() {
-        unsafe {
-            drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
-                storage.entries,
-                usize::try_from(storage.count).expect("entry count should be non-negative"),
-            )))
-        }
-    }
-
-    storage.count = 0 as ::core::ffi::c_int;
-    storage.max_count = 0 as ::core::ffi::c_int;
-    storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
 }
 
 #[no_mangle]
@@ -292,30 +313,11 @@ pub unsafe extern "C" fn StructData_AddItem(
         unsafe { CStr::from_ptr(s) }
     };
 
-    let old_entries = storage.entries;
-    let old_count = storage.count;
-
-    let mut registry = registry();
-    let model = get_or_insert_model(&mut registry, storage);
-    model.add_item(s, data0, data1, data2);
-
-    let new_entries = model.c_entries();
-    storage.count = model.count();
-    storage.max_count = model.max_count;
-    storage.entries = if new_entries.is_empty() {
-        ::core::ptr::null_mut::<StructDataEntry>()
-    } else {
-        Box::into_raw(new_entries) as *mut StructDataEntry
-    };
-
-    if !old_entries.is_null() {
-        unsafe {
-            drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
-                old_entries,
-                usize::try_from(old_count).expect("entry count should be non-negative"),
-            )))
-        }
-    }
+    with_registry(|registry| {
+        let model = get_or_insert_model(registry, storage);
+        model.add_item(s, data0, data1, data2);
+        model.sync_storage(storage);
+    });
 }
 
 #[no_mangle]
@@ -349,22 +351,8 @@ pub unsafe extern "C" fn StructData_CheckItems(
 
     if count != storage.count {
         let actual_count = storage.count;
-        let entries = storage.entries;
-        let entry_count = storage.count;
 
-        if !entries.is_null() {
-            unsafe {
-                drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
-                    entries,
-                    usize::try_from(entry_count).expect("entry count should be non-negative"),
-                )))
-            }
-        }
-
-        let mut registry = registry();
-        remove_model(&mut registry, storage);
-        storage.count = 0 as ::core::ffi::c_int;
-        storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+        with_registry(|registry| clear_storage(registry, storage));
 
         let msg = CString::new(format!(
             "wrong number of entries: got {}, expected {}",
@@ -398,29 +386,16 @@ pub unsafe extern "C" fn StructData_CheckItems(
         .collect();
 
     let result = {
-        let mut registry = registry();
-        let model = get_or_insert_model(&mut registry, storage);
-        model.check_items(&expected_entries)
+        with_registry(|registry| {
+            let model = get_or_insert_model(registry, storage);
+            model.check_items(&expected_entries)
+        })
     };
 
     match result {
         Ok(()) => {}
         Err(StructDataError::Static { line, msg }) => {
-            let entries = storage.entries;
-            let entry_count = storage.count;
-            if !entries.is_null() {
-                unsafe {
-                    drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
-                        entries,
-                        usize::try_from(entry_count).expect("entry count should be non-negative"),
-                    )))
-                }
-            }
-
-            let mut registry = registry();
-            remove_model(&mut registry, storage);
-            storage.count = 0 as ::core::ffi::c_int;
-            storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+            with_registry(|registry| clear_storage(registry, storage));
             unsafe {
                 _fail(
                     FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
@@ -430,21 +405,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
             }
         }
         Err(StructDataError::Formatted { line, msg }) => {
-            let entries = storage.entries;
-            let entry_count = storage.count;
-            if !entries.is_null() {
-                unsafe {
-                    drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
-                        entries,
-                        usize::try_from(entry_count).expect("entry count should be non-negative"),
-                    )))
-                }
-            }
-
-            let mut registry = registry();
-            remove_model(&mut registry, storage);
-            storage.count = 0 as ::core::ffi::c_int;
-            storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+            with_registry(|registry| clear_storage(registry, storage));
             let msg = CString::new(msg).expect("formatted failure messages must not contain NUL");
             unsafe {
                 _fail(
@@ -471,18 +432,5 @@ pub unsafe extern "C" fn StructData_Dispose(storage: *mut StructData) {
     } else {
         unsafe { &mut *storage }
     };
-
-    if !storage.entries.is_null() {
-        unsafe {
-            drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
-                storage.entries,
-                usize::try_from(storage.count).expect("entry count should be non-negative"),
-            )))
-        }
-    }
-
-    let mut registry = registry();
-    remove_model(&mut registry, storage);
-    storage.count = 0 as ::core::ffi::c_int;
-    storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+    with_registry(|registry| clear_storage(registry, storage));
 }
