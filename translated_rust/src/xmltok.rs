@@ -5316,27 +5316,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_scanAtts(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = little2_scan_atts_impl(&normal.type_0, input, |ref_start| {
-            let result = little2_scan_ref_impl(normal, &input[ref_start..]);
-            (result.token, result.next.map_or(0, |next| ref_start + next))
-        });
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
-    }
     enum Little2ScanLtAction {
         Token(::core::ffi::c_int, Option<usize>),
         Comment(usize),
@@ -5842,25 +5821,6 @@ pub mod xmltok_impl_c {
         }
 
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
-    }
-
-    pub unsafe extern "C" fn little2_scanPercent(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let (token, next) = little2_scan_percent_impl(normal, input);
-        if let Some(offset) = next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        token
     }
 
     fn little2_scan_pound_name_impl(
@@ -6491,25 +6451,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_attributeValueTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = little2_attribute_value_tok_impl(normal, input);
-        if let Some(offset) = result.next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        result.token
-    }
-
     struct Little2EntityValueToken {
         token: ::core::ffi::c_int,
         next: Option<usize>,
@@ -6639,25 +6580,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_entityValueTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = little2_entity_value_tok_impl(normal, input);
-        if let Some(offset) = result.next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        result.token
-    }
-
     enum Little2IgnoreSectionOutcome {
         Token(::core::ffi::c_int, usize),
         Partial(::core::ffi::c_int),
@@ -6751,31 +6673,6 @@ pub mod xmltok_impl_c {
             }
         }
         Little2IgnoreSectionOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
-    }
-
-    pub unsafe extern "C" fn little2_ignoreSectionTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let encoding = &*(enc as *const normal_encoding);
-        match little2_ignore_section_tok_impl(encoding, input) {
-            Little2IgnoreSectionOutcome::Token(token, next) => {
-                *nextTokPtr = ptr.wrapping_add(next);
-                token
-            }
-            Little2IgnoreSectionOutcome::Partial(token) => token,
-            Little2IgnoreSectionOutcome::Invalid(at) => {
-                *nextTokPtr = ptr.wrapping_add(at);
-                crate::src::xmltok::XML_TOK_INVALID_1
-            }
-        }
     }
 
     #[derive(Copy, Clone)]
@@ -7480,25 +7377,6 @@ pub mod xmltok_impl_c {
         }
 
         big2_cdata_section_result(crate::src::xmltok::XML_TOK_DATA_CHARS_1, Some(offset))
-    }
-
-    pub unsafe extern "C" fn big2_cdataSectionTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input_len = end.offset_from(ptr) as usize;
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
-        let normal = &*(enc as *const normal_encoding);
-        let result = big2_cdata_section_tok_impl(normal, input);
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
     }
 
     // The parser owns its input buffer, so CDATA tokenization uses a checked
@@ -9369,25 +9247,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_attributeValueTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = big2_attribute_value_tok_impl(normal, input);
-        if let Some(offset) = result.next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        result.token
-    }
-
     /// Scans one attribute-value token from an input window that the caller
     /// has already bounded.  This is the parser-facing counterpart to the
     /// three C-cursor adapters above: it retains the selected normal-encoding
@@ -9551,25 +9410,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_entityValueTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = big2_entity_value_tok_impl(normal, input);
-        if let Some(offset) = result.next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        result.token
-    }
-
     /// Scans an entity value from an already-bounded XML-character slice.
     /// The C cursor adapters above remain for the public tokenizer ABI, while
     /// parser implementation code uses this offset-based path.
@@ -9671,31 +9511,6 @@ pub mod xmltok_impl_c {
             }
         }
         Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
-    }
-
-    pub unsafe extern "C" fn big2_ignoreSectionTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let encoding = &*(enc as *const normal_encoding);
-        match big2_ignore_section_tok_impl(encoding, input) {
-            Big2ScanOutcome::Token(token, next) => {
-                *nextTokPtr = ptr.wrapping_add(next);
-                token
-            }
-            Big2ScanOutcome::Partial(token) => token,
-            Big2ScanOutcome::Invalid(at) => {
-                *nextTokPtr = ptr.wrapping_add(at);
-                crate::src::xmltok::XML_TOK_INVALID_1
-            }
-        }
     }
 
     #[derive(Copy, Clone)]
@@ -11437,23 +11252,14 @@ pub use crate::src::xmltok::nametab_h::nmstrtPages;
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
 
-pub use crate::src::xmltok::xmltok_impl_c::big2_attributeValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::big2_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
-pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPoundName;
-pub use crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::little2_contentTok;
-pub use crate::src::xmltok::xmltok_impl_c::little2_entityValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanComment;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanDecl;
-pub use crate::src::xmltok::xmltok_impl_c::little2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
