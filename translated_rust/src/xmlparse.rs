@@ -11419,8 +11419,8 @@ unsafe fn doContent(
                         parser.m_freeTagList.tags.pop()
                     };
                     if tag_storage.is_none() {
-                        let Some(backing) = allocation_backing(
-                            parser_ptr,
+                        let Some(backing) = parser_allocation_backing(
+                            parser,
                             ::core::mem::size_of::<TAG>(),
                             3477 as ::core::ffi::c_int,
                         ) else {
