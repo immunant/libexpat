@@ -4876,8 +4876,14 @@ pub unsafe extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Ver
 pub unsafe extern "C" fn XML_ExpatVersionInfo_ffi() -> crate::expat_h::XML_Expat_Version {
     XML_ExpatVersionInfo()
 }
-pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
-    static mut features: [crate::expat_h::XML_Feature; 11] = [
+pub extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
+    static FEATURES: std::sync::OnceLock<
+        std::sync::atomic::AtomicPtr<crate::expat_h::XML_Feature>,
+    > = std::sync::OnceLock::new();
+
+    FEATURES
+        .get_or_init(|| {
+            std::sync::atomic::AtomicPtr::new(Box::leak(Box::new([
         crate::expat_h::XML_Feature {
     feature:  crate::expat_h::XML_FEATURE_SIZEOF_XML_CHAR,
     name:  b"sizeof(XML_Char)\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
@@ -4935,8 +4941,11 @@ pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feat
     name:  ::core::ptr::null:: <crate::expat_external_h::XML_LChar>(),
     value:  0 as ::core::ffi::c_long,
 },
-    ];
-    return &raw const features as *const crate::expat_h::XML_Feature;
+    ]))
+            .as_mut_ptr())
+        })
+        .load(std::sync::atomic::Ordering::Relaxed)
+        as *const crate::expat_h::XML_Feature
 }
 #[export_name = "XML_GetFeatureList"]
 
