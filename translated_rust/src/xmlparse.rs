@@ -27156,25 +27156,25 @@ fn accounting_report_diff(
     let _ = stderr.write_all(b"\"\n");
 }
 
-pub unsafe extern "C" fn testingAccountingGetCountBytesDirect(
-    mut parser: crate::expat_h::XML_Parser,
+fn testingAccountingGetCountBytesDirect(
+    root: &std::sync::Arc<std::sync::Mutex<RootParserState>>,
 ) -> ::core::ffi::c_ulonglong {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_ulonglong;
-    }
-    return (*parser)
-        .m_root
+    root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .accounting
-        .countBytesDirect as ::core::ffi::c_ulonglong;
+        .countBytesDirect as ::core::ffi::c_ulonglong
 }
 #[export_name = "testingAccountingGetCountBytesDirect"]
 
 pub unsafe extern "C" fn testingAccountingGetCountBytesDirect_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    testingAccountingGetCountBytesDirect(parser)
+    if parser.is_null() || !parser.is_aligned() {
+        return 0;
+    }
+    let parser = unsafe { parser.as_ref() }.expect("non-null parser was checked");
+    testingAccountingGetCountBytesDirect(&parser.m_root)
 }
 pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect(
     mut parser: crate::expat_h::XML_Parser,
