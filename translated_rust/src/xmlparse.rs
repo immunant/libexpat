@@ -2249,7 +2249,10 @@ pub struct DEFAULT_ATTRIBUTE {
 #[repr(C)]
 
 pub struct ENTITY {
-    pub name: *const crate::expat_external_h::XML_Char,
+    // Entity records are zero-initialized by the allocator-backed hash table
+    // before their pool key is installed.  `None` represents that transient
+    // state; every published entity has the non-null pool-backed name.
+    pub name: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>>,
     pub textPtr: *const crate::expat_external_h::XML_Char,
     pub textLen: ::core::ffi::c_int,
     pub processed: ::core::ffi::c_int,
@@ -6992,7 +6995,10 @@ unsafe extern "C" fn doContent(
                                     if let Some(callback) = callback {
                                         callback.invoke(
                                             (*parser).m_handlerArg,
-                                            (*entity).name,
+                                            (*entity)
+                                                .name
+                                                .expect("published entity has a pool name")
+                                                .as_ptr(),
                                             0 as ::core::ffi::c_int,
                                         );
                                     }
@@ -10224,7 +10230,10 @@ unsafe extern "C" fn doProlog(
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
                                                             (*parser).m_handlerArg,
-                                                            (*(*parser).m_declEntity).name,
+                                                            (*(*parser).m_declEntity)
+                                                                .name
+                                                                .expect("declared entity has a pool name")
+                                                                .as_ptr(),
                                                             (*(*parser).m_declEntity).is_param
                                                                 as ::core::ffi::c_int,
                                                             (*(*parser).m_declEntity).textPtr,
@@ -10330,7 +10339,10 @@ unsafe extern "C" fn doProlog(
                                             if let Some(callback) = callback {
                                                 callback.invoke(
                                                     (*parser).m_handlerArg,
-                                                    (*(*parser).m_declEntity).name,
+                                                    (*(*parser).m_declEntity)
+                                                        .name
+                                                        .expect("declared entity has a pool name")
+                                                        .as_ptr(),
                                                     (*(*parser).m_declEntity).is_param
                                                         as ::core::ffi::c_int,
                                                     ::core::ptr::null::<
@@ -10383,7 +10395,10 @@ unsafe extern "C" fn doProlog(
                                                 *eventEndPP = s;
                                                 callback.invoke(
                                                     (*parser).m_handlerArg,
-                                                    (*(*parser).m_declEntity).name,
+                                                    (*(*parser).m_declEntity)
+                                                        .name
+                                                        .expect("declared entity has a pool name")
+                                                        .as_ptr(),
                                                     (*(*parser).m_declEntity).base.map_or(
                                                         ::core::ptr::null(),
                                                         |base| {
@@ -10413,7 +10428,10 @@ unsafe extern "C" fn doProlog(
                                                 if let Some(callback) = callback {
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
-                                                        (*(*parser).m_declEntity).name,
+                                                        (*(*parser).m_declEntity)
+                                                            .name
+                                                            .expect("declared entity has a pool name")
+                                                            .as_ptr(),
                                                         0 as ::core::ffi::c_int,
                                                         ::core::ptr::null::<
                                                             crate::expat_external_h::XML_Char,
@@ -10465,7 +10483,12 @@ unsafe extern "C" fn doProlog(
                                                 if (*parser).m_declEntity.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                if (*(*parser).m_declEntity).name != name {
+                                                if (*(*parser).m_declEntity)
+                                                    .name
+                                                    .expect("declared entity has a pool name")
+                                                    .as_ptr() as *const crate::expat_external_h::XML_Char
+                                                    != name
+                                                {
                                                     (*dtd).pool.ptr = (*dtd).pool.start;
                                                     (*parser).m_declEntity =
                                                         ::core::ptr::null_mut::<ENTITY>();
@@ -10514,7 +10537,12 @@ unsafe extern "C" fn doProlog(
                                             if (*parser).m_declEntity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            if (*(*parser).m_declEntity).name != name_0 {
+                                            if (*(*parser).m_declEntity)
+                                                .name
+                                                .expect("declared entity has a pool name")
+                                                .as_ptr() as *const crate::expat_external_h::XML_Char
+                                                != name_0
+                                            {
                                                 (*dtd).pool.ptr = (*dtd).pool.start;
                                                 (*parser).m_declEntity =
                                                     ::core::ptr::null_mut::<ENTITY>();
@@ -12953,7 +12981,12 @@ unsafe extern "C" fn getContext(
         {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        if !pool_append_context_c_string(&mut parser.m_tempPool, e.name) {
+        if !pool_append_context_c_string(
+            &mut parser.m_tempPool,
+            e.name
+                .expect("published entity has a pool name")
+                .as_ptr(),
+        ) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
         needSep = crate::expat_h::XML_TRUE;
@@ -13500,7 +13533,13 @@ unsafe extern "C" fn copyEntityTable(
         if oldE.is_null() {
             break;
         }
-        name = poolCopyString(newPool, (*oldE).name);
+        name = poolCopyString(
+            newPool,
+            (*oldE)
+                .name
+                .expect("published entity has a pool name")
+                .as_ptr(),
+        );
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -14682,7 +14721,11 @@ unsafe extern "C" fn entityTrackingReportStats(
     if (*rootParser).m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
-    let entityName: *const ::core::ffi::c_char = (*entity).name as *const ::core::ffi::c_char;
+    let entityName: *const ::core::ffi::c_char = (*entity)
+        .name
+        .expect("published entity has a pool name")
+        .as_ptr()
+        .cast();
     crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"expat: Entities(%p): Count %9u, depth %2u/%2u %*s%s%s; %s length %d (xmlparse.c:%d)\n\0"
