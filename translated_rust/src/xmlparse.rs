@@ -2359,8 +2359,8 @@ pub const XML_ACCOUNT_ENTITY_EXPANSION: XML_Account = 1;
 pub const XML_ACCOUNT_DIRECT: XML_Account = 0;
 
 pub type ICHAR = ::core::ffi::c_char;
-static mut xmlLen: ::core::ffi::c_int = 0;
-static mut xmlnsLen: ::core::ffi::c_int = 0;
+const XML_NAMESPACE_LEN: ::core::ffi::c_int = 36;
+const XMLNS_NAMESPACE_LEN: ::core::ffi::c_int = 29;
 
 pub const INIT_TAG_BUF_SIZE: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 
@@ -8332,7 +8332,7 @@ unsafe extern "C" fn storeAtts(
     return crate::expat_h::XML_ERROR_NONE;
 }
 
-unsafe extern "C" fn is_rfc3986_uri_char(
+fn is_rfc3986_uri_char(
     mut candidate: crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
     match candidate as ::core::ffi::c_int {
@@ -8353,7 +8353,7 @@ unsafe extern "C" fn addBinding(
     mut uri: *const crate::expat_external_h::XML_Char,
     mut bindingsPtr: *mut *mut BINDING,
 ) -> crate::expat_h::XML_Error {
-    static mut xmlNamespace: [crate::expat_external_h::XML_Char; 37] = [
+    const XML_NAMESPACE: [crate::expat_external_h::XML_Char; 37] = [
         crate::ascii_h::ASCII_h as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
@@ -8392,7 +8392,7 @@ unsafe extern "C" fn addBinding(
         crate::ascii_h::ASCII_e as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut xmlnsNamespace: [crate::expat_external_h::XML_Char; 30] = [
+    const XMLNS_NAMESPACE: [crate::expat_external_h::XML_Char; 30] = [
         crate::ascii_h::ASCII_h as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
@@ -8452,17 +8452,17 @@ unsafe extern "C" fn addBinding(
     len = 0 as ::core::ffi::c_int;
     while *uri.offset(len as isize) != 0 {
         if isXML as ::core::ffi::c_int != 0
-            && (len > xmlLen
+            && (len > XML_NAMESPACE_LEN
                 || *uri.offset(len as isize) as ::core::ffi::c_int
-                    != xmlNamespace[len as usize] as ::core::ffi::c_int)
+                    != XML_NAMESPACE[len as usize] as ::core::ffi::c_int)
         {
             isXML = crate::expat_h::XML_FALSE;
         }
         if mustBeXML == 0
             && isXMLNS as ::core::ffi::c_int != 0
-            && (len > xmlnsLen
+            && (len > XMLNS_NAMESPACE_LEN
                 || *uri.offset(len as isize) as ::core::ffi::c_int
-                    != xmlnsNamespace[len as usize] as ::core::ffi::c_int)
+                    != XMLNS_NAMESPACE[len as usize] as ::core::ffi::c_int)
         {
             isXMLNS = crate::expat_h::XML_FALSE;
         }
@@ -8475,9 +8475,9 @@ unsafe extern "C" fn addBinding(
         }
         len += 1;
     }
-    isXML = (isXML as ::core::ffi::c_int != 0 && len == xmlLen) as ::core::ffi::c_int
+    isXML = (isXML as ::core::ffi::c_int != 0 && len == XML_NAMESPACE_LEN) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
-    isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == xmlnsLen) as ::core::ffi::c_int
+    isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == XMLNS_NAMESPACE_LEN) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
     if mustBeXML as ::core::ffi::c_int != isXML as ::core::ffi::c_int {
         return (if mustBeXML as ::core::ffi::c_int != 0 {
@@ -15548,14 +15548,6 @@ unsafe extern "C" fn getDebugLevel(
     return debugLevel;
 }
 unsafe extern "C" fn c2rust_run_static_initializers() {
-    xmlLen = (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 37]>()
-        as ::core::ffi::c_int as usize)
-        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>())
-        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
-    xmlnsLen = (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 30]>()
-        as ::core::ffi::c_int as usize)
-        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>())
-        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
 }
 #[used]
 #[cfg_attr(target_os = "linux", link_section = ".init_array")]
