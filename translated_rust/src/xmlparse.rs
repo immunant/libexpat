@@ -4985,11 +4985,26 @@ unsafe extern "C" fn externalEntityInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initializeEncoding(parser);
-    if result as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return result;
+    let protocol_encoding_name = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
+    let name = if protocol_encoding_name.is_null() {
+        None
+    } else {
+        let mut name_len = 0usize;
+        while *protocol_encoding_name.offset(name_len as isize) != 0 {
+            name_len += 1;
+        }
+        Some(::core::slice::from_raw_parts(
+            protocol_encoding_name,
+            name_len + 1,
+        ))
+    };
+    if !initializeEncoding(&mut *parser, name) {
+        let result = handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+        if result as ::core::ffi::c_uint
+            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            return result;
+        }
     }
     (*parser).m_processor = Some(
         externalEntityInitProcessor2
@@ -7241,37 +7256,21 @@ unsafe extern "C" fn doIgnoreSection(
     };
 }
 
-unsafe extern "C" fn initializeEncoding(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Error {
-    let mut s: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    s = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
-    let name = if s.is_null() {
-        None
-    } else {
-        let mut name_len = 0usize;
-        while *s.offset(name_len as isize) != 0 {
-            name_len += 1;
-        }
-        Some(::core::slice::from_raw_parts(s, name_len + 1))
-    };
+fn initializeEncoding(parser: &mut XML_ParserStruct, name: Option<&[::core::ffi::c_char]>) -> bool {
     let initialized = if (*parser).m_ns as ::core::ffi::c_int != 0 {
         crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS(
-            &mut (*parser).m_initEncoding,
-            &mut (*parser).m_encoding,
+            &mut parser.m_initEncoding,
+            &mut parser.m_encoding,
             name,
         )
     } else {
         crate::src::xmltok::xmltok_ns_c::XmlInitEncoding(
-            &mut (*parser).m_initEncoding,
-            &mut (*parser).m_encoding,
+            &mut parser.m_initEncoding,
+            &mut parser.m_encoding,
             name,
         )
     };
-    if initialized != 0 {
-        return crate::expat_h::XML_ERROR_NONE;
-    }
-    return handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+    initialized != 0
 }
 
 unsafe extern "C" fn processXmlDecl(
@@ -7531,11 +7530,26 @@ unsafe extern "C" fn prologInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initializeEncoding(parser);
-    if result as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return result;
+    let protocol_encoding_name = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
+    let name = if protocol_encoding_name.is_null() {
+        None
+    } else {
+        let mut name_len = 0usize;
+        while *protocol_encoding_name.offset(name_len as isize) != 0 {
+            name_len += 1;
+        }
+        Some(::core::slice::from_raw_parts(
+            protocol_encoding_name,
+            name_len + 1,
+        ))
+    };
+    if !initializeEncoding(&mut *parser, name) {
+        let result = handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+        if result as ::core::ffi::c_uint
+            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            return result;
+        }
     }
     (*parser).m_processor = Some(
         prologProcessor
@@ -7555,11 +7569,26 @@ unsafe extern "C" fn externalParEntInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initializeEncoding(parser);
-    if result as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return result;
+    let protocol_encoding_name = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
+    let name = if protocol_encoding_name.is_null() {
+        None
+    } else {
+        let mut name_len = 0usize;
+        while *protocol_encoding_name.offset(name_len as isize) != 0 {
+            name_len += 1;
+        }
+        Some(::core::slice::from_raw_parts(
+            protocol_encoding_name,
+            name_len + 1,
+        ))
+    };
+    if !initializeEncoding(&mut *parser, name) {
+        let result = handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+        if result as ::core::ffi::c_uint
+            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            return result;
+        }
     }
     (*(*parser).m_dtd).paramEntityRead = crate::expat_h::XML_TRUE;
     if (*parser).m_prologState.inEntityValue != 0 {
