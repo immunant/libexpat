@@ -131,8 +131,8 @@ pub mod siphash_h {
         let b = {
             let state = &mut *H;
             let left = state.p.offset_from(state.buf.as_mut_ptr()) as ::core::ffi::c_char;
-            let mut b = state.c.wrapping_add(left as crate::stdlib::uint64_t)
-                << 56 as ::core::ffi::c_int;
+            let mut b =
+                state.c.wrapping_add(left as crate::stdlib::uint64_t) << 56 as ::core::ffi::c_int;
             if (0..=7).contains(&(left as ::core::ffi::c_int)) {
                 for index in 0..left as usize {
                     b |= (state.buf[index] as crate::stdlib::uint64_t)
@@ -1404,15 +1404,11 @@ impl EndCdataSectionCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) 
 }
 
 static START_CDATA_SECTION_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>,
-    >,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
 > = std::sync::OnceLock::new();
 
 static END_CDATA_SECTION_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>,
-    >,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
 > = std::sync::OnceLock::new();
 
 // Foreign callback values remain in this boundary registry; parser state only
@@ -1496,9 +1492,7 @@ static START_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
 // End-doctype has the same callback signature as end-CDATA, but keeps a
 // separate registration namespace because the two handlers are independent.
 static END_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>,
-    >,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
 > = std::sync::OnceLock::new();
 
 // C exposes two handler-context modes: callbacks receive the caller's user
@@ -1545,7 +1539,9 @@ trait NotStandaloneCallback: Send + Sync {
     unsafe fn invoke(&self, parser: &XML_ParserStruct) -> ::core::ffi::c_int;
 }
 
-impl NotStandaloneCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int {
+impl NotStandaloneCallback
+    for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int
+{
     unsafe fn invoke(&self, parser: &XML_ParserStruct) -> ::core::ffi::c_int {
         self(handler_arg_from_state!(parser))
     }
@@ -2039,13 +2035,15 @@ unsafe fn external_entity_ref_handler_arg_registration(
     let callback_arg = arg.cast::<XML_ParserStruct>();
     ExternalEntityRefHandlerArgRegistration {
         applies_to_child: callback_arg != parser,
-        invoke: std::sync::Arc::new(move |
-            handler: &dyn ExternalEntityRefCallback,
-            context: *const crate::expat_external_h::XML_Char,
-            base: *const crate::expat_external_h::XML_Char,
-            system_id: *const crate::expat_external_h::XML_Char,
-            public_id: *const crate::expat_external_h::XML_Char,
-        | handler.invoke(callback_arg, context, base, system_id, public_id)),
+        invoke: std::sync::Arc::new(
+            move |handler: &dyn ExternalEntityRefCallback,
+                  context: *const crate::expat_external_h::XML_Char,
+                  base: *const crate::expat_external_h::XML_Char,
+                  system_id: *const crate::expat_external_h::XML_Char,
+                  public_id: *const crate::expat_external_h::XML_Char| {
+                handler.invoke(callback_arg, context, base, system_id, public_id)
+            },
+        ),
     }
 }
 
@@ -2133,7 +2131,8 @@ enum AttributeAllocationAction {
 // the same allocation, growth, and release sequence as the original table.
 struct NamespaceAttributeStorage {
     entries: Vec<NS_ATT>,
-    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, NamespaceAttributeAllocationAction) -> bool>>,
+    backing:
+        Option<Box<dyn FnMut(&mut XML_ParserStruct, NamespaceAttributeAllocationAction) -> bool>>,
 }
 
 enum NamespaceAttributeAllocationAction {
@@ -2603,17 +2602,15 @@ macro_rules! parser_dtd_ptr {
 }
 
 macro_rules! set_parser_event_end {
-    ($parser:expr, $end:expr) => {
-        {
-            let parser_ref = &mut *$parser;
-            parser_ref.m_eventEndPtr = parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-                ($end)
-                    .addr()
-                    .checked_sub(bytes.as_ptr().addr())
-                    .filter(|offset| *offset <= bytes.len())
-            });
-        }
-    };
+    ($parser:expr, $end:expr) => {{
+        let parser_ref = &mut *$parser;
+        parser_ref.m_eventEndPtr = parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
+            ($end)
+                .addr()
+                .checked_sub(bytes.as_ptr().addr())
+                .filter(|offset| *offset <= bytes.len())
+        });
+    }};
 }
 
 // Parser-event cursors are always offsets into the current owned buffer.
@@ -2633,14 +2630,9 @@ macro_rules! parser_event_start {
     ($parser:expr) => {{
         let parser_ref = $parser;
         parser_ref.m_eventPtr.and_then(|offset| {
-            parser_ref
-                .m_buffer
-                .bytes
-                .as_ref()
-                .and_then(|bytes| {
-                    (offset <= bytes.len())
-                        .then(|| bytes.as_ptr().wrapping_add(offset).cast())
-                })
+            parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
+                (offset <= bytes.len()).then(|| bytes.as_ptr().wrapping_add(offset).cast())
+            })
         })
     }};
 }
@@ -2659,20 +2651,17 @@ macro_rules! set_event_end {
 }
 
 macro_rules! parser_event_end {
-    ($parser:expr) => {
-        {
-            let parser_ref = &*$parser;
-            parser_ref
-                .m_eventEndPtr
-                .and_then(|offset| {
-                    parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-                        (offset <= bytes.len())
-                            .then(|| bytes.as_ptr().wrapping_add(offset).cast())
-                    })
+    ($parser:expr) => {{
+        let parser_ref = &*$parser;
+        parser_ref
+            .m_eventEndPtr
+            .and_then(|offset| {
+                parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
+                    (offset <= bytes.len()).then(|| bytes.as_ptr().wrapping_add(offset).cast())
                 })
-                .unwrap_or(::core::ptr::null::<::core::ffi::c_char>())
-        }
-    };
+            })
+            .unwrap_or(::core::ptr::null::<::core::ffi::c_char>())
+    }};
 }
 
 macro_rules! set_event_start {
@@ -2937,8 +2926,12 @@ impl DeclAttributeType {
         let Some(chars) = pool.chars_from(text) else {
             return false;
         };
-        chars.first().is_some_and(|first| *first as ::core::ffi::c_int == 0x28)
-            || chars.first().is_some_and(|first| *first as ::core::ffi::c_int == 0x4e)
+        chars
+            .first()
+            .is_some_and(|first| *first as ::core::ffi::c_int == 0x28)
+            || chars
+                .first()
+                .is_some_and(|first| *first as ::core::ffi::c_int == 0x4e)
                 && chars
                     .get(1)
                     .is_some_and(|second| *second as ::core::ffi::c_int == 0x4f)
@@ -3189,9 +3182,9 @@ impl TagBufferStorage {
             return false;
         };
         if !backing(TagBufferAllocationAction::Grow {
-                size: capacity,
-                source_line,
-            }) {
+            size: capacity,
+            source_line,
+        }) {
             return false;
         }
         self.bytes.resize(capacity, 0);
@@ -3257,23 +3250,21 @@ struct FreeBindingList {
 
 impl FreeBindingList {
     const fn empty() -> Self {
-        Self { bindings: Vec::new() }
+        Self {
+            bindings: Vec::new(),
+        }
     }
 }
 
 impl BindingStorage {
-    unsafe fn new(
-        parser: crate::expat_h::XML_Parser,
-        uri_capacity: usize,
-    ) -> Option<Self> {
+    unsafe fn new(parser: crate::expat_h::XML_Parser, uri_capacity: usize) -> Option<Self> {
         let mut binding_backing = allocation_backing(
             parser,
             ::core::mem::size_of::<BINDING>(),
             4525 as ::core::ffi::c_int,
         )?;
-        let uri_size = uri_capacity.checked_mul(::core::mem::size_of::<
-            crate::expat_external_h::XML_Char,
-        >())?;
+        let uri_size =
+            uri_capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
         let uri_allocation = expat_malloc(parser, uri_size, 4543 as ::core::ffi::c_int);
         if uri_allocation.is_null() {
             binding_backing(4545 as ::core::ffi::c_int);
@@ -3341,23 +3332,23 @@ impl BindingStorage {
             .expect("binding storage has one binding")
     }
 
-    fn grow_uri(
-        &mut self,
-        capacity: usize,
-        source_line: ::core::ffi::c_int,
-    ) -> bool {
+    fn grow_uri(&mut self, capacity: usize, source_line: ::core::ffi::c_int) -> bool {
         if capacity <= self.uri.len() {
             return true;
         }
-        if self.uri.try_reserve_exact(capacity - self.uri.len()).is_err() {
+        if self
+            .uri
+            .try_reserve_exact(capacity - self.uri.len())
+            .is_err()
+        {
             return false;
         }
         let Some(uri_backing) = self.uri_backing.as_mut() else {
             return false;
         };
-        let Some(size) = capacity.checked_mul(::core::mem::size_of::<
-            crate::expat_external_h::XML_Char,
-        >()) else {
+        let Some(size) =
+            capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())
+        else {
             return false;
         };
         if !uri_backing(BindingUriAllocationAction::Grow { size, source_line }) {
@@ -3391,15 +3382,19 @@ impl BindingStorage {
         if capacity <= self.uri.len() {
             return true;
         }
-        if self.uri.try_reserve_exact(capacity - self.uri.len()).is_err() {
+        if self
+            .uri
+            .try_reserve_exact(capacity - self.uri.len())
+            .is_err()
+        {
             return false;
         }
         let Some(uri_backing) = self.uri_backing.as_mut() else {
             return false;
         };
-        let Some(size) = capacity.checked_mul(::core::mem::size_of::<
-            crate::expat_external_h::XML_Char,
-        >()) else {
+        let Some(size) =
+            capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())
+        else {
             return false;
         };
         if !uri_backing(BindingUriAllocationAction::Replace {
@@ -3447,10 +3442,7 @@ unsafe fn tag_storage_new(
     })
 }
 
-unsafe fn release_tag_storage(
-    parser: crate::expat_h::XML_Parser,
-    mut storage: TagStorage,
-) {
+unsafe fn release_tag_storage(parser: crate::expat_h::XML_Parser, mut storage: TagStorage) {
     let tag = storage.tag.as_mut_ptr();
     (*tag).buffer.release(1942 as ::core::ffi::c_int);
     destroyBindings((*tag).bindings, parser);
@@ -3815,7 +3807,11 @@ fn retained_raw_name_source<'a>(
     match storage {
         RawNameStorage::Unset => None,
         RawNameStorage::InputBuffer(offset) => Some(RawNameSource::Bytes(
-            parser.m_buffer.bytes.as_deref()?.get(offset..offset.checked_add(length)?)?,
+            parser
+                .m_buffer
+                .bytes
+                .as_deref()?
+                .get(offset..offset.checked_add(length)?)?,
         )),
         RawNameStorage::EntityText {
             text,
@@ -3980,8 +3976,7 @@ pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 pub static mut g_reparseDeferralEnabledDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
 #[no_mangle]
 
-pub static g_bytesScanned: std::sync::atomic::AtomicU32 =
-    std::sync::atomic::AtomicU32::new(0);
+pub static g_bytesScanned: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 unsafe extern "C" fn expat_heap_stat(
     mut rootParser: crate::expat_h::XML_Parser,
@@ -3995,8 +3990,8 @@ unsafe extern "C" fn expat_heap_stat(
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
-        / root.accounting.countBytesDirect as ::core::ffi::c_float;
+    let amplification: ::core::ffi::c_float =
+        newTotal as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float;
     crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"expat: Allocations(%p): Direct %10llu, allocated %c%10llu to %10llu (%10llu peak), amplification %8.2f (xmlparse.c:%d)\n\0"
@@ -4087,8 +4082,7 @@ pub unsafe extern "C" fn expat_malloc(
             .m_root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        (-1 as ::core::ffi::c_int as XmlBigCount)
-            .wrapping_sub(root.alloc_tracker.bytesAllocated)
+        (-1 as ::core::ffi::c_int as XmlBigCount).wrapping_sub(root.alloc_tracker.bytesAllocated)
             < bytesToAllocate as XmlBigCount
     };
     if allocation_would_overflow {
@@ -4119,14 +4113,23 @@ pub unsafe extern "C" fn expat_malloc(
             if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
                 root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
             }
-            Some((root.alloc_tracker.bytesAllocated, root.alloc_tracker.peakBytesAllocated))
+            Some((
+                root.alloc_tracker.bytesAllocated,
+                root.alloc_tracker.peakBytesAllocated,
+            ))
         } else {
             None
         }
     };
     if let Some((new_total, peak_total)) = allocation_totals {
-        expat_heap_stat(parser, '+' as ::core::ffi::c_char, bytesToAllocate as XmlBigCount,
-                        new_total, peak_total, sourceLine);
+        expat_heap_stat(
+            parser,
+            '+' as ::core::ffi::c_char,
+            bytesToAllocate as XmlBigCount,
+            new_total,
+            peak_total,
+            sourceLine,
+        );
     }
     return (mallocedPtr as *mut ::core::ffi::c_char)
         .offset(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as isize)
@@ -4180,12 +4183,20 @@ pub unsafe extern "C" fn expat_free(
             .alloc_tracker
             .bytesAllocated
             .wrapping_sub(bytesAllocated as XmlBigCount);
-        (root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong)
-            .then_some((root.alloc_tracker.bytesAllocated, root.alloc_tracker.peakBytesAllocated))
+        (root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong).then_some((
+            root.alloc_tracker.bytesAllocated,
+            root.alloc_tracker.peakBytesAllocated,
+        ))
     };
     if let Some((new_total, peak_total)) = allocation_totals {
-        expat_heap_stat(parser, '-' as ::core::ffi::c_char, bytesAllocated as XmlBigCount,
-                        new_total, peak_total, sourceLine);
+        expat_heap_stat(
+            parser,
+            '-' as ::core::ffi::c_char,
+            bytesAllocated as XmlBigCount,
+            new_total,
+            peak_total,
+            sourceLine,
+        );
     }
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
 }
@@ -4278,20 +4289,30 @@ pub unsafe extern "C" fn expat_realloc(
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         if isIncrease {
-            assert!((-1 as ::core::ffi::c_int as XmlBigCount)
-                .wrapping_sub(root.alloc_tracker.bytesAllocated) >= absDiff as XmlBigCount);
-            root.alloc_tracker.bytesAllocated = root.alloc_tracker.bytesAllocated
+            assert!(
+                (-1 as ::core::ffi::c_int as XmlBigCount)
+                    .wrapping_sub(root.alloc_tracker.bytesAllocated)
+                    >= absDiff as XmlBigCount
+            );
+            root.alloc_tracker.bytesAllocated = root
+                .alloc_tracker
+                .bytesAllocated
                 .wrapping_add(absDiff as XmlBigCount);
         } else {
             assert!(root.alloc_tracker.bytesAllocated >= absDiff as XmlBigCount);
-            root.alloc_tracker.bytesAllocated = root.alloc_tracker.bytesAllocated
+            root.alloc_tracker.bytesAllocated = root
+                .alloc_tracker
+                .bytesAllocated
                 .wrapping_sub(absDiff as XmlBigCount);
         }
         if root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
             if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
                 root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
             }
-            Some((root.alloc_tracker.bytesAllocated, root.alloc_tracker.peakBytesAllocated))
+            Some((
+                root.alloc_tracker.bytesAllocated,
+                root.alloc_tracker.peakBytesAllocated,
+            ))
         } else {
             None
         }
@@ -4550,7 +4571,8 @@ unsafe extern "C" fn startParsing(
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .hash_secret_salt == 0;
+        .hash_secret_salt
+        == 0;
     if needs_salt {
         (*parser)
             .m_root
@@ -4860,7 +4882,9 @@ unsafe extern "C" fn parserCreate(
             parser.m_root = std::sync::Arc::clone(&parent.m_root);
             parser.m_parentParser = Some(
                 ::core::num::NonZeroU32::new(
-                    parent.m_parentParser.map_or(0, ::core::num::NonZeroU32::get)
+                    parent
+                        .m_parentParser
+                        .map_or(0, ::core::num::NonZeroU32::get)
                         .saturating_add(1),
                 )
                 .expect("child parser depth is non-zero"),
@@ -4884,9 +4908,7 @@ unsafe extern "C" fn parserCreate(
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         // Both conditions are invariants of parser ownership/accounting.  They
         // cannot be recovered from without invalidating the allocator ledger.
-        if (XmlBigCount::MAX - root.alloc_tracker.bytesAllocated
-                < increase as XmlBigCount)
-        {
+        if (XmlBigCount::MAX - root.alloc_tracker.bytesAllocated < increase as XmlBigCount) {
             std::process::abort();
         }
         root.alloc_tracker.bytesAllocated = root
@@ -4894,18 +4916,25 @@ unsafe extern "C" fn parserCreate(
             .bytesAllocated
             .wrapping_add(increase as XmlBigCount);
         let allocation_totals = if root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
-            if root.alloc_tracker.bytesAllocated
-                > root.alloc_tracker.peakBytesAllocated
-            {
+            if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
                 root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
             }
-            Some((root.alloc_tracker.bytesAllocated, root.alloc_tracker.peakBytesAllocated))
-        } else { None };
+            Some((
+                root.alloc_tracker.bytesAllocated,
+                root.alloc_tracker.peakBytesAllocated,
+            ))
+        } else {
+            None
+        };
         drop(root);
         if let Some((new_total, peak_total)) = allocation_totals {
             expat_heap_stat(
-                parser_ptr, '+' as ::core::ffi::c_char, increase as XmlBigCount,
-                new_total, peak_total, 1439 as ::core::ffi::c_int,
+                parser_ptr,
+                '+' as ::core::ffi::c_char,
+                increase as XmlBigCount,
+                new_total,
+                peak_total,
+                1439 as ::core::ffi::c_int,
             );
         }
     }
@@ -5046,9 +5075,10 @@ fn parser_init(
     parser.m_initEncoding.initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
     parser.m_initEncoding.selected_encoding = None;
     parser.m_encoding = EncodingState::Initial;
-    parser
-        .m_userData
-        .store(::core::ptr::null_mut(), std::sync::atomic::Ordering::Relaxed);
+    parser.m_userData.store(
+        ::core::ptr::null_mut(),
+        std::sync::atomic::Ordering::Relaxed,
+    );
     parser.m_handlerArg = HandlerArg::UserData;
     parser.m_startElementHandler = false;
     START_ELEMENT_HANDLERS
@@ -5304,11 +5334,7 @@ pub unsafe extern "C" fn XML_ParserReset(
     }
     // This is the one short-lived exclusive borrow of the parser.  It ends before
     // invoking allocator or release callbacks below, which may inspect the parser.
-    let (
-        unknown_encoding_mem,
-        protocol_encoding_name,
-        dtd,
-    ) = {
+    let (unknown_encoding_mem, protocol_encoding_name, dtd) = {
         let parser_state = &mut *parser;
         if parser_state.m_parentParser.is_some() {
             return crate::expat_h::XML_FALSE;
@@ -5345,7 +5371,9 @@ pub unsafe extern "C" fn XML_ParserReset(
         let inherited_bindings = parser_state
             .m_inheritedBindings
             .and_then(|index| parser_state.m_activeBindings.get(index))
-            .map_or(::core::ptr::null_mut(), |storage| storage.binding.as_ptr().cast_mut());
+            .map_or(::core::ptr::null_mut(), |storage| {
+                storage.binding.as_ptr().cast_mut()
+            });
         moveToFreeBindingList(parser_state, inherited_bindings);
         let unknown_encoding_mem = parser_state.m_unknownEncodingMem.take();
         let protocol_encoding_name = parser_state.m_protocolEncodingName.take();
@@ -5448,8 +5476,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldStartCdataSectionCallback: Option<std::sync::Arc<dyn EndCdataSectionCallback>> =
         None;
     let mut oldEndCdataSectionHandler = false;
-    let mut oldEndCdataSectionCallback: Option<std::sync::Arc<dyn EndCdataSectionCallback>> =
-        None;
+    let mut oldEndCdataSectionCallback: Option<std::sync::Arc<dyn EndCdataSectionCallback>> = None;
     let mut oldDefaultHandler = false;
     let mut oldDefaultCallback: Option<std::sync::Arc<dyn DefaultCallback>> = None;
     let mut oldUnparsedEntityDeclHandler = false;
@@ -5479,8 +5506,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldUserData = ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut oldHandlerArg = HandlerArg::UserData;
     let mut oldDefaultExpandInternalEntities: crate::expat_h::XML_Bool = 0;
-    let mut oldExternalEntityRefHandlerArg: Option<ExternalEntityRefHandlerArgRegistration> =
-        None;
+    let mut oldExternalEntityRefHandlerArg: Option<ExternalEntityRefHandlerArgRegistration> = None;
     let mut oldParamEntityParsing: crate::expat_h::XML_ParamEntityParsing =
         crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
     let mut oldInEntityValue: ::core::ffi::c_int = 0;
@@ -6062,7 +6088,9 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     let inherited_bindings = parser
         .m_inheritedBindings
         .and_then(|index| parser.m_activeBindings.get(index))
-        .map_or(::core::ptr::null_mut(), |storage| storage.binding.as_ptr().cast_mut());
+        .map_or(::core::ptr::null_mut(), |storage| {
+            storage.binding.as_ptr().cast_mut()
+        });
     destroyBindings(inherited_bindings, parser as *mut XML_ParserStruct);
     poolDestroy(&mut parser.m_tempPool);
     poolDestroy(&mut parser.m_temp2Pool);
@@ -7014,11 +7042,13 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
     if let Some(callback) = handler {
         handlers.insert(parser as usize, std::sync::Arc::new(callback));
         let registration = UnknownEncodingHandlerRegistration {
-            invoke: std::sync::Arc::new(move |
-                handler: &dyn UnknownEncodingCallback,
-                encoding_name: *const crate::expat_external_h::XML_Char,
-                info: *mut crate::expat_h::XML_Encoding,
-            | unsafe { handler.invoke(data, encoding_name, info) }),
+            invoke: std::sync::Arc::new(
+                move |handler: &dyn UnknownEncodingCallback,
+                      encoding_name: *const crate::expat_external_h::XML_Char,
+                      info: *mut crate::expat_h::XML_Encoding| unsafe {
+                    handler.invoke(data, encoding_name, info)
+                },
+            ),
         };
         UNKNOWN_ENCODING_HANDLER_ARGS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -7817,7 +7847,9 @@ pub unsafe extern "C" fn XML_GetInputContext(
     if parser.is_null() {
         return ::core::ptr::null::<::core::ffi::c_char>();
     }
-    if let (Some(event_start), Some(bytes)) = ((*parser).m_eventPtr, (*parser).m_buffer.bytes.as_ref()) {
+    if let (Some(event_start), Some(bytes)) =
+        ((*parser).m_eventPtr, (*parser).m_buffer.bytes.as_ref())
+    {
         if event_start > bytes.len() {
             return ::core::ptr::null::<::core::ffi::c_char>();
         }
@@ -7850,13 +7882,16 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(
         ((*parser).m_eventPtr, (*parser).m_positionPtr)
     {
         if event_cursor < position_cursor {
-            return (*parser).m_position.lineNumber.wrapping_add(1 as crate::expat_external_h::XML_Size);
+            return (*parser)
+                .m_position
+                .lineNumber
+                .wrapping_add(1 as crate::expat_external_h::XML_Size);
         }
         if let Some(bytes) = (*parser).m_buffer.bytes.as_ref() {
             if position_cursor <= bytes.len() && event_cursor <= bytes.len() {
                 if position_cursor <= event_cursor {
-                    let encoding = &*(parser_encoding(parser)
-                        as *const crate::src::xmltok::normal_encoding);
+                    let encoding =
+                        &*(parser_encoding(parser) as *const crate::src::xmltok::normal_encoding);
                     crate::src::xmltok::initUpdatePosition(
                         encoding.enc.updatePosition,
                         encoding,
@@ -7895,8 +7930,8 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
         if let Some(bytes) = (*parser).m_buffer.bytes.as_ref() {
             if position_cursor <= bytes.len() && event_cursor <= bytes.len() {
                 if position_cursor <= event_cursor {
-                    let encoding = &*(parser_encoding(parser)
-                        as *const crate::src::xmltok::normal_encoding);
+                    let encoding =
+                        &*(parser_encoding(parser) as *const crate::src::xmltok::normal_encoding);
                     crate::src::xmltok::initUpdatePosition(
                         encoding.enc.updatePosition,
                         encoding,
@@ -8020,10 +8055,9 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
                         .and_then(|len| start.checked_add(len))?;
                     text.get(start..end)
                 });
-                event.map_or(
-                    (::core::ptr::null(), ::core::ptr::null()),
-                    |event| (event.as_ptr(), event.as_ptr().wrapping_add(event.len())),
-                )
+                event.map_or((::core::ptr::null(), ::core::ptr::null()), |event| {
+                    (event.as_ptr(), event.as_ptr().wrapping_add(event.len()))
+                })
             };
             reportDefault(
                 parser,
@@ -8452,7 +8486,9 @@ unsafe extern "C" fn storeRawNames(
                 if old_end > tag.buffer.bytes.len() {
                     return crate::expat_h::XML_FALSE;
                 }
-                tag.buffer.bytes.copy_within(old_offset..old_end, raw_name_offset);
+                tag.buffer
+                    .bytes
+                    .copy_within(old_offset..old_end, raw_name_offset);
             }
             _ => {
                 let Some(raw_name) =
@@ -8460,9 +8496,7 @@ unsafe extern "C" fn storeRawNames(
                 else {
                     return crate::expat_h::XML_FALSE;
                 };
-                if !raw_name
-                    .copy_into(&mut tag.buffer.bytes[raw_name_offset..raw_name_end])
-                {
+                if !raw_name.copy_into(&mut tag.buffer.bytes[raw_name_offset..raw_name_end]) {
                     return crate::expat_h::XML_FALSE;
                 }
             }
@@ -8907,10 +8941,10 @@ unsafe extern "C" fn doContent(
                             parser,
                             tok,
                             &raw mut ch as *mut ::core::ffi::c_char,
-                            (&raw mut ch as *mut ::core::ffi::c_char).wrapping_offset(
-                                ::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-                                    as isize,
-                            ),
+                            (&raw mut ch as *mut ::core::ffi::c_char)
+                                .wrapping_offset(::core::mem::size_of::<
+                                    crate::expat_external_h::XML_Char,
+                                >() as isize),
                             3403 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
@@ -9131,9 +9165,9 @@ unsafe extern "C" fn doContent(
                         Some(storage) => storage,
                         None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                     };
-                    let Some(raw_name_len) = event_name_length(
-                        parser, dtd, parser_events, enc, raw_name, next,
-                    ) else {
+                    let Some(raw_name_len) =
+                        event_name_length(parser, dtd, parser_events, enc, raw_name, next)
+                    else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
                     (*tag).rawNameLength = raw_name_len;
@@ -9141,8 +9175,8 @@ unsafe extern "C" fn doContent(
                     let mut rawNameEnd: *const ::core::ffi::c_char =
                         raw_name.wrapping_offset((*tag).rawNameLength as isize);
                     let mut fromPtr: *const ::core::ffi::c_char = raw_name;
-                    toPtr = (*tag).buffer.bytes.as_mut_ptr()
-                        as *mut crate::expat_external_h::XML_Char;
+                    toPtr =
+                        (*tag).buffer.bytes.as_mut_ptr() as *mut crate::expat_external_h::XML_Char;
                     loop {
                         let mut convLen: ::core::ffi::c_int = 0;
                         let convert_res: crate::src::xmltok::XML_Convert_Result =
@@ -9188,10 +9222,7 @@ unsafe extern "C" fn doContent(
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
                             let bufSize = (*tag).buffer.bytes.len().wrapping_mul(2);
-                            if !(*tag)
-                                .buffer
-                                .grow(bufSize, 3514 as ::core::ffi::c_int)
-                            {
+                            if !(*tag).buffer.grow(bufSize, 3514 as ::core::ffi::c_int) {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
                             toPtr = ((*tag).buffer.bytes.as_mut_ptr()
@@ -9224,9 +9255,11 @@ unsafe extern "C" fn doContent(
                             .cloned();
                         if let Some(callback) = callback {
                             let name = match (*tag).name.str {
-                                TagNameStorage::TagBuffer { offset } => ((*tag).buffer.bytes.as_ptr()
-                                    as *const crate::expat_external_h::XML_Char)
-                                    .wrapping_offset(offset as isize),
+                                TagNameStorage::TagBuffer { offset } => {
+                                    ((*tag).buffer.bytes.as_ptr()
+                                        as *const crate::expat_external_h::XML_Char)
+                                        .wrapping_offset(offset as isize)
+                                }
                                 TagNameStorage::NamespaceUri => namespace_name_pointer(
                                     parser,
                                     (*tag).buffer.bytes.as_ptr()
@@ -9259,9 +9292,9 @@ unsafe extern "C" fn doContent(
                         uriLen: 0,
                         prefixLen: 0,
                     };
-                    let Some(raw_name_len) = event_name_length(
-                        parser, dtd, parser_events, enc, rawName, next,
-                    ) else {
+                    let Some(raw_name_len) =
+                        event_name_length(parser, dtd, parser_events, enc, rawName, next)
+                    else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
                     let name_string = poolStoreString(
@@ -9333,11 +9366,8 @@ unsafe extern "C" fn doContent(
                                 let event_end = parser_event_end!(parser);
                                 let parser_ref = &mut *parser;
                                 set_parser_event_start!(parser_ref, event_end);
-                                parser_ref.m_eventEndPtr = parser_ref
-                                    .m_buffer
-                                    .bytes
-                                    .as_ref()
-                                    .and_then(|bytes| {
+                                parser_ref.m_eventEndPtr =
+                                    parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
                                         event_end
                                             .addr()
                                             .checked_sub(bytes.as_ptr().addr())
@@ -9359,10 +9389,7 @@ unsafe extern "C" fn doContent(
                             .get(&(parser as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            callback.invoke(
-                                handler_arg!(parser),
-                                name_pointer,
-                            );
+                            callback.invoke(handler_arg!(parser), name_pointer);
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
@@ -9400,15 +9427,17 @@ unsafe extern "C" fn doContent(
                         let Some(tag_index) = (*parser).m_tagStack else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
-                        let Some(tag_storage) = (&mut (*parser).m_activeTags).get_mut(tag_index) else {
+                        let Some(tag_storage) = (&mut (*parser).m_activeTags).get_mut(tag_index)
+                        else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
                         let mut tag_0: *mut TAG = tag_storage.tag.as_mut_ptr();
-                        rawName_0 =
-                            s.wrapping_offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
-                        let Some(raw_name_len) = event_name_length(
-                            parser, dtd, parser_events, enc, rawName_0, next,
-                        ) else {
+                        rawName_0 = s.wrapping_offset(
+                            ((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
+                        );
+                        let Some(raw_name_len) =
+                            event_name_length(parser, dtd, parser_events, enc, rawName_0, next)
+                        else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
                         len = raw_name_len;
@@ -9446,11 +9475,11 @@ unsafe extern "C" fn doContent(
                             let mut uri: *mut crate::expat_external_h::XML_Char =
                                 ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
                             let name = match (*tag_0).name.str {
-                                TagNameStorage::TagBuffer { offset } => ((*tag_0)
-                                    .buffer
-                                    .bytes
-                                    .as_ptr() as *const crate::expat_external_h::XML_Char)
-                                    .wrapping_offset(offset as isize),
+                                TagNameStorage::TagBuffer { offset } => {
+                                    ((*tag_0).buffer.bytes.as_ptr()
+                                        as *const crate::expat_external_h::XML_Char)
+                                        .wrapping_offset(offset as isize)
+                                }
                                 TagNameStorage::NamespaceUri => namespace_name_pointer(
                                     parser,
                                     (*tag_0).buffer.bytes.as_ptr()
@@ -9509,10 +9538,7 @@ unsafe extern "C" fn doContent(
                                 .get(&(parser as usize))
                                 .cloned();
                             if let Some(callback) = callback {
-                                callback.invoke(
-                                    handler_arg!(parser),
-                                    name,
-                                );
+                                callback.invoke(handler_arg!(parser), name);
                             }
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
@@ -9528,15 +9554,12 @@ unsafe extern "C" fn doContent(
                                     .unwrap_or_else(|poisoned| poisoned.into_inner())
                                     .get(&(parser as usize))
                                     .cloned();
-                                    if let Some(callback) = callback {
-                                        let prefix_name = (*(*b).prefix).name.map_or(
-                                            ::core::ptr::null(),
-                                            |name| pool_string_pointer!(&(*dtd).pool, name),
-                                        );
-                                        callback.invoke(
-                                            handler_arg!(parser),
-                                            prefix_name,
-                                    );
+                                if let Some(callback) = callback {
+                                    let prefix_name =
+                                        (*(*b).prefix).name.map_or(::core::ptr::null(), |name| {
+                                            pool_string_pointer!(&(*dtd).pool, name)
+                                        });
+                                    callback.invoke(handler_arg!(parser), prefix_name);
                                 }
                             }
                             (*tag_0).bindings = (*(*tag_0).bindings).nextTagBinding as *mut BINDING;
@@ -9576,10 +9599,8 @@ unsafe extern "C" fn doContent(
                     // The scanner returned a complete character-reference
                     // token, so this is one validated range in its input
                     // allocation (including the terminating semicolon).
-                    let token = ::core::slice::from_raw_parts(
-                        s.cast::<u8>(),
-                        next.offset_from(s) as usize,
-                    );
+                    let token =
+                        ::core::slice::from_raw_parts(s.cast::<u8>(), next.offset_from(s) as usize);
                     let mut n: ::core::ffi::c_int = (*enc).charRefNumber.decode(token);
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
@@ -9747,11 +9768,7 @@ unsafe extern "C" fn doContent(
                                     Some(len) => len,
                                     None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                                 };
-                                charDataHandler.invoke(
-                                    handler_arg!(parser),
-                                    data_start,
-                                    data_len,
-                                );
+                                charDataHandler.invoke(handler_arg!(parser), data_start, data_len);
                                 if convert_res_0 as ::core::ffi::c_uint
                                     == crate::src::xmltok::XML_CONVERT_COMPLETED
                                         as ::core::ffi::c_int
@@ -9842,10 +9859,7 @@ unsafe extern "C" fn freeBindings(
                 let prefix_name = (*(*b).prefix).name.map_or(::core::ptr::null(), |name| {
                     pool_string_pointer!(&(*dtd).pool, name)
                 });
-                callback.invoke(
-                    handler_arg!(parser),
-                    prefix_name,
-                );
+                callback.invoke(handler_arg!(parser), prefix_name);
             }
         }
         bindings = (*bindings).nextTagBinding as *mut BINDING;
@@ -9926,11 +9940,10 @@ unsafe extern "C" fn storeAtts(
     let mut localPartOffset: usize = 0;
     let tag_name_state = &mut *tagNamePtr;
     let tag_name = match tag_name_state.str {
-        TagNameStorage::TagBuffer { offset } if !tagPtr.is_null() => ((*tagPtr)
-            .buffer
-            .bytes
-            .as_ptr() as *const crate::expat_external_h::XML_Char)
-            .offset(offset as isize),
+        TagNameStorage::TagBuffer { offset } if !tagPtr.is_null() => {
+            ((*tagPtr).buffer.bytes.as_ptr() as *const crate::expat_external_h::XML_Char)
+                .offset(offset as isize)
+        }
         TagNameStorage::TempPool(name) => (*parser)
             .m_tempPool
             .chars_from(name)
@@ -10000,7 +10013,8 @@ unsafe extern "C" fn storeAtts(
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let Some(text) = entity_text_chars(&*dtd, open_entity.eventText, open_entity.eventTextLen)
+            let Some(text) =
+                entity_text_chars(&*dtd, open_entity.eventText, open_entity.eventTextLen)
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -10042,8 +10056,8 @@ unsafe extern "C" fn storeAtts(
         if AttributeStorage::callback_slots(new_capacity).is_none() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let Some(allocation_size) = new_capacity
-            .checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())
+        let Some(allocation_size) =
+            new_capacity.checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())
         else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
@@ -10057,7 +10071,10 @@ unsafe extern "C" fn storeAtts(
         }
         let mut backing = (*parser).m_atts.backing.take();
         let grew = backing.as_mut().is_some_and(|backing| {
-            backing(&mut *parser, AttributeAllocationAction::Grow(allocation_size))
+            backing(
+                &mut *parser,
+                AttributeAllocationAction::Grow(allocation_size),
+            )
         });
         (*parser).m_atts.backing = backing;
         if !grew {
@@ -10121,15 +10138,18 @@ unsafe extern "C" fn storeAtts(
     // The opaque backing allocation preserves the configured allocator's
     // observable sequence.  ATTRIBUTE is pointer-slot aligned, so its owned
     // allocation can provide the callback's terminated name/value view.
-    if (*parser).m_attsSize <= 0
-        || (*parser).m_atts.records.len() != (*parser).m_attsSize as usize
+    if (*parser).m_attsSize <= 0 || (*parser).m_atts.records.len() != (*parser).m_attsSize as usize
     {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     let app_atts_len = AttributeStorage::callback_slots((*parser).m_attsSize as usize)
         .expect("validated attribute storage capacity");
     let appAtts = ::core::slice::from_raw_parts_mut(
-        (*parser).m_atts.records.as_mut_ptr().cast::<*const crate::expat_external_h::XML_Char>(),
+        (*parser)
+            .m_atts
+            .records
+            .as_mut_ptr()
+            .cast::<*const crate::expat_external_h::XML_Char>(),
         app_atts_len,
     );
     i = 0 as ::core::ffi::c_int;
@@ -10149,14 +10169,8 @@ unsafe extern "C" fn storeAtts(
         // Validate the complete attribute-name suffix against the same token
         // storage that fed the scanner.  In particular, internal entities do
         // not share the outer parser's event cursor.
-        let Some(name_len) = event_name_length(
-            parser,
-            dtd,
-            parser_events,
-            enc,
-            name,
-            attEnd,
-        ) else {
+        let Some(name_len) = event_name_length(parser, dtd, parser_events, enc, name, attEnd)
+        else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
@@ -10239,12 +10253,8 @@ unsafe extern "C" fn storeAtts(
                 .map_or(::core::ptr::null(), |chars| chars.as_ptr());
             (*parser).m_tempPool.commit();
         } else {
-            appAtts[attIndex as usize] = poolStoreString(
-                &raw mut (*parser).m_tempPool,
-                enc,
-                value_start,
-                value_end,
-            );
+            appAtts[attIndex as usize] =
+                poolStoreString(&raw mut (*parser).m_tempPool, enc, value_start, value_end);
             if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
@@ -10297,7 +10307,8 @@ unsafe extern "C" fn storeAtts(
     }
     (*parser).m_nSpecifiedAtts = attIndex;
     if let Some(id_att_name) = (*elementType).idAtt {
-        let id_att_name = dtd.pool
+        let id_att_name = dtd
+            .pool
             .chars_from(id_att_name)
             .map_or(::core::ptr::null(), |chars| chars.as_ptr());
         if id_att_name.is_null() {
@@ -10326,7 +10337,8 @@ unsafe extern "C" fn storeAtts(
         let Some(id_name_ref) = da.id else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
-        let id_name = dtd.pool
+        let id_name = dtd
+            .pool
             .chars_from(id_name_ref)
             .map_or(::core::ptr::null(), |chars| chars.as_ptr());
         if id_name.is_null() {
@@ -10349,7 +10361,8 @@ unsafe extern "C" fn storeAtts(
             let value_ref = da
                 .value
                 .expect("a present default attribute value has a pool location");
-            let value = dtd.pool
+            let value = dtd
+                .pool
                 .chars_from(value_ref)
                 .map_or(::core::ptr::null(), |chars| chars.as_ptr());
             if value.is_null() {
@@ -10395,8 +10408,8 @@ unsafe extern "C" fn storeAtts(
                     appAtts[c2rust_fresh25 as usize] = value;
                 }
             } else {
-                *(id_name_pointer as *mut crate::expat_external_h::XML_Char)
-                    .offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
+                *(id_name_pointer as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
+                    1 as crate::expat_external_h::XML_Char;
                 let c2rust_fresh26 = attIndex;
                 attIndex = attIndex + 1;
                 appAtts[c2rust_fresh26 as usize] = id_name_pointer;
@@ -10447,7 +10460,8 @@ unsafe extern "C" fn storeAtts(
             };
             let parser_ref = &mut *parser;
             if parser_ref.m_nsAtts.entries.is_empty() {
-                let Some(storage) = namespace_attribute_storage_new(parser_ref, ns_atts_capacity, 4089)
+                let Some(storage) =
+                    namespace_attribute_storage_new(parser_ref, ns_atts_capacity, 4089)
                 else {
                     parser_ref.m_nsAttsPower = oldNsAttsPower;
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -10464,16 +10478,20 @@ unsafe extern "C" fn storeAtts(
                     parser_ref.m_nsAttsPower = oldNsAttsPower;
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                let allocation_size = match ns_atts_capacity.checked_mul(::core::mem::size_of::<NS_ATT>()) {
-                    Some(size) => size,
-                    None => {
-                        parser_ref.m_nsAttsPower = oldNsAttsPower;
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                    }
-                };
+                let allocation_size =
+                    match ns_atts_capacity.checked_mul(::core::mem::size_of::<NS_ATT>()) {
+                        Some(size) => size,
+                        None => {
+                            parser_ref.m_nsAttsPower = oldNsAttsPower;
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                    };
                 let mut backing = parser_ref.m_nsAtts.backing.take();
                 let grew = backing.as_mut().is_some_and(|backing| {
-                    backing(parser_ref, NamespaceAttributeAllocationAction::Grow(allocation_size))
+                    backing(
+                        parser_ref,
+                        NamespaceAttributeAllocationAction::Grow(allocation_size),
+                    )
                 });
                 parser_ref.m_nsAtts.backing = backing;
                 if !grew {
@@ -10558,8 +10576,7 @@ unsafe extern "C" fn storeAtts(
                 j_0 = 0 as ::core::ffi::c_uint;
                 while j_0 < (*b).uriLen as ::core::ffi::c_uint {
                     let c: crate::expat_external_h::XML_Char = *(*b).uri.offset(j_0 as isize);
-                    if if (*parser).m_tempPool.is_full()
-                        && poolGrow(&mut (*parser).m_tempPool) == 0
+                    if if (*parser).m_tempPool.is_full() && poolGrow(&mut (*parser).m_tempPool) == 0
                     {
                         0 as ::core::ffi::c_int
                     } else {
@@ -10594,8 +10611,7 @@ unsafe extern "C" fn storeAtts(
                         .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
                 );
                 loop {
-                    if if (*parser).m_tempPool.is_full()
-                        && poolGrow(&mut (*parser).m_tempPool) == 0
+                    if if (*parser).m_tempPool.is_full() && poolGrow(&mut (*parser).m_tempPool) == 0
                     {
                         0 as ::core::ffi::c_int
                     } else {
@@ -10810,9 +10826,11 @@ unsafe extern "C" fn storeAtts(
     let binding_storage = &mut parser_state.m_activeBindings[binding_index];
     let binding_ref = binding_storage.binding_mut();
     prefixLen = 0 as ::core::ffi::c_int;
-    let prefix_name = (*binding_ref.prefix).name.map_or(::core::ptr::null(), |name| {
-        pool_string_pointer!(&dtd.pool, name)
-    });
+    let prefix_name = (*binding_ref.prefix)
+        .name
+        .map_or(::core::ptr::null(), |name| {
+            pool_string_pointer!(&dtd.pool, name)
+        });
     if (*parser).m_ns_triplets as ::core::ffi::c_int != 0 && !prefix_name.is_null() {
         loop {
             let c2rust_fresh36 = prefixLen;
@@ -11182,8 +11200,8 @@ unsafe extern "C" fn doCdataSection(
     // token loop operate exclusively on local cursors and preserves the C
     // contract that an unset cursor is left unchanged.
     let mut finish = |error: crate::expat_h::XML_Error,
-                  start: Option<*const ::core::ffi::c_char>,
-                  next: Option<*const ::core::ffi::c_char>| {
+                      start: Option<*const ::core::ffi::c_char>,
+                      next: Option<*const ::core::ffi::c_char>| {
         if let Some(start) = start {
             *startPtr = start;
         }
@@ -11218,7 +11236,9 @@ unsafe extern "C" fn doCdataSection(
             let Some(open_entity_index) = parser_state.m_openInternalEntities else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let Some(open_entity) = parser_state.m_activeInternalEntities.get_mut(open_entity_index)
+            let Some(open_entity) = parser_state
+                .m_activeInternalEntities
+                .get_mut(open_entity_index)
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -11232,15 +11252,13 @@ unsafe extern "C" fn doCdataSection(
         event_target = EventCursorTarget::InternalEntity(open_entity);
     }
     let event_parser = parser_handle;
-    let mut update_event_start = |
-        start: *const ::core::ffi::c_char,
-        internal_window: Option<(usize, usize)>,
-    | {
-        event_target.set_start(&mut *event_parser, internal_window, start.addr());
-        if !parser_events {
-            internal_event_start.set(internal_event_offset(internal_window, start.addr()));
-        }
-    };
+    let mut update_event_start =
+        |start: *const ::core::ffi::c_char, internal_window: Option<(usize, usize)>| {
+            event_target.set_start(&mut *event_parser, internal_window, start.addr());
+            if !parser_events {
+                internal_event_start.set(internal_event_offset(internal_window, start.addr()));
+            }
+        };
     loop {
         // Form the token window from owned storage and drop it before a
         // callback.  Internal replacement text is resolved afresh from its
@@ -11284,7 +11302,15 @@ unsafe extern "C" fn doCdataSection(
         // across a callback, while still publishing the event start before a
         // token can report an event.
         update_event_start(s, internal_event_window);
-        if accountingDiffTolerated(parser_handle, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
+        if accountingDiffTolerated(
+            parser_handle,
+            tok,
+            s,
+            next,
+            4619 as ::core::ffi::c_int,
+            account,
+        ) == 0
+        {
             accountingOnAbort(parser_handle);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
@@ -11322,17 +11348,9 @@ unsafe extern "C" fn doCdataSection(
                 if cdata_parsing_state(&*parser_handle).parsing as ::core::ffi::c_uint
                     == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
-                    return finish(
-                        crate::expat_h::XML_ERROR_ABORTED,
-                        Some(next),
-                        Some(next),
-                    );
+                    return finish(crate::expat_h::XML_ERROR_ABORTED, Some(next), Some(next));
                 } else {
-                    return finish(
-                        crate::expat_h::XML_ERROR_NONE,
-                        Some(next),
-                        Some(next),
-                    );
+                    return finish(crate::expat_h::XML_ERROR_NONE, Some(next), Some(next));
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
@@ -11346,11 +11364,7 @@ unsafe extern "C" fn doCdataSection(
                         .get(&(parser_handle as usize))
                         .cloned();
                     if let Some(callback) = callback {
-                        callback.invoke(
-                            callback_context,
-                            &raw const c,
-                            1 as ::core::ffi::c_int,
-                        );
+                        callback.invoke(callback_context, &raw const c, 1 as ::core::ffi::c_int);
                     }
                 } else if handler_flags.default {
                     reportDefault(parser_handle, enc_ptr, s, next);
@@ -11665,25 +11679,19 @@ unsafe extern "C" fn processXmlDecl(
     mut next: *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let encoding = parser_encoding(parser);
-    let mut encodingName: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    // `parse_xml_decl_with_info` gives this bounded endpoint along with the
-    // name start.  Keep it so pool copies never have to rescan the raw token.
-    let mut encodingNameEnd: *const ::core::ffi::c_char =
-        ::core::ptr::null::<::core::ffi::c_char>();
+    // The tokenizer returns bounded ranges into the declaration token.  Keep
+    // those ranges until their ASCII-only values are copied into the pool.
+    let mut encoding_name = None;
     let mut storedEncName: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut newEncoding: *const crate::src::xmltok::ENCODING =
         ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-    let mut version: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut versionend: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    let mut version = None;
     let mut storedversion: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut standalone: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
     let mut declaration_encoding = None;
-    // Keep the tokenizer facts needed after parsing as ordinary values.  This
-    // avoids repeatedly dereferencing the encoding pointer while retaining
-    // the exact byte-width checks used by the C implementation.
-    let mut declaration_min_bytes_per_char = 0;
+    let mut declaration_input: Option<&[u8]> = None;
     if accountingDiffTolerated(
         parser,
         crate::src::xmltok::XML_TOK_XML_DECL,
@@ -11707,9 +11715,9 @@ unsafe extern "C" fn processXmlDecl(
         // once here, then keep the tokenizer's result as offsets so no
         // output pointer can outlive that window.
         let input = ::core::slice::from_raw_parts(s.cast::<u8>(), next.addr() - s.addr());
+        declaration_input = Some(input);
         let encoding = &*encoding;
         let encoding_info = encoding.xml_decl_info();
-        declaration_min_bytes_per_char = encoding.minBytesPerChar;
         declaration_encoding = Some(encoding_info);
         match crate::src::xmltok::parse_xml_decl_with_info(
             isGeneralTextEntity != 0,
@@ -11717,24 +11725,12 @@ unsafe extern "C" fn processXmlDecl(
             input,
         ) {
             Ok(declaration) => {
-                version = declaration
-                    .version
-                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
-                versionend = declaration
-                    .version_end
-                    .map_or(::core::ptr::null(), |offset| s.wrapping_add(offset));
-                encodingName = declaration
-                    .encoding_name
-                    .as_ref()
-                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
-                encodingNameEnd = declaration
-                    .encoding_name
-                    .as_ref()
-                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.end));
-                if let Some(range) = declaration.encoding_name {
+                version = declaration.version;
+                encoding_name = declaration.encoding_name;
+                if let Some(range) = encoding_name.as_ref() {
                     newEncoding = match crate::src::xmltok::xml_decl_encoding(
                         encoding_info,
-                        &input[range],
+                        &input[range.clone()],
                     ) {
                         crate::src::xmltok::XmlDeclEncoding::Current => encoding,
                         crate::src::xmltok::XmlDeclEncoding::Known(index) => {
@@ -11781,28 +11777,34 @@ unsafe extern "C" fn processXmlDecl(
         let parser_state = &mut *parser;
         let xml_decl_handler = parser_state.m_xmlDeclHandler;
         if xml_decl_handler {
-            if !encodingName.is_null() {
-                storedEncName = poolStoreString(
-                    &raw mut parser_state.m_temp2Pool,
-                    encoding,
-                    encodingName,
-                    encodingNameEnd,
-                );
-                if storedEncName.is_null() {
+            if let Some(encoding_name) = encoding_name.clone() {
+                let Some(stored_name) = pool_store_xml_decl_ascii(
+                    &mut parser_state.m_temp2Pool,
+                    declaration_encoding.expect("a parsed XML declaration has encoding metadata"),
+                    declaration_input.expect("a parsed XML declaration has input"),
+                    encoding_name,
+                ) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
+                };
+                storedEncName = parser_state
+                    .m_temp2Pool
+                    .chars_from(stored_name)
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
                 parser_state.m_temp2Pool.commit();
             }
-            if !version.is_null() {
-                storedversion = poolStoreString(
-                    &raw mut parser_state.m_temp2Pool,
-                    encoding,
+            if let Some(version) = version.clone() {
+                let Some(stored_version) = pool_store_xml_decl_ascii(
+                    &mut parser_state.m_temp2Pool,
+                    declaration_encoding.expect("a parsed XML declaration has encoding metadata"),
+                    declaration_input.expect("a parsed XML declaration has input"),
                     version,
-                    versionend.wrapping_sub(declaration_min_bytes_per_char as usize),
-                );
-                if storedversion.is_null() {
+                ) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
+                };
+                storedversion = parser_state
+                    .m_temp2Pool
+                    .chars_from(stored_version)
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
             }
         }
         let callback = if xml_decl_handler {
@@ -11834,32 +11836,39 @@ unsafe extern "C" fn processXmlDecl(
         parser_state.m_protocolEncodingName.is_none()
     };
     if has_no_protocol_encoding {
-        let declaration_encoding = declaration_encoding
-            .expect("a parsed XML declaration always has encoding metadata");
+        let parsed_encoding_info =
+            declaration_encoding.expect("a parsed XML declaration always has encoding metadata");
         if !newEncoding.is_null() {
             let new_encoding = &*newEncoding;
-            if new_encoding.minBytesPerChar != declaration_encoding.min_bytes_per_char
+            if new_encoding.minBytesPerChar != parsed_encoding_info.min_bytes_per_char
                 || new_encoding.minBytesPerChar == 2 as ::core::ffi::c_int
                     && newEncoding != encoding
             {
-                set_parser_event_start!(&mut *parser, encodingName);
+                let encoding_name_ptr = encoding_name
+                    .as_ref()
+                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
+                set_parser_event_start!(&mut *parser, encoding_name_ptr);
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
             if !select_known_encoding(parser, newEncoding) {
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
-        } else if !encodingName.is_null() {
+        } else if let Some(encoding_name) = encoding_name {
+            let encoding_name_ptr = s.wrapping_add(encoding_name.start);
             if storedEncName.is_null() {
                 let parser_state = &mut *parser;
-                storedEncName = poolStoreString(
-                    &raw mut parser_state.m_temp2Pool,
-                    encoding,
-                    encodingName,
-                    encodingNameEnd,
-                );
-                if storedEncName.is_null() {
+                let Some(stored_name) = pool_store_xml_decl_ascii(
+                    &mut parser_state.m_temp2Pool,
+                    parsed_encoding_info,
+                    declaration_input.expect("a parsed XML declaration has input"),
+                    encoding_name,
+                ) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
+                };
+                storedEncName = parser_state
+                    .m_temp2Pool
+                    .chars_from(stored_name)
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
             }
             // The unknown-encoding hook is user code, so the pool borrow used
             // to stage its name must end before the hook can re-enter.
@@ -11870,7 +11879,7 @@ unsafe extern "C" fn processXmlDecl(
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
                     as ::core::ffi::c_uint
             {
-                set_parser_event_start!(&mut *parser_state, encodingName);
+                set_parser_event_start!(&mut *parser_state, encoding_name_ptr);
             }
             return result;
         }
@@ -11914,13 +11923,18 @@ unsafe extern "C" fn handleUnknownEncoding(
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .get(&(parser as usize))
             .cloned();
-        if callback.zip(callback_arg).is_some_and(|(callback, callback_arg)| {
-            callback_arg.invoke.invoke(callback.as_ref(), encodingName, &raw mut info) != 0
-        }) {
+        if callback
+            .zip(callback_arg)
+            .is_some_and(|(callback, callback_arg)| {
+                callback_arg
+                    .invoke
+                    .invoke(callback.as_ref(), encodingName, &raw mut info)
+                    != 0
+            })
+        {
             let Some(mut backing) = allocation_backing(
                 parser,
-                crate::src::xmltok::XmlSizeOfUnknownEncoding()
-                    as crate::__stddef_size_t_h::size_t,
+                crate::src::xmltok::XmlSizeOfUnknownEncoding() as crate::__stddef_size_t_h::size_t,
                 4963 as ::core::ffi::c_int,
             ) else {
                 if info.release.is_some() {
@@ -12578,16 +12592,18 @@ unsafe extern "C" fn doProlog(
                                             return result;
                                         }
                                         active_parser_encoding = match parser.m_encoding {
-                                            EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
-                                                Some(index) if index < 7 => {
-                                                    if parser.m_ns != 0 {
-                                                        crate::src::xmltok::encodingsNS[index]
-                                                    } else {
-                                                        crate::src::xmltok::encodings[index]
+                                            EncodingState::Initial => {
+                                                match parser.m_initEncoding.selected_encoding {
+                                                    Some(index) if index < 7 => {
+                                                        if parser.m_ns != 0 {
+                                                            crate::src::xmltok::encodingsNS[index]
+                                                        } else {
+                                                            crate::src::xmltok::encodings[index]
+                                                        }
                                                     }
+                                                    _ => &raw const parser.m_initEncoding.initEnc,
                                                 }
-                                                _ => &raw const parser.m_initEncoding.initEnc,
-                                            },
+                                            }
                                             EncodingState::Unknown => parser
                                                 .m_unknownEncodingMem
                                                 .as_ref()
@@ -12662,23 +12678,35 @@ unsafe extern "C" fn doProlog(
                                                         .map_or(::core::ptr::null(), |chars| {
                                                             chars.as_ptr()
                                                         });
-                                                    let doctype_sysid = match parser_ref.m_doctypeSysid {
-                                                        DoctypeSystemId::Pool(system_id) => parser_ref
-                                                            .m_tempPool
-                                                            .chars_from(system_id)
-                                                            .map_or(::core::ptr::null(), |chars| {
-                                                                chars.as_ptr()
-                                                            }),
-                                                        DoctypeSystemId::None
-                                                        | DoctypeSystemId::ExternalSubset => {
-                                                            ::core::ptr::null()
-                                                        }
-                                                    };
+                                                    let doctype_sysid =
+                                                        match parser_ref.m_doctypeSysid {
+                                                            DoctypeSystemId::Pool(system_id) => {
+                                                                parser_ref
+                                                                    .m_tempPool
+                                                                    .chars_from(system_id)
+                                                                    .map_or(
+                                                                        ::core::ptr::null(),
+                                                                        |chars| chars.as_ptr(),
+                                                                    )
+                                                            }
+                                                            DoctypeSystemId::None
+                                                            | DoctypeSystemId::ExternalSubset => {
+                                                                ::core::ptr::null()
+                                                            }
+                                                        };
                                                     (
                                                         doctype_name,
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref),
-                                                            HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
+                                                            HandlerArg::UserData => {
+                                                                callback_context_pointer!(
+                                                                    parser_ref
+                                                                )
+                                                            }
+                                                            HandlerArg::Parser => {
+                                                                std::ptr::from_ref(parser_ref)
+                                                                    .cast_mut()
+                                                                    .cast()
+                                                            }
                                                         },
                                                         doctype_sysid,
                                                         doctype_pubid,
@@ -12713,16 +12741,18 @@ unsafe extern "C" fn doProlog(
                                             return result_0;
                                         }
                                         active_parser_encoding = match parser.m_encoding {
-                                            EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
-                                                Some(index) if index < 7 => {
-                                                    if parser.m_ns != 0 {
-                                                        crate::src::xmltok::encodingsNS[index]
-                                                    } else {
-                                                        crate::src::xmltok::encodings[index]
+                                            EncodingState::Initial => {
+                                                match parser.m_initEncoding.selected_encoding {
+                                                    Some(index) if index < 7 => {
+                                                        if parser.m_ns != 0 {
+                                                            crate::src::xmltok::encodingsNS[index]
+                                                        } else {
+                                                            crate::src::xmltok::encodings[index]
+                                                        }
                                                     }
+                                                    _ => &raw const parser.m_initEncoding.initEnc,
                                                 }
-                                                _ => &raw const parser.m_initEncoding.initEnc,
-                                            },
+                                            }
                                             EncodingState::Unknown => parser
                                                 .m_unknownEncodingMem
                                                 .as_ref()
@@ -12747,7 +12777,8 @@ unsafe extern "C" fn doProlog(
                                         if entity.is_null() {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
-                                        (*parser).m_declEntity = Some(DeclaredEntity::ExternalSubset);
+                                        (*parser).m_declEntity =
+                                            Some(DeclaredEntity::ExternalSubset);
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                         if (*parser).m_startDoctypeDeclHandler {
                                             let is_public_id = match (*enc).isPublicId {
@@ -12762,12 +12793,20 @@ unsafe extern "C" fn doProlog(
                                                 }
                                             };
                                             let mut bad_ptr = s;
-                                            if is_public_id(enc, s, next, &raw mut bad_ptr) == 0
-                                            {
+                                            if is_public_id(enc, s, next, &raw mut bad_ptr) == 0 {
                                                 if parser_events {
-                                                    set_parser_event_start!(parser, parser_event_ptr);
+                                                    set_parser_event_start!(
+                                                        parser,
+                                                        parser_event_ptr
+                                                    );
                                                 } else {
-                                                    set_event_start!(parser, false, eventPP, internal_event_window, bad_ptr);
+                                                    set_event_start!(
+                                                        parser,
+                                                        false,
+                                                        eventPP,
+                                                        internal_event_window,
+                                                        bad_ptr
+                                                    );
                                                 }
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             }
@@ -12782,7 +12821,9 @@ unsafe extern "C" fn doProlog(
                                             }
                                             normalizePublicId(pub_id);
                                             let parser_ref = &mut *parser;
-                                            let Some(pub_id) = parser_ref.m_tempPool.start_ref(true) else {
+                                            let Some(pub_id) =
+                                                parser_ref.m_tempPool.start_ref(true)
+                                            else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             parser_ref.m_tempPool.commit();
@@ -12835,23 +12876,35 @@ unsafe extern "C" fn doProlog(
                                                         .map_or(::core::ptr::null(), |chars| {
                                                             chars.as_ptr()
                                                         });
-                                                    let doctype_sysid = match parser_ref.m_doctypeSysid {
-                                                        DoctypeSystemId::Pool(system_id) => parser_ref
-                                                            .m_tempPool
-                                                            .chars_from(system_id)
-                                                            .map_or(::core::ptr::null(), |chars| {
-                                                                chars.as_ptr()
-                                                            }),
-                                                        DoctypeSystemId::None
-                                                        | DoctypeSystemId::ExternalSubset => {
-                                                            ::core::ptr::null()
-                                                        }
-                                                    };
+                                                    let doctype_sysid =
+                                                        match parser_ref.m_doctypeSysid {
+                                                            DoctypeSystemId::Pool(system_id) => {
+                                                                parser_ref
+                                                                    .m_tempPool
+                                                                    .chars_from(system_id)
+                                                                    .map_or(
+                                                                        ::core::ptr::null(),
+                                                                        |chars| chars.as_ptr(),
+                                                                    )
+                                                            }
+                                                            DoctypeSystemId::None
+                                                            | DoctypeSystemId::ExternalSubset => {
+                                                                ::core::ptr::null()
+                                                            }
+                                                        };
                                                     (
                                                         doctype_name,
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref),
-                                                            HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
+                                                            HandlerArg::UserData => {
+                                                                callback_context_pointer!(
+                                                                    parser_ref
+                                                                )
+                                                            }
+                                                            HandlerArg::Parser => {
+                                                                std::ptr::from_ref(parser_ref)
+                                                                    .cast_mut()
+                                                                    .cast()
+                                                            }
                                                         },
                                                         doctype_sysid,
                                                         doctype_pubid,
@@ -12920,14 +12973,26 @@ unsafe extern "C" fn doProlog(
                                                         && (*parser).m_notStandaloneHandler
                                                     {
                                                         let callback = NOT_STANDALONE_HANDLERS
-                                                            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                            .get_or_init(|| {
+                                                                std::sync::Mutex::new(
+                                                                    std::collections::HashMap::new(
+                                                                    ),
+                                                                )
+                                                            })
                                                             .lock()
-                                                            .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                            .get(&(parser as *mut XML_ParserStruct as usize))
+                                                            .unwrap_or_else(|poisoned| {
+                                                                poisoned.into_inner()
+                                                            })
+                                                            .get(
+                                                                &(parser as *mut XML_ParserStruct
+                                                                    as usize),
+                                                            )
                                                             .cloned()
-                                                            .expect("installed not-standalone handler");
+                                                            .expect(
+                                                                "installed not-standalone handler",
+                                                            );
                                                         if callback.invoke(&*parser) == 0 {
-                                                        return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                                            return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                                         }
                                                     }
                                                 } else if !(*parser).m_doctypeSysid.is_present() {
@@ -13002,14 +13067,26 @@ unsafe extern "C" fn doProlog(
                                                         && (*parser).m_notStandaloneHandler
                                                     {
                                                         let callback = NOT_STANDALONE_HANDLERS
-                                                            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                            .get_or_init(|| {
+                                                                std::sync::Mutex::new(
+                                                                    std::collections::HashMap::new(
+                                                                    ),
+                                                                )
+                                                            })
                                                             .lock()
-                                                            .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                            .get(&(parser as *mut XML_ParserStruct as usize))
+                                                            .unwrap_or_else(|poisoned| {
+                                                                poisoned.into_inner()
+                                                            })
+                                                            .get(
+                                                                &(parser as *mut XML_ParserStruct
+                                                                    as usize),
+                                                            )
                                                             .cloned()
-                                                            .expect("installed not-standalone handler");
+                                                            .expect(
+                                                                "installed not-standalone handler",
+                                                            );
                                                         if callback.invoke(&*parser) == 0 {
-                                                        return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                                            return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                                         }
                                                     }
                                                 } else {
@@ -13050,7 +13127,8 @@ unsafe extern "C" fn doProlog(
                                     }
                                     23 => {
                                         (*parser).m_declAttributeIsCdata = crate::expat_h::XML_TRUE;
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Cdata);
+                                        (*parser).m_declAttributeType =
+                                            Some(DeclAttributeType::Cdata);
                                         break '_checkAttListDeclHandler;
                                     }
                                     24 => {
@@ -13059,27 +13137,33 @@ unsafe extern "C" fn doProlog(
                                         break '_checkAttListDeclHandler;
                                     }
                                     25 => {
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::IdRef);
+                                        (*parser).m_declAttributeType =
+                                            Some(DeclAttributeType::IdRef);
                                         break '_checkAttListDeclHandler;
                                     }
                                     26 => {
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::IdRefs);
+                                        (*parser).m_declAttributeType =
+                                            Some(DeclAttributeType::IdRefs);
                                         break '_checkAttListDeclHandler;
                                     }
                                     27 => {
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Entity);
+                                        (*parser).m_declAttributeType =
+                                            Some(DeclAttributeType::Entity);
                                         break '_checkAttListDeclHandler;
                                     }
                                     28 => {
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Entities);
+                                        (*parser).m_declAttributeType =
+                                            Some(DeclAttributeType::Entities);
                                         break '_checkAttListDeclHandler;
                                     }
                                     29 => {
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::NmToken);
+                                        (*parser).m_declAttributeType =
+                                            Some(DeclAttributeType::NmToken);
                                         break '_checkAttListDeclHandler;
                                     }
                                     30 => {
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::NmTokens);
+                                        (*parser).m_declAttributeType =
+                                            Some(DeclAttributeType::NmTokens);
                                         break '_checkAttListDeclHandler;
                                     }
                                     31 | 32 => {
@@ -13150,7 +13234,8 @@ unsafe extern "C" fn doProlog(
                                                 &raw mut (*dtd).elementTypes,
                                                 declaration_name as KEY,
                                                 0,
-                                            ) as *mut ELEMENT_TYPE;
+                                            )
+                                                as *mut ELEMENT_TYPE;
                                             if declaration_element.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
@@ -13168,17 +13253,15 @@ unsafe extern "C" fn doProlog(
                                             if (*parser).m_attlistDeclHandler
                                                 && (*parser).m_declAttributeType.is_some()
                                             {
-                                                if (*parser)
-                                                    .m_declAttributeType
-                                                    .is_some_and(|attribute_type| {
+                                                if (*parser).m_declAttributeType.is_some_and(
+                                                    |attribute_type| {
                                                         attribute_type.needs_closing_delimiter(
                                                             &(*parser).m_tempPool,
                                                         )
-                                                    })
-                                                {
+                                                    },
+                                                ) {
                                                     if (if (*parser).m_tempPool.is_full()
-                                                        && poolGrow(&mut (*parser).m_tempPool)
-                                                            == 0
+                                                        && poolGrow(&mut (*parser).m_tempPool) == 0
                                                     {
                                                         0 as ::core::ffi::c_int
                                                     } else {
@@ -13217,7 +13300,14 @@ unsafe extern "C" fn doProlog(
                                                         Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
-                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                                set_event_end!(
+                                                    parser,
+                                                    parser_events,
+                                                    internal_event_start,
+                                                    internal_event_window,
+                                                    eventEndPP,
+                                                    s
+                                                );
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
@@ -13348,7 +13438,8 @@ unsafe extern "C" fn doProlog(
                                                 &raw mut (*dtd).elementTypes,
                                                 declaration_name as KEY,
                                                 0,
-                                            ) as *mut ELEMENT_TYPE;
+                                            )
+                                                as *mut ELEMENT_TYPE;
                                             if declaration_element.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
@@ -13366,17 +13457,15 @@ unsafe extern "C" fn doProlog(
                                             if (*parser).m_attlistDeclHandler
                                                 && (*parser).m_declAttributeType.is_some()
                                             {
-                                                if (*parser)
-                                                    .m_declAttributeType
-                                                    .is_some_and(|attribute_type| {
+                                                if (*parser).m_declAttributeType.is_some_and(
+                                                    |attribute_type| {
                                                         attribute_type.needs_closing_delimiter(
                                                             &(*parser).m_tempPool,
                                                         )
-                                                    })
-                                                {
+                                                    },
+                                                ) {
                                                     if (if (*parser).m_tempPool.is_full()
-                                                        && poolGrow(&mut (*parser).m_tempPool)
-                                                            == 0
+                                                        && poolGrow(&mut (*parser).m_tempPool) == 0
                                                     {
                                                         0 as ::core::ffi::c_int
                                                     } else {
@@ -13415,7 +13504,14 @@ unsafe extern "C" fn doProlog(
                                                         Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
-                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                                set_event_end!(
+                                                    parser,
+                                                    parser_events,
+                                                    internal_event_start,
+                                                    internal_event_window,
+                                                    eventEndPP,
+                                                    s
+                                                );
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
@@ -13511,7 +13607,9 @@ unsafe extern "C" fn doProlog(
                                                     XML_ACCOUNT_NONE,
                                                 );
                                             if let Some(declaration) = (*parser).m_declEntity {
-                                                let Some(entity) = resolve_declared_entity(declaration) else {
+                                                let Some(entity) =
+                                                    resolve_declared_entity(declaration)
+                                                else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
                                                 let dtd_ref = &mut *dtd;
@@ -13538,7 +13636,14 @@ unsafe extern "C" fn doProlog(
                                                 (*entity).textLen = text_len;
                                                 dtd_ref.entityValuePool.commit();
                                                 if (*parser).m_entityDeclHandler {
-                                                    set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                                    set_event_end!(
+                                                        parser,
+                                                        parser_events,
+                                                        internal_event_start,
+                                                        internal_event_window,
+                                                        eventEndPP,
+                                                        s
+                                                    );
                                                     let callback = ENTITY_DECL_HANDLERS
                                                         .get_or_init(|| {
                                                             std::sync::Mutex::new(
@@ -13566,8 +13671,7 @@ unsafe extern "C" fn doProlog(
                                                                 .m_curBase
                                                                 .map(|base| {
                                                                     pool_string_pointer!(
-                                                                        &*dtd_pool,
-                                                                        base,
+                                                                        &*dtd_pool, base,
                                                                     )
                                                                 })
                                                                 .unwrap_or(::core::ptr::null()),
@@ -13632,14 +13736,18 @@ unsafe extern "C" fn doProlog(
                                             && (*parser).m_notStandaloneHandler
                                         {
                                             let callback = NOT_STANDALONE_HANDLERS
-                                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                                                 .get(&(parser as *mut XML_ParserStruct as usize))
                                                 .cloned()
                                                 .expect("installed not-standalone handler");
                                             if callback.invoke(&*parser) == 0 {
-                                            return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                                return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                             }
                                         }
                                         if (*parser).m_declEntity.is_none() {
@@ -13654,7 +13762,8 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             (*entity).publicId = None;
-                                            (*parser).m_declEntity = Some(DeclaredEntity::ExternalSubset);
+                                            (*parser).m_declEntity =
+                                                Some(DeclaredEntity::ExternalSubset);
                                         }
                                         break 'c_12793;
                                     }
@@ -13669,10 +13778,18 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let Some(entity) = resolve_declared_entity(declaration) else {
+                                            let Some(entity) = resolve_declared_entity(declaration)
+                                            else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                            set_event_end!(
+                                                parser,
+                                                parser_events,
+                                                internal_event_start,
+                                                internal_event_window,
+                                                eventEndPP,
+                                                s
+                                            );
                                             let callback = ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -13717,18 +13834,14 @@ unsafe extern "C" fn doProlog(
                                                     entity_base.map_or(
                                                         ::core::ptr::null(),
                                                         |base| {
-                                                            pool_string_pointer!(
-                                                                &*dtd_pool,
-                                                                base,
-                                                            )
+                                                            pool_string_pointer!(&*dtd_pool, base,)
                                                         },
                                                     ),
                                                     entity_system_id.map_or(
                                                         ::core::ptr::null(),
                                                         |system_id| {
                                                             pool_string_pointer!(
-                                                                &*dtd_pool,
-                                                                system_id,
+                                                                &*dtd_pool, system_id,
                                                             )
                                                         },
                                                     ),
@@ -13736,8 +13849,7 @@ unsafe extern "C" fn doProlog(
                                                         ::core::ptr::null(),
                                                         |public_id| {
                                                             pool_string_pointer!(
-                                                                &*dtd_pool,
-                                                                public_id,
+                                                                &*dtd_pool, public_id,
                                                             )
                                                         },
                                                     ),
@@ -13758,7 +13870,8 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let Some(entity) = resolve_declared_entity(declaration) else {
+                                            let Some(entity) = resolve_declared_entity(declaration)
+                                            else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             let notation_pointer =
@@ -13803,33 +13916,31 @@ unsafe extern "C" fn doProlog(
                                                     notation_pointer,
                                                 )
                                             };
-                                            let entity_base =
-                                                entity_base.map_or(::core::ptr::null(), |base| {
-                                                    pool_string_pointer!(
-                                                        &*dtd_pool,
-                                                        base,
-                                                    )
+                                            let entity_base = entity_base
+                                                .map_or(::core::ptr::null(), |base| {
+                                                    pool_string_pointer!(&*dtd_pool, base,)
                                                 });
                                             let entity_system_id = entity_system_id.map_or(
                                                 ::core::ptr::null(),
                                                 |system_id| {
-                                                    pool_string_pointer!(
-                                                        &*dtd_pool,
-                                                        system_id,
-                                                    )
+                                                    pool_string_pointer!(&*dtd_pool, system_id,)
                                                 },
                                             );
                                             let entity_public_id = entity_public_id.map_or(
                                                 ::core::ptr::null(),
                                                 |public_id| {
-                                                    pool_string_pointer!(
-                                                        &*dtd_pool,
-                                                        public_id,
-                                                    )
+                                                    pool_string_pointer!(&*dtd_pool, public_id,)
                                                 },
                                             );
                                             if let Some(callback) = callback {
-                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                                set_event_end!(
+                                                    parser,
+                                                    parser_events,
+                                                    internal_event_start,
+                                                    internal_event_window,
+                                                    eventEndPP,
+                                                    s
+                                                );
                                                 callback.invoke(
                                                     handler_arg,
                                                     entity_name,
@@ -13840,7 +13951,14 @@ unsafe extern "C" fn doProlog(
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             } else if (*parser).m_entityDeclHandler {
-                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                                set_event_end!(
+                                                    parser,
+                                                    parser_events,
+                                                    internal_event_start,
+                                                    internal_event_window,
+                                                    eventEndPP,
+                                                    s
+                                                );
                                                 let callback = ENTITY_DECL_HANDLERS
                                                     .get_or_init(|| {
                                                         std::sync::Mutex::new(
@@ -13878,8 +13996,7 @@ unsafe extern "C" fn doProlog(
                                         if crate::src::xmltok::predefined_entity_name(
                                             entity_name_matcher,
                                             token,
-                                        )
-                                            != 0
+                                        ) != 0
                                         {
                                             (*parser).m_declEntity = None;
                                             break 's_2375;
@@ -13924,8 +14041,7 @@ unsafe extern "C" fn doProlog(
                                                     };
                                                     (*dtd).pool.commit();
                                                     (*entity).publicId = None;
-                                                    (*entity).is_param =
-                                                        crate::expat_h::XML_FALSE;
+                                                    (*entity).is_param = crate::expat_h::XML_FALSE;
                                                     (*entity).is_internal =
                                                         !((*parser).m_parentParser.is_some()
                                                             || (*parser)
@@ -13933,8 +14049,9 @@ unsafe extern "C" fn doProlog(
                                                                 .is_some())
                                                             as ::core::ffi::c_int
                                                             as crate::expat_h::XML_Bool;
-                                                    (*parser).m_declEntity =
-                                                        Some(DeclaredEntity::General(declaration_name));
+                                                    (*parser).m_declEntity = Some(
+                                                        DeclaredEntity::General(declaration_name),
+                                                    );
                                                     if (*parser).m_entityDeclHandler {
                                                         handleDefault = crate::expat_h::XML_FALSE;
                                                     }
@@ -13963,14 +14080,14 @@ unsafe extern "C" fn doProlog(
                                             if entity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                                let Some(entity_name) = pool_string_ref(
-                                                    dtd_pool as *const STRING_POOL,
-                                                    name_0,
-                                                    false,
-                                                ) else {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                };
-                                                if (*entity).named.name != entity_name {
+                                            let Some(entity_name) = pool_string_ref(
+                                                dtd_pool as *const STRING_POOL,
+                                                name_0,
+                                                false,
+                                            ) else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
+                                            if (*entity).named.name != entity_name {
                                                 (*dtd).pool.rewind();
                                                 (*parser).m_declEntity = None;
                                             } else {
@@ -13983,16 +14100,16 @@ unsafe extern "C" fn doProlog(
                                                 };
                                                 (*dtd).pool.commit();
                                                 (*entity).publicId = None;
-                                                (*entity).is_param =
-                                                    crate::expat_h::XML_TRUE;
+                                                (*entity).is_param = crate::expat_h::XML_TRUE;
                                                 (*entity).is_internal = !((*parser)
                                                     .m_parentParser
                                                     .is_some()
                                                     || (*parser).m_openInternalEntities.is_some())
                                                     as ::core::ffi::c_int
                                                     as crate::expat_h::XML_Bool;
-                                                (*parser).m_declEntity =
-                                                    Some(DeclaredEntity::Parameter(declaration_name));
+                                                (*parser).m_declEntity = Some(
+                                                    DeclaredEntity::Parameter(declaration_name),
+                                                );
                                                 if (*parser).m_entityDeclHandler {
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
@@ -14040,12 +14157,17 @@ unsafe extern "C" fn doProlog(
                                             }
                                         };
                                         let mut bad_ptr = s;
-                                        if is_public_id(enc, s, next, &raw mut bad_ptr) == 0
-                                        {
+                                        if is_public_id(enc, s, next, &raw mut bad_ptr) == 0 {
                                             if parser_events {
                                                 set_parser_event_start!(parser, parser_event_ptr);
                                             } else {
-                                                set_event_start!(parser, false, eventPP, internal_event_window, bad_ptr);
+                                                set_event_start!(
+                                                    parser,
+                                                    false,
+                                                    eventPP,
+                                                    internal_event_window,
+                                                    bad_ptr
+                                                );
                                             }
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
@@ -14062,7 +14184,9 @@ unsafe extern "C" fn doProlog(
                                             }
                                             normalizePublicId(tem_0);
                                             let parser_ref = &mut *parser;
-                                            let Some(public_id) = parser_ref.m_tempPool.start_ref(true) else {
+                                            let Some(public_id) =
+                                                parser_ref.m_tempPool.start_ref(true)
+                                            else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             parser_ref.m_declNotationPublicId = Some(public_id);
@@ -14084,31 +14208,42 @@ unsafe extern "C" fn doProlog(
                                             if systemId.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                            set_event_end!(
+                                                parser,
+                                                parser_events,
+                                                internal_event_start,
+                                                internal_event_window,
+                                                eventEndPP,
+                                                s
+                                            );
                                             let callback = NOTATION_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
                                                         std::collections::HashMap::new(),
                                                     )
-                                            })
-                                            .lock()
-                                            .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                            .get(&parser_key)
-                                            .cloned();
+                                                })
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                .get(&parser_key)
+                                                .cloned();
                                             if let Some(callback) = callback {
-                                                let (
-                                                    handler_arg,
-                                                    notation_name,
-                                                    base,
-                                                    public_id,
-                                                ) = {
+                                                let (handler_arg, notation_name, base, public_id) = {
                                                     let parser_ref = &*parser;
                                                     (
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref),
-                                                            HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
+                                                            HandlerArg::UserData => {
+                                                                callback_context_pointer!(
+                                                                    parser_ref
+                                                                )
+                                                            }
+                                                            HandlerArg::Parser => {
+                                                                std::ptr::from_ref(parser_ref)
+                                                                    .cast_mut()
+                                                                    .cast()
+                                                            }
                                                         },
-                                                        parser_ref.m_declNotationName
+                                                        parser_ref
+                                                            .m_declNotationName
                                                             .and_then(|notation_name| {
                                                                 parser_ref
                                                                     .m_tempPool
@@ -14121,8 +14256,7 @@ unsafe extern "C" fn doProlog(
                                                             .m_curBase
                                                             .map(|base| {
                                                                 pool_string_pointer!(
-                                                                    &*dtd_pool,
-                                                                    base,
+                                                                    &*dtd_pool, base,
                                                                 )
                                                             })
                                                             .unwrap_or(::core::ptr::null()),
@@ -14155,31 +14289,42 @@ unsafe extern "C" fn doProlog(
                                         if (*parser).m_declNotationPublicId.is_some()
                                             && (*parser).m_notationDeclHandler
                                         {
-                                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                            set_event_end!(
+                                                parser,
+                                                parser_events,
+                                                internal_event_start,
+                                                internal_event_window,
+                                                eventEndPP,
+                                                s
+                                            );
                                             let callback = NOTATION_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
                                                         std::collections::HashMap::new(),
                                                     )
-                                            })
-                                            .lock()
-                                            .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                            .get(&parser_key)
-                                            .cloned();
+                                                })
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                .get(&parser_key)
+                                                .cloned();
                                             if let Some(callback) = callback {
-                                                let (
-                                                    handler_arg,
-                                                    notation_name,
-                                                    base,
-                                                    public_id,
-                                                ) = {
+                                                let (handler_arg, notation_name, base, public_id) = {
                                                     let parser_ref = &*parser;
                                                     (
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref),
-                                                            HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
+                                                            HandlerArg::UserData => {
+                                                                callback_context_pointer!(
+                                                                    parser_ref
+                                                                )
+                                                            }
+                                                            HandlerArg::Parser => {
+                                                                std::ptr::from_ref(parser_ref)
+                                                                    .cast_mut()
+                                                                    .cast()
+                                                            }
                                                         },
-                                                        parser_ref.m_declNotationName
+                                                        parser_ref
+                                                            .m_declNotationName
                                                             .and_then(|notation_name| {
                                                                 parser_ref
                                                                     .m_tempPool
@@ -14192,8 +14337,7 @@ unsafe extern "C" fn doProlog(
                                                             .m_curBase
                                                             .map(|base| {
                                                                 pool_string_pointer!(
-                                                                    &*dtd_pool,
-                                                                    base,
+                                                                    &*dtd_pool, base,
                                                                 )
                                                             })
                                                             .unwrap_or(::core::ptr::null()),
@@ -14242,12 +14386,7 @@ unsafe extern "C" fn doProlog(
                                         }
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         result_3 = doIgnoreSection(
-                                            parser,
-                                            enc,
-                                            &mut next,
-                                            end,
-                                            nextPtr,
-                                            haveMore,
+                                            parser, enc, &mut next, end, nextPtr, haveMore,
                                         );
                                         if result_3 as ::core::ffi::c_uint
                                             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
@@ -14261,10 +14400,11 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     44 => {
-                                        let group_level = match usize::try_from((*parser).m_prologState.level) {
-                                            Ok(level) => level,
-                                            Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
-                                        };
+                                        let group_level =
+                                            match usize::try_from((*parser).m_prologState.level) {
+                                                Ok(level) => level,
+                                                Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
+                                            };
                                         if (*parser).m_prologState.level >= (*parser).m_groupSize {
                                             if (*parser).m_groupSize != 0 {
                                                 if (*parser).m_groupSize
@@ -14279,7 +14419,9 @@ unsafe extern "C" fn doProlog(
                                                     .m_groupSize
                                                     .wrapping_mul(2 as ::core::ffi::c_uint);
                                                 let new_group_size = (*parser).m_groupSize as usize;
-                                                let Some(mut backing) = (*parser).m_groupConnector.backing.take() else {
+                                                let Some(mut backing) =
+                                                    (*parser).m_groupConnector.backing.take()
+                                                else {
                                                     (*parser).m_groupSize = old_group_size;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
@@ -14290,7 +14432,8 @@ unsafe extern "C" fn doProlog(
                                                             as crate::__stddef_size_t_h::size_t,
                                                     ),
                                                 ) {
-                                                    (*parser).m_groupConnector.backing = Some(backing);
+                                                    (*parser).m_groupConnector.backing =
+                                                        Some(backing);
                                                     (*parser).m_groupSize = old_group_size;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
@@ -14340,16 +14483,16 @@ unsafe extern "C" fn doProlog(
                                                         0 as ::core::ffi::c_uint;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                let mut backing: Box<dyn FnMut(
-                                                    &mut XML_ParserStruct,
-                                                    GroupConnectorAllocationAction,
-                                                ) -> bool> = Box::new(move |parser, action| match action {
+                                                let mut backing: Box<
+                                                    dyn FnMut(
+                                                        &mut XML_ParserStruct,
+                                                        GroupConnectorAllocationAction,
+                                                    )
+                                                        -> bool,
+                                                > = Box::new(move |parser, action| match action {
                                                     GroupConnectorAllocationAction::Grow(size) => {
                                                         let reallocated = expat_realloc(
-                                                            parser,
-                                                            allocation,
-                                                            size,
-                                                            5915,
+                                                            parser, allocation, size, 5915,
                                                         );
                                                         if reallocated.is_null() {
                                                             false
@@ -14358,13 +14501,20 @@ unsafe extern "C" fn doProlog(
                                                             true
                                                         }
                                                     }
-                                                    GroupConnectorAllocationAction::Free(source_line) => {
+                                                    GroupConnectorAllocationAction::Free(
+                                                        source_line,
+                                                    ) => {
                                                         expat_free(parser, allocation, source_line);
                                                         true
                                                     }
                                                 });
                                                 let mut values = Vec::new();
-                                                if values.try_reserve_exact((*parser).m_groupSize as usize).is_err() {
+                                                if values
+                                                    .try_reserve_exact(
+                                                        (*parser).m_groupSize as usize,
+                                                    )
+                                                    .is_err()
+                                                {
                                                     backing(
                                                         &mut *parser,
                                                         GroupConnectorAllocationAction::Free(5944),
@@ -14373,14 +14523,16 @@ unsafe extern "C" fn doProlog(
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
                                                 values.resize((*parser).m_groupSize as usize, 0);
-                                                (*parser).m_groupConnector = GroupConnectorStorage {
-                                                    values,
-                                                    backing: Some(backing),
-                                                };
+                                                (*parser).m_groupConnector =
+                                                    GroupConnectorStorage {
+                                                        values,
+                                                        backing: Some(backing),
+                                                    };
                                             }
                                         }
-                                        let Some(connector) = (&mut (*parser).m_groupConnector.values)
-                                            .get_mut(group_level)
+                                        let Some(connector) =
+                                            (&mut (*parser).m_groupConnector.values)
+                                                .get_mut(group_level)
                                         else {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         };
@@ -14425,12 +14577,14 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     50 => {
-                                        let group_level = match usize::try_from((*parser).m_prologState.level) {
-                                            Ok(level) => level,
-                                            Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
-                                        };
-                                        let Some(connector) = (&mut (*parser).m_groupConnector.values)
-                                            .get_mut(group_level)
+                                        let group_level =
+                                            match usize::try_from((*parser).m_prologState.level) {
+                                                Ok(level) => level,
+                                                Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
+                                            };
+                                        let Some(connector) =
+                                            (&mut (*parser).m_groupConnector.values)
+                                                .get_mut(group_level)
                                         else {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         };
@@ -14439,7 +14593,8 @@ unsafe extern "C" fn doProlog(
                                         {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         }
-                                        *connector = crate::ascii_h::ASCII_COMMA as ::core::ffi::c_char;
+                                        *connector =
+                                            crate::ascii_h::ASCII_COMMA as ::core::ffi::c_char;
                                         if (*dtd).in_eldecl as ::core::ffi::c_int != 0
                                             && (*parser).m_elementDeclHandler
                                         {
@@ -14448,10 +14603,11 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     49 => {
-                                        let group_level = match usize::try_from((*parser).m_prologState.level) {
-                                            Ok(level) => level,
-                                            Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
-                                        };
+                                        let group_level =
+                                            match usize::try_from((*parser).m_prologState.level) {
+                                                Ok(level) => level,
+                                                Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
+                                            };
                                         let connector = match (&(*parser).m_groupConnector.values)
                                             .get(group_level)
                                             .copied()
@@ -14502,12 +14658,14 @@ unsafe extern "C" fn doProlog(
                                                 }
                                             }
                                         }
-                                        let Some(connector) = (&mut (*parser).m_groupConnector.values)
-                                            .get_mut(group_level)
+                                        let Some(connector) =
+                                            (&mut (*parser).m_groupConnector.values)
+                                                .get_mut(group_level)
                                         else {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         };
-                                        *connector = crate::ascii_h::ASCII_PIPE as ::core::ffi::c_char;
+                                        *connector =
+                                            crate::ascii_h::ASCII_PIPE as ::core::ffi::c_char;
                                         break 's_2375;
                                     }
                                     60 | 59 => {
@@ -14662,14 +14820,18 @@ unsafe extern "C" fn doProlog(
                                             && (*parser).m_notStandaloneHandler
                                         {
                                             let callback = NOT_STANDALONE_HANDLERS
-                                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                                                 .get(&(parser as *mut XML_ParserStruct as usize))
                                                 .cloned()
                                                 .expect("installed not-standalone handler");
                                             if callback.invoke(&*parser) == 0 {
-                                            return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                                return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                             }
                                         }
                                         break 's_2375;
@@ -14680,7 +14842,8 @@ unsafe extern "C" fn doProlog(
                                             if element.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*parser).m_declElementType = Some((*element).named.name);
+                                            (*parser).m_declElementType =
+                                                Some((*element).named.name);
                                             (*dtd).scaffLevel = 0 as ::core::ffi::c_int;
                                             (*dtd).scaffCount = 0 as ::core::ffi::c_uint;
                                             (*dtd).in_eldecl = crate::expat_h::XML_TRUE;
@@ -14726,7 +14889,14 @@ unsafe extern "C" fn doProlog(
                                                         as ::core::ffi::c_int
                                                 })
                                                     as crate::expat_h::XML_Content_Type;
-                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                                                set_event_end!(
+                                                    parser,
+                                                    parser_events,
+                                                    internal_event_start,
+                                                    internal_event_window,
+                                                    eventEndPP,
+                                                    s
+                                                );
                                                 callElementDeclHandler(
                                                     parser,
                                                     (*dtd)
@@ -14884,12 +15054,17 @@ unsafe extern "C" fn doProlog(
                                     }
                                 };
                                 let mut bad_ptr = s;
-                                if is_public_id(enc, s, next, &raw mut bad_ptr) == 0
-                                {
+                                if is_public_id(enc, s, next, &raw mut bad_ptr) == 0 {
                                     if parser_events {
                                         set_parser_event_start!(parser, parser_event_ptr);
                                     } else {
-                                        set_event_start!(parser, false, eventPP, internal_event_window, bad_ptr);
+                                        set_event_start!(
+                                            parser,
+                                            false,
+                                            eventPP,
+                                            internal_event_window,
+                                            bad_ptr
+                                        );
                                     }
                                     return crate::expat_h::XML_ERROR_PUBLICID;
                                 }
@@ -15036,16 +15211,21 @@ unsafe extern "C" fn doProlog(
                             if model.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
-                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
+                            set_event_end!(
+                                parser,
+                                parser_events,
+                                internal_event_start,
+                                internal_event_window,
+                                eventEndPP,
+                                s
+                            );
                             callElementDeclHandler(
                                 parser,
                                 (*dtd)
                                     .pool
-                                    .chars_from(
-                                        (*parser)
-                                            .m_declElementType
-                                            .expect("element declaration must be set before its callback"),
-                                    )
+                                    .chars_from((*parser).m_declElementType.expect(
+                                        "element declaration must be set before its callback",
+                                    ))
                                     .expect("element declaration name must remain in the DTD pool")
                                     .as_ptr(),
                                 model,
@@ -15231,7 +15411,11 @@ unsafe extern "C" fn processEntity(
             parser_state.m_processor = ProcessorState::InternalEntity;
             is_internal_entity = true;
             let mut storage = if let Some(storage) = parser_state.m_freeInternalEntities.pop() {
-                if parser_state.m_activeInternalEntities.try_reserve(1).is_err() {
+                if parser_state
+                    .m_activeInternalEntities
+                    .try_reserve(1)
+                    .is_err()
+                {
                     parser_state.m_freeInternalEntities.push(storage);
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
@@ -15239,10 +15423,8 @@ unsafe extern "C" fn processEntity(
             } else {
                 // A node can later move from active to free without allocating,
                 // so reserve enough free-list capacity before creating it.
-                let Some(free_capacity) = parser_state
-                    .m_activeInternalEntities
-                    .len()
-                    .checked_add(1)
+                let Some(free_capacity) =
+                    parser_state.m_activeInternalEntities.len().checked_add(1)
                 else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
@@ -15290,10 +15472,7 @@ unsafe extern "C" fn processEntity(
             } else {
                 // Reset moves every active node to the free stack.  Reserve
                 // that future slot before observing the configured allocator.
-                let Some(free_capacity) = parser_state
-                    .m_freeAttributeEntities
-                    .len()
-                    .checked_add(1)
+                let Some(free_capacity) = parser_state.m_freeAttributeEntities.len().checked_add(1)
                 else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
@@ -15329,15 +15508,15 @@ unsafe extern "C" fn processEntity(
                 // A reset moves every active slot to the free stack.  Reserve
                 // both vector transitions before observing the configured
                 // allocator, so allocation failure keeps its original order.
-                let Some(free_capacity) = parser_state
-                    .m_activeValueEntities
-                    .len()
-                    .checked_add(1)
+                let Some(free_capacity) = parser_state.m_activeValueEntities.len().checked_add(1)
                 else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
                 if parser_state.m_activeValueEntities.try_reserve(1).is_err()
-                    || parser_state.m_freeValueEntities.try_reserve(free_capacity).is_err()
+                    || parser_state
+                        .m_freeValueEntities
+                        .try_reserve(free_capacity)
+                        .is_err()
                 {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
@@ -15367,7 +15546,11 @@ unsafe extern "C" fn processEntity(
     if is_attribute_entity {
         entity.open = crate::expat_h::XML_TRUE;
         entity.hasMore = crate::expat_h::XML_TRUE;
-        entityTrackingOnOpen(parser, std::ptr::from_mut(entity), 6389 as ::core::ffi::c_int);
+        entityTrackingOnOpen(
+            parser,
+            std::ptr::from_mut(entity),
+            6389 as ::core::ffi::c_int,
+        );
         entity.processed = 0 as ::core::ffi::c_int;
         return crate::expat_h::XML_ERROR_NONE;
     }
@@ -15398,7 +15581,11 @@ unsafe extern "C" fn processEntity(
     storage.entity_ref = Some(entity_ref);
     entity.open = crate::expat_h::XML_TRUE;
     entity.hasMore = crate::expat_h::XML_TRUE;
-    entityTrackingOnOpen(parser, std::ptr::from_mut(entity), 6389 as ::core::ffi::c_int);
+    entityTrackingOnOpen(
+        parser,
+        std::ptr::from_mut(entity),
+        6389 as ::core::ffi::c_int,
+    );
     entity.processed = 0 as ::core::ffi::c_int;
     let next_open_entity = if is_internal_entity {
         parser_state.m_openInternalEntities
@@ -15409,8 +15596,7 @@ unsafe extern "C" fn processEntity(
         parser_state.m_openInternalEntities =
             parser_state.m_activeInternalEntities.len().checked_sub(1);
     } else {
-        parser_state.m_openValueEntities =
-            parser_state.m_activeValueEntities.len().checked_sub(1);
+        parser_state.m_openValueEntities = parser_state.m_activeValueEntities.len().checked_sub(1);
     }
     {
         let open_entity = &mut *openEntity;
@@ -15446,7 +15632,9 @@ unsafe extern "C" fn internalEntityProcessor(
         let Some(open_entity_index) = parser_state.m_openInternalEntities else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let Some(open_entity) = parser_state.m_activeInternalEntities.get_mut(open_entity_index)
+        let Some(open_entity) = parser_state
+            .m_activeInternalEntities
+            .get_mut(open_entity_index)
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
@@ -15508,13 +15696,12 @@ unsafe extern "C" fn internalEntityProcessor(
         next = textStart;
         if is_parameter_entity {
             let internal_encoding = internal_encoding((*parser).m_internalEncoding);
-            let mut tok: ::core::ffi::c_int = internal_encoding.scanners[0 as usize]
-                .scan(
-                    internal_encoding as *const _,
-                    textStart,
-                    textEnd,
-                    &raw mut next,
-                );
+            let mut tok: ::core::ffi::c_int = internal_encoding.scanners[0 as usize].scan(
+                internal_encoding as *const _,
+                textStart,
+                textEnd,
+                &raw mut next,
+            );
             result = doProlog(
                 parser,
                 internal_encoding as *const _,
@@ -15619,15 +15806,8 @@ unsafe extern "C" fn storeAttributeValue(
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
         if (*parser).m_openAttributeEntities.is_empty() {
-            let (append_result, append_next) = appendAttributeValue(
-                parser,
-                &*enc,
-                isCdata,
-                next,
-                end,
-                pool,
-                account,
-            );
+            let (append_result, append_next) =
+                appendAttributeValue(parser, &*enc, isCdata, next, end, pool, account);
             result = append_result;
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -15813,6 +15993,28 @@ fn pool_append_char(pool: &mut STRING_POOL, value: crate::expat_external_h::XML_
     pool.write_cursor(value)
 }
 
+/// Stores one of the ASCII-only XML declaration values in a pool without
+/// retaining an address into the tokenizer input.  The pool remains the owner
+/// of the resulting terminated text, including an empty value at a slab
+/// boundary, and `pool_append_char` preserves its configured allocator path.
+fn pool_store_xml_decl_ascii(
+    pool: &mut STRING_POOL,
+    encoding: crate::src::xmltok::XmlDeclEncodingInfo,
+    input: &[u8],
+    value: core::ops::Range<usize>,
+) -> Option<PoolStringRef> {
+    let value = crate::src::xmltok::xml_decl_ascii_value(encoding, input, value)?;
+    for character in value {
+        if !pool_append_char(pool, character) {
+            return None;
+        }
+    }
+    if !pool_append_char(pool, 0) {
+        return None;
+    }
+    pool.start_ref(true)
+}
+
 unsafe fn appendAttributeValue(
     mut parser: crate::expat_h::XML_Parser,
     enc: &crate::src::xmltok::ENCODING,
@@ -15922,7 +16124,10 @@ unsafe fn appendAttributeValue(
                     let entity_end = next.wrapping_sub(char_width);
                     // The literal scanner returned the complete token, so
                     // this interior span is readable for the match below.
-                    let entity_len = entity_end.addr().checked_sub(entity_start.addr()).unwrap_or(0);
+                    let entity_len = entity_end
+                        .addr()
+                        .checked_sub(entity_start.addr())
+                        .unwrap_or(0);
                     let max_entity_name_len = match enc.predefinedEntityName {
                         crate::src::xmltok::PredefinedEntityNameMatcher::Normal => 4,
                         crate::src::xmltok::PredefinedEntityNameMatcher::Little2
@@ -16037,8 +16242,7 @@ unsafe fn appendAttributeValue(
             }
             if !(isCdata == 0
                 && (pool.ptr_offset == 0
-                    || pool.last_cursor_char()
-                        == Some(0x20 as crate::expat_external_h::XML_Char)))
+                    || pool.last_cursor_char() == Some(0x20 as crate::expat_external_h::XML_Char)))
             {
                 if !pool_append_char(pool, 0x20 as crate::expat_external_h::XML_Char) {
                     return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
@@ -16142,7 +16346,8 @@ unsafe extern "C" fn storeEntityValue(
                                     Some(DeclaredEntity::ExternalSubset) => false,
                                     None => false,
                                 };
-                                if entity.open as ::core::ffi::c_int != 0 || is_current_declaration {
+                                if entity.open as ::core::ffi::c_int != 0 || is_current_declaration
+                                {
                                     if enc_ptr == parser_encoding(parser) {
                                         set_parser_event_start!(&mut *parser, entityTextPtr);
                                     }
@@ -16317,7 +16522,8 @@ unsafe extern "C" fn callStoreEntityValue(
                 let open_entity_index = parser_state
                     .m_openValueEntities
                     .expect("value-entity processing requires an open entity");
-                let Some(storage) = parser_state.m_activeValueEntities.get(open_entity_index) else {
+                let Some(storage) = parser_state.m_activeValueEntities.get(open_entity_index)
+                else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
                 (
@@ -16337,20 +16543,13 @@ unsafe extern "C" fn callStoreEntityValue(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let entity: *mut ENTITY = match entity_ref.table {
-                OpenEntityTable::General => lookup(
-                    parser,
-                    &raw mut (*dtd).generalEntities,
-                    name.as_ptr(),
-                    0,
-                )
-                .cast::<ENTITY>(),
-                OpenEntityTable::Parameter => lookup(
-                    parser,
-                    &raw mut (*dtd).paramEntities,
-                    name.as_ptr(),
-                    0,
-                )
-                .cast::<ENTITY>(),
+                OpenEntityTable::General => {
+                    lookup(parser, &raw mut (*dtd).generalEntities, name.as_ptr(), 0)
+                        .cast::<ENTITY>()
+                }
+                OpenEntityTable::Parameter => {
+                    lookup(parser, &raw mut (*dtd).paramEntities, name.as_ptr(), 0).cast::<ENTITY>()
+                }
             };
             if entity.is_null() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -16509,14 +16708,7 @@ unsafe extern "C" fn reportProcessingInstruction(
     }
     start = start.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
     let parser_events = enc == parser_encoding(parser);
-    let Some(target_len) = event_name_length(
-        parser,
-        dtd,
-        parser_events,
-        enc,
-        start,
-        end,
-    ) else {
+    let Some(target_len) = event_name_length(parser, dtd, parser_events, enc, start, end) else {
         return 0;
     };
     tem = start.wrapping_offset(target_len as isize);
@@ -16538,11 +16730,7 @@ unsafe extern "C" fn reportProcessingInstruction(
             return 0 as ::core::ffi::c_int;
         }
         normalizeLines(data);
-        (
-            target,
-            data,
-            handler_arg_from_state!(parser_state),
-        )
+        (target, data, handler_arg_from_state!(parser_state))
     };
     let callback = PROCESSING_INSTRUCTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -16596,10 +16784,7 @@ unsafe extern "C" fn reportComment(
         .get(&(parser as usize))
         .cloned();
     if let Some(callback) = callback {
-        callback.invoke(
-            handler_arg!(parser),
-            data,
-        );
+        callback.invoke(handler_arg!(parser), data);
     }
     poolClear(temp_pool);
     return 1 as ::core::ffi::c_int;
@@ -16830,10 +17015,9 @@ unsafe extern "C" fn setElementTypePrefix(
     let Some(name_chars) = dtd.pool.chars_from(element_name) else {
         return 0 as ::core::ffi::c_int;
     };
-    let Some(prefix_len) = name_chars
-        .iter()
-        .position(|&character| character == 0 || character == ':' as crate::expat_external_h::XML_Char)
-    else {
+    let Some(prefix_len) = name_chars.iter().position(|&character| {
+        character == 0 || character == ':' as crate::expat_external_h::XML_Char
+    }) else {
         return 0 as ::core::ffi::c_int;
     };
     if name_chars[prefix_len] != ':' as crate::expat_external_h::XML_Char {
@@ -16944,17 +17128,12 @@ unsafe fn getAttributeId(
             } else {
                 if let Some(prefix_len) = name_bytes.iter().position(|&ch| ch == b':') {
                     for &ch in &name_bytes[..prefix_len] {
-                        if !pool_append_char(
-                            &mut dtd.pool,
-                            ch as crate::expat_external_h::XML_Char,
-                        ) {
+                        if !pool_append_char(&mut dtd.pool, ch as crate::expat_external_h::XML_Char)
+                        {
                             return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                         }
                     }
-                    if !pool_append_char(
-                        &mut dtd.pool,
-                        '\0' as crate::expat_external_h::XML_Char,
-                    ) {
+                    if !pool_append_char(&mut dtd.pool, '\0' as crate::expat_external_h::XML_Char) {
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     }
                     let Some(pool_start) = dtd.pool.start_ref(true) else {
@@ -17032,10 +17211,7 @@ unsafe fn getAttributeId(
 // The string pool owns the resulting context.  Its cursor invariant is
 // checked before every write, so appending a single owned XML character needs
 // no raw access.
-fn pool_append_context_char(
-    pool: &mut STRING_POOL,
-    ch: crate::expat_external_h::XML_Char,
-) -> bool {
+fn pool_append_context_char(pool: &mut STRING_POOL, ch: crate::expat_external_h::XML_Char) -> bool {
     pool_append_char(pool, ch)
 }
 
@@ -17285,7 +17461,9 @@ unsafe extern "C" fn setContext(
                 let mut inherited_bindings = parser
                     .m_inheritedBindings
                     .and_then(|index| parser.m_activeBindings.get(index))
-                    .map_or(::core::ptr::null_mut(), |storage| storage.binding.as_ptr().cast_mut());
+                    .map_or(::core::ptr::null_mut(), |storage| {
+                        storage.binding.as_ptr().cast_mut()
+                    });
                 let inherited_binding_result = addBinding(
                     parser as *mut XML_ParserStruct,
                     prefix,
@@ -17636,9 +17814,8 @@ unsafe extern "C" fn dtdCopy(
                 new_a.prefix = match attribute_prefix {
                     AttributePrefix::Default => AttributePrefix::Default,
                     AttributePrefix::Named(old_prefix_name) => {
-                        let Some(new_prefix_name) = copied_prefixes
-                            .iter()
-                            .find_map(|&(old_name, new_name)| {
+                        let Some(new_prefix_name) =
+                            copied_prefixes.iter().find_map(|&(old_name, new_name)| {
                                 (old_name == old_prefix_name).then_some(new_name)
                             })
                         else {
@@ -17702,91 +17879,90 @@ unsafe extern "C" fn dtdCopy(
                 }
                 new_e.idAtt = Some((*new_id_att).named.name);
             }
-        if old_e.hasPrefix != 0 {
-            let old_prefix_name = pool_string_pointer!(&old_dtd.pool, old_e.prefix);
-            if old_prefix_name.is_null() {
-                return 0 as ::core::ffi::c_int;
+            if old_e.hasPrefix != 0 {
+                let old_prefix_name = pool_string_pointer!(&old_dtd.pool, old_e.prefix);
+                if old_prefix_name.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                let new_prefix = lookup(
+                    parser,
+                    &raw mut new_dtd.prefixes,
+                    old_prefix_name as KEY,
+                    0 as crate::__stddef_size_t_h::size_t,
+                ) as *mut PREFIX;
+                if new_prefix.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                let Some(prefix_ref) = (*new_prefix).name else {
+                    return 0 as ::core::ffi::c_int;
+                };
+                new_e.prefix = prefix_ref;
+                new_e.hasPrefix = crate::expat_h::XML_TRUE;
             }
-            let new_prefix = lookup(
-                parser,
-                &raw mut new_dtd.prefixes,
-                old_prefix_name as KEY,
-                0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut PREFIX;
-            if new_prefix.is_null() {
-                return 0 as ::core::ffi::c_int;
+            let mut i = 0 as ::core::ffi::c_int;
+            while i < old_e.nDefaultAtts {
+                let old_att = old_e
+                    .defaultAtts
+                    .as_ref()
+                    .expect("default attribute storage must exist for a non-empty list")
+                    .values
+                    .get(i as usize)
+                    .expect("default attribute count must match stored values");
+                let Some(old_id_name) = old_att.id else {
+                    return 0 as ::core::ffi::c_int;
+                };
+                let old_id_name = old_dtd
+                    .pool
+                    .chars_from(old_id_name)
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+                if old_id_name.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                let new_id = lookup(
+                    parser,
+                    &raw mut new_dtd.attributeIds,
+                    old_id_name as KEY,
+                    0 as crate::__stddef_size_t_h::size_t,
+                ) as *mut ATTRIBUTE_ID;
+                if new_id.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                let new_id_name = (*new_id).named.name;
+                let value = if let Some(value) = old_att.value {
+                    let Some(old_value) = old_dtd.pool.chars_from(value) else {
+                        return 0 as ::core::ffi::c_int;
+                    };
+                    let Some(old_value_len) = old_value
+                        .iter()
+                        .position(|&character| character == 0)
+                        .and_then(|length| length.checked_add(1))
+                    else {
+                        return 0 as ::core::ffi::c_int;
+                    };
+                    let Some(copied_value) =
+                        pool_copy_chars(&mut new_dtd.pool, &old_value[..old_value_len])
+                    else {
+                        return 0 as ::core::ffi::c_int;
+                    };
+                    Some(copied_value)
+                } else {
+                    None
+                };
+                new_e
+                    .defaultAtts
+                    .as_mut()
+                    .expect("default attribute storage must exist for a non-empty list")
+                    .values
+                    .push(DEFAULT_ATTRIBUTE {
+                        id: Some(new_id_name),
+                        isCdata: old_att.isCdata,
+                        value,
+                    });
+                i += 1;
             }
-            let Some(prefix_ref) = (*new_prefix).name else {
-                return 0 as ::core::ffi::c_int;
-            };
-            new_e.prefix = prefix_ref;
-            new_e.hasPrefix = crate::expat_h::XML_TRUE;
+            new_e.nDefaultAtts = old_e.nDefaultAtts;
+            new_e.allocDefaultAtts = old_e.nDefaultAtts;
         }
-        let mut i = 0 as ::core::ffi::c_int;
-        while i < old_e.nDefaultAtts {
-            let old_att = old_e
-                .defaultAtts
-                .as_ref()
-                .expect("default attribute storage must exist for a non-empty list")
-                .values
-                .get(i as usize)
-                .expect("default attribute count must match stored values");
-            let Some(old_id_name) = old_att.id else {
-                return 0 as ::core::ffi::c_int;
-            };
-            let old_id_name = old_dtd
-                .pool
-                .chars_from(old_id_name)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-            if old_id_name.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            let new_id = lookup(
-                parser,
-                &raw mut new_dtd.attributeIds,
-                old_id_name as KEY,
-                0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut ATTRIBUTE_ID;
-            if new_id.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            let new_id_name = (*new_id).named.name;
-            let value = if let Some(value) = old_att.value {
-                let Some(old_value) = old_dtd.pool.chars_from(value) else {
-                    return 0 as ::core::ffi::c_int;
-                };
-                let Some(old_value_len) = old_value
-                    .iter()
-                    .position(|&character| character == 0)
-                    .and_then(|length| length.checked_add(1))
-                else {
-                    return 0 as ::core::ffi::c_int;
-                };
-                let Some(copied_value) = pool_copy_chars(
-                    &mut new_dtd.pool,
-                    &old_value[..old_value_len],
-                ) else {
-                    return 0 as ::core::ffi::c_int;
-                };
-                Some(copied_value)
-            } else {
-                None
-            };
-            new_e
-                .defaultAtts
-                .as_mut()
-                .expect("default attribute storage must exist for a non-empty list")
-                .values
-                .push(DEFAULT_ATTRIBUTE {
-                    id: Some(new_id_name),
-                    isCdata: old_att.isCdata,
-                    value,
-                });
-            i += 1;
-        }
-        new_e.nDefaultAtts = old_e.nDefaultAtts;
-        new_e.allocDefaultAtts = old_e.nDefaultAtts;
-    }
     }
     if copyEntityTable(
         oldParser,
@@ -18059,7 +18235,8 @@ unsafe fn attribute_storage_new(
     capacity: usize,
     source_line: ::core::ffi::c_int,
 ) -> Option<AttributeStorage> {
-    let allocation_size = capacity.checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())?;
+    let allocation_size =
+        capacity.checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())?;
     AttributeStorage::callback_slots(capacity)?;
     let mut allocation = expat_malloc(parser, allocation_size, source_line);
     if allocation.is_null() {
@@ -18148,20 +18325,20 @@ unsafe fn default_attribute_storage_new(
     let mut backing: Box<
         dyn FnMut(&mut XML_ParserStruct, DefaultAttributeAllocationAction) -> bool,
     > = Box::new(move |parser, action| match action {
-            DefaultAttributeAllocationAction::Grow(size) => {
-                let reallocated = expat_realloc(parser, allocation, size, 7208);
-                if reallocated.is_null() {
-                    false
-                } else {
-                    allocation = reallocated;
-                    true
-                }
-            }
-            DefaultAttributeAllocationAction::Free(free_source_line) => {
-                expat_free(parser, allocation, free_source_line);
+        DefaultAttributeAllocationAction::Grow(size) => {
+            let reallocated = expat_realloc(parser, allocation, size, 7208);
+            if reallocated.is_null() {
+                false
+            } else {
+                allocation = reallocated;
                 true
             }
-        });
+        }
+        DefaultAttributeAllocationAction::Free(free_source_line) => {
+            expat_free(parser, allocation, free_source_line);
+            true
+        }
+    });
     let mut values = Vec::new();
     if values.try_reserve_exact(capacity).is_err() {
         backing(parser, DefaultAttributeAllocationAction::Free(source_line));
@@ -18512,11 +18689,11 @@ unsafe fn invoke_external_entity_ref_handler(
     entity: *const ENTITY,
 ) -> ::core::ffi::c_int {
     let entity = &*entity;
-    let base = entity
-        .base
-        .map_or(::core::ptr::null(), |base| {
-            (&*pool).chars_from(base).map_or(::core::ptr::null(), |chars| chars.as_ptr())
-        });
+    let base = entity.base.map_or(::core::ptr::null(), |base| {
+        (&*pool)
+            .chars_from(base)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    });
     let system_id = entity.systemId.map_or(::core::ptr::null(), |system_id| {
         (&*pool)
             .chars_from(system_id)
@@ -18534,7 +18711,9 @@ unsafe fn invoke_external_entity_ref_handler(
         .get(&(parser as usize))
         .cloned();
     match callback_arg {
-        Some(arg) => arg.invoke.invoke(handler, context, base, system_id, public_id),
+        Some(arg) => arg
+            .invoke
+            .invoke(handler, context, base, system_id, public_id),
         None => handler.invoke(parser, context, base, system_id, public_id),
     }
 }
@@ -18685,7 +18864,10 @@ unsafe fn poolCopyString(
             }
         } == 0
         {
-            return (::core::ptr::null::<crate::expat_external_h::XML_Char>(), None);
+            return (
+                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                None,
+            );
         }
         let c2rust_fresh46 = s;
         s = s.offset(1);
@@ -18809,9 +18991,7 @@ unsafe extern "C" fn poolStoreString(
         .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _)
 }
 
-fn poolBytesToAllocateFor(
-    mut blockSize: ::core::ffi::c_int,
-) -> crate::__stddef_size_t_h::size_t {
+fn poolBytesToAllocateFor(mut blockSize: ::core::ffi::c_int) -> crate::__stddef_size_t_h::size_t {
     let stretch: crate::__stddef_size_t_h::size_t =
         ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
     if blockSize <= 0 as ::core::ffi::c_int {
@@ -19114,7 +19294,8 @@ unsafe fn scaffold_allocator(
         let mut allocation = allocation;
         Some(Box::new(move |action| match action {
             ScaffoldAllocationAction::Grow(size) => {
-                let reallocated = expat_realloc(parser, allocation, size, 8261 as ::core::ffi::c_int);
+                let reallocated =
+                    expat_realloc(parser, allocation, size, 8261 as ::core::ffi::c_int);
                 if reallocated.is_null() {
                     false
                 } else {
@@ -19126,7 +19307,8 @@ unsafe fn scaffold_allocator(
                 expat_free(parser, allocation, source_line);
                 true
             }
-        }) as Box<dyn FnMut(ScaffoldAllocationAction) -> bool>)
+        })
+            as Box<dyn FnMut(ScaffoldAllocationAction) -> bool>)
     }
 }
 
@@ -19324,8 +19506,8 @@ unsafe fn copyString(
         chars_required = chars_required.checked_add(1)?;
     }
     let chars_required = chars_required.checked_add(1)?;
-    let allocation_size = chars_required
-        .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
+    let allocation_size =
+        chars_required.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
     let Some(mut backing) = allocation_backing(parser, allocation_size, 8456) else {
         return None;
     };
@@ -19352,19 +19534,22 @@ unsafe extern "C" fn accountingGetCurrentAmplification(
     let lenOfShortestInclude: crate::__stddef_size_t_h::size_t =
         ::core::mem::size_of::<[::core::ffi::c_char; 23]>()
             .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
-    let root = (*rootParser).m_root.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let countBytesOutput: XmlBigCount = root.accounting.countBytesDirect
+    let root = (*rootParser)
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let countBytesOutput: XmlBigCount = root
+        .accounting
+        .countBytesDirect
         .wrapping_add(root.accounting.countBytesIndirect);
-    let amplificationFactor: ::core::ffi::c_float =
-        if root.accounting.countBytesDirect != 0 {
-            countBytesOutput as ::core::ffi::c_float
-                / root.accounting.countBytesDirect as ::core::ffi::c_float
-        } else {
-            (lenOfShortestInclude as XmlBigCount)
-                .wrapping_add(root.accounting.countBytesIndirect)
-                as ::core::ffi::c_float
-                / lenOfShortestInclude as ::core::ffi::c_float
-        };
+    let amplificationFactor: ::core::ffi::c_float = if root.accounting.countBytesDirect != 0 {
+        countBytesOutput as ::core::ffi::c_float
+            / root.accounting.countBytesDirect as ::core::ffi::c_float
+    } else {
+        (lenOfShortestInclude as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
+            as ::core::ffi::c_float
+            / lenOfShortestInclude as ::core::ffi::c_float
+    };
     return amplificationFactor;
 }
 
@@ -19372,15 +19557,22 @@ unsafe extern "C" fn accountingReportStats(
     mut originParser: crate::expat_h::XML_Parser,
     mut epilog: *const ::core::ffi::c_char,
 ) {
-    let root = (*originParser).m_root.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let root = (*originParser)
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     if root.accounting.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
-    let output = root.accounting.countBytesDirect.wrapping_add(root.accounting.countBytesIndirect);
+    let output = root
+        .accounting
+        .countBytesDirect
+        .wrapping_add(root.accounting.countBytesIndirect);
     let amplificationFactor = if root.accounting.countBytesDirect != 0 {
         output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
     } else {
-        (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect) as ::core::ffi::c_float / 23.0
+        (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect) as ::core::ffi::c_float
+            / 23.0
     };
     crate::stdlib::fprintf(
         crate::stdlib::stderr,
@@ -19455,7 +19647,8 @@ unsafe extern "C" fn accountingReportDiff(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .accounting
-        .debugLevel >= 3 as ::core::ffi::c_ulong
+        .debugLevel
+        >= 3 as ::core::ffi::c_ulong
         || after.offset_from(before)
             <= (contextLength as crate::__stddef_size_t_h::size_t)
                 .wrapping_add(ellipsisLength)
@@ -19509,32 +19702,48 @@ unsafe extern "C" fn accountingDiffTolerated(
         .map_or(0, ::core::num::NonZeroU32::get);
     let isDirect: ::core::ffi::c_int = (account as ::core::ffi::c_uint
         == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
-        && (*originParser).m_parentParser.is_none()) as ::core::ffi::c_int;
+        && (*originParser).m_parentParser.is_none())
+        as ::core::ffi::c_int;
     let bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t = after.offset_from(before);
     let (countBytesOutput, amplificationFactor, threshold, maximum, debug_level) = {
-        let mut root = (*originParser).m_root.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut root = (*originParser)
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let addition_target = if isDirect != 0 {
             &mut root.accounting.countBytesDirect
         } else {
             &mut root.accounting.countBytesIndirect
         };
-        if *addition_target > (-1 as ::core::ffi::c_int as XmlBigCount)
-            .wrapping_sub(bytesMore as XmlBigCount) {
+        if *addition_target
+            > (-1 as ::core::ffi::c_int as XmlBigCount).wrapping_sub(bytesMore as XmlBigCount)
+        {
             return crate::expat_h::XML_FALSE;
         }
         *addition_target = addition_target.wrapping_add(bytesMore as XmlBigCount);
-        let output = root.accounting.countBytesDirect.wrapping_add(root.accounting.countBytesIndirect);
+        let output = root
+            .accounting
+            .countBytesDirect
+            .wrapping_add(root.accounting.countBytesIndirect);
         let amplification = if root.accounting.countBytesDirect != 0 {
-            output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
+            output as ::core::ffi::c_float
+                / root.accounting.countBytesDirect as ::core::ffi::c_float
         } else {
-            (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect) as ::core::ffi::c_float / 23.0
+            (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
+                as ::core::ffi::c_float
+                / 23.0
         };
-        (output, amplification, root.accounting.activationThresholdBytes,
-         root.accounting.maximumAmplificationFactor, root.accounting.debugLevel)
+        (
+            output,
+            amplification,
+            root.accounting.activationThresholdBytes,
+            root.accounting.maximumAmplificationFactor,
+            root.accounting.debugLevel,
+        )
     };
     let tolerated: crate::expat_h::XML_Bool =
-        (countBytesOutput < threshold || amplificationFactor <= maximum)
-            as ::core::ffi::c_int as crate::expat_h::XML_Bool;
+        (countBytesOutput < threshold || amplificationFactor <= maximum) as ::core::ffi::c_int
+            as crate::expat_h::XML_Bool;
     if debug_level >= 2 as ::core::ffi::c_ulong {
         accountingReportStats(originParser, b"\0".as_ptr() as *const ::core::ffi::c_char);
         accountingReportDiff(
@@ -19595,7 +19804,10 @@ unsafe extern "C" fn entityTrackingReportStats(
     mut action: *const ::core::ffi::c_char,
     mut sourceLine: ::core::ffi::c_int,
 ) {
-    let stats = (*rootParser).m_root.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let stats = (*rootParser)
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     if stats.entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
@@ -19637,7 +19849,10 @@ unsafe extern "C" fn entityTrackingOnOpen(
     mut sourceLine: ::core::ffi::c_int,
 ) {
     {
-        let mut root = (*originParser).m_root.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut root = (*originParser)
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         root.entity_stats.countEverOpened = root.entity_stats.countEverOpened.wrapping_add(1);
         root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_add(1);
         if root.entity_stats.currentDepth > root.entity_stats.maximumDepthSeen {
@@ -19663,7 +19878,10 @@ unsafe extern "C" fn entityTrackingOnClose(
         b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
         sourceLine,
     );
-    let mut root = (*originParser).m_root.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut root = (*originParser)
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_sub(1);
 }
 

@@ -350,12 +350,7 @@ impl Scanner {
                                 xmltok_impl_c::NormalCharCheck::Invalid,
                                 width,
                                 &input[start + offset..],
-                                || {
-                                    unknown_character_value(
-                                        enc as usize,
-                                        &input[start + offset..],
-                                    )
-                                },
+                                || unknown_character_value(enc as usize, &input[start + offset..]),
                             )
                         },
                     );
@@ -569,7 +564,10 @@ impl NameLength {
                     if second == 0 {
                         encoding.type_0[first as usize] as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(second as ::core::ffi::c_char, first as ::core::ffi::c_char)
+                        unicode_byte_type(
+                            second as ::core::ffi::c_char,
+                            first as ::core::ffi::c_char,
+                        )
                     }
                 }
                 Self::Big2 => {
@@ -582,7 +580,10 @@ impl NameLength {
                     if first == 0 {
                         encoding.type_0[second as usize] as ::core::ffi::c_int
                     } else {
-                        unicode_byte_type(first as ::core::ffi::c_char, second as ::core::ffi::c_char)
+                        unicode_byte_type(
+                            first as ::core::ffi::c_char,
+                            second as ::core::ffi::c_char,
+                        )
                     }
                 }
             };
@@ -633,7 +634,6 @@ impl NameMatcher {
         };
         matches as ::core::ffi::c_int
     }
-
 }
 
 #[derive(Copy, Clone)]
@@ -692,7 +692,10 @@ impl WhitespaceSkipper {
             Self::Normal => bytes
                 .iter()
                 .position(|&byte| {
-                    !matches!(encoding.type_0[byte as u8 as usize] as ::core::ffi::c_int, 10 | 9 | 21)
+                    !matches!(
+                        encoding.type_0[byte as u8 as usize] as ::core::ffi::c_int,
+                        10 | 9 | 21
+                    )
                 })
                 .unwrap_or(bytes.len()),
             Self::Little2 | Self::Big2 => {
@@ -751,18 +754,22 @@ impl CharRefNumberDecoder {
                     .map(|&byte| byte as ::core::ffi::c_int),
             ),
             Self::Little2 => decode_char_ref_number_units(
-                input
-                    .get(4..)
-                    .unwrap_or(&[])
-                    .chunks_exact(2)
-                    .map(|unit| if unit[1] == 0 { unit[0] as ::core::ffi::c_int } else { -1 }),
+                input.get(4..).unwrap_or(&[]).chunks_exact(2).map(|unit| {
+                    if unit[1] == 0 {
+                        unit[0] as ::core::ffi::c_int
+                    } else {
+                        -1
+                    }
+                }),
             ),
             Self::Big2 => decode_char_ref_number_units(
-                input
-                    .get(4..)
-                    .unwrap_or(&[])
-                    .chunks_exact(2)
-                    .map(|unit| if unit[0] == 0 { unit[1] as ::core::ffi::c_int } else { -1 }),
+                input.get(4..).unwrap_or(&[]).chunks_exact(2).map(|unit| {
+                    if unit[0] == 0 {
+                        unit[1] as ::core::ffi::c_int
+                    } else {
+                        -1
+                    }
+                }),
             ),
         }
     }
@@ -1050,9 +1057,7 @@ struct UnknownEncodingConverterRegistration {
 // internal tokenizer object; the storage address is a stable key until the
 // parser resets or is freed.
 static UNKNOWN_ENCODING_CONVERTERS: std::sync::OnceLock<
-    std::sync::Mutex<
-        std::collections::HashMap<usize, UnknownEncodingConverterRegistration>,
-    >,
+    std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingConverterRegistration>>,
 > = std::sync::OnceLock::new();
 
 fn register_unknown_encoding_converter(
@@ -1070,9 +1075,7 @@ fn register_unknown_encoding_converter(
     }
 }
 
-fn unknown_encoding_converter(
-    storage_id: usize,
-) -> Option<UnknownEncodingConverterRegistration> {
+fn unknown_encoding_converter(storage_id: usize) -> Option<UnknownEncodingConverterRegistration> {
     UNKNOWN_ENCODING_CONVERTERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -1319,9 +1322,21 @@ pub mod xmltok_impl_c {
 
         let mut has_uppercase = false;
         for (byte, lowercase, uppercase) in [
-            (*x, crate::ascii_h::ASCII_x_1 as u8, crate::ascii_h::ASCII_X_1 as u8),
-            (*m, crate::ascii_h::ASCII_m_1 as u8, crate::ascii_h::ASCII_M_1 as u8),
-            (*l, crate::ascii_h::ASCII_l_1 as u8, crate::ascii_h::ASCII_L_1 as u8),
+            (
+                *x,
+                crate::ascii_h::ASCII_x_1 as u8,
+                crate::ascii_h::ASCII_X_1 as u8,
+            ),
+            (
+                *m,
+                crate::ascii_h::ASCII_m_1 as u8,
+                crate::ascii_h::ASCII_M_1 as u8,
+            ),
+            (
+                *l,
+                crate::ascii_h::ASCII_l_1 as u8,
+                crate::ascii_h::ASCII_L_1 as u8,
+            ),
         ] {
             if byte == lowercase {
                 continue;
@@ -1393,9 +1408,7 @@ pub mod xmltok_impl_c {
                 + ((b1 & 3) as usize) * 2
                 + ((input[offset + 2].token_byte() >> 5) & 1) as usize
         };
-        namingBitmap[bitmap_index]
-            & (1 << (input[offset + width - 1].token_byte() & 0x1f))
-            != 0
+        namingBitmap[bitmap_index] & (1 << (input[offset + width - 1].token_byte() & 0x1f)) != 0
     }
 
     fn normal_pi_utf8_invalid(input: &[u8], offset: usize, width: usize) -> bool {
@@ -2287,10 +2300,7 @@ pub mod xmltok_impl_c {
         next: Option<usize>,
     }
 
-    fn normal_scan_lt_result(
-        token: ::core::ffi::c_int,
-        next: Option<usize>,
-    ) -> NormalScanLtResult {
+    fn normal_scan_lt_result(token: ::core::ffi::c_int, next: Option<usize>) -> NormalScanLtResult {
         NormalScanLtResult { token, next }
     }
 
@@ -2635,9 +2645,10 @@ pub mod xmltok_impl_c {
         }) {
             NormalScanLtAction::Token(token, next) => normal_scan_lt_result(token, next),
             NormalScanLtAction::Comment(start) => {
-                let (token, next) = normal_scan_comment_impl(&normal.type_0, &input[start..], |offset, width| {
-                    check(NormalCharCheck::Invalid, start + offset, width)
-                });
+                let (token, next) =
+                    normal_scan_comment_impl(&normal.type_0, &input[start..], |offset, width| {
+                        check(NormalCharCheck::Invalid, start + offset, width)
+                    });
                 normal_scan_lt_result(token, next.map(|next| start + next))
             }
             NormalScanLtAction::CdataSection(start) => {
@@ -2649,17 +2660,18 @@ pub mod xmltok_impl_c {
                 normal_scan_lt_result(token, next.map(|next| start + next))
             }
             NormalScanLtAction::EndTag(start) => {
-                let result = normal_scan_end_tag_impl(normal, &input[start..], |kind, offset, width| {
-                    check(
-                        match kind {
-                            NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
-                            NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
-                            NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
-                        },
-                        start + offset,
-                        width,
-                    )
-                });
+                let result =
+                    normal_scan_end_tag_impl(normal, &input[start..], |kind, offset, width| {
+                        check(
+                            match kind {
+                                NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
+                                NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
+                                NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
+                            },
+                            start + offset,
+                            width,
+                        )
+                    });
                 normal_scan_lt_result(result.token, result.next.map(|next| start + next))
             }
             NormalScanLtAction::Attributes(start) => {
@@ -2678,7 +2690,8 @@ pub mod xmltok_impl_c {
                         )
                     },
                     |ref_start| {
-                        let (token, next) = normal_scan_ref_bytes_impl(normal, &input[start + ref_start..]);
+                        let (token, next) =
+                            normal_scan_ref_bytes_impl(normal, &input[start + ref_start..]);
                         (token, next.map_or(0, |next| ref_start + next))
                     },
                 );
@@ -3736,9 +3749,7 @@ pub mod xmltok_impl_c {
                     }
                     let invalid = match enc.invalid2 {
                         Invalid2Checker::Never => false,
-                        Invalid2Checker::Utf8 => {
-                            utf8_invalid2(&[input[pos], input[pos + 1]])
-                        }
+                        Invalid2Checker::Utf8 => utf8_invalid2(&[input[pos], input[pos + 1]]),
                         Invalid2Checker::Unknown => {
                             return NormalIgnoreSectionOutcome::UnknownInvalid {
                                 at: pos,
@@ -3760,11 +3771,9 @@ pub mod xmltok_impl_c {
                     }
                     let invalid = match enc.invalid3 {
                         Invalid3Checker::Never => false,
-                        Invalid3Checker::Utf8 => utf8_invalid3(&[
-                            input[pos],
-                            input[pos + 1],
-                            input[pos + 2],
-                        ]),
+                        Invalid3Checker::Utf8 => {
+                            utf8_invalid3(&[input[pos], input[pos + 1], input[pos + 2]])
+                        }
                         Invalid3Checker::Unknown => {
                             return NormalIgnoreSectionOutcome::UnknownInvalid {
                                 at: pos,
@@ -7389,10 +7398,16 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let low = low as ::core::ffi::c_int;
         let high = high as ::core::ffi::c_int;
-        if high == 0 { low } else { -1 }
+        if high == 0 {
+            low
+        } else {
+            -1
+        }
     }
 
-    fn decode_char_ref_number(mut next_unit: impl FnMut() -> ::core::ffi::c_int) -> ::core::ffi::c_int {
+    fn decode_char_ref_number(
+        mut next_unit: impl FnMut() -> ::core::ffi::c_int,
+    ) -> ::core::ffi::c_int {
         let mut result: ::core::ffi::c_int = 0;
         let first = next_unit();
         if first == crate::ascii_h::ASCII_x {
@@ -7642,7 +7657,9 @@ pub mod xmltok_impl_c {
         match outcome {
             Big2ScanOutcome::Token(token, next) => (token, Some(base + next)),
             Big2ScanOutcome::Partial(token) => (token, None),
-            Big2ScanOutcome::Invalid(at) => (crate::src::xmltok::XML_TOK_INVALID_1, Some(base + at)),
+            Big2ScanOutcome::Invalid(at) => {
+                (crate::src::xmltok::XML_TOK_INVALID_1, Some(base + at))
+            }
         }
     }
 
@@ -10706,9 +10723,7 @@ pub mod xmltok_impl_c {
             match update {
                 AttributeUpdate::Name(offset) => slot.name = offset,
                 AttributeUpdate::ValueStart(offset) => slot.valueStart = offset,
-                AttributeUpdate::ValueEnd(offset) => {
-                    slot.valueEnd = offset
-                }
+                AttributeUpdate::ValueEnd(offset) => slot.valueEnd = offset,
                 AttributeUpdate::Normalized(value) => slot.normalized = value,
             }
         };
@@ -17175,11 +17190,7 @@ pub(crate) enum XmlDeclEncoding {
     Unknown,
 }
 
-fn xml_decl_name_matches(
-    encoding: XmlDeclEncodingInfo,
-    input: &[u8],
-    expected: &[u8],
-) -> bool {
+fn xml_decl_name_matches(encoding: XmlDeclEncodingInfo, input: &[u8], expected: &[u8]) -> bool {
     let Ok(width) = usize::try_from(encoding.min_bytes_per_char) else {
         return false;
     };
@@ -17203,10 +17214,7 @@ fn xml_decl_name_matches(
 /// Resolves an XML declaration's bounded encoding-name token using the same
 /// case-insensitive names as `findEncoding`, without materialising a raw
 /// NUL-terminated buffer.
-pub(crate) fn xml_decl_encoding(
-    encoding: XmlDeclEncodingInfo,
-    input: &[u8],
-) -> XmlDeclEncoding {
+pub(crate) fn xml_decl_encoding(encoding: XmlDeclEncodingInfo, input: &[u8]) -> XmlDeclEncoding {
     const NAMES: [&[u8]; 6] = [
         b"iso-8859-1",
         b"us-ascii",
@@ -17216,9 +17224,7 @@ pub(crate) fn xml_decl_encoding(
         b"utf-16le",
     ];
 
-    if xml_decl_name_matches(encoding, input, NAMES[3])
-        && encoding.min_bytes_per_char == 2
-    {
+    if xml_decl_name_matches(encoding, input, NAMES[3]) && encoding.min_bytes_per_char == 2 {
         return XmlDeclEncoding::Current;
     }
     NAMES
@@ -17227,11 +17233,36 @@ pub(crate) fn xml_decl_encoding(
         .map_or(XmlDeclEncoding::Unknown, XmlDeclEncoding::Known)
 }
 
-fn xml_decl_ascii_at(
+/// Materializes a validated XML-declaration pseudo-attribute value as XML
+/// characters.  XML declarations restrict these values to ASCII, but the
+/// token itself can be encoded as UTF-8 or either UTF-16 byte order.
+///
+/// Keeping this conversion bounded by the parser result means callers do not
+/// need to rescan a raw token or retain interior pointers into it.
+pub(crate) fn xml_decl_ascii_value(
     encoding: XmlDeclEncodingInfo,
     input: &[u8],
-    offset: usize,
-) -> Option<u8> {
+    value: core::ops::Range<usize>,
+) -> Option<Vec<crate::expat_external_h::XML_Char>> {
+    let width = usize::try_from(encoding.min_bytes_per_char).ok()?;
+    if width == 0 || value.start > value.end || value.end > input.len() || value.len() % width != 0
+    {
+        return None;
+    }
+
+    let mut result = Vec::new();
+    result.try_reserve_exact(value.len() / width).ok()?;
+    for offset in (value.start..value.end).step_by(width) {
+        let character = xml_decl_ascii_at(encoding, input, offset)?;
+        if character > 0x7f {
+            return None;
+        }
+        result.push(character as crate::expat_external_h::XML_Char);
+    }
+    Some(result)
+}
+
+fn xml_decl_ascii_at(encoding: XmlDeclEncodingInfo, input: &[u8], offset: usize) -> Option<u8> {
     let width = usize::try_from(encoding.min_bytes_per_char).ok()?;
     let bytes = input.get(offset..offset.checked_add(width)?)?;
     match encoding.name_matcher {
@@ -17585,11 +17616,9 @@ pub fn XmlUtf16Encode(
     }
     if charNum < 0x110000 as ::core::ffi::c_int {
         charNum -= 0x10000 as ::core::ffi::c_int;
-        buf[0] = ((charNum >> 10 as ::core::ffi::c_int)
-            + 0xd800 as ::core::ffi::c_int)
+        buf[0] = ((charNum >> 10 as ::core::ffi::c_int) + 0xd800 as ::core::ffi::c_int)
             as ::core::ffi::c_ushort;
-        buf[1] = ((charNum & 0x3ff as ::core::ffi::c_int)
-            + 0xdc00 as ::core::ffi::c_int)
+        buf[1] = ((charNum & 0x3ff as ::core::ffi::c_int) + 0xdc00 as ::core::ffi::c_int)
             as ::core::ffi::c_ushort;
         return 2 as ::core::ffi::c_int;
     }
@@ -17621,10 +17650,7 @@ pub unsafe extern "C" fn XmlSizeOfUnknownEncoding_ffi() -> ::core::ffi::c_int {
 /// remaining bounded input beginning at the character selected by that
 /// table's byte classification.  The registry is keyed by this stable storage
 /// address, which is also the address returned by `XmlInitUnknownEncoding`.
-fn unknown_character_value(
-    storage_id: usize,
-    input: &[u8],
-) -> ::core::ffi::c_int {
+fn unknown_character_value(storage_id: usize, input: &[u8]) -> ::core::ffi::c_int {
     unknown_encoding_converter(storage_id)
         .expect("unknown encoding converter is registered")
         .invoke
@@ -17635,8 +17661,7 @@ fn unknown_is_name(c: ::core::ffi::c_int) -> bool {
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return false;
     }
-    (namingBitmap[(((namePages[(c >> 8 as ::core::ffi::c_int) as usize]
-        as ::core::ffi::c_int)
+    (namingBitmap[(((namePages[(c >> 8 as ::core::ffi::c_int) as usize] as ::core::ffi::c_int)
         << 3 as ::core::ffi::c_int)
         + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
         as usize]
@@ -17649,8 +17674,7 @@ fn unknown_is_name_start(c: ::core::ffi::c_int) -> bool {
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return false;
     }
-    (namingBitmap[(((nmstrtPages[(c >> 8 as ::core::ffi::c_int) as usize]
-        as ::core::ffi::c_int)
+    (namingBitmap[(((nmstrtPages[(c >> 8 as ::core::ffi::c_int) as usize] as ::core::ffi::c_int)
         << 3 as ::core::ffi::c_int)
         + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
         as usize]
@@ -17724,7 +17748,10 @@ fn unknown_to_utf16_window(
             0 => {
                 let advance = encoding.normal.type_0[byte] as usize
                     - (crate::xmltok_impl_h::BT_LEAD2 as usize - 2);
-                (convert(&input[input_used..]) as ::core::ffi::c_ushort, advance)
+                (
+                    convert(&input[input_used..]) as ::core::ffi::c_ushort,
+                    advance,
+                )
             }
             character => (character, 1),
         };
@@ -17938,7 +17965,9 @@ fn encoding_index(name: &[u8]) -> ::core::ffi::c_int {
     ENCODING_NAMES
         .iter()
         .position(|candidate| ascii_case_insensitive_eq(name, candidate))
-        .map_or(UNKNOWN_ENC as ::core::ffi::c_int, |index| index as ::core::ffi::c_int)
+        .map_or(UNKNOWN_ENC as ::core::ffi::c_int, |index| {
+            index as ::core::ffi::c_int
+        })
 }
 
 /// # Safety
