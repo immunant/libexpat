@@ -7286,16 +7286,6 @@ fn call_processor_dispatch(
     (ret, next)
 }
 
-/// Compatibility adapter for legacy internal callers that still carry the
-/// parser borrow directly.  New processing entry points use the scoped
-/// `ProcessorCall` request so the dispatcher itself has a safe signature.
-unsafe fn call_processor_impl(
-    parser: &mut XML_ParserStruct,
-    input: ProcessorInput,
-) -> (crate::expat_h::XML_Error, usize) {
-    call_processor_dispatch(ProcessorCall { parser, input })
-}
-
 fn parser_create_mm(request: ParserCreationRequest<'_>) -> Option<Box<XML_ParserStruct>> {
     parser_create_ownership(request)
 }
@@ -15789,7 +15779,7 @@ struct CdataProcessorResult {
 }
 
 /// Runs CDATA processing against a range already validated by
-/// `call_processor_impl`.  CDATA state and cursor results are offsets, so no
+/// `call_processor_dispatch`.  CDATA state and cursor results are offsets, so no
 /// raw processor ABI values need to cross this boundary.
 fn cdata_section_processor_impl(
     parser: &mut XML_ParserStruct,
@@ -21855,7 +21845,7 @@ struct ActiveInternalEntityState {
 
 /// Processes the active DTD-owned internal-entity replacement text.
 ///
-/// `call_processor_impl` has already selected `ProcessorState::InternalEntity`
+/// `call_processor_dispatch` has already selected `ProcessorState::InternalEntity`
 /// and verified its live parser-buffer range before invoking this transition.
 /// This processor intentionally has no input cursor: its own retained entity
 /// text is the only source it may scan.
