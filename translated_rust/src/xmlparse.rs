@@ -11118,7 +11118,7 @@ unsafe fn doContent(
                             if !opened {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             }
-                            let context = getContext(parser);
+                            let context = get_context(parser);
                             let closed = dtd.inspect(|dtd_state| {
                                 let Some(entity) =
                                     general_entity_mut(dtd_state, entity_name_ref, salt)
@@ -11131,18 +11131,13 @@ unsafe fn doContent(
                             if !closed {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             }
-                            if context.is_null() {
+                            // Context construction commits a terminated value
+                            // in the temporary pool.  Its checked pool handle
+                            // is retained directly, rather than recovering it
+                            // from a raw C cursor before the re-entry-safe
+                            // event copy is made.
+                            let Some(context_ref) = context else {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            // `getContext` commits this terminated value in
-                            // the temporary pool.  Resolve its checked owner
-                            // before copying it into the re-entry-safe event.
-                            let Some(context_ref) = pool_string_ref_from_address(
-                                &parser.m_tempPool,
-                                context.addr(),
-                                false,
-                            ) else {
-                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             };
                             let Some(context_chars) = parser
                                 .m_tempPool
@@ -21932,18 +21927,14 @@ fn pool_append_context_chars(
     true
 }
 
-unsafe fn pool_append_context_c_string(
+fn pool_append_context_string(
     pool: &mut STRING_POOL,
-    source: *const crate::expat_external_h::XML_Char,
+    source: &[crate::expat_external_h::XML_Char],
 ) -> bool {
-    let mut source = source;
-    while *source != 0 {
-        if !pool_append_context_char(pool, *source) {
-            return false;
-        }
-        source = source.add(1);
-    }
-    true
+    let Some(source) = terminated_xml_chars(source) else {
+        return false;
+    };
+    pool_append_context_chars(pool, source)
 }
 
 // Hash-table slots own their entries in table order.  Context construction
@@ -21957,79 +21948,24 @@ fn hash_table_entries(table: &HASH_TABLE) -> impl Iterator<Item = &NamedAllocati
         .flat_map(|slots| slots.entries.iter().filter_map(Option::as_ref))
 }
 
-unsafe extern "C" fn getContext(
-    mut parser: crate::expat_h::XML_Parser,
-) -> *const crate::expat_external_h::XML_Char {
-    let parser = &mut *parser;
-    let dtd = &mut *parser_dtd_ptr!(parser);
+/// Builds an external-entity context in the parser's temporary pool.
+///
+/// All source names and namespace URIs are retained by parser-owned storage,
+/// so the result can be represented by a checked pool handle.  In particular,
+/// callers need not recreate that handle from the address of a temporary
+/// NUL-terminated C string.
+fn get_context(parser: &mut XML_ParserStruct) -> Option<PoolStringRef> {
+    let dtd_owner = parser.m_dtd.clone()?;
     let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
     if let Some(binding_id) =
         active_binding_id_for_prefix(&parser.m_activeBindings, BindingPrefix::Default)
     {
-        let Some(binding_index) = parser.binding_index(binding_id) else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
+        let binding_index = parser.binding_index(binding_id)?;
         if !pool_append_context_char(
             &mut parser.m_tempPool,
             0x3d as crate::expat_external_h::XML_Char,
         ) {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        let storage = &parser.m_activeBindings[binding_index];
-        let mut len = storage
-            .binding
-            .first()
-            .expect("binding storage has one binding")
-            .uriLen;
-        if (*parser).m_namespaceSeparator != 0 {
-            len -= 1;
-        }
-        let Ok(len) = usize::try_from(len) else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
-        let Some(uri) = storage.uri.get(..len) else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
-        if !pool_append_context_chars(&mut parser.m_tempPool, uri) {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        needSep = crate::expat_h::XML_TRUE;
-    }
-    for entry in hash_table_entries(&dtd.prefixes) {
-        let Some(prefix) = entry.prefix() else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
-        let Some(prefix_name) = prefix.name else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
-        let Some(binding_id) = active_binding_id_for_prefix(
-            &parser.m_activeBindings,
-            BindingPrefix::Named(prefix_name),
-        ) else {
-            continue;
-        };
-        let Some(binding_index) = parser.binding_index(binding_id) else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
-        if needSep as ::core::ffi::c_int != 0
-            && !pool_append_context_char(
-                &mut parser.m_tempPool,
-                0xc as crate::expat_external_h::XML_Char,
-            )
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        let prefix_name = pool_string_pointer!(&dtd.pool, prefix_name);
-        if prefix_name.is_null()
-            || !pool_append_context_c_string(&mut parser.m_tempPool, prefix_name)
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        if !pool_append_context_char(
-            &mut parser.m_tempPool,
-            0x3d as crate::expat_external_h::XML_Char,
-        ) {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+            return None;
         }
         let storage = &parser.m_activeBindings[binding_index];
         let mut len = storage
@@ -22040,53 +21976,89 @@ unsafe extern "C" fn getContext(
         if parser.m_namespaceSeparator != 0 {
             len -= 1;
         }
-        let Ok(len) = usize::try_from(len) else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
-        let Some(uri) = storage.uri.get(..len) else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
+        let len = usize::try_from(len).ok()?;
+        let uri = storage.uri.get(..len)?;
         if !pool_append_context_chars(&mut parser.m_tempPool, uri) {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+            return None;
         }
         needSep = crate::expat_h::XML_TRUE;
     }
-    for entry in hash_table_entries(&dtd.generalEntities) {
-        let Some(e) = entry.entity() else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
-        if e.open == 0 {
-            continue;
-        }
-        if needSep as ::core::ffi::c_int != 0
-            && !pool_append_context_char(
+    dtd_owner.inspect(|dtd| {
+        for entry in hash_table_entries(&dtd.prefixes) {
+            let prefix = entry.prefix()?;
+            let prefix_name = prefix.name;
+            let Some(prefix_name) = prefix_name else {
+                return None;
+            };
+            let Some(binding_id) = active_binding_id_for_prefix(
+                &parser.m_activeBindings,
+                BindingPrefix::Named(prefix_name),
+            ) else {
+                continue;
+            };
+            let binding_index = parser.binding_index(binding_id)?;
+            if needSep as ::core::ffi::c_int != 0
+                && !pool_append_context_char(
+                    &mut parser.m_tempPool,
+                    0xc as crate::expat_external_h::XML_Char,
+                )
+            {
+                return None;
+            }
+            let prefix_name = dtd.pool.chars_from(prefix_name)?;
+            if !pool_append_context_string(&mut parser.m_tempPool, prefix_name) {
+                return None;
+            }
+            if !pool_append_context_char(
                 &mut parser.m_tempPool,
-                0xc as crate::expat_external_h::XML_Char,
-            )
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                0x3d as crate::expat_external_h::XML_Char,
+            ) {
+                return None;
+            }
+            let storage = &parser.m_activeBindings[binding_index];
+            let mut len = storage
+                .binding
+                .first()
+                .expect("binding storage has one binding")
+                .uriLen;
+            if parser.m_namespaceSeparator != 0 {
+                len -= 1;
+            }
+            let len = usize::try_from(len).ok()?;
+            let uri = storage.uri.get(..len)?;
+            if !pool_append_context_chars(&mut parser.m_tempPool, uri) {
+                return None;
+            }
+            needSep = crate::expat_h::XML_TRUE;
         }
-        let entity_name = pool_string_pointer!(&dtd.pool, e.named.name);
-        if entity_name.is_null()
-            || !pool_append_context_c_string(&mut parser.m_tempPool, entity_name)
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        for entry in hash_table_entries(&dtd.generalEntities) {
+            let e = entry.entity()?;
+            if e.open == 0 {
+                continue;
+            }
+            if needSep as ::core::ffi::c_int != 0
+                && !pool_append_context_char(
+                    &mut parser.m_tempPool,
+                    0xc as crate::expat_external_h::XML_Char,
+                )
+            {
+                return None;
+            }
+            let entity_name = dtd.pool.chars_from(e.named.name)?;
+            if !pool_append_context_string(&mut parser.m_tempPool, entity_name) {
+                return None;
+            }
+            needSep = crate::expat_h::XML_TRUE;
         }
-        needSep = crate::expat_h::XML_TRUE;
-    }
+        Some(())
+    })?;
     if !pool_append_context_char(
         &mut parser.m_tempPool,
         '\0' as crate::expat_external_h::XML_Char,
     ) {
-        return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        return None;
     }
-    let Some(start) = parser.m_tempPool.start_ref(true) else {
-        return ::core::ptr::null();
-    };
-    return parser
-        .m_tempPool
-        .chars_from(start)
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    parser.m_tempPool.start_ref(true)
 }
 
 unsafe extern "C" fn setContext(
