@@ -321,6 +321,92 @@ pub(crate) struct ScannerInput<'a> {
     pub(crate) chars: &'a [::core::ffi::c_char],
 }
 
+/// A tokenizer dispatch request whose C cursors have been checked and
+/// translated at the boundary.  Scanner implementations work entirely with
+/// the bounded input and the typed encoding reference retained here.
+pub(crate) struct ScannerContext<'a>(ScannerContextKind<'a>);
+
+enum ScannerContextKind<'a> {
+    InvalidRange,
+    Initial {
+        scanner: Scanner,
+        initial: &'a mut INIT_ENCODING,
+        input: ScannerInput<'a>,
+    },
+    Normal {
+        scanner: Scanner,
+        encoding: &'a normal_encoding,
+        input: ScannerInput<'a>,
+        encoding_id: usize,
+    },
+}
+
+impl<'a> ScannerContext<'a> {
+    /// # Safety
+    ///
+    /// `ptr..end` must describe a readable range from one allocation, and
+    /// `enc` must identify the matching tokenizer encoding.  This is the
+    /// sole raw-cursor adapter for internal scanner dispatch; its result holds
+    /// only bounded slices and typed encoding references.
+    pub(crate) unsafe fn from_raw(
+        scanner: Scanner,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+    ) -> Self {
+        let Some(span) = end.addr().checked_sub(ptr.addr()) else {
+            return Self(ScannerContextKind::InvalidRange);
+        };
+        let input = ScannerInput {
+            bytes: ::core::slice::from_raw_parts(ptr.cast::<u8>(), span),
+            chars: ::core::slice::from_raw_parts(ptr, span),
+        };
+        match scanner {
+            Scanner::InitProlog
+            | Scanner::InitContent
+            | Scanner::InitPrologNS
+            | Scanner::InitContentNS => Self(ScannerContextKind::Initial {
+                scanner,
+                initial: &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING),
+                input,
+            }),
+            _ => Self(ScannerContextKind::Normal {
+                scanner,
+                encoding: &*(enc as *const normal_encoding),
+                input,
+                encoding_id: enc.addr(),
+            }),
+        }
+    }
+
+    pub(crate) fn scan(self) -> ScannerResult {
+        match self.0 {
+            ScannerContextKind::InvalidRange => {
+                ScannerResult::new(crate::src::xmltok::XML_TOK_NONE_1, None)
+            }
+            ScannerContextKind::Initial {
+                scanner,
+                initial,
+                input,
+            } => {
+                let state = match scanner {
+                    Scanner::InitProlog | Scanner::InitPrologNS => InitScanState::Prolog,
+                    Scanner::InitContent | Scanner::InitContentNS => InitScanState::Content,
+                    _ => unreachable!("initial scanner context has an initial scanner"),
+                };
+                let namespace_aware =
+                    matches!(scanner, Scanner::InitPrologNS | Scanner::InitContentNS);
+                initial_scan_result(initial, namespace_aware, state, input)
+            }
+            ScannerContextKind::Normal {
+                scanner,
+                encoding,
+                input,
+                encoding_id,
+            } => scanner.scan_result(encoding, input, encoding_id),
+        }
+    }
+}
 impl Scanner {
     pub(crate) fn scan_result(
         self,
@@ -329,43 +415,6 @@ impl Scanner {
         encoding_id: usize,
     ) -> ScannerResult {
         crate::src::xmltok::xmltok_impl_c::scan_result(self, encoding, input, encoding_id)
-    }
-
-    /// # Safety
-    ///
-    /// `ptr..end` must describe a readable range from one allocation, and
-    /// `enc` must identify the matching tokenizer encoding.  Unlike the old
-    /// C-shaped adapter, this returns the cursor as an offset: callers retain
-    /// ownership of their output cursor and no longer hand this dispatcher a
-    /// writable raw-pointer slot.
-    pub(crate) unsafe fn scan(
-        self,
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-    ) -> ScannerResult {
-        let span = end.offset_from(ptr);
-        if span < 0 {
-            return ScannerResult::new(crate::src::xmltok::XML_TOK_NONE_1, None);
-        }
-        let input = ScannerInput {
-            bytes: ::core::slice::from_raw_parts(ptr.cast::<u8>(), span as usize),
-            chars: ::core::slice::from_raw_parts(ptr, span as usize),
-        };
-        match self {
-            Self::InitProlog | Self::InitContent | Self::InitPrologNS | Self::InitContentNS => {
-                let state = match self {
-                    Self::InitProlog | Self::InitPrologNS => InitScanState::Prolog,
-                    Self::InitContent | Self::InitContentNS => InitScanState::Content,
-                    _ => unreachable!(),
-                };
-                let namespace_aware = matches!(self, Self::InitPrologNS | Self::InitContentNS);
-                let initial = &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING);
-                return initial_scan_result(initial, namespace_aware, state, input);
-            }
-            _ => {}
-        }
-        self.scan_result(&*(enc as *const normal_encoding), input, enc as usize)
     }
 }
 
@@ -18268,11 +18317,13 @@ unsafe extern "C" fn initScan(
         InitScanAction::Scan { encoding_index } => {
             let selected_encoding = encoding_table[encoding_index];
             initial_encoding.selected_encoding = Some(encoding_index);
-            let result = (*selected_encoding).scanners[state.scanner_index()].scan(
+            let result = ScannerContext::from_raw(
+                (*selected_encoding).scanners[state.scanner_index()],
                 selected_encoding,
                 ptr,
                 end,
-            );
+            )
+            .scan();
             if let Some(offset) = result.next {
                 *nextTokPtr = ptr.wrapping_add(offset);
             }

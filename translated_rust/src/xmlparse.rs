@@ -8734,11 +8734,14 @@ unsafe extern "C" fn externalEntityInitProcessor2(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = start;
-    let scan = (*parser_encoding(parser)).scanners[1 as usize].scan(
-        parser_encoding(parser),
+    let encoding = parser_encoding(parser);
+    let scan = crate::src::xmltok::ScannerContext::from_raw(
+        (*encoding).scanners[1 as usize],
+        encoding,
         start,
         end,
-    );
+    )
+    .scan();
     let mut tok: ::core::ffi::c_int = scan.token;
     if let Some(offset) = scan.next {
         next = start.wrapping_add(offset);
@@ -8794,11 +8797,14 @@ unsafe extern "C" fn externalEntityInitProcessor3(
     let mut tok: ::core::ffi::c_int = 0;
     let mut next: *const ::core::ffi::c_char = start;
     set_parser_event_start!(&mut *parser, start);
-    let scan = (*parser_encoding(parser)).scanners[1 as usize].scan(
-        parser_encoding(parser),
+    let encoding = parser_encoding(parser);
+    let scan = crate::src::xmltok::ScannerContext::from_raw(
+        (*encoding).scanners[1 as usize],
+        encoding,
         start,
         end,
-    );
+    )
+    .scan();
     tok = scan.token;
     if let Some(offset) = scan.next {
         next = start.wrapping_add(offset);
@@ -8930,7 +8936,9 @@ unsafe extern "C" fn doContent(
     update_event_start(s);
     loop {
         let mut next: *const ::core::ffi::c_char = s;
-        let scan = (*enc).scanners[1 as usize].scan(enc, s, end);
+        let scan =
+            crate::src::xmltok::ScannerContext::from_raw((*enc).scanners[1 as usize], enc, s, end)
+                .scan();
         let mut tok: ::core::ffi::c_int = scan.token;
         if let Some(offset) = scan.next {
             next = s.wrapping_add(offset);
@@ -11881,7 +11889,9 @@ unsafe extern "C" fn doIgnoreSection(
         .then(|| internal_event_offset(internal_event_window, s.addr()))
         .flatten();
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    let scan = (*enc).scanners[3 as usize].scan(enc, s, end);
+    let scan =
+        crate::src::xmltok::ScannerContext::from_raw((*enc).scanners[3 as usize], enc, s, end)
+            .scan();
     tok = scan.token;
     if let Some(offset) = scan.next {
         next = s.wrapping_add(offset);
@@ -12389,11 +12399,14 @@ unsafe extern "C" fn entityValueInitProcessor(
     let mut next: *const ::core::ffi::c_char = start;
     set_parser_event_start!(&mut *parser, start);
     loop {
-        let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
-            parser_encoding(parser),
+        let encoding = parser_encoding(parser);
+        let scan = crate::src::xmltok::ScannerContext::from_raw(
+            (*encoding).scanners[0 as usize],
+            encoding,
             start,
             end,
-        );
+        )
+        .scan();
         tok = scan.token;
         if let Some(offset) = scan.next {
             next = start.wrapping_add(offset);
@@ -12474,11 +12487,14 @@ unsafe extern "C" fn externalParEntProcessor(
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = s;
     let mut tok: ::core::ffi::c_int = 0;
-    let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
-        parser_encoding(parser),
+    let encoding = parser_encoding(parser);
+    let scan = crate::src::xmltok::ScannerContext::from_raw(
+        (*encoding).scanners[0 as usize],
+        encoding,
         s,
         end,
-    );
+    )
+    .scan();
     tok = scan.token;
     if let Some(offset) = scan.next {
         next = s.wrapping_add(offset);
@@ -12511,11 +12527,14 @@ unsafe extern "C" fn externalParEntProcessor(
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
-        let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
-            parser_encoding(parser),
+        let encoding = parser_encoding(parser);
+        let scan = crate::src::xmltok::ScannerContext::from_raw(
+            (*encoding).scanners[0 as usize],
+            encoding,
             s,
             end,
-        );
+        )
+        .scan();
         tok = scan.token;
         if let Some(offset) = scan.next {
             next = s.wrapping_add(offset);
@@ -12548,7 +12567,13 @@ unsafe extern "C" fn entityValueProcessor(
     let mut enc: *const crate::src::xmltok::ENCODING = parser_encoding(parser);
     let mut tok: ::core::ffi::c_int = 0;
     loop {
-        let scan = (*enc).scanners[0 as usize].scan(enc, start, end);
+        let scan = crate::src::xmltok::ScannerContext::from_raw(
+            (*enc).scanners[0 as usize],
+            enc,
+            start,
+            end,
+        )
+        .scan();
         tok = scan.token;
         if let Some(offset) = scan.next {
             next = start.wrapping_add(offset);
@@ -12592,11 +12617,14 @@ unsafe extern "C" fn prologProcessor(
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = s;
-    let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
-        parser_encoding(parser),
+    let encoding = parser_encoding(parser);
+    let scan = crate::src::xmltok::ScannerContext::from_raw(
+        (*encoding).scanners[0 as usize],
+        encoding,
         s,
         end,
-    );
+    )
+    .scan();
     let mut tok: ::core::ffi::c_int = scan.token;
     if let Some(offset) = scan.next {
         next = s.wrapping_add(offset);
@@ -15674,7 +15702,9 @@ unsafe extern "C" fn doProlog(
             _ => {}
         }
         s = next;
-        let scan = (*enc).scanners[0 as usize].scan(enc, s, end);
+        let scan =
+            crate::src::xmltok::ScannerContext::from_raw((*enc).scanners[0 as usize], enc, s, end)
+                .scan();
         tok = scan.token;
         if let Some(offset) = scan.next {
             next = s.wrapping_add(offset);
@@ -16257,11 +16287,13 @@ unsafe extern "C" fn internalEntityProcessor(
         next = textStart;
         if is_parameter_entity {
             let internal_encoding = internal_encoding((*parser).m_internalEncoding);
-            let scan = internal_encoding.scanners[0 as usize].scan(
+            let scan = crate::src::xmltok::ScannerContext::from_raw(
+                internal_encoding.scanners[0 as usize],
                 internal_encoding as *const _,
                 textStart,
                 textEnd,
-            );
+            )
+            .scan();
             let mut tok: ::core::ffi::c_int = scan.token;
             if let Some(offset) = scan.next {
                 next = textStart.wrapping_add(offset);
