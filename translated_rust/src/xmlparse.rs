@@ -1272,6 +1272,54 @@ static START_ELEMENT_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+trait CharacterDataCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        data: *const crate::expat_external_h::XML_Char,
+        len: ::core::ffi::c_int,
+    );
+}
+
+impl CharacterDataCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+        ::core::ffi::c_int,
+    ) -> ()
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        data: *const crate::expat_external_h::XML_Char,
+        len: ::core::ffi::c_int,
+    ) {
+        self(user_data, data, len);
+    }
+}
+
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether a character-data callback is installed.
+static CHARACTER_DATA_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn CharacterDataCallback>>>,
+> = std::sync::OnceLock::new();
+
+unsafe fn callCharacterDataHandler(
+    parser: crate::expat_h::XML_Parser,
+    data: *const crate::expat_external_h::XML_Char,
+    len: ::core::ffi::c_int,
+) {
+    let callback = CHARACTER_DATA_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
+    if let Some(callback) = callback {
+        callback.invoke((*parser).m_handlerArg, data, len);
+    }
+}
+
 trait EntityDeclCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -1420,7 +1468,7 @@ pub struct XML_ParserStruct {
     pub m_dataBufEnd: *mut crate::expat_external_h::XML_Char,
     pub m_startElementHandler: bool,
     pub m_endElementHandler: crate::expat_h::XML_EndElementHandler,
-    pub m_characterDataHandler: crate::expat_h::XML_CharacterDataHandler,
+    pub m_characterDataHandler: bool,
     pub m_processingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler,
     pub m_commentHandler: crate::expat_h::XML_CommentHandler,
     pub m_startCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler,
@@ -2805,7 +2853,12 @@ unsafe extern "C" fn parserInit(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     (*parser).m_endElementHandler = None;
-    (*parser).m_characterDataHandler = None;
+    (*parser).m_characterDataHandler = false;
+    CHARACTER_DATA_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_processingInstructionHandler = None;
     (*parser).m_commentHandler = None;
     (*parser).m_startCdataSectionHandler = None;
@@ -3041,7 +3094,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldStartElementHandler = false;
     let mut oldStartElementCallback: Option<std::sync::Arc<dyn StartElementCallback>> = None;
     let mut oldEndElementHandler: crate::expat_h::XML_EndElementHandler = None;
-    let mut oldCharacterDataHandler: crate::expat_h::XML_CharacterDataHandler = None;
+    let mut oldCharacterDataHandler = false;
+    let mut oldCharacterDataCallback: Option<std::sync::Arc<dyn CharacterDataCallback>> = None;
     let mut oldProcessingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler =
         None;
     let mut oldCommentHandler: crate::expat_h::XML_CommentHandler = None;
@@ -3089,6 +3143,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .cloned();
     oldEndElementHandler = (*parser).m_endElementHandler;
     oldCharacterDataHandler = (*parser).m_characterDataHandler;
+    oldCharacterDataCallback = CHARACTER_DATA_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldProcessingInstructionHandler = (*parser).m_processingInstructionHandler;
     oldCommentHandler = (*parser).m_commentHandler;
     oldStartCdataSectionHandler = (*parser).m_startCdataSectionHandler;
@@ -3169,6 +3229,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     }
     (*parser).m_endElementHandler = oldEndElementHandler;
     (*parser).m_characterDataHandler = oldCharacterDataHandler;
+    if let Some(callback) = oldCharacterDataCallback {
+        CHARACTER_DATA_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_processingInstructionHandler = oldProcessingInstructionHandler;
     (*parser).m_commentHandler = oldCommentHandler;
     (*parser).m_startCdataSectionHandler = oldStartCdataSectionHandler;
@@ -3278,6 +3345,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         return;
     }
     START_ELEMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
+    CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -3673,7 +3745,19 @@ pub unsafe extern "C" fn XML_SetCharacterDataHandler(
     mut handler: crate::expat_h::XML_CharacterDataHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_characterDataHandler = handler;
+        (*parser).m_characterDataHandler = handler.is_some();
+        let mut handlers = CHARACTER_DATA_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match handler {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetCharacterDataHandler"]
@@ -5531,16 +5615,10 @@ unsafe extern "C" fn doContent(
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     *eventEndPP = end;
-                    if (*parser).m_characterDataHandler.is_some() {
+                    if (*parser).m_characterDataHandler {
                         let mut c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
-                        (*parser)
-                            .m_characterDataHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            &raw mut c,
-                            1 as ::core::ffi::c_int,
-                        );
+                        callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
                     } else if (*parser).m_defaultHandler.is_some() {
                         reportDefault(parser, enc, s, end);
                     }
@@ -5607,12 +5685,10 @@ unsafe extern "C" fn doContent(
                             3403 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
-                        if (*parser).m_characterDataHandler.is_some() {
-                            (*parser)
-                                .m_characterDataHandler
-                                .expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
-                                &raw mut ch,
+                        if (*parser).m_characterDataHandler {
+                            callCharacterDataHandler(
+                                parser,
+                                &raw const ch,
                                 1 as ::core::ffi::c_int,
                             );
                         } else if (*parser).m_defaultHandler.is_some() {
@@ -6055,13 +6131,11 @@ unsafe extern "C" fn doContent(
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }
-                    if (*parser).m_characterDataHandler.is_some() {
+                    if (*parser).m_characterDataHandler {
                         let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
-                        (*parser)
-                            .m_characterDataHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            &raw mut buf as *mut crate::expat_external_h::XML_Char,
+                        callCharacterDataHandler(
+                            parser,
+                            buf.as_ptr(),
                             crate::src::xmltok::XmlUtf8Encode(
                                 n,
                                 &raw mut buf as *mut crate::expat_external_h::XML_Char
@@ -6076,16 +6150,10 @@ unsafe extern "C" fn doContent(
                     return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
                 }
                 crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                    if (*parser).m_characterDataHandler.is_some() {
+                    if (*parser).m_characterDataHandler {
                         let mut c_0: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
-                        (*parser)
-                            .m_characterDataHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            &raw mut c_0,
-                            1 as ::core::ffi::c_int,
-                        );
+                        callCharacterDataHandler(parser, &raw const c_0, 1 as ::core::ffi::c_int);
                     } else if (*parser).m_defaultHandler.is_some() {
                         reportDefault(parser, enc, s, next);
                     }
@@ -6098,11 +6166,9 @@ unsafe extern "C" fn doContent(
                             .expect("non-null function pointer")(
                             (*parser).m_handlerArg
                         );
-                    } else if false && (*parser).m_characterDataHandler.is_some() {
-                        (*parser)
-                            .m_characterDataHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
+                    } else if false && (*parser).m_characterDataHandler {
+                        callCharacterDataHandler(
+                            parser,
                             (*parser).m_dataBuf,
                             0 as ::core::ffi::c_int,
                         );
@@ -6126,7 +6192,7 @@ unsafe extern "C" fn doContent(
                         *nextPtr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
-                    if (*parser).m_characterDataHandler.is_some() {
+                    if (*parser).m_characterDataHandler {
                         if (*enc).isUtf8 == 0 {
                             let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
                             crate::src::xmltok::convert_to_utf8(
@@ -6136,19 +6202,15 @@ unsafe extern "C" fn doContent(
                                 &raw mut dataPtr,
                                 (*parser).m_dataBufEnd as *mut ICHAR,
                             );
-                            (*parser)
-                                .m_characterDataHandler
-                                .expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
+                            callCharacterDataHandler(
+                                parser,
                                 (*parser).m_dataBuf,
                                 dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
                                     as ::core::ffi::c_int,
                             );
                         } else {
-                            (*parser)
-                                .m_characterDataHandler
-                                .expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
+                            callCharacterDataHandler(
+                                parser,
                                 s as *const crate::expat_external_h::XML_Char,
                                 (end as *const crate::expat_external_h::XML_Char)
                                     .offset_from(s as *const crate::expat_external_h::XML_Char)
@@ -6170,9 +6232,13 @@ unsafe extern "C" fn doContent(
                     return crate::expat_h::XML_ERROR_NONE;
                 }
                 crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                    let mut charDataHandler: crate::expat_h::XML_CharacterDataHandler =
-                        (*parser).m_characterDataHandler;
-                    if charDataHandler.is_some() {
+                    let charDataHandler = CHARACTER_DATA_HANDLERS
+                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .get(&(parser as usize))
+                        .cloned();
+                    if let Some(charDataHandler) = charDataHandler {
                         if (*enc).isUtf8 == 0 {
                             loop {
                                 let mut dataPtr_0: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
@@ -6185,7 +6251,7 @@ unsafe extern "C" fn doContent(
                                         (*parser).m_dataBufEnd as *mut ICHAR,
                                     );
                                 *eventEndPP = s;
-                                charDataHandler.expect("non-null function pointer")(
+                                charDataHandler.invoke(
                                     (*parser).m_handlerArg,
                                     (*parser).m_dataBuf,
                                     dataPtr_0.offset_from((*parser).m_dataBuf as *mut ICHAR)
@@ -6205,7 +6271,7 @@ unsafe extern "C" fn doContent(
                                 *eventPP = s;
                             }
                         } else {
-                            charDataHandler.expect("non-null function pointer")(
+                            charDataHandler.invoke(
                                 (*parser).m_handlerArg,
                                 s as *const crate::expat_external_h::XML_Char,
                                 (next as *const crate::expat_external_h::XML_Char)
@@ -7186,11 +7252,9 @@ unsafe extern "C" fn doCdataSection(
                         .expect("non-null function pointer")(
                         (*parser).m_handlerArg
                     );
-                } else if false && (*parser).m_characterDataHandler.is_some() {
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
+                } else if false && (*parser).m_characterDataHandler {
+                    callCharacterDataHandler(
+                        parser,
                         (*parser).m_dataBuf,
                         0 as ::core::ffi::c_int,
                     );
@@ -7208,24 +7272,22 @@ unsafe extern "C" fn doCdataSection(
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                if (*parser).m_characterDataHandler.is_some() {
+                if (*parser).m_characterDataHandler {
                     let mut c: crate::expat_external_h::XML_Char =
                         0xa as crate::expat_external_h::XML_Char;
-                    (*parser)
-                        .m_characterDataHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        &raw mut c,
-                        1 as ::core::ffi::c_int,
-                    );
+                    callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
                 } else if (*parser).m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                let mut charDataHandler: crate::expat_h::XML_CharacterDataHandler =
-                    (*parser).m_characterDataHandler;
-                if charDataHandler.is_some() {
+                let charDataHandler = CHARACTER_DATA_HANDLERS
+                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .get(&(parser as usize))
+                    .cloned();
+                if let Some(charDataHandler) = charDataHandler {
                     if (*enc).isUtf8 == 0 {
                         loop {
                             let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
@@ -7238,7 +7300,7 @@ unsafe extern "C" fn doCdataSection(
                                     (*parser).m_dataBufEnd as *mut ICHAR,
                                 );
                             *eventEndPP = next;
-                            charDataHandler.expect("non-null function pointer")(
+                            charDataHandler.invoke(
                                 (*parser).m_handlerArg,
                                 (*parser).m_dataBuf,
                                 dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
@@ -7257,7 +7319,7 @@ unsafe extern "C" fn doCdataSection(
                             *eventPP = s;
                         }
                     } else {
-                        charDataHandler.expect("non-null function pointer")(
+                        charDataHandler.invoke(
                             (*parser).m_handlerArg,
                             s as *const crate::expat_external_h::XML_Char,
                             (next as *const crate::expat_external_h::XML_Char)
