@@ -2695,6 +2695,20 @@ struct UnknownEncodingMemory {
     info: Option<crate::expat_h::XML_Encoding>,
 }
 
+impl UnknownEncodingMemory {
+    /// The callback result is retained only after its tokenizer state has
+    /// been written into the reserved slot.  `info` is that initialization
+    /// marker, so observing it permits a reference to the owned value without
+    /// exposing the slot address to parser code.
+    fn initialized_encoding(&self) -> Option<&crate::src::xmltok::unknown_encoding> {
+        self.info.as_ref()?;
+        let storage = self.storage.first()?;
+        // `handleUnknownEncoding` writes this one reserved slot before it
+        // stores `info`.  The vector is never reallocated after that point.
+        Some(unsafe { storage.assume_init_ref() })
+    }
+}
+
 struct InternalEntityStorage {
     // A one-element vector supplies a stable address without exposing a raw
     // pointer in parser-owned state, and lets allocation failure remain an
@@ -8557,57 +8571,186 @@ pub unsafe extern "C" fn XML_MemFree_ffi(
 ) {
     XML_MemFree(parser, ptr)
 }
-pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Parser) {
-    if parser.is_null() {
-        return;
+enum DefaultCurrentEvent {
+    ParserInput { start: usize, bytes: Vec<u8> },
+    InternalEntity(Vec<crate::expat_external_h::XML_Char>),
+}
+
+struct DefaultCurrentEncoding {
+    encoding: crate::src::xmltok::ENCODING,
+    unknown: Option<crate::src::xmltok::unknown_encoding>,
+}
+
+/// Copies an internal-entity event while the shared DTD cell is observed.
+/// Returning owned text prevents that cell borrow from spanning a callback.
+fn shared_default_current_event(
+    dtd: &SharedDtd,
+    entity: &OPEN_INTERNAL_ENTITY,
+) -> Option<Vec<crate::expat_external_h::XML_Char>> {
+    let text = unsafe { shared_entity_text_chars(dtd, entity.eventText, entity.eventTextLen) }?;
+    let start = entity.internalEventPtr?;
+    let end = entity
+        .internalEventEndPtr
+        .and_then(|length| start.checked_add(length))?;
+    Some(text.get(start..end)?.to_vec())
+}
+
+fn default_current_event(parser: &XML_ParserStruct) -> Option<DefaultCurrentEvent> {
+    if let Some(index) = parser.m_openInternalEntities {
+        let dtd = parser.m_dtd.as_ref()?;
+        let open_entity = parser.m_activeInternalEntities.get(index)?.node();
+        return shared_default_current_event(dtd, open_entity)
+            .map(DefaultCurrentEvent::InternalEntity);
     }
-    if (*parser).m_defaultHandler {
-        let open_entity = {
-            let parser_state = &mut *parser;
-            parser_state
-                .m_openInternalEntities
-                .and_then(|index| parser_state.m_activeInternalEntities.get(index))
-        };
-        if let Some(open_entity) = open_entity {
-            let (event_start, event_end) = {
-                let parser_state = &*parser;
-                let event = parser_state.m_dtd.as_ref().and_then(|dtd| {
-                    let text = shared_entity_text_chars(
-                        dtd,
-                        open_entity.node().eventText,
-                        open_entity.node().eventTextLen,
-                    )?;
-                    let start = open_entity.node().internalEventPtr?;
-                    let end = open_entity
-                        .node()
-                        .internalEventEndPtr
-                        .and_then(|len| start.checked_add(len))?;
-                    text.get(start..end)
-                });
-                event.map_or((::core::ptr::null(), ::core::ptr::null()), |event| {
-                    (event.as_ptr(), event.as_ptr().wrapping_add(event.len()))
-                })
-            };
-            reportDefault(
-                parser,
-                internal_encoding((*parser).m_internalEncoding) as *const _,
-                event_start,
-                event_end,
-            );
-        } else {
-            reportDefault(
-                parser,
-                parser_encoding(parser),
-                parser_event_start!(&*parser).unwrap_or(::core::ptr::null()),
-                parser_event_end!(parser),
-            );
+
+    let start = parser.m_eventPtr?;
+    let end = parser.m_eventEndPtr?;
+    parser
+        .m_buffer
+        .bytes
+        .as_deref()?
+        .get(start..end)
+        .map(|event| DefaultCurrentEvent::ParserInput {
+            start,
+            bytes: event.to_vec(),
+        })
+}
+
+fn default_current_encoding(parser: &XML_ParserStruct) -> Option<DefaultCurrentEncoding> {
+    match parser.m_encoding {
+        EncodingState::Initial => {
+            let encoding = parser
+                .m_initEncoding
+                .selected_encoding
+                .and_then(|index| crate::src::xmltok::initial_known_encoding(index, parser.m_ns != 0))
+                .map(|encoding| encoding.enc)
+                .unwrap_or(parser.m_initEncoding.initEnc);
+            Some(DefaultCurrentEncoding {
+                encoding,
+                unknown: None,
+            })
+        }
+        EncodingState::Unknown => {
+            let unknown = parser.m_unknownEncodingMem.as_ref()?.initialized_encoding()?;
+            Some(DefaultCurrentEncoding {
+                encoding: unknown.normal.enc,
+                unknown: Some(*unknown),
+            })
         }
     }
+}
+
+/// Invoke a registered default handler only after the parser borrow used to
+/// construct the event has ended.  The callback receives a transient slice
+/// whose owner is retained by this call, matching Expat's callback lifetime.
+fn invoke_default_current_handler(
+    parser: &XML_ParserStruct,
+    callback: &dyn DefaultCallback,
+    data: &[crate::expat_external_h::XML_Char],
+) {
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            data.as_ptr(),
+            data.len() as ::core::ffi::c_int,
+        );
+    }
+}
+
+fn xml_default_current_impl(parser: &mut XML_ParserStruct) {
+    if !parser.m_defaultHandler {
+        return;
+    }
+
+    let parser_key = std::ptr::from_ref(&*parser).addr();
+    let callback = DEFAULT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&parser_key)
+        .cloned();
+    let Some(callback) = callback else {
+        return;
+    };
+    let Some(event) = default_current_event(parser) else {
+        return;
+    };
+
+    match event {
+        DefaultCurrentEvent::InternalEntity(chars) => {
+            invoke_default_current_handler(parser, callback.as_ref(), &chars);
+        }
+        DefaultCurrentEvent::ParserInput { start, bytes } => {
+            let Some(encoding) = default_current_encoding(parser) else {
+                return;
+            };
+            if encoding.encoding.isUtf8 != 0 {
+                invoke_default_current_handler(
+                    parser,
+                    callback.as_ref(),
+                    bytemuck::cast_slice(&bytes),
+                );
+                return;
+            }
+
+            let mut input_offset = 0usize;
+            loop {
+                let (conversion, consumed, written) = {
+                    let Some(input) = bytes.get(input_offset..) else {
+                        return;
+                    };
+                    let Some(output) = parser
+                        .m_dataBuf
+                        .chars
+                        .get_mut(..parser.m_dataBufEnd)
+                    else {
+                        return;
+                    };
+                    crate::src::xmltok::convert_to_utf8_slice(
+                        &encoding.encoding,
+                        encoding.unknown.as_ref(),
+                        input,
+                        bytemuck::cast_slice_mut(output),
+                    )
+                };
+                let Some(next_input_offset) = input_offset.checked_add(consumed) else {
+                    return;
+                };
+                let Some(event_cursor) = start.checked_add(next_input_offset) else {
+                    return;
+                };
+                let Some(data) = parser.m_dataBuf.chars.get(..written) else {
+                    return;
+                };
+
+                parser.m_eventEndPtr = Some(event_cursor);
+                invoke_default_current_handler(parser, callback.as_ref(), data);
+                parser.m_eventPtr = Some(event_cursor);
+                input_offset = next_input_offset;
+
+                if conversion == crate::src::xmltok::XML_CONVERT_COMPLETED
+                    || conversion == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+                {
+                    return;
+                }
+                if consumed == 0 && written == 0 {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+pub unsafe fn XML_DefaultCurrent(parser: &mut XML_ParserStruct) {
+    xml_default_current_impl(parser)
 }
 #[export_name = "XML_DefaultCurrent"]
 
 pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
-    XML_DefaultCurrent(parser)
+    let Some(parser) = parser.as_mut() else {
+        return;
+    };
+    xml_default_current_impl(parser)
 }
 pub unsafe extern "C" fn XML_ErrorString(
     mut code: crate::expat_h::XML_Error,

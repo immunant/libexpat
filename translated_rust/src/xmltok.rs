@@ -1067,6 +1067,21 @@ fn convert_to_utf8_window(
     }
 }
 
+/// Converts one already-bounded input window without recreating C cursors.
+///
+/// The optional unknown-encoding state is supplied by its parser-owned
+/// storage.  Built-in encodings do not need it; an unknown converter is only
+/// selected when the caller has retained the initialized state that owns its
+/// registration key.
+pub(crate) fn convert_to_utf8_slice(
+    encoding: &ENCODING,
+    unknown_encoding: Option<&unknown_encoding>,
+    input: &[u8],
+    output: &mut [u8],
+) -> (XML_Convert_Result, usize, usize) {
+    convert_to_utf8_window(encoding.utf8Convert, unknown_encoding, input, output)
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -18034,7 +18049,10 @@ fn init_scan_action(
     }
 }
 
-fn initial_known_encoding(index: usize, namespace_aware: bool) -> Option<&'static normal_encoding> {
+pub(crate) fn initial_known_encoding(
+    index: usize,
+    namespace_aware: bool,
+) -> Option<&'static normal_encoding> {
     let encoding = match (namespace_aware, index) {
         (false, 0) => &latin1_encoding,
         (false, 1) => &ascii_encoding,
