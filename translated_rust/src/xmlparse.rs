@@ -1396,7 +1396,7 @@ struct TwoXmlCharCallbackEvent<'a> {
 trait TwoXmlCharCallback: Send + Sync + std::any::Any {}
 
 impl TwoXmlCharCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
@@ -1974,14 +1974,14 @@ impl TwoXmlCharCallbackAdapter {
 
 /// Converts a registered two-string C callback into typed parser dispatch.
 ///
-/// The unsafe ABI call is isolated at callback registration.  Invocation
+/// The ABI conversion is isolated at callback registration.  Invocation
 /// thereafter accepts only live parser and XML-character views.
 fn two_xml_char_callback_adapter(
     callback: std::sync::Arc<dyn TwoXmlCharCallback>,
 ) -> std::sync::Arc<dyn Fn(TwoXmlCharCallbackEvent<'_>) + Send + Sync> {
     std::sync::Arc::new(move |event: TwoXmlCharCallbackEvent<'_>| {
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *const crate::expat_external_h::XML_Char,
@@ -1989,13 +1989,11 @@ fn two_xml_char_callback_adapter(
         >() else {
             return;
         };
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event.first.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event.second.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            );
-        }
+        callback(
+            handler_arg_from_state!(event.parser),
+            event.first.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event.second.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+        );
     })
 }
 
@@ -10040,6 +10038,21 @@ fn set_processing_instruction_handler(
         }
     }
 }
+
+fn set_processing_instruction_handler_callback<Callback>(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    handler: Option<Callback>,
+) where
+    Callback: TwoXmlCharCallback + 'static,
+{
+    set_processing_instruction_handler(
+        parser,
+        parser_address,
+        processing_instruction_handler_registration(handler),
+    )
+}
+
 #[export_name = "XML_SetProcessingInstructionHandler"]
 
 pub unsafe extern "C" fn XML_SetProcessingInstructionHandler_ffi(
@@ -10050,9 +10063,17 @@ pub unsafe extern "C" fn XML_SetProcessingInstructionHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let registration = processing_instruction_handler_registration(handler);
+    // The adapter supplies valid, synchronous C arguments from its typed
+    // event, so its retained callback representation can be safe to invoke.
+    let handler: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    > = unsafe { ::core::mem::transmute(handler) };
     let parser = unsafe { &mut *parser };
-    set_processing_instruction_handler(parser, parser_address, registration)
+    set_processing_instruction_handler_callback(parser, parser_address, handler)
 }
 fn XML_SetCommentHandler(
     handler_enabled: &mut bool,
@@ -10502,6 +10523,25 @@ fn set_namespace_decl_handlers(
         }
     }
 }
+
+fn set_namespace_decl_handler_callbacks<StartCallback, EndCallback>(
+    start_handler_enabled: &mut bool,
+    end_handler_enabled: &mut bool,
+    parser_key: usize,
+    start: Option<StartCallback>,
+    end: Option<EndCallback>,
+) where
+    StartCallback: TwoXmlCharCallback + 'static,
+    EndCallback: EndNamespaceDeclCallback + 'static,
+{
+    set_namespace_decl_handlers(
+        start_handler_enabled,
+        end_handler_enabled,
+        parser_key,
+        namespace_decl_handler_registrations(start, end),
+    )
+}
+
 #[export_name = "XML_SetNamespaceDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetNamespaceDeclHandler_ffi(
@@ -10513,13 +10553,20 @@ pub unsafe extern "C" fn XML_SetNamespaceDeclHandler_ffi(
         return;
     }
     let parser_key = parser.addr();
-    let registrations = namespace_decl_handler_registrations(start, end);
+    let start: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    > = unsafe { ::core::mem::transmute(start) };
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    set_namespace_decl_handlers(
+    set_namespace_decl_handler_callbacks(
         &mut parser.m_startNamespaceDeclHandler,
         &mut parser.m_endNamespaceDeclHandler,
         parser_key,
-        registrations,
+        start,
+        end,
     );
 }
 fn set_start_namespace_decl_handler(
@@ -10541,6 +10588,21 @@ fn set_start_namespace_decl_handler(
         }
     }
 }
+
+fn set_start_namespace_decl_handler_callback<Callback>(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    start: Option<Callback>,
+) where
+    Callback: TwoXmlCharCallback + 'static,
+{
+    set_start_namespace_decl_handler(
+        parser,
+        parser_address,
+        start_namespace_decl_handler_registration(start),
+    )
+}
+
 #[export_name = "XML_SetStartNamespaceDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler_ffi(
@@ -10551,9 +10613,15 @@ pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let registration = start_namespace_decl_handler_registration(start);
+    let start: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    > = unsafe { ::core::mem::transmute(start) };
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    set_start_namespace_decl_handler(parser, parser_address, registration)
+    set_start_namespace_decl_handler_callback(parser, parser_address, start)
 }
 fn set_end_namespace_decl_handler(
     parser: &mut XML_ParserStruct,
