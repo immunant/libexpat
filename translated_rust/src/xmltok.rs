@@ -527,14 +527,84 @@ pub enum NameLength {
     Big2,
 }
 
-pub unsafe fn name_length(
-    enc: *const crate::src::xmltok::ENCODING,
-    ptr: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    match (*enc).nameLength {
-        NameLength::Normal => normal_nameLength(enc, ptr),
-        NameLength::Little2 => little2_nameLength(enc, ptr),
-        NameLength::Big2 => big2_nameLength(enc, ptr),
+impl NameLength {
+    /// Measures the name prefix of a tokenizer-bounded byte range.  The
+    /// caller retains ownership of the range, so this never reconstructs a
+    /// slice from a raw cursor.
+    pub(crate) fn measure(
+        self,
+        encoding: &normal_encoding,
+        source: AttributeSource<'_>,
+    ) -> ::core::ffi::c_int {
+        match source {
+            AttributeSource::Bytes(bytes) => {
+                self.measure_with(encoding, bytes.len(), |offset| bytes.get(offset).copied())
+            }
+            AttributeSource::Chars(chars) => self.measure_with(encoding, chars.len(), |offset| {
+                chars.get(offset).map(|&byte| byte as u8)
+            }),
+        }
+    }
+
+    fn measure_with(
+        self,
+        encoding: &normal_encoding,
+        input_len: usize,
+        byte_at: impl Fn(usize) -> Option<u8>,
+    ) -> ::core::ffi::c_int {
+        let mut offset = 0usize;
+        loop {
+            let Some(first) = byte_at(offset) else {
+                break;
+            };
+            let byte_type = match self {
+                Self::Normal => encoding.type_0[first as usize] as ::core::ffi::c_int,
+                Self::Little2 => {
+                    let Some(second_offset) = offset.checked_add(1) else {
+                        break;
+                    };
+                    let Some(second) = byte_at(second_offset) else {
+                        break;
+                    };
+                    if second == 0 {
+                        encoding.type_0[first as usize] as ::core::ffi::c_int
+                    } else {
+                        unicode_byte_type(second as ::core::ffi::c_char, first as ::core::ffi::c_char)
+                    }
+                }
+                Self::Big2 => {
+                    let Some(second_offset) = offset.checked_add(1) else {
+                        break;
+                    };
+                    let Some(second) = byte_at(second_offset) else {
+                        break;
+                    };
+                    if first == 0 {
+                        encoding.type_0[second as usize] as ::core::ffi::c_int
+                    } else {
+                        unicode_byte_type(first as ::core::ffi::c_char, second as ::core::ffi::c_char)
+                    }
+                }
+            };
+            let width = match byte_type {
+                5 => 2,
+                6 => 3,
+                7 => 4,
+                29 | 22 | 23 | 24 | 25 | 26 | 27 => match self {
+                    Self::Normal => 1,
+                    Self::Little2 | Self::Big2 => 2,
+                },
+                _ => break,
+            };
+            let Some(next) = offset.checked_add(width) else {
+                break;
+            };
+            if next > input_len {
+                break;
+            }
+            offset = next;
+        }
+        ::core::ffi::c_int::try_from(offset).unwrap_or(::core::ffi::c_int::MAX)
     }
 }
 
