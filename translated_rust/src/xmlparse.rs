@@ -3814,204 +3814,206 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     if parser.is_null() {
         return;
     }
+    let parser_key = parser as usize;
+    let parser = &mut *parser;
     START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     END_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     END_NAMESPACE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     COMMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     ELEMENT_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     ATTLIST_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     UNPARSED_ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     XML_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
+        .remove(&parser_key);
     EXTERNAL_ENTITY_REF_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .remove(&(parser as usize));
-    tagList = (*parser).m_tagStack;
+        .remove(&parser_key);
+    tagList = parser.m_tagStack;
     loop {
         let mut p: *mut TAG = ::core::ptr::null_mut::<TAG>();
         if tagList.is_null() {
-            if (*parser).m_freeTagList.is_null() {
+            if parser.m_freeTagList.is_null() {
                 break;
             }
-            tagList = (*parser).m_freeTagList;
-            (*parser).m_freeTagList = ::core::ptr::null_mut::<TAG>();
+            tagList = parser.m_freeTagList;
+            parser.m_freeTagList = ::core::ptr::null_mut::<TAG>();
         }
         p = tagList;
         tagList = (*tagList).parent as *mut TAG;
         expat_free(
-            parser,
+            parser as *mut XML_ParserStruct,
             (*p).buf.raw as *mut ::core::ffi::c_void,
             1942 as ::core::ffi::c_int,
         );
-        destroyBindings((*p).bindings, parser);
+        destroyBindings((*p).bindings, parser as *mut XML_ParserStruct);
         expat_free(
-            parser,
+            parser as *mut XML_ParserStruct,
             p as *mut ::core::ffi::c_void,
             1944 as ::core::ffi::c_int,
         );
     }
-    entityList = (*parser).m_openInternalEntities;
+    entityList = parser.m_openInternalEntities;
     loop {
         let mut openEntity: *mut OPEN_INTERNAL_ENTITY =
             ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         if entityList.is_null() {
-            if (*parser).m_freeInternalEntities.is_null() {
+            if parser.m_freeInternalEntities.is_null() {
                 break;
             }
-            entityList = (*parser).m_freeInternalEntities;
-            (*parser).m_freeInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+            entityList = parser.m_freeInternalEntities;
+            parser.m_freeInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         }
         openEntity = entityList;
         entityList = (*entityList).next as *mut OPEN_INTERNAL_ENTITY;
         expat_free(
-            parser,
+            parser as *mut XML_ParserStruct,
             openEntity as *mut ::core::ffi::c_void,
             1958 as ::core::ffi::c_int,
         );
     }
-    entityList = (*parser).m_openAttributeEntities;
+    entityList = parser.m_openAttributeEntities;
     loop {
         let mut openEntity_0: *mut OPEN_INTERNAL_ENTITY =
             ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         if entityList.is_null() {
-            if (*parser).m_freeAttributeEntities.is_null() {
+            if parser.m_freeAttributeEntities.is_null() {
                 break;
             }
-            entityList = (*parser).m_freeAttributeEntities;
-            (*parser).m_freeAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+            entityList = parser.m_freeAttributeEntities;
+            parser.m_freeAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         }
         openEntity_0 = entityList;
         entityList = (*entityList).next as *mut OPEN_INTERNAL_ENTITY;
         expat_free(
-            parser,
+            parser as *mut XML_ParserStruct,
             openEntity_0 as *mut ::core::ffi::c_void,
             1972 as ::core::ffi::c_int,
         );
     }
-    entityList = (*parser).m_openValueEntities;
+    entityList = parser.m_openValueEntities;
     loop {
         let mut openEntity_1: *mut OPEN_INTERNAL_ENTITY =
             ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         if entityList.is_null() {
-            if (*parser).m_freeValueEntities.is_null() {
+            if parser.m_freeValueEntities.is_null() {
                 break;
             }
-            entityList = (*parser).m_freeValueEntities;
-            (*parser).m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+            entityList = parser.m_freeValueEntities;
+            parser.m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         }
         openEntity_1 = entityList;
         entityList = (*entityList).next as *mut OPEN_INTERNAL_ENTITY;
         expat_free(
-            parser,
+            parser as *mut XML_ParserStruct,
             openEntity_1 as *mut ::core::ffi::c_void,
             1986 as ::core::ffi::c_int,
         );
     }
-    destroyBindings((*parser).m_freeBindingList, parser);
-    destroyBindings((*parser).m_inheritedBindings, parser);
-    poolDestroy(&raw mut (*parser).m_tempPool);
-    poolDestroy(&raw mut (*parser).m_temp2Pool);
+    destroyBindings(parser.m_freeBindingList, parser as *mut XML_ParserStruct);
+    destroyBindings(parser.m_inheritedBindings, parser as *mut XML_ParserStruct);
+    poolDestroy(&raw mut parser.m_tempPool);
+    poolDestroy(&raw mut parser.m_temp2Pool);
     expat_free(
-        parser,
-        (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
+        parser as *mut XML_ParserStruct,
+        parser.m_protocolEncodingName as *mut ::core::ffi::c_void,
         1992 as ::core::ffi::c_int,
     );
-    if (*parser).m_isParamEntity == 0 && !(*parser).m_dtd.is_null() {
+    if parser.m_isParamEntity == 0 && !parser.m_dtd.is_null() {
         dtdDestroy(
-            (*parser).m_dtd,
-            (*parser).m_parentParser.is_null() as ::core::ffi::c_int as crate::expat_h::XML_Bool,
-            parser,
+            parser.m_dtd,
+            parser.m_parentParser.is_null() as ::core::ffi::c_int as crate::expat_h::XML_Bool,
+            parser as *mut XML_ParserStruct,
         );
     }
     expat_free(
-        parser,
-        (*parser).m_atts as *mut ::core::ffi::c_void,
+        parser as *mut XML_ParserStruct,
+        parser.m_atts as *mut ::core::ffi::c_void,
         2002 as ::core::ffi::c_int,
     );
     expat_free(
-        parser,
-        (*parser).m_groupConnector as *mut ::core::ffi::c_void,
+        parser as *mut XML_ParserStruct,
+        parser.m_groupConnector as *mut ::core::ffi::c_void,
         2006 as ::core::ffi::c_int,
     );
-    (*parser).m_mem.free_fcn.expect("non-null function pointer")(
-        (*parser).m_buffer as *mut ::core::ffi::c_void,
+    parser.m_mem.free_fcn.expect("non-null function pointer")(
+        parser.m_buffer as *mut ::core::ffi::c_void,
     );
     expat_free(
-        parser,
-        (*parser).m_dataBuf as *mut ::core::ffi::c_void,
+        parser as *mut XML_ParserStruct,
+        parser.m_dataBuf as *mut ::core::ffi::c_void,
         2011 as ::core::ffi::c_int,
     );
     expat_free(
-        parser,
-        (*parser).m_nsAtts as *mut ::core::ffi::c_void,
+        parser as *mut XML_ParserStruct,
+        parser.m_nsAtts as *mut ::core::ffi::c_void,
         2012 as ::core::ffi::c_int,
     );
     expat_free(
-        parser,
-        (*parser).m_unknownEncodingMem,
+        parser as *mut XML_ParserStruct,
+        parser.m_unknownEncodingMem,
         2013 as ::core::ffi::c_int,
     );
-    if (*parser).m_unknownEncodingRelease.is_some() {
-        (*parser)
+    if parser.m_unknownEncodingRelease.is_some() {
+        parser
             .m_unknownEncodingRelease
-            .expect("non-null function pointer")((*parser).m_unknownEncodingData);
+            .expect("non-null function pointer")(parser.m_unknownEncodingData);
     }
     expat_free(
-        parser,
-        parser as *mut ::core::ffi::c_void,
+        parser as *mut XML_ParserStruct,
+        parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
         2016 as ::core::ffi::c_int,
     );
 }
