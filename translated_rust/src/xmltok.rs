@@ -23013,55 +23013,60 @@ pub extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
 pub unsafe extern "C" fn XmlSizeOfUnknownEncoding_ffi() -> ::core::ffi::c_int {
     XmlSizeOfUnknownEncoding()
 }
-unsafe extern "C" fn unknown_isName(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
+
+macro_rules! unknown_code_point {
+    ($enc:expr, $p:expr) => {{
+        unsafe {
+            let uenc = &*($enc as *const unknown_encoding);
+            uenc.convert.expect("non-null function pointer")(uenc.userData, $p)
+        }
+    }};
+}
+
+macro_rules! naming_bitmap_contains {
+    ($page_table:expr, $c:expr) => {{
+        unsafe {
+            (namingBitmap[(((*$page_table.add(($c >> 8 as ::core::ffi::c_int) as usize)
+                as ::core::ffi::c_int)
+                << 3 as ::core::ffi::c_int)
+                + (($c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
+                as usize]
+                & (1 as ::core::ffi::c_uint)
+                    << ($c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
+                as ::core::ffi::c_int
+        }
+    }};
+}
+
+extern "C" fn unknown_isName(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let c = unknown_code_point!(enc, p);
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return 0 as ::core::ffi::c_int;
     }
-    return (namingBitmap[(((namePages[(c >> 8 as ::core::ffi::c_int) as usize]
-        as ::core::ffi::c_int)
-        << 3 as ::core::ffi::c_int)
-        + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
-        as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
-        as ::core::ffi::c_int;
+    naming_bitmap_contains!(namePages.as_ptr(), c)
 }
 
-unsafe extern "C" fn unknown_isNmstrt(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn unknown_isNmstrt(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let c = unknown_code_point!(enc, p);
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return 0 as ::core::ffi::c_int;
     }
-    return (namingBitmap[(((nmstrtPages[(c >> 8 as ::core::ffi::c_int) as usize]
-        as ::core::ffi::c_int)
-        << 3 as ::core::ffi::c_int)
-        + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
-        as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
-        as ::core::ffi::c_int;
+    naming_bitmap_contains!(nmstrtPages.as_ptr(), c)
 }
 
-unsafe extern "C" fn unknown_isInvalid(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn unknown_isInvalid(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
-    return (c & !(0xffff as ::core::ffi::c_int) != 0
-        || checkCharRefNumber(c) < 0 as ::core::ffi::c_int) as ::core::ffi::c_int;
+    let c = unknown_code_point!(enc, p);
+    (c & !(0xffff as ::core::ffi::c_int) != 0 || checkCharRefNumber(c) < 0 as ::core::ffi::c_int)
+        as ::core::ffi::c_int
 }
 
 unsafe extern "C" fn unknown_toUtf8(
