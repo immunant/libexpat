@@ -1997,46 +1997,6 @@ pub mod xmltok_impl_c {
         normal_scan_atts_result(partial, None)
     }
 
-    pub unsafe extern "C" fn normal_scanAtts(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = normal_scan_atts_impl(
-            normal,
-            input,
-            |kind, offset, width| {
-                let kind = match kind {
-                    NormalScanAttsCharCheck::Invalid => NormalCharCheck::Invalid,
-                    NormalScanAttsCharCheck::Name => NormalCharCheck::Name,
-                    NormalScanAttsCharCheck::NameStart => NormalCharCheck::NameStart,
-                };
-                normal_char_check(normal, kind, width, enc, ptr.add(offset), &input[offset..])
-            },
-            |ref_start| {
-                let mut ref_end = ptr;
-                let token = normal_scanRef(enc, ptr.add(ref_start), end, &mut ref_end);
-                let next = ref_end.offset_from(ptr);
-                if next < 0 || next as usize > input.len() {
-                    (crate::src::xmltok::XML_TOK_INVALID_1, ref_start)
-                } else {
-                    (token, next as usize)
-                }
-            },
-        );
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
-    }
-
     enum NormalScanLtCharCheck {
         Invalid,
         NameStart,
@@ -2311,7 +2271,42 @@ pub mod xmltok_impl_c {
                 normal_scanEndTag(enc, ptr.add(start), end, nextTokPtr)
             }
             NormalScanLtAction::Attributes(start) => {
-                normal_scanAtts(enc, ptr.add(start), end, nextTokPtr)
+                let attributes = &input[start..];
+                // `c_char` is a one-byte integer type, so this keeps the
+                // checked bounds of `attributes` while matching the shared
+                // entity-reference scanner's input representation.
+                let attributes_as_chars = ::core::slice::from_raw_parts(
+                    attributes.as_ptr().cast::<::core::ffi::c_char>(),
+                    attributes.len(),
+                );
+                let result = normal_scan_atts_impl(
+                    normal,
+                    attributes,
+                    |kind, offset, width| {
+                        let kind = match kind {
+                            NormalScanAttsCharCheck::Invalid => NormalCharCheck::Invalid,
+                            NormalScanAttsCharCheck::Name => NormalCharCheck::Name,
+                            NormalScanAttsCharCheck::NameStart => NormalCharCheck::NameStart,
+                        };
+                        normal_char_check(
+                            normal,
+                            kind,
+                            width,
+                            enc,
+                            ptr.add(start + offset),
+                            &attributes[offset..],
+                        )
+                    },
+                    |ref_start| {
+                        let (token, next) =
+                            normal_scan_ref_impl(normal, &attributes_as_chars[ref_start..]);
+                        (token, next.map_or(0, |offset| ref_start + offset))
+                    },
+                );
+                if let Some(next) = result.next {
+                    *nextTokPtr = ptr.add(start + next);
+                }
+                result.token
             }
         }
     }
@@ -11724,7 +11719,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;
 pub use crate::src::xmltok::xmltok_impl_c::normal_prologTok;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanComment;
