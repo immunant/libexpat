@@ -2034,7 +2034,10 @@ pub struct XML_ParserStruct {
     pub m_defaultExpandInternalEntities: crate::expat_h::XML_Bool,
     pub m_tagLevel: ::core::ffi::c_int,
     pub m_declEntity: *mut ENTITY,
-    pub m_doctypeName: *const crate::expat_external_h::XML_Char,
+    // The doctype name remains in the temporary pool until the corresponding
+    // declaration callback.  A pool location stays valid while later tokens
+    // grow that pool, including for a valid empty string at a slab boundary.
+    pub m_doctypeName: Option<PoolStringRef>,
     pub m_doctypeSysid: *const crate::expat_external_h::XML_Char,
     pub m_doctypePubid: *const crate::expat_external_h::XML_Char,
     pub m_declAttributeType: *const crate::expat_external_h::XML_Char,
@@ -3574,7 +3577,7 @@ fn initial_parser_struct(
         m_defaultExpandInternalEntities: crate::expat_h::XML_TRUE,
         m_tagLevel: 0,
         m_declEntity: ::core::ptr::null_mut::<ENTITY>(),
-        m_doctypeName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        m_doctypeName: None,
         m_doctypeSysid: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_doctypePubid: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_declAttributeType: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
@@ -3998,7 +4001,7 @@ fn parser_init(
     parser.m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     parser.m_declAttributeId = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     parser.m_declEntity = ::core::ptr::null_mut::<ENTITY>();
-    parser.m_doctypeName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_doctypeName = None;
     parser.m_doctypeSysid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     parser.m_doctypePubid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     parser.m_declAttributeType = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -10349,15 +10352,21 @@ unsafe extern "C" fn doProlog(
                                     }
                                     4 => {
                                         if (*parser).m_startDoctypeDeclHandler {
-                                            (*parser).m_doctypeName = poolStoreString(
+                                            let doctype_name = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
                                                 s,
                                                 next,
                                             );
-                                            if (*parser).m_doctypeName.is_null() {
+                                            if doctype_name.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
+                                            let Some(doctype_name) =
+                                                (*parser).m_tempPool.start_ref(false)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
+                                            (*parser).m_doctypeName = Some(doctype_name);
                                             (*parser).m_tempPool.commit();
                                             (*parser).m_doctypePubid = ::core::ptr::null::<
                                                 crate::expat_external_h::XML_Char,
@@ -10383,18 +10392,37 @@ unsafe extern "C" fn doProlog(
                                                 .get(&(parser as usize))
                                                 .cloned();
                                             if let Some(callback) = callback {
+                                                let (
+                                                    doctype_name,
+                                                    handler_arg,
+                                                    doctype_sysid,
+                                                    doctype_pubid,
+                                                ) = {
+                                                    let parser_ref = &mut *parser;
+                                                    let doctype_name = parser_ref
+                                                        .m_doctypeName
+                                                        .and_then(|name| {
+                                                            parser_ref.m_tempPool.chars_from(name)
+                                                        })
+                                                        .map_or(::core::ptr::null(), |chars| {
+                                                            chars.as_ptr()
+                                                        });
+                                                    (
+                                                        doctype_name,
+                                                        parser_ref.m_handlerArg,
+                                                        parser_ref.m_doctypeSysid,
+                                                        parser_ref.m_doctypePubid,
+                                                    )
+                                                };
                                                 callback.invoke(
-                                                    (*parser).m_handlerArg,
-                                                    (*parser).m_doctypeName,
-                                                    (*parser).m_doctypeSysid,
-                                                    (*parser).m_doctypePubid,
+                                                    handler_arg,
+                                                    doctype_name,
+                                                    doctype_sysid,
+                                                    doctype_pubid,
                                                     1 as ::core::ffi::c_int,
                                                 );
                                             }
-                                            (*parser).m_doctypeName = ::core::ptr::null::<
-                                                crate::expat_external_h::XML_Char,
-                                            >(
-                                            );
+                                            (*parser).m_doctypeName = None;
                                             poolClear(&raw mut (*parser).m_tempPool);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
@@ -10469,7 +10497,7 @@ unsafe extern "C" fn doProlog(
                                         {
                                             return crate::expat_h::XML_ERROR_INVALID_TOKEN;
                                         }
-                                        if !(*parser).m_doctypeName.is_null() {
+                                        if (*parser).m_doctypeName.is_some() {
                                             let callback = START_DOCTYPE_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -10481,11 +10509,33 @@ unsafe extern "C" fn doProlog(
                                                 .get(&(parser as usize))
                                                 .cloned();
                                             if let Some(callback) = callback {
+                                                let (
+                                                    doctype_name,
+                                                    handler_arg,
+                                                    doctype_sysid,
+                                                    doctype_pubid,
+                                                ) = {
+                                                    let parser_ref = &mut *parser;
+                                                    let doctype_name = parser_ref
+                                                        .m_doctypeName
+                                                        .and_then(|name| {
+                                                            parser_ref.m_tempPool.chars_from(name)
+                                                        })
+                                                        .map_or(::core::ptr::null(), |chars| {
+                                                            chars.as_ptr()
+                                                        });
+                                                    (
+                                                        doctype_name,
+                                                        parser_ref.m_handlerArg,
+                                                        parser_ref.m_doctypeSysid,
+                                                        parser_ref.m_doctypePubid,
+                                                    )
+                                                };
                                                 callback.invoke(
-                                                    (*parser).m_handlerArg,
-                                                    (*parser).m_doctypeName,
-                                                    (*parser).m_doctypeSysid,
-                                                    (*parser).m_doctypePubid,
+                                                    handler_arg,
+                                                    doctype_name,
+                                                    doctype_sysid,
+                                                    doctype_pubid,
                                                     0 as ::core::ffi::c_int,
                                                 );
                                             }
