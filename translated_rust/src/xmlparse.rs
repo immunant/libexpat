@@ -6040,81 +6040,110 @@ unsafe extern "C" fn parserInit(
     );
 }
 
-unsafe fn moveToFreeBindingList(
-    parser: &mut XML_ParserStruct,
-    mut bindings: Option<BindingId>,
-) {
-    while let Some(binding_id) = bindings {
-        let Some(index) = parser.binding_index(binding_id) else {
-            std::process::abort();
-        };
-        bindings = parser.m_activeBindings[index]
-            .binding
-            .first()
-            .expect("binding storage has one binding")
-            .nextTagBinding;
-        let storage = parser.m_activeBindings.swap_remove(index);
-        parser.m_freeBindingList.bindings.push(storage);
-    }
+/// The owned parser state that is reset before the next document.  Keeping the
+/// exclusive parser borrow in this facade prevents the reset bookkeeping from
+/// reintroducing raw parser access after the FFI boundary has validated it.
+struct ParserResetState<'a> {
+    parser: &'a mut XML_ParserStruct,
 }
-pub unsafe extern "C" fn XML_ParserReset(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Bool {
-    if parser.is_null() {
-        return crate::expat_h::XML_FALSE;
-    }
+
+struct ResetResources {
+    unknown_encoding_mem: Option<UnknownEncodingMemory>,
+    protocol_encoding_name: Option<ProtocolEncodingName>,
+}
+
+impl ParserResetState<'_> {
+    fn prepare(&mut self) -> ResetResources {
     // This is the one short-lived exclusive borrow of the parser.  It ends before
     // invoking allocator or release callbacks below, which may inspect the parser.
-    let (unknown_encoding_mem, protocol_encoding_name, dtd) = {
-        let parser_state = &mut *parser;
-        if parser_state.m_parentParser.is_some() {
-            return crate::expat_h::XML_FALSE;
-        }
-        let mut active_tags = std::mem::take(&mut parser_state.m_activeTags);
+        let mut active_tags = std::mem::take(&mut self.parser.m_activeTags);
         for mut tag_storage in active_tags.drain(..).rev() {
             let tag = tag_storage
                 .tag
                 .first_mut()
                 .expect("tag storage always contains its tag");
-            moveToFreeBindingList(parser_state, tag.bindings);
+            let mut bindings = tag.bindings;
+            while let Some(binding_id) = bindings {
+                let Some(index) = self.parser.binding_index(binding_id) else {
+                    std::process::abort();
+                };
+                bindings = self.parser.m_activeBindings[index]
+                    .binding
+                    .first()
+                    .expect("binding storage has one binding")
+                    .nextTagBinding;
+                let storage = self.parser.m_activeBindings.swap_remove(index);
+                self.parser.m_freeBindingList.bindings.push(storage);
+            }
             tag.bindings = None;
-            parser_state.m_freeTagList.tags.push(tag_storage);
+            self.parser.m_freeTagList.tags.push(tag_storage);
         }
-        parser_state.m_openInternalEntities = None;
+        self.parser.m_openInternalEntities = None;
         // Active entries are stored from oldest to newest.  Moving them in
         // reverse makes the oldest entry the next one reused, exactly as the
         // former raw linked-list reset path did.
-        for storage in parser_state.m_activeInternalEntities.drain(..).rev() {
-            parser_state.m_freeInternalEntities.push(storage);
+        for storage in self.parser.m_activeInternalEntities.drain(..).rev() {
+            self.parser.m_freeInternalEntities.push(storage);
         }
         // Active entries are oldest to newest.  Moving them in reverse makes
         // the oldest the next reusable slot, matching the old list walk.
-        for storage in std::mem::take(&mut parser_state.m_openAttributeEntities)
+        for storage in std::mem::take(&mut self.parser.m_openAttributeEntities)
             .into_iter()
             .rev()
         {
-            parser_state.m_freeAttributeEntities.push(storage);
+            self.parser.m_freeAttributeEntities.push(storage);
         }
-        parser_state.m_openValueEntities = None;
+        self.parser.m_openValueEntities = None;
         // Active value entries are oldest to newest.  Moving them in reverse
         // preserves the former free-list reuse order: the oldest entry is
         // next returned after a parser reset.
-        for storage in parser_state.m_activeValueEntities.drain(..).rev() {
-            parser_state.m_freeValueEntities.push(storage);
+        for storage in self.parser.m_activeValueEntities.drain(..).rev() {
+            self.parser.m_freeValueEntities.push(storage);
         }
-        let inherited_bindings = parser_state
+        let inherited_bindings = self.parser
             .m_inheritedBindings
-            .and_then(|index| parser_state.m_activeBindings.get(index))
+            .and_then(|index| self.parser.m_activeBindings.get(index))
             .map(|storage| storage.id);
-        moveToFreeBindingList(parser_state, inherited_bindings);
-        let unknown_encoding_mem = parser_state.m_unknownEncodingMem.take();
-        let protocol_encoding_name = parser_state.m_protocolEncodingName.take();
-        (
-            unknown_encoding_mem,
-            protocol_encoding_name,
-            parser_dtd_ptr!(parser_state),
-        )
+        let mut bindings = inherited_bindings;
+        while let Some(binding_id) = bindings {
+            let Some(index) = self.parser.binding_index(binding_id) else {
+                std::process::abort();
+            };
+            bindings = self.parser.m_activeBindings[index]
+                .binding
+                .first()
+                .expect("binding storage has one binding")
+                .nextTagBinding;
+            let storage = self.parser.m_activeBindings.swap_remove(index);
+            self.parser.m_freeBindingList.bindings.push(storage);
+        }
+        ResetResources {
+            unknown_encoding_mem: self.parser.m_unknownEncodingMem.take(),
+            protocol_encoding_name: self.parser.m_protocolEncodingName.take(),
+        }
+    }
+
+    fn finish(&mut self) {
+        // The callback/release phase has completed, so the parser can again
+        // be borrowed exclusively to clear its owned temporary pools.
+        self.parser.m_tempPool.clear();
+        self.parser.m_temp2Pool.clear();
+    }
+}
+
+pub unsafe fn XML_ParserReset(
+    parser: &mut XML_ParserStruct,
+    encoding_name: Option<&::std::ffi::CStr>,
+) -> crate::expat_h::XML_Bool {
+    if parser.m_parentParser.is_some() {
+        return crate::expat_h::XML_FALSE;
+    }
+    let ResetResources {
+        unknown_encoding_mem,
+        protocol_encoding_name,
+    } = {
+        let mut reset = ParserResetState { parser };
+        reset.prepare()
     };
     if let Some(mut unknown_encoding_mem) = unknown_encoding_mem {
         crate::src::xmltok::unregister_unknown_encoding_converter(
@@ -6129,18 +6158,14 @@ pub unsafe extern "C" fn XML_ParserReset(
             }
         }
     }
-    {
-        // The callback/release phase above has completed, so the parser can
-        // again be borrowed exclusively to clear its owned temporary pools.
-        let parser_state = &mut *parser;
-        parser_state.m_tempPool.clear();
-        parser_state.m_temp2Pool.clear();
-    }
+    ParserResetState { parser }.finish();
     if let Some(protocol_encoding_name) = protocol_encoding_name {
         protocol_encoding_name.release(1691);
     }
-    parserInit(parser, encodingName);
-    dtdReset(dtd, parser);
+    let parser_handle = std::ptr::from_mut(parser);
+    let encoding_name = encoding_name.map_or(::core::ptr::null(), ::std::ffi::CStr::as_ptr);
+    parserInit(parser_handle, encoding_name);
+    dtdReset(parser_dtd_ptr!(parser), parser_handle);
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_ParserReset"]
@@ -6149,7 +6174,12 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
-    XML_ParserReset(parser, encodingName)
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_FALSE;
+    };
+    let encoding_name = (!encodingName.is_null())
+        .then(|| ::std::ffi::CStr::from_ptr(encodingName));
+    XML_ParserReset(parser, encoding_name)
 }
 unsafe extern "C" fn parserBusy(
     mut parser: crate::expat_h::XML_Parser,
