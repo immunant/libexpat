@@ -326,50 +326,10 @@ fn bytes_to_c_chars<const N: usize>(bytes: [u8; N]) -> [::core::ffi::c_char; N] 
     bytes.map(|byte| byte as ::core::ffi::c_char)
 }
 
-fn ffi_call0<R>(function: unsafe extern "C" fn() -> R) -> R {
-    unsafe { function() }
-}
-
-fn ffi_call1<A, R>(function: unsafe extern "C" fn(A) -> R, arg: A) -> R {
-    unsafe { function(arg) }
-}
-
-fn ffi_call2<A, B, R>(function: unsafe extern "C" fn(A, B) -> R, arg1: A, arg2: B) -> R {
-    unsafe { function(arg1, arg2) }
-}
-
-fn ffi_call3<A, B, C, R>(
-    function: unsafe extern "C" fn(A, B, C) -> R,
-    arg1: A,
-    arg2: B,
-    arg3: C,
-) -> R {
-    unsafe { function(arg1, arg2, arg3) }
-}
-
-fn ffi_call4<A, B, C, D, R>(
-    function: unsafe extern "C" fn(A, B, C, D) -> R,
-    arg1: A,
-    arg2: B,
-    arg3: C,
-    arg4: D,
-) -> R {
-    unsafe { function(arg1, arg2, arg3, arg4) }
-}
-
-fn ffi_call5<A, B, C, D, E, R>(
-    function: unsafe extern "C" fn(A, B, C, D, E) -> R,
-    arg1: A,
-    arg2: B,
-    arg3: C,
-    arg4: D,
-    arg5: E,
-) -> R {
-    unsafe { function(arg1, arg2, arg3, arg4, arg5) }
-}
-
-fn ffi_fail<A, B, C>(function: unsafe extern "C" fn(A, B, C) -> !, arg1: A, arg2: B, arg3: C) -> ! {
-    unsafe { function(arg1, arg2, arg3) }
+macro_rules! ffi_call {
+    ($function:expr $(, $arg:expr )* $(,)?) => {{
+        unsafe { $function($($arg),*) }
+    }};
 }
 
 fn check_test_info(
@@ -377,7 +337,7 @@ fn check_test_info(
     filename: *const ::core::ffi::c_char,
     line: ::core::ffi::c_int,
 ) {
-    ffi_call3(_check_set_test_info, function, filename, line);
+    ffi_call!(_check_set_test_info, function, filename, line);
 }
 
 fn fail_test(
@@ -385,11 +345,11 @@ fn fail_test(
     line: ::core::ffi::c_int,
     message: *const ::core::ffi::c_char,
 ) -> ! {
-    ffi_fail(_fail, file, line, message)
+    ffi_call!(_fail, file, line, message)
 }
 
 fn create_parser_ns(namespace_separator: XML_Char) -> XML_Parser {
-    ffi_call2(
+    ffi_call!(
         XML_ParserCreateNS,
         ::core::ptr::null::<XML_Char>(),
         namespace_separator,
@@ -397,11 +357,11 @@ fn create_parser_ns(namespace_separator: XML_Char) -> XML_Parser {
 }
 
 fn reset_parser(parser: XML_Parser) -> XML_Bool {
-    ffi_call2(XML_ParserReset, parser, ::core::ptr::null::<XML_Char>())
+    ffi_call!(XML_ParserReset, parser, ::core::ptr::null::<XML_Char>())
 }
 
 fn free_parser(parser: XML_Parser) {
-    ffi_call1(XML_ParserFree, parser);
+    ffi_call!(XML_ParserFree, parser);
 }
 
 fn namespace_teardown_safe() {
@@ -412,15 +372,15 @@ fn namespace_teardown_safe() {
 }
 
 fn c_strlen(text: *const ::core::ffi::c_char) -> size_t {
-    ffi_call1(strlen, text)
+    ffi_call!(strlen, text)
 }
 
 fn set_return_ns_triplet(parser: XML_Parser, enabled: bool) {
-    ffi_call2(XML_SetReturnNSTriplet, parser, bool_to_c_int(enabled));
+    ffi_call!(XML_SetReturnNSTriplet, parser, bool_to_c_int(enabled));
 }
 
 fn set_user_data(parser: XML_Parser, user_data: *mut ::core::ffi::c_void) {
-    ffi_call2(XML_SetUserData, parser, user_data);
+    ffi_call!(XML_SetUserData, parser, user_data);
 }
 
 fn set_element_handler(
@@ -428,15 +388,15 @@ fn set_element_handler(
     start: XML_StartElementHandler,
     end: XML_EndElementHandler,
 ) {
-    ffi_call3(XML_SetElementHandler, parser, start, end);
+    ffi_call!(XML_SetElementHandler, parser, start, end);
 }
 
 fn set_start_element_handler(parser: XML_Parser, handler: XML_StartElementHandler) {
-    ffi_call2(XML_SetStartElementHandler, parser, handler);
+    ffi_call!(XML_SetStartElementHandler, parser, handler);
 }
 
 fn set_end_element_handler(parser: XML_Parser, handler: XML_EndElementHandler) {
-    ffi_call2(XML_SetEndElementHandler, parser, handler);
+    ffi_call!(XML_SetEndElementHandler, parser, handler);
 }
 
 fn set_namespace_decl_handler(
@@ -444,19 +404,19 @@ fn set_namespace_decl_handler(
     start: XML_StartNamespaceDeclHandler,
     end: XML_EndNamespaceDeclHandler,
 ) {
-    ffi_call3(XML_SetNamespaceDeclHandler, parser, start, end);
+    ffi_call!(XML_SetNamespaceDeclHandler, parser, start, end);
 }
 
 fn set_start_namespace_decl_handler(parser: XML_Parser, start: XML_StartNamespaceDeclHandler) {
-    ffi_call2(XML_SetStartNamespaceDeclHandler, parser, start);
+    ffi_call!(XML_SetStartNamespaceDeclHandler, parser, start);
 }
 
 fn set_end_namespace_decl_handler(parser: XML_Parser, end: XML_EndNamespaceDeclHandler) {
-    ffi_call2(XML_SetEndNamespaceDeclHandler, parser, end);
+    ffi_call!(XML_SetEndNamespaceDeclHandler, parser, end);
 }
 
 fn set_external_entity_ref_handler(parser: XML_Parser, handler: XML_ExternalEntityRefHandler) {
-    ffi_call2(XML_SetExternalEntityRefHandler, parser, handler);
+    ffi_call!(XML_SetExternalEntityRefHandler, parser, handler);
 }
 
 fn set_unknown_encoding_handler(
@@ -464,7 +424,7 @@ fn set_unknown_encoding_handler(
     handler: XML_UnknownEncodingHandler,
     encoding_handler_data: *mut ::core::ffi::c_void,
 ) {
-    ffi_call3(
+    ffi_call!(
         XML_SetUnknownEncodingHandler,
         parser,
         handler,
@@ -473,7 +433,7 @@ fn set_unknown_encoding_handler(
 }
 
 fn use_parser_as_handler_arg(parser: XML_Parser) {
-    ffi_call1(XML_UseParserAsHandlerArg, parser);
+    ffi_call!(XML_UseParserAsHandlerArg, parser);
 }
 
 fn parsing_status(parser: XML_Parser) -> XML_ParsingStatus {
@@ -481,7 +441,7 @@ fn parsing_status(parser: XML_Parser) -> XML_ParsingStatus {
         parsing: XML_INITIALIZED,
         finalBuffer: XML_FALSE,
     };
-    ffi_call2(
+    ffi_call!(
         XML_GetParsingStatus,
         parser,
         &mut status as *mut XML_ParsingStatus,
@@ -493,15 +453,15 @@ fn set_param_entity_parsing(
     parser: XML_Parser,
     parsing: XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
-    ffi_call2(XML_SetParamEntityParsing, parser, parsing)
+    ffi_call!(XML_SetParamEntityParsing, parser, parsing)
 }
 
 fn parser_error_code(parser: XML_Parser) -> XML_Error {
-    ffi_call1(XML_GetErrorCode, parser)
+    ffi_call!(XML_GetErrorCode, parser)
 }
 
 fn xml_failure(parser: XML_Parser, file: *const ::core::ffi::c_char, line: ::core::ffi::c_int) {
-    ffi_call3(_xml_failure, parser, file, line);
+    ffi_call!(_xml_failure, parser, file, line);
 }
 
 fn parse_single_bytes_len(
@@ -510,7 +470,7 @@ fn parse_single_bytes_len(
     len: ::core::ffi::c_int,
     is_final: ::core::ffi::c_int,
 ) -> XML_Status {
-    ffi_call4(_XML_Parse_SINGLE_BYTES, parser, text, len, is_final)
+    ffi_call!(_XML_Parse_SINGLE_BYTES, parser, text, len, is_final)
 }
 
 fn parse_single_bytes(
@@ -555,7 +515,7 @@ fn expect_failure(
     file: *const ::core::ffi::c_char,
     line: ::core::ffi::c_int,
 ) {
-    ffi_call5(_expect_failure, text, error_code, error_message, file, line);
+    ffi_call!(_expect_failure, text, error_code, error_message, file, line);
 }
 
 fn run_character_check(
@@ -564,41 +524,39 @@ fn run_character_check(
     file: *const ::core::ffi::c_char,
     line: ::core::ffi::c_int,
 ) {
-    ffi_call4(_run_character_check, text, expected, file, line);
+    ffi_call!(_run_character_check, text, expected, file, line);
 }
 
 fn init_dummy_handlers_safe() {
-    ffi_call0(init_dummy_handlers);
+    ffi_call!(init_dummy_handlers);
 }
 
 fn dummy_handler_flags() -> ::core::ffi::c_ulong {
-    ffi_call0(get_dummy_handler_flags)
+    ffi_call!(get_dummy_handler_flags)
 }
 
 fn char_data_init(storage: &mut CharData) {
-    ffi_call1(CharData_Init, storage);
+    ffi_call!(CharData_Init, storage);
 }
 
 fn char_data_check_xml_chars(storage: &mut CharData, text: *const XML_Char) -> ::core::ffi::c_int {
-    ffi_call2(CharData_CheckXMLChars, storage, text)
+    ffi_call!(CharData_CheckXMLChars, storage, text)
 }
 
 fn set_subtest_doc(doc: *const ::core::ffi::c_char) {
-    unsafe {
-        set_subtest(c_ptr(b"%s\0"), doc);
-    }
+    ffi_call!(set_subtest, c_ptr(b"%s\0"), doc);
 }
 
 fn create_tcase(name: &[u8]) -> *mut TCase {
-    ffi_call1(tcase_create, c_ptr(name))
+    ffi_call!(tcase_create, c_ptr(name))
 }
 
 fn add_suite_tcase(suite: *mut Suite, test_case: *mut TCase) {
-    ffi_call2(suite_add_tcase, suite, test_case);
+    ffi_call!(suite_add_tcase, suite, test_case);
 }
 
 fn add_checked_fixture(test_case: *mut TCase, setup: extern "C" fn(), teardown: extern "C" fn()) {
-    ffi_call3(
+    ffi_call!(
         tcase_add_checked_fixture,
         test_case,
         Some(setup as unsafe extern "C" fn() -> ()),
@@ -607,7 +565,7 @@ fn add_checked_fixture(test_case: *mut TCase, setup: extern "C" fn(), teardown: 
 }
 
 fn add_test(test_case: *mut TCase, test: extern "C" fn()) {
-    ffi_call2(
+    ffi_call!(
         tcase_add_test,
         test_case,
         Some(test as unsafe extern "C" fn() -> ()),
@@ -615,7 +573,7 @@ fn add_test(test_case: *mut TCase, test: extern "C" fn()) {
 }
 
 fn add_test_ifdef_xml_dtd(test_case: *mut TCase, test: extern "C" fn()) {
-    ffi_call2(
+    ffi_call!(
         tcase_add_test__ifdef_xml_dtd,
         test_case,
         Some(test as unsafe extern "C" fn() -> ()),
@@ -623,7 +581,7 @@ fn add_test_ifdef_xml_dtd(test_case: *mut TCase, test: extern "C" fn()) {
 }
 
 fn add_test_if_xml_ge(test_case: *mut TCase, test: extern "C" fn()) {
-    ffi_call2(
+    ffi_call!(
         tcase_add_test__if_xml_ge,
         test_case,
         Some(test as unsafe extern "C" fn() -> ()),
