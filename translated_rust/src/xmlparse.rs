@@ -4880,30 +4880,6 @@ fn measure_event_name(
     })
 }
 
-/// Transitional boundary adapter for callers that have not yet converted
-/// their complete token handling to owned cursor ranges.  The raw cursors are
-/// first resolved through parser/entity storage; name measurement itself is
-/// performed by the safe helper above.
-unsafe fn event_name_length(
-    parser: crate::expat_h::XML_Parser,
-    dtd: *const DTD,
-    parser_events: bool,
-    enc: *const crate::src::xmltok::ENCODING,
-    start: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    trailing_delimiter_width: Option<usize>,
-) -> Option<EventNameMeasurement> {
-    let source = event_raw_name_source(&*parser, &*dtd, parser_events, start.addr(), end.addr())?;
-    let encoding = &*enc;
-    let normal_encoding = &*(enc as *const crate::src::xmltok::normal_encoding);
-    measure_event_name(
-        encoding,
-        normal_encoding,
-        source.chars(),
-        trailing_delimiter_width,
-    )
-}
-
 fn stored_raw_name_source<'a>(
     parser: &'a XML_ParserStruct,
     dtd: &'a DTD,
