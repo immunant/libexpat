@@ -9303,29 +9303,31 @@ unsafe extern "C" fn externalEntityInitProcessor(
 /// `Initial` deliberately consults `INIT_ENCODING.selected_encoding` on each
 /// dispatch.  The initial scanner updates that safe index itself, so there is
 /// no second pointer-synchronisation step after a BOM or leading byte scan.
-unsafe fn parser_encoding(
-    mut parser: crate::expat_h::XML_Parser,
-) -> *const crate::src::xmltok::ENCODING {
-    let parser = &*parser;
+fn current_parser_encoding(
+    parser: &XML_ParserStruct,
+) -> &crate::src::xmltok::ENCODING {
     match parser.m_encoding {
-        EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
-            Some(index) if index < 7 => {
-                if parser.m_ns != 0 {
-                    crate::src::xmltok::encodingsNS[index]
-                } else {
-                    crate::src::xmltok::encodings[index]
-                }
-            }
-            _ => &raw const parser.m_initEncoding.initEnc,
-        },
-        EncodingState::Unknown => parser
+        EncodingState::Initial => parser
+            .m_initEncoding
+            .selected_encoding
+            .and_then(|index| crate::src::xmltok::initial_known_encoding(index, parser.m_ns != 0))
+            .map(|encoding| &encoding.enc)
+            .unwrap_or(&parser.m_initEncoding.initEnc),
+        EncodingState::Unknown => &parser
             .m_unknownEncodingMem
             .as_ref()
             .expect("unknown encoding storage is installed")
-            .storage
-            .as_ptr()
-            .cast(),
+            .initialized_encoding()
+            .expect("unknown encoding storage is initialized")
+            .normal
+            .enc,
     }
+}
+
+unsafe fn parser_encoding(
+    mut parser: crate::expat_h::XML_Parser,
+) -> *const crate::src::xmltok::ENCODING {
+    std::ptr::from_ref(current_parser_encoding(&*parser))
 }
 
 // Keep encoding identity checks at the parser-state boundary.  Attribute
@@ -14048,25 +14050,7 @@ unsafe extern "C" fn doProlog(
         .hash_secret_salt;
     let dtd = &mut *parser_dtd_ptr!(parser);
     let dtd_pool: *mut STRING_POOL = &raw mut dtd.pool;
-    let mut active_parser_encoding = match parser.m_encoding {
-        EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
-            Some(index) if index < 7 => {
-                if parser.m_ns != 0 {
-                    crate::src::xmltok::encodingsNS[index]
-                } else {
-                    crate::src::xmltok::encodings[index]
-                }
-            }
-            _ => &raw const parser.m_initEncoding.initEnc,
-        },
-        EncodingState::Unknown => parser
-            .m_unknownEncodingMem
-            .as_ref()
-            .expect("unknown encoding storage is installed")
-            .storage
-            .as_ptr()
-            .cast(),
-    };
+    let mut active_parser_encoding = std::ptr::from_ref(current_parser_encoding(parser));
     let parser_events = enc == active_parser_encoding;
     let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
@@ -14260,27 +14244,8 @@ unsafe extern "C" fn doProlog(
                                         {
                                             return result;
                                         }
-                                        active_parser_encoding = match parser.m_encoding {
-                                            EncodingState::Initial => {
-                                                match parser.m_initEncoding.selected_encoding {
-                                                    Some(index) if index < 7 => {
-                                                        if parser.m_ns != 0 {
-                                                            crate::src::xmltok::encodingsNS[index]
-                                                        } else {
-                                                            crate::src::xmltok::encodings[index]
-                                                        }
-                                                    }
-                                                    _ => &raw const parser.m_initEncoding.initEnc,
-                                                }
-                                            }
-                                            EncodingState::Unknown => parser
-                                                .m_unknownEncodingMem
-                                                .as_ref()
-                                                .expect("unknown encoding storage is installed")
-                                                .storage
-                                                .as_ptr()
-                                                .cast(),
-                                        };
+                                        active_parser_encoding =
+                                            std::ptr::from_ref(current_parser_encoding(parser));
                                         enc = active_parser_encoding;
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
@@ -14409,27 +14374,8 @@ unsafe extern "C" fn doProlog(
                                         {
                                             return result_0;
                                         }
-                                        active_parser_encoding = match parser.m_encoding {
-                                            EncodingState::Initial => {
-                                                match parser.m_initEncoding.selected_encoding {
-                                                    Some(index) if index < 7 => {
-                                                        if parser.m_ns != 0 {
-                                                            crate::src::xmltok::encodingsNS[index]
-                                                        } else {
-                                                            crate::src::xmltok::encodings[index]
-                                                        }
-                                                    }
-                                                    _ => &raw const parser.m_initEncoding.initEnc,
-                                                }
-                                            }
-                                            EncodingState::Unknown => parser
-                                                .m_unknownEncodingMem
-                                                .as_ref()
-                                                .expect("unknown encoding storage is installed")
-                                                .storage
-                                                .as_ptr()
-                                                .cast(),
-                                        };
+                                        active_parser_encoding =
+                                            std::ptr::from_ref(current_parser_encoding(parser));
                                         enc = active_parser_encoding;
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
