@@ -20393,10 +20393,13 @@ unsafe extern "C" fn storeAttributeValue(
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
     let parser = &mut *parser;
-    // All callers provide the leading `ENCODING` field of a normal encoding
-    // table.  Preserve that boundary conversion here so attribute scanning
-    // itself receives the complete internal byte-class table.
-    let enc = &*(enc as *const crate::src::xmltok::normal_encoding);
+    // Attribute scanning needs the complete normal-encoding table, not just
+    // its ABI-visible `ENCODING` prefix.  The parser owns every table it may
+    // select, so resolve this cursor against that owned set before scanning
+    // rather than reinterpreting the prefix as a larger raw object.
+    let Some(enc) = entity_value_normal_encoding(parser, enc.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     let pool = &mut *pool;
     let mut next: *const ::core::ffi::c_char = ptr;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
@@ -20440,7 +20443,7 @@ unsafe extern "C" fn storeAttributeValue(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let (append_result, append_next) =
-                appendAttributeValue(parser, enc, isCdata, input, 0, pool, account);
+                appendAttributeValue(parser, &enc, isCdata, input, 0, pool, account);
             result = append_result;
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -20448,7 +20451,7 @@ unsafe extern "C" fn storeAttributeValue(
                 next = input.as_ptr().wrapping_add(append_next).cast();
             }
         } else {
-            let Some(entity_name) = (*parser)
+            let Some(entity_name) = parser
                 .m_openAttributeEntities
                 .last()
                 .map(|storage| storage.entity_name)
