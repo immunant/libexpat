@@ -1270,6 +1270,35 @@ static START_ELEMENT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn StartElementCallback>>>,
 > = std::sync::OnceLock::new();
 
+trait EndElementCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        name: *const crate::expat_external_h::XML_Char,
+    );
+}
+
+impl EndElementCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+    )
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        name: *const crate::expat_external_h::XML_Char,
+    ) {
+        self(user_data, name);
+    }
+}
+
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether an end-element callback is installed.
+static END_ELEMENT_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndElementCallback>>>,
+> = std::sync::OnceLock::new();
+
 trait CharacterDataCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -1524,7 +1553,7 @@ pub struct XML_ParserStruct {
     pub m_dataBuf: *mut crate::expat_external_h::XML_Char,
     pub m_dataBufEnd: *mut crate::expat_external_h::XML_Char,
     pub m_startElementHandler: bool,
-    pub m_endElementHandler: crate::expat_h::XML_EndElementHandler,
+    pub m_endElementHandler: bool,
     pub m_characterDataHandler: bool,
     pub m_processingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler,
     pub m_commentHandler: bool,
@@ -2909,7 +2938,12 @@ unsafe extern "C" fn parserInit(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
-    (*parser).m_endElementHandler = None;
+    (*parser).m_endElementHandler = false;
+    END_ELEMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_characterDataHandler = false;
     CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -3160,7 +3194,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldDtd: *mut DTD = ::core::ptr::null_mut::<DTD>();
     let mut oldStartElementHandler = false;
     let mut oldStartElementCallback: Option<std::sync::Arc<dyn StartElementCallback>> = None;
-    let mut oldEndElementHandler: crate::expat_h::XML_EndElementHandler = None;
+    let mut oldEndElementCallback: Option<std::sync::Arc<dyn EndElementCallback>> = None;
     let mut oldCharacterDataHandler = false;
     let mut oldCharacterDataCallback: Option<std::sync::Arc<dyn CharacterDataCallback>> = None;
     let mut oldProcessingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler =
@@ -3209,7 +3243,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .get(&(parser as usize))
         .cloned();
-    oldEndElementHandler = (*parser).m_endElementHandler;
+    oldEndElementCallback = END_ELEMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldCharacterDataHandler = (*parser).m_characterDataHandler;
     oldCharacterDataCallback = CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -3307,7 +3346,14 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(parser as usize, callback);
     }
-    (*parser).m_endElementHandler = oldEndElementHandler;
+    (*parser).m_endElementHandler = oldEndElementCallback.is_some();
+    if let Some(callback) = oldEndElementCallback {
+        END_ELEMENT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_characterDataHandler = oldCharacterDataHandler;
     if let Some(callback) = oldCharacterDataCallback {
         CHARACTER_DATA_HANDLERS
@@ -3439,6 +3485,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         return;
     }
     START_ELEMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
+    END_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -3783,7 +3834,19 @@ pub unsafe extern "C" fn XML_SetElementHandler(
             handlers.remove(&(parser as usize));
         }
     }
-    (*parser).m_endElementHandler = end;
+    (*parser).m_endElementHandler = end.is_some();
+    let mut handlers = END_ELEMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match end {
+        Some(callback) => {
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        }
+        None => {
+            handlers.remove(&(parser as usize));
+        }
+    }
 }
 #[export_name = "XML_SetElementHandler"]
 
@@ -3827,7 +3890,19 @@ pub unsafe extern "C" fn XML_SetEndElementHandler(
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_endElementHandler = end;
+        (*parser).m_endElementHandler = end.is_some();
+        let mut handlers = END_ELEMENT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match end {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetEndElementHandler"]
@@ -6115,16 +6190,19 @@ unsafe extern "C" fn doContent(
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
-                    if (*parser).m_endElementHandler.is_some() {
+                    if (*parser).m_endElementHandler {
                         if (*parser).m_startElementHandler {
                             *eventPP = *eventEndPP;
                         }
-                        (*parser)
-                            .m_endElementHandler
-                            .expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
-                            name_0.str,
-                        );
+                        let callback = END_ELEMENT_HANDLERS
+                            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                            .get(&(parser as usize))
+                            .cloned();
+                        if let Some(callback) = callback {
+                            callback.invoke((*parser).m_handlerArg, name_0.str);
+                        }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
                     if noElmHandlers as ::core::ffi::c_int != 0
@@ -6178,7 +6256,7 @@ unsafe extern "C" fn doContent(
                         (*tag_0).parent = (*parser).m_freeTagList as *mut tag;
                         (*parser).m_freeTagList = tag_0;
                         (*parser).m_tagLevel -= 1;
-                        if (*parser).m_endElementHandler.is_some() {
+                        if (*parser).m_endElementHandler {
                             let mut localPart: *const crate::expat_external_h::XML_Char =
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             let mut prefix: *const crate::expat_external_h::XML_Char =
@@ -6213,12 +6291,15 @@ unsafe extern "C" fn doContent(
                                 }
                                 *uri = '\0' as crate::expat_external_h::XML_Char;
                             }
-                            (*parser)
-                                .m_endElementHandler
-                                .expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
-                                (*tag_0).name.str,
-                            );
+                            let callback = END_ELEMENT_HANDLERS
+                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                .lock()
+                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                .get(&(parser as usize))
+                                .cloned();
+                            if let Some(callback) = callback {
+                                callback.invoke((*parser).m_handlerArg, (*tag_0).name.str);
+                            }
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
