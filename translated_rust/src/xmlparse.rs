@@ -6083,11 +6083,7 @@ unsafe fn allocate_parser_storage(
     let parser_handle = std::ptr::from_mut(parser);
     pool_init(&mut parser.m_tempPool, parser_handle);
     pool_init(&mut parser.m_temp2Pool, parser_handle);
-    parserInit(
-        parser_handle,
-        encoding_name.map_or(std::ptr::null(), std::ffi::CStr::as_ptr),
-    );
-    if encoding_name.is_some() && parser.m_protocolEncodingName.is_none() {
+    if !parser_initialize_from_cstr(parser, encoding_name) {
         XML_ParserFree(parser);
         return None;
     }
@@ -6590,28 +6586,30 @@ fn parser_init(
     }
 }
 
-unsafe extern "C" fn parserInit(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) {
-    let protocol_encoding_name = if encodingName.is_null() {
-        None
-    } else {
-        copyString(encodingName, parser)
-    };
-    let accounting_debug_level = environment_decimal_debug_level("EXPAT_ACCOUNTING_DEBUG", 0);
-    let entity_debug_level = environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0);
-    let reparse_deferral_enabled = g_reparseDeferralEnabledDefault;
-    let parser_key = parser as usize;
-    let parser_state = &mut *parser;
-    parser_state.m_protocolEncodingName = protocol_encoding_name;
+/// Complete parser initialization once its allocator-backed storage exists.
+/// The parser handle is confined to this legacy allocator adapter; all parser
+/// state initialization below it uses the exclusive typed borrow.
+unsafe fn parser_initialize_from_cstr(
+    parser: &mut XML_ParserStruct,
+    encoding_name: Option<&std::ffi::CStr>,
+) -> bool {
+    let parser_handle = std::ptr::from_mut(parser);
+    parser.m_protocolEncodingName = encoding_name.and_then(|encoding_name| {
+        let allocation_size = encoding_name
+            .to_bytes_with_nul()
+            .len()
+            .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
+        let backing = allocation_backing(parser_handle, allocation_size, 8456)?;
+        protocol_encoding_name_from_cstr(encoding_name, backing)
+    });
     parser_init(
-        parser_state,
-        parser_key,
-        reparse_deferral_enabled,
-        accounting_debug_level,
-        entity_debug_level,
+        parser,
+        parser_handle.addr(),
+        g_reparseDeferralEnabledDefault,
+        environment_decimal_debug_level("EXPAT_ACCOUNTING_DEBUG", 0),
+        environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0),
     );
+    encoding_name.is_none() || parser.m_protocolEncodingName.is_some()
 }
 
 /// The owned parser state that is reset before the next document.  Keeping the
@@ -6737,8 +6735,7 @@ pub unsafe fn XML_ParserReset(
         protocol_encoding_name.release(1691);
     }
     let parser_handle = std::ptr::from_mut(parser);
-    let encoding_name = encoding_name.map_or(::core::ptr::null(), ::std::ffi::CStr::as_ptr);
-    parserInit(parser_handle, encoding_name);
+    parser_initialize_from_cstr(parser, encoding_name);
     dtdReset(parser_dtd_ptr!(parser), parser_handle);
     return crate::expat_h::XML_TRUE;
 }
@@ -24916,34 +24913,37 @@ unsafe extern "C" fn getElementType(
     std::ptr::from_mut(element)
 }
 
-unsafe fn copyString(
-    mut s: *const crate::expat_external_h::XML_Char,
-    mut parser: crate::expat_h::XML_Parser,
+/// Copy a validated C encoding name into the parser's owned XML-character
+/// storage.  The allocator token is acquired at the parser allocation
+/// boundary; this conversion itself is ordinary byte ownership.
+fn protocol_encoding_name_from_cstr(
+    encoding_name: &std::ffi::CStr,
+    mut backing: Box<dyn FnMut(::core::ffi::c_int)>,
 ) -> Option<ProtocolEncodingName> {
-    let mut chars_required = 0usize;
-    while *s.add(chars_required) as ::core::ffi::c_int != 0 {
-        chars_required = chars_required.checked_add(1)?;
-    }
-    let chars_required = chars_required.checked_add(1)?;
-    let allocation_size =
-        chars_required.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
-    let Some(mut backing) = allocation_backing(parser, allocation_size, 8456) else {
-        return None;
-    };
+    let bytes = encoding_name.to_bytes_with_nul();
     let mut chars = Vec::new();
-    if chars.try_reserve_exact(chars_required).is_err() {
+    if chars.try_reserve_exact(bytes.len()).is_err() {
         backing(8456);
         return None;
     }
-    chars.resize(chars_required, 0);
-    // `chars_required` was established by scanning through the terminating
-    // XML character above, so this intrinsic copy stays within the validated
-    // terminated range and avoids the C `memcpy` entry point.
-    ::core::ptr::copy_nonoverlapping(s, chars.as_mut_ptr(), chars_required);
+    chars.extend(bytes.iter().copied().map(|byte| byte as crate::expat_external_h::XML_Char));
     Some(ProtocolEncodingName {
         chars,
         backing: Some(backing),
     })
+}
+
+unsafe fn copyString(
+    s: *const crate::expat_external_h::XML_Char,
+    parser: crate::expat_h::XML_Parser,
+) -> Option<ProtocolEncodingName> {
+    let encoding_name = std::ffi::CStr::from_ptr(s);
+    let allocation_size = encoding_name
+        .to_bytes_with_nul()
+        .len()
+        .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
+    let backing = allocation_backing(parser, allocation_size, 8456)?;
+    protocol_encoding_name_from_cstr(encoding_name, backing)
 }
 
 unsafe extern "C" fn accountingGetCurrentAmplification(
