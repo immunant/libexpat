@@ -2441,24 +2441,31 @@ unsafe extern "C" fn parserCreate(
     if parser.is_null() {
         return parser;
     }
-    crate::stdlib::memset(
-        &raw mut (*parser).m_alloc_tracker as *mut ::core::ffi::c_void,
-        0 as ::core::ffi::c_int,
-        ::core::mem::size_of::<MALLOC_TRACKER>(),
-    );
+    (*parser).m_alloc_tracker = MALLOC_TRACKER {
+        bytesAllocated: 0 as XmlBigCount,
+        peakBytesAllocated: 0 as XmlBigCount,
+        debugLevel: if parentParser.is_null() {
+            getDebugLevel(
+                b"EXPAT_MALLOC_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
+                0 as ::core::ffi::c_ulong,
+            )
+        } else {
+            0 as ::core::ffi::c_ulong
+        },
+        maximumAmplificationFactor: if parentParser.is_null() {
+            crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT
+        } else {
+            0.0
+        },
+        activationThresholdBytes: if parentParser.is_null() {
+            crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as XmlBigCount
+        } else {
+            0 as XmlBigCount
+        },
+    };
+    (*parser).m_parentParser = parentParser;
     if parentParser.is_null() {
-        (*parser).m_alloc_tracker.debugLevel = getDebugLevel(
-            b"EXPAT_MALLOC_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-            0 as ::core::ffi::c_ulong,
-        );
-        (*parser).m_alloc_tracker.maximumAmplificationFactor =
-            crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
-        (*parser).m_alloc_tracker.activationThresholdBytes =
-            crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as XmlBigCount;
-        (*parser).m_parentParser = ::core::ptr::null_mut::<XML_ParserStruct>();
         (*parser).m_accounting.countBytesDirect = 0 as XmlBigCount;
-    } else {
-        (*parser).m_parentParser = parentParser;
     }
     let rootParser_0: crate::expat_h::XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
