@@ -5240,54 +5240,54 @@ unsafe extern "C" fn get_hash_secret_salt(
         .hash_secret_salt
 }
 
-unsafe extern "C" fn callProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let (result, processed) = call_processor_impl(parser, start, end);
-    *endPtr = processed;
-    result
+#[derive(Copy, Clone)]
+struct ProcessorInput {
+    start: usize,
+    end: usize,
 }
 
-/// Runs the parser's current processor against its raw cursor range.
+/// Runs the parser's current processor against a checked input range.
 ///
 /// The parser can call user handlers while a processor runs, so every parser
 /// reference below is scoped to the state inspection or update that needs it.
 /// In particular, no `&mut XML_ParserStruct` survives the processor call.
 unsafe fn call_processor_impl(
-    parser: crate::expat_h::XML_Parser,
-    start: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-) -> (crate::expat_h::XML_Error, *const ::core::ffi::c_char) {
-    let have_now = if end.is_null() || start.is_null() {
-        0
-    } else {
-        end.addr().checked_sub(start.addr()).unwrap_or(0)
-    } as crate::__stddef_size_t_h::size_t;
+    parser: &mut XML_ParserStruct,
+    input: ProcessorInput,
+) -> (crate::expat_h::XML_Error, usize) {
+    let Some(have_now) = input.end.checked_sub(input.start) else {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, input.start);
+    };
+    if parser
+        .m_buffer
+        .bytes
+        .as_ref()
+        .is_none_or(|bytes| input.end > bytes.len())
     {
-        let parser_ref = &mut *parser;
-        if parser_ref.m_reparseDeferralEnabled as ::core::ffi::c_int != 0
-            && parser_ref.m_parsingStatus.finalBuffer == 0
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, input.start);
+    }
+    let have_now = have_now as crate::__stddef_size_t_h::size_t;
+    {
+        if parser.m_reparseDeferralEnabled as ::core::ffi::c_int != 0
+            && parser.m_parsingStatus.finalBuffer == 0
         {
-            let had_before = parser_ref.m_partialTokenBytesBefore;
-            let mut available_buffer = parser_ref.m_bufferPtr.unwrap_or(0)
+            let had_before = parser.m_partialTokenBytesBefore;
+            let mut available_buffer = parser.m_bufferPtr.unwrap_or(0)
                 as crate::__stddef_size_t_h::size_t;
             available_buffer = available_buffer.wrapping_sub(available_buffer.min(1024));
             available_buffer = available_buffer.wrapping_add(
-                parser_ref
+                parser
                     .m_buffer
                     .bytes
                     .as_ref()
-                    .map_or(0, |bytes| bytes.len().saturating_sub(parser_ref.m_bufferEnd))
+                    .map_or(0, |bytes| bytes.len().saturating_sub(parser.m_bufferEnd))
                     as crate::__stddef_size_t_h::size_t,
             );
             let enough = have_now >= 2usize.wrapping_mul(had_before)
-                || parser_ref.m_lastBufferRequestSize as crate::__stddef_size_t_h::size_t
+                || parser.m_lastBufferRequestSize as crate::__stddef_size_t_h::size_t
                     > available_buffer;
             if !enough {
-                return (crate::expat_h::XML_ERROR_NONE, start);
+                return (crate::expat_h::XML_ERROR_NONE, input.start);
             }
         }
     }
@@ -5295,10 +5295,10 @@ unsafe fn call_processor_impl(
         have_now as ::core::ffi::c_uint,
         std::sync::atomic::Ordering::Relaxed,
     );
-    let mut next = start;
+    let mut next = input.start;
     let mut ret = crate::expat_h::XML_ERROR_NONE;
     loop {
-        let processor: Processor = match (&*parser).m_processor {
+        let processor: Processor = match parser.m_processor {
             ProcessorState::PrologInit => prologInitProcessor,
             ProcessorState::Content => contentProcessor,
             ProcessorState::ExternalEntityInit => externalEntityInitProcessor,
@@ -5316,18 +5316,33 @@ unsafe fn call_processor_impl(
             ProcessorState::InternalEntity => internalEntityProcessor,
             ProcessorState::Error => errorProcessor,
         };
-        ret = processor(parser, next, end, &raw mut next);
+        let Some(bytes) = parser.m_buffer.bytes.as_ref() else {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+        };
+        if next > input.end || input.end > bytes.len() {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+        }
+        let start = bytes.as_ptr().wrapping_add(next).cast();
+        let end = bytes.as_ptr().wrapping_add(input.end).cast();
+        let mut next_pointer = start;
+        ret = processor(std::ptr::from_mut(parser), start, end, &raw mut next_pointer);
+        let Some(next_offset) = parser.m_buffer.offset_from_address(next_pointer.addr()) else {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+        };
+        if next_offset > input.end {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+        }
+        next = next_offset;
         let reenter = {
-            let parser_ref = &mut *parser;
-            if parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint
+            if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
                 != crate::expat_h::XML_PARSING as ::core::ffi::c_int as ::core::ffi::c_uint
             {
-                parser_ref.m_reenter = crate::expat_h::XML_FALSE;
+                parser.m_reenter = crate::expat_h::XML_FALSE;
             }
-            if parser_ref.m_reenter == 0 {
+            if parser.m_reenter == 0 {
                 false
             } else {
-                parser_ref.m_reenter = crate::expat_h::XML_FALSE;
+                parser.m_reenter = crate::expat_h::XML_FALSE;
                 true
             }
         };
@@ -5343,8 +5358,7 @@ unsafe fn call_processor_impl(
     if ret as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        let parser_ref = &mut *parser;
-        parser_ref.m_partialTokenBytesBefore = if next == start {
+        parser.m_partialTokenBytesBefore = if next == input.start {
             have_now
         } else {
             0
@@ -8230,12 +8244,6 @@ pub unsafe extern "C" fn XML_Parse_ffi(
     };
     unsafe { XML_Parse(parser, input, isFinal) }
 }
-#[derive(Copy, Clone)]
-struct ParseBufferPlan {
-    start: usize,
-    end: usize,
-}
-
 fn parse_buffer_preflight(
     parser: &mut XML_ParserStruct,
     len: ::core::ffi::c_int,
@@ -8266,7 +8274,7 @@ fn parse_buffer_begin(
     parser: &mut XML_ParserStruct,
     len: usize,
     is_final: ::core::ffi::c_int,
-) -> Option<ParseBufferPlan> {
+) -> Option<ProcessorInput> {
     let start = parser.m_bufferPtr?;
     let end = parser.m_bufferEnd.checked_add(len)?;
     let buffer = parser.m_buffer.bytes.as_ref()?;
@@ -8280,7 +8288,7 @@ fn parse_buffer_begin(
         .m_parseEndByteIndex
         .wrapping_add(len as crate::expat_external_h::XML_Index);
     parser.m_parsingStatus.finalBuffer = is_final as crate::expat_h::XML_Bool;
-    Some(ParseBufferPlan { start, end })
+    Some(ProcessorInput { start, end })
 }
 
 fn parse_buffer_finish(
@@ -8357,36 +8365,16 @@ unsafe fn parse_buffer_impl(
         parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    let (start, end) = {
-        match parse_buffer_begin(parser, len as usize, is_final) {
-            Some(plan) => {
-                let buffer = parser.m_buffer.bytes.as_ref().expect("checked parser buffer");
-                (
-                    buffer.as_ptr().wrapping_add(plan.start).cast(),
-                    buffer.as_ptr().wrapping_add(plan.end).cast(),
-                )
-            }
-            None => {
-                parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                return crate::expat_h::XML_STATUS_ERROR;
-            }
+    let input = match parse_buffer_begin(parser, len as usize, is_final) {
+        Some(input) => input,
+        None => {
+            parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return crate::expat_h::XML_STATUS_ERROR;
         }
     };
-    let mut processed_to = start;
-    let parser_handle = std::ptr::from_mut(parser);
-    let error = callProcessor(parser_handle, start, end, &raw mut processed_to);
-    let processed_to = parser
-        .m_buffer
-        .offset_from_address(processed_to.addr());
+    let (error, processed_to) = call_processor_impl(parser, input);
     parser.m_errorCode = error;
-    match processed_to {
-        Some(processed_to) => parse_buffer_finish(parser, processed_to, is_final),
-        None => {
-            parser.m_bufferPtr = None;
-            parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            parse_buffer_finish(parser, usize::MAX, is_final)
-        }
-    }
+    parse_buffer_finish(parser, processed_to, is_final)
 }
 pub unsafe fn XML_ParseBuffer(
     parser: &mut XML_ParserStruct,
@@ -8612,7 +8600,7 @@ pub unsafe fn XML_ResumeParser(
     parser: &mut XML_ParserStruct,
 ) -> crate::expat_h::XML_Status {
     let mut result: crate::expat_h::XML_Status = crate::expat_h::XML_STATUS_OK;
-    let (start, parse_end) = {
+    let input = {
         if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
             != crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
         {
@@ -8620,42 +8608,19 @@ pub unsafe fn XML_ResumeParser(
             return crate::expat_h::XML_STATUS_ERROR;
         }
         parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-        let start = parser
-            .m_buffer
-            .bytes
-            .as_ref()
-            .unwrap()
-            .as_ptr()
-            .wrapping_add(parser.m_bufferPtr.unwrap())
-            .cast();
-        let parse_end = parser
-            .m_buffer
-            .bytes
-            .as_ref()
-            .unwrap()
-            .as_ptr()
-            .wrapping_add(parser.m_bufferEnd)
-            .cast();
-        (start, parse_end)
+        ProcessorInput {
+            start: parser.m_bufferPtr.unwrap(),
+            end: parser.m_bufferEnd,
+        }
     };
-    let mut processed_to = start;
-    let error = callProcessor(
-        std::ptr::from_mut(parser),
-        start,
-        parse_end,
-        &raw mut processed_to,
-    );
+    let (error, processed_to) = call_processor_impl(parser, input);
     {
-        let buffer_start = parser.m_buffer.bytes.as_ref().unwrap().as_ptr();
-        match processed_to.addr().checked_sub(buffer_start.addr()) {
-            Some(cursor) if cursor <= parser.m_bufferEnd => {
-                parser.m_bufferPtr = Some(cursor);
-                parser.m_errorCode = error;
-            }
-            _ => {
-                parser.m_bufferPtr = None;
-                parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
+        if processed_to <= parser.m_bufferEnd {
+            parser.m_bufferPtr = Some(processed_to);
+            parser.m_errorCode = error;
+        } else {
+            parser.m_bufferPtr = None;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
         if parser.m_errorCode as ::core::ffi::c_uint
             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
