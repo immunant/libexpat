@@ -2910,44 +2910,75 @@ pub mod xmltok_impl_c {
         NormalContentAction::Token(crate::src::xmltok::XML_TOK_DATA_CHARS_1, Some(offset))
     }
 
+    /// Scans normal-encoding content entirely through bounded byte slices.
+    /// The result retains an offset into `input`; only the fixed C scanner
+    /// adapter converts that offset back into a cursor.
+    fn normal_content_result(
+        encoding: &normal_encoding,
+        input: &[u8],
+    ) -> crate::src::xmltok::ScannerResult {
+        match normal_content_tok_impl(&encoding.type_0, input, |offset, width| {
+            normal_char_check(
+                encoding,
+                NormalCharCheck::Invalid,
+                width,
+                &input[offset..],
+                || unknown_character_value_for(encoding.unknown_converter_id, &input[offset..]),
+            )
+        }) {
+            NormalContentAction::Token(token, next) => {
+                crate::src::xmltok::ScannerResult::new(token, next)
+            }
+            NormalContentAction::ScanLt(start) => {
+                let result =
+                    normal_scan_lt_with_check(encoding, &input[start..], &|kind, offset, width| {
+                        normal_char_check(encoding, kind, width, &input[start + offset..], || {
+                            unknown_character_value_for(
+                                encoding.unknown_converter_id,
+                                &input[start + offset..],
+                            )
+                        })
+                    });
+                crate::src::xmltok::ScannerResult::new(
+                    result.token,
+                    result.next.map(|next| start + next),
+                )
+            }
+            NormalContentAction::ScanRef(start) => {
+                let (token, next) = normal_scan_ref_bytes_impl(encoding, &input[start..]);
+                crate::src::xmltok::ScannerResult::new(token, next.map(|next| start + next))
+            }
+        }
+    }
+
     pub unsafe extern "C" fn normal_contentTok(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if ptr >= end {
+        if enc.is_null()
+            || ptr.is_null()
+            || end.is_null()
+            || !enc.cast::<normal_encoding>().is_aligned()
+        {
             return crate::src::xmltok::XML_TOK_NONE_1;
         }
-        let input_len = end.offset_from(ptr) as usize;
+        let Some(input_len) = end.addr().checked_sub(ptr.addr()) else {
+            return crate::src::xmltok::XML_TOK_NONE_1;
+        };
+        if input_len == 0 || input_len > isize::MAX as usize {
+            return crate::src::xmltok::XML_TOK_NONE_1;
+        }
         let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
         let normal = &*(enc as *const normal_encoding);
-        match normal_content_tok_impl(&normal.type_0, input, |offset, width| {
-            normal_char_check(
-                normal,
-                NormalCharCheck::Invalid,
-                width,
-                &input[offset..],
-                || unknown_character_value(enc as usize, &input[offset..]),
-            )
-        }) {
-            NormalContentAction::Token(token, next) => {
-                if let Some(next) = next {
-                    *nextTokPtr = ptr.add(next);
-                }
-                token
-            }
-            NormalContentAction::ScanLt(start) => {
-                normal_scanLt(enc, ptr.add(start), end, nextTokPtr)
-            }
-            NormalContentAction::ScanRef(start) => {
-                let (token, next) = normal_scan_ref_bytes_impl(normal, &input[start..]);
-                if let Some(offset) = next {
-                    *nextTokPtr = ptr.add(start + offset);
-                }
-                token
+        let result = normal_content_result(normal, input);
+        if let Some(next) = result.next {
+            if !nextTokPtr.is_null() && nextTokPtr.is_aligned() {
+                nextTokPtr.write(ptr.wrapping_add(next));
             }
         }
+        result.token
     }
 
     pub(super) fn normal_scan_percent_impl<T: XmlTokenByte>(
@@ -10745,39 +10776,9 @@ pub mod xmltok_impl_c {
             }
         };
 
-        let normal_content = || match normal_content_tok_impl(
-            &encoding.type_0,
-            input.bytes,
-            |offset, width| {
-                normal_char_check(
-                    encoding,
-                    NormalCharCheck::Invalid,
-                    width,
-                    &input.bytes[offset..],
-                    || unknown_character_value_for(unknown_converter_id, &input.bytes[offset..]),
-                )
-            },
-        ) {
-            NormalContentAction::Token(token, next) => ScannerResult::new(token, next),
-            NormalContentAction::ScanLt(start) => {
-                let result = normal_scan_lt_with_check(encoding, &input.bytes[start..], &|kind, offset, width| {
-                    normal_char_check(
-                        encoding,
-                        kind,
-                        width,
-                        &input.bytes[start + offset..],
-                        || unknown_character_value_for(
-                            unknown_converter_id,
-                            &input.bytes[start + offset..],
-                        ),
-                    )
-                });
-                ScannerResult::new(result.token, result.next.map(|next| start + next))
-            }
-            NormalContentAction::ScanRef(start) => {
-                let (token, next) = normal_scan_ref_bytes_impl(encoding, &input.bytes[start..]);
-                ScannerResult::new(token, next.map(|next| start + next))
-            }
+        let normal_content = || {
+            debug_assert_eq!(unknown_converter_id, encoding.unknown_converter_id);
+            normal_content_result(encoding, input.bytes)
         };
 
         let little2_content = || match little2_content_tok_impl(encoding, input.chars) {
