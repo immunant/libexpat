@@ -17540,41 +17540,41 @@ fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
     }
     return result;
 }
-pub unsafe extern "C" fn XmlUtf8Encode(
-    mut c: ::core::ffi::c_int,
-    mut buf: *mut ::core::ffi::c_char,
+pub fn XmlUtf8Encode(
+    c: ::core::ffi::c_int,
+    buf: &mut [::core::ffi::c_char; 4],
 ) -> ::core::ffi::c_int {
     if c < 0 as ::core::ffi::c_int {
         return 0 as ::core::ffi::c_int;
     }
     if c < min2 as ::core::ffi::c_int {
-        *buf.offset(0 as isize) = (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[0] = (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 1 as ::core::ffi::c_int;
     }
     if c < min3 as ::core::ffi::c_int {
-        *buf.offset(0 as isize) = (c >> 6 as ::core::ffi::c_int | UTF8_cval2 as ::core::ffi::c_int)
+        buf[0] = (c >> 6 as ::core::ffi::c_int | UTF8_cval2 as ::core::ffi::c_int)
             as ::core::ffi::c_char;
-        *buf.offset(1 as isize) =
+        buf[1] =
             (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 2 as ::core::ffi::c_int;
     }
     if c < min4 as ::core::ffi::c_int {
-        *buf.offset(0 as isize) = (c >> 12 as ::core::ffi::c_int | UTF8_cval3 as ::core::ffi::c_int)
+        buf[0] = (c >> 12 as ::core::ffi::c_int | UTF8_cval3 as ::core::ffi::c_int)
             as ::core::ffi::c_char;
-        *buf.offset(1 as isize) = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+        buf[1] = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
             | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-        *buf.offset(2 as isize) =
+        buf[2] =
             (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 3 as ::core::ffi::c_int;
     }
     if c < 0x110000 as ::core::ffi::c_int {
-        *buf.offset(0 as isize) = (c >> 18 as ::core::ffi::c_int | UTF8_cval4 as ::core::ffi::c_int)
+        buf[0] = (c >> 18 as ::core::ffi::c_int | UTF8_cval4 as ::core::ffi::c_int)
             as ::core::ffi::c_char;
-        *buf.offset(1 as isize) = (c >> 12 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+        buf[1] = (c >> 12 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
             | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-        *buf.offset(2 as isize) = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+        buf[2] = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
             | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-        *buf.offset(3 as isize) =
+        buf[3] =
             (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 4 as ::core::ffi::c_int;
     }
@@ -17586,6 +17586,10 @@ pub unsafe extern "C" fn XmlUtf8Encode_ffi(
     mut c: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
+    if buf.is_null() {
+        return 0;
+    }
+    let buf = unsafe { &mut *(buf as *mut [::core::ffi::c_char; 4]) };
     XmlUtf8Encode(c, buf)
 }
 pub unsafe extern "C" fn XmlUtf16Encode(

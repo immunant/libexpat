@@ -8551,11 +8551,7 @@ unsafe extern "C" fn doContent(
                         callCharacterDataHandler(
                             parser,
                             buf.as_ptr(),
-                            crate::src::xmltok::XmlUtf8Encode(
-                                n,
-                                &raw mut buf as *mut crate::expat_external_h::XML_Char
-                                    as *mut ::core::ffi::c_char,
-                            ),
+                            crate::src::xmltok::XmlUtf8Encode(n, &mut buf),
                         );
                     } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
