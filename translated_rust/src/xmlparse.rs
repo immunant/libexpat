@@ -5412,6 +5412,71 @@ macro_rules! get_context {
     }};
 }
 
+macro_rules! process_entity_from_unsafe_context {
+    ($parser:expr, $entity:expr, $betweenDecl:expr, $type_0:expr $(,)?) => {{
+        let parser = $parser;
+        let entity = $entity;
+        let type_0 = $type_0;
+        let (openEntityList, freeEntityList) = if type_0 == ENTITY_INTERNAL as ::core::ffi::c_uint {
+            (*parser).m_processor = Some(internalEntityProcessor);
+            (
+                &raw mut (*parser).m_openInternalEntities,
+                &raw mut (*parser).m_freeInternalEntities,
+            )
+        } else if type_0 == ENTITY_ATTRIBUTE as ::core::ffi::c_uint {
+            (
+                &raw mut (*parser).m_openAttributeEntities,
+                &raw mut (*parser).m_freeAttributeEntities,
+            )
+        } else if type_0 == ENTITY_VALUE as ::core::ffi::c_uint {
+            (
+                &raw mut (*parser).m_openValueEntities,
+                &raw mut (*parser).m_freeValueEntities,
+            )
+        } else {
+            ::std::process::abort();
+        };
+
+        let openEntity: *mut OPEN_INTERNAL_ENTITY = if !(*freeEntityList).is_null() {
+            let openEntity = *freeEntityList;
+            *freeEntityList = (*openEntity).next as *mut OPEN_INTERNAL_ENTITY;
+            openEntity
+        } else {
+            expat_malloc(
+                parser,
+                ::core::mem::size_of::<OPEN_INTERNAL_ENTITY>() as crate::__stddef_size_t_h::size_t,
+                6382 as ::core::ffi::c_int,
+            ) as *mut OPEN_INTERNAL_ENTITY
+        };
+        if openEntity.is_null() {
+            crate::expat_h::XML_ERROR_NO_MEMORY
+        } else {
+            (*entity).open = crate::expat_h::XML_TRUE;
+            (*entity).hasMore = crate::expat_h::XML_TRUE;
+            let entity_root_parser =
+                root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+                    as crate::expat_h::XML_Parser;
+            entityTrackingOnOpen(&mut *entity_root_parser);
+            entityTrackingReportStats(
+                &*entity_root_parser,
+                &*entity,
+                ::std::ffi::CStr::from_ptr((*entity).name as *const ::core::ffi::c_char),
+                "OPEN ",
+                6389 as ::core::ffi::c_int,
+            );
+            processEntity(
+                &mut *parser,
+                &mut *entity,
+                $betweenDecl,
+                type_0,
+                &mut *openEntity,
+                &mut *openEntityList,
+                openEntity,
+            )
+        }
+    }};
+}
+
 unsafe extern "C" fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
@@ -5649,7 +5714,7 @@ unsafe extern "C" fn doContent(
                                         reportDefault(parser, enc, s, next);
                                     }
                                 } else {
-                                    result = processEntity(
+                                    result = process_entity_from_unsafe_context!(
                                         parser,
                                         entity,
                                         crate::expat_h::XML_FALSE,
@@ -10561,8 +10626,12 @@ unsafe extern "C" fn doProlog(
                                     crate::expat_h::XML_FALSE as ::core::ffi::c_int
                                 })
                                     as crate::expat_h::XML_Bool;
-                                result_4 =
-                                    processEntity(parser, entity_1, betweenDecl, ENTITY_INTERNAL);
+                                result_4 = process_entity_from_unsafe_context!(
+                                    parser,
+                                    entity_1,
+                                    betweenDecl,
+                                    ENTITY_INTERNAL,
+                                );
                                 if result_4 as ::core::ffi::c_uint
                                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                                         as ::core::ffi::c_uint
@@ -11213,91 +11282,28 @@ extern "C" fn epilogProcessor(
     parser_processor_impl(ParserProcessorKind::Epilog, parser, s, end, nextPtr)
 }
 
-unsafe extern "C" fn processEntity(
-    mut parser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut betweenDecl: crate::expat_h::XML_Bool,
-    mut type_0: EntityType,
+fn processEntity(
+    parser: &mut XML_ParserStruct,
+    entity: &mut ENTITY,
+    betweenDecl: crate::expat_h::XML_Bool,
+    type_0: EntityType,
+    openEntity: &mut OPEN_INTERNAL_ENTITY,
+    openEntityList: &mut *mut OPEN_INTERNAL_ENTITY,
+    openEntityPtr: *mut OPEN_INTERNAL_ENTITY,
 ) -> crate::expat_h::XML_Error {
-    let mut openEntity: *mut OPEN_INTERNAL_ENTITY = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-    let mut openEntityList: *mut *mut OPEN_INTERNAL_ENTITY =
-        ::core::ptr::null_mut::<*mut OPEN_INTERNAL_ENTITY>();
-    let mut freeEntityList: *mut *mut OPEN_INTERNAL_ENTITY =
-        ::core::ptr::null_mut::<*mut OPEN_INTERNAL_ENTITY>();
-    match type_0 as ::core::ffi::c_uint {
-        0 => {
-            (*parser).m_processor = Some(
-                internalEntityProcessor
-                    as unsafe extern "C" fn(
-                        crate::expat_h::XML_Parser,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                    ) -> crate::expat_h::XML_Error,
-            );
-            openEntityList = &raw mut (*parser).m_openInternalEntities;
-            freeEntityList = &raw mut (*parser).m_freeInternalEntities;
-        }
-        1 => {
-            openEntityList = &raw mut (*parser).m_openAttributeEntities;
-            freeEntityList = &raw mut (*parser).m_freeAttributeEntities;
-        }
-        2 => {
-            openEntityList = &raw mut (*parser).m_openValueEntities;
-            freeEntityList = &raw mut (*parser).m_freeValueEntities;
-        }
-        _ => {
-            '_c2rust_label: {
-                crate::stdlib::__assert_fail(
-                    b"0\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    6374 as ::core::ffi::c_uint,
-                    b"enum XML_Error processEntity(XML_Parser, ENTITY *, XML_Bool, enum EntityType)\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                );
-            };
-        }
+    entity.processed = 0 as ::core::ffi::c_int;
+    openEntity.next = *openEntityList as *mut open_internal_entity;
+    *openEntityList = openEntityPtr;
+    openEntity.entity = entity;
+    openEntity.type_0 = type_0;
+    openEntity.startTagLevel = parser.m_tagLevel;
+    openEntity.betweenDecl = betweenDecl;
+    openEntity.internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    openEntity.internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    if type_0 == ENTITY_INTERNAL as ::core::ffi::c_uint {
+        triggerReenter(parser);
     }
-    if !(*freeEntityList).is_null() {
-        openEntity = *freeEntityList;
-        *freeEntityList = (*openEntity).next as *mut OPEN_INTERNAL_ENTITY;
-    } else {
-        openEntity = expat_malloc(
-            parser,
-            ::core::mem::size_of::<OPEN_INTERNAL_ENTITY>() as crate::__stddef_size_t_h::size_t,
-            6382 as ::core::ffi::c_int,
-        ) as *mut OPEN_INTERNAL_ENTITY;
-        if openEntity.is_null() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-    }
-    (*entity).open = crate::expat_h::XML_TRUE;
-    (*entity).hasMore = crate::expat_h::XML_TRUE;
-    let entity_root_parser = root_parser_of!(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-        as crate::expat_h::XML_Parser;
-    entityTrackingOnOpen(&mut *entity_root_parser);
-    entityTrackingReportStats(
-        &*entity_root_parser,
-        &*entity,
-        ::std::ffi::CStr::from_ptr((*entity).name as *const ::core::ffi::c_char),
-        "OPEN ",
-        6389 as ::core::ffi::c_int,
-    );
-    (*entity).processed = 0 as ::core::ffi::c_int;
-    (*openEntity).next = *openEntityList as *mut open_internal_entity;
-    *openEntityList = openEntity;
-    (*openEntity).entity = entity;
-    (*openEntity).type_0 = type_0;
-    (*openEntity).startTagLevel = (*parser).m_tagLevel;
-    (*openEntity).betweenDecl = betweenDecl;
-    (*openEntity).internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    (*openEntity).internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        triggerReenter(&mut *parser);
-    }
-    return crate::expat_h::XML_ERROR_NONE;
+    crate::expat_h::XML_ERROR_NONE
 }
 
 extern "C" fn internalEntityProcessor(
@@ -11667,7 +11673,7 @@ unsafe extern "C" fn appendAttributeValue(
                             } else {
                                 let mut result: crate::expat_h::XML_Error =
                                     crate::expat_h::XML_ERROR_NONE;
-                                result = processEntity(
+                                result = process_entity_from_unsafe_context!(
                                     parser,
                                     entity,
                                     crate::expat_h::XML_FALSE,
@@ -11870,7 +11876,7 @@ unsafe extern "C" fn storeEntityValue(
                                     (*dtd).keepProcessing = (*dtd).standalone;
                                 }
                             } else {
-                                result = processEntity(
+                                result = process_entity_from_unsafe_context!(
                                     parser,
                                     entity,
                                     crate::expat_h::XML_FALSE,
