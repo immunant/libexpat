@@ -175,16 +175,6 @@ pub mod siphash_h {
         state.v0 ^ state.v1 ^ state.v2 ^ state.v3
     }
 
-    pub unsafe extern "C" fn siphash24(
-        mut src: *const ::core::ffi::c_void,
-        mut len: crate::__stddef_size_t_h::size_t,
-        mut key: *const crate::siphash_h::sipkey,
-    ) -> crate::stdlib::uint64_t {
-        let mut state: crate::siphash_h::siphash = crate::siphash_h::SIPHASH_INITIALIZER;
-        sip24_update(sip24_init(&raw mut state, key), src, len);
-        sip24_final(&mut state)
-    }
-
     fn sip_round_values(state: &mut [crate::stdlib::uint64_t; 4], rounds: usize) {
         for _ in 0..rounds {
             state[0] = state[0].wrapping_add(state[1]);
@@ -1137,7 +1127,6 @@ pub use crate::src::xmlparse::siphash_h::sip24_update;
 pub use crate::src::xmlparse::siphash_h::sip24_valid;
 pub use crate::src::xmlparse::siphash_h::sip_round;
 pub use crate::src::xmlparse::siphash_h::sip_tokey;
-pub use crate::src::xmlparse::siphash_h::siphash24;
 pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
 pub use crate::stdlib::uint64_t;
