@@ -5532,83 +5532,113 @@ pub unsafe extern "C" fn XML_Parse_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_Parse(parser, s, len, isFinal)
 }
-pub unsafe extern "C" fn XML_ParseBuffer(
-    mut parser: crate::expat_h::XML_Parser,
-    mut len: ::core::ffi::c_int,
-    mut isFinal: ::core::ffi::c_int,
+/// Processes the caller-owned portion of the parser input buffer.
+///
+/// The parser may call user handlers from `callProcessor`, which can re-enter
+/// the parser.  Keep the typed borrows below confined to the work before and
+/// after that call; no `&mut XML_ParserStruct` is held while handlers run.
+unsafe fn parse_buffer_impl(
+    parser: crate::expat_h::XML_Parser,
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
 ) -> crate::expat_h::XML_Status {
-    let mut start: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut result: crate::expat_h::XML_Status = crate::expat_h::XML_STATUS_OK;
+    let needs_start = {
+        let parser_ref = &mut *parser;
+        if len < 0 as ::core::ffi::c_int {
+            parser_ref.m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+            return crate::expat_h::XML_STATUS_ERROR;
+        }
+        match parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint {
+            3 => {
+                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+                return crate::expat_h::XML_STATUS_ERROR;
+            }
+            2 => {
+                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+                return crate::expat_h::XML_STATUS_ERROR;
+            }
+            0 => {
+                if parser_ref.m_bufferPtr.is_null() {
+                    parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
+                    return crate::expat_h::XML_STATUS_ERROR;
+                }
+                parser_ref.m_parentParser.is_null()
+            }
+            _ => false,
+        }
+    };
+    if needs_start && startParsing(parser) == 0 {
+        (&mut *parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+        return crate::expat_h::XML_STATUS_ERROR;
+    }
+    let (start, parse_end) = {
+        let parser_ref = &mut *parser;
+        parser_ref.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+        let start = parser_ref.m_bufferPtr;
+        parser_ref.m_positionPtr = start;
+        parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_add(len as usize);
+        parser_ref.m_parseEndPtr = parser_ref.m_bufferEnd;
+        parser_ref.m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
+        parser_ref.m_parsingStatus.finalBuffer = is_final as crate::expat_h::XML_Bool;
+        (start, parser_ref.m_parseEndPtr)
+    };
+
+    // The setup borrow has ended before a user callback can re-enter through
+    // callProcessor.
+    let error = callProcessor(
+        parser,
+        start,
+        parse_end,
+        &raw mut (*parser).m_bufferPtr,
+    );
+    {
+        let parser_ref = &mut *parser;
+        parser_ref.m_errorCode = error;
+        if parser_ref.m_errorCode as ::core::ffi::c_uint
+            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            parser_ref.m_eventEndPtr = parser_ref.m_eventPtr;
+            parser_ref.m_processor = ProcessorState::Error;
+            return crate::expat_h::XML_STATUS_ERROR;
+        } else {
+            match parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint {
+                3 => {
+                    result = crate::expat_h::XML_STATUS_SUSPENDED;
+                }
+                0 | 1 => {
+                    if is_final != 0 {
+                        parser_ref.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+                        return result;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let encoding = parser_encoding(parser);
+    let parser_ref = &mut *parser;
+    let position_ptr = parser_ref.m_positionPtr;
+    let buffer_ptr = parser_ref.m_bufferPtr;
+    crate::src::xmltok::initUpdatePosition(
+        (*encoding).updatePosition,
+        encoding,
+        position_ptr,
+        buffer_ptr,
+        &raw mut parser_ref.m_position,
+    );
+    parser_ref.m_positionPtr = buffer_ptr;
+    return result;
+}
+pub unsafe extern "C" fn XML_ParseBuffer(
+    parser: crate::expat_h::XML_Parser,
+    len: ::core::ffi::c_int,
+    isFinal: ::core::ffi::c_int,
+) -> crate::expat_h::XML_Status {
     if parser.is_null() {
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    if len < 0 as ::core::ffi::c_int {
-        (*parser).m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
-        return crate::expat_h::XML_STATUS_ERROR;
-    }
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-        3 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
-            return crate::expat_h::XML_STATUS_ERROR;
-        }
-        2 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
-            return crate::expat_h::XML_STATUS_ERROR;
-        }
-        0 => {
-            if (*parser).m_bufferPtr.is_null() {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
-                return crate::expat_h::XML_STATUS_ERROR;
-            }
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::expat_h::XML_STATUS_ERROR;
-            }
-        }
-        _ => {}
-    }
-    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    start = (*parser).m_bufferPtr;
-    (*parser).m_positionPtr = start;
-    (*parser).m_bufferEnd = (*parser).m_bufferEnd.wrapping_add(len as usize);
-    (*parser).m_parseEndPtr = (*parser).m_bufferEnd;
-    (*parser).m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
-    (*parser).m_parsingStatus.finalBuffer = isFinal as crate::expat_h::XML_Bool;
-    (*parser).m_errorCode = callProcessor(
-        parser,
-        start,
-        (*parser).m_parseEndPtr,
-        &raw mut (*parser).m_bufferPtr,
-    );
-    if (*parser).m_errorCode as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = ProcessorState::Error;
-        return crate::expat_h::XML_STATUS_ERROR;
-    } else {
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-            3 => {
-                result = crate::expat_h::XML_STATUS_SUSPENDED;
-            }
-            0 | 1 => {
-                if isFinal != 0 {
-                    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
-                    return result;
-                }
-            }
-            _ => {}
-        }
-    }
-    crate::src::xmltok::initUpdatePosition(
-        (*parser_encoding(parser)).updatePosition,
-        parser_encoding(parser),
-        (*parser).m_positionPtr,
-        (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
-    );
-    (*parser).m_positionPtr = (*parser).m_bufferPtr;
-    return result;
+    parse_buffer_impl(parser, len, isFinal)
 }
 #[export_name = "XML_ParseBuffer"]
 
