@@ -1552,14 +1552,7 @@ where
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a default callback is installed.
-trait DefaultCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        data: *const crate::expat_external_h::XML_Char,
-        len: ::core::ffi::c_int,
-    );
-}
+trait DefaultCallback: Send + Sync + std::any::Any {}
 
 impl DefaultCallback
     for unsafe extern "C" fn(
@@ -1568,18 +1561,48 @@ impl DefaultCallback
         ::core::ffi::c_int,
     ) -> ()
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        data: *const crate::expat_external_h::XML_Char,
-        len: ::core::ffi::c_int,
-    ) {
-        self(user_data, data, len);
+}
+
+/// Default-handler data held in Rust-managed storage for one callback.
+struct DefaultCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    data: &'a [crate::expat_external_h::XML_Char],
+}
+
+/// Owns the erased C callback representation while parser-side dispatch uses
+/// a checked, typed event.
+struct DefaultCallbackAdapter {
+    callback: std::sync::Arc<dyn DefaultCallback>,
+}
+
+impl DefaultCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: DefaultCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
+}
+
+/// A default-handler registration prepared from the ABI callback value before
+/// the parser is borrowed by its setter.
+struct DefaultHandlerRegistration {
+    callback: Option<std::sync::Arc<DefaultCallbackAdapter>>,
+}
+
+fn default_handler_registration<Callback>(handler: Option<Callback>) -> DefaultHandlerRegistration
+where
+    Callback: DefaultCallback + 'static,
+{
+    DefaultHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(DefaultCallbackAdapter::new(callback))),
     }
 }
 
 static DEFAULT_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn DefaultCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<DefaultCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 // Foreign callback values remain in this boundary registry; parser state only
@@ -1828,6 +1851,26 @@ impl CharacterDataCallbackAdapter {
     }
 
     fn invoke(&self, event: CharacterDataCallbackEvent<'_>) {
+        let Ok(len) = ::core::ffi::c_int::try_from(event.data.len()) else {
+            return;
+        };
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+            ),
+        >() else {
+            return;
+        };
+        unsafe {
+            callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
+        }
+    }
+}
+
+impl DefaultCallbackAdapter {
+    fn invoke(&self, event: DefaultCallbackEvent<'_>) {
         let Ok(len) = ::core::ffi::c_int::try_from(event.data.len()) else {
             return;
         };
@@ -8483,7 +8526,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldEndCdataSectionHandler = false;
     let mut oldEndCdataSectionCallback: Option<std::sync::Arc<CdataSectionCallbackAdapter>> = None;
     let mut oldDefaultHandler = false;
-    let mut oldDefaultCallback: Option<std::sync::Arc<dyn DefaultCallback>> = None;
+    let mut oldDefaultCallback: Option<std::sync::Arc<DefaultCallbackAdapter>> = None;
     let mut oldUnparsedEntityDeclHandler = false;
     let mut oldUnparsedEntityDeclCallback: Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>> =
         None;
@@ -9758,9 +9801,10 @@ fn set_default_handler(
     default_handler_enabled: &mut bool,
     default_expand_internal_entities: &mut crate::expat_h::XML_Bool,
     parser_address: usize,
-    handler: Option<std::sync::Arc<dyn DefaultCallback>>,
+    registration: DefaultHandlerRegistration,
     expand_internal_entities: crate::expat_h::XML_Bool,
 ) {
+    let DefaultHandlerRegistration { callback: handler } = registration;
     *default_handler_enabled = handler.is_some();
     let mut handlers = DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -9786,7 +9830,7 @@ pub unsafe extern "C" fn XML_SetDefaultHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let handler = handler.map(|callback| std::sync::Arc::new(callback) as _);
+    let handler = default_handler_registration(handler);
     let parser = parser.as_mut().expect("non-null parser was checked");
     set_default_handler(
         &mut parser.m_defaultHandler,
@@ -9806,7 +9850,7 @@ pub unsafe extern "C" fn XML_SetDefaultHandlerExpand_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let handler = handler.map(|callback| std::sync::Arc::new(callback) as _);
+    let handler = default_handler_registration(handler);
     let parser = parser.as_mut().expect("non-null parser was checked");
     set_default_handler(
         &mut parser.m_defaultHandler,
@@ -11572,16 +11616,10 @@ fn default_current_encoding(parser: &XML_ParserStruct) -> Option<DefaultCurrentE
 /// whose owner is retained by this call, matching Expat's callback lifetime.
 fn invoke_default_current_handler(
     parser: &XML_ParserStruct,
-    callback: &dyn DefaultCallback,
+    callback: &DefaultCallbackAdapter,
     data: &[crate::expat_external_h::XML_Char],
 ) {
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            data.as_ptr(),
-            data.len() as ::core::ffi::c_int,
-        );
-    }
+    callback.invoke(DefaultCallbackEvent { parser, data });
 }
 
 fn xml_default_current_impl(parser: &mut XML_ParserStruct) {
