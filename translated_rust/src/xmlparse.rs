@@ -60,29 +60,30 @@ pub mod siphash_h {
         mut H: *mut crate::siphash_h::siphash,
         rounds: ::core::ffi::c_int,
     ) {
+        let state = &mut *H;
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
         while i < rounds {
-            (*H).v0 = (*H).v0.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 13 as ::core::ffi::c_int
-                | (*H).v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
-            (*H).v1 ^= (*H).v0;
-            (*H).v0 = (*H).v0 << 32 as ::core::ffi::c_int
-                | (*H).v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-            (*H).v2 = (*H).v2.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 16 as ::core::ffi::c_int
-                | (*H).v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
-            (*H).v3 ^= (*H).v2;
-            (*H).v0 = (*H).v0.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 21 as ::core::ffi::c_int
-                | (*H).v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
-            (*H).v3 ^= (*H).v0;
-            (*H).v2 = (*H).v2.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 17 as ::core::ffi::c_int
-                | (*H).v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
-            (*H).v1 ^= (*H).v2;
-            (*H).v2 = (*H).v2 << 32 as ::core::ffi::c_int
-                | (*H).v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+            state.v0 = state.v0.wrapping_add(state.v1);
+            state.v1 = state.v1 << 13 as ::core::ffi::c_int
+                | state.v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
+            state.v1 ^= state.v0;
+            state.v0 = state.v0 << 32 as ::core::ffi::c_int
+                | state.v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+            state.v2 = state.v2.wrapping_add(state.v3);
+            state.v3 = state.v3 << 16 as ::core::ffi::c_int
+                | state.v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
+            state.v3 ^= state.v2;
+            state.v0 = state.v0.wrapping_add(state.v3);
+            state.v3 = state.v3 << 21 as ::core::ffi::c_int
+                | state.v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
+            state.v3 ^= state.v0;
+            state.v2 = state.v2.wrapping_add(state.v1);
+            state.v1 = state.v1 << 17 as ::core::ffi::c_int
+                | state.v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
+            state.v1 ^= state.v2;
+            state.v2 = state.v2 << 32 as ::core::ffi::c_int
+                | state.v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
             i += 1;
         }
     }
