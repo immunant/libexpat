@@ -5741,24 +5741,20 @@ static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     '\0' as crate::expat_external_h::XML_Char,
 ];
 
-unsafe extern "C" fn ENTROPY_DEBUG(
-    mut label: *const ::core::ffi::c_char,
-    mut entropy: ::core::ffi::c_ulong,
-) -> ::core::ffi::c_ulong {
-    if environment_decimal_debug_level("EXPAT_ENTROPY_DEBUG", 0) >= 1
-    {
-        crate::stdlib::fprintf(
-            crate::stdlib::stderr,
-            b"expat: Entropy: %s --> 0x%0*lx (%lu bytes)\n\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            label,
-            ::core::mem::size_of::<::core::ffi::c_ulong>() as ::core::ffi::c_int
-                * 2 as ::core::ffi::c_int,
-            entropy,
-            ::core::mem::size_of::<::core::ffi::c_ulong>() as ::core::ffi::c_ulong,
+fn ENTROPY_DEBUG(label: &str, entropy: ::core::ffi::c_ulong) -> ::core::ffi::c_ulong {
+    if environment_decimal_debug_level("EXPAT_ENTROPY_DEBUG", 0) >= 1 {
+        use std::io::Write;
+
+        let hex_width = ::core::mem::size_of::<::core::ffi::c_ulong>() * 2;
+        let byte_count = ::core::mem::size_of::<::core::ffi::c_ulong>();
+        // Debug output must not affect parser initialization, matching the
+        // ignored `fprintf` result in the C implementation.
+        let _ = writeln!(
+            std::io::stderr().lock(),
+            "expat: Entropy: {label} --> 0x{entropy:0hex_width$x} ({byte_count} bytes)"
         );
     }
-    return entropy;
+    entropy
 }
 
 unsafe extern "C" fn generate_hash_secret_salt(
@@ -5769,10 +5765,7 @@ unsafe extern "C" fn generate_hash_secret_salt(
         &raw mut entropy as *mut ::core::ffi::c_void,
         ::core::mem::size_of::<::core::ffi::c_ulong>(),
     );
-    return ENTROPY_DEBUG(
-        b"arc4random_buf\0".as_ptr() as *const ::core::ffi::c_char,
-        entropy,
-    );
+    return ENTROPY_DEBUG("arc4random_buf", entropy);
 }
 
 unsafe extern "C" fn get_hash_secret_salt(
