@@ -3109,38 +3109,35 @@ unsafe extern "C" fn test_end_element_events() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn is_whitespace_normalized(
-    mut s: *const XML_Char,
-    mut is_cdata: ::core::ffi::c_int,
+fn is_whitespace_normalized(
+    s: &std::ffi::CStr,
+    is_cdata: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut blanks: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let mut at_start: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
-        while *s != 0 {
-            if *s as ::core::ffi::c_int == ' ' as i32 {
-                blanks += 1;
-            } else if *s as ::core::ffi::c_int == '\t' as i32
-                || *s as ::core::ffi::c_int == '\n' as i32
-                || *s as ::core::ffi::c_int == '\r' as i32
-            {
-                return 0 as ::core::ffi::c_int;
-            } else {
-                if at_start != 0 {
-                    at_start = 0 as ::core::ffi::c_int;
-                    if blanks != 0 && is_cdata == 0 {
-                        return 0 as ::core::ffi::c_int;
-                    }
-                } else if blanks > 1 as ::core::ffi::c_int && is_cdata == 0 {
-                    return 0 as ::core::ffi::c_int;
+    let mut blanks: ::core::ffi::c_int = 0;
+    let mut at_start = true;
+
+    for &byte in s.to_bytes() {
+        if byte == b' ' {
+            blanks += 1;
+        } else if matches!(byte, b'\t' | b'\n' | b'\r') {
+            return 0;
+        } else {
+            if at_start {
+                at_start = false;
+                if blanks != 0 && is_cdata == 0 {
+                    return 0;
                 }
-                blanks = 0 as ::core::ffi::c_int;
+            } else if blanks > 1 && is_cdata == 0 {
+                return 0;
             }
-            s = s.offset(1);
+            blanks = 0;
         }
-        if blanks != 0 && is_cdata == 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        return 1 as ::core::ffi::c_int;
+    }
+
+    if blanks != 0 && is_cdata == 0 {
+        0
+    } else {
+        1
     }
 }
 unsafe extern "C" fn test_helper_is_whitespace_normalized() {
@@ -3151,7 +3148,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             848 as ::core::ffi::c_int,
         );
         if is_whitespace_normalized(
-            b"abc\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc\0")
+                .expect("test literal must be NUL terminated"),
             0 as ::core::ffi::c_int,
         ) != 0
         {
@@ -3166,7 +3164,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc\0")
+                .expect("test literal must be NUL terminated"),
             1 as ::core::ffi::c_int,
         ) != 0
         {
@@ -3181,7 +3180,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc def ghi\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi\0")
+                .expect("test literal must be NUL terminated"),
             0 as ::core::ffi::c_int,
         ) != 0
         {
@@ -3196,7 +3196,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc def ghi\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi\0")
+                .expect("test literal must be NUL terminated"),
             1 as ::core::ffi::c_int,
         ) != 0
         {
@@ -3211,7 +3212,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b" abc def ghi\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b" abc def ghi\0")
+                .expect("test literal must be NUL terminated"),
             0 as ::core::ffi::c_int,
         ) == 0
         {
@@ -3226,7 +3228,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b" abc def ghi\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b" abc def ghi\0")
+                .expect("test literal must be NUL terminated"),
             1 as ::core::ffi::c_int,
         ) != 0
         {
@@ -3241,7 +3244,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc  def ghi\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc  def ghi\0")
+                .expect("test literal must be NUL terminated"),
             0 as ::core::ffi::c_int,
         ) == 0
         {
@@ -3256,7 +3260,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc  def ghi\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc  def ghi\0")
+                .expect("test literal must be NUL terminated"),
             1 as ::core::ffi::c_int,
         ) != 0
         {
@@ -3271,7 +3276,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc def ghi \0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi \0")
+                .expect("test literal must be NUL terminated"),
             0 as ::core::ffi::c_int,
         ) == 0
         {
@@ -3286,7 +3292,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc def ghi \0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi \0")
+                .expect("test literal must be NUL terminated"),
             1 as ::core::ffi::c_int,
         ) != 0
         {
@@ -3300,8 +3307,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b" \0".as_ptr() as *const XML_Char, 0 as ::core::ffi::c_int)
-            == 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b" \0")
+                .expect("test literal must be NUL terminated"),
+            0 as ::core::ffi::c_int,
+        ) == 0
         {
         } else {
             __assert_fail(
@@ -3313,8 +3323,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b" \0".as_ptr() as *const XML_Char, 1 as ::core::ffi::c_int)
-            != 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b" \0")
+                .expect("test literal must be NUL terminated"),
+            1 as ::core::ffi::c_int,
+        ) != 0
         {
         } else {
             __assert_fail(
@@ -3325,8 +3338,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b"\t\0".as_ptr() as *const XML_Char, 0 as ::core::ffi::c_int)
-            == 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b"\t\0")
+                .expect("test literal must be NUL terminated"),
+            0 as ::core::ffi::c_int,
+        ) == 0
         {
         } else {
             __assert_fail(
@@ -3338,8 +3354,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b"\t\0".as_ptr() as *const XML_Char, 1 as ::core::ffi::c_int)
-            == 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b"\t\0")
+                .expect("test literal must be NUL terminated"),
+            1 as ::core::ffi::c_int,
+        ) == 0
         {
         } else {
             __assert_fail(
@@ -3351,8 +3370,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b"\n\0".as_ptr() as *const XML_Char, 0 as ::core::ffi::c_int)
-            == 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b"\n\0")
+                .expect("test literal must be NUL terminated"),
+            0 as ::core::ffi::c_int,
+        ) == 0
         {
         } else {
             __assert_fail(
@@ -3364,8 +3386,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b"\n\0".as_ptr() as *const XML_Char, 1 as ::core::ffi::c_int)
-            == 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b"\n\0")
+                .expect("test literal must be NUL terminated"),
+            1 as ::core::ffi::c_int,
+        ) == 0
         {
         } else {
             __assert_fail(
@@ -3377,8 +3402,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b"\r\0".as_ptr() as *const XML_Char, 0 as ::core::ffi::c_int)
-            == 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b"\r\0")
+                .expect("test literal must be NUL terminated"),
+            0 as ::core::ffi::c_int,
+        ) == 0
         {
         } else {
             __assert_fail(
@@ -3390,8 +3418,11 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
                     as *const ::core::ffi::c_char,
             );
         };
-        if is_whitespace_normalized(b"\r\0".as_ptr() as *const XML_Char, 1 as ::core::ffi::c_int)
-            == 0
+        if is_whitespace_normalized(
+            std::ffi::CStr::from_bytes_with_nul(b"\r\0")
+                .expect("test literal must be NUL terminated"),
+            1 as ::core::ffi::c_int,
+        ) == 0
         {
         } else {
             __assert_fail(
@@ -3404,7 +3435,8 @@ unsafe extern "C" fn test_helper_is_whitespace_normalized() {
             );
         };
         if is_whitespace_normalized(
-            b"abc\t def\0".as_ptr() as *const XML_Char,
+            std::ffi::CStr::from_bytes_with_nul(b"abc\t def\0")
+                .expect("test literal must be NUL terminated"),
             1 as ::core::ffi::c_int,
         ) == 0
         {
@@ -3444,7 +3476,11 @@ unsafe extern "C" fn check_attr_contains_normalized_whitespace(
                     attrname as *const ::core::ffi::c_char,
                 ) == 0 as ::core::ffi::c_int
             {
-                if is_whitespace_normalized(value, 0 as ::core::ffi::c_int) == 0 {
+                if is_whitespace_normalized(
+                    std::ffi::CStr::from_ptr(value),
+                    0 as ::core::ffi::c_int,
+                ) == 0
+                {
                     let mut buffer: [::core::ffi::c_char; 256] = [0; 256];
                     snprintf(
                         &raw mut buffer as *mut ::core::ffi::c_char,
