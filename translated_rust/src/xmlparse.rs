@@ -4909,18 +4909,7 @@ pub unsafe extern "C" fn expat_realloc(
     mut size: crate::__stddef_size_t_h::size_t,
     mut sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
-    '_c2rust_label: {
-        if !parser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                942 as ::core::ffi::c_uint,
-                b"void *expat_realloc(XML_Parser, void *, size_t, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
+    assert!(!parser.is_null(), "parser != NULL");
     if ptr.is_null() {
         return expat_malloc(parser, size, sourceLine);
     }
@@ -4970,26 +4959,16 @@ pub unsafe extern "C" fn expat_realloc(
             return crate::__stddef_null_h::NULL;
         }
     }
-    '_c2rust_label_1: {
-        if (18446744073709551615 as usize)
+    assert!(
+        (18446744073709551615 as usize)
             .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
             .wrapping_sub(
                 ::core::mem::size_of::<::core::ffi::c_longlong>()
                     .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()),
             )
-            >= size
-        {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"SIZE_MAX - sizeof(size_t) - EXPAT_MALLOC_PADDING >= size\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                975 as ::core::ffi::c_uint,
-                b"void *expat_realloc(XML_Parser, void *, size_t, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
+            >= size,
+        "SIZE_MAX - sizeof(size_t) - EXPAT_MALLOC_PADDING >= size"
+    );
     mallocedPtr = reallocate(
         mallocedPtr,
         ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
