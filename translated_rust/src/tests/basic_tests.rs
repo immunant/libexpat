@@ -1195,6 +1195,142 @@ pub const STRUCT_START_TAG: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
 pub const STRUCT_END_TAG: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
 pub const ENTITY_MATCH_FAIL: ::core::ffi::c_int = -(1 as ::core::ffi::c_int);
 pub const ENTITY_MATCH_NOT_FOUND: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+const BASIC_TESTS_FILE: &[u8] = b"/root/work/expat/tests/basic_tests.c\0";
+
+fn bytes_as_c_char_ptr(bytes: &[u8]) -> *const ::core::ffi::c_char {
+    bytes.as_ptr().cast()
+}
+
+fn current_parser() -> XML_Parser {
+    unsafe { g_parser }
+}
+
+fn set_current_parser(parser: XML_Parser) {
+    unsafe {
+        g_parser = parser;
+    }
+}
+
+fn current_chunk_size() -> ::core::ffi::c_int {
+    unsafe { g_chunkSize }
+}
+
+fn set_test_info(name: &[u8], line: ::core::ffi::c_int) {
+    unsafe {
+        _check_set_test_info(
+            bytes_as_c_char_ptr(name),
+            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+            line,
+        );
+    }
+}
+
+fn fail_test(line: ::core::ffi::c_int, message: &[u8]) -> ! {
+    unsafe {
+        _fail(
+            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+            line,
+            bytes_as_c_char_ptr(message),
+        )
+    }
+}
+
+fn fail_test_with_buffer(line: ::core::ffi::c_int, message: *mut ::core::ffi::c_char) -> ! {
+    unsafe { _fail(bytes_as_c_char_ptr(BASIC_TESTS_FILE), line, message) }
+}
+
+fn xml_failure(line: ::core::ffi::c_int) {
+    unsafe {
+        _xml_failure(
+            current_parser(),
+            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+            line,
+        );
+    }
+}
+
+fn parser_create() -> XML_Parser {
+    unsafe { XML_ParserCreate(::core::ptr::null::<XML_Char>()) }
+}
+
+fn parse_single_bytes(text: *const ::core::ffi::c_char, len: ::core::ffi::c_int) -> XML_Status {
+    unsafe { _XML_Parse_SINGLE_BYTES(current_parser(), text, len, XML_TRUE as ::core::ffi::c_int) }
+}
+
+fn parse_single_bytes_c_string(text: *const ::core::ffi::c_char) -> XML_Status {
+    parse_single_bytes(text, c_string_len(text))
+}
+
+fn parser_error_code() -> XML_Error {
+    unsafe { XML_GetErrorCode(current_parser()) }
+}
+
+fn parser_reset() {
+    unsafe {
+        XML_ParserReset(current_parser(), ::core::ptr::null::<XML_Char>());
+    }
+}
+
+fn parser_set_hash_salt(hash_salt: ::core::ffi::c_ulong) {
+    unsafe {
+        XML_SetHashSalt(current_parser(), hash_salt);
+    }
+}
+
+fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
+    unsafe { strlen(text) as ::core::ffi::c_int }
+}
+
+fn expect_failure(
+    text: *const ::core::ffi::c_char,
+    error_code: XML_Error,
+    error_message: &[u8],
+    line: ::core::ffi::c_int,
+) {
+    unsafe {
+        _expect_failure(
+            text,
+            error_code,
+            bytes_as_c_char_ptr(error_message),
+            bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+            line,
+        );
+    }
+}
+
+fn run_character_check(
+    text: *const ::core::ffi::c_char,
+    expected: *const XML_Char,
+    line: ::core::ffi::c_int,
+) {
+    unsafe {
+        _run_character_check(text, expected, bytes_as_c_char_ptr(BASIC_TESTS_FILE), line);
+    }
+}
+
+fn write_illegal_utf8_input(buffer: &mut [u8; 100], ordinal: ::core::ffi::c_int) {
+    unsafe {
+        snprintf(
+            buffer.as_mut_ptr().cast(),
+            buffer.len() as size_t,
+            bytes_as_c_char_ptr(b"<e>%ccd</e>\0"),
+            ordinal,
+        );
+    }
+}
+
+fn write_illegal_utf8_failure_message(buffer: &mut [u8; 100], ordinal: ::core::ffi::c_int) {
+    unsafe {
+        snprintf(
+            buffer.as_mut_ptr().cast(),
+            buffer.len() as size_t,
+            bytes_as_c_char_ptr(b"expected token error for '%c' (ordinal %d) in UTF-8 text\0"),
+            ordinal,
+            ordinal,
+        );
+    }
+}
+
 fn load_sip_u64(bytes: &[::core::ffi::c_uchar]) -> uint64_t {
     let bytes: [::core::ffi::c_uchar; 8] = bytes
         .try_into()
@@ -1960,441 +2096,215 @@ fn sip24_valid() -> ::core::ffi::c_int {
     }
     return 1 as ::core::ffi::c_int;
 }
-unsafe extern "C" fn basic_setup() {
-    unsafe {
-        g_parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if g_parser.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                75 as ::core::ffi::c_int,
-                b"Parser not created.\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+extern "C" fn basic_setup() {
+    set_current_parser(parser_create());
+    if current_parser().is_null() {
+        fail_test(75 as ::core::ffi::c_int, b"Parser not created.\0");
     }
 }
-unsafe extern "C" fn test_nul_byte() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nul_byte\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            82 as ::core::ffi::c_int,
+extern "C" fn test_nul_byte() {
+    set_test_info(b"test_nul_byte\0", 82 as ::core::ffi::c_int);
+    let text = *b"<doc>\0</doc>\0";
+    if parse_single_bytes(text.as_ptr().cast(), (text.len() - 1) as ::core::ffi::c_int)
+        as ::core::ffi::c_uint
+        == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_test(
+            88 as ::core::ffi::c_int,
+            b"Parser did not report error on NUL-byte.\0",
         );
-        let mut text: [::core::ffi::c_char; 13] =
-            ::core::mem::transmute::<[u8; 13], [::core::ffi::c_char; 13]>(*b"<doc>\0</doc>\0");
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw mut text as *mut ::core::ffi::c_char,
-            (::core::mem::size_of::<[::core::ffi::c_char; 13]>() as usize).wrapping_sub(1 as usize)
-                as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
+    }
+    if parser_error_code() as ::core::ffi::c_uint
+        != XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(90 as ::core::ffi::c_int);
+    }
+}
+extern "C" fn test_u0000_char() {
+    set_test_info(b"test_u0000_char\0", 94 as ::core::ffi::c_int);
+    expect_failure(
+        bytes_as_c_char_ptr(b"<doc>&#0;</doc>\0"),
+        XML_ERROR_BAD_CHAR_REF,
+        b"Parser did not report error on NUL-byte.\0",
+        97 as ::core::ffi::c_int,
+    );
+}
+extern "C" fn test_siphash_self() {
+    set_test_info(b"test_siphash_self\0", 101 as ::core::ffi::c_int);
+    if sip24_valid() == 0 {
+        fail_test(103 as ::core::ffi::c_int, b"SipHash self-test failed\0");
+    }
+}
+extern "C" fn test_siphash_spec() {
+    set_test_info(b"test_siphash_spec\0", 107 as ::core::ffi::c_int);
+    let message: [::core::ffi::c_uchar; 16] =
+        *b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\0";
+    let len = message.len() - 1;
+    let expected: uint64_t = (0xa129ca61 as ::core::ffi::c_uint as uint64_t)
+        << 32 as ::core::ffi::c_int
+        | 0x49be45e5 as uint64_t;
+    let mut state: siphash = siphash {
+        v0: 0,
+        v1: 0,
+        v2: 0,
+        v3: 0,
+        buf: [0; 8],
+        buf_len: 0,
+        c: 0,
+    };
+    let mut key: sipkey = sipkey { k: [0; 2] };
+    sip_tokey(
+        &mut key,
+        b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F",
+    );
+    sip24_init(&mut state, &key);
+    sip24_update(&mut state, &message[..4]);
+    sip24_update(&mut state, &message[4..len]);
+    sip24_update(&mut state, &message[..0]);
+    if sip24_final(&mut state) != expected {
+        fail_test(
+            128 as ::core::ffi::c_int,
+            b"sip24_final failed spec test\n\0",
+        );
+    }
+    if siphash24(&message[..len], &key) != expected {
+        fail_test(132 as ::core::ffi::c_int, b"siphash24 failed spec test\n\0");
+    }
+}
+extern "C" fn test_bom_utf8() {
+    set_test_info(b"test_bom_utf8\0", 136 as ::core::ffi::c_int);
+    if parse_single_bytes_c_string(bytes_as_c_char_ptr(b"\xEF\xBB\xBF<e/>\0"))
+        as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(142 as ::core::ffi::c_int);
+    }
+}
+extern "C" fn test_bom_utf16_be() {
+    set_test_info(b"test_bom_utf16_be\0", 146 as ::core::ffi::c_int);
+    let text = *b"\xFE\xFF\0<\0e\0/\0>\0";
+    if parse_single_bytes(text.as_ptr().cast(), (text.len() - 1) as ::core::ffi::c_int)
+        as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(151 as ::core::ffi::c_int);
+    }
+}
+extern "C" fn test_bom_utf16_le() {
+    set_test_info(b"test_bom_utf16_le\0", 155 as ::core::ffi::c_int);
+    let text = *b"\xFF\xFE<\0e\0/\0>\0\0";
+    if parse_single_bytes(text.as_ptr().cast(), (text.len() - 1) as ::core::ffi::c_int)
+        as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(160 as ::core::ffi::c_int);
+    }
+}
+extern "C" fn test_nobom_utf16_le() {
+    set_test_info(b"test_nobom_utf16_le\0", 164 as ::core::ffi::c_int);
+    let text = *b" \0<\0e\0/\0>\0\0";
+    if current_chunk_size() == 1 as ::core::ffi::c_int {
+        return;
+    }
+    if parse_single_bytes(text.as_ptr().cast(), (text.len() - 1) as ::core::ffi::c_int)
+        as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(175 as ::core::ffi::c_int);
+    }
+}
+extern "C" fn test_hash_collision() {
+    set_test_info(b"test_hash_collision\0", 179 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<doc>\n<a1/><a2/><a3/><a4/><a5/><a6/><a7/><a8/>\n<b1></b1><b2 attr='foo'>This is a foo</b2><b3></b3><b4></b4>\n<b5></b5><b6></b6><b7></b7><b8></b8>\n<c1/><c2/><c3/><c4/><c5/><c6/><c7/><c8/>\n<d1/><d2/><d3/><d4/><d5/><d6/><d7/>\n<d8>This triggers the table growth and collides with b2</d8>\n</doc>\n\0",
+    );
+    parser_set_hash_salt(
+        ((0xffffffff as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+            | 0xff99fc90 as uint64_t) as ::core::ffi::c_ulong,
+    );
+    if parse_single_bytes_c_string(text) as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(202 as ::core::ffi::c_int);
+    }
+}
+extern "C" fn test_danish_latin1() {
+    set_test_info(b"test_danish_latin1\0", 208 as ::core::ffi::c_int);
+    run_character_check(
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='iso-8859-1'?>\n<e>J\xF8rgen \xE6\xF8\xE5\xC6\xD8\xC5</e>\0"),
+        b"J\xC3\xB8rgen \xC3\xA6\xC3\xB8\xC3\xA5\xC3\x86\xC3\x98\xC3\x85\0".as_ptr()
+            as *const XML_Char,
+        218 as ::core::ffi::c_int,
+    );
+}
+extern "C" fn test_french_charref_hexidecimal() {
+    set_test_info(
+        b"test_french_charref_hexidecimal\0",
+        223 as ::core::ffi::c_int,
+    );
+    run_character_check(
+        bytes_as_c_char_ptr(
+            b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>&#xE9;&#xE8;&#xE0;&#xE7;&#xEA;&#xC8;</doc>\0",
+        ),
+        b"\xC3\xA9\xC3\xA8\xC3\xA0\xC3\xA7\xC3\xAA\xC3\x88\0".as_ptr() as *const XML_Char,
+        232 as ::core::ffi::c_int,
+    );
+}
+extern "C" fn test_french_charref_decimal() {
+    set_test_info(b"test_french_charref_decimal\0", 236 as ::core::ffi::c_int);
+    run_character_check(
+        bytes_as_c_char_ptr(
+            b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>&#233;&#232;&#224;&#231;&#234;&#200;</doc>\0",
+        ),
+        b"\xC3\xA9\xC3\xA8\xC3\xA0\xC3\xA7\xC3\xAA\xC3\x88\0".as_ptr() as *const XML_Char,
+        245 as ::core::ffi::c_int,
+    );
+}
+extern "C" fn test_french_latin1() {
+    set_test_info(b"test_french_latin1\0", 249 as ::core::ffi::c_int);
+    run_character_check(
+        bytes_as_c_char_ptr(
+            b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>\xE9\xE8\xE0\xE7\xEA\xC8</doc>\0",
+        ),
+        b"\xC3\xA9\xC3\xA8\xC3\xA0\xC3\xA7\xC3\xAA\xC3\x88\0".as_ptr() as *const XML_Char,
+        258 as ::core::ffi::c_int,
+    );
+}
+extern "C" fn test_french_utf8() {
+    set_test_info(b"test_french_utf8\0", 262 as ::core::ffi::c_int);
+    run_character_check(
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-8'?>\n<doc>\xC3\xA9</doc>\0"),
+        b"\xC3\xA9\0".as_ptr() as *const XML_Char,
+        270 as ::core::ffi::c_int,
+    );
+}
+extern "C" fn test_utf8_false_rejection() {
+    set_test_info(b"test_utf8_false_rejection\0", 279 as ::core::ffi::c_int);
+    run_character_check(
+        bytes_as_c_char_ptr(b"<doc>\xEF\xBA\xBF</doc>\0"),
+        b"\xEF\xBA\xBF\0".as_ptr() as *const XML_Char,
+        286 as ::core::ffi::c_int,
+    );
+}
+extern "C" fn test_illegal_utf8() {
+    set_test_info(b"test_illegal_utf8\0", 295 as ::core::ffi::c_int);
+    let mut text = [0_u8; 100];
+    let mut i = 128 as ::core::ffi::c_int;
+    while i <= 255 as ::core::ffi::c_int {
+        write_illegal_utf8_input(&mut text, i);
+        if parse_single_bytes(text.as_ptr().cast(), c_string_len(text.as_ptr().cast()))
+            as ::core::ffi::c_uint
             == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                88 as ::core::ffi::c_int,
-                b"Parser did not report error on NUL-byte.\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetErrorCode(g_parser) as ::core::ffi::c_uint
+            write_illegal_utf8_failure_message(&mut text, i);
+            fail_test_with_buffer(306 as ::core::ffi::c_int, text.as_mut_ptr().cast());
+        } else if parser_error_code() as ::core::ffi::c_uint
             != XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                90 as ::core::ffi::c_int,
-            );
+            xml_failure(308 as ::core::ffi::c_int);
         }
-    }
-}
-unsafe extern "C" fn test_u0000_char() {
-    unsafe {
-        _check_set_test_info(
-            b"test_u0000_char\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            94 as ::core::ffi::c_int,
-        );
-        _expect_failure(
-            b"<doc>&#0;</doc>\0".as_ptr() as *const ::core::ffi::c_char,
-            XML_ERROR_BAD_CHAR_REF,
-            b"Parser did not report error on NUL-byte.\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            97 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_siphash_self() {
-    unsafe {
-        _check_set_test_info(
-            b"test_siphash_self\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            101 as ::core::ffi::c_int,
-        );
-        if sip24_valid() == 0 {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                103 as ::core::ffi::c_int,
-                b"SipHash self-test failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    }
-}
-unsafe extern "C" fn test_siphash_spec() {
-    unsafe {
-        _check_set_test_info(
-            b"test_siphash_spec\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            107 as ::core::ffi::c_int,
-        );
-        let message: [::core::ffi::c_uchar; 16] =
-            *b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\0";
-        let len: size_t = (::core::mem::size_of::<[::core::ffi::c_char; 16]>() as size_t)
-            .wrapping_sub(1 as size_t);
-        let expected: uint64_t = (0xa129ca61 as ::core::ffi::c_uint as uint64_t)
-            << 32 as ::core::ffi::c_int
-            | 0x49be45e5 as uint64_t;
-        let mut state: siphash = siphash {
-            v0: 0,
-            v1: 0,
-            v2: 0,
-            v3: 0,
-            buf: [0; 8],
-            buf_len: 0,
-            c: 0,
-        };
-        let mut key: sipkey = sipkey { k: [0; 2] };
-        sip_tokey(
-            &mut key,
-            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F",
-        );
-        sip24_init(&mut state, &key);
-        sip24_update(&mut state, &message[..4]);
-        sip24_update(&mut state, &message[4..len]);
-        sip24_update(&mut state, &message[..0]);
-        if sip24_final(&mut state) != expected {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                128 as ::core::ffi::c_int,
-                b"sip24_final failed spec test\n\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if siphash24(&message[..len], &key) != expected {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                132 as ::core::ffi::c_int,
-                b"siphash24 failed spec test\n\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    }
-}
-unsafe extern "C" fn test_bom_utf8() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bom_utf8\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            136 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"\xEF\xBB\xBF<e/>\0".as_ptr() as *const ::core::ffi::c_char;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                142 as ::core::ffi::c_int,
-            );
-        }
-    }
-}
-unsafe extern "C" fn test_bom_utf16_be() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bom_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            146 as ::core::ffi::c_int,
-        );
-        let mut text: [::core::ffi::c_char; 11] = ::core::mem::transmute::<
-            [u8; 11],
-            [::core::ffi::c_char; 11],
-        >(*b"\xFE\xFF\0<\0e\0/\0>\0");
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw mut text as *mut ::core::ffi::c_char,
-            (::core::mem::size_of::<[::core::ffi::c_char; 11]>() as usize).wrapping_sub(1 as usize)
-                as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                151 as ::core::ffi::c_int,
-            );
-        }
-    }
-}
-unsafe extern "C" fn test_bom_utf16_le() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bom_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            155 as ::core::ffi::c_int,
-        );
-        let mut text: [::core::ffi::c_char; 11] = ::core::mem::transmute::<
-            [u8; 11],
-            [::core::ffi::c_char; 11],
-        >(*b"\xFF\xFE<\0e\0/\0>\0\0");
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw mut text as *mut ::core::ffi::c_char,
-            (::core::mem::size_of::<[::core::ffi::c_char; 11]>() as usize).wrapping_sub(1 as usize)
-                as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                160 as ::core::ffi::c_int,
-            );
-        }
-    }
-}
-unsafe extern "C" fn test_nobom_utf16_le() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nobom_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            164 as ::core::ffi::c_int,
-        );
-        let mut text: [::core::ffi::c_char; 11] =
-            ::core::mem::transmute::<[u8; 11], [::core::ffi::c_char; 11]>(*b" \0<\0e\0/\0>\0\0");
-        if g_chunkSize == 1 as ::core::ffi::c_int {
-            return;
-        }
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw mut text as *mut ::core::ffi::c_char,
-            (::core::mem::size_of::<[::core::ffi::c_char; 11]>() as usize).wrapping_sub(1 as usize)
-                as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                175 as ::core::ffi::c_int,
-            );
-        }
-    }
-}
-unsafe extern "C" fn test_hash_collision() {
-    unsafe {
-        _check_set_test_info(
-            b"test_hash_collision\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            179 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<doc>\n<a1/><a2/><a3/><a4/><a5/><a6/><a7/><a8/>\n<b1></b1><b2 attr='foo'>This is a foo</b2><b3></b3><b4></b4>\n<b5></b5><b6></b6><b7></b7><b8></b8>\n<c1/><c2/><c3/><c4/><c5/><c6/><c7/><c8/>\n<d1/><d2/><d3/><d4/><d5/><d6/><d7/>\n<d8>This triggers the table growth and collides with b2</d8>\n</doc>\n\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetHashSalt(
-            g_parser,
-            ((0xffffffff as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-                | 0xff99fc90 as uint64_t) as ::core::ffi::c_ulong,
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                202 as ::core::ffi::c_int,
-            );
-        }
-    }
-}
-unsafe extern "C" fn test_danish_latin1() {
-    unsafe {
-        _check_set_test_info(
-            b"test_danish_latin1\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            208 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<e>J\xF8rgen \xE6\xF8\xE5\xC6\xD8\xC5</e>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"J\xC3\xB8rgen \xC3\xA6\xC3\xB8\xC3\xA5\xC3\x86\xC3\x98\xC3\x85\0".as_ptr()
-                as *const XML_Char;
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            218 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_french_charref_hexidecimal() {
-    unsafe {
-        _check_set_test_info(
-            b"test_french_charref_hexidecimal\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            223 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>&#xE9;&#xE8;&#xE0;&#xE7;&#xEA;&#xC8;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"\xC3\xA9\xC3\xA8\xC3\xA0\xC3\xA7\xC3\xAA\xC3\x88\0".as_ptr() as *const XML_Char;
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            232 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_french_charref_decimal() {
-    unsafe {
-        _check_set_test_info(
-            b"test_french_charref_decimal\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            236 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>&#233;&#232;&#224;&#231;&#234;&#200;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"\xC3\xA9\xC3\xA8\xC3\xA0\xC3\xA7\xC3\xAA\xC3\x88\0".as_ptr() as *const XML_Char;
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            245 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_french_latin1() {
-    unsafe {
-        _check_set_test_info(
-            b"test_french_latin1\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            249 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc>\xE9\xE8\xE0\xE7\xEA\xC8</doc>\0"
-                .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"\xC3\xA9\xC3\xA8\xC3\xA0\xC3\xA7\xC3\xAA\xC3\x88\0".as_ptr() as *const XML_Char;
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            258 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_french_utf8() {
-    unsafe {
-        _check_set_test_info(
-            b"test_french_utf8\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            262 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='utf-8'?>\n<doc>\xC3\xA9</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char = b"\xC3\xA9\0".as_ptr() as *const XML_Char;
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            270 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_utf8_false_rejection() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf8_false_rejection\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            279 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc>\xEF\xBA\xBF</doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char = b"\xEF\xBA\xBF\0".as_ptr() as *const XML_Char;
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            286 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_illegal_utf8() {
-    unsafe {
-        _check_set_test_info(
-            b"test_illegal_utf8\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            295 as ::core::ffi::c_int,
-        );
-        let mut text: [::core::ffi::c_char; 100] = [0; 100];
-        let mut i: ::core::ffi::c_int = 0;
-        i = 128 as ::core::ffi::c_int;
-        while i <= 255 as ::core::ffi::c_int {
-            snprintf(
-                &raw mut text as *mut ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as size_t,
-                b"<e>%ccd</e>\0".as_ptr() as *const ::core::ffi::c_char,
-                i,
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                &raw mut text as *mut ::core::ffi::c_char,
-                strlen(&raw mut text as *mut ::core::ffi::c_char) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                snprintf(
-                    &raw mut text as *mut ::core::ffi::c_char,
-                    ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as size_t,
-                    b"expected token error for '%c' (ordinal %d) in UTF-8 text\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    i,
-                    i,
-                );
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    306 as ::core::ffi::c_int,
-                    &raw mut text as *mut ::core::ffi::c_char,
-                );
-            } else if XML_GetErrorCode(g_parser) as ::core::ffi::c_uint
-                != XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    g_parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    308 as ::core::ffi::c_int,
-                );
-            }
-            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            i += 1;
-        }
+        parser_reset();
+        i += 1;
     }
 }
 pub const UTF8_LEAD_1: [::core::ffi::c_char; 2] =
