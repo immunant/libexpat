@@ -2072,22 +2072,6 @@ unsafe extern "C" fn callProcessor(
     return ret;
 }
 
-unsafe extern "C" fn startParsing(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Bool {
-    if (*parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
-        let mut entropy: ::core::ffi::c_ulong = 0;
-        arc4random_buf(
-            &raw mut entropy as *mut ::core::ffi::c_void,
-            ::core::mem::size_of::<::core::ffi::c_ulong>() as crate::__stddef_size_t_h::size_t,
-        );
-        (*parser).m_hash_secret_salt = ENTROPY_DEBUG("arc4random_buf", entropy);
-    }
-    if (*parser).m_ns != 0 {
-        return setContext(parser, implicitContext.as_ptr());
-    }
-    return crate::expat_h::XML_TRUE;
-}
 #[export_name = "XML_ParserCreate_MM"]
 
 pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
@@ -3691,9 +3675,20 @@ pub unsafe extern "C" fn XML_Parse_ffi(
             return crate::expat_h::XML_STATUS_ERROR;
         }
         0 => {
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::expat_h::XML_STATUS_ERROR;
+            if (*parser).m_parentParser.is_null() {
+                if (*parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
+                    let mut entropy: ::core::ffi::c_ulong = 0;
+                    arc4random_buf(
+                        &raw mut entropy as *mut ::core::ffi::c_void,
+                        ::core::mem::size_of::<::core::ffi::c_ulong>()
+                            as crate::__stddef_size_t_h::size_t,
+                    );
+                    (*parser).m_hash_secret_salt = ENTROPY_DEBUG("arc4random_buf", entropy);
+                }
+                if (*parser).m_ns != 0 && setContext(parser, implicitContext.as_ptr()) == 0 {
+                    (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+                    return crate::expat_h::XML_STATUS_ERROR;
+                }
             }
         }
         _ => {}
@@ -3754,9 +3749,20 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
                 (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::expat_h::XML_STATUS_ERROR;
+            if (*parser).m_parentParser.is_null() {
+                if (*parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
+                    let mut entropy: ::core::ffi::c_ulong = 0;
+                    arc4random_buf(
+                        &raw mut entropy as *mut ::core::ffi::c_void,
+                        ::core::mem::size_of::<::core::ffi::c_ulong>()
+                            as crate::__stddef_size_t_h::size_t,
+                    );
+                    (*parser).m_hash_secret_salt = ENTROPY_DEBUG("arc4random_buf", entropy);
+                }
+                if (*parser).m_ns != 0 && setContext(parser, implicitContext.as_ptr()) == 0 {
+                    (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+                    return crate::expat_h::XML_STATUS_ERROR;
+                }
             }
         }
         _ => {}
@@ -11692,23 +11698,93 @@ unsafe extern "C" fn dtdCopy(
             i += 1;
         }
     }
-    if copyEntityTable(
-        oldParser,
-        &raw mut (*newDtd).generalEntities,
-        &raw mut (*newDtd).pool,
-        &raw const (*oldDtd).generalEntities,
-    ) == 0
-    {
-        return 0 as ::core::ffi::c_int;
-    }
-    if copyEntityTable(
-        oldParser,
-        &raw mut (*newDtd).paramEntities,
-        &raw mut (*newDtd).pool,
-        &raw const (*oldDtd).paramEntities,
-    ) == 0
-    {
-        return 0 as ::core::ffi::c_int;
+    for (newTable, oldTable) in [
+        (
+            &raw mut (*newDtd).generalEntities,
+            &raw const (*oldDtd).generalEntities,
+        ),
+        (
+            &raw mut (*newDtd).paramEntities,
+            &raw const (*oldDtd).paramEntities,
+        ),
+    ] {
+        let mut entity_iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
+            p: ::core::ptr::null_mut::<*mut NAMED>(),
+            end: ::core::ptr::null_mut::<*mut NAMED>(),
+        };
+        let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
+            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        let mut cachedNewBase: *const crate::expat_external_h::XML_Char =
+            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        hashTableIterInit(&mut entity_iter, &*oldTable);
+        loop {
+            let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
+            let mut name: *const crate::expat_external_h::XML_Char =
+                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+            let mut oldE: *const ENTITY = hashTableIterNext(&raw mut entity_iter) as *mut ENTITY;
+            if oldE.is_null() {
+                break;
+            }
+            name = poolCopyString(&raw mut (*newDtd).pool, (*oldE).name);
+            if name.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            newE = lookup(
+                oldParser,
+                newTable,
+                name as KEY,
+                ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
+            ) as *mut ENTITY;
+            if newE.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            if !(*oldE).systemId.is_null() {
+                let mut tem: *const crate::expat_external_h::XML_Char =
+                    poolCopyString(&raw mut (*newDtd).pool, (*oldE).systemId);
+                if tem.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                (*newE).systemId = tem;
+                if !(*oldE).base.is_null() {
+                    if (*oldE).base == cachedOldBase {
+                        (*newE).base = cachedNewBase;
+                    } else {
+                        cachedOldBase = (*oldE).base;
+                        tem = poolCopyString(&raw mut (*newDtd).pool, cachedOldBase);
+                        if tem.is_null() {
+                            return 0 as ::core::ffi::c_int;
+                        }
+                        (*newE).base = tem;
+                        cachedNewBase = (*newE).base;
+                    }
+                }
+                if !(*oldE).publicId.is_null() {
+                    tem = poolCopyString(&raw mut (*newDtd).pool, (*oldE).publicId);
+                    if tem.is_null() {
+                        return 0 as ::core::ffi::c_int;
+                    }
+                    (*newE).publicId = tem;
+                }
+            } else {
+                let mut tem_0: *const crate::expat_external_h::XML_Char =
+                    poolCopyStringN(&raw mut (*newDtd).pool, (*oldE).textPtr, (*oldE).textLen);
+                if tem_0.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                (*newE).textPtr = tem_0;
+                (*newE).textLen = (*oldE).textLen;
+            }
+            if !(*oldE).notation.is_null() {
+                let mut tem_1: *const crate::expat_external_h::XML_Char =
+                    poolCopyString(&raw mut (*newDtd).pool, (*oldE).notation);
+                if tem_1.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                (*newE).notation = tem_1;
+            }
+            (*newE).is_param = (*oldE).is_param;
+            (*newE).is_internal = (*oldE).is_internal;
+        }
     }
     (*newDtd).paramEntityRead = (*oldDtd).paramEntityRead;
     (*newDtd).keepProcessing = (*oldDtd).keepProcessing;
@@ -11720,92 +11796,6 @@ unsafe extern "C" fn dtdCopy(
     (*newDtd).scaffSize = (*oldDtd).scaffSize;
     (*newDtd).scaffLevel = (*oldDtd).scaffLevel;
     (*newDtd).scaffIndex = (*oldDtd).scaffIndex;
-    return 1 as ::core::ffi::c_int;
-}
-
-unsafe extern "C" fn copyEntityTable(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut newTable: *mut HASH_TABLE,
-    mut newPool: *mut STRING_POOL,
-    mut oldTable: *const HASH_TABLE,
-) -> ::core::ffi::c_int {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
-    };
-    let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    let mut cachedNewBase: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    hashTableIterInit(&mut iter, &*oldTable);
-    loop {
-        let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-        let mut name: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ENTITY = hashTableIterNext(&raw mut iter) as *mut ENTITY;
-        if oldE.is_null() {
-            break;
-        }
-        name = poolCopyString(newPool, (*oldE).name);
-        if name.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        newE = lookup(
-            oldParser,
-            newTable,
-            name as KEY,
-            ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
-        ) as *mut ENTITY;
-        if newE.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        if !(*oldE).systemId.is_null() {
-            let mut tem: *const crate::expat_external_h::XML_Char =
-                poolCopyString(newPool, (*oldE).systemId);
-            if tem.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            (*newE).systemId = tem;
-            if !(*oldE).base.is_null() {
-                if (*oldE).base == cachedOldBase {
-                    (*newE).base = cachedNewBase;
-                } else {
-                    cachedOldBase = (*oldE).base;
-                    tem = poolCopyString(newPool, cachedOldBase);
-                    if tem.is_null() {
-                        return 0 as ::core::ffi::c_int;
-                    }
-                    (*newE).base = tem;
-                    cachedNewBase = (*newE).base;
-                }
-            }
-            if !(*oldE).publicId.is_null() {
-                tem = poolCopyString(newPool, (*oldE).publicId);
-                if tem.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                (*newE).publicId = tem;
-            }
-        } else {
-            let mut tem_0: *const crate::expat_external_h::XML_Char =
-                poolCopyStringN(newPool, (*oldE).textPtr, (*oldE).textLen);
-            if tem_0.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            (*newE).textPtr = tem_0;
-            (*newE).textLen = (*oldE).textLen;
-        }
-        if !(*oldE).notation.is_null() {
-            let mut tem_1: *const crate::expat_external_h::XML_Char =
-                poolCopyString(newPool, (*oldE).notation);
-            if tem_1.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            (*newE).notation = tem_1;
-        }
-        (*newE).is_param = (*oldE).is_param;
-        (*newE).is_internal = (*oldE).is_internal;
-    }
     return 1 as ::core::ffi::c_int;
 }
 
