@@ -9305,6 +9305,13 @@ unsafe extern "C" fn doContent(
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
     let dtd = parser_dtd_ptr!(parser);
+    // `doContent` is entered with C cursors, but both possible sources are
+    // parser-owned: the parser input buffer or the current entity's retained
+    // replacement text.  Resolve that ownership afresh for every scan below.
+    // In particular, do not retain an input slice across a callback, because
+    // re-entry may grow and relocate the parser buffer.
+    let encoding = &*enc;
+    let normal_encoding = &*(enc as *const crate::src::xmltok::normal_encoding);
     let parser_events = enc == parser_encoding(parser);
     let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
@@ -9347,12 +9354,40 @@ unsafe extern "C" fn doContent(
     };
     update_event_start(s);
     loop {
-        let mut next: *const ::core::ffi::c_char = s;
-        let scan = scanner_context_from_raw((*enc).scanners[1 as usize], enc, s, end).scan();
+        let (scan, mut next): (
+            crate::src::xmltok::ScannerResult,
+            *const ::core::ffi::c_char,
+        ) = {
+            // The tokenizer reports an offset in this exact bounded view.
+            // Recover the C cursor from the slice only after the offset has
+            // been checked, rather than advancing the incoming raw cursor.
+            let input = match event_raw_name_source(
+                &*parser,
+                &*dtd,
+                parser_events,
+                s.addr(),
+                end.addr(),
+            ) {
+                Some(RawNameSource::Bytes(bytes)) => bytemuck::cast_slice(bytes),
+                Some(RawNameSource::Chars(chars)) => chars,
+                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            };
+            let scan = crate::src::xmltok::ScannerContext::normal(
+                encoding.scanners[1 as usize],
+                normal_encoding,
+                input,
+            )
+            .scan();
+            let next = match scan.next {
+                Some(offset) => match input.get(offset..) {
+                    Some(rest) => rest.as_ptr(),
+                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                },
+                None => s,
+            };
+            (scan, next)
+        };
         let mut tok: ::core::ffi::c_int = scan.token;
-        if let Some(offset) = scan.next {
-            next = s.wrapping_add(offset);
-        }
         let mut accountAfter: *const ::core::ffi::c_char = if tok
             == crate::src::xmltok::XML_TOK_TRAILING_RSQB
             || tok == crate::src::xmltok::XML_TOK_TRAILING_CR
@@ -9461,10 +9496,8 @@ unsafe extern "C" fn doContent(
                     let mut name: *const crate::expat_external_h::XML_Char =
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                    let (min_bytes_per_char, entity_name_matcher) = {
-                        let encoding = &*enc;
-                        (encoding.minBytesPerChar, encoding.predefinedEntityName)
-                    };
+                    let (min_bytes_per_char, entity_name_matcher) =
+                        (encoding.minBytesPerChar, encoding.predefinedEntityName);
                     let entity_start = s.wrapping_offset(min_bytes_per_char as isize);
                     let entity_end = next.wrapping_offset(-(min_bytes_per_char as isize));
                     // Resolve the scanner's token cursors through their
@@ -9741,7 +9774,7 @@ unsafe extern "C" fn doContent(
                     (*tag).bindings = None;
                     parser_state.m_tagStack = Some(tag_index);
                     (*tag).name.localPart = None;
-                    let raw_name = s.wrapping_offset((*enc).minBytesPerChar as isize);
+                    let raw_name = s.wrapping_offset(encoding.minBytesPerChar as isize);
                     (*tag).rawName = match event_raw_name_storage(
                         &*parser,
                         &*dtd,
@@ -9869,7 +9902,7 @@ unsafe extern "C" fn doContent(
                 crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
                 | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
                     let mut rawName: *const ::core::ffi::c_char =
-                        s.wrapping_offset((*enc).minBytesPerChar as isize);
+                        s.wrapping_offset(encoding.minBytesPerChar as isize);
                     let mut result_1: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
                     let mut bindings = None;
                     let mut noElmHandlers: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
@@ -10006,7 +10039,7 @@ unsafe extern "C" fn doContent(
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         }
                         rawName_0 = s.wrapping_offset(
-                            ((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
+                            (encoding.minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
                         );
                         let Some(raw_name_len) =
                             event_name_length(parser, dtd, parser_events, enc, rawName_0, next)
@@ -10194,7 +10227,7 @@ unsafe extern "C" fn doContent(
                     ) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let mut n: ::core::ffi::c_int = token.decode_char_ref((*enc).charRefNumber);
+                    let mut n: ::core::ffi::c_int = token.decode_char_ref(encoding.charRefNumber);
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }
@@ -10268,7 +10301,7 @@ unsafe extern "C" fn doContent(
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     if (*parser).m_characterDataHandler {
-                        if (*enc).isUtf8 == 0 {
+                        if encoding.isUtf8 == 0 {
                             let (data_start, data_end, data_capacity) = {
                                 let parser_ref = &mut *parser;
                                 let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
@@ -10333,7 +10366,7 @@ unsafe extern "C" fn doContent(
                         .get(&(parser as usize))
                         .cloned();
                     if let Some(charDataHandler) = charDataHandler {
-                        if (*enc).isUtf8 == 0 {
+                        if encoding.isUtf8 == 0 {
                             let (data_start, data_end, data_capacity) = {
                                 let parser_ref = &mut *parser;
                                 let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
