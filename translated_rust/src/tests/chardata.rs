@@ -1,5 +1,4 @@
 use std::ffi::{CStr, CString};
-use std::slice;
 
 extern "C" {
     fn _fail(
@@ -29,82 +28,25 @@ pub struct CharData {
     pub data: [XML_Char; 2048],
 }
 
-fn assert_not_null<T>(
-    ptr: *const T,
-    assertion: &'static [u8],
-    line: ::core::ffi::c_uint,
-    function: &'static [u8],
-) {
-    if ptr.is_null() {
-        unsafe {
-            __assert_fail(
-                assertion.as_ptr() as *const ::core::ffi::c_char,
-                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
-                line,
-                function.as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+enum CharDataError {
+    Static {
+        line: ::core::ffi::c_int,
+        msg: &'static [u8],
+    },
+    Formatted {
+        line: ::core::ffi::c_int,
+        msg: String,
+    },
+}
+
+impl CharDataError {
+    fn static_msg(line: ::core::ffi::c_int, msg: &'static [u8]) -> Self {
+        Self::Static { line, msg }
     }
-}
 
-fn fail_static(line: ::core::ffi::c_int, msg: &'static [u8]) -> ! {
-    unsafe {
-        _fail(
-            FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
-            line,
-            msg.as_ptr() as *const ::core::ffi::c_char,
-        )
+    fn formatted(line: ::core::ffi::c_int, msg: String) -> Self {
+        Self::Formatted { line, msg }
     }
-}
-
-fn fail_formatted(line: ::core::ffi::c_int, msg: String) -> ! {
-    let msg = CString::new(msg).expect("formatted failure messages must not contain NUL bytes");
-    unsafe {
-        _fail(
-            FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
-            line,
-            msg.as_ptr(),
-        )
-    }
-}
-
-fn storage_mut<'a>(
-    storage: *mut CharData,
-    line: ::core::ffi::c_uint,
-    function: &'static [u8],
-) -> &'a mut CharData {
-    assert_not_null(
-        storage as *const CharData,
-        b"storage != NULL\0",
-        line,
-        function,
-    );
-    unsafe { &mut *storage }
-}
-
-fn xml_c_str<'a>(
-    s: *const XML_Char,
-    line: ::core::ffi::c_uint,
-    function: &'static [u8],
-) -> &'a CStr {
-    assert_not_null(s, b"s != NULL\0", line, function);
-    unsafe { CStr::from_ptr(s) }
-}
-
-fn xml_slice<'a>(
-    s: *const XML_Char,
-    len: usize,
-    line: ::core::ffi::c_uint,
-    function: &'static [u8],
-) -> &'a [XML_Char] {
-    assert_not_null(s, b"s != NULL\0", line, function);
-    unsafe { slice::from_raw_parts(s, len) }
-}
-
-fn xmlstrlen(s: *const XML_Char) -> ::core::ffi::c_int {
-    xml_c_str(s, 54 as ::core::ffi::c_uint, FN_XMLSTRLEN)
-        .to_bytes()
-        .len() as ::core::ffi::c_int
 }
 
 impl CharData {
@@ -112,69 +54,156 @@ impl CharData {
         self.count.max(0 as ::core::ffi::c_int)
     }
 
-    fn append_xml_chars(&mut self, s: *const XML_Char, mut len: ::core::ffi::c_int) {
+    fn append_xml_chars(&mut self, input: &[XML_Char]) {
         let maxchars = self.data.len() as ::core::ffi::c_int;
         if self.count < 0 as ::core::ffi::c_int {
             self.count = 0 as ::core::ffi::c_int;
         }
-        if len < 0 as ::core::ffi::c_int {
-            len = xmlstrlen(s);
-        }
+
+        let mut len =
+            ::core::ffi::c_int::try_from(input.len()).expect("append length should fit into c_int");
         if len + self.count > maxchars {
             len = maxchars - self.count;
         }
-        if len + self.count < self.data.len() as ::core::ffi::c_int {
+
+        if len + self.count < maxchars {
             let start = self.count as usize;
             let len = usize::try_from(len).expect("append length should be non-negative");
             let end = start + len;
-            self.data[start..end].copy_from_slice(xml_slice(
-                s,
-                len,
-                71 as ::core::ffi::c_uint,
-                FN_APPEND,
-            ));
+            self.data[start..end].copy_from_slice(&input[..len]);
             self.count += len as ::core::ffi::c_int;
         }
     }
 
-    fn check_xml_chars(&self, expected: *const XML_Char) -> ::core::ffi::c_int {
-        let len = xmlstrlen(expected);
+    fn check_xml_chars(&self, expected: &[XML_Char]) -> Result<::core::ffi::c_int, CharDataError> {
+        let len = ::core::ffi::c_int::try_from(expected.len())
+            .expect("expected length should fit into c_int");
         let count = self.normalized_count();
         if len != count {
-            fail_formatted(
+            return Err(CharDataError::formatted(
                 98 as ::core::ffi::c_int,
                 format!(
                     "wrong number of data characters: got {}, expected {}",
                     count, len
                 ),
-            );
+            ));
         }
 
         let len = len as usize;
-        if xml_slice(expected, len, 91 as ::core::ffi::c_uint, FN_CHECK) != &self.data[..len] {
-            fail_static(102 as ::core::ffi::c_int, b"got bad data bytes\0");
+        if expected != &self.data[..len] {
+            return Err(CharDataError::static_msg(
+                102 as ::core::ffi::c_int,
+                b"got bad data bytes\0",
+            ));
         }
-        1 as ::core::ffi::c_int
+
+        Ok(1 as ::core::ffi::c_int)
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn CharData_Init(mut storage: *mut CharData) {
-    storage_mut(storage, 62 as ::core::ffi::c_uint, FN_INIT).count = -(1 as ::core::ffi::c_int);
+pub unsafe extern "C" fn CharData_Init(storage: *mut CharData) {
+    if storage.is_null() {
+        unsafe {
+            __assert_fail(
+                b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                62 as ::core::ffi::c_uint,
+                FN_INIT.as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+    }
+
+    let storage = unsafe { &mut *storage };
+    storage.count = -(1 as ::core::ffi::c_int);
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn CharData_AppendXMLChars(
-    mut storage: *mut CharData,
-    mut s: *const XML_Char,
-    mut len: ::core::ffi::c_int,
+    storage: *mut CharData,
+    s: *const XML_Char,
+    len: ::core::ffi::c_int,
 ) {
-    assert_not_null(s, b"s != NULL\0", 71 as ::core::ffi::c_uint, FN_APPEND);
-    storage_mut(storage, 70 as ::core::ffi::c_uint, FN_APPEND).append_xml_chars(s, len);
+    if storage.is_null() {
+        unsafe {
+            __assert_fail(
+                b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                70 as ::core::ffi::c_uint,
+                FN_APPEND.as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+    }
+    if s.is_null() {
+        unsafe {
+            __assert_fail(
+                b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                71 as ::core::ffi::c_uint,
+                FN_APPEND.as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+    }
+
+    let storage = unsafe { &mut *storage };
+    let len = if len < 0 as ::core::ffi::c_int {
+        unsafe { CStr::from_ptr(s) }.to_bytes().len()
+    } else {
+        usize::try_from(len).expect("append length should be non-negative")
+    };
+    let input = unsafe { ::core::slice::from_raw_parts(s, len) };
+    storage.append_xml_chars(input);
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn CharData_CheckXMLChars(
-    mut storage: *mut CharData,
-    mut expected: *const XML_Char,
+    storage: *mut CharData,
+    expected: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    storage_mut(storage, 91 as ::core::ffi::c_uint, FN_CHECK).check_xml_chars(expected)
+    if storage.is_null() {
+        unsafe {
+            __assert_fail(
+                b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                91 as ::core::ffi::c_uint,
+                FN_CHECK.as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+    }
+    if expected.is_null() {
+        unsafe {
+            __assert_fail(
+                b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                54 as ::core::ffi::c_uint,
+                FN_XMLSTRLEN.as_ptr() as *const ::core::ffi::c_char,
+            );
+        }
+    }
+
+    let storage = unsafe { &mut *storage };
+    let expected_len = unsafe { CStr::from_ptr(expected) }.to_bytes().len();
+    let expected = unsafe { ::core::slice::from_raw_parts(expected, expected_len) };
+
+    match storage.check_xml_chars(expected) {
+        Ok(result) => result,
+        Err(CharDataError::Static { line, msg }) => unsafe {
+            _fail(
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                line,
+                msg.as_ptr() as *const ::core::ffi::c_char,
+            )
+        },
+        Err(CharDataError::Formatted { line, msg }) => {
+            let msg =
+                CString::new(msg).expect("formatted failure messages must not contain NUL bytes");
+            unsafe {
+                _fail(
+                    FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                    line,
+                    msg.as_ptr(),
+                )
+            }
+        }
+    }
 }
