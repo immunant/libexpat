@@ -2637,15 +2637,22 @@ static ELEMENT_DECL_HANDLERS: std::sync::OnceLock<
 > = std::sync::OnceLock::new();
 
 trait AttlistDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        element_name: *const crate::expat_external_h::XML_Char,
-        attribute_name: *const crate::expat_external_h::XML_Char,
-        attribute_type: *const crate::expat_external_h::XML_Char,
-        default_value: *const crate::expat_external_h::XML_Char,
-        is_required: ::core::ffi::c_int,
-    );
+    unsafe fn invoke(&self, event: AttlistDeclCallbackEvent<'_>);
+}
+
+/// A checked, transient attribute-declaration callback event.
+///
+/// The strings are all parser-owned and NUL-terminated for the duration of
+/// the callback.  Keeping them as slices until the ABI adapter invokes the
+/// foreign handler prevents the parser-side declaration logic from handling
+/// raw callback arguments.
+struct AttlistDeclCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    element_name: &'a [crate::expat_external_h::XML_Char],
+    attribute_name: &'a [crate::expat_external_h::XML_Char],
+    attribute_type: &'a [crate::expat_external_h::XML_Char],
+    default_value: Option<&'a [crate::expat_external_h::XML_Char]>,
+    is_required: ::core::ffi::c_int,
 }
 
 impl AttlistDeclCallback
@@ -2658,33 +2665,41 @@ impl AttlistDeclCallback
         ::core::ffi::c_int,
     )
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        element_name: *const crate::expat_external_h::XML_Char,
-        attribute_name: *const crate::expat_external_h::XML_Char,
-        attribute_type: *const crate::expat_external_h::XML_Char,
-        default_value: *const crate::expat_external_h::XML_Char,
-        is_required: ::core::ffi::c_int,
-    ) {
+    unsafe fn invoke(&self, event: AttlistDeclCallbackEvent<'_>) {
         self(
-            user_data,
-            element_name,
-            attribute_name,
-            attribute_type,
-            default_value,
-            is_required,
+            handler_arg_from_state!(event.parser),
+            event.element_name.as_ptr(),
+            event.attribute_name.as_ptr(),
+            event.attribute_type.as_ptr(),
+            event
+                .default_value
+                .map_or(::core::ptr::null(), |value| value.as_ptr()),
+            event.is_required,
         );
+    }
+}
+
+/// Keeps the one unsafe callback invocation at the ABI boundary while the
+/// parser-side declaration dispatcher works solely with a typed event.
+struct AttlistDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn AttlistDeclCallback>,
+}
+
+impl AttlistDeclCallbackAdapter {
+    fn invoke(&self, event: AttlistDeclCallbackEvent<'_>) {
+        unsafe { self.callback.invoke(event) }
     }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an attribute-list callback is installed.
 static ATTLIST_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn AttlistDeclCallback>>>,
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<AttlistDeclCallbackAdapter>>,
+    >,
 > = std::sync::OnceLock::new();
 
-fn attlist_decl_handler(parser_key: usize) -> Option<std::sync::Arc<dyn AttlistDeclCallback>> {
+fn attlist_decl_handler(parser_key: usize) -> Option<std::sync::Arc<AttlistDeclCallbackAdapter>> {
     ATTLIST_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -2699,7 +2714,7 @@ fn attlist_decl_handler(parser_key: usize) -> Option<std::sync::Arc<dyn AttlistD
 /// of them here means prolog state handling retains handles rather than raw
 /// pointers, and it leaves no pool borrow alive after callback re-entry.
 fn dispatch_attlist_decl_callback(
-    callback: &dyn AttlistDeclCallback,
+    callback: &AttlistDeclCallbackAdapter,
     parser: &XML_ParserStruct,
     dtd: &DTD,
     element_name: PoolStringRef,
@@ -2716,21 +2731,19 @@ fn dispatch_attlist_decl_callback(
     };
     let default_value = match default_value {
         Some(default_value) => match dtd.pool.chars_from(default_value) {
-            Some(value) => value.as_ptr(),
+            Some(value) => Some(value),
             None => return false,
         },
-        None => ::core::ptr::null(),
+        None => None,
     };
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            element_name.as_ptr(),
-            attribute_name.as_ptr(),
-            attribute_type.as_ptr(),
-            default_value,
-            is_required,
-        );
-    }
+    callback.invoke(AttlistDeclCallbackEvent {
+        parser,
+        element_name,
+        attribute_name,
+        attribute_type,
+        default_value,
+        is_required,
+    });
     true
 }
 
@@ -8424,7 +8437,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldElementDeclHandler = false;
     let mut oldElementDeclCallback: Option<std::sync::Arc<dyn ElementDeclCallback>> = None;
     let mut oldAttlistDeclHandler = false;
-    let mut oldAttlistDeclCallback: Option<std::sync::Arc<dyn AttlistDeclCallback>> = None;
+    let mut oldAttlistDeclCallback: Option<std::sync::Arc<AttlistDeclCallbackAdapter>> = None;
     let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
     let mut oldXmlDeclHandler: Option<std::sync::Arc<dyn XmlDeclCallback>> = None;
     let mut oldDeclElementType: Option<PoolStringRef> = None;
@@ -10215,7 +10228,7 @@ pub unsafe extern "C" fn XML_SetElementDeclHandler_ffi(
 fn XML_SetAttlistDeclHandler(
     handler_enabled: &mut bool,
     parser_key: usize,
-    handler: Option<std::sync::Arc<dyn AttlistDeclCallback>>,
+    handler: Option<std::sync::Arc<AttlistDeclCallbackAdapter>>,
 ) {
     *handler_enabled = handler.is_some();
     let mut handlers = ATTLIST_DECL_HANDLERS
@@ -10228,6 +10241,23 @@ fn XML_SetAttlistDeclHandler(
         handlers.remove(&parser_key);
     }
 }
+
+/// Builds the typed boundary adapter before the export wrapper borrows the
+/// parser.  The parser therefore retains only the adapter, not the foreign
+/// callback value itself.
+fn attlist_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> Option<std::sync::Arc<AttlistDeclCallbackAdapter>>
+where
+    Callback: AttlistDeclCallback + 'static,
+{
+    handler.map(|callback| {
+        std::sync::Arc::new(AttlistDeclCallbackAdapter {
+            callback: std::sync::Arc::new(callback),
+        })
+    })
+}
+
 #[export_name = "XML_SetAttlistDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetAttlistDeclHandler_ffi(
@@ -10238,10 +10268,8 @@ pub unsafe extern "C" fn XML_SetAttlistDeclHandler_ffi(
         return;
     }
     let parser_key = parser.addr();
+    let handler = attlist_decl_handler_registration(attdecl);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    let handler = attdecl.map(|callback| {
-        std::sync::Arc::new(callback) as std::sync::Arc<dyn AttlistDeclCallback>
-    });
     XML_SetAttlistDeclHandler(&mut parser.m_attlistDeclHandler, parser_key, handler)
 }
 fn set_entity_decl_handler(
