@@ -12463,29 +12463,56 @@ unsafe extern "C" fn doCdataSection(
                     };
                     callback.invoke(handler_arg_from_state!(parser_state), chars.as_ptr(), length);
                 } else {
-                    let mut from = chars.as_ptr();
-                    let from_end = from.wrapping_add(chars.len());
+                    // This event is an owned, bounded token copy.  Convert
+                    // it through the slice-based tokenizer adapter instead
+                    // of reconstructing C input and output cursors.
+                    let input: &[u8] = bytemuck::cast_slice(chars.as_slice());
+                    let unknown_encoding = match normal.enc.utf8Convert {
+                        crate::src::xmltok::Utf8Converter::Unknown => parser_state
+                            .m_unknownEncodingMem
+                            .as_ref()
+                            .and_then(UnknownEncodingMemory::initialized_encoding)
+                            .copied(),
+                        _ => None,
+                    };
+                    if matches!(
+                        normal.enc.utf8Convert,
+                        crate::src::xmltok::Utf8Converter::Unknown
+                    ) && unknown_encoding.is_none()
+                    {
+                        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                    }
+                    let mut input_offset = 0;
                     loop {
-                        let data_start = parser_state.m_dataBuf.chars.as_mut_ptr();
-                        let data_end = data_start.wrapping_add(parser_state.m_dataBufEnd);
-                        let capacity = parser_state.m_dataBufEnd;
-                        let mut data_ptr = data_start;
-                        let conversion = crate::src::xmltok::convert_to_utf8(
-                            enc,
-                            &raw mut from,
-                            from_end,
-                            &raw mut data_ptr,
-                            data_end,
-                        );
-                        let Some(length) = data_ptr
-                            .addr()
-                            .checked_sub(data_start.addr())
-                            .filter(|length| *length <= capacity)
-                            .and_then(|length| ::core::ffi::c_int::try_from(length).ok())
-                        else {
+                        let (conversion, consumed, written) = {
+                            let Some(input) = input.get(input_offset..) else {
+                                return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                            };
+                            let Some(output) = parser_state
+                                .m_dataBuf
+                                .chars
+                                .get_mut(..parser_state.m_dataBufEnd)
+                            else {
+                                return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                            };
+                            crate::src::xmltok::convert_to_utf8_slice(
+                                &normal.enc,
+                                unknown_encoding.as_ref(),
+                                input,
+                                bytemuck::cast_slice_mut(output),
+                            )
+                        };
+                        let Some(next_input_offset) = input_offset.checked_add(consumed) else {
                             return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                         };
-                        callback.invoke(handler_arg_from_state!(parser_state), data_start, length);
+                        let Some(length) = ::core::ffi::c_int::try_from(written).ok() else {
+                            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                        };
+                        let Some(data) = parser_state.m_dataBuf.chars.get(..written) else {
+                            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                        };
+                        callback.invoke(handler_arg_from_state!(parser_state), data.as_ptr(), length);
+                        input_offset = next_input_offset;
                         if conversion as ::core::ffi::c_uint
                             == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                                 as ::core::ffi::c_uint
@@ -12495,6 +12522,9 @@ unsafe extern "C" fn doCdataSection(
                                     as ::core::ffi::c_uint
                         {
                             break;
+                        }
+                        if consumed == 0 && written == 0 {
+                            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                         }
                     }
                 }
