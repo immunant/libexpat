@@ -6202,6 +6202,81 @@ struct ParserParentState {
     inherited_dtd: Option<std::sync::Arc<SharedDtd>>,
 }
 
+/// Install the allocator-token route for a parser that is still exclusively
+/// owned by its constructor.
+///
+/// The raw parser handle is confined to the callbacks captured here.  They
+/// only drive Expat's allocation bookkeeping and return opaque tokens; the
+/// parser's readable storage remains Rust-owned throughout construction and
+/// later operation.
+fn install_parser_allocation_backing(
+    parser: &mut XML_ParserStruct,
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+) -> bool {
+    let parser_ptr = std::ptr::from_mut(parser);
+    parser.m_allocationBackingFactory = Some(AllocationBackingFactory {
+        // This constructor is the one point where the opaque parser handle
+        // is known live.  The resulting factory exposes only allocation
+        // tokens, so all later parser implementation code stays handle-free.
+        allocate: std::sync::Arc::new(move |size, source_line| {
+            let allocation = unsafe { expat_malloc(parser_ptr, size, source_line) };
+            if allocation.is_null() {
+                return None;
+            }
+            let mut allocation = allocation;
+            Some(AllocationBacking {
+                actions: Box::new(move |action| match action {
+                    ParserAllocationAction::Grow { size, source_line } => {
+                        let reallocated = unsafe { expat_realloc(parser_ptr, allocation, size, source_line) };
+                        if reallocated.is_null() {
+                            false
+                        } else {
+                            allocation = reallocated;
+                            true
+                        }
+                    }
+                    ParserAllocationAction::Replace {
+                        size,
+                        allocation_source_line,
+                        free_source_line,
+                    } => {
+                        let replacement = unsafe {
+                            expat_malloc(parser_ptr, size, allocation_source_line)
+                        };
+                        if replacement.is_null() {
+                            false
+                        } else {
+                            unsafe { expat_free(parser_ptr, allocation, free_source_line) };
+                            allocation = replacement;
+                            true
+                        }
+                    }
+                    ParserAllocationAction::Free(source_line) => {
+                        unsafe { expat_free(parser_ptr, allocation, source_line) };
+                        true
+                    }
+                }),
+            })
+        }),
+    });
+    let allocation_size = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+        .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
+    let allocation = unsafe {
+        memory_suite
+            .malloc_fcn
+            .expect("non-null function pointer")(allocation_size)
+    };
+    if allocation.is_null() {
+        return false;
+    }
+    let free = memory_suite.free_fcn.expect("non-null function pointer");
+    parser.m_parserStorageBacking = Some(Box::new(move || unsafe {
+        free(allocation);
+    }));
+    true
+}
+
 /// Construct a parser through the single allocator-aware ownership boundary.
 ///
 /// Parser storage keeps the same physical prefix as `expat_malloc`
@@ -6253,60 +6328,9 @@ unsafe fn parser_create_ownership_facade(
     let mut parser_owner = Box::new(initial_parser_struct(memory_suite));
     let parser_ptr = std::ptr::from_mut(parser_owner.as_mut());
     let parser = parser_owner.as_mut();
-    parser.m_allocationBackingFactory = Some(AllocationBackingFactory {
-        // This constructor is the one point where the opaque parser handle
-        // is known live.  The resulting factory exposes only allocation
-        // tokens, so all later parser implementation code stays handle-free.
-        allocate: std::sync::Arc::new(move |size, source_line| {
-            let allocation = expat_malloc(parser_ptr, size, source_line);
-            if allocation.is_null() {
-                return None;
-            }
-            let mut allocation = allocation;
-            Some(AllocationBacking {
-                actions: Box::new(move |action| match action {
-                    ParserAllocationAction::Grow { size, source_line } => {
-                        let reallocated = expat_realloc(parser_ptr, allocation, size, source_line);
-                        if reallocated.is_null() {
-                            false
-                        } else {
-                            allocation = reallocated;
-                            true
-                        }
-                    }
-                    ParserAllocationAction::Replace {
-                        size,
-                        allocation_source_line,
-                        free_source_line,
-                    } => {
-                        let replacement = expat_malloc(parser_ptr, size, allocation_source_line);
-                        if replacement.is_null() {
-                            false
-                        } else {
-                            expat_free(parser_ptr, allocation, free_source_line);
-                            allocation = replacement;
-                            true
-                        }
-                    }
-                    ParserAllocationAction::Free(source_line) => {
-                        expat_free(parser_ptr, allocation, source_line);
-                        true
-                    }
-                }),
-            })
-        }),
-    });
-    let allocation_size = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
-        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-        .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
-    let allocation = memory_suite.malloc_fcn.expect("non-null function pointer")(allocation_size);
-    if allocation.is_null() {
+    if !install_parser_allocation_backing(parser, memory_suite) {
         return None;
     }
-    let free = memory_suite.free_fcn.expect("non-null function pointer");
-    parser.m_parserStorageBacking = Some(Box::new(move || unsafe {
-        free(allocation);
-    }));
     let root_owner = {
         let alloc_tracker = MALLOC_TRACKER {
             bytesAllocated: 0 as XmlBigCount,
