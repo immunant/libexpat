@@ -15672,9 +15672,11 @@ fn dispatch_cdata_callback(
                 .cloned();
             if let Some(callback) = callback {
                 let newline: crate::expat_external_h::XML_Char = 0xa;
-                unsafe {
-                    callback.invoke(handler_arg_from_state!(parser_state), &raw const newline, 1)
-                };
+                dispatch_character_data_callback(
+                    callback.as_ref(),
+                    parser_state,
+                    core::slice::from_ref(&newline),
+                );
             }
         }
         CdataCallbackEvent::CharacterData(chars) => {
@@ -15686,12 +15688,10 @@ fn dispatch_cdata_callback(
                 .cloned();
             let Some(callback) = callback else { return Ok(None); };
             if normal.enc.isUtf8 != 0 {
-                let Some(length) = ::core::ffi::c_int::try_from(chars.len()).ok() else {
+                if ::core::ffi::c_int::try_from(chars.len()).is_err() {
                     return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                unsafe {
-                    callback.invoke(handler_arg_from_state!(parser_state), chars.as_ptr(), length)
-                };
+                dispatch_character_data_callback(callback.as_ref(), parser_state, &chars);
             } else {
                 // This event is an owned, bounded token copy.  Convert it
                 // through the slice-based tokenizer adapter instead of
@@ -15735,15 +15735,13 @@ fn dispatch_cdata_callback(
                     let Some(next_input_offset) = input_offset.checked_add(consumed) else {
                         return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                     };
-                    let Some(length) = ::core::ffi::c_int::try_from(written).ok() else {
+                    if ::core::ffi::c_int::try_from(written).is_err() {
                         return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-                    };
+                    }
                     let Some(data) = parser_state.m_dataBuf.chars.get(..written) else {
                         return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                     };
-                    unsafe {
-                        callback.invoke(handler_arg_from_state!(parser_state), data.as_ptr(), length)
-                    };
+                    dispatch_character_data_callback(callback.as_ref(), parser_state, data);
                     input_offset = next_input_offset;
                     if conversion as ::core::ffi::c_uint
                         == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
