@@ -3519,6 +3519,21 @@ impl RawNameSource<'_> {
     }
 }
 
+/// Returns a token subrange from the owned byte snapshot used by the content
+/// loop.  The scanner cursors are retained only as addresses, so validate the
+/// requested range against that snapshot before exposing its character view.
+/// This keeps a parser-buffer borrow from spanning callbacks or tag growth.
+fn content_token_chars_between(
+    bytes: &[u8],
+    token_start: usize,
+    start: usize,
+    end: usize,
+) -> Option<&[::core::ffi::c_char]> {
+    let start = start.checked_sub(token_start)?;
+    let end = end.checked_sub(token_start)?;
+    bytemuck::cast_slice(bytes).get(start..end)
+}
+
 struct TagBufferStorage {
     bytes: Vec<::core::ffi::c_char>,
     backing: Option<Box<dyn FnMut(TagBufferAllocationAction) -> bool>>,
@@ -10275,7 +10290,7 @@ unsafe fn doContent(
         let (scan, mut next, source): (
             crate::src::xmltok::ScannerResult,
             *const ::core::ffi::c_char,
-            RawNameSource<'_>,
+            Vec<u8>,
         ) = {
             // The tokenizer reports an offset in this exact bounded view.
             // Recover the C cursor from the slice only after the offset has
@@ -10290,7 +10305,11 @@ unsafe fn doContent(
                 Some(source) => source,
                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
             };
-            let input = source.chars();
+            // Copy the bounded scan window before any callback can re-enter.
+            // Cursors remain addresses into parser-owned storage, while this
+            // snapshot supplies the tokenizer and all local token checks.
+            let source = source.bytes().to_vec();
+            let input: &[::core::ffi::c_char] = bytemuck::cast_slice(&source);
             let scan = crate::src::xmltok::ScannerContext::normal(
                 encoding.scanners[1 as usize],
                 &normal_encoding,
@@ -10299,7 +10318,7 @@ unsafe fn doContent(
             .scan();
             let next = match scan.next {
                 Some(offset) => match input.get(offset..) {
-                    Some(rest) => rest.as_ptr(),
+                    Some(_) => s.wrapping_add(offset),
                     None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                 },
                 None => s,
@@ -10314,13 +10333,13 @@ unsafe fn doContent(
             if haveMore as ::core::ffi::c_int != 0 {
                 0
             } else {
-                source.bytes().len()
+                source.len()
             }
         } else {
             let next_address = next.addr();
             let Some(offset) = next_address
-                .checked_sub(source.chars().as_ptr().addr())
-                .filter(|offset| *offset <= source.bytes().len())
+                .checked_sub(s.addr())
+                .filter(|offset| *offset <= source.len())
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -10329,7 +10348,7 @@ unsafe fn doContent(
         if !accounting_raw_slice_diff_tolerated(
             parser,
             tok,
-            source.bytes(),
+            &source,
             0,
             account_after,
             3337 as ::core::ffi::c_int,
@@ -10487,9 +10506,13 @@ unsafe fn doContent(
                         // below can stay in ordinary Rust references.
                         let (restricted_entity_declarations, entity, dtd_pool, name) = {
                             let dtd_state = &mut *dtd;
-                            let Some(entity_name) = source
-                                .chars_between(entity_start.addr(), entity_end.addr())
-                                .map(bytemuck::cast_slice)
+                            let Some(entity_name) = content_token_chars_between(
+                                &source,
+                                s.addr(),
+                                entity_start.addr(),
+                                entity_end.addr(),
+                            )
+                            .map(bytemuck::cast_slice)
                             else {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             };
@@ -10737,7 +10760,7 @@ unsafe fn doContent(
                     parser.m_tagStack = Some(tag_index);
                     let raw_name = s.wrapping_offset(encoding.minBytesPerChar as isize);
                     let raw_name_storage = match event_raw_name_storage(
-                        &*parser_ptr,
+                        &*parser,
                         &*dtd,
                         parser_events,
                         raw_name.addr(),
@@ -10748,7 +10771,12 @@ unsafe fn doContent(
                     let Some(raw_name_len) = measure_event_name(
                         encoding,
                         &normal_encoding,
-                        match source.chars_between(raw_name.addr(), next.addr()) {
+                        match content_token_chars_between(
+                            &source,
+                            s.addr(),
+                            raw_name.addr(),
+                            next.addr(),
+                        ) {
                             Some(chars) => chars,
                             None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                         },
@@ -10765,19 +10793,20 @@ unsafe fn doContent(
                     let Some(raw_name_end) = raw_name.addr().checked_add(raw_name_length) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    // Validate the scanner's name range against its owning
-                    // input before converting it.  This keeps malformed token
-                    // cursors from reaching either the converter or the tag
-                    // buffer as an invented slice.
-                    let Some(raw_name_source) = event_raw_name_source(
-                        &*parser_ptr,
-                        &*dtd,
-                        parser_events,
+                    // Validate the scanner's name range against the owned
+                    // token snapshot before converting it.  This keeps
+                    // malformed cursors from reaching either the converter
+                    // or the tag buffer as an invented slice, and leaves no
+                    // parser-buffer borrow live while the tag buffer grows.
+                    let Some(raw_name_chars) = content_token_chars_between(
+                        &source,
+                        s.addr(),
                         raw_name.addr(),
                         raw_name_end,
                     ) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
+                    let raw_name_source = RawNameSource::Chars(raw_name_chars);
                     let unknown_encoding = match parser.m_encoding {
                         EncodingState::Initial => None,
                         EncodingState::Unknown => parser
@@ -10912,7 +10941,12 @@ unsafe fn doContent(
                     let Some(raw_name_len) = measure_event_name(
                         encoding,
                         &normal_encoding,
-                        match source.chars_between(rawName.addr(), next.addr()) {
+                            match content_token_chars_between(
+                                &source,
+                                s.addr(),
+                                rawName.addr(),
+                                next.addr(),
+                            ) {
                             Some(chars) => chars,
                             None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                         },
@@ -11041,7 +11075,12 @@ unsafe fn doContent(
                         let Some(raw_name_len) = measure_event_name(
                             encoding,
                             &normal_encoding,
-                            match source.chars_between(rawName_0.addr(), next.addr()) {
+                            match content_token_chars_between(
+                                &source,
+                                s.addr(),
+                                rawName_0.addr(),
+                                next.addr(),
+                            ) {
                                 Some(chars) => chars,
                                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             },
@@ -11327,7 +11366,7 @@ unsafe fn doContent(
                                 let (_, _, written) = crate::src::xmltok::convert_to_utf8_slice(
                                     encoding,
                                     unknown_encoding.as_ref(),
-                                    source.bytes(),
+                                    &source,
                                     bytemuck::cast_slice_mut(output),
                                 );
                                 let Some(data_len) = ::core::ffi::c_int::try_from(written).ok()
@@ -11336,7 +11375,6 @@ unsafe fn doContent(
                                 };
                                 (output.as_ptr(), data_len)
                             };
-                            drop(source);
                             callCharacterDataHandler(parser, data_start, data_len);
                         } else {
                             let data_len = match end
@@ -11391,20 +11429,19 @@ unsafe fn doContent(
                     if let Some(charDataHandler) = charDataHandler {
                         if encoding.isUtf8 == 0 {
                             // A character-data callback may re-enter and grow
-                            // the parser buffer.  Do not retain the scan's
-                            // source view across it; resolve the bounded token
-                            // afresh for each converted output chunk.
-                            drop(source);
+                            // the parser buffer.  The scan window is an owned
+                            // snapshot, so conversion remains valid across
+                            // callbacks even if the parser buffer relocates.
+                            let Some(token_len) = next.addr().checked_sub(s.addr()) else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            let Some(remaining_source) = source.get(..token_len) else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            let mut remaining_offset = 0usize;
                             loop {
-                                let source = match event_raw_name_source(
-                                    &*parser_ptr,
-                                    &*dtd,
-                                    parser_events,
-                                    s.addr(),
-                                    next.addr(),
-                                ) {
-                                    Some(source) => source,
-                                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                let Some(remaining) = remaining_source.get(remaining_offset..) else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 };
                                 let unknown_encoding = match encoding.utf8Convert {
                                     crate::src::xmltok::Utf8Converter::Unknown => {
@@ -11434,15 +11471,19 @@ unsafe fn doContent(
                                         crate::src::xmltok::convert_to_utf8_slice(
                                             encoding,
                                             unknown_encoding.as_ref(),
-                                            source.bytes(),
+                                            remaining,
                                             bytemuck::cast_slice_mut(output),
                                         );
                                     (result, consumed, written, output.as_ptr())
                                 };
-                                s = match source.chars().get(consumed..) {
-                                    Some(remaining) => remaining.as_ptr(),
-                                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                let Some(next_offset) = remaining_offset.checked_add(consumed) else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 };
+                                if next_offset > remaining_source.len() {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                }
+                                s = s.wrapping_add(consumed);
+                                remaining_offset = next_offset;
                                 content_update_event_end(
                                     parser,
                                     event_target,
