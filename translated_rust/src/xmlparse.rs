@@ -3261,77 +3261,55 @@ macro_rules! unsafe_expr {
     };
 }
 
-#[inline]
-fn initialize_encoding(parser: crate::expat_h::XML_Parser) -> crate::expat_h::XML_Error {
-    unsafe { initializeEncoding(parser) }
+macro_rules! initialize_encoding {
+    ($parser:expr $(,)?) => {
+        unsafe { initializeEncoding($parser) }
+    };
 }
 
-#[inline]
-fn store_entity_value(
-    parser: crate::expat_h::XML_Parser,
-    enc: *const crate::src::xmltok::ENCODING,
-    start: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    account: XML_Account,
-    next_ptr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    unsafe { storeEntityValue(parser, enc, start, end, account, next_ptr) }
+macro_rules! store_entity_value {
+    ($parser:expr, $enc:expr, $start:expr, $end:expr, $account:expr, $next_ptr:expr $(,)?) => {
+        unsafe { storeEntityValue($parser, $enc, $start, $end, $account, $next_ptr) }
+    };
 }
 
-#[inline]
-fn do_prolog(
-    parser: crate::expat_h::XML_Parser,
-    enc: *const crate::src::xmltok::ENCODING,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    tok: ::core::ffi::c_int,
-    next: *const ::core::ffi::c_char,
-    next_ptr: *mut *const ::core::ffi::c_char,
-    have_more: crate::expat_h::XML_Bool,
-    allow_closing_doctype: crate::expat_h::XML_Bool,
-    account: XML_Account,
-) -> crate::expat_h::XML_Error {
-    unsafe {
-        doProlog(
-            parser,
-            enc,
-            s,
-            end,
-            tok,
-            next,
-            next_ptr,
-            have_more,
-            allow_closing_doctype,
-            account,
-        )
-    }
+macro_rules! do_prolog {
+    ($parser:expr, $enc:expr, $s:expr, $end:expr, $tok:expr, $next:expr, $next_ptr:expr, $have_more:expr, $allow_closing_doctype:expr, $account:expr $(,)?) => {
+        unsafe {
+            doProlog(
+                $parser,
+                $enc,
+                $s,
+                $end,
+                $tok,
+                $next,
+                $next_ptr,
+                $have_more,
+                $allow_closing_doctype,
+                $account,
+            )
+        }
+    };
 }
 
-#[inline]
-fn process_xml_decl(
-    parser: crate::expat_h::XML_Parser,
-    is_general_text_entity: ::core::ffi::c_int,
-    start: *const ::core::ffi::c_char,
-    next: *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    unsafe { processXmlDecl(parser, is_general_text_entity, start, next) }
+macro_rules! process_xml_decl {
+    ($parser:expr, $is_general_text_entity:expr, $start:expr, $next:expr $(,)?) => {
+        unsafe { processXmlDecl($parser, $is_general_text_entity, $start, $next) }
+    };
 }
 
-#[inline]
-fn scan_encoding(
-    enc: *const crate::src::xmltok::ENCODING,
-    scanner_index: usize,
-    start: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    next: *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    let scanner = unsafe { (*enc).scanners[scanner_index] }.expect("non-null function pointer");
-    unsafe { scanner(enc, start, end, next) }
+macro_rules! scan_encoding {
+    ($enc:expr, $scanner_index:expr, $start:expr, $end:expr, $next:expr $(,)?) => {{
+        let scanner =
+            unsafe { (*$enc).scanners[$scanner_index] }.expect("non-null function pointer");
+        unsafe { scanner($enc, $start, $end, $next) }
+    }};
 }
 
-#[inline]
-fn write_next_ptr(dst: *mut *const ::core::ffi::c_char, value: *const ::core::ffi::c_char) {
-    unsafe { *dst = value };
+macro_rules! write_next_ptr {
+    ($dst:expr, $value:expr $(,)?) => {
+        unsafe { *$dst = $value }
+    };
 }
 
 pub extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
@@ -7742,7 +7720,7 @@ extern "C" fn prologInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initialize_encoding(parser);
+    let mut result: crate::expat_h::XML_Error = initialize_encoding!(parser);
     if result as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -7758,7 +7736,7 @@ extern "C" fn externalParEntInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initialize_encoding(parser);
+    let mut result: crate::expat_h::XML_Error = initialize_encoding!(parser);
     if result as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -7790,13 +7768,13 @@ extern "C" fn entityValueInitProcessor(
     expect_parser_mut(parser).m_eventPtr = start;
     loop {
         let parser_state = expect_parser_ref(parser);
-        tok = scan_encoding(parser_state.m_encoding, 0, start, end, &raw mut next);
+        tok = scan_encoding!(parser_state.m_encoding, 0, start, end, &raw mut next);
         expect_parser_mut(parser).m_eventEndPtr = next;
         if tok <= 0 as ::core::ffi::c_int {
             if expect_parser_ref(parser).m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
             {
-                write_next_ptr(nextPtr, s);
+                write_next_ptr!(nextPtr, s);
                 return crate::expat_h::XML_ERROR_NONE;
             }
             match tok {
@@ -7812,7 +7790,7 @@ extern "C" fn entityValueInitProcessor(
                 crate::src::xmltok::XML_TOK_NONE | _ => {}
             }
             let enc = expect_parser_ref(parser).m_encoding;
-            return store_entity_value(
+            return store_entity_value!(
                 parser,
                 enc,
                 s,
@@ -7822,7 +7800,7 @@ extern "C" fn entityValueInitProcessor(
             );
         } else if tok == crate::src::xmltok::XML_TOK_XML_DECL {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-            result = process_xml_decl(parser, 0 as ::core::ffi::c_int, start, next);
+            result = process_xml_decl!(parser, 0 as ::core::ffi::c_int, start, next);
             if result as ::core::ffi::c_uint
                 != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
@@ -7833,7 +7811,7 @@ extern "C" fn entityValueInitProcessor(
             {
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
-            write_next_ptr(nextPtr, next);
+            write_next_ptr!(nextPtr, next);
             set_processor(parser, entityValueProcessor);
             return entityValueProcessor(parser, next, end, nextPtr);
         } else if tok == crate::src::xmltok::XML_TOK_BOM {
@@ -7849,10 +7827,10 @@ extern "C" fn entityValueInitProcessor(
                 accountingOnAbort(parser);
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
-            write_next_ptr(nextPtr, next);
+            write_next_ptr!(nextPtr, next);
             s = next;
         } else if tok == crate::src::xmltok::XML_TOK_INSTANCE_START {
-            write_next_ptr(nextPtr, next);
+            write_next_ptr!(nextPtr, next);
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
         start = next;
@@ -7869,12 +7847,12 @@ extern "C" fn externalParEntProcessor(
     let mut next: *const ::core::ffi::c_char = s;
     let mut tok: ::core::ffi::c_int = 0;
     let enc = expect_parser_ref(parser).m_encoding;
-    tok = scan_encoding(enc, 0, s, end, &raw mut next);
+    tok = scan_encoding!(enc, 0, s, end, &raw mut next);
     if tok <= 0 as ::core::ffi::c_int {
         if expect_parser_ref(parser).m_parsingStatus.finalBuffer == 0
             && tok != crate::src::xmltok::XML_TOK_INVALID
         {
-            write_next_ptr(nextPtr, s);
+            write_next_ptr!(nextPtr, s);
             return crate::expat_h::XML_ERROR_NONE;
         }
         match tok {
@@ -7900,11 +7878,11 @@ extern "C" fn externalParEntProcessor(
         }
         s = next;
         let enc = expect_parser_ref(parser).m_encoding;
-        tok = scan_encoding(enc, 0, s, end, &raw mut next);
+        tok = scan_encoding!(enc, 0, s, end, &raw mut next);
     }
     let parser_state = expect_parser_ref(parser);
     set_processor(parser, prologProcessor);
-    return do_prolog(
+    return do_prolog!(
         parser,
         parser_state.m_encoding,
         s,
@@ -7930,12 +7908,12 @@ extern "C" fn entityValueProcessor(
     let enc: *const crate::src::xmltok::ENCODING = expect_parser_ref(parser).m_encoding;
     let mut tok: ::core::ffi::c_int = 0;
     loop {
-        tok = scan_encoding(enc, 0, start, end, &raw mut next);
+        tok = scan_encoding!(enc, 0, start, end, &raw mut next);
         if tok <= 0 as ::core::ffi::c_int {
             if expect_parser_ref(parser).m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
             {
-                write_next_ptr(nextPtr, s);
+                write_next_ptr!(nextPtr, s);
                 return crate::expat_h::XML_ERROR_NONE;
             }
             match tok {
@@ -7950,7 +7928,7 @@ extern "C" fn entityValueProcessor(
                 }
                 crate::src::xmltok::XML_TOK_NONE | _ => {}
             }
-            return store_entity_value(
+            return store_entity_value!(
                 parser,
                 enc,
                 s,
@@ -7972,8 +7950,8 @@ extern "C" fn prologProcessor(
     let mut next: *const ::core::ffi::c_char = s;
     let parser_state = expect_parser_ref(parser);
     let mut tok: ::core::ffi::c_int =
-        scan_encoding(parser_state.m_encoding, 0, s, end, &raw mut next);
-    return do_prolog(
+        scan_encoding!(parser_state.m_encoding, 0, s, end, &raw mut next);
+    return do_prolog!(
         parser,
         parser_state.m_encoding,
         s,
