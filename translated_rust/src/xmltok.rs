@@ -9288,30 +9288,6 @@ pub mod xmltok_impl_c {
         Big2ContentToken::Result(crate::src::xmltok::XML_TOK_DATA_CHARS_1, Some(ptr))
     }
 
-    pub unsafe extern "C" fn big2_contentTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let byte_len = end.offset_from(ptr) as usize;
-        let input = ::core::slice::from_raw_parts(ptr, byte_len);
-        let end = ptr.add(byte_len & !1);
-        let encoding = &*(enc as *const normal_encoding);
-        match big2_content_tok_impl(encoding, input) {
-            Big2ContentToken::ScanLt => big2_scanLt(enc, ptr.add(2), end, nextTokPtr),
-            Big2ContentToken::ScanRef => big2_scanRef(enc, ptr.add(2), end, nextTokPtr),
-            Big2ContentToken::Result(token, Some(next)) => {
-                *nextTokPtr = ptr.add(next);
-                token
-            }
-            Big2ContentToken::Result(token, None) => token,
-        }
-    }
-
     fn big2_scan_percent_impl(
         enc: &normal_encoding,
         input: &[::core::ffi::c_char],
@@ -12117,7 +12093,6 @@ pub use crate::stdbool_h::true_0;
 pub use crate::src::xmltok::xmltok_impl_c::big2_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
-pub use crate::src::xmltok::xmltok_impl_c::big2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
