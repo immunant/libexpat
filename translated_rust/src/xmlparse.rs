@@ -1358,6 +1358,40 @@ static CHARACTER_DATA_HANDLERS: std::sync::OnceLock<
 > = std::sync::OnceLock::new();
 
 // Foreign callback values remain in this boundary registry; parser state only
+// records whether a processing-instruction callback is installed.
+trait ProcessingInstructionCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        target: *const crate::expat_external_h::XML_Char,
+        data: *const crate::expat_external_h::XML_Char,
+    );
+}
+
+impl ProcessingInstructionCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+    ) -> ()
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        target: *const crate::expat_external_h::XML_Char,
+        data: *const crate::expat_external_h::XML_Char,
+    ) {
+        self(user_data, target, data);
+    }
+}
+
+static PROCESSING_INSTRUCTION_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<dyn ProcessingInstructionCallback>>,
+    >,
+> = std::sync::OnceLock::new();
+
+// Foreign callback values remain in this boundary registry; parser state only
 // records whether a comment callback is installed.
 trait CommentCallback: Send + Sync {
     unsafe fn invoke(
@@ -1827,7 +1861,7 @@ pub struct XML_ParserStruct {
     pub m_startElementHandler: bool,
     pub m_endElementHandler: bool,
     pub m_characterDataHandler: bool,
-    pub m_processingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler,
+    pub m_processingInstructionHandler: bool,
     pub m_commentHandler: bool,
     pub m_startCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler,
     pub m_endCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler,
@@ -3224,7 +3258,12 @@ unsafe extern "C" fn parserInit(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
-    (*parser).m_processingInstructionHandler = None;
+    (*parser).m_processingInstructionHandler = false;
+    PROCESSING_INSTRUCTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_commentHandler = false;
     COMMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -3503,8 +3542,10 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldEndElementCallback: Option<std::sync::Arc<dyn EndElementCallback>> = None;
     let mut oldCharacterDataHandler = false;
     let mut oldCharacterDataCallback: Option<std::sync::Arc<dyn CharacterDataCallback>> = None;
-    let mut oldProcessingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler =
-        None;
+    let mut oldProcessingInstructionHandler = false;
+    let mut oldProcessingInstructionCallback: Option<
+        std::sync::Arc<dyn ProcessingInstructionCallback>,
+    > = None;
     let mut oldCommentHandler = false;
     let mut oldCommentCallback: Option<std::sync::Arc<dyn CommentCallback>> = None;
     let mut oldStartCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler = None;
@@ -3572,6 +3613,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .get(&(parser as usize))
         .cloned();
     oldProcessingInstructionHandler = (*parser).m_processingInstructionHandler;
+    oldProcessingInstructionCallback = PROCESSING_INSTRUCTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldCommentHandler = (*parser).m_commentHandler;
     oldCommentCallback = COMMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -3713,6 +3760,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .insert(parser as usize, callback);
     }
     (*parser).m_processingInstructionHandler = oldProcessingInstructionHandler;
+    if let Some(callback) = oldProcessingInstructionCallback {
+        PROCESSING_INSTRUCTION_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_commentHandler = oldCommentHandler;
     if let Some(callback) = oldCommentCallback {
         COMMENT_HANDLERS
@@ -3894,6 +3948,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
     CHARACTER_DATA_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
+    PROCESSING_INSTRUCTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -4371,7 +4430,19 @@ pub unsafe extern "C" fn XML_SetProcessingInstructionHandler(
     mut handler: crate::expat_h::XML_ProcessingInstructionHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_processingInstructionHandler = handler;
+        (*parser).m_processingInstructionHandler = handler.is_some();
+        let mut handlers = PROCESSING_INSTRUCTION_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match handler {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetProcessingInstructionHandler"]
@@ -11837,38 +11908,54 @@ unsafe extern "C" fn reportProcessingInstruction(
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut target: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    let mut data: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     let mut tem: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    if (*parser).m_processingInstructionHandler.is_none() {
-        if (*parser).m_defaultHandler {
+    let (has_processing_instruction_handler, has_default_handler) = {
+        let parser_state = &*parser;
+        (
+            parser_state.m_processingInstructionHandler,
+            parser_state.m_defaultHandler,
+        )
+    };
+    if !has_processing_instruction_handler {
+        if has_default_handler {
             reportDefault(parser, enc, start, end);
         }
         return 1 as ::core::ffi::c_int;
     }
     start = start.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
     tem = start.offset(crate::src::xmltok::name_length(enc, start) as isize);
-    target = poolStoreString(&raw mut (*parser).m_tempPool, enc, start, tem);
-    if target.is_null() {
-        return 0 as ::core::ffi::c_int;
+    let (target, data, handler_arg) = {
+        let parser_state = &mut *parser;
+        let target = poolStoreString(&raw mut parser_state.m_tempPool, enc, start, tem);
+        if target.is_null() {
+            return 0 as ::core::ffi::c_int;
+        }
+        parser_state.m_tempPool.start = parser_state.m_tempPool.ptr;
+        let data = poolStoreString(
+            &raw mut parser_state.m_tempPool,
+            enc,
+            crate::src::xmltok::skip_s(enc, tem, (*enc).skipS),
+            end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize)),
+        );
+        if data.is_null() {
+            return 0 as ::core::ffi::c_int;
+        }
+        normalizeLines(data);
+        (target, data, parser_state.m_handlerArg)
+    };
+    let callback = PROCESSING_INSTRUCTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
+    if let Some(callback) = callback {
+        callback.invoke(handler_arg, target, data);
     }
-    (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-    data = poolStoreString(
-        &raw mut (*parser).m_tempPool,
-        enc,
-        crate::src::xmltok::skip_s(enc, tem, (*enc).skipS),
-        end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize)),
-    );
-    if data.is_null() {
-        return 0 as ::core::ffi::c_int;
+    {
+        let parser_state = &mut *parser;
+        poolClear(&raw mut parser_state.m_tempPool);
     }
-    normalizeLines(data);
-    (*parser)
-        .m_processingInstructionHandler
-        .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
-    poolClear(&raw mut (*parser).m_tempPool);
     return 1 as ::core::ffi::c_int;
 }
 
