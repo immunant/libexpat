@@ -17372,55 +17372,97 @@ unsafe extern "C" fn unknown_isInvalid(
         || checkCharRefNumber(c) < 0 as ::core::ffi::c_int) as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn unknown_toUtf8(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
-) -> crate::src::xmltok::XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut buf: [::core::ffi::c_char; 4] = [0; 4];
-    loop {
-        let mut utf8: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut n: ::core::ffi::c_int = 0;
-        if *fromP == fromLim {
-            return crate::src::xmltok::XML_CONVERT_COMPLETED;
-        }
-        utf8 = &raw const *(&raw const (*uenc).utf8 as *const [::core::ffi::c_char; 4])
-            .offset(**fromP as ::core::ffi::c_uchar as isize)
-            as *const ::core::ffi::c_char;
-        let c2rust_fresh37 = utf8;
-        utf8 = utf8.offset(1);
-        n = *c2rust_fresh37 as ::core::ffi::c_int;
-        if n == 0 as ::core::ffi::c_int {
-            let mut c: ::core::ffi::c_int = unknown_encoding_converter((*uenc).converter_id)
-                .expect("unknown encoding converter is registered")
-                .invoke((*uenc).userData, *fromP);
-            n = encode_unknown_utf8(c, &mut buf) as ::core::ffi::c_int;
-            if n as isize > toLim.offset_from(*toP) {
-                return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-            }
-            utf8 = &raw mut buf as *mut ::core::ffi::c_char;
-            *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                    - (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
-                        - 2 as ::core::ffi::c_int)) as isize,
-            );
+fn unknown_to_utf8_window(
+    encoding: &unknown_encoding,
+    input: &[::core::ffi::c_char],
+    output: &mut [::core::ffi::c_char],
+    mut convert: impl FnMut(&[::core::ffi::c_char]) -> ::core::ffi::c_int,
+) -> (crate::src::xmltok::XML_Convert_Result, usize, usize) {
+    let mut input_used = 0;
+    let mut output_used = 0;
+    let mut converted = [0; 4];
+
+    while input_used < input.len() {
+        let byte = input[input_used] as ::core::ffi::c_uchar as usize;
+        let table_entry = &encoding.utf8[byte];
+        let (bytes, byte_count, input_advance) = if table_entry[0] == 0 {
+            let character = convert(&input[input_used..]);
+            let byte_count = encode_unknown_utf8(character, &mut converted);
+            let input_advance = encoding.normal.type_0[byte] as usize
+                - (crate::xmltok_impl_h::BT_LEAD2 as usize - 2);
+            (&converted[..byte_count], byte_count, input_advance)
         } else {
-            if n as isize > toLim.offset_from(*toP) {
-                return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-            }
-            *fromP = (*fromP).offset(1);
+            let byte_count = table_entry[0] as ::core::ffi::c_uchar as usize;
+            (&table_entry[1..][..byte_count], byte_count, 1)
+        };
+
+        if output.len() - output_used < byte_count {
+            return (
+                crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED,
+                input_used,
+                output_used,
+            );
         }
-        crate::stdlib::memcpy(
-            *toP as *mut ::core::ffi::c_void,
-            utf8 as *const ::core::ffi::c_void,
-            n as crate::__stddef_size_t_h::size_t,
-        );
-        *toP = (*toP).offset(n as isize);
+        output[output_used..output_used + byte_count].copy_from_slice(bytes);
+        input_used += input_advance;
+        output_used += byte_count;
     }
+
+    (
+        crate::src::xmltok::XML_CONVERT_COMPLETED,
+        input_used,
+        output_used,
+    )
+}
+
+unsafe extern "C" fn unknown_toUtf8(
+    enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
+) -> crate::src::xmltok::XML_Convert_Result {
+    let input_start = *fromP;
+    let input_len = if input_start == fromLim {
+        0
+    } else {
+        fromLim.offset_from(input_start) as usize
+    };
+    if input_len == 0 {
+        return crate::src::xmltok::XML_CONVERT_COMPLETED;
+    }
+    let encoding = &*(enc as *const unknown_encoding);
+    let output_start = *toP;
+    let output_len = if output_start == toLim.cast_mut() {
+        0
+    } else {
+        toLim.offset_from(output_start) as usize
+    };
+    // Empty C windows may use null pointers, so form slices only when data is
+    // present.  This mirrors the other UTF-8 converters' boundary handling.
+    let input = core::slice::from_raw_parts(input_start, input_len);
+    let output = if output_len == 0 {
+        &mut []
+    } else {
+        core::slice::from_raw_parts_mut(output_start, output_len)
+    };
+    let (result, input_used, output_used) = unknown_to_utf8_window(
+        encoding,
+        input,
+        output,
+        |source| unsafe {
+            unknown_encoding_converter(encoding.converter_id)
+                .expect("unknown encoding converter is registered")
+                .invoke(encoding.userData, source.as_ptr())
+        },
+    );
+    if input_used != 0 {
+        *fromP = input_start.add(input_used);
+    }
+    if output_used != 0 {
+        *toP = output_start.add(output_used);
+    }
+    result
 }
 
 unsafe extern "C" fn unknown_toUtf16(
