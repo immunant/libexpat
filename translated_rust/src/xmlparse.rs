@@ -2470,9 +2470,14 @@ pub struct ELEMENT_TYPE {
 #[repr(C)]
 
 pub struct DEFAULT_ATTRIBUTE {
-    // A default attribute is only recorded after its identifier has been
-    // interned in the DTD attribute table, so this link is never null.
-    pub id: std::ptr::NonNull<ATTRIBUTE_ID>,
+    // A default attribute names an identifier in the DTD attribute table.
+    // Retain the identifier's pool-owned name, rather than an address into
+    // that table: the handle stays valid across table growth and can be
+    // resolved when the default is applied.
+    //
+    // This remains optional so an all-zero allocation representation is valid
+    // until `defineAttribute` initializes the record.
+    pub id: Option<PoolStringRef>,
     pub isCdata: crate::expat_h::XML_Bool,
     // Default values are pool-owned and nullable.  `NonNull` retains the
     // pointer-sized optional representation without exposing a raw field.
@@ -8189,15 +8194,18 @@ unsafe extern "C" fn storeAtts(
                 let mut j: ::core::ffi::c_int = 0;
                 j = 0 as ::core::ffi::c_int;
                 while j < nDefaultAtts {
-                    if attId
-                        == (*(*elementType)
-                            .defaultAtts
-                            .expect("default attribute storage must exist for a non-empty list")
-                            .as_ptr()
-                            .offset(j as isize))
-                            .id
-                            .as_ptr()
-                    {
+                    let default_att = &*(*elementType)
+                        .defaultAtts
+                        .expect("default attribute storage must exist for a non-empty list")
+                        .as_ptr()
+                        .offset(j as isize);
+                    let default_name = default_att.id.map_or(::core::ptr::null(), |name| {
+                        (*dtd)
+                            .pool
+                            .chars_from(name)
+                            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+                    });
+                    if default_name == (*attId).name {
                         isCdata = (*(*elementType)
                             .defaultAtts
                             .expect("default attribute storage must exist for a non-empty list")
@@ -8290,17 +8298,36 @@ unsafe extern "C" fn storeAtts(
             .expect("default attribute storage must exist for a non-empty list")
             .as_ptr()
             .offset(i as isize);
-        if *(*(*da).id.as_ptr()).name.offset(-1 as isize) == 0 && (*da).value.is_some() {
+        let Some(id_name_ref) = (*da).id else {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        };
+        let id_name = (*dtd)
+            .pool
+            .chars_from(id_name_ref)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        if id_name.is_null() {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        }
+        let id = lookup(
+            parser,
+            &raw mut (*dtd).attributeIds,
+            id_name as KEY,
+            0 as crate::__stddef_size_t_h::size_t,
+        ) as *mut ATTRIBUTE_ID;
+        if id.is_null() {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        }
+        if *(*id).name.offset(-1 as isize) == 0 && (*da).value.is_some() {
             let value = (*da)
                 .value
                 .expect("a present default attribute value is non-null")
                 .as_ptr() as *const crate::expat_external_h::XML_Char;
-            if !(*(*da).id.as_ptr()).prefix.is_null() {
-                if (*(*da).id.as_ptr()).xmlns != 0 {
+            if !(*id).prefix.is_null() {
+                if (*id).xmlns != 0 {
                     let mut result_1: crate::expat_h::XML_Error = addBinding(
                         parser,
-                        (*(*da).id.as_ptr()).prefix,
-                        (*da).id.as_ptr(),
+                        (*id).prefix,
+                        id,
                         value,
                         bindingsPtr,
                     );
@@ -8308,20 +8335,20 @@ unsafe extern "C" fn storeAtts(
                         return result_1;
                     }
                 } else {
-                    *(*(*da).id.as_ptr()).name.offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
+                    *(*id).name.offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
                     nPrefixes += 1;
                     let c2rust_fresh24 = attIndex;
                     attIndex = attIndex + 1;
-                    appAtts[c2rust_fresh24 as usize] = (*(*da).id.as_ptr()).name;
+                    appAtts[c2rust_fresh24 as usize] = (*id).name;
                     let c2rust_fresh25 = attIndex;
                     attIndex = attIndex + 1;
                     appAtts[c2rust_fresh25 as usize] = value;
                 }
             } else {
-                *(*(*da).id.as_ptr()).name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
+                *(*id).name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
                 let c2rust_fresh26 = attIndex;
                 attIndex = attIndex + 1;
-                appAtts[c2rust_fresh26 as usize] = (*(*da).id.as_ptr()).name;
+                appAtts[c2rust_fresh26 as usize] = (*id).name;
                 let c2rust_fresh27 = attIndex;
                 attIndex = attIndex + 1;
                 appAtts[c2rust_fresh27 as usize] = value;
@@ -13267,52 +13294,58 @@ unsafe extern "C" fn defineAttribute(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
     let mut att: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
+    if type_0.is_null() || attId.is_null() || parser.is_null() || (*parser).m_dtd.is_null() {
+        return 0 as ::core::ffi::c_int;
+    }
+    let type_0 = &mut *type_0;
+    let Some(att_name) = pool_string_ref(&raw const (*(*parser).m_dtd).pool, (*attId).name, false) else {
+        return 0 as ::core::ffi::c_int;
+    };
     if !value.is_null() || isId as ::core::ffi::c_int != 0 {
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
-        while i < (*type_0).nDefaultAtts {
-            if attId
-                == (*(*type_0)
-                    .defaultAtts
-                    .expect("default attribute storage must exist for a non-empty list")
-                    .as_ptr()
-                    .offset(i as isize))
-                .id
+        while i < type_0.nDefaultAtts {
+            if (*type_0
+                .defaultAtts
+                .expect("default attribute storage must exist for a non-empty list")
                 .as_ptr()
+                .offset(i as isize))
+                .id
+                == Some(att_name)
             {
                 return 1 as ::core::ffi::c_int;
             }
             i += 1;
         }
-        if isId as ::core::ffi::c_int != 0 && (*type_0).idAtt.is_null() && (*attId).xmlns == 0 {
-            (*type_0).idAtt = attId;
+        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_null() && (*attId).xmlns == 0 {
+            type_0.idAtt = attId;
         }
     }
-    if (*type_0).nDefaultAtts == (*type_0).allocDefaultAtts {
-        if (*type_0).allocDefaultAtts == 0 as ::core::ffi::c_int {
-            (*type_0).allocDefaultAtts = 8 as ::core::ffi::c_int;
-            (*type_0).defaultAtts = std::ptr::NonNull::new(
+    if type_0.nDefaultAtts == type_0.allocDefaultAtts {
+        if type_0.allocDefaultAtts == 0 as ::core::ffi::c_int {
+            type_0.allocDefaultAtts = 8 as ::core::ffi::c_int;
+            type_0.defaultAtts = std::ptr::NonNull::new(
                 expat_malloc(
                     parser,
-                    ((*type_0).allocDefaultAtts as crate::__stddef_size_t_h::size_t)
+                    (type_0.allocDefaultAtts as crate::__stddef_size_t_h::size_t)
                         .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
                     7182 as ::core::ffi::c_int,
                 ) as *mut DEFAULT_ATTRIBUTE,
             );
-            if (*type_0).defaultAtts.is_none() {
-                (*type_0).allocDefaultAtts = 0 as ::core::ffi::c_int;
+            if type_0.defaultAtts.is_none() {
+                type_0.allocDefaultAtts = 0 as ::core::ffi::c_int;
                 return 0 as ::core::ffi::c_int;
             }
         } else {
             let mut temp: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
-            if (*type_0).allocDefaultAtts > crate::limits_h::INT_MAX / 2 as ::core::ffi::c_int {
+            if type_0.allocDefaultAtts > crate::limits_h::INT_MAX / 2 as ::core::ffi::c_int {
                 return 0 as ::core::ffi::c_int;
             }
             let mut count: ::core::ffi::c_int =
-                (*type_0).allocDefaultAtts * 2 as ::core::ffi::c_int;
+                type_0.allocDefaultAtts * 2 as ::core::ffi::c_int;
             temp = expat_realloc(
                 parser,
-                (*type_0)
+                type_0
                     .defaultAtts
                     .expect("default attribute storage must exist before growing")
                     .as_ptr() as *mut ::core::ffi::c_void,
@@ -13323,28 +13356,25 @@ unsafe extern "C" fn defineAttribute(
             if temp.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            (*type_0).allocDefaultAtts = count;
-            (*type_0).defaultAtts = Some(
+            type_0.allocDefaultAtts = count;
+            type_0.defaultAtts = Some(
                 std::ptr::NonNull::new(temp)
                     .expect("a successful realloc must return a non-null allocation"),
             );
         }
     }
-    att = (*type_0)
+    att = type_0
         .defaultAtts
         .expect("default attribute storage must exist after allocation")
         .as_ptr()
-        .offset((*type_0).nDefaultAtts as isize);
-    let Some(att_id) = std::ptr::NonNull::new(attId) else {
-        return 0 as ::core::ffi::c_int;
-    };
-    (*att).id = att_id;
+        .offset(type_0.nDefaultAtts as isize);
+    (*att).id = Some(att_name);
     (*att).value = std::ptr::NonNull::new(value as *mut crate::expat_external_h::XML_Char);
     (*att).isCdata = isCdata;
     if isCdata == 0 {
         (*attId).maybeTokenized = crate::expat_h::XML_TRUE;
     }
-    (*type_0).nDefaultAtts += 1 as ::core::ffi::c_int;
+    type_0.nDefaultAtts += 1 as ::core::ffi::c_int;
     return 1 as ::core::ffi::c_int;
 }
 
@@ -14198,17 +14228,29 @@ unsafe extern "C" fn dtdCopy(
                 .expect("default attribute storage must exist for a non-empty list")
                 .as_ptr()
                 .offset(i as isize);
-            let old_id_att = &*old_att.id.as_ptr();
+            let Some(old_id_name) = old_att.id else {
+                return 0 as ::core::ffi::c_int;
+            };
+            let old_id_name = old_dtd
+                .pool
+                .chars_from(old_id_name)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+            if old_id_name.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
             let new_id = lookup(
                 oldParser,
                 &raw mut new_dtd.attributeIds,
-                old_id_att.name as KEY,
+                old_id_name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ATTRIBUTE_ID;
-            let Some(new_id) = std::ptr::NonNull::new(new_id) else {
+            if new_id.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let Some(new_id_name) = pool_string_ref(&raw const new_dtd.pool, (*new_id).name, false) else {
                 return 0 as ::core::ffi::c_int;
             };
-            new_att.id = new_id;
+            new_att.id = Some(new_id_name);
             new_att.isCdata = old_att.isCdata;
             if let Some(value) = old_att.value {
                 new_att.value = std::ptr::NonNull::new(
