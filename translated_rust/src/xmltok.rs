@@ -3969,69 +3969,6 @@ pub mod xmltok_impl_c {
         })
     }
 
-    pub unsafe extern "C" fn normal_charRefNumber(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.wrapping_add((2 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as usize);
-        if *ptr as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int {
-            ptr = ptr.wrapping_add(1 as ::core::ffi::c_int as usize);
-            while *ptr as ::core::ffi::c_int != 0x3b as ::core::ffi::c_int {
-                let mut c: ::core::ffi::c_int = *ptr as ::core::ffi::c_int;
-                match c {
-                    crate::ascii_h::ASCII_0
-                    | crate::ascii_h::ASCII_1_1
-                    | crate::ascii_h::ASCII_2_1
-                    | crate::ascii_h::ASCII_3_1
-                    | crate::ascii_h::ASCII_4
-                    | crate::ascii_h::ASCII_5
-                    | crate::ascii_h::ASCII_6
-                    | crate::ascii_h::ASCII_7
-                    | crate::ascii_h::ASCII_8_1
-                    | crate::ascii_h::ASCII_9_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result |= c - crate::ascii_h::ASCII_0;
-                    }
-                    crate::ascii_h::ASCII_A
-                    | crate::ascii_h::ASCII_B_1
-                    | crate::ascii_h::ASCII_C
-                    | crate::ascii_h::ASCII_D
-                    | crate::ascii_h::ASCII_E_1
-                    | crate::ascii_h::ASCII_F_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_A);
-                    }
-                    crate::ascii_h::ASCII_a_1
-                    | crate::ascii_h::ASCII_b
-                    | crate::ascii_h::ASCII_c_1
-                    | crate::ascii_h::ASCII_d
-                    | crate::ascii_h::ASCII_e_1
-                    | crate::ascii_h::ASCII_f => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_a_1);
-                    }
-                    _ => {}
-                }
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.wrapping_add(1 as ::core::ffi::c_int as usize);
-            }
-        } else {
-            while *ptr as ::core::ffi::c_int != 0x3b as ::core::ffi::c_int {
-                let mut c_0: ::core::ffi::c_int = *ptr as ::core::ffi::c_int;
-                result *= 10 as ::core::ffi::c_int;
-                result += c_0 - crate::ascii_h::ASCII_0;
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.wrapping_add(1 as ::core::ffi::c_int as usize);
-            }
-        }
-        return checkCharRefNumber(result);
-    }
-
     pub unsafe extern "C" fn normal_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -7455,24 +7392,6 @@ pub mod xmltok_impl_c {
         checkCharRefNumber(result)
     }
 
-    pub unsafe extern "C" fn little2_charRefNumber(
-        _enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut unit_index = 2;
-        decode_char_ref_number(|| {
-            let byte_index = unit_index * 2;
-            // The tokenizer selected this callback only after recognizing a
-            // complete UTF-16 character reference, including its semicolon.
-            let unit = little2_char_ref_unit(
-                *ptr.wrapping_add(byte_index),
-                *ptr.wrapping_add(byte_index + 1),
-            );
-            unit_index += 1;
-            unit
-        })
-    }
-
     pub unsafe extern "C" fn little2_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -10708,85 +10627,6 @@ pub mod xmltok_impl_c {
         scan_big2_atts(byte_types, source, report)
     }
 
-    pub unsafe extern "C" fn big2_charRefNumber(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.wrapping_add(2 * 2);
-        if *ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-            && *ptr.wrapping_add(1) as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int
-        {
-            ptr = ptr.wrapping_add(2);
-            while !(*ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.wrapping_add(1) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c: ::core::ffi::c_int =
-                    if *ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        *ptr.wrapping_add(1) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    };
-                match c {
-                    crate::ascii_h::ASCII_0
-                    | crate::ascii_h::ASCII_1_1
-                    | crate::ascii_h::ASCII_2_1
-                    | crate::ascii_h::ASCII_3_1
-                    | crate::ascii_h::ASCII_4
-                    | crate::ascii_h::ASCII_5
-                    | crate::ascii_h::ASCII_6
-                    | crate::ascii_h::ASCII_7
-                    | crate::ascii_h::ASCII_8_1
-                    | crate::ascii_h::ASCII_9_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result |= c - crate::ascii_h::ASCII_0;
-                    }
-                    crate::ascii_h::ASCII_A
-                    | crate::ascii_h::ASCII_B_1
-                    | crate::ascii_h::ASCII_C
-                    | crate::ascii_h::ASCII_D
-                    | crate::ascii_h::ASCII_E_1
-                    | crate::ascii_h::ASCII_F_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_A);
-                    }
-                    crate::ascii_h::ASCII_a_1
-                    | crate::ascii_h::ASCII_b
-                    | crate::ascii_h::ASCII_c_1
-                    | crate::ascii_h::ASCII_d
-                    | crate::ascii_h::ASCII_e_1
-                    | crate::ascii_h::ASCII_f => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_a_1);
-                    }
-                    _ => {}
-                }
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.wrapping_add(2);
-            }
-        } else {
-            while !(*ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.wrapping_add(1) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c_0: ::core::ffi::c_int =
-                    if *ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        *ptr.wrapping_add(1) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    };
-                result *= 10 as ::core::ffi::c_int;
-                result += c_0 - crate::ascii_h::ASCII_0;
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.wrapping_add(2);
-            }
-        }
-        return checkCharRefNumber(result);
-    }
-
     pub unsafe extern "C" fn big2_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -12197,7 +12037,6 @@ pub use crate::stdbool_h::true_0;
 
 pub use crate::src::xmltok::xmltok_impl_c::big2_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_cdataSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::big2_charRefNumber;
 pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::big2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
@@ -12221,7 +12060,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::big2_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_cdataSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::little2_charRefNumber;
 pub use crate::src::xmltok::xmltok_impl_c::little2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::little2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_entityValueTok;
@@ -12246,7 +12084,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::normal_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_cdataSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::normal_charRefNumber;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::normal_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_entityValueTok;
