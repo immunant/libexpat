@@ -21171,12 +21171,24 @@ unsafe fn dtdCopy(
             let Some(new_name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
             };
-            if !dtd_copy_lookup_prefix(
+            let Some(index) = dtd_copy_lookup_index(
                 &mut new_dtd.pool,
                 &mut new_dtd.prefixes,
                 new_name_ref,
                 ::core::mem::size_of::<PREFIX>(),
                 hash_secret_salt,
+            ) else {
+                return 0 as ::core::ffi::c_int;
+            };
+            if !matches!(
+                new_dtd
+                    .prefixes
+                    .v
+                    .as_ref()
+                    .and_then(|slots| slots.entries.get(index))
+                    .and_then(Option::as_ref)
+                    .map(|entry| &entry.record),
+                Some(NamedRecord::Prefix(_))
             ) {
                 return 0 as ::core::ffi::c_int;
             }
@@ -21219,13 +21231,23 @@ unsafe fn dtdCopy(
             let Some(name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
             };
-            let Some(new_a) = dtd_copy_lookup_attribute(
+            let Some(index) = dtd_copy_lookup_index(
                 &mut new_dtd.pool,
                 &mut new_dtd.attributeIds,
                 name_ref,
                 ::core::mem::size_of::<ATTRIBUTE_ID>(),
                 hash_secret_salt,
             )
+            else {
+                return 0 as ::core::ffi::c_int;
+            };
+            let Some(new_a) = new_dtd
+                .attributeIds
+                .v
+                .as_mut()
+                .and_then(|slots| slots.entries.get_mut(index))
+                .and_then(Option::as_mut)
+                .and_then(|entry| entry.record.attribute_mut())
             else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -21268,13 +21290,23 @@ unsafe fn dtdCopy(
             let Some(name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
             };
-            let Some(new_e) = dtd_copy_lookup_element(
+            let Some(index) = dtd_copy_lookup_index(
                 &mut new_dtd.pool,
                 &mut new_dtd.elementTypes,
                 name_ref,
                 ::core::mem::size_of::<ELEMENT_TYPE>(),
                 hash_secret_salt,
             )
+            else {
+                return 0 as ::core::ffi::c_int;
+            };
+            let Some(new_e) = new_dtd
+                .elementTypes
+                .v
+                .as_mut()
+                .and_then(|slots| slots.entries.get_mut(index))
+                .and_then(Option::as_mut)
+                .and_then(NamedAllocation::element_mut)
             else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -21399,65 +21431,29 @@ fn copy_dtd_metadata(new_dtd: &mut DTD, old_dtd: &DTD) {
     new_dtd.scaffIndex = old_dtd.scaffIndex.clone();
 }
 
-// These typed accessors keep the `Box`-backed record downcast in one place
-// while DTD copying is in progress.  Their callers only retain the returned
-// reference until the next table operation, so table growth cannot invalidate
-// an active record borrow.
-unsafe fn dtd_copy_lookup_prefix(
+/// Creates or finds a DTD-copy record, then returns its stable slot while the
+/// caller owns the table borrow.  The slot is reacquired after lookup so no
+/// record reference survives a later table growth.
+fn dtd_copy_lookup_index(
     pool: &mut STRING_POOL,
     table: &mut HASH_TABLE,
     name: PoolStringRef,
     create_size: usize,
     hash_secret_salt: ::core::ffi::c_ulong,
-) -> bool {
-    matches!(
-        lookup_impl(
-            pool,
-            table,
-            LookupName::Retained(name),
-            create_size,
-            hash_secret_salt,
-        ),
-        Some(NamedRecord::Prefix(_))
-    )
-}
-
-unsafe fn dtd_copy_lookup_attribute<'a>(
-    pool: &mut STRING_POOL,
-    table: &'a mut HASH_TABLE,
-    name: PoolStringRef,
-    create_size: usize,
-    hash_secret_salt: ::core::ffi::c_ulong,
-) -> Option<&'a mut ATTRIBUTE_ID> {
+) -> Option<usize> {
     lookup_impl(
         pool,
         table,
         LookupName::Retained(name),
         create_size,
         hash_secret_salt,
-    )
-    .and_then(NamedRecord::attribute_mut)
+    )?;
+    lookup_existing(pool, table, LookupName::Retained(name), hash_secret_salt)
 }
 
-unsafe fn dtd_copy_lookup_element<'a>(
-    pool: &mut STRING_POOL,
-    table: &'a mut HASH_TABLE,
-    name: PoolStringRef,
-    create_size: usize,
-    hash_secret_salt: ::core::ffi::c_ulong,
-) -> Option<&'a mut ELEMENT_TYPE> {
-    let Some(NamedRecord::Element(element)) = lookup_impl(
-        pool,
-        table,
-        LookupName::Retained(name),
-        create_size,
-        hash_secret_salt,
-    ) else {
-        return None;
-    };
-    Some(element)
-}
-
+/// The entity-copy path still mutates an allocator-backed record.  Keep that
+/// record access scoped to this narrow helper while the surrounding copy loop
+/// continues to use the checked table slot model.
 unsafe fn dtd_copy_lookup_entity<'a>(
     pool: &mut STRING_POOL,
     table: &'a mut HASH_TABLE,
@@ -21465,16 +21461,12 @@ unsafe fn dtd_copy_lookup_entity<'a>(
     create_size: usize,
     hash_secret_salt: ::core::ffi::c_ulong,
 ) -> Option<&'a mut ENTITY> {
-    let Some(NamedRecord::Entity(entity)) = lookup_impl(
-        pool,
-        table,
-        LookupName::Retained(name),
-        create_size,
-        hash_secret_salt,
-    ) else {
-        return None;
-    };
-    Some(entity)
+    let index = dtd_copy_lookup_index(pool, table, name, create_size, hash_secret_salt)?;
+    let entry = table.v.as_mut()?.entries.get_mut(index)?.as_mut()?;
+    match &mut entry.record {
+        NamedRecord::Entity(entity) => Some(entity),
+        _ => None,
+    }
 }
 
 unsafe fn copyEntityTable(
