@@ -11873,104 +11873,87 @@ extern "C" fn test_param_entity_with_trailing_cr() {
     }
 }
 extern "C" fn test_invalid_character_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_invalid_character_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4159 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY entity '&#x110000;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_BAD_CHAR_REF,
-            b"Out of range character reference not faulted\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4166 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_invalid_character_entity ", 4159 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [
+  <!ENTITY entity '&#x110000;'>
+]>
+<doc>&entity;</doc> ",
+    );
+
+    expect_failure(
+        text,
+        XML_ERROR_BAD_CHAR_REF,
+        b"Out of range character reference not faulted ",
+        4166 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_invalid_character_entity_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_invalid_character_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4170 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY entity '&#xg0;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Out of range character reference not faulted\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4177 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(
+        b"test_invalid_character_entity_2 ",
+        4170 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [
+  <!ENTITY entity '&#xg0;'>
+]>
+<doc>&entity;</doc> ",
+    );
+
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"Out of range character reference not faulted ",
+        4177 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_invalid_character_entity_3() {
-    unsafe {
-        _check_set_test_info(
-            b"test_invalid_character_entity_3\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4181 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_invalid_character_entity_3 ",
+        4181 as ::core::ffi::c_int,
+    );
+    let text = *b" < ! D O C T Y P E   d o c   [ 
+ < ! E N T I T Y   e n t i t y   ' & ; ' > 
+ ] > 
+ < d o c > & e n t i t y ; < / d o c > ";
+
+    if parse_single_bytes_with_final_for(
+        current_parser(),
+        text.as_ptr().cast(),
+        (text.len() - 1) as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_test(
+            4197 as ::core::ffi::c_int,
+            b"Invalid start of entity name not faulted ",
         );
-        let text: [::core::ffi::c_char; 125] = ::core::mem::transmute::<
-            [u8; 125],
-            [::core::ffi::c_char; 125],
-        >(
-            *b"\0<\0!\0D\0O\0C\0T\0Y\0P\0E\0 \0d\0o\0c\0 \0[\0\n\0<\0!\0E\0N\0T\0I\0T\0Y\0 \0e\0n\0t\0i\0t\0y\0 \0'\0&\x0E\x04\x0E\x08\0;\0'\0>\0\n\0]\0>\0\n\0<\0d\0o\0c\0>\0&\0e\0n\0t\0i\0t\0y\0;\0<\0/\0d\0o\0c\0>\0",
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw const text as *const ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 125]>() as ::core::ffi::c_int
-                - 1 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4197 as ::core::ffi::c_int,
-                b"Invalid start of entity name not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetErrorCode(g_parser) as ::core::ffi::c_uint
-            != XML_ERROR_UNDEFINED_ENTITY as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4199 as ::core::ffi::c_int,
-            );
-        }
+    }
+    if parser_error_code() as ::core::ffi::c_uint
+        != XML_ERROR_UNDEFINED_ENTITY as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(4199 as ::core::ffi::c_int);
     }
 }
 extern "C" fn test_invalid_character_entity_4() {
-    unsafe {
-        _check_set_test_info(
-            b"test_invalid_character_entity_4\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4203 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY entity '&#1114112;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_BAD_CHAR_REF,
-            b"Out of range character reference not faulted\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4210 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(
+        b"test_invalid_character_entity_4 ",
+        4203 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [
+  <!ENTITY entity '&#1114112;'>
+]>
+<doc>&entity;</doc> ",
+    );
+
+    expect_failure(
+        text,
+        XML_ERROR_BAD_CHAR_REF,
+        b"Out of range character reference not faulted ",
+        4210 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_pi_handled_in_default() {
     unsafe {
