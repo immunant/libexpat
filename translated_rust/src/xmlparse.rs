@@ -9052,9 +9052,12 @@ unsafe extern "C" fn doProlog(
                                     as crate::expat_h::XML_Parser;
                                 entityTrackingOnOpen(&mut *entity_root_parser);
                                 entityTrackingReportStats(
-                                    entity_root_parser,
-                                    entity_1,
-                                    b"OPEN \0".as_ptr() as *const ::core::ffi::c_char,
+                                    &*entity_root_parser,
+                                    &*entity_1,
+                                    ::std::ffi::CStr::from_ptr(
+                                        (*entity_1).name as *const ::core::ffi::c_char,
+                                    ),
+                                    "OPEN ",
                                     6057 as ::core::ffi::c_int,
                                 );
                                 if (*parser)
@@ -9068,9 +9071,12 @@ unsafe extern "C" fn doProlog(
                                 ) == 0
                                 {
                                     entityTrackingReportStats(
-                                        entity_root_parser,
-                                        entity_1,
-                                        b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+                                        &*entity_root_parser,
+                                        &*entity_1,
+                                        ::std::ffi::CStr::from_ptr(
+                                            (*entity_1).name as *const ::core::ffi::c_char,
+                                        ),
+                                        "CLOSE",
                                         6061 as ::core::ffi::c_int,
                                     );
                                     entityTrackingOnClose(&mut *entity_root_parser);
@@ -9078,9 +9084,12 @@ unsafe extern "C" fn doProlog(
                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                 }
                                 entityTrackingReportStats(
-                                    entity_root_parser,
-                                    entity_1,
-                                    b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+                                    &*entity_root_parser,
+                                    &*entity_1,
+                                    ::std::ffi::CStr::from_ptr(
+                                        (*entity_1).name as *const ::core::ffi::c_char,
+                                    ),
+                                    "CLOSE",
                                     6065 as ::core::ffi::c_int,
                                 );
                                 entityTrackingOnClose(&mut *entity_root_parser);
@@ -9636,9 +9645,10 @@ unsafe extern "C" fn processEntity(
         as crate::expat_h::XML_Parser;
     entityTrackingOnOpen(&mut *entity_root_parser);
     entityTrackingReportStats(
-        entity_root_parser,
-        entity,
-        b"OPEN \0".as_ptr() as *const ::core::ffi::c_char,
+        &*entity_root_parser,
+        &*entity,
+        ::std::ffi::CStr::from_ptr((*entity).name as *const ::core::ffi::c_char),
+        "OPEN ",
         6389 as ::core::ffi::c_int,
     );
     (*entity).processed = 0 as ::core::ffi::c_int;
@@ -9738,9 +9748,10 @@ unsafe extern "C" fn internalEntityProcessor(
     let entity_root_parser = getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
         as crate::expat_h::XML_Parser;
     entityTrackingReportStats(
-        entity_root_parser,
-        entity,
-        b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+        &*entity_root_parser,
+        &*entity,
+        ::std::ffi::CStr::from_ptr((*entity).name as *const ::core::ffi::c_char),
+        "CLOSE",
         6470 as ::core::ffi::c_int,
     );
     entityTrackingOnClose(&mut *entity_root_parser);
@@ -9863,9 +9874,10 @@ unsafe extern "C" fn storeAttributeValue(
                     getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
                         as crate::expat_h::XML_Parser;
                 entityTrackingReportStats(
-                    entity_root_parser,
-                    entity,
-                    b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+                    &*entity_root_parser,
+                    &*entity,
+                    ::std::ffi::CStr::from_ptr((*entity).name as *const ::core::ffi::c_char),
+                    "CLOSE",
                     6547 as ::core::ffi::c_int,
                 );
                 entityTrackingOnClose(&mut *entity_root_parser);
@@ -10270,9 +10282,12 @@ unsafe extern "C" fn storeEntityValue(
                                         as crate::expat_h::XML_Parser;
                                     entityTrackingOnOpen(&mut *entity_root_parser);
                                     entityTrackingReportStats(
-                                        entity_root_parser,
-                                        entity,
-                                        b"OPEN \0".as_ptr() as *const ::core::ffi::c_char,
+                                        &*entity_root_parser,
+                                        &*entity,
+                                        ::std::ffi::CStr::from_ptr(
+                                            (*entity).name as *const ::core::ffi::c_char,
+                                        ),
+                                        "OPEN ",
                                         6840 as ::core::ffi::c_int,
                                     );
                                     if (*parser)
@@ -10286,9 +10301,12 @@ unsafe extern "C" fn storeEntityValue(
                                     ) == 0
                                     {
                                         entityTrackingReportStats(
-                                            entity_root_parser,
-                                            entity,
-                                            b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+                                            &*entity_root_parser,
+                                            &*entity,
+                                            ::std::ffi::CStr::from_ptr(
+                                                (*entity).name as *const ::core::ffi::c_char,
+                                            ),
+                                            "CLOSE",
                                             6844 as ::core::ffi::c_int,
                                         );
                                         entityTrackingOnClose(&mut *entity_root_parser);
@@ -10297,9 +10315,12 @@ unsafe extern "C" fn storeEntityValue(
                                         break;
                                     } else {
                                         entityTrackingReportStats(
-                                            entity_root_parser,
-                                            entity,
-                                            b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+                                            &*entity_root_parser,
+                                            &*entity,
+                                            ::std::ffi::CStr::from_ptr(
+                                                (*entity).name as *const ::core::ffi::c_char,
+                                            ),
+                                            "CLOSE",
                                             6849 as ::core::ffi::c_int,
                                         );
                                         entityTrackingOnClose(&mut *entity_root_parser);
@@ -10480,9 +10501,10 @@ unsafe extern "C" fn callStoreEntityValue(
                     getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
                         as crate::expat_h::XML_Parser;
                 entityTrackingReportStats(
-                    entity_root_parser,
-                    entity,
-                    b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+                    &*entity_root_parser,
+                    &*entity,
+                    ::std::ffi::CStr::from_ptr((*entity).name as *const ::core::ffi::c_char),
+                    "CLOSE",
                     6998 as ::core::ffi::c_int,
                 );
                 entityTrackingOnClose(&mut *entity_root_parser);
@@ -12796,48 +12818,45 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
 ) -> ::core::ffi::c_ulonglong {
     testingAccountingGetCountBytesIndirect(parser.as_ref())
 }
-unsafe extern "C" fn entityTrackingReportStats(
-    mut rootParser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut action: *const ::core::ffi::c_char,
-    mut sourceLine: ::core::ffi::c_int,
+fn entityTrackingReportStats(
+    rootParser: &XML_ParserStruct,
+    entity: &ENTITY,
+    entity_name: &::std::ffi::CStr,
+    action: &str,
+    sourceLine: ::core::ffi::c_int,
 ) {
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8617 as ::core::ffi::c_uint,
-                b"void entityTrackingReportStats(XML_Parser, ENTITY *, const char *, int)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    if (*rootParser).m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
+    if !rootParser.m_parentParser.is_null() {
+        ::std::process::abort();
+    }
+    if rootParser.m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
-    let entityName: *const ::core::ffi::c_char = (*entity).name as *const ::core::ffi::c_char;
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"expat: Entities(%p): Count %9u, depth %2u/%2u %*s%s%s; %s length %d (xmlparse.c:%d)\n\0"
-            .as_ptr() as *const ::core::ffi::c_char,
-        rootParser as *mut ::core::ffi::c_void,
-        (*rootParser).m_entity_stats.countEverOpened,
-        (*rootParser).m_entity_stats.currentDepth,
-        (*rootParser).m_entity_stats.maximumDepthSeen,
-        ((*rootParser).m_entity_stats.currentDepth as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-            * 2 as ::core::ffi::c_int,
-        b"\0".as_ptr() as *const ::core::ffi::c_char,
-        if (*entity).is_param as ::core::ffi::c_int != 0 {
-            b"%\0".as_ptr() as *const ::core::ffi::c_char
-        } else {
-            b"&\0".as_ptr() as *const ::core::ffi::c_char
-        },
-        entityName,
-        action,
-        (*entity).textLen,
-        sourceLine,
+
+    let indent_width =
+        ((rootParser.m_entity_stats.currentDepth as ::core::ffi::c_int - 1) * 2).max(0) as usize;
+    let entity_prefix = if entity.is_param as ::core::ffi::c_int != 0 {
+        "%"
+    } else {
+        "&"
+    };
+    use std::io::Write as _;
+
+    let mut stderr = std::io::stderr();
+    let _ = write!(
+        stderr,
+        "expat: Entities({:p}): Count {:9}, depth {:2}/{:2} {:indent_width$}{}",
+        rootParser,
+        rootParser.m_entity_stats.countEverOpened,
+        rootParser.m_entity_stats.currentDepth,
+        rootParser.m_entity_stats.maximumDepthSeen,
+        "",
+        entity_prefix,
+    );
+    let _ = stderr.write_all(entity_name.to_bytes());
+    let _ = writeln!(
+        stderr,
+        "; {} length {} (xmlparse.c:{})",
+        action, entity.textLen, sourceLine,
     );
 }
 
