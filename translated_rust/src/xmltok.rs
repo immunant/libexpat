@@ -4594,6 +4594,34 @@ enum EncodingDataLookup<'a> {
         out: &'a mut *mut ::core::ffi::c_char,
         out_end: *const ::core::ffi::c_char,
     },
+    ConvertRawToChars {
+        from_p: *mut *const ::core::ffi::c_char,
+        from_lim: *const ::core::ffi::c_char,
+        to_p: *mut *mut ::core::ffi::c_char,
+        to_lim: *const ::core::ffi::c_char,
+        convert: &'a mut dyn FnMut(
+            &[::core::ffi::c_uchar],
+            &mut [::core::ffi::c_char],
+        ) -> (
+            crate::__stddef_size_t_h::size_t,
+            crate::__stddef_size_t_h::size_t,
+            crate::src::xmltok::XML_Convert_Result,
+        ),
+    },
+    ConvertRawToUshorts {
+        from_p: *mut *const ::core::ffi::c_char,
+        from_lim: *const ::core::ffi::c_char,
+        to_p: *mut *mut ::core::ffi::c_ushort,
+        to_lim: *const ::core::ffi::c_ushort,
+        convert: &'a mut dyn FnMut(
+            &[::core::ffi::c_uchar],
+            &mut [::core::ffi::c_ushort],
+        ) -> (
+            crate::__stddef_size_t_h::size_t,
+            crate::__stddef_size_t_h::size_t,
+            crate::src::xmltok::XML_Convert_Result,
+        ),
+    },
     XmlDecl(XmlDeclEncodingAction<'a>),
 }
 
@@ -4823,6 +4851,60 @@ fn encoding_data_lookup(
             } => EncodingDataValue::Int((*enc).utf8Convert.expect("non-null function pointer")(
                 enc, ptr, end, out, out_end,
             ) as ::core::ffi::c_int),
+            EncodingDataLookup::ConvertRawToChars {
+                from_p,
+                from_lim,
+                to_p,
+                to_lim,
+                convert,
+            } => {
+                let from = *from_p as *const ::core::ffi::c_uchar;
+                let to = *to_p;
+                let input_len = (from_lim as usize).wrapping_sub(from as usize);
+                let output_len = (to_lim as usize).wrapping_sub(to as usize)
+                    / ::core::mem::size_of::<::core::ffi::c_char>();
+                let input = if input_len == 0 {
+                    &[]
+                } else {
+                    ::core::slice::from_raw_parts(from, input_len)
+                };
+                let output = if output_len == 0 {
+                    &mut []
+                } else {
+                    ::core::slice::from_raw_parts_mut(to, output_len)
+                };
+                let (input_consumed, output_written, result) = convert(input, output);
+                *from_p = from.wrapping_add(input_consumed) as *const ::core::ffi::c_char;
+                *to_p = to.wrapping_add(output_written);
+                EncodingDataValue::Int(result as ::core::ffi::c_int)
+            }
+            EncodingDataLookup::ConvertRawToUshorts {
+                from_p,
+                from_lim,
+                to_p,
+                to_lim,
+                convert,
+            } => {
+                let from = *from_p as *const ::core::ffi::c_uchar;
+                let to = *to_p;
+                let input_len = (from_lim as usize).wrapping_sub(from as usize);
+                let output_len = (to_lim as usize).wrapping_sub(to as usize)
+                    / ::core::mem::size_of::<::core::ffi::c_ushort>();
+                let input = if input_len == 0 {
+                    &[]
+                } else {
+                    ::core::slice::from_raw_parts(from, input_len)
+                };
+                let output = if output_len == 0 {
+                    &mut []
+                } else {
+                    ::core::slice::from_raw_parts_mut(to, output_len)
+                };
+                let (input_consumed, output_written, result) = convert(input, output);
+                *from_p = from.wrapping_add(input_consumed) as *const ::core::ffi::c_char;
+                *to_p = to.wrapping_add(output_written);
+                EncodingDataValue::Int(result as ::core::ffi::c_int)
+            }
             EncodingDataLookup::XmlDecl(action) => EncodingDataValue::XmlDecl(match action {
                 XmlDeclEncodingAction::MinBytes => {
                     XmlDeclEncodingResult::Int((*enc).minBytesPerChar)
@@ -7489,42 +7571,78 @@ pub(crate) fn encoding_utf8_convert(
     }
 }
 
-fn convert_raw_from_bytes<T, F>(
+fn convert_raw_to_chars<F>(
+    enc: *const crate::src::xmltok::ENCODING,
     fromP: *mut *const ::core::ffi::c_char,
     fromLim: *const ::core::ffi::c_char,
-    toP: *mut *mut T,
-    toLim: *const T,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
     convert: F,
 ) -> crate::src::xmltok::XML_Convert_Result
 where
     F: FnOnce(
         &[::core::ffi::c_uchar],
-        &mut [T],
+        &mut [::core::ffi::c_char],
     ) -> (
         crate::__stddef_size_t_h::size_t,
         crate::__stddef_size_t_h::size_t,
         crate::src::xmltok::XML_Convert_Result,
     ),
 {
-    unsafe {
-        let from = *fromP as *const ::core::ffi::c_uchar;
-        let to = *toP;
-        let input_len = (fromLim as usize).wrapping_sub(from as usize);
-        let output_len = (toLim as usize).wrapping_sub(to as usize) / ::core::mem::size_of::<T>();
-        let input = if input_len == 0 {
-            &[]
-        } else {
-            ::core::slice::from_raw_parts(from, input_len)
-        };
-        let output: &mut [T] = if output_len == 0 {
-            &mut []
-        } else {
-            ::core::slice::from_raw_parts_mut(to, output_len)
-        };
-        let (input_consumed, output_written, result) = convert(input, output);
-        *fromP = from.wrapping_add(input_consumed) as *const ::core::ffi::c_char;
-        *toP = to.wrapping_add(output_written);
-        result
+    let mut convert = Some(convert);
+    let mut convert_once = |input: &[::core::ffi::c_uchar], output: &mut [::core::ffi::c_char]| {
+        convert.take().expect("converter called once")(input, output)
+    };
+    match encoding_data_lookup(
+        enc,
+        EncodingDataLookup::ConvertRawToChars {
+            from_p: fromP,
+            from_lim: fromLim,
+            to_p: toP,
+            to_lim: toLim,
+            convert: &mut convert_once,
+        },
+    ) {
+        EncodingDataValue::Int(value) => value as crate::src::xmltok::XML_Convert_Result,
+        _ => unreachable!(),
+    }
+}
+
+fn convert_raw_to_ushorts<F>(
+    enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
+    convert: F,
+) -> crate::src::xmltok::XML_Convert_Result
+where
+    F: FnOnce(
+        &[::core::ffi::c_uchar],
+        &mut [::core::ffi::c_ushort],
+    ) -> (
+        crate::__stddef_size_t_h::size_t,
+        crate::__stddef_size_t_h::size_t,
+        crate::src::xmltok::XML_Convert_Result,
+    ),
+{
+    let mut convert = Some(convert);
+    let mut convert_once = |input: &[::core::ffi::c_uchar],
+                            output: &mut [::core::ffi::c_ushort]| {
+        convert.take().expect("converter called once")(input, output)
+    };
+    match encoding_data_lookup(
+        enc,
+        EncodingDataLookup::ConvertRawToUshorts {
+            from_p: fromP,
+            from_lim: fromLim,
+            to_p: toP,
+            to_lim: toLim,
+            convert: &mut convert_once,
+        },
+    ) {
+        EncodingDataValue::Int(value) => value as crate::src::xmltok::XML_Convert_Result,
+        _ => unreachable!(),
     }
 }
 
@@ -7722,7 +7840,7 @@ extern "C" fn utf8_toUtf8(
     mut toP: *mut *mut ::core::ffi::c_char,
     mut toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_chars(enc, fromP, fromLim, toP, toLim, |input, output| {
         let output_exhausted = input.len() > output.len();
         let available = input.len().min(output.len());
         let bytes_to_copy = _INTERNAL_trim_to_complete_utf8_characters(&input[..available]);
@@ -7751,7 +7869,7 @@ extern "C" fn utf8_toUtf16(
     toP: *mut *mut ::core::ffi::c_ushort,
     toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_ushorts(enc, fromP, fromLim, toP, toLim, |input, output| {
         let mut input_consumed = 0;
         let mut output_written = 0;
         let mut result = crate::src::xmltok::XML_CONVERT_COMPLETED;
@@ -9513,7 +9631,7 @@ extern "C" fn latin1_toUtf8(
     mut toP: *mut *mut ::core::ffi::c_char,
     mut toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_chars(enc, fromP, fromLim, toP, toLim, |input, output| {
         let mut input_consumed = 0;
         let mut output_written = 0;
         for &c in input {
@@ -9560,7 +9678,7 @@ extern "C" fn latin1_toUtf16(
     mut toP: *mut *mut ::core::ffi::c_ushort,
     mut toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_ushorts(enc, fromP, fromLim, toP, toLim, |input, output| {
         let chars_to_copy = input.len().min(output.len());
         for (dst, src) in output[..chars_to_copy]
             .iter_mut()
@@ -10420,7 +10538,7 @@ extern "C" fn ascii_toUtf8(
     mut toP: *mut *mut ::core::ffi::c_char,
     mut toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_chars(enc, fromP, fromLim, toP, toLim, |input, output| {
         let bytes_to_copy = input.len().min(output.len());
         for (dst, src) in output[..bytes_to_copy]
             .iter_mut()
@@ -11412,7 +11530,7 @@ extern "C" fn little2_toUtf8(
     toP: *mut *mut ::core::ffi::c_char,
     toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_chars(enc, fromP, fromLim, toP, toLim, |input, output| {
         utf16_to_utf8(input, output, true)
     })
 }
@@ -11424,7 +11542,7 @@ extern "C" fn little2_toUtf16(
     toP: *mut *mut ::core::ffi::c_ushort,
     toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_ushorts(enc, fromP, fromLim, toP, toLim, |input, output| {
         let mut input_end = input.len() & !1;
         let output_bytes = output.len().saturating_mul(2);
         let mut result = crate::src::xmltok::XML_CONVERT_COMPLETED;
@@ -11461,7 +11579,7 @@ extern "C" fn big2_toUtf8(
     toP: *mut *mut ::core::ffi::c_char,
     toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_chars(enc, fromP, fromLim, toP, toLim, |input, output| {
         utf16_to_utf8(input, output, false)
     })
 }
@@ -11473,7 +11591,7 @@ extern "C" fn big2_toUtf16(
     toP: *mut *mut ::core::ffi::c_ushort,
     toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_ushorts(enc, fromP, fromLim, toP, toLim, |input, output| {
         let mut input_end = input.len() & !1;
         let output_bytes = output.len().saturating_mul(2);
         let mut result = crate::src::xmltok::XML_CONVERT_COMPLETED;
@@ -14650,7 +14768,7 @@ extern "C" fn unknown_toUtf8(
     mut toP: *mut *mut ::core::ffi::c_char,
     mut toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_chars(enc, fromP, fromLim, toP, toLim, |input, output| {
         let mut input_consumed = 0;
         let mut output_written = 0;
 
@@ -14704,7 +14822,7 @@ extern "C" fn unknown_toUtf16(
     mut toP: *mut *mut ::core::ffi::c_ushort,
     mut toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    convert_raw_from_bytes(fromP, fromLim, toP, toLim, |input, output| {
+    convert_raw_to_ushorts(enc, fromP, fromLim, toP, toLim, |input, output| {
         let mut input_consumed = 0;
         let mut output_written = 0;
 
