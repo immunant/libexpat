@@ -10824,7 +10824,7 @@ unsafe extern "C" fn reportProcessingInstruction(
     data = poolStoreString(
         &raw mut (*parser).m_tempPool,
         enc,
-        (*enc).skipS.expect("non-null function pointer")(enc, tem),
+        crate::src::xmltok::skip_s(enc, tem, (*enc).skipS),
         end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize)),
     );
     if data.is_null() {

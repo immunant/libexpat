@@ -442,6 +442,14 @@ pub enum AttributeScanner {
     Big2,
 }
 
+/// Selects the fixed whitespace scanner without retaining a raw callback.
+#[derive(Copy, Clone)]
+pub enum WhitespaceSkipper {
+    Normal,
+    Little2,
+    Big2,
+}
+
 /// Selects the fixed entity-name matcher without retaining a raw callback.
 #[derive(Copy, Clone)]
 pub enum PredefinedEntityNameMatcher {
@@ -462,12 +470,7 @@ pub struct encoding {
             *const ::core::ffi::c_char,
         ) -> ::core::ffi::c_int,
     >,
-    pub skipS: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> *const ::core::ffi::c_char,
-    >,
+    pub skipS: crate::src::xmltok::WhitespaceSkipper,
     pub getAtts: crate::src::xmltok::AttributeScanner,
     pub charRefNumber: Option<
         unsafe extern "C" fn(
@@ -4061,19 +4064,45 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_skipS(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    pub unsafe fn skip_s(
+        enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
+        skipper: crate::src::xmltok::WhitespaceSkipper,
     ) -> *const ::core::ffi::c_char {
-        loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                10 | 9 | 21 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+        match skipper {
+            crate::src::xmltok::WhitespaceSkipper::Normal => loop {
+                match (*(enc as *const normal_encoding)).type_0
+                    [*ptr as ::core::ffi::c_uchar as usize]
+                    as ::core::ffi::c_int
+                {
+                    10 | 9 | 21 => ptr = ptr.offset(1),
+                    _ => return ptr,
                 }
-                _ => return ptr,
-            }
+            },
+            crate::src::xmltok::WhitespaceSkipper::Little2 => loop {
+                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
+                } else {
+                    unicode_byte_type(*ptr.offset(1), *ptr)
+                } {
+                    10 | 9 | 21 => ptr = ptr.offset(2),
+                    _ => return ptr,
+                }
+            },
+            crate::src::xmltok::WhitespaceSkipper::Big2 => loop {
+                match if *ptr as ::core::ffi::c_int == 0 {
+                    (*(enc as *const normal_encoding)).type_0
+                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
+                } else {
+                    unicode_byte_type(*ptr, *ptr.offset(1))
+                } {
+                    10 | 9 | 21 => ptr = ptr.offset(2),
+                    _ => return ptr,
+                }
+            },
         }
     }
 
@@ -7657,24 +7686,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_skipS(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-    ) -> *const ::core::ffi::c_char {
-        loop {
-            match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-            } {
-                10 | 9 | 21 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr,
-            }
-        }
-    }
 
     pub unsafe extern "C" fn little2_updatePosition(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -11447,25 +11458,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_skipS(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-    ) -> *const ::core::ffi::c_char {
-        loop {
-            match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-            } {
-                10 | 9 | 21 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr,
-            }
-        }
-    }
 
     pub unsafe extern "C" fn big2_updatePosition(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -12845,7 +12837,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanRef;
-pub use crate::src::xmltok::xmltok_impl_c::big2_skipS;
 pub use crate::src::xmltok::xmltok_impl_c::big2_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_cdataSectionTok;
@@ -12871,7 +12862,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanRef;
-pub use crate::src::xmltok::xmltok_impl_c::little2_skipS;
 pub use crate::src::xmltok::xmltok_impl_c::little2_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::normal_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_cdataSectionTok;
@@ -12897,7 +12887,7 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanRef;
-pub use crate::src::xmltok::xmltok_impl_c::normal_skipS;
+pub use crate::src::xmltok::xmltok_impl_c::skip_s;
 pub use crate::src::xmltok::xmltok_impl_c::normal_updatePosition;
 pub use crate::src::xmltok::xmltok_ns_c::encodings;
 pub use crate::src::xmltok::xmltok_ns_c::encodingsNS;
@@ -13481,13 +13471,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -13848,13 +13832,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -14215,13 +14193,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -14582,13 +14554,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -15010,13 +14976,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -15323,13 +15283,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -15657,13 +15611,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -15970,13 +15918,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            normal_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
@@ -16628,13 +16570,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            little2_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
@@ -16941,13 +16877,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            little2_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
@@ -17254,13 +17184,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            little2_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
@@ -17567,13 +17491,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            little2_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
@@ -17880,13 +17798,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            big2_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Big2,
         getAtts: AttributeScanner::Big2,
         charRefNumber: Some(
             big2_charRefNumber
@@ -18193,13 +18105,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        skipS: Some(
-            big2_skipS
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> *const ::core::ffi::c_char,
-        ),
+        skipS: WhitespaceSkipper::Big2,
         getAtts: AttributeScanner::Big2,
         charRefNumber: Some(
             big2_charRefNumber
