@@ -9292,19 +9292,27 @@ unsafe extern "C" fn contentProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
+    let parser_state = &*parser;
+    let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let start_tag_level = if parser_state.m_parentParser.is_some() {
+        1 as ::core::ffi::c_int
+    } else {
+        0 as ::core::ffi::c_int
+    };
+    let have_more = (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+        as crate::expat_h::XML_Bool;
     let mut result: crate::expat_h::XML_Error = doContent(
         parser,
-        if (*parser).m_parentParser.is_some() {
-            1 as ::core::ffi::c_int
-        } else {
-            0 as ::core::ffi::c_int
-        },
-        parser_encoding(parser).cast::<crate::src::xmltok::normal_encoding>(),
+        start_tag_level,
+        normal_encoding,
+        parser_encoding(parser),
+        true,
         start,
         end,
         endPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-            as crate::expat_h::XML_Bool,
+        have_more,
         XML_ACCOUNT_DIRECT,
     );
     if result as ::core::ffi::c_uint
@@ -9356,6 +9364,29 @@ fn current_parser_encoding(
             .expect("unknown encoding storage is initialized")
             .normal
             .enc,
+    }
+}
+
+/// Returns the complete tokenizer table required by content processing.
+///
+/// The initial encoding prefix is not itself a `normal_encoding`; content is
+/// only dispatched after the initial scanner has selected one of the complete
+/// known tables.  Keeping that distinction in the type system avoids having
+/// content processing reinterpret the ABI prefix through a raw pointer.
+fn current_parser_normal_encoding(
+    parser: &XML_ParserStruct,
+) -> Option<crate::src::xmltok::normal_encoding> {
+    match parser.m_encoding {
+        EncodingState::Initial => parser
+            .m_initEncoding
+            .selected_encoding
+            .and_then(|index| crate::src::xmltok::initial_known_encoding(index, parser.m_ns != 0))
+            .copied(),
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .and_then(UnknownEncodingMemory::initialized_encoding)
+            .map(|encoding| encoding.normal),
     }
 }
 
@@ -9601,15 +9632,22 @@ unsafe extern "C" fn externalEntityContentProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
+    let parser_state = &*parser;
+    let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let have_more = (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+        as crate::expat_h::XML_Bool;
     let mut result: crate::expat_h::XML_Error = doContent(
         parser,
         1 as ::core::ffi::c_int,
-        parser_encoding(parser).cast::<crate::src::xmltok::normal_encoding>(),
+        normal_encoding,
+        parser_encoding(parser),
+        true,
         start,
         end,
         endPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-            as crate::expat_h::XML_Bool,
+        have_more,
         XML_ACCOUNT_ENTITY_EXPANSION,
     );
     if result as ::core::ffi::c_uint
@@ -9701,10 +9739,12 @@ fn close_content_tag(parser: &mut XML_ParserStruct, tag_index: usize) -> ClosedC
     }
 }
 
-unsafe extern "C" fn doContent(
+unsafe fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
-    mut normal_enc: *const crate::src::xmltok::normal_encoding,
+    normal_encoding: crate::src::xmltok::normal_encoding,
+    enc: *const crate::src::xmltok::ENCODING,
+    parser_events: bool,
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
@@ -9717,14 +9757,7 @@ unsafe extern "C" fn doContent(
     // replacement text.  Resolve that ownership afresh for every scan below.
     // In particular, do not retain an input slice across a callback, because
     // re-entry may grow and relocate the parser buffer.
-    // Content processing is only entered after the initial encoding probe has
-    // selected a full normal-encoding table.  Carry that typed table through
-    // this implementation instead of repeatedly reinterpreting its ABI
-    // prefix as a larger internal table.
-    let normal_encoding = &*normal_enc;
     let encoding = &normal_encoding.enc;
-    let enc = encoding as *const crate::src::xmltok::ENCODING;
-    let parser_events = enc == parser_encoding(parser);
     let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let internal_event_start = std::cell::Cell::new(None);
@@ -9786,7 +9819,7 @@ unsafe extern "C" fn doContent(
             };
             let scan = crate::src::xmltok::ScannerContext::normal(
                 encoding.scanners[1 as usize],
-                normal_encoding,
+                &normal_encoding,
                 input,
             )
             .scan();
@@ -17718,9 +17751,12 @@ unsafe extern "C" fn internalEntityProcessor(
             result = doContent(
                 parser,
                 entity_state.start_tag_level,
-                (internal_encoding(entity_state.internal_encoding)
-                    as *const crate::src::xmltok::ENCODING)
-                    .cast::<crate::src::xmltok::normal_encoding>(),
+                *crate::src::xmltok::internal_utf8_normal_encoding(matches!(
+                    entity_state.internal_encoding,
+                    InternalEncoding::Utf8Ns
+                )),
+                internal_encoding(entity_state.internal_encoding),
+                false,
                 textStart,
                 textEnd,
                 &raw mut next,
