@@ -2699,7 +2699,80 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
         copied
     };
     parserInit(&mut *parser, protocolEncodingName);
-    dtdReset((*parser).m_dtd, parser);
+    {
+        let p = (*parser).m_dtd;
+        let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
+            p: ::core::ptr::null_mut::<*mut NAMED>(),
+            end: ::core::ptr::null_mut::<*mut NAMED>(),
+        };
+        hashTableIterInit(&mut iter, &(*p).elementTypes);
+        loop {
+            let mut entry: *mut NAMED = ::core::ptr::null_mut::<NAMED>();
+            while iter.p != iter.end {
+                let slot = iter.p;
+                iter.p = iter.p.wrapping_add(1);
+                entry = *slot;
+                if !entry.is_null() {
+                    break;
+                }
+            }
+            let e: *mut ELEMENT_TYPE = entry as *mut ELEMENT_TYPE;
+            if e.is_null() {
+                break;
+            }
+            if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
+                expat_free(
+                    parser,
+                    (*e).defaultAtts as *mut ::core::ffi::c_void,
+                    7539 as ::core::ffi::c_int,
+                );
+            }
+        }
+        for table in [
+            &raw mut (*p).generalEntities,
+            &raw mut (*p).paramEntities,
+            &raw mut (*p).elementTypes,
+            &raw mut (*p).attributeIds,
+            &raw mut (*p).prefixes,
+        ] {
+            let mut i: crate::__stddef_size_t_h::size_t = 0;
+            while i < (*table).size {
+                expat_free(
+                    (*table).parser,
+                    *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
+                    7927 as ::core::ffi::c_int,
+                );
+                *(*table).v.offset(i as isize) = ::core::ptr::null_mut::<NAMED>();
+                i = i.wrapping_add(1);
+            }
+            (*table).used = 0 as crate::__stddef_size_t_h::size_t;
+        }
+        (*p).paramEntityRead = crate::expat_h::XML_FALSE;
+        pool_clear!(&raw mut (*p).pool);
+        pool_clear!(&raw mut (*p).entityValuePool);
+        (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
+        (*p).in_eldecl = crate::expat_h::XML_FALSE;
+        expat_free(
+            parser,
+            (*p).scaffIndex as *mut ::core::ffi::c_void,
+            7556 as ::core::ffi::c_int,
+        );
+        (*p).scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
+        expat_free(
+            parser,
+            (*p).scaffold as *mut ::core::ffi::c_void,
+            7558 as ::core::ffi::c_int,
+        );
+        (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
+        (*p).scaffLevel = 0 as ::core::ffi::c_int;
+        (*p).scaffSize = 0 as ::core::ffi::c_uint;
+        (*p).scaffCount = 0 as ::core::ffi::c_uint;
+        (*p).contentStringLen = 0 as ::core::ffi::c_uint;
+        (*p).keepProcessing = crate::expat_h::XML_TRUE;
+        (*p).hasParamEntityRefs = crate::expat_h::XML_FALSE;
+        (*p).standalone = crate::expat_h::XML_FALSE;
+    }
     return crate::expat_h::XML_TRUE;
 }
 fn parserBusy(parser: &XML_ParserStruct) -> crate::expat_h::XML_Bool {
@@ -11662,71 +11735,6 @@ fn dtdInit(p: &mut DTD, parser: crate::expat_h::XML_Parser) {
     p.keepProcessing = crate::expat_h::XML_TRUE;
     p.hasParamEntityRefs = crate::expat_h::XML_FALSE;
     p.standalone = crate::expat_h::XML_FALSE;
-}
-
-unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_Parser) {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
-    };
-    hashTableIterInit(&mut iter, &(*p).elementTypes);
-    loop {
-        let mut e: *mut ELEMENT_TYPE = hash_table_iter_next!(iter) as *mut ELEMENT_TYPE;
-        if e.is_null() {
-            break;
-        }
-        if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
-            expat_free(
-                parser,
-                (*e).defaultAtts as *mut ::core::ffi::c_void,
-                7539 as ::core::ffi::c_int,
-            );
-        }
-    }
-    for table in [
-        &raw mut (*p).generalEntities,
-        &raw mut (*p).paramEntities,
-        &raw mut (*p).elementTypes,
-        &raw mut (*p).attributeIds,
-        &raw mut (*p).prefixes,
-    ] {
-        let mut i: crate::__stddef_size_t_h::size_t = 0;
-        while i < (*table).size {
-            expat_free(
-                (*table).parser,
-                *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-                7927 as ::core::ffi::c_int,
-            );
-            *(*table).v.offset(i as isize) = ::core::ptr::null_mut::<NAMED>();
-            i = i.wrapping_add(1);
-        }
-        (*table).used = 0 as crate::__stddef_size_t_h::size_t;
-    }
-    (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    pool_clear!(&raw mut (*p).pool);
-    pool_clear!(&raw mut (*p).entityValuePool);
-    (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
-    (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    expat_free(
-        parser,
-        (*p).scaffIndex as *mut ::core::ffi::c_void,
-        7556 as ::core::ffi::c_int,
-    );
-    (*p).scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
-    expat_free(
-        parser,
-        (*p).scaffold as *mut ::core::ffi::c_void,
-        7558 as ::core::ffi::c_int,
-    );
-    (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-    (*p).scaffLevel = 0 as ::core::ffi::c_int;
-    (*p).scaffSize = 0 as ::core::ffi::c_uint;
-    (*p).scaffCount = 0 as ::core::ffi::c_uint;
-    (*p).contentStringLen = 0 as ::core::ffi::c_uint;
-    (*p).keepProcessing = crate::expat_h::XML_TRUE;
-    (*p).hasParamEntityRefs = crate::expat_h::XML_FALSE;
-    (*p).standalone = crate::expat_h::XML_FALSE;
 }
 
 unsafe extern "C" fn dtdDestroy(
