@@ -4402,40 +4402,6 @@ pub mod xmltok_impl_c {
         token
     }
 
-    pub unsafe extern "C" fn little2_scanCdataSection(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        const CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            crate::ascii_h::ASCII_C as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_D as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize) {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
-    }
-
     struct Little2CdataSectionResult {
         token: ::core::ffi::c_int,
         next: Option<usize>,
@@ -7687,40 +7653,6 @@ pub mod xmltok_impl_c {
         }
         token
     }
-    pub unsafe extern "C" fn big2_scanCdataSection(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        const CDATA_LSQB: [::core::ffi::c_char; 6] = [
-            crate::ascii_h::ASCII_C as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_D as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_T as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_A as ::core::ffi::c_char,
-            crate::ascii_h::ASCII_LSQB as ::core::ffi::c_char,
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        if !(end.offset_from(ptr) >= (6 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize) {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < 6 as ::core::ffi::c_int {
-            if !(*ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                    == CDATA_LSQB[i as usize] as ::core::ffi::c_int)
-            {
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
-            }
-            i += 1;
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        *nextTokPtr = ptr;
-        return crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1;
-    }
-
     struct Big2CdataSectionResult {
         token: ::core::ffi::c_int,
         next: Option<usize>,
@@ -7889,9 +7821,8 @@ pub mod xmltok_impl_c {
         result.token
     }
 
-    // The parser owns its input buffer, so CDATA tokenization can use a
-    // checked slice and return an offset rather than exchanging raw cursors.
-    // Keep the C-callable scanner above for the fixed tokenizer table.
+    // The parser owns its input buffer, so CDATA tokenization uses a checked
+    // slice and returns an offset rather than exchanging raw cursors.
     pub(crate) fn cdata_token(
         normal: &normal_encoding,
         input: &[u8],
@@ -11996,7 +11927,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanAtts;
-pub use crate::src::xmltok::xmltok_impl_c::big2_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanComment;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanDecl;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanEndTag;
@@ -12014,7 +11944,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
-pub use crate::src::xmltok::xmltok_impl_c::little2_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanComment;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanDecl;
