@@ -6934,22 +6934,22 @@ fn cleanup_failed_parser_construction(parser: &mut XML_ParserStruct) {
 
 /// Release a test-visible Expat allocation belonging to `parser`.
 ///
-/// The parser handle is checked at the exported boundary.  `ptr` is either
-/// null or an allocation previously returned by `expat_malloc` or
-/// `expat_realloc` for this parser.
-pub unsafe fn expat_free(
+/// The parser handle and allocation pointer are checked at the exported
+/// boundary.  The address is either zero or identifies an allocation
+/// previously returned by `expat_malloc` or `expat_realloc` for this parser.
+pub fn expat_free(
     parser: &XML_ParserStruct,
-    ptr: *mut ::core::ffi::c_void,
+    allocation_address: usize,
     sourceLine: ::core::ffi::c_int,
 ) {
-    if ptr.is_null() {
+    if allocation_address == 0 {
         return;
     }
     let mut allocation = std::sync::Arc::clone(&parser.m_root)
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .test_allocations
-        .remove(&ptr.addr())
+        .remove(&allocation_address)
         .expect("expat allocation must be tracked");
     allocation
         .backing
@@ -6968,11 +6968,11 @@ pub unsafe extern "C" fn expat_free_ffi(
     mut ptr: *mut ::core::ffi::c_void,
     mut sourceLine: ::core::ffi::c_int,
 ) {
-    let parser = match parser.as_ref() {
-        Some(parser) => parser,
-        None => expat_free_missing_parser(),
-    };
-    expat_free(parser, ptr, sourceLine)
+    if parser.is_null() || !parser.is_aligned() {
+        expat_free_missing_parser();
+    }
+    let parser = unsafe { parser.as_ref().expect("non-null parser was checked") };
+    expat_free(parser, ptr.addr(), sourceLine)
 }
 
 #[derive(Copy, Clone)]
