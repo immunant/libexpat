@@ -2752,7 +2752,7 @@ struct DataBuffer {
 // allocation, growth, and free sequence.
 struct AttributeStorage {
     records: Vec<crate::src::xmltok::ATTRIBUTE>,
-    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>>,
+    backing: Option<AllocationBacking>,
 }
 
 // Parser-owned scratch buffers keep their readable data in Rust collections.
@@ -2932,13 +2932,10 @@ fn ensure_attribute_capacity(
     }
     let mut backing = parser.m_atts.backing.take();
     let grew = backing.as_mut().is_some_and(|backing| {
-        backing(
-            parser,
-            ParserAllocationAction::Grow {
-                size: allocation_size,
-                source_line: 3894,
-            },
-        )
+        backing.apply(ParserAllocationAction::Grow {
+            size: allocation_size,
+            source_line: 3894,
+        })
     });
     parser.m_atts.backing = backing;
     if !grew {
@@ -5536,7 +5533,7 @@ fn cleanup_failed_parser_construction(parser: &mut XML_ParserStruct) {
     }
     let mut atts_backing = parser.m_atts.backing.take();
     if let Some(backing) = atts_backing.as_mut() {
-        backing(parser, ParserAllocationAction::Free(2002));
+        backing.apply(ParserAllocationAction::Free(2002));
     }
     parser.m_dataBuf.release(2011);
     release_parser_storage(parser, 2016);
@@ -6424,7 +6421,13 @@ unsafe fn parser_create_ownership_facade(
         parser.m_buffer = InputBuffer::empty();
         parser.m_bufferLim = 0;
         parser.m_attsSize = INIT_ATTS_SIZE;
-        let Some(atts) = attribute_storage_new(parser, INIT_ATTS_SIZE as usize, 1449) else {
+        let allocation_factory = parser
+            .m_allocationBackingFactory
+            .as_ref()
+            .expect("parser allocation factory is installed during construction");
+        let Some(atts) =
+            attribute_storage_new(allocation_factory, INIT_ATTS_SIZE as usize, 1449)
+        else {
             return Err(1451);
         };
         parser.m_atts = atts;
@@ -6438,7 +6441,7 @@ unsafe fn parser_create_ownership_facade(
             None => {
                 let mut backing = parser.m_atts.backing.take();
                 if let Some(backing) = backing.as_mut() {
-                    backing(parser, ParserAllocationAction::Free(1464));
+                    backing.apply(ParserAllocationAction::Free(1464));
                 }
                 return Err(1468);
             }
@@ -6451,7 +6454,7 @@ unsafe fn parser_create_ownership_facade(
             data_buf_backing(1464 as ::core::ffi::c_int);
             let mut backing = parser.m_atts.backing.take();
             if let Some(backing) = backing.as_mut() {
-                backing(parser, ParserAllocationAction::Free(1464));
+                backing.apply(ParserAllocationAction::Free(1464));
             }
             return Err(1468);
         }
@@ -6472,7 +6475,7 @@ unsafe fn parser_create_ownership_facade(
                 parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
                 let mut backing = parser.m_atts.backing.take();
                 if let Some(backing) = backing.as_mut() {
-                    backing(parser, ParserAllocationAction::Free(1479));
+                    backing.apply(ParserAllocationAction::Free(1479));
                 }
                 return Err(1483);
             }
@@ -7877,7 +7880,7 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
     }
     let mut atts_backing = parser.m_atts.backing.take();
     if let Some(backing) = atts_backing.as_mut() {
-        backing(parser, ParserAllocationAction::Free(2002));
+        backing.apply(ParserAllocationAction::Free(2002));
     }
     let mut group_connector_backing = parser.m_groupConnector.backing.take();
     if let Some(backing) = group_connector_backing.as_mut() {
@@ -23911,18 +23914,18 @@ fn internal_entity_storage_new(
     })
 }
 
-unsafe fn attribute_storage_new(
-    parser: &mut XML_ParserStruct,
+fn attribute_storage_new(
+    allocation_factory: &AllocationBackingFactory,
     capacity: usize,
     source_line: ::core::ffi::c_int,
 ) -> Option<AttributeStorage> {
     let allocation_size =
         capacity.checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())?;
     AttributeStorage::callback_slots(capacity)?;
-    let mut backing = scratch_allocation_backing(parser, allocation_size, source_line)?;
+    let mut backing = allocation_backing(allocation_factory, allocation_size, source_line)?;
     let mut records = Vec::new();
     if records.try_reserve_exact(capacity).is_err() {
-        backing(parser, ParserAllocationAction::Free(source_line));
+        backing.apply(ParserAllocationAction::Free(source_line));
         return None;
     }
     records.resize_with(capacity, AttributeStorage::blank_record);
