@@ -4819,35 +4819,62 @@ unsafe extern "C" fn storeRawNames(
     return crate::expat_h::XML_TRUE;
 }
 
-unsafe extern "C" fn contentProcessor(
+enum ContentProcessorKind {
+    Document,
+    ExternalEntity,
+}
+
+fn content_processor_impl(
+    kind: ContentProcessorKind,
+    parser: crate::expat_h::XML_Parser,
+    start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    endPtr: *mut *const ::core::ffi::c_char,
+) -> crate::expat_h::XML_Error {
+    unsafe {
+        let start_tag_level = match kind {
+            ContentProcessorKind::Document => {
+                if !(*parser).m_parentParser.is_null() {
+                    1 as ::core::ffi::c_int
+                } else {
+                    0 as ::core::ffi::c_int
+                }
+            }
+            ContentProcessorKind::ExternalEntity => 1 as ::core::ffi::c_int,
+        };
+        let account = match kind {
+            ContentProcessorKind::Document => XML_ACCOUNT_DIRECT,
+            ContentProcessorKind::ExternalEntity => XML_ACCOUNT_ENTITY_EXPANSION,
+        };
+        let result: crate::expat_h::XML_Error = doContent(
+            parser,
+            start_tag_level,
+            (*parser).m_encoding,
+            start,
+            end,
+            endPtr,
+            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+                as crate::expat_h::XML_Bool,
+            account,
+        );
+        if result as ::core::ffi::c_uint
+            == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            if storeRawNames(parser) == 0 {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            }
+        }
+        result
+    }
+}
+
+extern "C" fn contentProcessor(
     mut parser: crate::expat_h::XML_Parser,
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = doContent(
-        parser,
-        if !(*parser).m_parentParser.is_null() {
-            1 as ::core::ffi::c_int
-        } else {
-            0 as ::core::ffi::c_int
-        },
-        (*parser).m_encoding,
-        start,
-        end,
-        endPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-            as crate::expat_h::XML_Bool,
-        XML_ACCOUNT_DIRECT,
-    );
-    if result as ::core::ffi::c_uint
-        == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        if storeRawNames(parser) == 0 {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-    }
-    return result;
+    content_processor_impl(ContentProcessorKind::Document, parser, start, end, endPtr)
 }
 
 unsafe extern "C" fn externalEntityInitProcessor(
@@ -5023,31 +5050,19 @@ unsafe extern "C" fn externalEntityInitProcessor3(
     return externalEntityContentProcessor(parser, start, end, endPtr);
 }
 
-unsafe extern "C" fn externalEntityContentProcessor(
+extern "C" fn externalEntityContentProcessor(
     mut parser: crate::expat_h::XML_Parser,
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = doContent(
+    content_processor_impl(
+        ContentProcessorKind::ExternalEntity,
         parser,
-        1 as ::core::ffi::c_int,
-        (*parser).m_encoding,
         start,
         end,
         endPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-            as crate::expat_h::XML_Bool,
-        XML_ACCOUNT_ENTITY_EXPANSION,
-    );
-    if result as ::core::ffi::c_uint
-        == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        if storeRawNames(parser) == 0 {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-    }
-    return result;
+    )
 }
 
 unsafe extern "C" fn doContent(
