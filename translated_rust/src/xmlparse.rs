@@ -20219,102 +20219,100 @@ unsafe extern "C" fn reportComment(
     if parser.is_null() || enc.is_null() || start.is_null() || end.addr() < start.addr() {
         return 0;
     }
-    let (has_comment_handler, has_default_handler, token) = {
-        let parser_state = &*parser;
-        let has_comment_handler = parser_state.m_commentHandler;
-        let has_default_handler = parser_state.m_defaultHandler;
-        let token = if has_comment_handler {
-            // Comments can originate in the parser buffer or in an active
-            // entity.  Resolve the complete token through its owner before
-            // removing XML delimiters, rather than deriving a slice from the
-            // raw tokenizer cursors.
-            let Some(dtd_owner) = parser_state.m_dtd.as_ref() else {
-                return 0;
-            };
-            let dtd = &*dtd_owner.value.get();
-            let Some(token) =
-                entity_value_token_source(parser_state, dtd, start.addr(), end.addr())
-            else {
-                return 0;
-            };
-            let Some(token) = raw_name_bytes(token) else {
-                return 0;
-            };
-            Some(token)
-        } else {
-            None
-        };
-        (has_comment_handler, has_default_handler, token)
-    };
-    if !has_comment_handler {
-        if has_default_handler {
-            reportDefault(parser, enc, start, end);
-        }
-        return 1 as ::core::ffi::c_int;
-    }
-
-    let token = token.expect("comment handler requires a resolved token");
-    let encoding = &*enc;
-    let Some(width) = usize::try_from(encoding.minBytesPerChar).ok() else {
-        return 0;
-    };
-    let Some(opening) = width.checked_mul(4) else {
-        return 0;
-    };
-    let Some(closing) = width.checked_mul(3) else {
-        return 0;
-    };
-    let Some(data_end) = token.len().checked_sub(closing) else {
-        return 0;
-    };
-    let Some(data_input) = token.get(opening..data_end) else {
-        return 0;
-    };
-
-    let (data, handler_arg) = {
+    let (callback, data, handler_arg) = {
         let parser_state = &mut *parser;
-        let unknown_encoding = match parser_state.m_encoding {
-            EncodingState::Initial => None,
-            EncodingState::Unknown => parser_state
-                .m_unknownEncodingMem
-                .as_ref()
-                .and_then(UnknownEncodingMemory::initialized_encoding),
-        };
-        if matches!(
-            encoding.utf8Convert,
-            crate::src::xmltok::Utf8Converter::Unknown
-        ) && unknown_encoding.is_none()
-        {
-            return 0;
+        if !parser_state.m_commentHandler {
+            if parser_state.m_defaultHandler {
+                reportDefault(parser, enc, start, end);
+            }
+            return 1 as ::core::ffi::c_int;
         }
-        let Some(data_start) = pool_store_name_source(
-            &mut parser_state.m_tempPool,
-            encoding,
-            unknown_encoding,
-            data_input,
-        ) else {
+        // Comments can originate in the parser buffer or in an active entity.
+        // Resolve the complete token through its owner before removing XML
+        // delimiters, rather than deriving a slice from raw tokenizer cursors.
+        let Some(dtd_owner) = parser_state.m_dtd.as_ref() else {
             return 0;
         };
-        let Some(data_chars) = parser_state.m_tempPool.chars_from_mut(data_start) else {
+        let dtd = &*dtd_owner.value.get();
+        let Some(token) = entity_value_token_source(parser_state, dtd, start.addr(), end.addr()) else {
             return 0;
         };
-        normalizeLines(data_chars);
-        let Some(data) = parser_state.m_tempPool.chars_from(data_start) else {
+        let Some(token) = raw_name_bytes(token) else {
             return 0;
         };
-        (data.as_ptr(), handler_arg_from_state!(parser_state))
+        let encoding = &*enc;
+        let Some(event) = report_comment_impl(parser_state, encoding, &token) else {
+            return 0;
+        };
+        let Some(data) = parser_state.m_tempPool.chars_from(event.data) else {
+            return 0;
+        };
+        let handler_arg = match parser_state.m_handlerArg {
+            HandlerArg::UserData => callback_context_pointer!(parser_state),
+            HandlerArg::Parser => std::ptr::from_ref(parser_state).cast_mut().cast(),
+        };
+        (event.callback, data.as_ptr(), handler_arg)
     };
-    let callback = COMMENT_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
-        .cloned();
     if let Some(callback) = callback {
         callback.invoke(handler_arg, data);
     }
     (&mut *parser).m_tempPool.clear();
     return 1 as ::core::ffi::c_int;
+}
+
+/// Prepared comment data remains in the parser's temporary pool until the
+/// boundary caller invokes the registered foreign callback.  Keeping the pool
+/// reference instead of an interior pointer lets the conversion and registry
+/// lookup remain entirely safe.
+struct CommentCallbackEvent {
+    callback: Option<std::sync::Arc<dyn CommentCallback>>,
+    data: PoolStringRef,
+}
+
+/// Converts a checked comment token into callback data.
+///
+/// The caller has already proved that `token` belongs to either the parser
+/// input buffer or an active entity allocation.  This helper only operates on
+/// that bounded slice and owned parser state; the foreign callback itself is
+/// deliberately left at `reportComment`'s legacy boundary.
+fn report_comment_impl(
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::ENCODING,
+    token: &[u8],
+) -> Option<CommentCallbackEvent> {
+    let width = usize::try_from(encoding.minBytesPerChar).ok()?;
+    let opening = width.checked_mul(4)?;
+    let closing = width.checked_mul(3)?;
+    let data_end = token.len().checked_sub(closing)?;
+    let data_input = token.get(opening..data_end)?;
+    let unknown_encoding = match parser.m_encoding {
+        EncodingState::Initial => None,
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .and_then(UnknownEncodingMemory::initialized_encoding),
+    };
+    if matches!(
+        encoding.utf8Convert,
+        crate::src::xmltok::Utf8Converter::Unknown
+    ) && unknown_encoding.is_none()
+    {
+        return None;
+    }
+    let data = pool_store_name_source(
+        &mut parser.m_tempPool,
+        encoding,
+        unknown_encoding,
+        data_input,
+    )?;
+    normalizeLines(parser.m_tempPool.chars_from_mut(data)?);
+    let callback = COMMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned();
+    Some(CommentCallbackEvent { callback, data })
 }
 
 unsafe fn reportDefault(
