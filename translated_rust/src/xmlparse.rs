@@ -3662,15 +3662,23 @@ struct TestVisibleAllocation {
 /// Create the Rust-owned storage and allocator token used for a test-visible
 /// Expat allocation.  Publishing its payload address remains the caller's
 /// responsibility, so this helper has no raw-pointer boundary.
+fn new_test_visible_allocation_with_factory(
+    factory: Option<&AllocationBackingFactory>,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<TestVisibleAllocation> {
+    let storage = TestAllocationStorage::new(size)?;
+    let backing = factory?.allocation_backing(size, source_line)?;
+    Some(TestVisibleAllocation { storage, backing })
+}
+
 fn new_test_visible_allocation(
     parser: &XML_ParserStruct,
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<TestVisibleAllocation> {
-    let storage = TestAllocationStorage::new(size)?;
-    let backing =
-        AllocationBackingFactory::for_parser(parser).allocation_backing(size, source_line)?;
-    Some(TestVisibleAllocation { storage, backing })
+    let factory = AllocationBackingFactory::for_parser(parser);
+    new_test_visible_allocation_with_factory(Some(&factory), size, source_line)
 }
 
 impl ParserAllocatorPolicy {
@@ -7067,43 +7075,45 @@ fn expat_realloc_missing_parser() -> ! {
     unreachable!()
 }
 
-unsafe fn expat_realloc(
-    parser: &mut XML_ParserStruct,
-    mut ptr: *mut ::core::ffi::c_void,
-    mut size: crate::__stddef_size_t_h::size_t,
-    mut sourceLine: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    if ptr.is_null() {
-        let Some(mut allocation) = new_test_visible_allocation(parser, size, sourceLine) else {
-            return crate::__stddef_null_h::NULL;
+fn expat_realloc(
+    root: &std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    factory: Option<&AllocationBackingFactory>,
+    payload_address: usize,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> usize {
+    if payload_address == 0 {
+        let Some(mut allocation) =
+            new_test_visible_allocation_with_factory(factory, size, source_line)
+        else {
+            return 0;
         };
-        let payload_ptr = allocation
+        let payload_address = allocation
             .storage
             .chunks
             .as_mut_ptr()
             .cast::<u8>()
             .wrapping_add(TestAllocationStorage::payload_offset())
-            .cast::<::core::ffi::c_void>();
-        std::sync::Arc::clone(&parser.m_root)
+            .addr();
+        root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .test_allocations
-            .insert(payload_ptr.addr(), allocation);
-        return payload_ptr;
+            .insert(payload_address, allocation);
+        return payload_address;
     }
     if size == 0 as crate::__stddef_size_t_h::size_t {
-        let mut allocation = std::sync::Arc::clone(&parser.m_root)
+        let mut allocation = root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .test_allocations
-            .remove(&ptr.addr())
+            .remove(&payload_address)
             .expect("expat allocation must be tracked");
         allocation
             .backing
-            .apply(ParserAllocationAction::Free(sourceLine));
-        return crate::__stddef_null_h::NULL;
+            .apply(ParserAllocationAction::Free(source_line));
+        return 0;
     }
-    let root = std::sync::Arc::clone(&parser.m_root);
     assert!(
         (18446744073709551615 as usize)
             .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
@@ -7115,38 +7125,53 @@ unsafe fn expat_realloc(
         "SIZE_MAX - sizeof(size_t) - EXPAT_MALLOC_PADDING >= size"
     );
     let Some(replacement_storage) = TestAllocationStorage::new(size) else {
-        return crate::__stddef_null_h::NULL;
+        return 0;
     };
     let mut allocation = root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .test_allocations
-        .remove(&ptr.addr())
+        .remove(&payload_address)
         .expect("expat allocation must be tracked");
     if !allocation.backing.apply(ParserAllocationAction::Grow {
         size,
-        source_line: sourceLine,
+        source_line,
     }) {
         root.lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .test_allocations
-            .insert(ptr.addr(), allocation);
-        return crate::__stddef_null_h::NULL;
+            .insert(payload_address, allocation);
+        return 0;
     }
     allocation.storage = replacement_storage;
-    let payload_ptr = allocation
+    let new_payload_address = allocation
         .storage
         .chunks
         .as_mut_ptr()
         .cast::<u8>()
         .wrapping_add(TestAllocationStorage::payload_offset())
-        .cast::<::core::ffi::c_void>();
+        .addr();
     root.lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .test_allocations
-        .insert(payload_ptr.addr(), allocation);
-    payload_ptr
+        .insert(new_payload_address, allocation);
+    new_payload_address
 }
+
+/// Captures the parser-owned allocator route before the address-only
+/// reallocation implementation runs.  The route contains no parser handle,
+/// so the allocation bookkeeping stays outside the ABI wrapper.
+fn expat_realloc_for_parser(
+    parser: &mut XML_ParserStruct,
+    payload_address: usize,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> usize {
+    let root = parser.m_root.clone();
+    let factory = parser.m_allocationBackingFactory.clone();
+    expat_realloc(&root, factory.as_ref(), payload_address, size, source_line)
+}
+
 #[export_name = "expat_realloc"]
 
 pub unsafe extern "C" fn expat_realloc_ffi(
@@ -7159,7 +7184,8 @@ pub unsafe extern "C" fn expat_realloc_ffi(
         Some(parser) => parser,
         None => expat_realloc_missing_parser(),
     };
-    expat_realloc(parser, ptr, size, sourceLine)
+    let allocation_address = expat_realloc_for_parser(parser, ptr.addr(), size, sourceLine);
+    std::ptr::with_exposed_provenance_mut(allocation_address)
 }
 fn parser_create_default(
     encoding_name: Option<&std::ffi::CStr>,
