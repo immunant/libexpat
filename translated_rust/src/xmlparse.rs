@@ -10186,12 +10186,6 @@ unsafe extern "C" fn doContent(
                             .first_mut()
                             .expect("tag storage has one tag");
                         if has_end_element_handler {
-                            let mut localPart: *const crate::expat_external_h::XML_Char =
-                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                            let mut prefix: *const crate::expat_external_h::XML_Char =
-                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                            let mut uri: *mut crate::expat_external_h::XML_Char =
-                                ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
                             let name = match tag_0.name.str {
                                 TagNameStorage::TagBuffer { offset } => {
                                     (tag_0.buffer.bytes.as_ptr()
@@ -10206,46 +10200,87 @@ unsafe extern "C" fn doContent(
                                 _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             end_element_name = name;
-                            if let Some(localPartOffset) = tag_0.name.localPart {
-                                localPart = (tag_0.buffer.bytes.as_ptr()
-                                    as *const crate::expat_external_h::XML_Char)
-                                    .wrapping_offset(localPartOffset as isize);
-                            }
-                            if uses_namespaces && !localPart.is_null() {
-                                uri = (name as *mut crate::expat_external_h::XML_Char)
-                                    .wrapping_offset(tag_0.name.uriLen as isize);
-                                while *localPart != 0 {
-                                    let c2rust_fresh18 = localPart;
-                                    localPart = localPart.wrapping_offset(1);
-                                    let c2rust_fresh19 = uri;
-                                    uri = uri.offset(1);
-                                    *c2rust_fresh19 = *c2rust_fresh18;
-                                }
-                                if uses_ns_triplets && tag_0.name.prefixLen != 0
-                                {
-                                    // The tag buffer remains owned by the parser's configured
-                                    // allocator for the tag's complete lifetime.  Its original
-                                    // converted name supplies the prefix, so no interior pointer
-                                    // has to be retained in TAG_NAME.
-                                    prefix = tag_0.buffer.bytes.as_ptr()
-                                        as *const crate::expat_external_h::XML_Char;
-                                    let c2rust_fresh20 = uri;
-                                    uri = uri.offset(1);
-                                    *c2rust_fresh20 = namespace_separator;
-                                    // `prefixLen` includes the terminating NUL.  The source
-                                    // buffer also holds the local part after the colon, so use
-                                    // the recorded bound rather than searching for a NUL there.
-                                    let mut prefix_remaining = tag_0.name.prefixLen - 1;
-                                    while prefix_remaining != 0 {
-                                        let c2rust_fresh21 = prefix;
-                                        prefix = prefix.offset(1);
-                                        let c2rust_fresh22 = uri;
-                                        uri = uri.offset(1);
-                                        *c2rust_fresh22 = *c2rust_fresh21;
-                                        prefix_remaining -= 1;
+                            if uses_namespaces {
+                                if let Some(local_part_offset) = tag_0.name.localPart {
+                                    // The local part is retained in this detached tag's owned
+                                    // conversion buffer.  Its NUL terminator is part of the
+                                    // value copied into the namespace binding, just as in the C
+                                    // cursor loop, so find it before forming either destination.
+                                    let Some(local_part) = tag_0
+                                        .buffer
+                                        .bytes
+                                        .get(local_part_offset..)
+                                        .and_then(terminated_xml_chars)
+                                    else {
+                                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                    };
+                                    let uri_len = match usize::try_from(tag_0.name.uriLen) {
+                                        Ok(length) => length,
+                                        Err(_) => {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        }
+                                    };
+                                    let prefix_len = match usize::try_from(tag_0.name.prefixLen) {
+                                        Ok(length) => length,
+                                        Err(_) => {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        }
+                                    };
+                                    let parser_state = &mut *parser;
+                                    let Some(binding) = parser_state
+                                        .m_activeBindings
+                                        .iter_mut()
+                                        .find(|binding| binding.uri.as_ptr() == name)
+                                    else {
+                                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                    };
+                                    let local_end = match uri_len.checked_add(local_part.len()) {
+                                        Some(end) => end,
+                                        None => {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        }
+                                    };
+                                    let Some(local_destination) =
+                                        binding.uri.get_mut(uri_len..local_end)
+                                    else {
+                                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                    };
+                                    local_destination.copy_from_slice(local_part);
+                                    if uses_ns_triplets && prefix_len != 0 {
+                                        let Some(separator) = local_destination.last_mut() else {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        };
+                                        *separator = namespace_separator;
+                                        // `prefixLen` includes its NUL.  The final terminator is
+                                        // written after the prefix, preserving the original
+                                        // layout: URI, local part, separator, prefix, NUL.
+                                        let Some(prefix) = tag_0
+                                            .buffer
+                                            .bytes
+                                            .get(..prefix_len.saturating_sub(1))
+                                        else {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        };
+                                        let prefix_start = match uri_len.checked_add(local_part.len()) {
+                                            Some(start) => start,
+                                            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                        };
+                                        let prefix_end = match prefix_start.checked_add(prefix.len()) {
+                                            Some(end) => end,
+                                            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                        };
+                                        let Some(prefix_destination) =
+                                            binding.uri.get_mut(prefix_start..prefix_end)
+                                        else {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        };
+                                        prefix_destination.copy_from_slice(prefix);
+                                        let Some(terminator) = binding.uri.get_mut(prefix_end) else {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        };
+                                        *terminator = '\0' as crate::expat_external_h::XML_Char;
                                     }
                                 }
-                                *uri = '\0' as crate::expat_external_h::XML_Char;
                             }
                         }
                         // The original implementation makes this storage available for
