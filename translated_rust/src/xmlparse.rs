@@ -11650,25 +11650,29 @@ unsafe extern "C" fn dtdCopy(
     mut oldDtd: *const DTD,
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
+    // These DTDs remain allocated for the whole copy operation: `oldDtd` belongs to
+    // the parent parser and `newDtd` to the parser being constructed.  Keeping
+    // references to them makes the field-level copy below ordinary Rust access.
+    let old_dtd = &*oldDtd;
+    let new_dtd = &mut *newDtd;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         p: ::core::ptr::null_mut::<*mut NAMED>(),
         end: ::core::ptr::null_mut::<*mut NAMED>(),
     };
-    hashTableIterInit(&raw mut iter, &raw const (*oldDtd).prefixes);
+    hashTableIterInit(&raw mut iter, &raw const old_dtd.prefixes);
     loop {
-        let mut name: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldP: *const PREFIX = hashTableIterNext(&raw mut iter) as *mut PREFIX;
-        if oldP.is_null() {
+        let old_p = hashTableIterNext(&raw mut iter) as *const PREFIX;
+        if old_p.is_null() {
             break;
         }
-        name = poolCopyString(&raw mut (*newDtd).pool, (*oldP).name);
+        let old_p = &*old_p;
+        let name = poolCopyString(&raw mut new_dtd.pool, old_p.name);
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
         if lookup(
             oldParser,
-            &raw mut (*newDtd).prefixes,
+            &raw mut new_dtd.prefixes,
             name as KEY,
             ::core::mem::size_of::<PREFIX>(),
         )
@@ -11677,162 +11681,163 @@ unsafe extern "C" fn dtdCopy(
             return 0 as ::core::ffi::c_int;
         }
     }
-    hashTableIterInit(&raw mut iter, &raw const (*oldDtd).attributeIds);
+    hashTableIterInit(&raw mut iter, &raw const old_dtd.attributeIds);
     loop {
-        let mut newA: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        let mut name_0: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldA: *const ATTRIBUTE_ID = hashTableIterNext(&raw mut iter) as *mut ATTRIBUTE_ID;
-        if oldA.is_null() {
+        let old_a = hashTableIterNext(&raw mut iter) as *const ATTRIBUTE_ID;
+        if old_a.is_null() {
             break;
         }
-        if if (*newDtd).pool.ptr == (*newDtd).pool.end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(&raw mut (*newDtd).pool) == 0
+        let old_a = &*old_a;
+        if if new_dtd.pool.ptr == new_dtd.pool.end as *mut crate::expat_external_h::XML_Char
+            && poolGrow(&raw mut new_dtd.pool) == 0
         {
             0 as ::core::ffi::c_int
         } else {
-            let c2rust_fresh66 = (*newDtd).pool.ptr;
-            (*newDtd).pool.ptr = (*newDtd).pool.ptr.offset(1);
+            let c2rust_fresh66 = new_dtd.pool.ptr;
+            new_dtd.pool.ptr = new_dtd.pool.ptr.offset(1);
             *c2rust_fresh66 = '\0' as crate::expat_external_h::XML_Char;
             1 as ::core::ffi::c_int
         } == 0
         {
             return 0 as ::core::ffi::c_int;
         }
-        name_0 = poolCopyString(&raw mut (*newDtd).pool, (*oldA).name);
+        let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.name);
         if name_0.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        name_0 = name_0.offset(1);
-        newA = lookup(
+        let name_0 = name_0.offset(1);
+        let new_a = lookup(
             oldParser,
-            &raw mut (*newDtd).attributeIds,
+            &raw mut new_dtd.attributeIds,
             name_0 as KEY,
             ::core::mem::size_of::<ATTRIBUTE_ID>(),
         ) as *mut ATTRIBUTE_ID;
-        if newA.is_null() {
+        if new_a.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        (*newA).maybeTokenized = (*oldA).maybeTokenized;
-        if !(*oldA).prefix.is_null() {
-            (*newA).xmlns = (*oldA).xmlns;
-            if (*oldA).prefix == &raw const (*oldDtd).defaultPrefix as *mut PREFIX {
-                (*newA).prefix = &raw mut (*newDtd).defaultPrefix;
+        let new_a = &mut *new_a;
+        new_a.maybeTokenized = old_a.maybeTokenized;
+        if !old_a.prefix.is_null() {
+            new_a.xmlns = old_a.xmlns;
+            if old_a.prefix == &raw const old_dtd.defaultPrefix as *mut PREFIX {
+                new_a.prefix = &raw mut new_dtd.defaultPrefix;
             } else {
-                (*newA).prefix = lookup(
+                let old_prefix = &*old_a.prefix;
+                new_a.prefix = lookup(
                     oldParser,
-                    &raw mut (*newDtd).prefixes,
-                    (*(*oldA).prefix).name as KEY,
+                    &raw mut new_dtd.prefixes,
+                    old_prefix.name as KEY,
                     0 as crate::__stddef_size_t_h::size_t,
                 ) as *mut PREFIX;
             }
         }
     }
-    hashTableIterInit(&raw mut iter, &raw const (*oldDtd).elementTypes);
+    hashTableIterInit(&raw mut iter, &raw const old_dtd.elementTypes);
     loop {
-        let mut i: ::core::ffi::c_int = 0;
-        let mut newE: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        let mut name_1: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
-        if oldE.is_null() {
+        let old_e = hashTableIterNext(&raw mut iter) as *const ELEMENT_TYPE;
+        if old_e.is_null() {
             break;
         }
-        name_1 = poolCopyString(&raw mut (*newDtd).pool, (*oldE).name);
+        let old_e = &*old_e;
+        let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.name);
         if name_1.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        newE = lookup(
+        let new_e = lookup(
             oldParser,
-            &raw mut (*newDtd).elementTypes,
+            &raw mut new_dtd.elementTypes,
             name_1 as KEY,
             ::core::mem::size_of::<ELEMENT_TYPE>(),
         ) as *mut ELEMENT_TYPE;
-        if newE.is_null() {
+        if new_e.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        if (*oldE).nDefaultAtts != 0 {
-            (*newE).defaultAtts = expat_malloc(
+        let new_e = &mut *new_e;
+        if old_e.nDefaultAtts != 0 {
+            new_e.defaultAtts = expat_malloc(
                 parser,
-                ((*oldE).nDefaultAtts as crate::__stddef_size_t_h::size_t)
+                (old_e.nDefaultAtts as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
                 7683 as ::core::ffi::c_int,
             ) as *mut DEFAULT_ATTRIBUTE;
-            if (*newE).defaultAtts.is_null() {
+            if new_e.defaultAtts.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
         }
-        if !(*oldE).idAtt.is_null() {
-            (*newE).idAtt = lookup(
+        if !old_e.idAtt.is_null() {
+            let old_id_att = &*old_e.idAtt;
+            new_e.idAtt = lookup(
                 oldParser,
-                &raw mut (*newDtd).attributeIds,
-                (*(*oldE).idAtt).name as KEY,
+                &raw mut new_dtd.attributeIds,
+                old_id_att.name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ATTRIBUTE_ID;
         }
-        (*newE).nDefaultAtts = (*oldE).nDefaultAtts;
-        (*newE).allocDefaultAtts = (*newE).nDefaultAtts;
-        if !(*oldE).prefix.is_null() {
-            (*newE).prefix = lookup(
+        new_e.nDefaultAtts = old_e.nDefaultAtts;
+        new_e.allocDefaultAtts = new_e.nDefaultAtts;
+        if !old_e.prefix.is_null() {
+            let old_prefix = &*old_e.prefix;
+            new_e.prefix = lookup(
                 oldParser,
-                &raw mut (*newDtd).prefixes,
-                (*(*oldE).prefix).name as KEY,
+                &raw mut new_dtd.prefixes,
+                old_prefix.name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut PREFIX;
         }
-        i = 0 as ::core::ffi::c_int;
-        while i < (*newE).nDefaultAtts {
-            (*(*newE).defaultAtts.offset(i as isize)).id = lookup(
+        let mut i = 0 as ::core::ffi::c_int;
+        while i < new_e.nDefaultAtts {
+            let old_att = &*old_e.defaultAtts.offset(i as isize);
+            let new_att = &mut *new_e.defaultAtts.offset(i as isize);
+            let old_id_att = &*old_att.id;
+            new_att.id = lookup(
                 oldParser,
-                &raw mut (*newDtd).attributeIds,
-                (*(*(*oldE).defaultAtts.offset(i as isize)).id).name as KEY,
+                &raw mut new_dtd.attributeIds,
+                old_id_att.name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ATTRIBUTE_ID;
-            (*(*newE).defaultAtts.offset(i as isize)).isCdata =
-                (*(*oldE).defaultAtts.offset(i as isize)).isCdata;
-            if !(*(*oldE).defaultAtts.offset(i as isize)).value.is_null() {
-                (*(*newE).defaultAtts.offset(i as isize)).value = poolCopyString(
-                    &raw mut (*newDtd).pool,
-                    (*(*oldE).defaultAtts.offset(i as isize)).value,
+            new_att.isCdata = old_att.isCdata;
+            if !old_att.value.is_null() {
+                new_att.value = poolCopyString(
+                    &raw mut new_dtd.pool,
+                    old_att.value,
                 );
-                if (*(*newE).defaultAtts.offset(i as isize)).value.is_null() {
+                if new_att.value.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
             } else {
-                (*(*newE).defaultAtts.offset(i as isize)).value =
-                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                new_att.value = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
             }
             i += 1;
         }
     }
     if copyEntityTable(
         oldParser,
-        &raw mut (*newDtd).generalEntities,
-        &raw mut (*newDtd).pool,
-        &raw const (*oldDtd).generalEntities,
+        &raw mut new_dtd.generalEntities,
+        &raw mut new_dtd.pool,
+        &raw const old_dtd.generalEntities,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
     }
     if copyEntityTable(
         oldParser,
-        &raw mut (*newDtd).paramEntities,
-        &raw mut (*newDtd).pool,
-        &raw const (*oldDtd).paramEntities,
+        &raw mut new_dtd.paramEntities,
+        &raw mut new_dtd.pool,
+        &raw const old_dtd.paramEntities,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
     }
-    (*newDtd).paramEntityRead = (*oldDtd).paramEntityRead;
-    (*newDtd).keepProcessing = (*oldDtd).keepProcessing;
-    (*newDtd).hasParamEntityRefs = (*oldDtd).hasParamEntityRefs;
-    (*newDtd).standalone = (*oldDtd).standalone;
-    (*newDtd).in_eldecl = (*oldDtd).in_eldecl;
-    (*newDtd).scaffold = (*oldDtd).scaffold;
-    (*newDtd).contentStringLen = (*oldDtd).contentStringLen;
-    (*newDtd).scaffSize = (*oldDtd).scaffSize;
-    (*newDtd).scaffLevel = (*oldDtd).scaffLevel;
-    (*newDtd).scaffIndex = (*oldDtd).scaffIndex;
+    new_dtd.paramEntityRead = old_dtd.paramEntityRead;
+    new_dtd.keepProcessing = old_dtd.keepProcessing;
+    new_dtd.hasParamEntityRefs = old_dtd.hasParamEntityRefs;
+    new_dtd.standalone = old_dtd.standalone;
+    new_dtd.in_eldecl = old_dtd.in_eldecl;
+    new_dtd.scaffold = old_dtd.scaffold;
+    new_dtd.contentStringLen = old_dtd.contentStringLen;
+    new_dtd.scaffSize = old_dtd.scaffSize;
+    new_dtd.scaffLevel = old_dtd.scaffLevel;
+    new_dtd.scaffIndex = old_dtd.scaffIndex;
     return 1 as ::core::ffi::c_int;
 }
 
