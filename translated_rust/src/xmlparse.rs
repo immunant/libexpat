@@ -8565,48 +8565,81 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
 ) -> *const ::core::ffi::c_char {
     XML_GetInputContext(parser, offset, size)
 }
-pub unsafe extern "C" fn XML_GetCurrentLineNumber(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_external_h::XML_Size {
-    if parser.is_null() {
-        return 0 as crate::expat_external_h::XML_Size;
-    }
+/// The safe, value-only state needed to update a parser's current line.
+/// It deliberately excludes the ABI-shaped parser, whose unrelated callback
+/// fields would otherwise make an otherwise safe query appear raw-pointer
+/// carrying to the unsafety checker.
+struct CurrentLineNumberState<'input> {
+    event_cursor: Option<usize>,
+    position_cursor: Option<usize>,
+    position: crate::src::xmltok::POSITION,
+    input: Option<&'input [u8]>,
+    encoding: Option<crate::src::xmltok::normal_encoding>,
+}
+
+struct CurrentLineNumberResult {
+    position: crate::src::xmltok::POSITION,
+    position_cursor: Option<usize>,
+}
+
+/// Updates a copied parser position through a checked event range.  The FFI
+/// adapter is responsible only for extracting this value state and applying
+/// the result back to the opaque parser.
+fn XML_GetCurrentLineNumber(
+    mut state: CurrentLineNumberState<'_>,
+) -> CurrentLineNumberResult {
     if let (Some(event_cursor), Some(position_cursor)) =
-        ((*parser).m_eventPtr, (*parser).m_positionPtr)
+        (state.event_cursor, state.position_cursor)
     {
         if event_cursor < position_cursor {
-            return (*parser)
-                .m_position
-                .lineNumber
-                .wrapping_add(1 as crate::expat_external_h::XML_Size);
+            return CurrentLineNumberResult {
+                position: state.position,
+                position_cursor: state.position_cursor,
+            };
         }
-        if let Some(bytes) = (*parser).m_buffer.bytes.as_ref() {
+
+        if let Some(bytes) = state.input {
             if position_cursor <= bytes.len() && event_cursor <= bytes.len() {
-                if position_cursor <= event_cursor {
-                    let encoding =
-                        &*(parser_encoding(parser) as *const crate::src::xmltok::normal_encoding);
+                if let Some(encoding) = state.encoding {
                     crate::src::xmltok::initUpdatePosition(
                         encoding.enc.updatePosition,
-                        encoding,
+                        &encoding,
                         &bytes[position_cursor..event_cursor],
-                        &mut (*parser).m_position,
+                        &mut state.position,
                     );
                 }
-                (*parser).m_positionPtr = Some(event_cursor);
+                state.position_cursor = Some(event_cursor);
             }
         }
     }
-    return (*parser)
-        .m_position
-        .lineNumber
-        .wrapping_add(1 as crate::expat_external_h::XML_Size);
+    CurrentLineNumberResult {
+        position: state.position,
+        position_cursor: state.position_cursor,
+    }
 }
 #[export_name = "XML_GetCurrentLineNumber"]
 
 pub unsafe extern "C" fn XML_GetCurrentLineNumber_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Size {
-    XML_GetCurrentLineNumber(parser)
+    match parser.as_mut() {
+        Some(parser) => {
+            let result = XML_GetCurrentLineNumber(CurrentLineNumberState {
+                event_cursor: parser.m_eventPtr,
+                position_cursor: parser.m_positionPtr,
+                position: parser.m_position,
+                input: parser.m_buffer.bytes.as_deref(),
+                encoding: current_parser_normal_encoding(parser),
+            });
+            parser.m_position = result.position;
+            parser.m_positionPtr = result.position_cursor;
+            result
+                .position
+                .lineNumber
+                .wrapping_add(1 as crate::expat_external_h::XML_Size)
+        }
+        None => 0,
+    }
 }
 /// The safe, value-only state needed to update a parser's current column.
 /// It deliberately excludes the ABI-shaped parser, whose unrelated callback
