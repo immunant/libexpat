@@ -5309,7 +5309,7 @@ pub unsafe extern "C" fn XML_ParseBuffer(
     (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
     start = (*parser).m_bufferPtr;
     (*parser).m_positionPtr = start;
-    (*parser).m_bufferEnd = (*parser).m_bufferEnd.offset(len as isize);
+    (*parser).m_bufferEnd = (*parser).m_bufferEnd.wrapping_add(len as usize);
     (*parser).m_parseEndPtr = (*parser).m_bufferEnd;
     (*parser).m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
     (*parser).m_parsingStatus.finalBuffer = isFinal as crate::expat_h::XML_Bool;
