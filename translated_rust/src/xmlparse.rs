@@ -2515,7 +2515,7 @@ pub struct ELEMENT_TYPE {
 
 struct DefaultAttributeStorage {
     values: Vec<DEFAULT_ATTRIBUTE>,
-    backing: Box<dyn FnMut(DefaultAttributeAllocationAction) -> bool>,
+    backing: Box<dyn FnMut(&mut XML_ParserStruct, DefaultAttributeAllocationAction) -> bool>,
 }
 
 enum DefaultAttributeAllocationAction {
@@ -13546,11 +13546,15 @@ unsafe fn defineAttribute(
     value: Option<PoolStringRef>,
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    if type_0.is_null() || attId.is_null() || parser.is_null() || (*parser).m_dtd.is_null() {
+    if type_0.is_null() || attId.is_null() || parser.is_null() {
+        return 0 as ::core::ffi::c_int;
+    }
+    let parser = &mut *parser;
+    if parser.m_dtd.is_null() {
         return 0 as ::core::ffi::c_int;
     }
     let type_0 = &mut *type_0;
-    let Some(att_name) = pool_string_ref(&raw const (*(*parser).m_dtd).pool, (*attId).name, false)
+    let Some(att_name) = pool_string_ref(&raw const (*parser.m_dtd).pool, (*attId).name, false)
     else {
         return 0 as ::core::ffi::c_int;
     };
@@ -13601,7 +13605,10 @@ unsafe fn defineAttribute(
                 .values
                 .try_reserve_exact((count as usize).saturating_sub(storage.values.len()))
                 .is_err()
-                || !(storage.backing)(DefaultAttributeAllocationAction::Grow(allocation_size))
+                || !(storage.backing)(
+                    parser,
+                    DefaultAttributeAllocationAction::Grow(allocation_size),
+                )
             {
                 return 0 as ::core::ffi::c_int;
             }
@@ -14185,11 +14192,13 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
 }
 
 unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_Parser) {
+    let p = &mut *p;
+    let parser = &mut *_parser;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         table: None,
         next: 0 as crate::__stddef_size_t_h::size_t,
     };
-    let table = &(*p).elementTypes;
+    let table = &p.elementTypes;
     hashTableIterInit(&raw mut iter, table);
     loop {
         let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
@@ -14197,23 +14206,23 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_
             break;
         }
         if let Some(mut default_atts) = (*e).defaultAtts.take() {
-            (default_atts.backing)(DefaultAttributeAllocationAction::Free(7539));
+            (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7539));
         }
     }
-    hashTableClear(&raw mut (*p).generalEntities);
-    (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableClear(&raw mut (*p).paramEntities);
-    hashTableClear(&raw mut (*p).elementTypes);
-    hashTableClear(&raw mut (*p).attributeIds);
-    hashTableClear(&raw mut (*p).prefixes);
-    poolClear(&raw mut (*p).pool);
-    poolClear(&raw mut (*p).entityValuePool);
-    (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
-    (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    (*p).scaffIndex = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    hashTableClear(&raw mut p.generalEntities);
+    p.paramEntityRead = crate::expat_h::XML_FALSE;
+    hashTableClear(&raw mut p.paramEntities);
+    hashTableClear(&raw mut p.elementTypes);
+    hashTableClear(&raw mut p.attributeIds);
+    hashTableClear(&raw mut p.prefixes);
+    poolClear(&raw mut p.pool);
+    poolClear(&raw mut p.entityValuePool);
+    p.defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    p.defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
+    p.in_eldecl = crate::expat_h::XML_FALSE;
+    p.scaffIndex = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let backing = {
-        let mut scaffold = (*p)
+        let mut scaffold = p
             .scaffold
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -14223,13 +14232,13 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_
     if let Some(mut backing) = backing {
         backing(ScaffoldAllocationAction::Free(7558 as ::core::ffi::c_int));
     }
-    (*p).scaffLevel = 0 as ::core::ffi::c_int;
-    (*p).scaffSize = 0 as ::core::ffi::c_uint;
-    (*p).scaffCount = 0 as ::core::ffi::c_uint;
-    (*p).contentStringLen = 0 as ::core::ffi::c_uint;
-    (*p).keepProcessing = crate::expat_h::XML_TRUE;
-    (*p).hasParamEntityRefs = crate::expat_h::XML_FALSE;
-    (*p).standalone = crate::expat_h::XML_FALSE;
+    p.scaffLevel = 0 as ::core::ffi::c_int;
+    p.scaffSize = 0 as ::core::ffi::c_uint;
+    p.scaffCount = 0 as ::core::ffi::c_uint;
+    p.contentStringLen = 0 as ::core::ffi::c_uint;
+    p.keepProcessing = crate::expat_h::XML_TRUE;
+    p.hasParamEntityRefs = crate::expat_h::XML_FALSE;
+    p.standalone = crate::expat_h::XML_FALSE;
 }
 
 unsafe extern "C" fn dtdDestroy(
@@ -14237,11 +14246,13 @@ unsafe extern "C" fn dtdDestroy(
     mut isDocEntity: crate::expat_h::XML_Bool,
     mut parser: crate::expat_h::XML_Parser,
 ) {
+    let p = &mut *p;
+    let parser = &mut *parser;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         table: None,
         next: 0 as crate::__stddef_size_t_h::size_t,
     };
-    let table = &(*p).elementTypes;
+    let table = &p.elementTypes;
     hashTableIterInit(&raw mut iter, table);
     loop {
         let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
@@ -14249,19 +14260,19 @@ unsafe extern "C" fn dtdDestroy(
             break;
         }
         if let Some(mut default_atts) = (*e).defaultAtts.take() {
-            (default_atts.backing)(DefaultAttributeAllocationAction::Free(7580));
+            (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7580));
         }
     }
-    hashTableDestroy(&raw mut (*p).generalEntities);
-    hashTableDestroy(&raw mut (*p).paramEntities);
-    hashTableDestroy(&raw mut (*p).elementTypes);
-    hashTableDestroy(&raw mut (*p).attributeIds);
-    hashTableDestroy(&raw mut (*p).prefixes);
-    poolDestroy(&raw mut (*p).pool);
-    poolDestroy(&raw mut (*p).entityValuePool);
+    hashTableDestroy(&raw mut p.generalEntities);
+    hashTableDestroy(&raw mut p.paramEntities);
+    hashTableDestroy(&raw mut p.elementTypes);
+    hashTableDestroy(&raw mut p.attributeIds);
+    hashTableDestroy(&raw mut p.prefixes);
+    poolDestroy(&raw mut p.pool);
+    poolDestroy(&raw mut p.entityValuePool);
     if isDocEntity != 0 {
         let backing = {
-            let mut scaffold = (*p)
+            let mut scaffold = p
                 .scaffold
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -14271,11 +14282,11 @@ unsafe extern "C" fn dtdDestroy(
             backing(ScaffoldAllocationAction::Free(7593 as ::core::ffi::c_int));
         }
     }
-    ::core::ptr::drop_in_place(&raw mut (*p).scaffIndex);
-    ::core::ptr::drop_in_place(&raw mut (*p).scaffold);
+    ::core::ptr::drop_in_place(&raw mut p.scaffIndex);
+    ::core::ptr::drop_in_place(&raw mut p.scaffold);
     expat_free(
         parser,
-        p as *mut ::core::ffi::c_void,
+        p as *mut DTD as *mut ::core::ffi::c_void,
         7595 as ::core::ffi::c_int,
     );
 }
@@ -14396,7 +14407,7 @@ unsafe extern "C" fn dtdCopy(
         let new_e = &mut *new_e;
         if old_e.nDefaultAtts != 0 {
             let Some(storage) =
-                default_attribute_storage_new(parser, old_e.nDefaultAtts as usize, 7683)
+                default_attribute_storage_new(&mut *parser, old_e.nDefaultAtts as usize, 7683)
             else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -14728,7 +14739,7 @@ unsafe fn allocation_backing(
 }
 
 unsafe fn default_attribute_storage_new(
-    parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
     capacity: usize,
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<DefaultAttributeStorage>> {
@@ -14737,8 +14748,9 @@ unsafe fn default_attribute_storage_new(
     if allocation.is_null() {
         return None;
     }
-    let mut backing: Box<dyn FnMut(DefaultAttributeAllocationAction) -> bool> =
-        Box::new(move |action| match action {
+    let mut backing: Box<
+        dyn FnMut(&mut XML_ParserStruct, DefaultAttributeAllocationAction) -> bool,
+    > = Box::new(move |parser, action| match action {
             DefaultAttributeAllocationAction::Grow(size) => {
                 let reallocated = expat_realloc(parser, allocation, size, 7208);
                 if reallocated.is_null() {
@@ -14755,7 +14767,7 @@ unsafe fn default_attribute_storage_new(
         });
     let mut values = Vec::new();
     if values.try_reserve_exact(capacity).is_err() {
-        backing(DefaultAttributeAllocationAction::Free(source_line));
+        backing(parser, DefaultAttributeAllocationAction::Free(source_line));
         return None;
     }
     Some(Box::new(DefaultAttributeStorage { values, backing }))
