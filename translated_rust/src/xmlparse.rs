@@ -1850,6 +1850,49 @@ static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingCallback>>>,
 > = std::sync::OnceLock::new();
 
+// The unknown-encoding callback context is an opaque foreign token.  It stays
+// in a boundary adapter and is forwarded only for the callback that owns it.
+trait UnknownEncodingHandlerInvoker {
+    unsafe fn invoke(
+        &self,
+        handler: &dyn UnknownEncodingCallback,
+        encoding_name: *const crate::expat_external_h::XML_Char,
+        info: *mut crate::expat_h::XML_Encoding,
+    ) -> ::core::ffi::c_int;
+}
+
+impl<F> UnknownEncodingHandlerInvoker for F
+where
+    F: Fn(
+        &dyn UnknownEncodingCallback,
+        *const crate::expat_external_h::XML_Char,
+        *mut crate::expat_h::XML_Encoding,
+    ) -> ::core::ffi::c_int,
+{
+    unsafe fn invoke(
+        &self,
+        handler: &dyn UnknownEncodingCallback,
+        encoding_name: *const crate::expat_external_h::XML_Char,
+        info: *mut crate::expat_h::XML_Encoding,
+    ) -> ::core::ffi::c_int {
+        self(handler, encoding_name, info)
+    }
+}
+
+#[derive(Clone)]
+struct UnknownEncodingHandlerRegistration {
+    invoke: std::sync::Arc<dyn UnknownEncodingHandlerInvoker>,
+}
+
+// The captured context is never dereferenced by Rust; Expat callers retain
+// responsibility for its validity while their callback is invoked.
+unsafe impl Send for UnknownEncodingHandlerRegistration {}
+unsafe impl Sync for UnknownEncodingHandlerRegistration {}
+
+static UNKNOWN_ENCODING_HANDLER_ARGS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingHandlerRegistration>>,
+> = std::sync::OnceLock::new();
+
 trait ExternalEntityRefCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -2258,7 +2301,6 @@ pub struct XML_ParserStruct {
     pub m_ns: crate::expat_h::XML_Bool,
     pub m_ns_triplets: crate::expat_h::XML_Bool,
     pub m_unknownEncodingMem: *mut ::core::ffi::c_void,
-    pub m_unknownEncodingHandlerData: *mut ::core::ffi::c_void,
     // A successful unknown-encoding callback transfers this ABI record to
     // the parser until reset/free.  Keeping the record intact ties its
     // foreign data and release callback together, preventing one from being
@@ -3993,7 +4035,6 @@ fn initial_parser_struct(
         m_ns: crate::expat_h::XML_FALSE,
         m_ns_triplets: crate::expat_h::XML_FALSE,
         m_unknownEncodingMem: crate::__stddef_null_h::NULL,
-        m_unknownEncodingHandlerData: crate::__stddef_null_h::NULL,
         m_unknownEncodingInfo: None,
         m_prologState: crate::src::xmlrole::PROLOG_STATE {
             handler: None,
@@ -4270,8 +4311,12 @@ unsafe extern "C" fn parserCreate(
     parser.m_groupSize = 0 as ::core::ffi::c_uint;
     parser.m_groupConnector = GroupConnectorStorage::empty();
     parser.m_unknownEncodingHandler = false;
-    parser.m_unknownEncodingHandlerData = crate::__stddef_null_h::NULL;
     UNKNOWN_ENCODING_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as *mut XML_ParserStruct as usize));
+    UNKNOWN_ENCODING_HANDLER_ARGS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -4736,8 +4781,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         None;
     let mut oldSkippedEntityCallback: Option<std::sync::Arc<dyn SkippedEntityCallback>> = None;
     let mut oldUnknownEncodingHandler: Option<std::sync::Arc<dyn UnknownEncodingCallback>> = None;
-    let mut oldUnknownEncodingHandlerData: *mut ::core::ffi::c_void =
-        ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut oldUnknownEncodingHandlerArg: Option<UnknownEncodingHandlerRegistration> = None;
     let mut oldElementDeclHandler = false;
     let mut oldElementDeclCallback: Option<std::sync::Arc<dyn ElementDeclCallback>> = None;
     let mut oldAttlistDeclHandler = false;
@@ -4866,7 +4910,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .get(&(parser as usize))
         .cloned();
-    oldUnknownEncodingHandlerData = (*parser).m_unknownEncodingHandlerData;
+    oldUnknownEncodingHandlerArg = UNKNOWN_ENCODING_HANDLER_ARGS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldElementDeclHandler = (*parser).m_elementDeclHandler;
     oldElementDeclCallback = ELEMENT_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -5059,7 +5108,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(parser as usize, callback);
     }
-    (*parser).m_unknownEncodingHandlerData = oldUnknownEncodingHandlerData;
+    if let Some(arg) = oldUnknownEncodingHandlerArg {
+        UNKNOWN_ENCODING_HANDLER_ARGS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, arg);
+    }
     (*parser).m_elementDeclHandler = oldElementDeclHandler;
     if let Some(callback) = oldElementDeclCallback {
         ELEMENT_DECL_HANDLERS
@@ -5256,6 +5311,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
     UNKNOWN_ENCODING_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
+    UNKNOWN_ENCODING_HANDLER_ARGS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -6296,15 +6356,31 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
         return;
     }
     (*parser).m_unknownEncodingHandler = handler.is_some();
-    (*parser).m_unknownEncodingHandlerData = data;
     let mut handlers = UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     if let Some(callback) = handler {
         handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        let registration = UnknownEncodingHandlerRegistration {
+            invoke: std::sync::Arc::new(move |
+                handler: &dyn UnknownEncodingCallback,
+                encoding_name: *const crate::expat_external_h::XML_Char,
+                info: *mut crate::expat_h::XML_Encoding,
+            | unsafe { handler.invoke(data, encoding_name, info) }),
+        };
+        UNKNOWN_ENCODING_HANDLER_ARGS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, registration);
     } else {
         handlers.remove(&(parser as usize));
+        UNKNOWN_ENCODING_HANDLER_ARGS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&(parser as usize));
     }
 }
 #[export_name = "XML_SetUnknownEncodingHandler"]
@@ -10696,12 +10772,14 @@ unsafe extern "C" fn handleUnknownEncoding(
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .get(&(parser as usize))
             .cloned();
-        if callback.is_some_and(|callback| {
-            callback.invoke(
-                (*parser).m_unknownEncodingHandlerData,
-                encodingName,
-                &raw mut info,
-            ) != 0
+        let callback_arg = UNKNOWN_ENCODING_HANDLER_ARGS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&(parser as usize))
+            .cloned();
+        if callback.zip(callback_arg).is_some_and(|(callback, callback_arg)| {
+            callback_arg.invoke.invoke(callback.as_ref(), encodingName, &raw mut info) != 0
         }) {
             let mut enc: *mut crate::src::xmltok::ENCODING =
                 ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
