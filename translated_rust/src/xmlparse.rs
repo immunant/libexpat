@@ -2339,10 +2339,10 @@ pub struct XML_ParserStruct {
     // absent until parsing has established an input position; `Some(0)` is a
     // valid position at the beginning of a non-empty or empty buffer.
     pub m_positionPtr: Option<usize>,
-    // The open internal-entity list is absent or starts at a live
-    // allocator-backed node.  Keep nullability in the option rather than in
-    // a raw pointer; links inside the foreign-compatible nodes stay raw.
-    pub m_openInternalEntities: Option<::core::ptr::NonNull<OPEN_INTERNAL_ENTITY>>,
+    // The open internal-entity stack is absent or names a live stable slot.
+    // The node storage is owned by `m_activeInternalEntities`, so an index
+    // cannot outlive the stack or depend on an allocator-owned address.
+    pub m_openInternalEntities: Option<usize>,
     // Internal-entity nodes are Rust-owned stable slots paired with opaque
     // configured-allocator tokens.  Keeping the reusable entries in a vector
     // avoids retaining a raw free-list head in parser state while preserving
@@ -7420,12 +7420,18 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
         return;
     }
     if (*parser).m_defaultHandler {
-        if let Some(open_entity) = (*parser).m_openInternalEntities {
+        let open_entity = {
+            let parser_state = &mut *parser;
+            parser_state
+                .m_openInternalEntities
+                .and_then(|index| parser_state.m_activeInternalEntities.get(index))
+        };
+        if let Some(open_entity) = open_entity {
             reportDefault(
                 parser,
                 internal_encoding((*parser).m_internalEncoding) as *const _,
-                (*open_entity.as_ptr()).internalEventPtr,
-                (*open_entity.as_ptr()).internalEventEndPtr,
+                open_entity.node().internalEventPtr,
+                open_entity.node().internalEventEndPtr,
             );
         } else {
             reportDefault(
@@ -8109,10 +8115,19 @@ unsafe extern "C" fn doContent(
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     if !parser_events {
-        let open_entity = (*parser)
-            .m_openInternalEntities
-            .expect("internal entity parsing requires an open entity")
-            .as_ptr();
+        let open_entity = {
+            let parser_state = &mut *parser;
+            let open_entity_index = parser_state
+                .m_openInternalEntities
+                .expect("internal entity parsing requires an open entity");
+            std::ptr::from_mut(
+                parser_state
+                    .m_activeInternalEntities
+                    .get_mut(open_entity_index)
+                    .expect("open internal entity index is live")
+                    .node_mut(),
+            )
+        };
         eventPP = &raw mut (*open_entity).internalEventPtr;
         eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
     }
@@ -10315,10 +10330,17 @@ unsafe extern "C" fn doCdataSection(
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     if !parser_events {
-        let Some(open_entity) = (&mut *parser_handle).m_openInternalEntities else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let open_entity = {
+            let parser_state = &mut *parser_handle;
+            let Some(open_entity_index) = parser_state.m_openInternalEntities else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(open_entity) = parser_state.m_activeInternalEntities.get_mut(open_entity_index)
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            std::ptr::from_mut(open_entity.node_mut())
         };
-        let open_entity = open_entity.as_ptr();
         eventPP = &raw mut (*open_entity).internalEventPtr;
         eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
     }
@@ -10557,10 +10579,19 @@ unsafe extern "C" fn doIgnoreSection(
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     if !parser_events {
-        let open_entity = (*parser)
-            .m_openInternalEntities
-            .expect("internal entity parsing requires an open entity")
-            .as_ptr();
+        let open_entity = {
+            let parser_state = &mut *parser;
+            let open_entity_index = parser_state
+                .m_openInternalEntities
+                .expect("internal entity parsing requires an open entity");
+            std::ptr::from_mut(
+                parser_state
+                    .m_activeInternalEntities
+                    .get_mut(open_entity_index)
+                    .expect("open internal entity index is live")
+                    .node_mut(),
+            )
+        };
         eventPP = &raw mut (*open_entity).internalEventPtr;
         eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
     }
@@ -11437,10 +11468,19 @@ unsafe extern "C" fn doProlog(
     if parser_events {
         eventPP = &raw mut parser_event_ptr;
     } else {
-        let open_entity = (*parser)
-            .m_openInternalEntities
-            .expect("external prolog parsing requires an open entity")
-            .as_ptr();
+        let open_entity = {
+            let parser_state = &mut *parser;
+            let open_entity_index = parser_state
+                .m_openInternalEntities
+                .expect("external prolog parsing requires an open entity");
+            std::ptr::from_mut(
+                parser_state
+                    .m_activeInternalEntities
+                    .get_mut(open_entity_index)
+                    .expect("open internal entity index is live")
+                    .node_mut(),
+            )
+        };
         eventPP = &raw mut (*open_entity).internalEventPtr;
         eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
     }
@@ -11470,11 +11510,15 @@ unsafe extern "C" fn doProlog(
                 }
                 crate::src::xmltok::XML_TOK_NONE => {
                     if enc != active_parser_encoding
-                        && (*(*parser)
+                        && (*parser)
                             .m_openInternalEntities
+                            .and_then(|index| {
+                                (*parser)
+                                    .m_activeInternalEntities
+                                    .get(index)
+                                    .map(|storage| storage.node().betweenDecl)
+                            })
                             .expect("external prolog parsing requires an open entity")
-                            .as_ptr())
-                            .betweenDecl
                             == 0
                     {
                         *nextPtr = s;
@@ -14326,8 +14370,10 @@ unsafe extern "C" fn processEntity(
     (*openEntity).next = if is_internal_entity {
         parser_state
             .m_openInternalEntities
-            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-            as *mut open_internal_entity
+            .and_then(|index| parser_state.m_activeInternalEntities.get(index))
+            .map_or(::core::ptr::null_mut(), |storage| {
+                std::ptr::from_ref(storage.node()).cast_mut()
+            })
     } else {
         parser_state
             .m_openValueEntities
@@ -14335,7 +14381,8 @@ unsafe extern "C" fn processEntity(
             as *mut open_internal_entity
     };
     if is_internal_entity {
-        parser_state.m_openInternalEntities = ::core::ptr::NonNull::new(openEntity);
+        parser_state.m_openInternalEntities =
+            parser_state.m_activeInternalEntities.len().checked_sub(1);
     } else {
         parser_state.m_openValueEntities = ::core::ptr::NonNull::new(openEntity);
     }
@@ -14363,10 +14410,17 @@ unsafe extern "C" fn internalEntityProcessor(
     let mut textEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-    let Some(open_entity) = (*parser).m_openInternalEntities else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    let (open_entity_index, mut openEntity) = {
+        let parser_state = &mut *parser;
+        let Some(open_entity_index) = parser_state.m_openInternalEntities else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(open_entity) = parser_state.m_activeInternalEntities.get_mut(open_entity_index)
+        else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        (open_entity_index, std::ptr::from_mut(open_entity.node_mut()))
     };
-    let mut openEntity = open_entity.as_ptr();
     entity = (*openEntity).entity;
     if (*entity).hasMore != 0 {
         let Some(text) = (*entity).textPtr.present() else {
@@ -14453,22 +14507,10 @@ unsafe extern "C" fn internalEntityProcessor(
         return result;
     }
     entityTrackingOnClose(parser, entity, 6470 as ::core::ffi::c_int);
-    '_c2rust_label: {
-        if (*parser).m_openInternalEntities == ::core::ptr::NonNull::new(openEntity) {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"parser->m_openInternalEntities == openEntity\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6476 as ::core::ffi::c_uint,
-                b"enum XML_Error internalEntityProcessor(XML_Parser, const char *, const char *, const char **)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    };
+    if (*parser).m_activeInternalEntities.len().checked_sub(1) != Some(open_entity_index) {
+        std::process::abort();
+    }
     (*entity).open = crate::expat_h::XML_FALSE;
-    (*parser).m_openInternalEntities =
-        ::core::ptr::NonNull::new((*openEntity).next as *mut OPEN_INTERNAL_ENTITY);
     let Some(storage) = (*parser).m_activeInternalEntities.pop() else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
@@ -14476,6 +14518,7 @@ unsafe extern "C" fn internalEntityProcessor(
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
     (*parser).m_freeInternalEntities.push(storage);
+    (*parser).m_openInternalEntities = (*parser).m_activeInternalEntities.len().checked_sub(1);
     if (*parser).m_openInternalEntities.is_none() {
         (*parser).m_processor = if (*entity).is_param as ::core::ffi::c_int != 0 {
             ProcessorState::Prolog
@@ -15418,10 +15461,19 @@ unsafe extern "C" fn reportDefault(
         let mut eventEndPP: *mut *const ::core::ffi::c_char =
             ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
         if !parser_events {
-            let open_entity = (*parser)
-                .m_openInternalEntities
-                .expect("internal entity default reporting requires an open entity")
-                .as_ptr();
+            let open_entity = {
+                let parser_state = &mut *parser;
+                let open_entity_index = parser_state
+                    .m_openInternalEntities
+                    .expect("internal entity default reporting requires an open entity");
+                std::ptr::from_mut(
+                    parser_state
+                        .m_activeInternalEntities
+                        .get_mut(open_entity_index)
+                        .expect("open internal entity index is live")
+                        .node_mut(),
+                )
+            };
             eventPP = &raw mut (*open_entity).internalEventPtr;
             eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
         }
