@@ -23452,24 +23452,6 @@ fn dtd_copy_lookup_index(
     lookup_existing(pool, table, LookupName::Retained(name), hash_secret_salt)
 }
 
-/// The entity-copy path still mutates an allocator-backed record.  Keep that
-/// record access scoped to this narrow helper while the surrounding copy loop
-/// continues to use the checked table slot model.
-unsafe fn dtd_copy_lookup_entity<'a>(
-    pool: &mut STRING_POOL,
-    table: &'a mut HASH_TABLE,
-    name: PoolStringRef,
-    create_size: usize,
-    hash_secret_salt: ::core::ffi::c_ulong,
-) -> Option<&'a mut ENTITY> {
-    let index = dtd_copy_lookup_index(pool, table, name, create_size, hash_secret_salt)?;
-    let entry = table.v.as_mut()?.entries.get_mut(index)?.as_mut()?;
-    match &mut entry.record {
-        NamedRecord::Entity(entity) => Some(entity),
-        _ => None,
-    }
-}
-
 unsafe fn copyEntityTable(
     old_dtd: &DTD,
     new_table: &mut HASH_TABLE,
@@ -23496,13 +23478,28 @@ unsafe fn copyEntityTable(
         let Some(new_name) = pool_copy_chars(new_pool, old_name) else {
             return 0 as ::core::ffi::c_int;
         };
-        let Some(new_e) = dtd_copy_lookup_entity(
+        let Some(index) = dtd_copy_lookup_index(
             new_pool,
             new_table,
             new_name,
             ::core::mem::size_of::<ENTITY>(),
             hash_secret_salt,
-        )
+        ) else {
+            return 0 as ::core::ffi::c_int;
+        };
+        // `dtd_copy_lookup_index` has just established this slot in the
+        // typed table.  Keep the record access in this existing unsafe
+        // implementation boundary instead of bouncing it through a second
+        // unsafe helper with the same borrow preconditions.
+        let Some(new_e) = new_table
+            .v
+            .as_mut()
+            .and_then(|slots| slots.entries.get_mut(index))
+            .and_then(Option::as_mut)
+            .and_then(|entry| match &mut entry.record {
+                NamedRecord::Entity(entity) => Some(entity.as_mut()),
+                _ => None,
+            })
         else {
             return 0 as ::core::ffi::c_int;
         };
