@@ -3801,7 +3801,9 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
     };
     XML_SetHashSalt(unsafe { rootParser.as_mut() }, hash_salt)
 }
-pub unsafe extern "C" fn XML_Parse(
+#[export_name = "XML_Parse"]
+
+pub unsafe extern "C" fn XML_Parse_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut s: *const ::core::ffi::c_char,
     mut len: ::core::ffi::c_int,
@@ -3837,7 +3839,7 @@ pub unsafe extern "C" fn XML_Parse(
         _ => {}
     }
     (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    let mut buff: *mut ::core::ffi::c_void = XML_GetBuffer(parser, len);
+    let mut buff: *mut ::core::ffi::c_void = XML_GetBuffer_ffi(parser, len);
     if buff.is_null() {
         return crate::expat_h::XML_STATUS_ERROR;
     }
@@ -3860,19 +3862,11 @@ pub unsafe extern "C" fn XML_Parse(
             len as crate::__stddef_size_t_h::size_t,
         );
     }
-    return XML_ParseBuffer(parser, len, isFinal);
+    return XML_ParseBuffer_ffi(parser, len, isFinal);
 }
-#[export_name = "XML_Parse"]
+#[export_name = "XML_ParseBuffer"]
 
-pub unsafe extern "C" fn XML_Parse_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut len: ::core::ffi::c_int,
-    mut isFinal: ::core::ffi::c_int,
-) -> crate::expat_h::XML_Status {
-    XML_Parse(parser, s, len, isFinal)
-}
-pub unsafe extern "C" fn XML_ParseBuffer(
+pub unsafe extern "C" fn XML_ParseBuffer_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut len: ::core::ffi::c_int,
     mut isFinal: ::core::ffi::c_int,
@@ -3962,16 +3956,9 @@ pub unsafe extern "C" fn XML_ParseBuffer(
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
 }
-#[export_name = "XML_ParseBuffer"]
+#[export_name = "XML_GetBuffer"]
 
-pub unsafe extern "C" fn XML_ParseBuffer_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut len: ::core::ffi::c_int,
-    mut isFinal: ::core::ffi::c_int,
-) -> crate::expat_h::XML_Status {
-    XML_ParseBuffer(parser, len, isFinal)
-}
-pub unsafe extern "C" fn XML_GetBuffer(
+pub unsafe extern "C" fn XML_GetBuffer_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut len: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
@@ -4138,14 +4125,6 @@ pub unsafe extern "C" fn XML_GetBuffer(
     }
     return (*parser).m_bufferEnd as *mut ::core::ffi::c_void;
 }
-#[export_name = "XML_GetBuffer"]
-
-pub unsafe extern "C" fn XML_GetBuffer_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut len: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    XML_GetBuffer(parser, len)
-}
 fn triggerReenter(parser: &mut XML_ParserStruct) {
     parser.m_reenter = crate::expat_h::XML_TRUE;
 }
@@ -4197,7 +4176,9 @@ pub unsafe extern "C" fn XML_StopParser_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_StopParser(unsafe { parser.as_mut() }, resumable)
 }
-pub unsafe extern "C" fn XML_ResumeParser(
+#[export_name = "XML_ResumeParser"]
+
+pub unsafe extern "C" fn XML_ResumeParser_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Status {
     let mut result: crate::expat_h::XML_Status = crate::expat_h::XML_STATUS_OK;
@@ -4255,13 +4236,6 @@ pub unsafe extern "C" fn XML_ResumeParser(
     );
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
-}
-#[export_name = "XML_ResumeParser"]
-
-pub unsafe extern "C" fn XML_ResumeParser_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Status {
-    XML_ResumeParser(parser)
 }
 pub fn XML_GetParsingStatus(
     parser: &XML_ParserStruct,
@@ -4514,7 +4488,9 @@ pub unsafe extern "C" fn XML_MemFree_ffi(
 ) {
     XML_MemFree(unsafe { parser.as_mut() }, ptr)
 }
-pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Parser) {
+#[export_name = "XML_DefaultCurrent"]
+
+pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
     if parser.is_null() {
         return;
     }
@@ -4535,11 +4511,6 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
             );
         }
     }
-}
-#[export_name = "XML_DefaultCurrent"]
-
-pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
-    XML_DefaultCurrent(parser)
 }
 pub extern "C" fn XML_ErrorString(
     mut code: crate::expat_h::XML_Error,
