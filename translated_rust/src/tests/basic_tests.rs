@@ -1386,8 +1386,8 @@ fn parser_reset() {
     );
 }
 
-fn parser_set_hash_salt(hash_salt: ::core::ffi::c_ulong) {
-    ffi_call2(XML_SetHashSalt, current_parser(), hash_salt);
+fn parser_set_hash_salt(hash_salt: ::core::ffi::c_ulong) -> ::core::ffi::c_int {
+    ffi_call2(XML_SetHashSalt, current_parser(), hash_salt)
 }
 
 fn parser_parse(
@@ -1460,6 +1460,18 @@ fn parser_set_encoding(encoding: *const XML_Char) -> XML_Status {
 
 fn parser_set_param_entity_parsing(parsing: XML_ParamEntityParsing) -> ::core::ffi::c_int {
     ffi_call2(XML_SetParamEntityParsing, current_parser(), parsing)
+}
+
+fn parser_use_foreign_dtd(use_dtd: XML_Bool) -> XML_Error {
+    ffi_call2(XML_UseForeignDTD, current_parser(), use_dtd)
+}
+
+fn parser_set_base(base: *const XML_Char) -> XML_Status {
+    ffi_call2(XML_SetBase, current_parser(), base)
+}
+
+fn parser_base() -> *const XML_Char {
+    ffi_call1(XML_GetBase, current_parser())
 }
 
 fn parse_single_bytes_with_final(
@@ -1591,6 +1603,10 @@ fn external_entity_faulter_handler_for_tests() -> XML_ExternalEntityRefHandler {
 
 fn external_entity_good_cdata_handler_for_tests() -> XML_ExternalEntityRefHandler {
     Some(external_entity_good_cdata_ascii)
+}
+
+fn external_entity_null_loader_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_null_loader)
 }
 
 fn reject_not_standalone_handler_for_tests() -> XML_NotStandaloneHandler {
@@ -8038,426 +8054,216 @@ extern "C" fn test_dtd_elements_nesting() {
         );
     }
 }
-unsafe extern "C" fn test_set_foreign_dtd() {
-    unsafe {
-        _check_set_test_info(
-            b"test_set_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2305 as ::core::ffi::c_int,
-        );
-        let mut text1: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='us-ascii'?>\n\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut text2: *const ::core::ffi::c_char =
-            b"<doc>&entity;</doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut test_data: ExtTest = ExtTest {
-            parse_text: b"<!ELEMENT doc (#PCDATA)*>\0".as_ptr() as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        XML_SetHashSalt(g_parser, 0x12345678 as ::core::ffi::c_ulong);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                dummy_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if XML_UseForeignDTD(g_parser, XML_TRUE) as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2318 as ::core::ffi::c_int,
-                b"Could not set foreign DTD\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text1,
-            strlen(text1) as ::core::ffi::c_int,
-            XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2321 as ::core::ffi::c_int,
-            );
-        }
-        if XML_UseForeignDTD(g_parser, XML_TRUE) as ::core::ffi::c_uint
-            != XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING as ::core::ffi::c_int
-                as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2328 as ::core::ffi::c_int,
-                b"Failed to reject late foreign DTD setting\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetHashSalt(g_parser, 0x23456789 as ::core::ffi::c_ulong) != 0 {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2331 as ::core::ffi::c_int,
-                b"Failed to reject late hash salt change\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text2,
-            strlen(text2) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2336 as ::core::ffi::c_int,
-            );
-        }
-    }
+extern "C" fn test_set_foreign_dtd() {
+    set_test_info(b"test_set_foreign_dtd\0", 2305 as ::core::ffi::c_int);
+    let text1 = bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='us-ascii'?>\n\0");
+    let text2 = bytes_as_c_char_ptr(b"<doc>&entity;</doc>\0");
+    let mut test_data = ExtTest {
+        parse_text: bytes_as_c_char_ptr(b"<!ELEMENT doc (#PCDATA)*>\0"),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+
+    parser_set_hash_salt(0x12345678 as ::core::ffi::c_ulong);
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_user_data((&raw mut test_data).cast());
+    parser_set_external_entity_ref_handler(external_entity_loader_handler_for_tests());
+    parser_set_default_handler(default_handler());
+
+    assert_test_condition(
+        parser_use_foreign_dtd(XML_TRUE) as ::core::ffi::c_uint
+            == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint,
+        2318 as ::core::ffi::c_int,
+        b"Could not set foreign DTD\0",
+    );
+
+    ensure_parser_success(
+        parse_single_bytes_with_final(text1, c_string_len(text1), XML_FALSE as ::core::ffi::c_int),
+        2321 as ::core::ffi::c_int,
+    );
+
+    assert_test_condition(
+        parser_use_foreign_dtd(XML_TRUE) as ::core::ffi::c_uint
+            == XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING as ::core::ffi::c_int
+                as ::core::ffi::c_uint,
+        2328 as ::core::ffi::c_int,
+        b"Failed to reject late foreign DTD setting\0",
+    );
+    assert_test_condition(
+        parser_set_hash_salt(0x23456789 as ::core::ffi::c_ulong) == 0,
+        2331 as ::core::ffi::c_int,
+        b"Failed to reject late hash salt change\0",
+    );
+
+    ensure_parser_success(
+        parse_single_bytes_with_final(text2, c_string_len(text2), XML_TRUE as ::core::ffi::c_int),
+        2336 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_foreign_dtd_not_standalone() {
-    unsafe {
-        _check_set_test_info(
-            b"test_foreign_dtd_not_standalone\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2341 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtTest = ExtTest {
-            parse_text: b"<!ELEMENT doc (#PCDATA)*>\0".as_ptr() as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetNotStandaloneHandler(
-            g_parser,
-            Some(
-                reject_not_standalone_handler
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int,
-            ),
-        );
-        if XML_UseForeignDTD(g_parser, XML_TRUE) as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2351 as ::core::ffi::c_int,
-                b"Could not set foreign DTD\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        _expect_failure(
-            text,
-            XML_ERROR_NOT_STANDALONE,
-            b"NotStandalonehandler failed to reject\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2353 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_foreign_dtd_not_standalone() {
+    set_test_info(
+        b"test_foreign_dtd_not_standalone\0",
+        2341 as ::core::ffi::c_int,
+    );
+    let text =
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0");
+    let mut test_data = ExtTest {
+        parse_text: bytes_as_c_char_ptr(b"<!ELEMENT doc (#PCDATA)*>\0"),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_user_data((&raw mut test_data).cast());
+    parser_set_external_entity_ref_handler(external_entity_loader_handler_for_tests());
+    parser_set_not_standalone_handler(reject_not_standalone_handler_for_tests());
+
+    assert_test_condition(
+        parser_use_foreign_dtd(XML_TRUE) as ::core::ffi::c_uint
+            == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint,
+        2351 as ::core::ffi::c_int,
+        b"Could not set foreign DTD\0",
+    );
+    expect_failure(
+        text,
+        XML_ERROR_NOT_STANDALONE,
+        b"NotStandalonehandler failed to reject\0",
+        2353 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_invalid_foreign_dtd() {
-    unsafe {
-        _check_set_test_info(
-            b"test_invalid_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2358 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtFaults = ext_faults {
-            parse_text: b"$\0".as_ptr() as *const ::core::ffi::c_char,
-            fail_text: b"Dollar not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            error: XML_ERROR_INVALID_TOKEN,
-        };
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_faulter
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_UseForeignDTD(g_parser, XML_TRUE);
-        _expect_failure(
-            text,
-            XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-            b"Bad DTD should not have been accepted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2369 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_invalid_foreign_dtd() {
+    set_test_info(b"test_invalid_foreign_dtd\0", 2358 as ::core::ffi::c_int);
+    let text =
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0");
+    let mut test_data = ext_faults {
+        parse_text: bytes_as_c_char_ptr(b"$\0"),
+        fail_text: bytes_as_c_char_ptr(b"Dollar not faulted\0"),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        error: XML_ERROR_INVALID_TOKEN,
+    };
+
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_user_data((&raw mut test_data).cast());
+    parser_set_external_entity_ref_handler(external_entity_faulter_handler_for_tests());
+    parser_use_foreign_dtd(XML_TRUE);
+    expect_failure(
+        text,
+        XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+        b"Bad DTD should not have been accepted\0",
+        2369 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_foreign_dtd_with_doctype() {
-    unsafe {
-        _check_set_test_info(
-            b"test_foreign_dtd_with_doctype\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2374 as ::core::ffi::c_int,
-        );
-        let mut text1: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc [<!ENTITY entity 'hello world'>]>\n\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut text2: *const ::core::ffi::c_char =
-            b"<doc>&entity;</doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut test_data: ExtTest = ExtTest {
-            parse_text: b"<!ELEMENT doc (#PCDATA)*>\0".as_ptr() as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        XML_SetHashSalt(g_parser, 0x12345678 as ::core::ffi::c_ulong);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                dummy_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if XML_UseForeignDTD(g_parser, XML_TRUE) as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2388 as ::core::ffi::c_int,
-                b"Could not set foreign DTD\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text1,
-            strlen(text1) as ::core::ffi::c_int,
-            XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2391 as ::core::ffi::c_int,
-            );
-        }
-        if XML_UseForeignDTD(g_parser, XML_TRUE) as ::core::ffi::c_uint
-            != XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING as ::core::ffi::c_int
-                as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2398 as ::core::ffi::c_int,
-                b"Failed to reject late foreign DTD setting\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetHashSalt(g_parser, 0x23456789 as ::core::ffi::c_ulong) != 0 {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2401 as ::core::ffi::c_int,
-                b"Failed to reject late hash salt change\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text2,
-            strlen(text2) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2406 as ::core::ffi::c_int,
-            );
-        }
-    }
+extern "C" fn test_foreign_dtd_with_doctype() {
+    set_test_info(
+        b"test_foreign_dtd_with_doctype\0",
+        2374 as ::core::ffi::c_int,
+    );
+    let text1 = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc [<!ENTITY entity 'hello world'>]>\n\0",
+    );
+    let text2 = bytes_as_c_char_ptr(b"<doc>&entity;</doc>\0");
+    let mut test_data = ExtTest {
+        parse_text: bytes_as_c_char_ptr(b"<!ELEMENT doc (#PCDATA)*>\0"),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+
+    parser_set_hash_salt(0x12345678 as ::core::ffi::c_ulong);
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_user_data((&raw mut test_data).cast());
+    parser_set_external_entity_ref_handler(external_entity_loader_handler_for_tests());
+    parser_set_default_handler(default_handler());
+
+    assert_test_condition(
+        parser_use_foreign_dtd(XML_TRUE) as ::core::ffi::c_uint
+            == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint,
+        2388 as ::core::ffi::c_int,
+        b"Could not set foreign DTD\0",
+    );
+
+    ensure_parser_success(
+        parse_single_bytes_with_final(text1, c_string_len(text1), XML_FALSE as ::core::ffi::c_int),
+        2391 as ::core::ffi::c_int,
+    );
+
+    assert_test_condition(
+        parser_use_foreign_dtd(XML_TRUE) as ::core::ffi::c_uint
+            == XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING as ::core::ffi::c_int
+                as ::core::ffi::c_uint,
+        2398 as ::core::ffi::c_int,
+        b"Failed to reject late foreign DTD setting\0",
+    );
+    assert_test_condition(
+        parser_set_hash_salt(0x23456789 as ::core::ffi::c_ulong) == 0,
+        2401 as ::core::ffi::c_int,
+        b"Failed to reject late hash salt change\0",
+    );
+
+    ensure_parser_success(
+        parse_single_bytes_with_final(text2, c_string_len(text2), XML_TRUE as ::core::ffi::c_int),
+        2406 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_foreign_dtd_without_external_subset() {
-    unsafe {
-        _check_set_test_info(
-            b"test_foreign_dtd_without_external_subset\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2411 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [<!ENTITY foo 'bar'>]>\n<doc>&foo;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, NULL);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_null_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_UseForeignDTD(g_parser, XML_TRUE);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2421 as ::core::ffi::c_int,
-            );
-        }
-    }
+extern "C" fn test_foreign_dtd_without_external_subset() {
+    set_test_info(
+        b"test_foreign_dtd_without_external_subset\0",
+        2411 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(b"<!DOCTYPE doc [<!ENTITY foo 'bar'>]>\n<doc>&foo;</doc>\0");
+
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_user_data(NULL);
+    parser_set_external_entity_ref_handler(external_entity_null_loader_handler_for_tests());
+    parser_use_foreign_dtd(XML_TRUE);
+    ensure_parser_success(
+        parse_single_bytes_with_final(text, c_string_len(text), XML_TRUE as ::core::ffi::c_int),
+        2421 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_empty_foreign_dtd() {
-    unsafe {
-        _check_set_test_info(
-            b"test_empty_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2425 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_null_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_UseForeignDTD(g_parser, XML_TRUE);
-        _expect_failure(
-            text,
-            XML_ERROR_UNDEFINED_ENTITY,
-            b"Undefined entity not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2433 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_empty_foreign_dtd() {
+    set_test_info(b"test_empty_foreign_dtd\0", 2425 as ::core::ffi::c_int);
+    let text =
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='us-ascii'?>\n<doc>&entity;</doc>\0");
+
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_null_loader_handler_for_tests());
+    parser_use_foreign_dtd(XML_TRUE);
+    expect_failure(
+        text,
+        XML_ERROR_UNDEFINED_ENTITY,
+        b"Undefined entity not faulted\0",
+        2433 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_set_base() {
-    unsafe {
-        _check_set_test_info(
-            b"test_set_base\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2438 as ::core::ffi::c_int,
-        );
-        let mut old_base: *const XML_Char = ::core::ptr::null::<XML_Char>();
-        let mut new_base: *const XML_Char = b"/local/file/name.xml\0".as_ptr() as *const XML_Char;
-        old_base = XML_GetBase(g_parser);
-        if XML_SetBase(g_parser, new_base) as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2444 as ::core::ffi::c_int,
-                b"Unable to set base\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if strcmp(
-            XML_GetBase(g_parser) as *const ::core::ffi::c_char,
-            new_base as *const ::core::ffi::c_char,
-        ) != 0 as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2446 as ::core::ffi::c_int,
-                b"Base setting not correct\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBase(g_parser, ::core::ptr::null::<XML_Char>()) as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2448 as ::core::ffi::c_int,
-                b"Unable to NULL base\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !XML_GetBase(g_parser).is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2450 as ::core::ffi::c_int,
-                b"Base setting not nulled\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        XML_SetBase(g_parser, old_base);
-    }
+extern "C" fn test_set_base() {
+    set_test_info(b"test_set_base\0", 2438 as ::core::ffi::c_int);
+    let old_base = parser_base();
+    let new_base = bytes_as_xml_char_ptr(b"/local/file/name.xml\0");
+
+    assert_test_condition(
+        parser_set_base(new_base) as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint,
+        2444 as ::core::ffi::c_int,
+        b"Unable to set base\0",
+    );
+    assert_test_condition(
+        ffi_call2(strcmp, parser_base().cast(), new_base.cast()) == 0 as ::core::ffi::c_int,
+        2446 as ::core::ffi::c_int,
+        b"Base setting not correct\0",
+    );
+    assert_test_condition(
+        parser_set_base(::core::ptr::null::<XML_Char>()) as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint,
+        2448 as ::core::ffi::c_int,
+        b"Unable to NULL base\0",
+    );
+    assert_test_condition(
+        parser_base().is_null(),
+        2450 as ::core::ffi::c_int,
+        b"Base setting not nulled\0",
+    );
+
+    parser_set_base(old_base);
 }
 unsafe extern "C" fn test_attributes() {
     unsafe {
