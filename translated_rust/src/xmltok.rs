@@ -3891,40 +3891,17 @@ pub mod xmltok_impl_c {
         end: *const ::core::ffi::c_char,
         nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        let result = crate::src::xmltok::ScannerContext::from_raw(
+            crate::src::xmltok::Scanner::NormalIgnoreSection,
+            enc,
+            ptr,
+            end,
+        )
+        .scan();
+        if let Some(next) = result.next {
+            *nextTokPtr = ptr.add(next);
         }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let encoding = &*(enc as *const normal_encoding);
-        let mut start = 0;
-        let mut level = 0;
-
-        loop {
-            match normal_ignore_section_tok_impl(encoding, input, start, level) {
-                NormalIgnoreSectionOutcome::Token(token, next) => {
-                    *nextTokPtr = ptr.add(next);
-                    return token;
-                }
-                NormalIgnoreSectionOutcome::Partial(token) => return token,
-                NormalIgnoreSectionOutcome::Invalid(at) => {
-                    *nextTokPtr = ptr.add(at);
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                }
-                NormalIgnoreSectionOutcome::UnknownInvalid {
-                    at,
-                    width,
-                    level: saved_level,
-                } => {
-                    if unknown_is_invalid(unknown_character_value(enc as usize, &input[at..])) {
-                        *nextTokPtr = ptr.add(at);
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    start = at + width;
-                    level = saved_level;
-                }
-            }
-        }
+        result.token
     }
 
     #[derive(Copy, Clone)]
