@@ -605,6 +605,41 @@ pub enum WhitespaceSkipper {
     Big2,
 }
 
+impl WhitespaceSkipper {
+    /// Returns the number of encoded bytes occupied by leading XML whitespace.
+    fn skip_s_bytes(self, encoding: &normal_encoding, bytes: &[::core::ffi::c_char]) -> usize {
+        match self {
+            Self::Normal => bytes
+                .iter()
+                .position(|&byte| {
+                    !matches!(encoding.type_0[byte as u8 as usize] as ::core::ffi::c_int, 10 | 9 | 21)
+                })
+                .unwrap_or(bytes.len()),
+            Self::Little2 | Self::Big2 => {
+                let mut skipped = 0;
+                for code_unit in bytes.chunks_exact(2) {
+                    let byte_type = match self {
+                        Self::Little2 if code_unit[1] == 0 => {
+                            encoding.type_0[code_unit[0] as u8 as usize] as ::core::ffi::c_int
+                        }
+                        Self::Little2 => unicode_byte_type(code_unit[1], code_unit[0]),
+                        Self::Big2 if code_unit[0] == 0 => {
+                            encoding.type_0[code_unit[1] as u8 as usize] as ::core::ffi::c_int
+                        }
+                        Self::Big2 => unicode_byte_type(code_unit[0], code_unit[1]),
+                        Self::Normal => unreachable!(),
+                    };
+                    if !matches!(byte_type, 10 | 9 | 21) {
+                        break;
+                    }
+                    skipped += 2;
+                }
+                skipped
+            }
+        }
+    }
+}
+
 /// Selects the fixed entity-name matcher without retaining a raw callback.
 #[derive(Copy, Clone)]
 pub enum PredefinedEntityNameMatcher {
@@ -3872,43 +3907,17 @@ pub mod xmltok_impl_c {
 
     pub unsafe fn skip_s(
         enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
         skipper: crate::src::xmltok::WhitespaceSkipper,
     ) -> *const ::core::ffi::c_char {
-        match skipper {
-            crate::src::xmltok::WhitespaceSkipper::Normal => loop {
-                match (*(enc as *const normal_encoding)).type_0
-                    [*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                {
-                    10 | 9 | 21 => ptr = ptr.offset(1),
-                    _ => return ptr,
-                }
-            },
-            crate::src::xmltok::WhitespaceSkipper::Little2 => loop {
-                match if *ptr.offset(1) as ::core::ffi::c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(1), *ptr)
-                } {
-                    10 | 9 | 21 => ptr = ptr.offset(2),
-                    _ => return ptr,
-                }
-            },
-            crate::src::xmltok::WhitespaceSkipper::Big2 => loop {
-                match if *ptr as ::core::ffi::c_int == 0 {
-                    (*(enc as *const normal_encoding)).type_0
-                        [*ptr.offset(1) as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr, *ptr.offset(1))
-                } {
-                    10 | 9 | 21 => ptr = ptr.offset(2),
-                    _ => return ptr,
-                }
-            },
+        let len = end.offset_from(ptr);
+        if len <= 0 {
+            return ptr;
         }
+        let bytes = ::core::slice::from_raw_parts(ptr, len as usize);
+        let encoding = &*(enc as *const normal_encoding);
+        bytes[skipper.skip_s_bytes(encoding, bytes)..].as_ptr()
     }
 
     fn normal_update_position(

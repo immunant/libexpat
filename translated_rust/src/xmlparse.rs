@@ -15563,11 +15563,12 @@ unsafe extern "C" fn reportProcessingInstruction(
             return 0 as ::core::ffi::c_int;
         }
         parser_state.m_tempPool.commit();
+        let data_end = end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize));
         let data = poolStoreString(
             &raw mut parser_state.m_tempPool,
             enc,
-            crate::src::xmltok::skip_s(enc, tem, (*enc).skipS),
-            end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize)),
+            crate::src::xmltok::skip_s(enc, tem, data_end, (*enc).skipS),
+            data_end,
         );
         if data.is_null() {
             return 0 as ::core::ffi::c_int;
