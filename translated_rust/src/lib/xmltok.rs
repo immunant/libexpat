@@ -3880,6 +3880,104 @@ extern "C" fn normal_scanPoundName(
 
     -XML_TOK_POUND_NAME
 }
+fn allow_literal_multibyte_sequence(
+    _enc: *const ENCODING,
+    _width: usize,
+    _ptr: *const ::core::ffi::c_char,
+) -> bool {
+    true
+}
+
+fn normal_literal_multibyte_sequence_valid(
+    enc: *const ENCODING,
+    width: usize,
+    ptr: *const ::core::ffi::c_char,
+) -> bool {
+    normal_is_invalid(enc, width, ptr) == 0
+}
+
+fn multibyte_sequence_len(byte_type: ::core::ffi::c_int) -> usize {
+    match byte_type {
+        value if value == BT_LEAD2 as ::core::ffi::c_int => 2,
+        value if value == BT_LEAD3 as ::core::ffi::c_int => 3,
+        value if value == BT_LEAD4 as ::core::ffi::c_int => 4,
+        _ => unreachable!("unexpected multibyte type: {byte_type}"),
+    }
+}
+
+fn scan_lit_with(
+    open: ::core::ffi::c_int,
+    enc: *const ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next_tok_ptr: *mut *const ::core::ffi::c_char,
+    unit_size: usize,
+    byte_type: ByteTypeReader,
+    validate_multibyte: fn(*const ENCODING, usize, *const ::core::ffi::c_char) -> bool,
+) -> ::core::ffi::c_int {
+    let unit_offset = unit_size as isize;
+
+    while remaining_const_c_chars(ptr, end) >= unit_size {
+        let token_type = byte_type(enc, ptr);
+
+        match token_type {
+            value
+                if value == BT_LEAD2 as ::core::ffi::c_int
+                    || value == BT_LEAD3 as ::core::ffi::c_int
+                    || value == BT_LEAD4 as ::core::ffi::c_int =>
+            {
+                let width = multibyte_sequence_len(token_type);
+                if remaining_const_c_chars(ptr, end) < width {
+                    return XML_TOK_PARTIAL_CHAR;
+                }
+                if !validate_multibyte(enc, width, ptr) {
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return XML_TOK_INVALID;
+                }
+                ptr = add_const_c_char(ptr, width as isize);
+            }
+            value
+                if value == BT_NONXML as ::core::ffi::c_int
+                    || value == BT_MALFORM as ::core::ffi::c_int
+                    || value == BT_TRAIL as ::core::ffi::c_int =>
+            {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_INVALID;
+            }
+            value
+                if value == BT_QUOT as ::core::ffi::c_int
+                    || value == BT_APOS as ::core::ffi::c_int =>
+            {
+                ptr = add_const_c_char(ptr, unit_offset);
+                if token_type == open {
+                    if remaining_const_c_chars(ptr, end) < unit_size {
+                        return -XML_TOK_LITERAL;
+                    }
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return match byte_type(enc, ptr) {
+                        value
+                            if value == BT_S as ::core::ffi::c_int
+                                || value == BT_CR as ::core::ffi::c_int
+                                || value == BT_LF as ::core::ffi::c_int
+                                || value == BT_GT as ::core::ffi::c_int
+                                || value == BT_PERCNT as ::core::ffi::c_int
+                                || value == BT_LSQB as ::core::ffi::c_int =>
+                        {
+                            XML_TOK_LITERAL
+                        }
+                        _ => XML_TOK_INVALID,
+                    };
+                }
+            }
+            _ => {
+                ptr = add_const_c_char(ptr, unit_offset);
+            }
+        }
+    }
+
+    XML_TOK_PARTIAL
+}
+
 extern "C" fn normal_scanLit(
     mut open: ::core::ffi::c_int,
     mut enc: *const ENCODING,
@@ -3887,86 +3985,16 @@ extern "C" fn normal_scanLit(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut t: ::core::ffi::c_int = (*(enc as *const normal_encoding)).type_0
-                [*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int;
-            match t {
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                12 | 13 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if !(t != open) {
-                        if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                                as ::core::ffi::c_long)
-                        {
-                            return -XML_TOK_LITERAL;
-                        }
-                        *nextTokPtr = ptr;
-                        match (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                        {
-                            21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL,
-                            _ => return XML_TOK_INVALID,
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_lit_with(
+        open,
+        enc,
+        ptr,
+        end,
+        nextTokPtr,
+        1,
+        normal_byte_type,
+        normal_literal_multibyte_sequence_valid,
+    )
 }
 extern "C" fn normal_prologTok(
     mut enc: *const ENCODING,
@@ -7351,79 +7379,16 @@ extern "C" fn little2_scanLit(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut t: ::core::ffi::c_int = if *ptr.offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            };
-            match t {
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                12 | 13 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(t != open) {
-                        if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                                as ::core::ffi::c_long)
-                        {
-                            return -XML_TOK_LITERAL;
-                        }
-                        *nextTokPtr = ptr;
-                        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr as ::core::ffi::c_uchar as usize]
-                                as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(1 as ::core::ffi::c_int as isize),
-                                *ptr.offset(0 as ::core::ffi::c_int as isize),
-                            )
-                        } {
-                            21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL,
-                            _ => return XML_TOK_INVALID,
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_lit_with(
+        open,
+        enc,
+        ptr,
+        end,
+        nextTokPtr,
+        2,
+        little2_byte_type,
+        allow_literal_multibyte_sequence,
+    )
 }
 extern "C" fn little2_prologTok(
     mut enc: *const ENCODING,
@@ -10819,81 +10784,16 @@ extern "C" fn big2_scanLit(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut t: ::core::ffi::c_int = if *ptr.offset(0 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            };
-            match t {
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                12 | 13 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(t != open) {
-                        if !(end.offset_from(ptr) as ::core::ffi::c_long
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                                as ::core::ffi::c_long)
-                        {
-                            return -XML_TOK_LITERAL;
-                        }
-                        *nextTokPtr = ptr;
-                        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(0 as ::core::ffi::c_int as isize),
-                                *ptr.offset(1 as ::core::ffi::c_int as isize),
-                            )
-                        } {
-                            21 | 9 | 10 | 11 | 30 | 20 => return XML_TOK_LITERAL,
-                            _ => return XML_TOK_INVALID,
-                        }
-                    }
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_lit_with(
+        open,
+        enc,
+        ptr,
+        end,
+        nextTokPtr,
+        2,
+        big2_byte_type,
+        allow_literal_multibyte_sequence,
+    )
 }
 extern "C" fn big2_prologTok(
     mut enc: *const ENCODING,
