@@ -11142,10 +11142,10 @@ unsafe fn doContent(
                             Err(error) => return error,
                         };
                         if restricted_entity_declarations {
-                            let Some((_, _, is_internal, _, _, _, _)) = entity.as_ref() else {
+                            let Some(is_internal) = entity.as_ref().map(|entity| entity.2) else {
                                 return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
                             };
-                            if !*is_internal {
+                            if !is_internal {
                                 return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
                         } else if entity.is_none() {
@@ -12143,15 +12143,54 @@ unsafe fn doContent(
                     } else if handlers.default {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
-                    result_2 = doCdataSection(
+                    let checked = match do_cdata_section_checked(
                         parser,
-                        enc,
-                        &mut next,
-                        end,
-                        next_ptr,
-                        haveMore,
+                        enc.addr(),
+                        next.addr(),
+                        end.addr(),
+                        haveMore != 0,
                         account,
-                    );
+                    ) {
+                        Ok(checked) => checked,
+                        Err(error) => return error,
+                    };
+                    // CDATA callbacks may relocate the input owner.  Recover
+                    // both output cursors from its live storage using the
+                    // checked target/offset pair, never from the pre-callback
+                    // `next` or `end` addresses.
+                    let cursor_pointer = |cursor: usize| -> Option<*const ::core::ffi::c_char> {
+                        match checked.event_target {
+                            CdataEventTarget::Parser { input_start } => {
+                                let offset = input_start.checked_add(cursor)?;
+                                let bytes = parser.m_buffer.bytes.as_deref()?;
+                                bytes.get(offset..)
+                                    .map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+                            }
+                            CdataEventTarget::InternalEntity { text_start, .. } => {
+                                let (text_ref, text_len, dtd) = checked.entity_text.as_ref()?;
+                                let offset = text_start.checked_add(cursor)?;
+                                dtd.inspect(|dtd| {
+                                    let text = entity_text_chars(dtd, *text_ref, *text_len)?;
+                                    text.get(offset..)
+                                        .map(|_| text.as_ptr().wrapping_add(offset))
+                                })
+                            }
+                        }
+                    };
+                    next = match checked.result.start {
+                        Some(cursor) => match cursor_pointer(cursor) {
+                            Some(pointer) => pointer,
+                            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                        },
+                        None => ::core::ptr::null(),
+                    };
+                    if let Some(cursor) = checked.result.next {
+                        let Some(pointer) = cursor_pointer(cursor) else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        *next_ptr = pointer;
+                    }
+                    result_2 = checked.result.error;
                     if result_2 as ::core::ffi::c_uint
                         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                             as ::core::ffi::c_uint
@@ -14106,54 +14145,117 @@ unsafe extern "C" fn doCdataSection(
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
     let start = *startPtr;
+    let Ok(checked) = do_cdata_section_checked(
+        parser_state,
+        enc.addr(),
+        start.addr(),
+        end.addr(),
+        haveMore != 0,
+        account,
+    ) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    *startPtr = ::core::ptr::null();
+    let cursor_pointer = |cursor: usize| -> Option<*const ::core::ffi::c_char> {
+        match checked.event_target {
+            CdataEventTarget::Parser { input_start } => {
+                let offset = input_start.checked_add(cursor)?;
+                let bytes = parser_state.m_buffer.bytes.as_deref()?;
+                bytes.get(offset..)
+                    .map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+            }
+            CdataEventTarget::InternalEntity { text_start, .. } => {
+                let (text_ref, text_len, dtd) = checked.entity_text.as_ref()?;
+                let offset = text_start.checked_add(cursor)?;
+                dtd.inspect(|dtd| {
+                    let text = entity_text_chars(dtd, *text_ref, *text_len)?;
+                    text.get(offset..)
+                        .map(|_| text.as_ptr().wrapping_add(offset))
+                })
+            }
+        }
+    };
+    if let Some(cursor) = checked.result.start {
+        let Some(pointer) = cursor_pointer(cursor) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        *startPtr = pointer;
+    }
+    if let Some(cursor) = checked.result.next {
+        let Some(pointer) = cursor_pointer(cursor) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        *nextPtr = pointer;
+    }
+    checked.result.error
+}
+
+/// Applies a CDATA section using validated parser/entity offsets.
+///
+/// Both callers enter with C cursors, but callbacks may relocate either
+/// backing allocation.  This helper retains only copied token data and a
+/// stable cursor target; its callers recover output pointers from the live
+/// owner after it returns.
+struct CheckedCdataSection {
+    result: CdataResult,
+    event_target: CdataEventTarget,
+    entity_text: Option<(EntityTextRef, ::core::ffi::c_int, std::sync::Arc<SharedDtd>)>,
+}
+
+fn do_cdata_section_checked(
+    parser_state: &mut XML_ParserStruct,
+    encoding_address: usize,
+    start_address: usize,
+    end_address: usize,
+    have_more: bool,
+    account: XML_Account,
+) -> Result<CheckedCdataSection, crate::expat_h::XML_Error> {
     // `enc` is either the selected parser table or the fixed UTF-8 internal
     // entity table.  Resolve that identity through parser-owned tables rather
     // than reinterpreting its ABI prefix as a `normal_encoding`.
-    let Some(normal) = entity_value_normal_encoding(parser_state, enc.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    let Some(normal) = entity_value_normal_encoding(parser_state, encoding_address) else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
     };
     let mut entity_text: Option<(EntityTextRef, ::core::ffi::c_int, std::sync::Arc<SharedDtd>)> =
         None;
     let (input, event_target) = if let Some(window) = parser_state
         .m_buffer
-        .window_from_addresses(start.addr(), end.addr())
+        .window_from_addresses(start_address, end_address)
     {
-        let Some(input_start) = parser_state.m_buffer.offset_from_address(start.addr()) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(input_start) = parser_state.m_buffer.offset_from_address(start_address) else {
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
         };
         (CdataInput::Bytes(window.to_vec()), CdataEventTarget::Parser { input_start })
     } else {
         let Some(dtd) = parser_state.m_dtd.clone() else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
         };
         let Some(index) = parser_state.m_openInternalEntities else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
         };
         let Some(entity) = parser_state.m_activeInternalEntities.get(index) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
         };
         let text_ref = entity.node().eventText;
         let text_len = entity.node().eventTextLen;
-        let Some(text) = shared_entity_text_chars(&dtd, text_ref, text_len) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some((base, text_len_usize, window)) = dtd.inspect(|dtd| {
+            let text = entity_text_chars(dtd, text_ref, text_len)?;
+            let base = text.as_ptr().addr();
+            let text_start = start_address.checked_sub(base)?;
+            let text_end = end_address.checked_sub(base)?;
+            Some((base, text.len(), text.get(text_start..text_end)?.to_vec()))
+        }) else {
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
         };
-        let base = text.as_ptr().addr();
-        let Some(text_start) = start.addr().checked_sub(base) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        let Some(text_end) = end.addr().checked_sub(base) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        let Some(window) = text.get(text_start..text_end) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(text_start) = start_address.checked_sub(base).filter(|start| *start <= text_len_usize) else {
+            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
         };
         entity_text = Some((text_ref, text_len, dtd.clone()));
         (
-            CdataInput::Chars(window.to_vec()),
+            CdataInput::Chars(window),
             CdataEventTarget::InternalEntity { index, text_start },
         )
     };
-    *startPtr = ::core::ptr::null();
 
     let mut account_token = |parser_state: &XML_ParserStruct,
                              token,
@@ -14190,7 +14292,7 @@ unsafe extern "C" fn doCdataSection(
             parser_ptr.addr(),
             parser_state,
             &normal.enc,
-            enc.addr(),
+            encoding_address,
             chars.as_ptr().addr(),
             chars_end,
             bytemuck::cast_slice(&chars),
@@ -14202,39 +14304,15 @@ unsafe extern "C" fn doCdataSection(
         &normal,
         &input,
         event_target,
-        haveMore != 0,
+        have_more,
         &mut account_token,
         &mut dispatch,
     );
-    let cursor_pointer = |cursor: usize| -> Option<*const ::core::ffi::c_char> {
-        match event_target {
-            CdataEventTarget::Parser { input_start } => {
-                let offset = input_start.checked_add(cursor)?;
-                let bytes = parser_state.m_buffer.bytes.as_deref()?;
-                bytes.get(offset..)
-                    .map(|_| bytes.as_ptr().wrapping_add(offset).cast())
-            }
-            CdataEventTarget::InternalEntity { text_start, .. } => {
-                let (text_ref, text_len, dtd) = entity_text.as_ref()?;
-                let text = shared_entity_text_chars(dtd, *text_ref, *text_len)?;
-                let offset = text_start.checked_add(cursor)?;
-                text.get(offset..).map(|_| text.as_ptr().wrapping_add(offset))
-            }
-        }
-    };
-    if let Some(cursor) = result.start {
-        let Some(pointer) = cursor_pointer(cursor) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        *startPtr = pointer;
-    }
-    if let Some(cursor) = result.next {
-        let Some(pointer) = cursor_pointer(cursor) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        *nextPtr = pointer;
-    }
-    result.error
+    Ok(CheckedCdataSection {
+        result,
+        event_target,
+        entity_text,
+    })
 }
 
 #[derive(Copy, Clone)]
