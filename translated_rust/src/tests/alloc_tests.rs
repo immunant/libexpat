@@ -733,6 +733,35 @@ fn parse_single_bytes(text: &CStr, is_final: ::core::ffi::c_int) -> XML_Status {
     )
 }
 
+fn current_parser() -> XML_Parser {
+    unsafe_global_get!(g_parser)
+}
+
+fn set_param_entity_parsing(parsing: XML_ParamEntityParsing) {
+    ffi_call!(XML_SetParamEntityParsing, current_parser(), parsing);
+}
+
+fn set_external_entity_ref_handler(handler: XML_ExternalEntityRefHandler) {
+    ffi_call!(XML_SetExternalEntityRefHandler, current_parser(), handler);
+}
+
+fn set_user_data(user_data: *mut ::core::ffi::c_void) {
+    ffi_call!(XML_SetUserData, current_parser(), user_data);
+}
+
+fn xml_failure_current_parser(line: ::core::ffi::c_int) {
+    ffi_call!(
+        _xml_failure,
+        current_parser(),
+        alloc_tests_file().as_ptr(),
+        line
+    );
+}
+
+fn c_char_array<const N: usize>(bytes: [u8; N]) -> [::core::ffi::c_char; N] {
+    bytes.map(|byte| byte as ::core::ffi::c_char)
+}
+
 fn set_xml_decl_handler(handler: XML_XmlDeclHandler) {
     alloc_test_action(AllocTestAction::SetXmlDeclHandler(handler));
 }
@@ -881,386 +910,245 @@ extern "C" fn test_alloc_parse_comment_2() {
     )
 }
 extern "C" fn test_alloc_create_external_parser() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_create_external_parser\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            303 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_create_external_parser\0"),
+        303 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0",
+    );
+    let mut foo_text = c_char_array(*b"<!ELEMENT doc (#PCDATA)*>\0");
+
+    set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    set_user_data(&raw mut foo_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void);
+    set_external_entity_ref_handler(Some(external_entity_duff_loader));
+
+    if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_alloc_test(
+            314 as ::core::ffi::c_int,
+            c_str(b"External parser allocator returned success incorrectly\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut foo_text: [::core::ffi::c_char; 26] = ::core::mem::transmute::<
-            [u8; 26],
-            [::core::ffi::c_char; 26],
-        >(*b"<!ELEMENT doc (#PCDATA)*>\0");
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(
-            g_parser,
-            &raw mut foo_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-        );
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_duff_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                314 as ::core::ffi::c_int,
-                b"External parser allocator returned success incorrectly\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_alloc_run_external_parser() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_run_external_parser\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            320 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_run_external_parser\0"),
+        320 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0",
+    );
+    let mut foo_text = c_char_array(*b"<!ELEMENT doc (#PCDATA)*>\0");
+    let mut i: ::core::ffi::c_uint = 0;
+    let max_alloc_count: ::core::ffi::c_uint = 15 as ::core::ffi::c_uint;
+
+    while i < max_alloc_count {
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_user_data(&raw mut foo_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void);
+        set_external_entity_ref_handler(Some(external_entity_null_loader));
+        set_allocation_count(i as ::core::ffi::c_int);
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i = i.wrapping_add(1);
+    }
+
+    if i == 0 as ::core::ffi::c_uint {
+        fail_alloc_test(
+            341 as ::core::ffi::c_int,
+            c_str(b"Parsing ignored failing allocator\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<!DOCTYPE doc SYSTEM 'foo'>\n<doc>&entity;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut foo_text: [::core::ffi::c_char; 26] = ::core::mem::transmute::<
-            [u8; 26],
-            [::core::ffi::c_char; 26],
-        >(*b"<!ELEMENT doc (#PCDATA)*>\0");
-        let mut i: ::core::ffi::c_uint = 0;
-        let max_alloc_count: ::core::ffi::c_uint = 15 as ::core::ffi::c_uint;
-        i = 0 as ::core::ffi::c_uint;
-        while i < max_alloc_count {
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetUserData(
-                g_parser,
-                &raw mut foo_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_null_loader
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            g_allocation_count = i as ::core::ffi::c_int;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i = i.wrapping_add(1);
-        }
-        if i == 0 as ::core::ffi::c_uint {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                341 as ::core::ffi::c_int,
-                b"Parsing ignored failing allocator\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                343 as ::core::ffi::c_int,
-                b"Parsing failed with allocation count 10\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            343 as ::core::ffi::c_int,
+            c_str(b"Parsing failed with allocation count 10\0"),
+        );
     }
 }
 extern "C" fn test_alloc_dtd_copy_default_atts() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_dtd_copy_default_atts\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            350 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut callno: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_dbl_handler
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut callno as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                365 as ::core::ffi::c_int,
-            );
-        }
+    set_alloc_test_info(
+        c_str(b"test_alloc_dtd_copy_default_atts\0"),
+        350 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0",
+    );
+    let mut callno: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+
+    set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    set_external_entity_ref_handler(Some(external_entity_dbl_handler));
+    set_user_data(&raw mut callno as *mut ::core::ffi::c_void);
+    if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure_current_parser(365 as ::core::ffi::c_int);
     }
 }
 extern "C" fn test_alloc_external_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_external_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            370 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_external_entity\0"),
+        370 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let alloc_test_max_repeats: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
+    let mut callno: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+
+    while i < alloc_test_max_repeats {
+        set_allocation_count(-(1 as ::core::ffi::c_int));
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_dbl_handler_2));
+        callno = 0 as ::core::ffi::c_int;
+        set_user_data(&raw mut callno as *mut ::core::ffi::c_void);
+        set_allocation_count(i);
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+
+    set_allocation_count(-(1 as ::core::ffi::c_int));
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            398 as ::core::ffi::c_int,
+            c_str(b"External entity parsed despite duff allocator\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/doc.dtd' [\n  <!ENTITY en SYSTEM 'http://example.org/entity.ent'>\n]>\n<doc xmlns='http://example.org/ns1'>\n&en;\n</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let alloc_test_max_repeats: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
-        let mut callno: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < alloc_test_max_repeats {
-            g_allocation_count = -(1 as ::core::ffi::c_int);
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_dbl_handler_2
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            callno = 0 as ::core::ffi::c_int;
-            XML_SetUserData(g_parser, &raw mut callno as *mut ::core::ffi::c_void);
-            g_allocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        g_allocation_count = -(1 as ::core::ffi::c_int);
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                398 as ::core::ffi::c_int,
-                b"External entity parsed despite duff allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == alloc_test_max_repeats {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                400 as ::core::ffi::c_int,
-                b"External entity not parsed at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if i == alloc_test_max_repeats {
+        fail_alloc_test(
+            400 as ::core::ffi::c_int,
+            c_str(b"External entity not parsed at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_ext_entity_set_encoding() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_ext_entity_set_encoding\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            405 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_ext_entity_set_encoding\0"),
+        405 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let max_allocation_count: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
+
+    while i < max_allocation_count {
+        set_external_entity_ref_handler(Some(external_entity_alloc_set_encoding));
+        set_allocation_count(i);
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        set_allocation_count(-(1 as ::core::ffi::c_int));
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            426 as ::core::ffi::c_int,
+            c_str(b"Encoding check succeeded despite failing allocator\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_allocation_count: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_allocation_count {
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc_set_encoding
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            g_allocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            g_allocation_count = -(1 as ::core::ffi::c_int);
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                426 as ::core::ffi::c_int,
-                b"Encoding check succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_allocation_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                428 as ::core::ffi::c_int,
-                b"Encoding failed at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if i == max_allocation_count {
+        fail_alloc_test(
+            428 as ::core::ffi::c_int,
+            c_str(b"Encoding failed at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_internal_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            435 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_internal_entity\0"),
+        435 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        concat!(
+            "<?xml version='1.0' encoding='unsupported-encoding'?>\n",
+            "<!DOCTYPE test [<!ENTITY foo 'bar'>]>\n",
+            "<test a='&foo;'/>",
+            "\0"
+        )
+        .as_bytes(),
+    );
+    let mut i: ::core::ffi::c_uint = 0;
+    let max_alloc_count: ::core::ffi::c_uint = 20 as ::core::ffi::c_uint;
+
+    while i < max_alloc_count {
+        set_allocation_count(i as ::core::ffi::c_int);
+        set_unknown_encoding_handler(Some(unknown_released_encoding_handler));
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i = i.wrapping_add(1);
+    }
+
+    if i == 0 as ::core::ffi::c_uint {
+        fail_alloc_test(
+            454 as ::core::ffi::c_int,
+            c_str(b"Internal entity worked despite failing allocations\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='unsupported-encoding'?>\n<!DOCTYPE test [<!ENTITY foo 'bar'>]>\n<test a='&foo;'/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_uint = 0;
-        let max_alloc_count: ::core::ffi::c_uint = 20 as ::core::ffi::c_uint;
-        i = 0 as ::core::ffi::c_uint;
-        while i < max_alloc_count {
-            g_allocation_count = i as ::core::ffi::c_int;
-            XML_SetUnknownEncodingHandler(
-                g_parser,
-                Some(
-                    unknown_released_encoding_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut XML_Encoding,
-                        ) -> ::core::ffi::c_int,
-                ),
-                NULL,
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i = i.wrapping_add(1);
-        }
-        if i == 0 as ::core::ffi::c_uint {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                454 as ::core::ffi::c_int,
-                b"Internal entity worked despite failing allocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                456 as ::core::ffi::c_int,
-                b"Internal entity failed at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            456 as ::core::ffi::c_int,
+            c_str(b"Internal entity failed at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_parameter_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            460 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_parameter_entity\0"),
+        460 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE foo [<!ENTITY % param1 \"<!ENTITY internal 'some_text'>\">%param1;]> <foo>&internal;content</foo>\0",
+    );
+    let mut i: ::core::ffi::c_int = 0;
+    let alloc_test_max_repeats: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
+
+    while i < alloc_test_max_repeats {
+        set_allocation_count(i);
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+
+    set_allocation_count(-(1 as ::core::ffi::c_int));
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            479 as ::core::ffi::c_int,
+            c_str(b"Parameter entity processed despite duff allocator\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE foo [<!ENTITY % param1 \"<!ENTITY internal 'some_text'>\">%param1;]> <foo>&internal;content</foo>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let alloc_test_max_repeats: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < alloc_test_max_repeats {
-            g_allocation_count = i;
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        g_allocation_count = -(1 as ::core::ffi::c_int);
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                479 as ::core::ffi::c_int,
-                b"Parameter entity processed despite duff allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == alloc_test_max_repeats {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                481 as ::core::ffi::c_int,
-                b"Parameter entity not processed at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if i == alloc_test_max_repeats {
+        fail_alloc_test(
+            481 as ::core::ffi::c_int,
+            c_str(b"Parameter entity not processed at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_dtd_default_handling() {
