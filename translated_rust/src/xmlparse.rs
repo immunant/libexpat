@@ -1279,10 +1279,7 @@ trait EndElementCallback: Send + Sync {
 }
 
 impl EndElementCallback
-    for unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const crate::expat_external_h::XML_Char,
-    )
+    for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
 {
     unsafe fn invoke(
         &self,
@@ -1308,10 +1305,7 @@ trait EndNamespaceDeclCallback: Send + Sync {
 }
 
 impl EndNamespaceDeclCallback
-    for unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const crate::expat_external_h::XML_Char,
-    )
+    for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
 {
     unsafe fn invoke(
         &self,
@@ -6285,9 +6279,7 @@ unsafe extern "C" fn doContent(
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
-                    if noElmHandlers as ::core::ffi::c_int != 0
-                        && (*parser).m_defaultHandler
-                    {
+                    if noElmHandlers as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                     poolClear(&raw mut (*parser).m_tempPool);
@@ -6372,7 +6364,9 @@ unsafe extern "C" fn doContent(
                                 *uri = '\0' as crate::expat_external_h::XML_Char;
                             }
                             let callback = END_ELEMENT_HANDLERS
-                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                .get_or_init(|| {
+                                    std::sync::Mutex::new(std::collections::HashMap::new())
+                                })
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                                 .get(&(parser as usize))
@@ -6387,7 +6381,9 @@ unsafe extern "C" fn doContent(
                             let mut b: *mut BINDING = (*tag_0).bindings;
                             if (*parser).m_endNamespaceDeclHandler {
                                 let callback = END_NAMESPACE_DECL_HANDLERS
-                                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                    .get_or_init(|| {
+                                        std::sync::Mutex::new(std::collections::HashMap::new())
+                                    })
                                     .lock()
                                     .unwrap_or_else(|poisoned| poisoned.into_inner())
                                     .get(&(parser as usize))
@@ -6694,12 +6690,21 @@ unsafe extern "C" fn storeAtts(
         }
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
-    let get_atts = match (*enc).getAtts {
-        crate::src::xmltok::AttributeScanner::Normal => crate::src::xmltok::normal_getAtts,
-        crate::src::xmltok::AttributeScanner::Little2 => crate::src::xmltok::little2_getAtts,
-        crate::src::xmltok::AttributeScanner::Big2 => crate::src::xmltok::big2_getAtts,
+    n = match (*enc).getAtts {
+        crate::src::xmltok::AttributeScanner::Normal => {
+            crate::src::xmltok::normal_getAtts(enc, attStr, (*parser).m_attsSize, (*parser).m_atts)
+        }
+        crate::src::xmltok::AttributeScanner::Little2 => crate::src::xmltok::little2_getAtts(
+            enc,
+            attStr,
+            (*parser).m_eventEndPtr,
+            (*parser).m_attsSize,
+            (*parser).m_atts,
+        ),
+        crate::src::xmltok::AttributeScanner::Big2 => {
+            crate::src::xmltok::big2_getAtts(enc, attStr, (*parser).m_attsSize, (*parser).m_atts)
+        }
     };
-    n = get_atts(enc, attStr, (*parser).m_attsSize, (*parser).m_atts);
     if n > crate::limits_h::INT_MAX - nDefaultAtts {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
@@ -6726,7 +6731,23 @@ unsafe extern "C" fn storeAtts(
         }
         (*parser).m_atts = temp;
         if n > oldAttsSize {
-            get_atts(enc, attStr, n, (*parser).m_atts);
+            match (*enc).getAtts {
+                crate::src::xmltok::AttributeScanner::Normal => {
+                    crate::src::xmltok::normal_getAtts(enc, attStr, n, (*parser).m_atts);
+                }
+                crate::src::xmltok::AttributeScanner::Little2 => {
+                    crate::src::xmltok::little2_getAtts(
+                        enc,
+                        attStr,
+                        (*parser).m_eventEndPtr,
+                        n,
+                        (*parser).m_atts,
+                    );
+                }
+                crate::src::xmltok::AttributeScanner::Big2 => {
+                    crate::src::xmltok::big2_getAtts(enc, attStr, n, (*parser).m_atts);
+                }
+            }
         }
     }
     appAtts = (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char;
@@ -10680,9 +10701,7 @@ unsafe fn pool_append_char(
     pool: *mut STRING_POOL,
     value: crate::expat_external_h::XML_Char,
 ) -> bool {
-    if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-        && poolGrow(pool) == 0
-    {
+    if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char && poolGrow(pool) == 0 {
         return false;
     }
 
@@ -11318,10 +11337,7 @@ unsafe extern "C" fn reportComment(
         ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     let (has_comment_handler, has_default_handler) = {
         let parser_state = &*parser;
-        (
-            parser_state.m_commentHandler,
-            parser_state.m_defaultHandler,
-        )
+        (parser_state.m_commentHandler, parser_state.m_defaultHandler)
     };
     if !has_comment_handler {
         if has_default_handler {
@@ -13020,11 +13036,8 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     if bytes_to_allocate == 0 as crate::__stddef_size_t_h::size_t {
         return crate::expat_h::XML_FALSE;
     }
-    let temp = expat_malloc(
-        pool.parser,
-        bytes_to_allocate,
-        8201 as ::core::ffi::c_int,
-    ) as *mut BLOCK;
+    let temp =
+        expat_malloc(pool.parser, bytes_to_allocate, 8201 as ::core::ffi::c_int) as *mut BLOCK;
     if temp.is_null() {
         return crate::expat_h::XML_FALSE;
     }
