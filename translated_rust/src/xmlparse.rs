@@ -3981,19 +3981,6 @@ macro_rules! parser_dtd_ptr {
     }};
 }
 
-// Parser-event cursors are always offsets into the current owned buffer.
-macro_rules! set_parser_event_start {
-    ($parser:expr, $start:expr) => {{
-        let parser_ref: &mut XML_ParserStruct = $parser;
-        parser_ref.m_eventPtr = parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-            ($start)
-                .addr()
-                .checked_sub(bytes.as_ptr().addr())
-                .filter(|offset| *offset <= bytes.len())
-        });
-    }};
-}
-
 // Keep cursor bookkeeping independent of the legacy processor cursor ABI.
 // Callers validate or derive their byte address at that boundary; parser state
 // retains only a checked offset into its owned input buffer.
@@ -12613,12 +12600,12 @@ unsafe fn doContent(
                     let mut app_atts = Vec::new();
                     let mut tag_bindings = None;
                     let mut tag_name_update = None;
-                    let result_0 = storeAtts(
+                    let result_0 = store_atts_for_parser(
                         parser,
-                        enc,
+                        enc.addr(),
                         parser_events,
-                        s,
-                        next,
+                        s.addr(),
+                        next.addr(),
                         StoreAttsTag::Active(tag_index),
                         &mut tag_name_update,
                         &mut tag_bindings,
@@ -12779,12 +12766,12 @@ unsafe fn doContent(
                     parser.m_tempPool.commit();
                     let mut app_atts = Vec::new();
                     let mut tag_name_update = None;
-                    result_1 = storeAtts(
+                    result_1 = store_atts_for_parser(
                         parser,
-                        enc,
+                        enc.addr(),
                         parser_events,
-                        s,
-                        next,
+                        s.addr(),
+                        next.addr(),
                         StoreAttsTag::Detached(&name_0),
                         &mut tag_name_update,
                         &mut bindings,
@@ -13872,26 +13859,84 @@ fn store_atts_element(
     })
 }
 
+/// Legacy raw-cursor adapter retained for parser processors that still carry
+/// the tokenizer's C cursor ABI.  All attribute work is delegated to the
+/// checked address-based facade below.
 unsafe fn storeAtts(
     parser: &mut XML_ParserStruct,
-    mut enc: *const crate::src::xmltok::ENCODING,
+    enc: *const crate::src::xmltok::ENCODING,
     parser_events: bool,
-    mut attStr: *const ::core::ffi::c_char,
-    mut attEnd: *const ::core::ffi::c_char,
+    att_str: *const ::core::ffi::c_char,
+    att_end: *const ::core::ffi::c_char,
     tag_input: StoreAttsTag<'_>,
     tag_name_update: &mut Option<NamespaceTagNameUpdate>,
     bindings: &mut Option<BindingId>,
-    mut account: XML_Account,
+    account: XML_Account,
+    app_atts: &mut Vec<Option<StartElementAttributeValue>>,
+) -> crate::expat_h::XML_Error {
+    store_atts_for_parser(
+        parser,
+        enc.addr(),
+        parser_events,
+        att_str.addr(),
+        att_end.addr(),
+        tag_input,
+        tag_name_update,
+        bindings,
+        account,
+        app_atts,
+    )
+}
+
+fn store_atts_for_parser(
+    parser: &mut XML_ParserStruct,
+    encoding_address: usize,
+    parser_events: bool,
+    attribute_start: usize,
+    attribute_end: usize,
+    tag_input: StoreAttsTag<'_>,
+    tag_name_update: &mut Option<NamespaceTagNameUpdate>,
+    bindings: &mut Option<BindingId>,
+    account: XML_Account,
     appAtts: &mut Vec<Option<StartElementAttributeValue>>,
 ) -> crate::expat_h::XML_Error {
-    let Some(normal_encoding) = entity_value_normal_encoding(parser, enc.addr()) else {
+    let Some(dtd_owner) = parser.m_dtd.clone() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    dtd_owner.inspect(|dtd| {
+        store_atts_impl(
+            parser,
+            dtd,
+            encoding_address,
+            parser_events,
+            attribute_start,
+            attribute_end,
+            tag_input,
+            tag_name_update,
+            bindings,
+            account,
+            appAtts,
+        )
+    })
+}
+
+fn store_atts_impl(
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
+    encoding_address: usize,
+    parser_events: bool,
+    attribute_start: usize,
+    attribute_end: usize,
+    tag_input: StoreAttsTag<'_>,
+    tag_name_update: &mut Option<NamespaceTagNameUpdate>,
+    bindings: &mut Option<BindingId>,
+    account: XML_Account,
+    appAtts: &mut Vec<Option<StartElementAttributeValue>>,
+) -> crate::expat_h::XML_Error {
+    let Some(normal_encoding) = entity_value_normal_encoding(parser, encoding_address) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
     let encoding = &normal_encoding.enc;
-    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let dtd = &mut *dtd_owner.value.get();
     let mut nDefaultAtts: ::core::ffi::c_int = 0;
     let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     let mut i: ::core::ffi::c_int = 0;
@@ -13930,9 +13975,9 @@ unsafe fn storeAtts(
             &parser_ref.m_buffer,
             parser_ref.m_openInternalEntities,
             &parser_ref.m_activeInternalEntities,
-            &*dtd,
-            attStr.addr(),
-            attEnd.addr(),
+            dtd,
+            attribute_start,
+            attribute_end,
         ) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
@@ -13957,9 +14002,9 @@ unsafe fn storeAtts(
                 &parser_ref.m_buffer,
                 parser_ref.m_openInternalEntities,
                 &parser_ref.m_activeInternalEntities,
-                &*dtd,
-                attStr.addr(),
-                attEnd.addr(),
+                dtd,
+                attribute_start,
+                attribute_end,
             ) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -13997,9 +14042,15 @@ unsafe fn storeAtts(
         }
         // `currAtt.name` was checked against the complete scanner window
         // above, so derive this cursor without an unchecked pointer offset.
-        let name = attStr.wrapping_add(currAtt.name);
-        let value_start = attStr.wrapping_add(currAtt.valueStart);
-        let value_end = attStr.wrapping_add(currAtt.valueEnd);
+        let Some(name) = attribute_start.checked_add(currAtt.name) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(value_start) = attribute_start.checked_add(currAtt.valueStart) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Some(value_end) = attribute_start.checked_add(currAtt.valueEnd) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
         // Validate the complete attribute-name suffix against the same token
         // storage that fed the scanner.  In particular, internal entities do
         // not share the outer parser's event cursor.
@@ -14009,8 +14060,8 @@ unsafe fn storeAtts(
                 parser_ref,
                 dtd,
                 parser_events,
-                name.addr(),
-                attEnd.addr(),
+                name,
+                attribute_end,
             ) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -14033,8 +14084,8 @@ unsafe fn storeAtts(
                 parser_ref,
                 dtd,
                 parser_events,
-                name.addr(),
-                attEnd.addr(),
+                name,
+                attribute_end,
             ) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -14069,7 +14120,7 @@ unsafe fn storeAtts(
         };
         if marker != 0 {
             if parser_events {
-                set_parser_event_start!(&mut *parser, name);
+                set_parser_event_start_address(parser, name);
             }
             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
         }
@@ -14111,13 +14162,13 @@ unsafe fn storeAtts(
                 &*parser,
                 dtd,
                 parser_events,
-                value_start.addr(),
-                value_end.addr(),
+                value_start,
+                value_end,
             )
             .and_then(|source| attribute_value_input_from_source(source, parser_events)) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            result = storeAttributeValue(
+            result = store_attribute_value_impl(
                 parser,
                 &normal_encoding,
                 isCdata,
@@ -14140,8 +14191,8 @@ unsafe fn storeAtts(
                 &*parser,
                 dtd,
                 parser_events,
-                value_start.addr(),
-                value_end.addr(),
+                value_start,
+                value_end,
             ) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -14184,7 +14235,7 @@ unsafe fn storeAtts(
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
                 let Some(input) = namespace_binding_input(
-                    &*dtd,
+                    dtd,
                     Some(att_id_name_ref),
                     binding_prefix,
                     uri,
@@ -14258,7 +14309,7 @@ unsafe fn storeAtts(
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
                     let Some(input) = namespace_binding_input(
-                        &*dtd,
+                        dtd,
                         Some(id_name_ref),
                         binding_prefix,
                         uri,
@@ -21894,19 +21945,6 @@ fn store_attribute_value_impl(
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     return crate::expat_h::XML_ERROR_NONE;
-}
-
-/// Legacy boundary retained while callers migrate to the safe, checked
-/// attribute-value implementation above.
-unsafe fn storeAttributeValue(
-    parser: &mut XML_ParserStruct,
-    enc: &crate::src::xmltok::normal_encoding,
-    isCdata: crate::expat_h::XML_Bool,
-    input: AttributeValueInput,
-    pool: AttributeValuePool<'_>,
-    account: XML_Account,
-) -> crate::expat_h::XML_Error {
-    store_attribute_value_impl(parser, enc, isCdata, input, pool, account)
 }
 
 /// Encodes a validated XML character reference without exposing the temporary
