@@ -4542,7 +4542,7 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
 pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
     XML_DefaultCurrent(parser)
 }
-pub unsafe extern "C" fn XML_ErrorString(
+pub extern "C" fn XML_ErrorString(
     mut code: crate::expat_h::XML_Error,
 ) -> *const crate::expat_external_h::XML_LChar {
     match code as ::core::ffi::c_uint {
@@ -4682,37 +4682,32 @@ pub unsafe extern "C" fn XML_ErrorString(
 }
 #[export_name = "XML_ErrorString"]
 
-pub unsafe extern "C" fn XML_ErrorString_ffi(
+pub extern "C" fn XML_ErrorString_ffi(
     mut code: crate::expat_h::XML_Error,
 ) -> *const crate::expat_external_h::XML_LChar {
     XML_ErrorString(code)
 }
-pub unsafe extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::XML_LChar {
+pub extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::XML_LChar {
     return b"expat_2.7.4\0".as_ptr() as *const crate::expat_external_h::XML_LChar;
 }
 #[export_name = "XML_ExpatVersion"]
 
-pub unsafe extern "C" fn XML_ExpatVersion_ffi() -> *const crate::expat_external_h::XML_LChar {
+pub extern "C" fn XML_ExpatVersion_ffi() -> *const crate::expat_external_h::XML_LChar {
     XML_ExpatVersion()
 }
-pub unsafe extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
-    let mut version: crate::expat_h::XML_Expat_Version = crate::expat_h::XML_Expat_Version {
-        major: 0,
-        minor: 0,
-        micro: 0,
+pub extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
+    return crate::expat_h::XML_Expat_Version {
+        major: crate::expat_h::XML_MAJOR_VERSION,
+        minor: crate::expat_h::XML_MINOR_VERSION,
+        micro: crate::expat_h::XML_MICRO_VERSION,
     };
-    version.major = crate::expat_h::XML_MAJOR_VERSION;
-    version.minor = crate::expat_h::XML_MINOR_VERSION;
-    version.micro = crate::expat_h::XML_MICRO_VERSION;
-    return version;
 }
 #[export_name = "XML_ExpatVersionInfo"]
 
-pub unsafe extern "C" fn XML_ExpatVersionInfo_ffi() -> crate::expat_h::XML_Expat_Version {
+pub extern "C" fn XML_ExpatVersionInfo_ffi() -> crate::expat_h::XML_Expat_Version {
     XML_ExpatVersionInfo()
 }
-pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
-    static mut features: [crate::expat_h::XML_Feature; 11] = [
+const FEATURES: [crate::expat_h::XML_Feature; 11] = [
         crate::expat_h::XML_Feature {
     feature:  crate::expat_h::XML_FEATURE_SIZEOF_XML_CHAR,
     name:  b"sizeof(XML_Char)\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
@@ -4770,12 +4765,14 @@ pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feat
     name:  ::core::ptr::null:: <crate::expat_external_h::XML_LChar>(),
     value:  0 as ::core::ffi::c_long,
 },
-    ];
-    return &raw const features as *const crate::expat_h::XML_Feature;
+];
+
+pub extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
+    return FEATURES.as_ptr();
 }
 #[export_name = "XML_GetFeatureList"]
 
-pub unsafe extern "C" fn XML_GetFeatureList_ffi() -> *const crate::expat_h::XML_Feature {
+pub extern "C" fn XML_GetFeatureList_ffi() -> *const crate::expat_h::XML_Feature {
     XML_GetFeatureList()
 }
 pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
