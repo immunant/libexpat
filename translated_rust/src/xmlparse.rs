@@ -2235,7 +2235,9 @@ pub struct ELEMENT_TYPE {
 pub struct DEFAULT_ATTRIBUTE {
     pub id: *const ATTRIBUTE_ID,
     pub isCdata: crate::expat_h::XML_Bool,
-    pub value: *const crate::expat_external_h::XML_Char,
+    // Default values are pool-owned and nullable.  `NonNull` retains the
+    // pointer-sized optional representation without exposing a raw field.
+    pub value: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>>,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -7655,14 +7657,18 @@ unsafe extern "C" fn storeAtts(
     i = 0 as ::core::ffi::c_int;
     while i < nDefaultAtts {
         let mut da: *const DEFAULT_ATTRIBUTE = (*elementType).defaultAtts.offset(i as isize);
-        if *(*(*da).id).name.offset(-1 as isize) == 0 && !(*da).value.is_null() {
+        if *(*(*da).id).name.offset(-1 as isize) == 0 && (*da).value.is_some() {
+            let value = (*da)
+                .value
+                .expect("a present default attribute value is non-null")
+                .as_ptr() as *const crate::expat_external_h::XML_Char;
             if !(*(*da).id).prefix.is_null() {
                 if (*(*da).id).xmlns != 0 {
                     let mut result_1: crate::expat_h::XML_Error = addBinding(
                         parser,
                         (*(*da).id).prefix,
                         (*da).id,
-                        (*da).value,
+                        value,
                         bindingsPtr,
                     );
                     if result_1 as u64 != 0 {
@@ -7678,7 +7684,7 @@ unsafe extern "C" fn storeAtts(
                     let c2rust_fresh25 = attIndex;
                     attIndex = attIndex + 1;
                     let c2rust_lvalue_ptr_1 = &raw mut *appAtts.offset(c2rust_fresh25 as isize);
-                    *c2rust_lvalue_ptr_1 = (*da).value;
+                    *c2rust_lvalue_ptr_1 = value;
                 }
             } else {
                 *(*(*da).id).name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
@@ -7689,7 +7695,7 @@ unsafe extern "C" fn storeAtts(
                 let c2rust_fresh27 = attIndex;
                 attIndex = attIndex + 1;
                 let c2rust_lvalue_ptr_3 = &raw mut *appAtts.offset(c2rust_fresh27 as isize);
-                *c2rust_lvalue_ptr_3 = (*da).value;
+                *c2rust_lvalue_ptr_3 = value;
             }
         }
         i += 1;
@@ -12396,7 +12402,7 @@ unsafe extern "C" fn defineAttribute(
         .defaultAtts
         .offset((*type_0).nDefaultAtts as isize);
     (*att).id = attId;
-    (*att).value = value;
+    (*att).value = std::ptr::NonNull::new(value as *mut crate::expat_external_h::XML_Char);
     (*att).isCdata = isCdata;
     if isCdata == 0 {
         (*attId).maybeTokenized = crate::expat_h::XML_TRUE;
@@ -13150,13 +13156,18 @@ unsafe extern "C" fn dtdCopy(
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ATTRIBUTE_ID;
             new_att.isCdata = old_att.isCdata;
-            if !old_att.value.is_null() {
-                new_att.value = poolCopyString(&raw mut new_dtd.pool, old_att.value);
-                if new_att.value.is_null() {
+            if let Some(value) = old_att.value {
+                new_att.value = std::ptr::NonNull::new(
+                    poolCopyString(
+                        &raw mut new_dtd.pool,
+                        value.as_ptr() as *const crate::expat_external_h::XML_Char,
+                    ) as *mut crate::expat_external_h::XML_Char,
+                );
+                if new_att.value.is_none() {
                     return 0 as ::core::ffi::c_int;
                 }
             } else {
-                new_att.value = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                new_att.value = None;
             }
             i += 1;
         }
