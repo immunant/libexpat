@@ -297,6 +297,19 @@ impl Scanner {
         end: *const ::core::ffi::c_char,
         next_tok_ptr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        if let Self::Big2Prolog = self {
+            if ptr >= end {
+                return crate::src::xmltok::XML_TOK_NONE_1;
+            }
+            let input_len = end.offset_from(ptr) as usize & !1;
+            let input = ::core::slice::from_raw_parts(ptr, input_len);
+            let encoding = &*(enc as *const normal_encoding);
+            let (token, next) = xmltok_impl_c::big2_prologTok(encoding, input);
+            if let Some(offset) = next {
+                *next_tok_ptr = ptr.add(offset);
+            }
+            return token;
+        }
         let scanner: unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
             *const ::core::ffi::c_char,
@@ -311,7 +324,7 @@ impl Scanner {
             Self::Little2Content => xmltok_impl_c::little2_contentTok,
             Self::Little2CdataSection => xmltok_impl_c::little2_cdataSectionTok,
             Self::Little2IgnoreSection => xmltok_impl_c::little2_ignoreSectionTok,
-            Self::Big2Prolog => xmltok_impl_c::big2_prologTok,
+            Self::Big2Prolog => unreachable!("handled before raw scanner dispatch"),
             Self::Big2Content => xmltok_impl_c::big2_contentTok,
             Self::Big2CdataSection => xmltok_impl_c::big2_cdataSectionTok,
             Self::Big2IgnoreSection => xmltok_impl_c::big2_ignoreSectionTok,
@@ -7494,6 +7507,63 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
+    fn big2_scan_outcome_result(
+        outcome: Big2ScanOutcome,
+        base: usize,
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        match outcome {
+            Big2ScanOutcome::Token(token, next) => (token, Some(base + next)),
+            Big2ScanOutcome::Partial(token) => (token, None),
+            Big2ScanOutcome::Invalid(at) => (crate::src::xmltok::XML_TOK_INVALID_1, Some(base + at)),
+        }
+    }
+
+    /// Scans the part of a declaration following `<!` using offsets into the
+    /// supplied UTF-16BE input.  The raw-pointer adapter retains the legacy
+    /// ABI; prolog scanning uses this bounded form directly.
+    fn big2_scan_decl_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        if input.len() < 2 {
+            return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+
+        match big2_byte_type(enc, input, 0) {
+            27 => return big2_scan_outcome_result(big2_scan_comment_impl(enc, &input[2..]), 2),
+            20 => return (crate::src::xmltok::XML_TOK_COND_SECT_OPEN_1, Some(2)),
+            22 | 24 => {}
+            _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
+        }
+
+        let mut pos = 2;
+        let mut next = 2;
+        while input.len() - pos >= 2 {
+            match big2_byte_type(enc, input, pos) {
+                30 => {
+                    if input.len() - pos < 4 {
+                        return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                    }
+                    match big2_byte_type(enc, input, pos + 2) {
+                        21 | 9 | 10 | 30 => {
+                            return (crate::src::xmltok::XML_TOK_INVALID_1, Some(next));
+                        }
+                        _ => {}
+                    }
+                }
+                21 | 9 | 10 => {}
+                22 | 24 => {
+                    pos += 2;
+                    next += 2;
+                    continue;
+                }
+                _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(next)),
+            }
+            return (crate::src::xmltok::XML_TOK_DECL_OPEN_1, Some(next));
+        }
+        (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
+    }
+
     pub unsafe extern "C" fn big2_checkPiTarget(
         _enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -9864,40 +9934,31 @@ pub mod xmltok_impl_c {
         Big2PrologToken::Result(-token, None)
     }
 
-    pub unsafe extern "C" fn big2_prologTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input_len = end.offset_from(ptr) as usize;
-        let input = ::core::slice::from_raw_parts(ptr, input_len);
+    /// Scans a UTF-16BE prolog token from a bounded input slice.  The caller
+    /// translates the returned offset back to Expat's C cursor.
+    pub fn big2_prologTok(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
         let input = &input[..input.len() & !1];
-        let enc_ref = &*(enc as *const normal_encoding);
-        match big2_prolog_tok_impl(enc_ref, input) {
-            Big2PrologToken::Result(token, next) => {
-                if let Some(offset) = next {
-                    *nextTokPtr = ptr.add(offset);
-                }
-                token
-            }
+        match big2_prolog_tok_impl(enc, input) {
+            Big2PrologToken::Result(token, next) => (token, next),
             Big2PrologToken::ScanLit(open, offset) => {
-                big2_scanLit(open, enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+                big2_scan_outcome_result(big2_scan_lit_impl(open, enc, &input[offset..]), offset)
             }
             Big2PrologToken::ScanDecl(offset) => {
-                big2_scanDecl(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+                let (token, next) = big2_scan_decl_impl(enc, &input[offset..]);
+                (token, next.map(|next| offset + next))
             }
             Big2PrologToken::ScanPi(offset) => {
-                big2_scanPi(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+                let (token, next) = big2_scan_pi_impl(enc, &input[offset..]);
+                (token, next.map(|next| offset + next))
             }
             Big2PrologToken::ScanPercent(offset) => {
-                big2_scanPercent(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+                big2_scan_outcome_result(big2_scan_percent_impl(enc, &input[offset..]), offset)
             }
             Big2PrologToken::ScanPoundName(offset) => {
-                big2_scanPoundName(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+                big2_scan_outcome_result(big2_scan_pound_name_impl(enc, &input[offset..]), offset)
             }
         }
     }
