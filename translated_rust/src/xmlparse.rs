@@ -15070,29 +15070,33 @@ unsafe fn entity_value_init_processor_impl(
 }
 
 unsafe extern "C" fn externalParEntProcessor(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: crate::expat_h::XML_Parser,
     mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(next_ptr) = nextPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     let mut next: *const ::core::ffi::c_char = s;
-    let mut tok: ::core::ffi::c_int = 0;
-    let encoding = parser_encoding(parser);
-    let scan = scanner_context_from_raw(
-        (*encoding).scanners[0 as usize],
-        encoding,
-        s,
-        end,
-    )
-    .scan();
-    tok = scan.token;
+    let scan = entity_value_init_scan(parser, s.addr(), end.addr());
+    let mut tok = scan.token;
     if let Some(offset) = scan.next {
+        let Some(next_address) = s.addr().checked_add(offset) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        if next_address > end.addr() {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        }
         next = s.wrapping_add(offset);
     }
     if tok <= 0 as ::core::ffi::c_int {
-        if (*parser).m_parsingStatus.finalBuffer == 0 && tok != crate::src::xmltok::XML_TOK_INVALID
+        if parser.m_parsingStatus.finalBuffer == 0 && tok != crate::src::xmltok::XML_TOK_INVALID
         {
-            *nextPtr = s;
+            *next_ptr = s;
             return crate::expat_h::XML_ERROR_NONE;
         }
         match tok {
@@ -15104,45 +15108,45 @@ unsafe extern "C" fn externalParEntProcessor(
             crate::src::xmltok::XML_TOK_NONE | _ => {}
         }
     } else if tok == crate::src::xmltok::XML_TOK_BOM {
-        let Some(tolerated) = accounting_parser_window_diff_tolerated(
-            parser,
-            tok,
-            s,
-            next,
-            5130 as ::core::ffi::c_int,
-            XML_ACCOUNT_DIRECT,
-            true,
-        )
+        let Some(token_bytes) = parser.m_buffer.window_from_addresses(s.addr(), next.addr())
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        if !tolerated {
+        if !accounting_slice_diff_tolerated(
+            parser,
+            tok,
+            token_bytes,
+            0,
+            token_bytes.len(),
+            5130 as ::core::ffi::c_int,
+            XML_ACCOUNT_DIRECT,
+        ) {
+            cdata_accounting_on_abort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
-        let encoding = parser_encoding(parser);
-        let scan = scanner_context_from_raw(
-            (*encoding).scanners[0 as usize],
-            encoding,
-            s,
-            end,
-        )
-        .scan();
+        let scan = entity_value_init_scan(parser, s.addr(), end.addr());
         tok = scan.token;
         if let Some(offset) = scan.next {
+            let Some(next_address) = s.addr().checked_add(offset) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            if next_address > end.addr() {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
             next = s.wrapping_add(offset);
         }
     }
-    (*parser).m_processor = ProcessorState::Prolog;
+    parser.m_processor = ProcessorState::Prolog;
     return doProlog(
-        parser,
-        parser_encoding(parser),
+        std::ptr::from_mut(parser),
+        std::ptr::from_ref(current_parser_encoding(parser)),
         s,
         end,
         tok,
         next,
-        nextPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+        std::ptr::from_mut(next_ptr),
+        (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         crate::expat_h::XML_TRUE,
         XML_ACCOUNT_DIRECT,
