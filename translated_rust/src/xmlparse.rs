@@ -3724,82 +3724,92 @@ unsafe extern "C" fn parserInit(
 }
 
 unsafe extern "C" fn moveToFreeBindingList(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
     mut bindings: *mut BINDING,
 ) {
     while !bindings.is_null() {
         let mut b: *mut BINDING = bindings;
         bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-        (*parser).m_freeBindingList = b;
+        (*b).nextTagBinding = parser.m_freeBindingList as *mut binding;
+        parser.m_freeBindingList = b;
     }
 }
 pub unsafe extern "C" fn XML_ParserReset(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
-    let mut tStk: *mut TAG = ::core::ptr::null_mut::<TAG>();
-    let mut openEntityList: *mut OPEN_INTERNAL_ENTITY =
-        ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     if parser.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    if !(*parser).m_parentParser.is_null() {
-        return crate::expat_h::XML_FALSE;
-    }
-    tStk = (*parser).m_tagStack;
-    while !tStk.is_null() {
-        let mut tag: *mut TAG = tStk;
-        tStk = (*tStk).parent as *mut TAG;
-        (*tag).parent = (*parser).m_freeTagList as *mut tag;
-        moveToFreeBindingList(parser, (*tag).bindings);
-        (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
-        (*parser).m_freeTagList = tag;
-    }
-    openEntityList = (*parser).m_openInternalEntities;
-    while !openEntityList.is_null() {
-        let mut openEntity: *mut OPEN_INTERNAL_ENTITY = openEntityList;
-        openEntityList = (*openEntity).next as *mut OPEN_INTERNAL_ENTITY;
-        (*openEntity).next = (*parser).m_freeInternalEntities as *mut open_internal_entity;
-        (*parser).m_freeInternalEntities = openEntity;
-    }
-    openEntityList = (*parser).m_openAttributeEntities;
-    while !openEntityList.is_null() {
-        let mut openEntity_0: *mut OPEN_INTERNAL_ENTITY = openEntityList;
-        openEntityList = (*openEntity_0).next as *mut OPEN_INTERNAL_ENTITY;
-        (*openEntity_0).next = (*parser).m_freeAttributeEntities as *mut open_internal_entity;
-        (*parser).m_freeAttributeEntities = openEntity_0;
-    }
-    openEntityList = (*parser).m_openValueEntities;
-    while !openEntityList.is_null() {
-        let mut openEntity_1: *mut OPEN_INTERNAL_ENTITY = openEntityList;
-        openEntityList = (*openEntity_1).next as *mut OPEN_INTERNAL_ENTITY;
-        (*openEntity_1).next = (*parser).m_freeValueEntities as *mut open_internal_entity;
-        (*parser).m_freeValueEntities = openEntity_1;
-    }
-    moveToFreeBindingList(parser, (*parser).m_inheritedBindings);
-    let unknown_encoding_mem = (*parser).m_unknownEncodingMem;
+    // This is the one short-lived exclusive borrow of the parser.  It ends before
+    // invoking allocator or release callbacks below, which may inspect the parser.
+    let (unknown_encoding_mem, unknown_encoding_release, unknown_encoding_data, protocol_encoding_name, dtd) = {
+        let parser_state = &mut *parser;
+        if !parser_state.m_parentParser.is_null() {
+            return crate::expat_h::XML_FALSE;
+        }
+        let mut tag_stack = parser_state.m_tagStack;
+        while !tag_stack.is_null() {
+            let tag = tag_stack;
+            tag_stack = (*tag).parent as *mut TAG;
+            (*tag).parent = parser_state.m_freeTagList as *mut tag;
+            moveToFreeBindingList(parser_state, (*tag).bindings);
+            (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
+            parser_state.m_freeTagList = tag;
+        }
+        let mut open_entity_list = parser_state.m_openInternalEntities;
+        while !open_entity_list.is_null() {
+            let open_entity = open_entity_list;
+            open_entity_list = (*open_entity).next as *mut OPEN_INTERNAL_ENTITY;
+            (*open_entity).next = parser_state.m_freeInternalEntities as *mut open_internal_entity;
+            parser_state.m_freeInternalEntities = open_entity;
+        }
+        open_entity_list = parser_state.m_openAttributeEntities;
+        while !open_entity_list.is_null() {
+            let open_entity = open_entity_list;
+            open_entity_list = (*open_entity).next as *mut OPEN_INTERNAL_ENTITY;
+            (*open_entity).next = parser_state.m_freeAttributeEntities as *mut open_internal_entity;
+            parser_state.m_freeAttributeEntities = open_entity;
+        }
+        open_entity_list = parser_state.m_openValueEntities;
+        while !open_entity_list.is_null() {
+            let open_entity = open_entity_list;
+            open_entity_list = (*open_entity).next as *mut OPEN_INTERNAL_ENTITY;
+            (*open_entity).next = parser_state.m_freeValueEntities as *mut open_internal_entity;
+            parser_state.m_freeValueEntities = open_entity;
+        }
+        moveToFreeBindingList(parser_state, parser_state.m_inheritedBindings);
+        let unknown_encoding_mem = parser_state.m_unknownEncodingMem;
+        let unknown_encoding_release = parser_state.m_unknownEncodingRelease;
+        let unknown_encoding_data = parser_state.m_unknownEncodingData;
+        let protocol_encoding_name = parser_state.m_protocolEncodingName;
+        parser_state.m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        (
+            unknown_encoding_mem,
+            unknown_encoding_release,
+            unknown_encoding_data,
+            protocol_encoding_name,
+            parser_state.m_dtd,
+        )
+    };
     crate::src::xmltok::unregister_unknown_encoding_converter(unknown_encoding_mem as usize);
     expat_free(
         parser,
         unknown_encoding_mem,
         1686 as ::core::ffi::c_int,
     );
-    if (*parser).m_unknownEncodingRelease.is_some() {
-        (*parser)
-            .m_unknownEncodingRelease
-            .expect("non-null function pointer")((*parser).m_unknownEncodingData);
+    if let Some(release) = unknown_encoding_release {
+        release(unknown_encoding_data);
     }
     poolClear(&raw mut (*parser).m_tempPool);
     poolClear(&raw mut (*parser).m_temp2Pool);
     expat_free(
         parser,
-        (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
+        protocol_encoding_name as *mut ::core::ffi::c_void,
         1691 as ::core::ffi::c_int,
     );
-    (*parser).m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     parserInit(parser, encodingName);
-    dtdReset((*parser).m_dtd, parser);
+    dtdReset(dtd, parser);
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_ParserReset"]
