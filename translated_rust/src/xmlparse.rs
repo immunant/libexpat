@@ -11426,13 +11426,13 @@ pub unsafe extern "C" fn XML_ErrorString_ffi(
 const EXPAT_VERSION: [crate::expat_external_h::XML_LChar; 12] =
     [101, 120, 112, 97, 116, 95, 50, 46, 55, 46, 52, 0];
 
-pub unsafe extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::XML_LChar {
-    EXPAT_VERSION.as_ptr()
+pub fn XML_ExpatVersion() -> &'static [crate::expat_external_h::XML_LChar; 12] {
+    &EXPAT_VERSION
 }
 #[export_name = "XML_ExpatVersion"]
 
 pub unsafe extern "C" fn XML_ExpatVersion_ffi() -> *const crate::expat_external_h::XML_LChar {
-    XML_ExpatVersion()
+    XML_ExpatVersion().as_ptr()
 }
 pub extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
     let mut version: crate::expat_h::XML_Expat_Version = crate::expat_h::XML_Expat_Version {
