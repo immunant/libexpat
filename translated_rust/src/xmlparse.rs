@@ -2014,6 +2014,13 @@ impl InputBuffer {
     }
 }
 
+#[derive(Copy, Clone)]
+enum DeclaredEntity {
+    General(PoolStringRef),
+    Parameter(PoolStringRef),
+    ExternalSubset,
+}
+
 #[repr(C)]
 pub struct XML_ParserStruct {
     pub m_userData: *mut ::core::ffi::c_void,
@@ -2090,7 +2097,10 @@ pub struct XML_ParserStruct {
     pub m_freeValueEntities: *mut OPEN_INTERNAL_ENTITY,
     pub m_defaultExpandInternalEntities: crate::expat_h::XML_Bool,
     pub m_tagLevel: ::core::ffi::c_int,
-    pub m_declEntity: *mut ENTITY,
+    // The in-progress declaration is identified by its stable DTD-pool key
+    // and the table that owns it.  Hash-table growth can move slots, so a
+    // raw record address must not persist between prolog tokens.
+    m_declEntity: Option<DeclaredEntity>,
     // The doctype name remains in the temporary pool until the corresponding
     // declaration callback.  A pool location stays valid while later tokens
     // grow that pool, including for a valid empty string at a slab boundary.
@@ -3747,7 +3757,7 @@ fn initial_parser_struct(
         m_freeValueEntities: ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>(),
         m_defaultExpandInternalEntities: crate::expat_h::XML_TRUE,
         m_tagLevel: 0,
-        m_declEntity: ::core::ptr::null_mut::<ENTITY>(),
+        m_declEntity: None,
         m_doctypeName: None,
         m_doctypeSysid: DoctypeSystemId::None,
         m_doctypePubid: None,
@@ -4181,7 +4191,7 @@ fn parser_init(
     parser.m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
     parser.m_declElementType = None;
     parser.m_declAttributeId = None;
-    parser.m_declEntity = ::core::ptr::null_mut::<ENTITY>();
+    parser.m_declEntity = None;
     parser.m_doctypeName = None;
     parser.m_doctypeSysid = DoctypeSystemId::None;
     parser.m_doctypePubid = None;
@@ -10862,16 +10872,17 @@ unsafe extern "C" fn doProlog(
                                     }
                                     6 => {
                                         (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
-                                        (*parser).m_declEntity = lookup(
+                                        let entity = lookup(
                                             parser,
                                             &raw mut (*dtd).paramEntities,
                                             &raw const externalSubsetName as KEY,
                                             ::core::mem::size_of::<ENTITY>(),
                                         )
                                             as *mut ENTITY;
-                                        if (*parser).m_declEntity.is_null() {
+                                        if entity.is_null() {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
+                                        (*parser).m_declEntity = Some(DeclaredEntity::ExternalSubset);
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                         if (*parser).m_startDoctypeDeclHandler {
                                             if crate::src::xmltok::check_public_id(
@@ -11628,7 +11639,16 @@ unsafe extern "C" fn doProlog(
                                                     next.offset(-((*enc).minBytesPerChar as isize)),
                                                     XML_ACCOUNT_NONE,
                                                 );
-                                            if !(*parser).m_declEntity.is_null() {
+                                            if let Some(declaration) = (*parser).m_declEntity {
+                                                let Some(entity) = declared_entity_lookup(
+                                                    parser,
+                                                    dtd,
+                                                    declaration,
+                                                    (&raw const externalSubsetName)
+                                                        .cast::<crate::expat_external_h::XML_Char>(),
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
                                                 let dtd_ref = &mut *dtd;
                                                 let Some(entity_text_ref) =
                                                     dtd_ref.entityValuePool.start_ref(true)
@@ -11641,7 +11661,7 @@ unsafe extern "C" fn doProlog(
                                                     .map_or(::core::ptr::null(), |chars| {
                                                         chars.as_ptr()
                                                     });
-                                                (*(*parser).m_declEntity).textPtr = EntityTextRef {
+                                                (*entity).textPtr = EntityTextRef {
                                                     pool: EntityTextPool::EntityValue,
                                                     string: Some(entity_text_ref),
                                                 };
@@ -11650,7 +11670,7 @@ unsafe extern "C" fn doProlog(
                                                 ) else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
-                                                (*(*parser).m_declEntity).textLen = text_len;
+                                                (*entity).textLen = text_len;
                                                 dtd_ref.entityValuePool.commit();
                                                 if (*parser).m_entityDeclHandler {
                                                     set_event_end!(parser, parser_events, eventEndPP, s);
@@ -11669,11 +11689,11 @@ unsafe extern "C" fn doProlog(
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
                                                             (*parser).m_handlerArg,
-                                                            (*(*parser).m_declEntity).named.name,
-                                                            (*(*parser).m_declEntity).is_param
+                                                            (*entity).named.name,
+                                                            (*entity).is_param
                                                                 as ::core::ffi::c_int,
                                                             entity_text,
-                                                            (*(*parser).m_declEntity).textLen,
+                                                            (*entity).textLen,
                                                             (*parser)
                                                                 .m_curBase
                                                                 .map(|base| {
@@ -11751,18 +11771,19 @@ unsafe extern "C" fn doProlog(
                                         {
                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                         }
-                                        if (*parser).m_declEntity.is_null() {
-                                            (*parser).m_declEntity = lookup(
+                                        if (*parser).m_declEntity.is_none() {
+                                            let entity = lookup(
                                                 parser,
                                                 &raw mut (*dtd).paramEntities,
                                                 &raw const externalSubsetName as KEY,
                                                 ::core::mem::size_of::<ENTITY>(),
                                             )
                                                 as *mut ENTITY;
-                                            if (*parser).m_declEntity.is_null() {
+                                            if entity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*(*parser).m_declEntity).publicId = None;
+                                            (*entity).publicId = None;
+                                            (*parser).m_declEntity = Some(DeclaredEntity::ExternalSubset);
                                         }
                                         break 'c_12793;
                                     }
@@ -11771,9 +11792,21 @@ unsafe extern "C" fn doProlog(
                                     }
                                     15 => {
                                         if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                            && !(*parser).m_declEntity.is_null()
+                                            && (*parser).m_declEntity.is_some()
                                             && (*parser).m_entityDeclHandler
                                         {
+                                            let declaration = (*parser)
+                                                .m_declEntity
+                                                .expect("entity declaration must be set");
+                                            let Some(entity) = declared_entity_lookup(
+                                                parser,
+                                                dtd,
+                                                declaration,
+                                                (&raw const externalSubsetName)
+                                                    .cast::<crate::expat_external_h::XML_Char>(),
+                                            ) else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
                                             set_event_end!(parser, parser_events, eventEndPP, s);
                                             let callback = ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
@@ -11794,7 +11827,7 @@ unsafe extern "C" fn doProlog(
                                                     entity_system_id,
                                                     entity_public_id,
                                                 ) = {
-                                                    let entity = &*(*parser).m_declEntity;
+                                                    let entity = &*entity;
                                                     (
                                                         (*parser).m_handlerArg,
                                                         entity.named.name,
@@ -11852,8 +11885,20 @@ unsafe extern "C" fn doProlog(
                                     }
                                     16 => {
                                         if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                            && !(*parser).m_declEntity.is_null()
+                                            && (*parser).m_declEntity.is_some()
                                         {
+                                            let declaration = (*parser)
+                                                .m_declEntity
+                                                .expect("entity declaration must be set");
+                                            let Some(entity) = declared_entity_lookup(
+                                                parser,
+                                                dtd,
+                                                declaration,
+                                                (&raw const externalSubsetName)
+                                                    .cast::<crate::expat_external_h::XML_Char>(),
+                                            ) else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
                                             let notation_pointer =
                                                 poolStoreString(dtd_pool, enc, s, next);
                                             let Some(notation) = pool_string_ref(
@@ -11863,7 +11908,7 @@ unsafe extern "C" fn doProlog(
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            (*(*parser).m_declEntity).notation = Some(notation);
+                                            (*entity).notation = Some(notation);
                                             (*dtd).pool.commit();
                                             let callback = UNPARSED_ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
@@ -11883,7 +11928,7 @@ unsafe extern "C" fn doProlog(
                                                 entity_public_id,
                                                 entity_notation,
                                             ) = {
-                                                let entity = &*(*parser).m_declEntity;
+                                                let entity = &*entity;
                                                 (
                                                     (*parser).m_handlerArg,
                                                     entity.named.name,
@@ -11968,8 +12013,7 @@ unsafe extern "C" fn doProlog(
                                         if crate::src::xmltok::predefined_entity_name(enc, s, next)
                                             != 0
                                         {
-                                            (*parser).m_declEntity =
-                                                ::core::ptr::null_mut::<ENTITY>();
+                                            (*parser).m_declEntity = None;
                                             break 's_2375;
                                         } else {
                                             if (*dtd).keepProcessing != 0 {
@@ -11982,40 +12026,47 @@ unsafe extern "C" fn doProlog(
                                                 if name.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                (*parser).m_declEntity = lookup(
+                                                let entity = lookup(
                                                     parser,
                                                     &raw mut (*dtd).generalEntities,
                                                     name as KEY,
                                                     ::core::mem::size_of::<ENTITY>(),
                                                 )
                                                     as *mut ENTITY;
-                                                if (*parser).m_declEntity.is_null() {
+                                                if entity.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                if (*(*parser).m_declEntity).named.name != name {
+                                                if (*entity).named.name != name {
                                                     (*dtd).pool.rewind();
-                                                    (*parser).m_declEntity =
-                                                        ::core::ptr::null_mut::<ENTITY>();
+                                                    (*parser).m_declEntity = None;
                                                 } else {
+                                                    let Some(declaration_name) = pool_string_ref(
+                                                        dtd_pool as *const STRING_POOL,
+                                                        name,
+                                                        false,
+                                                    ) else {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    };
                                                     (*dtd).pool.commit();
-                                                    (*(*parser).m_declEntity).publicId = None;
-                                                    (*(*parser).m_declEntity).is_param =
+                                                    (*entity).publicId = None;
+                                                    (*entity).is_param =
                                                         crate::expat_h::XML_FALSE;
-                                                    (*(*parser).m_declEntity).is_internal =
+                                                    (*entity).is_internal =
                                                         !(!(*parser).m_parentParser.is_null()
                                                             || !(*parser)
                                                                 .m_openInternalEntities
                                                                 .is_null())
                                                             as ::core::ffi::c_int
                                                             as crate::expat_h::XML_Bool;
+                                                    (*parser).m_declEntity =
+                                                        Some(DeclaredEntity::General(declaration_name));
                                                     if (*parser).m_entityDeclHandler {
                                                         handleDefault = crate::expat_h::XML_FALSE;
                                                     }
                                                 }
                                             } else {
                                                 (*dtd).pool.rewind();
-                                                (*parser).m_declEntity =
-                                                    ::core::ptr::null_mut::<ENTITY>();
+                                                (*parser).m_declEntity = None;
                                             }
                                             break 's_2375;
                                         }
@@ -12027,39 +12078,46 @@ unsafe extern "C" fn doProlog(
                                             if name_0.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*parser).m_declEntity = lookup(
+                                            let entity = lookup(
                                                 parser,
                                                 &raw mut (*dtd).paramEntities,
                                                 name_0 as KEY,
                                                 ::core::mem::size_of::<ENTITY>(),
                                             )
                                                 as *mut ENTITY;
-                                            if (*parser).m_declEntity.is_null() {
+                                            if entity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            if (*(*parser).m_declEntity).named.name != name_0 {
+                                            if (*entity).named.name != name_0 {
                                                 (*dtd).pool.rewind();
-                                                (*parser).m_declEntity =
-                                                    ::core::ptr::null_mut::<ENTITY>();
+                                                (*parser).m_declEntity = None;
                                             } else {
+                                                let Some(declaration_name) = pool_string_ref(
+                                                    dtd_pool as *const STRING_POOL,
+                                                    name_0,
+                                                    false,
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
                                                 (*dtd).pool.commit();
-                                                (*(*parser).m_declEntity).publicId = None;
-                                                (*(*parser).m_declEntity).is_param =
+                                                (*entity).publicId = None;
+                                                (*entity).is_param =
                                                     crate::expat_h::XML_TRUE;
-                                                (*(*parser).m_declEntity).is_internal = !(!(*parser)
+                                                (*entity).is_internal = !(!(*parser)
                                                     .m_parentParser
                                                     .is_null()
                                                     || !(*parser).m_openInternalEntities.is_null())
                                                     as ::core::ffi::c_int
                                                     as crate::expat_h::XML_Bool;
+                                                (*parser).m_declEntity =
+                                                    Some(DeclaredEntity::Parameter(declaration_name));
                                                 if (*parser).m_entityDeclHandler {
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
                                             }
                                         } else {
                                             (*dtd).pool.rewind();
-                                            (*parser).m_declEntity =
-                                                ::core::ptr::null_mut::<ENTITY>();
+                                            (*parser).m_declEntity = None;
                                         }
                                         break 's_2375;
                                     }
@@ -12939,8 +12997,20 @@ unsafe extern "C" fn doProlog(
                                 break '_alreadyChecked;
                             }
                             if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                && !(*parser).m_declEntity.is_null()
+                                && (*parser).m_declEntity.is_some()
                             {
+                                let declaration = (*parser)
+                                    .m_declEntity
+                                    .expect("entity declaration must be set");
+                                let Some(entity) = declared_entity_lookup(
+                                    parser,
+                                    dtd,
+                                    declaration,
+                                    (&raw const externalSubsetName)
+                                        .cast::<crate::expat_external_h::XML_Char>(),
+                                ) else {
+                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                };
                                 let system_id = poolStoreString(
                                     dtd_pool,
                                     enc,
@@ -12954,8 +13024,8 @@ unsafe extern "C" fn doProlog(
                                 ) else {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
-                                (*(*parser).m_declEntity).systemId = Some(system_id);
-                                (*(*parser).m_declEntity).base = (*parser).m_curBase;
+                                (*entity).systemId = Some(system_id);
+                                (*entity).base = (*parser).m_curBase;
                                 (*dtd).pool.commit();
                                 if (*parser).m_entityDeclHandler
                                     && role
@@ -13092,8 +13162,20 @@ unsafe extern "C" fn doProlog(
                 }
                 break 's_2375;
             }
-            if (*dtd).keepProcessing as ::core::ffi::c_int != 0 && !(*parser).m_declEntity.is_null()
+            if (*dtd).keepProcessing as ::core::ffi::c_int != 0 && (*parser).m_declEntity.is_some()
             {
+                let declaration = (*parser)
+                    .m_declEntity
+                    .expect("entity declaration must be set");
+                let Some(entity) = declared_entity_lookup(
+                    parser,
+                    dtd,
+                    declaration,
+                    (&raw const externalSubsetName)
+                        .cast::<crate::expat_external_h::XML_Char>(),
+                ) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
                 let mut tem: *mut crate::expat_external_h::XML_Char = poolStoreString(
                     dtd_pool,
                     enc,
@@ -13104,8 +13186,8 @@ unsafe extern "C" fn doProlog(
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
                 normalizePublicId(tem);
-                (*(*parser).m_declEntity).publicId = pool_string_ref(dtd_pool, tem, false);
-                if (*(*parser).m_declEntity).publicId.is_none() {
+                (*entity).publicId = pool_string_ref(dtd_pool, tem, false);
+                if (*entity).publicId.is_none() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
                 (*dtd).pool.commit();
@@ -13919,9 +14001,22 @@ unsafe extern "C" fn storeEntityValue(
                                     break '_endEntityValue;
                                 }
                                 let entity = &mut *entity;
-                                if entity.open as ::core::ffi::c_int != 0
-                                    || ::core::ptr::eq(entity, parser.m_declEntity)
-                                {
+                                let is_current_declaration = match parser.m_declEntity {
+                                    Some(DeclaredEntity::General(name))
+                                    | Some(DeclaredEntity::Parameter(name)) => {
+                                        pool_string_ref(
+                                            &raw const dtd.pool,
+                                            entity.named.name,
+                                            false,
+                                        ) == Some(name)
+                                    }
+                                    // The synthetic external-subset entity never has an
+                                    // internal value, so it cannot be the record being
+                                    // expanded by this entity-value processor.
+                                    Some(DeclaredEntity::ExternalSubset) => false,
+                                    None => false,
+                                };
+                                if entity.open as ::core::ffi::c_int != 0 || is_current_declaration {
                                     if enc_ptr == parser_encoding(parser) {
                                         set_parser_event_start!(&mut *parser, entityTextPtr);
                                     }
@@ -15918,6 +16013,42 @@ unsafe extern "C" fn lookup(
         Some(NamedAllocation { bytes, backing });
     table.used = table.used.wrapping_add(1);
     return entry;
+}
+
+/// Resolves the parser's declaration cursor immediately before accessing its
+/// entity record.  The cursor itself contains only a DTD-pool key, so table
+/// growth cannot leave parser state pointing into moved slot storage.
+unsafe fn declared_entity_lookup(
+    parser: crate::expat_h::XML_Parser,
+    dtd: *mut DTD,
+    declaration: DeclaredEntity,
+    external_subset_name: *const crate::expat_external_h::XML_Char,
+) -> Option<*mut ENTITY> {
+    let (table, name) = match declaration {
+        DeclaredEntity::General(name) => (
+            &raw mut (*dtd).generalEntities,
+            (*dtd)
+                .pool
+                .chars_from(name)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+        ),
+        DeclaredEntity::Parameter(name) => (
+            &raw mut (*dtd).paramEntities,
+            (*dtd)
+                .pool
+                .chars_from(name)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+        ),
+        DeclaredEntity::ExternalSubset => (
+            &raw mut (*dtd).paramEntities,
+            external_subset_name,
+        ),
+    };
+    if name.is_null() {
+        return None;
+    }
+    let entity = lookup(parser, table, name as KEY, 0) as *mut ENTITY;
+    (!entity.is_null()).then_some(entity)
 }
 
 unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
