@@ -7009,28 +7009,27 @@ pub unsafe extern "C" fn XML_SetUserData_ffi(
         callback_context,
     );
 }
-pub unsafe extern "C" fn XML_SetBase(
-    mut parser: crate::expat_h::XML_Parser,
-    mut p: *const crate::expat_external_h::XML_Char,
+/// Stores an already-validated, NUL-terminated base identifier in the DTD
+/// pool.  The shared DTD cell is the existing parser-ownership boundary;
+/// callers have already established exclusive parser access before entering
+/// this implementation.
+unsafe fn xml_set_base_impl(
+    parser: &mut XML_ParserStruct,
+    base: Option<&[crate::expat_external_h::XML_Char]>,
 ) -> crate::expat_h::XML_Status {
-    if parser.is_null() {
-        return crate::expat_h::XML_STATUS_ERROR;
-    }
-    if !p.is_null() {
-        let dtd = parser_dtd_ptr!(parser);
-        if dtd.is_null() {
+    if let Some(base) = base {
+        let Some(dtd_owner) = parser.m_dtd.as_ref() else {
             return crate::expat_h::XML_STATUS_ERROR;
-        }
-        let (copied, base) = poolCopyString(&raw mut (*dtd).pool, p);
-        p = copied;
-        if p.is_null() {
+        };
+        let dtd = &mut *dtd_owner.value.get();
+        let Some(base) = poolCopyString(&mut dtd.pool, base) else {
             return crate::expat_h::XML_STATUS_ERROR;
-        }
-        (*parser).m_curBase = base;
+        };
+        parser.m_curBase = Some(base);
     } else {
-        (*parser).m_curBase = None;
+        parser.m_curBase = None;
     }
-    return crate::expat_h::XML_STATUS_OK;
+    crate::expat_h::XML_STATUS_OK
 }
 #[export_name = "XML_SetBase"]
 
@@ -7038,7 +7037,16 @@ pub unsafe extern "C" fn XML_SetBase_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut p: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Status {
-    XML_SetBase(parser, p)
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
+    // This is the C ABI boundary for XML_SetBase: Expat accepts a nullable,
+    // NUL-terminated XML_Char string.  Keep its raw scan here and pass the
+    // bounded view into parser implementation code.
+    let base = (!p.is_null()).then(|| {
+        bytemuck::cast_slice(std::ffi::CStr::from_ptr(p).to_bytes_with_nul())
+    });
+    xml_set_base_impl(parser, base)
 }
 unsafe fn xml_get_base_impl(
     mut parser: crate::expat_h::XML_Parser,
@@ -11652,20 +11660,24 @@ unsafe fn storeAtts(
         let Some(chars) = tag_input.name_chars(parser_ref) else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
-        chars.as_ptr()
+        let Some(chars) = terminated_xml_chars(chars) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        chars
     };
     elementType = lookup(
         parser,
         &raw mut dtd.elementTypes,
-        tag_name as KEY,
+        tag_name.as_ptr() as KEY,
         0 as crate::__stddef_size_t_h::size_t,
     ) as *mut ELEMENT_TYPE;
     if elementType.is_null() {
-        let mut name: *const crate::expat_external_h::XML_Char =
-            poolCopyString(&raw mut dtd.pool, tag_name).0;
-        if name.is_null() {
+        let Some(name_ref) = poolCopyString(&mut dtd.pool, tag_name) else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
+        };
+        let Some(name) = dtd.pool.chars_from(name_ref).map(|chars| chars.as_ptr()) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
         elementType = lookup(
             parser,
             &raw mut dtd.elementTypes,
@@ -22621,8 +22633,11 @@ unsafe extern "C" fn lookup(
     {
         LookupName::Borrowed(name)
     } else {
-        let (_, name) = poolCopyString(&mut dtd.pool, name);
-        let Some(name) = name else {
+        // `name` belongs to the legacy hash-table ABI only on this path.
+        // Materialize its C-string view at that boundary, then hand the
+        // bounded XML-character slice to the pool implementation.
+        let name = bytemuck::cast_slice(std::ffi::CStr::from_ptr(name).to_bytes_with_nul());
+        let Some(name) = poolCopyString(&mut dtd.pool, name) else {
             return ::core::ptr::null_mut();
         };
         LookupName::Retained(name)
@@ -22958,44 +22973,14 @@ unsafe extern "C" fn poolAppend(
         .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _)
 }
 
-unsafe fn poolCopyString(
-    mut pool: *mut STRING_POOL,
-    mut s: *const crate::expat_external_h::XML_Char,
-) -> (
-    *const crate::expat_external_h::XML_Char,
-    Option<PoolStringRef>,
-) {
-    loop {
-        if if (*pool).is_full() && poolGrow(&mut *pool) == 0 {
-            0 as ::core::ffi::c_int
-        } else {
-            if (&mut *pool).write_cursor(*s) {
-                1 as ::core::ffi::c_int
-            } else {
-                0 as ::core::ffi::c_int
-            }
-        } == 0
-        {
-            return (
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                None,
-            );
-        }
-        let c2rust_fresh46 = s;
-        s = s.offset(1);
-        if *c2rust_fresh46 == 0 {
-            break;
-        }
-    }
-    let pool = &mut *pool;
-    let Some(start) = pool.start_ref(true) else {
-        return (::core::ptr::null(), None);
-    };
-    s = pool
-        .chars_from(start)
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-    pool.commit();
-    return (s, Some(start));
+fn poolCopyString(
+    pool: &mut STRING_POOL,
+    chars: &[crate::expat_external_h::XML_Char],
+) -> Option<PoolStringRef> {
+    // Copy only an explicitly bounded C-style XML string.  In particular, do
+    // not turn a raw starting address into a scan of unbounded memory here.
+    let chars = terminated_xml_chars(chars)?;
+    pool_copy_chars(pool, chars)
 }
 
 /// Returns the owned, NUL-terminated pool string at `string`.
