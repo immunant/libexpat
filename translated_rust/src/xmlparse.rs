@@ -16839,20 +16839,12 @@ unsafe extern "C" fn callStoreEntityValue(
                 }
             } else {
                 entityTrackingOnClose(parser, entity, 6998 as ::core::ffi::c_int);
-                '_c2rust_label: {
-                    if (*parser).m_openValueEntities == Some(open_entity_index) {
-                    } else {
-                        crate::stdlib::__assert_fail(
-                            b"parser->m_openValueEntities == openEntity\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            b"../../expat/lib/xmlparse.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            7004 as ::core::ffi::c_uint,
-                            b"enum XML_Error callStoreEntityValue(XML_Parser, const ENCODING *, const char *, const char *, enum XML_Account)\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    }
-                };
+                if (*parser).m_openValueEntities != Some(open_entity_index) {
+                    // This is an internal stack invariant.  The C assertion
+                    // was non-returning; preserve that failure mode without
+                    // calling the foreign assertion routine.
+                    std::process::abort();
+                }
                 (*entity).open = crate::expat_h::XML_FALSE;
                 let Some(storage) = (*parser).m_activeValueEntities.pop() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
