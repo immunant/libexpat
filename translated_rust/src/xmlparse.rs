@@ -13639,36 +13639,6 @@ fn accounting_slice_diff_tolerated(
     tolerated
 }
 
-/// Legacy processors still carry the opaque parser handle.  Their callers
-/// already establish that it is non-null and exclusively borrowed; confine
-/// that conversion here so the accounting implementation receives only a
-/// checked parser reference and bounded token slice.
-unsafe fn accounting_raw_slice_diff_tolerated(
-    parser: crate::expat_h::XML_Parser,
-    token: ::core::ffi::c_int,
-    input: &[u8],
-    before: usize,
-    after: usize,
-    source_line: ::core::ffi::c_int,
-    account: XML_Account,
-    report_abort: bool,
-) -> bool {
-    let parser = &*parser;
-    let tolerated = accounting_slice_diff_tolerated(
-        parser,
-        token,
-        input,
-        before,
-        after,
-        source_line,
-        account,
-    );
-    if !tolerated && report_abort {
-        cdata_accounting_on_abort(parser);
-    }
-    tolerated
-}
-
 /// Resolves a raw tokenizer cursor pair through the parser's owned input
 /// buffer before accounting.  This is deliberately narrower than a general
 /// raw-slice adapter: cursors outside that buffer are rejected immediately.
@@ -18414,8 +18384,11 @@ unsafe extern "C" fn epilogProcessor(
     if parser.is_null() || s.is_null() || end.is_null() || nextPtr.is_null() {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
-    let input = {
+    let (input, scan_encoding) = {
         let parser_state = &mut *parser;
+        let Some(scan_encoding) = current_parser_normal_encoding(parser_state) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
         let Some(input_start) = parser_state.m_buffer.offset_from_address(s.addr()) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
@@ -18431,30 +18404,34 @@ unsafe extern "C" fn epilogProcessor(
         }
         input_bytes.extend_from_slice(bytes);
         input_chars.extend(bytes.iter().map(|&byte| byte as ::core::ffi::c_char));
-        EpilogInput {
-            bytes: input_bytes,
-            chars: input_chars,
-            input_start,
-        }
+        (
+            EpilogInput {
+                bytes: input_bytes,
+                chars: input_chars,
+                input_start,
+            },
+            scan_encoding,
+        )
     };
-    let parser_for_scan = parser;
     let input_for_scan = &input;
     let mut scan = move |cursor| {
-        let encoding = parser_encoding(parser_for_scan);
-        let encoding = &*(encoding as *const crate::src::xmltok::normal_encoding);
-        encoding.enc.scanners[0].scan_result(
-            encoding,
+        scan_encoding.enc.scanners[0].scan_result(
+            &scan_encoding,
             crate::src::xmltok::ScannerInput {
                 bytes: input_for_scan.bytes.get(cursor..).unwrap_or(&[]),
                 chars: input_for_scan.chars.get(cursor..).unwrap_or(&[]),
             },
-            encoding.unknown_converter_id,
+            scan_encoding.unknown_converter_id,
         )
     };
     let parser_for_account = parser;
     let input_for_account = &input;
     let mut account = move |token, start, end| {
-        let Some(bytes) = (&*parser_for_account).m_buffer.bytes.as_deref() else {
+        // Accounting cannot invoke a callback, so keep the checked parser
+        // borrow local to this bounded parser-buffer lookup and use the
+        // slice-based accounting implementation directly.
+        let parser_state = &*parser_for_account;
+        let Some(bytes) = parser_state.m_buffer.bytes.as_deref() else {
             return false;
         };
         let Some(start) = input_for_account.input_start.checked_add(start) else {
@@ -18466,17 +18443,16 @@ unsafe extern "C" fn epilogProcessor(
         let Some(window) = bytes.get(start..end) else {
             return false;
         };
-        if !accounting_raw_slice_diff_tolerated(
-            parser_for_account,
+        if !accounting_slice_diff_tolerated(
+            parser_state,
             token,
             window,
             0,
             window.len(),
             6279,
             XML_ACCOUNT_DIRECT,
-            true,
-        )
-        {
+        ) {
+            cdata_accounting_on_abort(parser_state);
             false
         } else {
             true
@@ -23764,21 +23740,23 @@ unsafe extern "C" fn build_model(
     if ret.is_null() {
         return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
     }
-    ::core::ptr::copy_nonoverlapping(contents.as_ptr(), ret, content_count);
     let string_start = ret
         .cast::<u8>()
         .wrapping_add(content_bytes)
         .cast::<crate::expat_external_h::XML_Char>();
-    ::core::ptr::copy_nonoverlapping(names.as_ptr(), string_start, string_count);
-    let output = ::core::slice::from_raw_parts_mut(ret, content_count);
-    for index in 0..content_count {
+    // Fill the ABI-relative links while the model is still owned by its Vec.
+    // The final allocator copy then transfers a fully initialized model,
+    // avoiding a mutable slice reconstructed from the raw allocation.
+    for (index, content) in contents.iter_mut().enumerate() {
         if let Some(name_offset) = name_offsets[index] {
-            output[index].name = string_start.wrapping_add(name_offset);
+            content.name = string_start.wrapping_add(name_offset);
         }
         if let Some(child_start) = child_starts[index] {
-            output[index].children = ret.wrapping_add(child_start);
+            content.children = ret.wrapping_add(child_start);
         }
     }
+    ::core::ptr::copy_nonoverlapping(contents.as_ptr(), ret, content_count);
+    ::core::ptr::copy_nonoverlapping(names.as_ptr(), string_start, string_count);
     ret
 }
 
