@@ -2798,24 +2798,13 @@ struct ElementDeclCallbackEvent<'a> {
     model_key: usize,
 }
 
-/// Owns the erased C callback while parser-side declaration handling works
-/// with a checked event instead of raw callback arguments.
-struct ElementDeclCallbackAdapter {
+/// Converts the erased foreign callback into a typed event dispatcher.  This
+/// keeps the ABI operation out of the parser-side adapter method.
+fn element_decl_callback_adapter(
     callback: std::sync::Arc<dyn ElementDeclCallback>,
-}
-
-impl ElementDeclCallbackAdapter {
-    fn new<Callback>(callback: Callback) -> Self
-    where
-        Callback: ElementDeclCallback + 'static,
-    {
-        Self {
-            callback: std::sync::Arc::new(callback),
-        }
-    }
-
-    fn invoke(&self, event: ElementDeclCallbackEvent<'_>) -> bool {
-        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+) -> std::sync::Arc<dyn for<'a> Fn(ElementDeclCallbackEvent<'a>) -> bool + Send + Sync> {
+    std::sync::Arc::new(move |event: ElementDeclCallbackEvent<'_>| {
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
             unsafe extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
@@ -2841,6 +2830,27 @@ impl ElementDeclCallbackAdapter {
             callback(handler_arg_from_state!(event.parser), event.name.as_ptr(), model);
         }
         true
+    })
+}
+
+/// Owns the erased C callback while parser-side declaration handling works
+/// with a checked event instead of raw callback arguments.
+struct ElementDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn for<'a> Fn(ElementDeclCallbackEvent<'a>) -> bool + Send + Sync>,
+}
+
+impl ElementDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: ElementDeclCallback + 'static,
+    {
+        Self {
+            callback: element_decl_callback_adapter(std::sync::Arc::new(callback)),
+        }
+    }
+
+    fn invoke(&self, event: ElementDeclCallbackEvent<'_>) -> bool {
+        (self.callback)(event)
     }
 }
 
