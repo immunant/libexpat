@@ -3321,7 +3321,7 @@ fn take_unknown_encoding_info(
 trait ExternalEntityRefCallback: std::any::Any + Send + Sync {}
 
 impl ExternalEntityRefCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         crate::expat_h::XML_Parser,
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
@@ -10759,6 +10759,18 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // Keep the exported callback type unsafe because it originates in C, but
+    // register the parser-side representation only after this boundary has
+    // established the callback arguments it will supply.
+    let handler: Option<
+        extern "C" fn(
+            crate::expat_h::XML_Parser,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+        ) -> ::core::ffi::c_int,
+    > = handler.map(|handler| unsafe { ::core::mem::transmute(handler) });
     let registration = external_entity_ref_handler_registration(handler);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_external_entity_ref_handler(parser, parser_address, registration);
@@ -26941,7 +26953,7 @@ fn dispatch_external_entity_ref_event_handler(
         })
         .unwrap_or_else(|| std::ptr::from_ref(parser).cast_mut());
     let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
-        unsafe extern "C" fn(
+        extern "C" fn(
             crate::expat_h::XML_Parser,
             *const crate::expat_external_h::XML_Char,
             *const crate::expat_external_h::XML_Char,
@@ -26951,7 +26963,7 @@ fn dispatch_external_entity_ref_event_handler(
     >() else {
         return 0;
     };
-    unsafe { handler(callback_parser, context, base, system_id, public_id) }
+    handler(callback_parser, context, base, system_id, public_id)
 }
 
 
