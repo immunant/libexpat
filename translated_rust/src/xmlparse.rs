@@ -9727,6 +9727,30 @@ fn content_loop_status(
     }
 }
 
+/// Handler presence captured immediately before one content-token dispatch.
+///
+/// This is deliberately a safe helper: it only copies scalar flags from an
+/// already-borrowed parser.  Callers take a fresh snapshot after any callback
+/// whose re-entry may replace handlers.
+#[derive(Copy, Clone)]
+struct ContentTokenHandlers {
+    character_data: bool,
+    default: bool,
+    start_element: bool,
+    end_element: bool,
+    start_cdata_section: bool,
+}
+
+fn content_token_handlers(parser: &XML_ParserStruct) -> ContentTokenHandlers {
+    ContentTokenHandlers {
+        character_data: parser.m_characterDataHandler,
+        default: parser.m_defaultHandler,
+        start_element: parser.m_startElementHandler,
+        end_element: parser.m_endElementHandler,
+        start_cdata_section: parser.m_startCdataSectionHandler,
+    }
+}
+
 /// Complete the parser-state transition that follows a closed element.
 ///
 /// This deliberately only inspects and updates parser state.  The caller
@@ -9927,18 +9951,12 @@ unsafe fn doContent(
                     );
                     // Take the handler state before invoking either callback,
                     // but release the parser borrow before re-entry.
-                    let (has_character_data_handler, has_default_handler) = {
-                        let parser_state = &*parser;
-                        (
-                            parser_state.m_characterDataHandler,
-                            parser_state.m_defaultHandler,
-                        )
-                    };
-                    if has_character_data_handler {
+                    let handlers = content_token_handlers(&*parser);
+                    if handlers.character_data {
                         let mut c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
                         callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
-                    } else if has_default_handler {
+                    } else if handlers.default {
                         reportDefault(parser, enc, s, end);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
@@ -10033,20 +10051,14 @@ unsafe fn doContent(
                             XML_ACCOUNT_ENTITY_EXPANSION,
                             Some(bytemuck::bytes_of(&ch)),
                         );
-                        let (has_character_data_handler, has_default_handler) = {
-                            let parser_state = &*parser;
-                            (
-                                parser_state.m_characterDataHandler,
-                                parser_state.m_defaultHandler,
-                            )
-                        };
-                        if has_character_data_handler {
+                        let handlers = content_token_handlers(&*parser);
+                        if handlers.character_data {
                             callCharacterDataHandler(
                                 parser,
                                 &raw const ch,
                                 1 as ::core::ffi::c_int,
                             );
-                        } else if has_default_handler {
+                        } else if handlers.default {
                             reportDefault(parser, enc, s, next);
                         }
                     } else {
@@ -10351,7 +10363,8 @@ unsafe fn doContent(
                     if result_0 as u64 != 0 {
                         return result_0;
                     }
-                    if (*parser).m_startElementHandler {
+                    let handlers = content_token_handlers(&*parser);
+                    if handlers.start_element {
                         let callback = START_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
@@ -10378,7 +10391,7 @@ unsafe fn doContent(
                                 app_atts.as_mut_ptr(),
                             );
                         }
-                    } else if (*parser).m_defaultHandler {
+                    } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
                     poolClear(&mut (*parser).m_tempPool);
@@ -10451,7 +10464,8 @@ unsafe fn doContent(
                         _ => ::core::ptr::null(),
                     };
                     (*parser).m_tempPool.commit();
-                    if (*parser).m_startElementHandler {
+                    let start_handlers = content_token_handlers(&*parser);
+                    if start_handlers.start_element {
                         let callback = START_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
@@ -10467,8 +10481,11 @@ unsafe fn doContent(
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
-                    if (*parser).m_endElementHandler {
-                        if (*parser).m_startElementHandler {
+                    // Re-snapshot after the start callback: it may install or
+                    // remove the end-element handler before Expat dispatches it.
+                    let end_handlers = content_token_handlers(&*parser);
+                    if end_handlers.end_element {
+                        if end_handlers.start_element {
                             if parser_events {
                                 let event_end = parser_event_end!(parser);
                                 let parser_ref = &mut *parser;
@@ -10500,7 +10517,7 @@ unsafe fn doContent(
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
-                    if noElmHandlers as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler {
+                    if noElmHandlers as ::core::ffi::c_int != 0 && end_handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
                     poolClear(&mut (*parser).m_tempPool);
@@ -10752,21 +10769,15 @@ unsafe fn doContent(
                     }
                     // Handler selection is a pre-callback snapshot, so the
                     // borrow does not remain live during callback re-entry.
-                    let (has_character_data_handler, has_default_handler) = {
-                        let parser_state = &*parser;
-                        (
-                            parser_state.m_characterDataHandler,
-                            parser_state.m_defaultHandler,
-                        )
-                    };
-                    if has_character_data_handler {
+                    let handlers = content_token_handlers(&*parser);
+                    if handlers.character_data {
                         let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                         callCharacterDataHandler(
                             parser,
                             buf.as_ptr(),
                             crate::src::xmltok::XmlUtf8Encode(n, &mut buf),
                         );
-                    } else if has_default_handler {
+                    } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
                 }
@@ -10774,17 +10785,19 @@ unsafe fn doContent(
                     return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
                 }
                 crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                    if (*parser).m_characterDataHandler {
+                    let handlers = content_token_handlers(&*parser);
+                    if handlers.character_data {
                         let mut c_0: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
                         callCharacterDataHandler(parser, &raw const c_0, 1 as ::core::ffi::c_int);
-                    } else if (*parser).m_defaultHandler {
+                    } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
                 }
                 crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN => {
                     let mut result_2: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                    if (*parser).m_startCdataSectionHandler {
+                    let handlers = content_token_handlers(&*parser);
+                    if handlers.start_cdata_section {
                         let callback = START_CDATA_SECTION_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
@@ -10793,13 +10806,13 @@ unsafe fn doContent(
                             .cloned()
                             .expect("installed start CDATA handler");
                         callback.invoke(handler_arg!(parser));
-                    } else if false && (*parser).m_characterDataHandler {
+                    } else if false && handlers.character_data {
                         callCharacterDataHandler(
                             parser,
                             (*parser).m_dataBuf.chars.as_ptr(),
                             0 as ::core::ffi::c_int,
                         );
-                    } else if (*parser).m_defaultHandler {
+                    } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
                     result_2 =
@@ -10819,7 +10832,8 @@ unsafe fn doContent(
                         *nextPtr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
-                    if (*parser).m_characterDataHandler {
+                    let handlers = content_token_handlers(&*parser);
+                    if handlers.character_data {
                         if encoding.isUtf8 == 0 {
                             let (data_start, data_end, data_capacity) = {
                                 let parser_ref = &mut *parser;
@@ -10863,7 +10877,7 @@ unsafe fn doContent(
                                 data_len,
                             );
                         }
-                    } else if (*parser).m_defaultHandler {
+                    } else if handlers.default {
                         reportDefault(parser, enc, s, end);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
