@@ -1672,6 +1672,29 @@ macro_rules! handler_arg_from_state {
     }};
 }
 
+/// Dispatch an end-element callback from a self-contained, terminated name.
+///
+/// Content processing snapshots the name before a preceding callback can
+/// re-enter and reuse the parser's tag or pool storage.  Keeping the foreign
+/// call here leaves the token loop with ordinary Rust slices and a typed
+/// callback registry entry.
+fn dispatch_end_element_callback(
+    callback: &dyn EndElementCallback,
+    parser: &XML_ParserStruct,
+    name: &[crate::expat_external_h::XML_Char],
+) -> bool {
+    let Some(callback) = (callback as &dyn std::any::Any).downcast_ref::<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    >() else {
+        return false;
+    };
+    unsafe { callback(handler_arg_from_state!(parser), name.as_ptr()) }
+    true
+}
+
 /// Invokes a registered CDATA boundary callback with the parser's current
 /// handler context.  The callback registry is populated only through the C
 /// handler setters, so parser logic can retain a typed parser reference until
@@ -11200,6 +11223,26 @@ unsafe fn doContent(
                         }
                         _ => ::core::ptr::null(),
                     };
+                    // The end callback follows the start callback, which may
+                    // re-enter and recycle either temporary-pool or binding
+                    // storage.  Preserve its documented, callback-scoped
+                    // terminated name in an owned snapshot first.
+                    let end_element_name = match name_0.str {
+                        TagNameStorage::TempPool(name) => parser
+                            .m_tempPool
+                            .chars_from(name)
+                            .and_then(terminated_xml_chars)
+                            .map(ToOwned::to_owned),
+                        TagNameStorage::NamespaceUri => parser
+                            .m_activeBindings
+                            .iter()
+                            .find(|binding| binding.uri.as_ptr() == name_pointer)
+                            .map(|binding| binding.uri.clone()),
+                        _ => None,
+                    };
+                    let Some(end_element_name) = end_element_name else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
                     parser.m_tempPool.commit();
                     let start_handlers = content_token_handlers(parser);
                     if start_handlers.start_element {
@@ -11236,15 +11279,13 @@ unsafe fn doContent(
                             .get(&(parser_ptr as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-                                unsafe extern "C" fn(
-                                    *mut ::core::ffi::c_void,
-                                    *const crate::expat_external_h::XML_Char,
-                                ),
-                            >() else {
+                            if !dispatch_end_element_callback(
+                                callback.as_ref(),
+                                parser,
+                                &end_element_name,
+                            ) {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                            };
-                            callback(handler_arg_from_state!(parser), name_pointer);
+                            }
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
@@ -11315,7 +11356,8 @@ unsafe fn doContent(
                             bindings,
                             storage: mut tag_storage,
                         } = close_content_tag(parser, tag_index);
-                        let mut end_element_name = ::core::ptr::null();
+                        let mut end_element_name = None;
+                        let mut namespace_name_binding = None;
                         let tag_0 = tag_storage
                             .tag
                             .first_mut()
@@ -11323,9 +11365,17 @@ unsafe fn doContent(
                         if has_end_element_handler {
                             let name = match tag_0.name.str {
                                 TagNameStorage::TagBuffer { offset } => {
-                                    (tag_0.buffer.bytes.as_ptr()
-                                        as *const crate::expat_external_h::XML_Char)
-                                        .wrapping_offset(offset as isize)
+                                    let Some(name) = tag_0
+                                        .buffer
+                                        .bytes
+                                        .get(offset..)
+                                        .and_then(terminated_xml_chars)
+                                        .map(ToOwned::to_owned)
+                                    else {
+                                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                    };
+                                    end_element_name = Some(name);
+                                    tag_0.buffer.bytes.as_ptr().wrapping_add(offset)
                                 }
                                 TagNameStorage::NamespaceUri => namespace_name_pointer(
                                     parser,
@@ -11334,7 +11384,16 @@ unsafe fn doContent(
                                 ),
                                 _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
-                            end_element_name = name;
+                            if matches!(tag_0.name.str, TagNameStorage::NamespaceUri) {
+                                let Some(binding_index) = parser
+                                    .m_activeBindings
+                                    .iter()
+                                    .position(|binding| binding.uri.as_ptr() == name)
+                                else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                };
+                                namespace_name_binding = Some(binding_index);
+                            }
                             if uses_namespaces {
                                 if let Some(local_part_offset) = tag_0.name.localPart {
                                     // The local part is retained in this detached tag's owned
@@ -11416,12 +11475,29 @@ unsafe fn doContent(
                                     }
                                 }
                             }
+                            // Namespace names are assembled above from the
+                            // URI, local part, and optional prefix.  Snapshot
+                            // only after that assembly, before a callback can
+                            // re-enter and mutate binding storage.
+                            if let Some(binding_index) = namespace_name_binding {
+                                let Some(name) = parser
+                                    .m_activeBindings
+                                    .get(binding_index)
+                                    .map(|binding| binding.uri.clone())
+                                else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                };
+                                end_element_name = Some(name);
+                            }
                         }
                         // The original implementation makes this storage available for
                         // reuse before it dispatches callbacks.  Keep that ordering so a
                         // re-entrant callback observes the same allocator/free-list state.
                         parser.m_freeTagList.tags.push(tag_storage);
                         if has_end_element_handler {
+                            let Some(end_element_name) = end_element_name else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
                             let callback = END_ELEMENT_HANDLERS
                                 .get_or_init(|| {
                                     std::sync::Mutex::new(std::collections::HashMap::new())
@@ -11431,15 +11507,13 @@ unsafe fn doContent(
                                 .get(&(parser_ptr as usize))
                                 .cloned();
                             if let Some(callback) = callback {
-                                let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-                                    unsafe extern "C" fn(
-                                        *mut ::core::ffi::c_void,
-                                        *const crate::expat_external_h::XML_Char,
-                                    ),
-                                >() else {
+                                if !dispatch_end_element_callback(
+                                    callback.as_ref(),
+                                    parser,
+                                    &end_element_name,
+                                ) {
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                                };
-                                callback(handler_arg_from_state!(parser), end_element_name);
+                                }
                             }
                         } else if parser.m_defaultHandler {
                             report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
