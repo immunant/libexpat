@@ -3927,11 +3927,18 @@ pub mod xmltok_impl_c {
         end: *const ::core::ffi::c_char,
         skipper: crate::src::xmltok::WhitespaceSkipper,
     ) -> *const ::core::ffi::c_char {
-        let len = end.offset_from(ptr);
-        if len <= 0 {
+        // Validate the C cursor ordering before constructing its bounded
+        // slice.  `offset_from` would additionally require proving both
+        // cursors originate in the same allocation; the caller's scanner
+        // contract provides that provenance, while address subtraction keeps
+        // malformed/reversed cursors from becoming an unsafe operation here.
+        let Some(len) = end.addr().checked_sub(ptr.addr()) else {
+            return ptr;
+        };
+        if ptr.is_null() || len > isize::MAX as usize {
             return ptr;
         }
-        let bytes = ::core::slice::from_raw_parts(ptr, len as usize);
+        let bytes = ::core::slice::from_raw_parts(ptr, len);
         let encoding = &*(enc as *const normal_encoding);
         bytes[skipper.skip_s_bytes(encoding, bytes)..].as_ptr()
     }
