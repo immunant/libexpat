@@ -10303,9 +10303,6 @@ unsafe fn doContent(
                     return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
                 }
                 crate::src::xmltok::XML_TOK_ENTITY_REF => {
-                    let mut name: *const crate::expat_external_h::XML_Char =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                     let (min_bytes_per_char, entity_name_matcher) =
                         (encoding.minBytesPerChar, encoding.predefinedEntityName);
                     let entity_start = s.wrapping_offset(min_bytes_per_char as isize);
@@ -10364,7 +10361,7 @@ unsafe fn doContent(
                             reportDefault(parser, enc, s, next);
                         }
                     } else {
-                        name = poolStoreString(
+                        let name = poolStoreString(
                             &raw mut (*dtd).pool,
                             enc,
                             s.wrapping_offset(min_bytes_per_char as isize),
@@ -10373,22 +10370,49 @@ unsafe fn doContent(
                         if name.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        entity = lookup(
-                            parser,
-                            &raw mut (*dtd).generalEntities,
-                            name as KEY,
-                            0 as crate::__stddef_size_t_h::size_t,
-                        ) as *mut ENTITY;
-                        (*dtd).pool.rewind();
-                        if (*dtd).hasParamEntityRefs == 0
-                            || (*dtd).standalone as ::core::ffi::c_int != 0
-                        {
-                            if entity.is_null() {
+                        let salt = (&*parser)
+                            .m_root
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                            .hash_secret_salt;
+                        // The name just stored in the DTD pool is represented
+                        // by a checked pool handle before the temporary cursor
+                        // is rewound.  The table owns entity declarations in
+                        // boxed typed records, so all declaration inspection
+                        // below can stay in ordinary Rust references.
+                        let (restricted_entity_declarations, entity, dtd_pool) = {
+                            let dtd_state = &mut *dtd;
+                            let Some(name_ref) =
+                                pool_string_ref_from_address(&dtd_state.pool, name.addr(), false)
+                            else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            let entity = general_entity_mut(dtd_state, name_ref, salt).map(
+                                |entity| {
+                                    (
+                                        std::ptr::from_mut(entity),
+                                        entity.named.name,
+                                        entity.is_internal != 0,
+                                        entity.open != 0,
+                                        entity.notation.is_some(),
+                                        entity.textPtr.is_some(),
+                                    )
+                                },
+                            );
+                            let restricted = dtd_state.hasParamEntityRefs == 0
+                                || dtd_state.standalone as ::core::ffi::c_int != 0;
+                            let dtd_pool = std::ptr::from_ref(&dtd_state.pool);
+                            dtd_state.pool.rewind();
+                            (restricted, entity, dtd_pool)
+                        };
+                        if restricted_entity_declarations {
+                            let Some((_, _, is_internal, _, _, _)) = entity else {
                                 return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
-                            } else if (*entity).is_internal == 0 {
+                            };
+                            if !is_internal {
                                 return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
-                        } else if entity.is_null() {
+                        } else if entity.is_none() {
                             if (*parser).m_skippedEntityHandler {
                                 let callback = SKIPPED_ENTITY_HANDLERS
                                     .get_or_init(|| {
@@ -10410,13 +10434,18 @@ unsafe fn doContent(
                             }
                             break 's_1235;
                         }
-                        if (*entity).open != 0 {
+                        let Some((entity, entity_name_ref, _, entity_open, has_notation, has_text)) =
+                            entity
+                        else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        if entity_open {
                             return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
                         }
-                        if (*entity).notation.is_some() {
+                        if has_notation {
                             return crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
                         }
-                        if (*entity).textPtr.is_some() {
+                        if has_text {
                             let mut result: crate::expat_h::XML_Error =
                                 crate::expat_h::XML_ERROR_NONE;
                             if (*parser).m_defaultExpandInternalEntities == 0 {
@@ -10430,10 +10459,10 @@ unsafe fn doContent(
                                         .get(&(parser as usize))
                                         .cloned();
                                     if let Some(callback) = callback {
-                                        let entity_name = pool_string_pointer!(
-                                            &(*dtd).pool,
-                                            (*entity).named.name,
-                                        );
+                                        let entity_name = (&*dtd)
+                                            .pool
+                                            .chars_from(entity_name_ref)
+                                            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
                                         if entity_name.is_null() {
                                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                         }
@@ -10482,7 +10511,7 @@ unsafe fn doContent(
                                 handler.as_ref(),
                                 parser,
                                 context,
-                                &raw const (*dtd).pool,
+                                dtd_pool,
                                 entity,
                             ) == 0
                             {
@@ -22318,6 +22347,30 @@ fn declared_entity_mut(
         ),
     };
     let NamedRecord::Entity(entity) = lookup_impl(&mut dtd.pool, table, name, 0, salt)? else {
+        return None;
+    };
+    Some(entity.as_mut())
+}
+
+/// Resolve a general entity through the DTD's typed table entry.
+///
+/// General-entity references are read from parser input, but the declaration
+/// itself is owned by the DTD.  Keeping that lookup in the typed table API
+/// avoids treating its stable `Box<ENTITY>` storage as an untyped `NAMED`
+/// allocation at content-processing call sites.
+fn general_entity_mut(
+    dtd: &mut DTD,
+    name: PoolStringRef,
+    salt: ::core::ffi::c_ulong,
+) -> Option<&mut ENTITY> {
+    let NamedRecord::Entity(entity) = lookup_impl(
+        &mut dtd.pool,
+        &mut dtd.generalEntities,
+        LookupName::Retained(name),
+        0,
+        salt,
+    )?
+    else {
         return None;
     };
     Some(entity.as_mut())
