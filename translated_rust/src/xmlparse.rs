@@ -16037,33 +16037,22 @@ unsafe extern "C" fn doProlog(
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            let declaration_name = (*dtd)
-                                                .pool
-                                                .chars_from(
-                                                    (*parser)
-                                                        .m_declElementType
-                                                        .expect("element declaration must be set before its attributes"),
-                                                )
-                                                .expect("element declaration name must remain in the DTD pool")
-                                                .as_ptr();
-                                            let declaration_element = lookup(
+                                            let element_name = (*parser)
+                                                .m_declElementType
+                                                .expect("element declaration must be set before its attributes");
+                                            let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
+                                                default_attribute_storage_new(parser, capacity, 7182)
+                                            };
+                                            if !define_declared_attribute(
                                                 parser,
-                                                &raw mut (*dtd).elementTypes,
-                                                declaration_name as KEY,
-                                                0,
-                                            )
-                                                as *mut ELEMENT_TYPE;
-                                            if declaration_element.is_null() {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            if defineAttribute(
-                                                declaration_element,
+                                                dtd,
+                                                element_name,
                                                 attribute_name,
                                                 (*parser).m_declAttributeIsCdata,
                                                 (*parser).m_declAttributeIsId,
                                                 None,
-                                                parser,
-                                            ) == 0
+                                                &mut new_storage,
+                                            )
                                             {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
@@ -16241,33 +16230,22 @@ unsafe extern "C" fn doProlog(
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            let declaration_name = (*dtd)
-                                                .pool
-                                                .chars_from(
-                                                    (*parser)
-                                                        .m_declElementType
-                                                        .expect("element declaration must be set before its attributes"),
-                                                )
-                                                .expect("element declaration name must remain in the DTD pool")
-                                                .as_ptr();
-                                            let declaration_element = lookup(
+                                            let element_name = (*parser)
+                                                .m_declElementType
+                                                .expect("element declaration must be set before its attributes");
+                                            let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
+                                                default_attribute_storage_new(parser, capacity, 7182)
+                                            };
+                                            if !define_declared_attribute(
                                                 parser,
-                                                &raw mut (*dtd).elementTypes,
-                                                declaration_name as KEY,
-                                                0,
-                                            )
-                                                as *mut ELEMENT_TYPE;
-                                            if declaration_element.is_null() {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            if defineAttribute(
-                                                declaration_element,
+                                                dtd,
+                                                element_name,
                                                 attribute_name,
                                                 (*parser).m_declAttributeIsCdata,
                                                 crate::expat_h::XML_FALSE,
                                                 Some(start),
-                                                parser,
-                                            ) == 0
+                                                &mut new_storage,
+                                            )
                                             {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
@@ -20619,38 +20597,6 @@ unsafe fn report_default_impl(
     }
 }
 
-unsafe fn defineAttribute(
-    mut type_0: *mut ELEMENT_TYPE,
-    att_name: PoolStringRef,
-    mut isCdata: crate::expat_h::XML_Bool,
-    mut isId: crate::expat_h::XML_Bool,
-    value: Option<PoolStringRef>,
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    if type_0.is_null() || parser.is_null() {
-        return 0 as ::core::ffi::c_int;
-    }
-    let type_0 = &mut *type_0;
-    let parser = &mut *parser;
-    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
-        return 0 as ::core::ffi::c_int;
-    };
-    let dtd = &mut *dtd_owner.value.get();
-    let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
-        default_attribute_storage_new(parser, capacity, 7182)
-    };
-    define_attribute_impl(
-        type_0,
-        att_name,
-        isCdata,
-        isId,
-        value,
-        parser,
-        dtd,
-        &mut new_storage,
-    )
-}
-
 /// Adds a default attribute using the DTD's typed table records.
 ///
 /// `defineAttribute` has already checked the opaque parser and element
@@ -20663,7 +20609,8 @@ fn define_attribute_impl(
     is_id: crate::expat_h::XML_Bool,
     value: Option<PoolStringRef>,
     parser: &mut XML_ParserStruct,
-    dtd: &mut DTD,
+    pool: &mut STRING_POOL,
+    attribute_ids: &mut HASH_TABLE,
     new_storage: &mut dyn FnMut(&mut XML_ParserStruct, usize) -> Option<Box<DefaultAttributeStorage>>,
 ) -> ::core::ffi::c_int {
     let salt = parser
@@ -20672,8 +20619,8 @@ fn define_attribute_impl(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt;
     let Some(att_id) = lookup_impl(
-        &mut dtd.pool,
-        &mut dtd.attributeIds,
+        pool,
+        attribute_ids,
         LookupName::Retained(att_name),
         0,
         salt,
@@ -20752,8 +20699,8 @@ fn define_attribute_impl(
         });
     if is_cdata == 0 {
         let Some(att_id) = lookup_impl(
-            &mut dtd.pool,
-            &mut dtd.attributeIds,
+            pool,
+            attribute_ids,
             LookupName::Retained(att_name),
             0,
             salt,
@@ -20766,6 +20713,60 @@ fn define_attribute_impl(
     }
     type_0.nDefaultAtts += 1 as ::core::ffi::c_int;
     return 1 as ::core::ffi::c_int;
+}
+
+/// Adds an attribute declaration through the DTD's typed element table.
+///
+/// The prolog role handler retains the element and attribute identifiers as
+/// pool handles.  Looking up the element by that stable handle keeps both the
+/// hash-table access and the default-attribute update in safe Rust, rather
+/// than reconstructing a temporary `ELEMENT_TYPE` pointer for the legacy C
+/// adapter.
+fn define_declared_attribute(
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
+    element_name: PoolStringRef,
+    attribute_name: PoolStringRef,
+    is_cdata: crate::expat_h::XML_Bool,
+    is_id: crate::expat_h::XML_Bool,
+    value: Option<PoolStringRef>,
+    new_storage: &mut dyn FnMut(&mut XML_ParserStruct, usize) -> Option<Box<DefaultAttributeStorage>>,
+) -> bool {
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let Some(index) = lookup_existing(
+        &dtd.pool,
+        &dtd.elementTypes,
+        LookupName::Retained(element_name),
+        salt,
+    ) else {
+        return false;
+    };
+    let (pool, attribute_ids, element_types) =
+        (&mut dtd.pool, &mut dtd.attributeIds, &mut dtd.elementTypes);
+    let Some(element) = element_types
+        .v
+        .as_mut()
+        .and_then(|storage| storage.entries.get_mut(index))
+        .and_then(Option::as_mut)
+        .and_then(NamedAllocation::element_mut)
+    else {
+        return false;
+    };
+    define_attribute_impl(
+        element,
+        attribute_name,
+        is_cdata,
+        is_id,
+        value,
+        parser,
+        pool,
+        attribute_ids,
+        new_storage,
+    ) != 0
 }
 
 unsafe extern "C" fn setElementTypePrefix(
