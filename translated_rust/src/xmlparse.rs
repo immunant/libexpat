@@ -22895,33 +22895,6 @@ fn pool_copy_chars(
     string
 }
 
-unsafe extern "C" fn poolAppendString(
-    mut pool: *mut STRING_POOL,
-    mut s: *const crate::expat_external_h::XML_Char,
-) -> *const crate::expat_external_h::XML_Char {
-    while *s != 0 {
-        if if (*pool).is_full() && poolGrow(&mut *pool) == 0 {
-            0 as ::core::ffi::c_int
-        } else {
-            if (&mut *pool).write_cursor(*s) {
-                1 as ::core::ffi::c_int
-            } else {
-                0 as ::core::ffi::c_int
-            }
-        } == 0
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        s = s.offset(1);
-    }
-    let pool = &*pool;
-    let Some(start) = pool.start_ref(true) else {
-        return ::core::ptr::null();
-    };
-    pool.chars_from(start)
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-}
-
 unsafe extern "C" fn poolStoreString(
     mut pool: *mut STRING_POOL,
     mut enc: *const crate::src::xmltok::ENCODING,
