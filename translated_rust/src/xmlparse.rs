@@ -4048,7 +4048,7 @@ pub struct CONTENT_SCAFFOLD {
 // never dereferenced or exposed to DTD state.
 struct ScaffoldStorage {
     nodes: Vec<CONTENT_SCAFFOLD>,
-    backing: Option<Box<dyn FnMut(ScaffoldAllocationAction) -> bool>>,
+    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, ScaffoldAllocationAction) -> bool>>,
 }
 
 enum ScaffoldAllocationAction {
@@ -17649,10 +17649,10 @@ unsafe fn doProlog(
                                             // borrow used by the scaffold.  Keep the allocator
                                             // token at this boundary instead of round-tripping
                                             // through the raw parser/DTD adapter.
-                                            let mut allocate =
-                                                scaffold_allocator(std::ptr::from_mut(parser));
+                                            let mut allocate = scaffold_allocator();
                                             let myindex = next_scaffold_part_impl(
                                                 parser.m_groupSize,
+                                                parser,
                                                 dtd,
                                                 &mut allocate,
                                             );
@@ -18321,9 +18321,10 @@ unsafe fn doProlog(
                         break 's_2375;
                     }
                     if dtd.in_eldecl != 0 {
-                        let mut allocate = scaffold_allocator(std::ptr::from_mut(parser));
+                        let mut allocate = scaffold_allocator();
                         let myindex_0 = next_scaffold_part_impl(
                             parser.m_groupSize,
+                            parser,
                             dtd,
                             &mut allocate,
                         );
@@ -22096,7 +22097,7 @@ unsafe extern "C" fn dtdReset(p: *mut DTD, parser: crate::expat_h::XML_Parser) {
         scaffold.backing.take()
     };
     if let Some(mut backing) = backing {
-        backing(ScaffoldAllocationAction::Free(7558 as ::core::ffi::c_int));
+        backing(parser, ScaffoldAllocationAction::Free(7558 as ::core::ffi::c_int));
     }
     p.scaffLevel = 0 as ::core::ffi::c_int;
     p.scaffSize = 0 as ::core::ffi::c_uint;
@@ -22115,7 +22116,8 @@ unsafe extern "C" fn dtdReset(p: *mut DTD, parser: crate::expat_h::XML_Parser) {
 fn dtd_destroy_impl(
     p: &mut DTD,
     is_doc_entity: bool,
-    release_default_attributes: &mut dyn FnMut(Box<DefaultAttributeStorage>),
+    parser: &mut XML_ParserStruct,
+    release_default_attributes: &mut dyn FnMut(&mut XML_ParserStruct, Box<DefaultAttributeStorage>),
 ) {
     // The shared owner is unwrapped by the parser that owns this DTD.  Release
     // allocator-backed members in the same order as the legacy DTD object.
@@ -22125,7 +22127,7 @@ fn dtd_destroy_impl(
                 continue;
             };
             if let Some(default_atts) = element.defaultAtts.take() {
-                release_default_attributes(default_atts);
+                release_default_attributes(parser, default_atts);
             }
         }
     }
@@ -22145,7 +22147,7 @@ fn dtd_destroy_impl(
             scaffold.backing.take()
         };
         if let Some(mut backing) = backing {
-            backing(ScaffoldAllocationAction::Free(7593 as ::core::ffi::c_int));
+            backing(parser, ScaffoldAllocationAction::Free(7593 as ::core::ffi::c_int));
         }
     }
     if let Some(mut allocation) = p.allocation.take() {
@@ -22161,10 +22163,11 @@ unsafe extern "C" fn dtdDestroy(
     parser: crate::expat_h::XML_Parser,
 ) {
     let parser = &mut *parser;
-    let mut release_default_attributes = |mut storage: Box<DefaultAttributeStorage>| {
+    let mut release_default_attributes = |parser: &mut XML_ParserStruct,
+                                          mut storage: Box<DefaultAttributeStorage>| {
         (storage.backing)(parser, DefaultAttributeAllocationAction::Free(7580));
     };
-    dtd_destroy_impl(p, is_doc_entity != 0, &mut release_default_attributes);
+    dtd_destroy_impl(p, is_doc_entity != 0, parser, &mut release_default_attributes);
 }
 
 unsafe fn dtdCopy(
@@ -23769,10 +23772,12 @@ fn poolGrow(pool: &mut STRING_POOL) -> crate::expat_h::XML_Bool {
 
 fn next_scaffold_part_impl(
     group_size: ::core::ffi::c_uint,
+    parser: &mut XML_ParserStruct,
     dtd: &mut DTD,
     allocate: &mut dyn FnMut(
+        &mut XML_ParserStruct,
         crate::__stddef_size_t_h::size_t,
-    ) -> Option<Box<dyn FnMut(ScaffoldAllocationAction) -> bool>>,
+    ) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, ScaffoldAllocationAction) -> bool>>,
 ) -> ::core::ffi::c_int {
     {
         let mut scaff_index = dtd
@@ -23809,11 +23814,12 @@ fn next_scaffold_part_impl(
         let allocation_size = (new_size as crate::__stddef_size_t_h::size_t)
             .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>());
         if let Some(backing) = scaffold.backing.as_mut() {
-            if !backing(ScaffoldAllocationAction::Grow(allocation_size)) {
+            if !backing(parser, ScaffoldAllocationAction::Grow(allocation_size)) {
                 return -1 as ::core::ffi::c_int;
             }
         } else {
             let Some(backing) = allocate(
+                parser,
                 (32 as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()),
             ) else {
@@ -23872,21 +23878,28 @@ fn next_scaffold_part_impl(
     return next;
 }
 
-unsafe fn scaffold_allocator(
-    parser: crate::expat_h::XML_Parser,
-) -> impl FnMut(
+fn scaffold_allocator() -> impl FnMut(
+    &mut XML_ParserStruct,
     crate::__stddef_size_t_h::size_t,
-) -> Option<Box<dyn FnMut(ScaffoldAllocationAction) -> bool>> {
-    move |size| {
-        let allocation = expat_malloc(parser, size, 8266 as ::core::ffi::c_int);
+) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, ScaffoldAllocationAction) -> bool>> {
+    move |parser: &mut XML_ParserStruct, size| {
+        let allocation = unsafe {
+            expat_malloc(std::ptr::from_mut(parser), size, 8266 as ::core::ffi::c_int)
+        };
         if allocation.is_null() {
             return None;
         }
         let mut allocation = allocation;
-        Some(Box::new(move |action| match action {
+        Some(Box::new(move |parser: &mut XML_ParserStruct, action| match action {
             ScaffoldAllocationAction::Grow(size) => {
-                let reallocated =
-                    expat_realloc(parser, allocation, size, 8261 as ::core::ffi::c_int);
+                let reallocated = unsafe {
+                    expat_realloc(
+                        std::ptr::from_mut(parser),
+                        allocation,
+                        size,
+                        8261 as ::core::ffi::c_int,
+                    )
+                };
                 if reallocated.is_null() {
                     false
                 } else {
@@ -23895,11 +23908,11 @@ unsafe fn scaffold_allocator(
                 }
             }
             ScaffoldAllocationAction::Free(source_line) => {
-                expat_free(parser, allocation, source_line);
+                unsafe { expat_free(std::ptr::from_mut(parser), allocation, source_line) };
                 true
             }
         })
-            as Box<dyn FnMut(ScaffoldAllocationAction) -> bool>)
+            as Box<dyn FnMut(&mut XML_ParserStruct, ScaffoldAllocationAction) -> bool>)
     }
 }
 
