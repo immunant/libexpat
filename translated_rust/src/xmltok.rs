@@ -3062,94 +3062,129 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_attributeValueTok(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut start: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr)
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-        {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+    struct NormalAttributeValueToken {
+        token: ::core::ffi::c_int,
+        next: Option<usize>,
+    }
+
+    fn normal_attribute_value_tok_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> NormalAttributeValueToken {
+        if input.is_empty() {
+            return NormalAttributeValueToken {
+                token: crate::src::xmltok::XML_TOK_NONE_1,
+                next: None,
+            };
         }
-        start = ptr;
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+
+        let mut offset = 0;
+        while offset < input.len() {
+            match enc.type_0[input[offset] as u8 as usize] as ::core::ffi::c_int {
+                kind @ (5 | 6 | 7) => {
+                    let width = kind as usize - 3;
+                    if input.len() - offset < width {
+                        return NormalAttributeValueToken {
+                            token: crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                            next: None,
+                        };
+                    }
+                    offset += width;
                 }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
+                3 if offset == 0 => {
+                    let (token, next) = normal_scan_ref_impl(enc, &input[1..]);
+                    return NormalAttributeValueToken {
+                        token,
+                        next: next.map(|next| next + 1),
+                    };
                 }
                 3 => {
-                    if ptr == start {
-                        return normal_scanRef(
-                            enc,
-                            ptr.offset(1 as ::core::ffi::c_int as isize),
-                            end,
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(offset),
+                    };
                 }
                 2 => {
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_INVALID_1,
+                        next: Some(offset),
+                    };
+                }
+                10 if offset == 0 => {
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_NEWLINE_1,
+                        next: Some(1),
+                    };
                 }
                 10 => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_DATA_NEWLINE_1;
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(offset),
+                    };
+                }
+                9 if offset == 0 => {
+                    offset += 1;
+                    if offset == input.len() {
+                        return NormalAttributeValueToken {
+                            token: crate::src::xmltok::XML_TOK_TRAILING_CR_1,
+                            next: None,
+                        };
                     }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+                    if enc.type_0[input[offset] as u8 as usize] as ::core::ffi::c_int
+                        == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
+                    {
+                        offset += 1;
+                    }
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_NEWLINE_1,
+                        next: Some(offset),
+                    };
                 }
                 9 => {
-                    if ptr == start {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_TRAILING_CR_1;
-                        }
-                        if (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                            == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(offset),
+                    };
+                }
+                21 if offset == 0 => {
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_ATTRIBUTE_VALUE_S_1,
+                        next: Some(1),
+                    };
                 }
                 21 => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_ATTRIBUTE_VALUE_S_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+                    return NormalAttributeValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(offset),
+                    };
                 }
-                _ => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
+                _ => offset += 1,
             }
         }
-        *nextTokPtr = ptr;
-        return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+
+        NormalAttributeValueToken {
+            token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+            next: Some(offset),
+        }
+    }
+
+    pub unsafe extern "C" fn normal_attributeValueTok(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len <= 0 {
+            return crate::src::xmltok::XML_TOK_NONE_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        let result = normal_attribute_value_tok_impl(normal, input);
+        if let Some(offset) = result.next {
+            *nextTokPtr = ptr.add(offset);
+        }
+        result.token
     }
 
     pub unsafe extern "C" fn normal_entityValueTok(
