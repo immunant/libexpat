@@ -2270,30 +2270,6 @@ impl ElementDeclCallback
     }
 }
 
-/// Delivers an element-declaration model through the one C callback boundary.
-/// The registry owns the model's backing storage before this function obtains
-/// its stable vector address, so a callback may retain or free the model with
-/// the same lifetime it has in the C API.
-fn dispatch_element_decl_callback(
-    callback: &dyn ElementDeclCallback,
-    parser: &XML_ParserStruct,
-    name: &[crate::expat_external_h::XML_Char],
-    model_key: usize,
-) -> bool {
-    let model = {
-        let models = CONTENT_MODEL_STORAGE
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let Some(model) = models.get(&model_key) else {
-            return false;
-        };
-        model.contents.as_ptr().cast_mut()
-    };
-    unsafe { callback.invoke(handler_arg_from_state!(parser), name.as_ptr(), model) };
-    true
-}
-
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an element-declaration callback is installed.
 static ELEMENT_DECL_HANDLERS: std::sync::OnceLock<
@@ -20040,7 +20016,7 @@ unsafe fn doProlog(
                                     41 | 42 => {
                                         if dtd.in_eldecl != 0 {
                                             if parser.m_elementDeclHandler {
-                                                if !build_model_and_dispatch_impl(
+                                                if !build_model_and_dispatch(
                                                     ContentModelDispatchRequest {
                                                         parser,
                                                         dtd,
@@ -20409,7 +20385,7 @@ unsafe fn doProlog(
                     }
                     if dtd.scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
-                            if !build_model_and_dispatch_impl(ContentModelDispatchRequest {
+                            if !build_model_and_dispatch(ContentModelDispatchRequest {
                                 parser,
                                 dtd,
                                 source: ContentModelSource::Scaffold,
@@ -25765,7 +25741,15 @@ fn content_model_allocation_backing(
     Some(Box::new(move || free(allocation)))
 }
 
-fn register_content_model(mut build: ContentModelBuild) -> Option<usize> {
+/// Materializes the two ABI pointer link fields only after every destination
+/// allocation has a stable address, then transfers the complete model into
+/// the registry.  The returned key is valid until XML_FreeContentModel
+/// removes it.
+///
+/// The caller must ensure that no callback can observe the model before this
+/// function returns.  This is the sole place that writes pointer links into
+/// an XML_Content graph; all construction preceding it uses checked indices.
+unsafe fn register_abi_content_model(mut build: ContentModelBuild) -> Option<usize> {
     let mut contents = Vec::new();
     if contents.try_reserve_exact(build.contents.len()).is_err() {
         if let Some(mut backing) = build.backing.take() {
@@ -26012,7 +25996,7 @@ struct ContentModelDispatchRequest<'a> {
 /// Builds the ABI-owned declaration model and hands it to the installed
 /// element-declaration callback.  The model is registered before dispatch so
 /// XML_FreeContentModel remains valid even during a re-entrant callback.
-fn build_model_and_dispatch_impl(request: ContentModelDispatchRequest<'_>) -> bool {
+unsafe fn build_model_and_dispatch(request: ContentModelDispatchRequest<'_>) -> bool {
     let ContentModelDispatchRequest {
         parser,
         dtd,
@@ -26032,7 +26016,7 @@ fn build_model_and_dispatch_impl(request: ContentModelDispatchRequest<'_>) -> bo
         return false;
     };
     model.backing = Some(backing);
-    let Some(model_key) = register_content_model(model) else {
+    let Some(model_key) = register_abi_content_model(model) else {
         return false;
     };
     let name = dtd
@@ -26056,9 +26040,20 @@ fn build_model_and_dispatch_impl(request: ContentModelDispatchRequest<'_>) -> bo
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     if let Some(callback) = callback {
-        if !dispatch_element_decl_callback(callback.as_ref(), parser, name, model_key) {
-            return false;
-        }
+        // The registry owns the model before this stable vector address is
+        // exposed, so the callback may retain or free the model exactly as
+        // the C API permits.
+        let model = {
+            let models = CONTENT_MODEL_STORAGE
+                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let Some(model) = models.get(&model_key) else {
+                return false;
+            };
+            model.contents.as_ptr().cast_mut()
+        };
+        callback.invoke(handler_arg_from_state!(parser), name.as_ptr(), model);
     }
     true
 }
