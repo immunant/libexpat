@@ -1184,19 +1184,17 @@ macro_rules! call_xml_init_unknown_encoding_for_parser {
     }};
 }
 
-fn xmlparse_assert_fail(
-    assertion: &'static [u8],
-    line: ::core::ffi::c_uint,
-    function: &'static [u8],
-) -> ! {
-    unsafe {
-        __assert_fail(
-            assertion.as_ptr() as *const ::core::ffi::c_char,
-            XMLPARSE_C_FILE.as_ptr() as *const ::core::ffi::c_char,
-            line,
-            function.as_ptr() as *const ::core::ffi::c_char,
-        )
-    }
+macro_rules! xmlparse_assert_fail {
+    ($assertion:expr, $line:expr, $function:expr $(,)?) => {{
+        unsafe {
+            __assert_fail(
+                ($assertion).as_ptr() as *const ::core::ffi::c_char,
+                XMLPARSE_C_FILE.as_ptr() as *const ::core::ffi::c_char,
+                $line,
+                ($function).as_ptr() as *const ::core::ffi::c_char,
+            )
+        }
+    }};
 }
 
 fn write_stderr_bytes(bytes: &[u8]) {
@@ -1286,7 +1284,7 @@ fn expat_heap_increase_tolerable(
     sourceLine: ::core::ffi::c_int,
 ) -> bool {
     if increase == 0 as XmlBigCount {
-        xmlparse_assert_fail(
+        xmlparse_assert_fail!(
             b"increase > 0\0",
             816 as ::core::ffi::c_uint,
             b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0",
@@ -1306,7 +1304,7 @@ fn expat_heap_increase_tolerable(
             .wrapping_add(increase);
         if newTotal >= rootParser.m_alloc_tracker.activationThresholdBytes {
             if newTotal == 0 as XmlBigCount {
-                xmlparse_assert_fail(
+                xmlparse_assert_fail!(
                     b"newTotal > 0\0",
                     828 as ::core::ffi::c_uint,
                     b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0",
@@ -1742,7 +1740,7 @@ fn assert_root_parser(
     if root_parser.m_parentParser.is_null() {
         return;
     }
-    xmlparse_assert_fail(b"! rootParser->m_parentParser\0", line, function);
+    xmlparse_assert_fail!(b"! rootParser->m_parentParser\0", line, function);
 }
 
 fn get_hash_secret_salt(parser: &mut XML_ParserStruct) -> ::core::ffi::c_ulong {
@@ -9303,7 +9301,7 @@ extern "C" fn callStoreEntityValue(
 
             entityTrackingOnClose(ptr_mut(parser), entity, 6998 as ::core::ffi::c_int);
             if ptr_ref(parser).m_openValueEntities != open_entity {
-                xmlparse_assert_fail(
+                xmlparse_assert_fail!(
                     b"parser->m_openValueEntities == openEntity\0",
                     7004 as ::core::ffi::c_uint,
                     b"enum XML_Error callStoreEntityValue(XML_Parser, const ENCODING *, const char *, const char *, enum XML_Account)\0",
