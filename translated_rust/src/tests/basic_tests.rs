@@ -1,4 +1,5 @@
 use ::c2rust_bitfields;
+use std::cell::RefCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 extern "C" {
     pub type _IO_wide_data;
@@ -1210,24 +1211,275 @@ fn c_char_array<const N: usize>(bytes: [u8; N]) -> [::core::ffi::c_char; N] {
     bytes.map(|byte| byte as ::core::ffi::c_char)
 }
 
-fn c_str_from_ptr<'a>(text: *const ::core::ffi::c_char) -> &'a std::ffi::CStr {
-    unsafe { std::ffi::CStr::from_ptr(text) }
+#[derive(Copy, Clone)]
+struct ParserUserDataEntry {
+    parser: usize,
+    user_data: *mut ::core::ffi::c_void,
 }
 
-fn slice_from_raw_parts<'a, T>(ptr: *const T, len: usize) -> &'a [T] {
-    unsafe { ::core::slice::from_raw_parts(ptr, len) }
+#[derive(Copy, Clone)]
+struct BomTestDataEntry {
+    parser: usize,
+    owner: usize,
+    external: *const ::core::ffi::c_char,
+    split: ::core::ffi::c_int,
+    nested_callback_happened: XML_Bool,
 }
 
-fn mut_from_ptr<'a, T>(ptr: *mut T) -> &'a mut T {
-    unsafe { &mut *ptr }
+#[derive(Copy, Clone)]
+struct ElementDeclStateEntry {
+    user_data: usize,
+    parser: XML_Parser,
+    count: ::core::ffi::c_int,
 }
 
-fn value_from_ptr<T: Copy>(ptr: *const T) -> T {
-    unsafe { *ptr }
+#[derive(Copy, Clone)]
+struct ReparseDeferralEntry {
+    parser: usize,
+    enabled: ::core::ffi::c_int,
+}
+
+thread_local! {
+    static PARSER_USER_DATA_REGISTRY: RefCell<Vec<ParserUserDataEntry>> = const { RefCell::new(Vec::new()) };
+    static BOM_TESTDATA_REGISTRY: RefCell<Vec<BomTestDataEntry>> = const { RefCell::new(Vec::new()) };
+    static ELEMENT_DECL_STATE_REGISTRY: RefCell<Vec<ElementDeclStateEntry>> = const { RefCell::new(Vec::new()) };
+    static REPARSE_DEFERRAL_REGISTRY: RefCell<Vec<ReparseDeferralEntry>> = const { RefCell::new(Vec::new()) };
+}
+
+fn with_parser_user_data_registry<R>(f: impl FnOnce(&mut Vec<ParserUserDataEntry>) -> R) -> R {
+    PARSER_USER_DATA_REGISTRY.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        f(&mut registry)
+    })
+}
+
+fn with_bom_testdata_registry<R>(f: impl FnOnce(&mut Vec<BomTestDataEntry>) -> R) -> R {
+    BOM_TESTDATA_REGISTRY.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        f(&mut registry)
+    })
+}
+
+fn with_element_decl_state_registry<R>(f: impl FnOnce(&mut Vec<ElementDeclStateEntry>) -> R) -> R {
+    ELEMENT_DECL_STATE_REGISTRY.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        f(&mut registry)
+    })
+}
+
+fn with_reparse_deferral_registry<R>(f: impl FnOnce(&mut Vec<ReparseDeferralEntry>) -> R) -> R {
+    REPARSE_DEFERRAL_REGISTRY.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        f(&mut registry)
+    })
+}
+
+fn parser_key(parser: XML_Parser) -> usize {
+    parser as usize
+}
+
+fn record_parser_user_data(parser: XML_Parser, user_data: *mut ::core::ffi::c_void) {
+    let parser = parser_key(parser);
+    with_parser_user_data_registry(|registry| {
+        if let Some(entry) = registry.iter_mut().find(|entry| entry.parser == parser) {
+            entry.user_data = user_data;
+        } else {
+            registry.push(ParserUserDataEntry { parser, user_data });
+        }
+    });
+}
+
+fn clear_parser_user_data(parser: XML_Parser) {
+    let parser = parser_key(parser);
+    with_parser_user_data_registry(|registry| {
+        if let Some(index) = registry.iter().position(|entry| entry.parser == parser) {
+            registry.remove(index);
+        }
+    });
+}
+
+fn record_bom_testdata(
+    parser: XML_Parser,
+    external: *const ::core::ffi::c_char,
+    split: ::core::ffi::c_int,
+) {
+    let parser = parser_key(parser);
+    with_bom_testdata_registry(|registry| {
+        if let Some(entry) = registry.iter_mut().find(|entry| entry.parser == parser) {
+            entry.owner = parser;
+            entry.external = external;
+            entry.split = split;
+            entry.nested_callback_happened = XML_FALSE;
+        } else {
+            registry.push(BomTestDataEntry {
+                parser,
+                owner: parser,
+                external,
+                split,
+                nested_callback_happened: XML_FALSE,
+            });
+        }
+    });
+}
+
+fn inherit_bom_testdata(parser: XML_Parser, inherited_from: XML_Parser) {
+    let parser = parser_key(parser);
+    let inherited_from = parser_key(inherited_from);
+    with_bom_testdata_registry(|registry| {
+        let source = registry
+            .iter()
+            .find(|entry| entry.parser == inherited_from)
+            .copied();
+        if let Some(source) = source {
+            if let Some(entry) = registry.iter_mut().find(|entry| entry.parser == parser) {
+                entry.owner = source.owner;
+                entry.external = source.external;
+                entry.split = source.split;
+                entry.nested_callback_happened = source.nested_callback_happened;
+            } else {
+                registry.push(BomTestDataEntry {
+                    parser,
+                    owner: source.owner,
+                    external: source.external,
+                    split: source.split,
+                    nested_callback_happened: source.nested_callback_happened,
+                });
+            }
+        }
+    });
+}
+
+fn bom_testdata(parser: XML_Parser) -> Option<BomTestDataEntry> {
+    let parser = parser_key(parser);
+    with_bom_testdata_registry(|registry| {
+        registry
+            .iter()
+            .find(|entry| entry.parser == parser)
+            .copied()
+    })
+}
+
+fn mark_bom_nested_callback(parser: XML_Parser) {
+    let parser = parser_key(parser);
+    with_bom_testdata_registry(|registry| {
+        let owner = match registry.iter_mut().find(|entry| entry.parser == parser) {
+            Some(entry) => {
+                entry.nested_callback_happened = XML_TRUE;
+                entry.owner
+            }
+            None => return,
+        };
+
+        if owner != parser {
+            if let Some(owner_entry) = registry.iter_mut().find(|entry| entry.parser == owner) {
+                owner_entry.nested_callback_happened = XML_TRUE;
+            }
+        }
+    });
+}
+
+fn clear_bom_testdata(parser: XML_Parser) {
+    let parser = parser_key(parser);
+    with_bom_testdata_registry(|registry| {
+        if let Some(index) = registry.iter().position(|entry| entry.parser == parser) {
+            registry.remove(index);
+        }
+    });
+}
+
+fn record_element_decl_state(user_data: *mut ::core::ffi::c_void, parser: XML_Parser) {
+    let user_data = user_data as usize;
+    with_element_decl_state_registry(|registry| {
+        if let Some(entry) = registry
+            .iter_mut()
+            .find(|entry| entry.user_data == user_data)
+        {
+            entry.parser = parser;
+            entry.count = 0;
+        } else {
+            registry.push(ElementDeclStateEntry {
+                user_data,
+                parser,
+                count: 0,
+            });
+        }
+    });
+}
+
+fn increment_element_decl_count(user_data: *mut ::core::ffi::c_void) -> Option<XML_Parser> {
+    let user_data = user_data as usize;
+    with_element_decl_state_registry(|registry| {
+        let entry = registry
+            .iter_mut()
+            .find(|entry| entry.user_data == user_data)?;
+        entry.count += 1;
+        Some(entry.parser)
+    })
+}
+
+fn element_decl_count(user_data: *mut ::core::ffi::c_void) -> ::core::ffi::c_int {
+    let user_data = user_data as usize;
+    with_element_decl_state_registry(|registry| {
+        registry
+            .iter()
+            .find(|entry| entry.user_data == user_data)
+            .map(|entry| entry.count)
+            .unwrap_or(0)
+    })
+}
+
+fn clear_element_decl_state(user_data: *mut ::core::ffi::c_void) {
+    let user_data = user_data as usize;
+    with_element_decl_state_registry(|registry| {
+        if let Some(index) = registry
+            .iter()
+            .position(|entry| entry.user_data == user_data)
+        {
+            registry.remove(index);
+        }
+    });
+}
+
+fn record_reparse_deferral_enabled(parser: XML_Parser, enabled: ::core::ffi::c_int) {
+    let parser = parser_key(parser);
+    with_reparse_deferral_registry(|registry| {
+        if let Some(entry) = registry.iter_mut().find(|entry| entry.parser == parser) {
+            entry.enabled = enabled;
+        } else {
+            registry.push(ReparseDeferralEntry { parser, enabled });
+        }
+    });
+}
+
+fn reparse_deferral_enabled(parser: XML_Parser) -> ::core::ffi::c_int {
+    let parser = parser_key(parser);
+    with_reparse_deferral_registry(|registry| {
+        registry
+            .iter()
+            .find(|entry| entry.parser == parser)
+            .map(|entry| entry.enabled)
+            .unwrap_or(0)
+    })
+}
+
+fn clear_reparse_deferral_enabled(parser: XML_Parser) {
+    let parser = parser_key(parser);
+    with_reparse_deferral_registry(|registry| {
+        if let Some(index) = registry.iter().position(|entry| entry.parser == parser) {
+            registry.remove(index);
+        }
+    });
 }
 
 fn parser_user_data_ptr(parser: XML_Parser) -> *mut ::core::ffi::c_void {
-    unsafe { *(parser as *mut *mut ::core::ffi::c_void) }
+    let parser = parser_key(parser);
+    with_parser_user_data_registry(|registry| {
+        registry
+            .iter()
+            .find(|entry| entry.parser == parser)
+            .map(|entry| entry.user_data)
+            .unwrap_or(::core::ptr::null_mut())
+    })
 }
 
 fn parser_user_data_as<T>(parser: XML_Parser) -> *mut T {
@@ -1236,6 +1488,46 @@ fn parser_user_data_as<T>(parser: XML_Parser) -> *mut T {
 
 fn parser_user_data_bits(parser: XML_Parser) -> uint32_t {
     parser_user_data_ptr(parser) as uintptr_t as uint32_t
+}
+
+fn copy_c_string_bytes(text: *const ::core::ffi::c_char) -> Vec<u8> {
+    let len = usize::try_from(c_string_len(text)).expect("string length should fit into usize");
+    let mut bytes = vec![0_u8; len];
+    if len != 0 {
+        ffi_call3(
+            memcpy,
+            bytes.as_mut_ptr().cast::<::core::ffi::c_void>(),
+            text.cast::<::core::ffi::c_void>(),
+            len as size_t,
+        );
+    }
+    bytes
+}
+
+fn c_string_to_string_lossy(text: *const ::core::ffi::c_char) -> String {
+    String::from_utf8_lossy(&copy_c_string_bytes(text)).into_owned()
+}
+
+fn copy_xml_content_nodes(model: *const XML_Content, len: usize) -> Vec<XML_Content> {
+    let mut nodes = vec![
+        XML_Content {
+            type_0: XML_CTYPE_EMPTY,
+            quant: XML_CQUANT_NONE,
+            name: ::core::ptr::null_mut(),
+            numchildren: 0,
+            children: ::core::ptr::null_mut(),
+        };
+        len
+    ];
+    if len != 0 {
+        ffi_call3(
+            memcpy,
+            nodes.as_mut_ptr().cast::<::core::ffi::c_void>(),
+            model.cast::<::core::ffi::c_void>(),
+            (len * ::core::mem::size_of::<XML_Content>()) as size_t,
+        );
+    }
+    nodes
 }
 
 struct AttrPairs {
@@ -1318,8 +1610,7 @@ fn utf8_input_hex(input: *const ::core::ffi::c_char) -> String {
     use std::fmt::Write as _;
 
     let mut rendered = String::new();
-    for index in 0..(c_string_len(input) as usize) {
-        let byte = value_from_ptr(input.wrapping_add(index).cast::<u8>());
+    for byte in copy_c_string_bytes(input) {
         write!(&mut rendered, "\\x{byte:02x}").expect("writing to String should not fail");
     }
     rendered
@@ -1667,10 +1958,12 @@ fn parser_set_unknown_encoding_handler_for(
 }
 
 fn parser_set_user_data(user_data: *mut ::core::ffi::c_void) {
+    record_parser_user_data(current_parser(), user_data);
     ffi_call2(XML_SetUserData, current_parser(), user_data);
 }
 
 fn parser_set_user_data_for(parser: XML_Parser, user_data: *mut ::core::ffi::c_void) {
+    record_parser_user_data(parser, user_data);
     ffi_call2(XML_SetUserData, parser, user_data);
 }
 
@@ -2281,6 +2574,9 @@ fn buffer_test_text() -> *const ::core::ffi::c_char {
 }
 
 fn parser_free(parser: XML_Parser) {
+    clear_parser_user_data(parser);
+    clear_bom_testdata(parser);
+    clear_reparse_deferral_enabled(parser);
     ffi_call1(XML_ParserFree, parser);
 }
 
@@ -2437,7 +2733,7 @@ fn xml_error_string(error: XML_Error) -> *const XML_LChar {
 }
 
 fn c_string_lossy(text: *const ::core::ffi::c_char) -> String {
-    c_str_from_ptr(text).to_string_lossy().into_owned()
+    c_string_to_string_lossy(text)
 }
 
 fn xml_error_string_lossy(error: XML_Error) -> String {
@@ -3937,10 +4233,14 @@ fn is_whitespace_normalized(
     s: &std::ffi::CStr,
     is_cdata: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
+    is_whitespace_normalized_bytes(s.to_bytes(), is_cdata)
+}
+
+fn is_whitespace_normalized_bytes(s: &[u8], is_cdata: ::core::ffi::c_int) -> ::core::ffi::c_int {
     let mut blanks: ::core::ffi::c_int = 0;
     let mut at_start = true;
 
-    for &byte in s.to_bytes() {
+    for &byte in s {
         if byte == b' ' {
             blanks += 1;
         } else if matches!(byte, b'\t' | b'\n' | b'\r') {
@@ -4120,7 +4420,9 @@ extern "C" fn check_attr_contains_normalized_whitespace(
         let tracked_attr = xml_string_equals(attrname, b"attr\0")
             || xml_string_equals(attrname, b"ents\0")
             || xml_string_equals(attrname, b"refs\0");
-        if tracked_attr && is_whitespace_normalized(c_str_from_ptr(value.cast()), 0) == 0 {
+        if tracked_attr
+            && is_whitespace_normalized_bytes(&copy_c_string_bytes(value.cast()), 0) == 0
+        {
             let mut buffer: [::core::ffi::c_char; 256] = [0; 256];
             format_attr_normalization_failure(&mut buffer, attrname, value);
             fail_test_with_buffer(889 as ::core::ffi::c_int, buffer.as_mut_ptr());
@@ -4563,7 +4865,7 @@ extern "C" fn test_no_indirectly_recursive_entity_refs() {
         for (j, &reset_wanted) in reset_or_not.iter().enumerate() {
             set_subtest_message(&format!(
                 "[{i},reset={j}] {}",
-                c_str_from_ptr(case.doc).to_string_lossy()
+                c_string_to_string_lossy(case.doc)
             ));
 
             let parser = create_parser_or_fail(1278 as ::core::ffi::c_int);
@@ -4631,7 +4933,7 @@ extern "C" fn test_recursive_external_parameter_entity_2() {
     ];
 
     for case in cases {
-        set_subtest_message(&c_str_from_ptr(case.doc).to_string_lossy());
+        set_subtest_message(&c_string_to_string_lossy(case.doc));
         let parser = create_parser_or_fail(1332 as ::core::ffi::c_int);
         let ext_parser = create_external_entity_parser_or_fail(parser, 1335 as ::core::ffi::c_int);
         let actual_status = parse_single_bytes_c_string_for(ext_parser, case.doc);
@@ -4689,7 +4991,7 @@ extern "C" fn test_ext_entity_invalid_parse() {
     for fault in faults.iter() {
         set_subtest_message(&format!(
             "\"{}\"",
-            c_str_from_ptr(fault.parse_text).to_string_lossy()
+            c_string_to_string_lossy(fault.parse_text)
         ));
         parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
         parser_set_external_entity_ref_handler(Some(
@@ -4858,7 +5160,7 @@ extern "C" fn test_dtd_attr_handling() {
         .iter()
         .take_while(|test| !test.definition.is_null())
     {
-        set_subtest_message(&c_str_from_ptr(test.definition).to_string_lossy());
+        set_subtest_message(&c_string_to_string_lossy(test.definition));
         parser_set_attlist_decl_handler(Some(
             verify_attlist_decl_handler
                 as unsafe extern "C" fn(
@@ -5087,7 +5389,7 @@ extern "C" fn test_long_cdata_utf16() {
         };
         let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
         CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -5598,7 +5900,7 @@ extern "C" fn test_default_current() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -5779,7 +6081,7 @@ extern "C" fn test_default_current() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage_0 as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage_0 as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -5930,7 +6232,7 @@ extern "C" fn test_default_current() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage_1 as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage_1 as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             entity_text,
@@ -6470,7 +6772,7 @@ extern "C" fn test_default_current() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage_2 as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage_2 as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             entity_text,
@@ -6999,7 +7301,7 @@ extern "C" fn test_default_current() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage_3 as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage_3 as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             entity_text,
@@ -7553,7 +7855,7 @@ extern "C" fn test_default_current() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage_4 as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage_4 as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             entity_text,
@@ -8091,7 +8393,7 @@ extern "C" fn element_decl_check_model(
         (1 as uint32_t) << 1
     };
     if !model.is_null() {
-        let nodes = slice_from_raw_parts(model, 6);
+        let nodes = copy_xml_content_nodes(model, 6);
         let root = &nodes[0];
         let choice = &nodes[1];
         let zebra = &nodes[2];
@@ -8114,7 +8416,7 @@ extern "C" fn element_decl_check_model(
         } else {
             (1 as uint32_t) << 4
         };
-        error_flags |= if root.children == nodes.as_ptr().wrapping_add(1) as *mut XML_Content {
+        error_flags |= if root.children == model.wrapping_add(1) {
             0
         } else {
             (1 as uint32_t) << 5
@@ -8140,7 +8442,7 @@ extern "C" fn element_decl_check_model(
         } else {
             (1 as uint32_t) << 9
         };
-        error_flags |= if choice.children == nodes.as_ptr().wrapping_add(3) as *mut XML_Content {
+        error_flags |= if choice.children == model.wrapping_add(3) {
             0
         } else {
             (1 as uint32_t) << 10
@@ -8255,11 +8557,7 @@ extern "C" fn element_decl_check_model(
             (1 as uint32_t) << 31
         };
     }
-    ffi_call2(
-        XML_SetUserData,
-        current_parser(),
-        error_flags as uintptr_t as *mut ::core::ffi::c_void,
-    );
+    parser_set_user_data(error_flags as uintptr_t as *mut ::core::ffi::c_void);
     ffi_call2(XML_FreeContentModel, current_parser(), model);
 }
 extern "C" fn test_dtd_elements_nesting() {
@@ -8268,8 +8566,7 @@ extern "C" fn test_dtd_elements_nesting() {
     let text = bytes_as_c_char_ptr(
         b"<!DOCTYPE foo [\n<!ELEMENT junk ((bar|foo|xyz+), zebra*)>\n]>\n<foo/>\0",
     );
-    ffi_call2(
-        XML_SetUserData,
+    parser_set_user_data_for(
         parser,
         -(1 as ::core::ffi::c_int) as uintptr_t as *mut ::core::ffi::c_void,
     );
@@ -8589,7 +8886,7 @@ extern "C" fn test_attributes() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(
+        parser_set_user_data_for(
             parser,
             &raw mut parserAndElementInfos as *mut ::core::ffi::c_void,
         );
@@ -8607,7 +8904,7 @@ extern "C" fn test_attributes() {
                 2486 as ::core::ffi::c_int,
             );
         }
-        XML_ParserFree(parser);
+        parser_free(parser);
     }
 }
 extern "C" fn test_reset_in_entity() {
@@ -9049,10 +9346,7 @@ extern "C" fn test_user_parameters() {
             ),
         );
         XML_UseParserAsHandlerArg(g_parser);
-        XML_SetUserData(
-            g_parser,
-            1 as ::core::ffi::c_int as *mut ::core::ffi::c_void,
-        );
+        parser_set_user_data(1 as ::core::ffi::c_int as *mut ::core::ffi::c_void);
         g_handler_data = g_parser as *const ::core::ffi::c_void;
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
@@ -9664,7 +9958,7 @@ extern "C" fn test_predefined_entities() {
             ),
         );
         CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -9769,7 +10063,7 @@ extern "C" fn test_ignore_section() {
         };
         CharData_Init(&raw mut storage);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -9878,7 +10172,7 @@ extern "C" fn test_ignore_section_utf16() {
         };
         CharData_Init(&raw mut storage);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -9988,7 +10282,7 @@ extern "C" fn test_ignore_section_utf16_be() {
         };
         CharData_Init(&raw mut storage);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         XML_SetExternalEntityRefHandler(
             g_parser,
             Some(
@@ -10138,7 +10432,7 @@ extern "C" fn test_bad_ignore_section() {
                         ) -> ::core::ffi::c_int,
                 ),
             );
-            XML_SetUserData(g_parser, fault as *mut ::core::ffi::c_void);
+            parser_set_user_data(fault as *mut ::core::ffi::c_void);
             _expect_failure(
                 text,
                 XML_ERROR_EXTERNAL_ENTITY_HANDLING,
@@ -10171,11 +10465,15 @@ extern "C" fn external_bom_checker(
         );
     }
 
+    if bom_testdata(parser).is_some() {
+        inherit_bom_testdata(ext_parser, parser);
+    }
+
     let text = if xml_string_equals(system_id, b"004-2.ent\0") {
-        let testdata = mut_from_ptr(parser_user_data_as::<bom_testdata>(parser));
+        let testdata = bom_testdata(parser).expect("bom testdata should be registered");
         let external = testdata.external;
         let split = testdata.split;
-        testdata.nested_callback_happened = XML_TRUE;
+        mark_bom_nested_callback(parser);
         ensure_parser_success_for(
             ext_parser,
             ffi_call4(
@@ -10259,7 +10557,8 @@ extern "C" fn test_external_bom_consumed() {
                         ) -> ::core::ffi::c_int,
                 ),
             );
-            XML_SetUserData(parser, &raw mut testdata as *mut ::core::ffi::c_void);
+            parser_set_user_data_for(parser, &raw mut testdata as *mut ::core::ffi::c_void);
+            record_bom_testdata(parser, testdata.external, testdata.split);
             if _XML_Parse_SINGLE_BYTES(
                 parser,
                 text,
@@ -10275,7 +10574,11 @@ extern "C" fn test_external_bom_consumed() {
                     3459 as ::core::ffi::c_int,
                 );
             }
-            if testdata.nested_callback_happened == 0 {
+            if bom_testdata(parser)
+                .expect("bom testdata should remain registered")
+                .nested_callback_happened
+                == 0
+            {
                 _fail(
                     b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
                         as *const ::core::ffi::c_char,
@@ -10283,7 +10586,7 @@ extern "C" fn test_external_bom_consumed() {
                     b"ref handler not called\0".as_ptr() as *const ::core::ffi::c_char,
                 );
             }
-            XML_ParserFree(parser);
+            parser_free(parser);
             split += 1;
         }
     }
@@ -10407,11 +10710,8 @@ extern "C" fn test_external_entity_values() {
                         ) -> ::core::ffi::c_int,
                 ),
             );
-            XML_SetUserData(
-                g_parser,
-                (&raw mut data_004_2 as *mut ExtFaults).offset(i as isize) as *mut ExtFaults
-                    as *mut ::core::ffi::c_void,
-            );
+            parser_set_user_data((&raw mut data_004_2 as *mut ExtFaults).offset(i as isize)
+                as *mut ExtFaults as *mut ::core::ffi::c_void);
             if _XML_Parse_SINGLE_BYTES(
                 g_parser,
                 text,
@@ -10550,7 +10850,7 @@ extern "C" fn test_attribute_enum_value() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut dtd_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut dtd_data as *mut ::core::ffi::c_void);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetAttlistDeclHandler(
             g_parser,
@@ -10728,7 +11028,7 @@ extern "C" fn test_nested_groups() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         init_dummy_handlers();
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
@@ -10811,8 +11111,7 @@ extern "C" fn test_standalone_parameter_entity() {
             [u8; 22],
             [::core::ffi::c_char; 22],
         >(*b"<!ENTITY % e1 'foo'>\n\0");
-        XML_SetUserData(
-            g_parser,
+        parser_set_user_data(
             &raw mut dtd_data as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
         );
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
@@ -10872,7 +11171,7 @@ extern "C" fn test_skipped_parameter_entity() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut dtd_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut dtd_data as *mut ::core::ffi::c_void);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetSkippedEntityHandler(
             g_parser,
@@ -10939,7 +11238,7 @@ extern "C" fn test_recursive_external_parameter_entity() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut dtd_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut dtd_data as *mut ::core::ffi::c_void);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         _expect_failure(
             text,
@@ -10973,7 +11272,7 @@ extern "C" fn test_undefined_ext_entity_in_external_dtd() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, NULL);
+        parser_set_user_data(NULL);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -11003,7 +11302,7 @@ extern "C" fn test_undefined_ext_entity_in_external_dtd() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, g_parser as *mut ::core::ffi::c_void);
+        parser_set_user_data(g_parser as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -11505,7 +11804,7 @@ extern "C" fn test_skipped_external_entity() {
             encoding: ::core::ptr::null::<XML_Char>(),
             storage: ::core::ptr::null_mut::<CharData>(),
         };
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
@@ -11561,7 +11860,7 @@ extern "C" fn test_skipped_null_loaded_ext_entity() {
             ),
             storage: ::core::ptr::null_mut::<CharData>(),
         };
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
@@ -11608,7 +11907,7 @@ extern "C" fn test_skipped_unloaded_ext_entity() {
             handler: None,
             storage: ::core::ptr::null_mut::<CharData>(),
         };
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
@@ -11655,7 +11954,7 @@ extern "C" fn test_param_entity_with_trailing_cr() {
             encoding: ::core::ptr::null::<XML_Char>(),
             storage: ::core::ptr::null_mut::<CharData>(),
         };
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         XML_SetExternalEntityRefHandler(
             g_parser,
@@ -11835,7 +12134,7 @@ extern "C" fn test_pi_handled_in_default() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -11880,7 +12179,7 @@ extern "C" fn test_comment_handled_in_default() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -12319,7 +12618,7 @@ extern "C" fn test_ext_entity_latin1_utf16le_bom() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -12383,7 +12682,7 @@ extern "C" fn test_ext_entity_latin1_utf16be_bom() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -12447,7 +12746,7 @@ extern "C" fn test_ext_entity_latin1_utf16le_bom2() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -12511,7 +12810,7 @@ extern "C" fn test_ext_entity_latin1_utf16be_bom2() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -12576,7 +12875,7 @@ extern "C" fn test_ext_entity_utf16_be() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -12641,7 +12940,7 @@ extern "C" fn test_ext_entity_utf16_le() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -12700,7 +12999,7 @@ extern "C" fn test_ext_entity_utf16_unknown() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         _expect_failure(
             text,
             XML_ERROR_EXTERNAL_ENTITY_HANDLING,
@@ -12746,7 +13045,7 @@ extern "C" fn test_ext_entity_utf8_non_bom() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -13010,7 +13309,7 @@ extern "C" fn test_utf8_in_start_tags() {
                     );
                     failCount = failCount.wrapping_add(1);
                 }
-                XML_ParserFree(parser);
+                parser_free(parser);
                 j = j.wrapping_add(1);
             }
             i = i.wrapping_add(1);
@@ -13054,7 +13353,7 @@ extern "C" fn test_trailing_spaces_in_elements() {
                     as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -13100,7 +13399,7 @@ extern "C" fn test_utf16_attribute() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             &raw const text as *const ::core::ffi::c_char,
@@ -13147,7 +13446,7 @@ extern "C" fn test_utf16_second_attr() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             &raw const text as *const ::core::ffi::c_char,
@@ -13204,7 +13503,7 @@ extern "C" fn test_utf16_pe() {
             data: [0; 2048],
         };
         CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         XML_SetEntityDeclHandler(
             g_parser,
             Some(
@@ -13415,7 +13714,7 @@ extern "C" fn test_entity_in_utf16_be_attr() {
             data: [0; 2048],
         };
         CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         XML_SetStartElementHandler(
             g_parser,
             Some(
@@ -13464,7 +13763,7 @@ extern "C" fn test_entity_in_utf16_le_attr() {
             data: [0; 2048],
         };
         CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         XML_SetStartElementHandler(
             g_parser,
             Some(
@@ -13535,7 +13834,7 @@ extern "C" fn test_entity_public_utf16_be() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -13606,7 +13905,7 @@ extern "C" fn test_entity_public_utf16_le() {
                     ) -> ::core::ffi::c_int,
             ),
         );
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetCharacterDataHandler(
             g_parser,
             Some(
@@ -13753,7 +14052,7 @@ extern "C" fn test_default_doctype_handler() {
             },
         ];
         let mut i: ::core::ffi::c_int = 0;
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
         XML_SetDefaultHandler(
             g_parser,
             Some(
@@ -13897,7 +14196,7 @@ extern "C" fn test_pool_integrity_with_unfinished_attr() {
                     as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             g_parser,
             text,
@@ -13952,7 +14251,7 @@ extern "C" fn test_entity_ref_no_elements() {
                     as *const ::core::ffi::c_char,
             );
         }
-        XML_ParserFree(parser);
+        parser_free(parser);
     }
 }
 extern "C" fn test_deep_nested_entity() {
@@ -14018,7 +14317,7 @@ extern "C" fn test_deep_nested_entity() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(parser, &raw mut storage as *mut ::core::ffi::c_void);
+        parser_set_user_data_for(parser, &raw mut storage as *mut ::core::ffi::c_void);
         if _XML_Parse_SINGLE_BYTES(
             parser,
             text,
@@ -14034,7 +14333,7 @@ extern "C" fn test_deep_nested_entity() {
             );
         }
         CharData_CheckXMLChars(&raw mut storage, expected);
-        XML_ParserFree(parser);
+        parser_free(parser);
         free(text as *mut ::core::ffi::c_void);
     }
 }
@@ -14124,7 +14423,7 @@ extern "C" fn test_deep_nested_attribute_entity() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(
+        parser_set_user_data_for(
             parser,
             &raw mut parserPlusElemenInfo as *mut ::core::ffi::c_void,
         );
@@ -14142,7 +14441,7 @@ extern "C" fn test_deep_nested_attribute_entity() {
                 5553 as ::core::ffi::c_int,
             );
         }
-        XML_ParserFree(parser);
+        parser_free(parser);
         free(text as *mut ::core::ffi::c_void);
     }
 }
@@ -14209,7 +14508,7 @@ extern "C" fn test_deep_nested_entity_delayed_interpretation() {
                 5594 as ::core::ffi::c_int,
             );
         }
-        XML_ParserFree(parser);
+        parser_free(parser);
         free(text as *mut ::core::ffi::c_void);
     }
 }
@@ -14242,7 +14541,7 @@ extern "C" fn test_nested_entity_suspend() {
                     as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
             ),
         );
-        XML_SetUserData(
+        parser_set_user_data_for(
             parser,
             &raw mut parserPlusStorage as *mut ::core::ffi::c_void,
         );
@@ -14267,7 +14566,7 @@ extern "C" fn test_nested_entity_suspend() {
             );
         }
         CharData_CheckXMLChars(&raw mut storage, expected);
-        XML_ParserFree(parser);
+        parser_free(parser);
     }
 }
 extern "C" fn test_nested_entity_suspend_2() {
@@ -14302,7 +14601,7 @@ extern "C" fn test_nested_entity_suspend_2() {
                     ) -> (),
             ),
         );
-        XML_SetUserData(
+        parser_set_user_data_for(
             parser,
             &raw mut parserPlusStorage as *mut ::core::ffi::c_void,
         );
@@ -14327,7 +14626,7 @@ extern "C" fn test_nested_entity_suspend_2() {
             );
         }
         CharData_CheckXMLChars(&raw mut storage, expected);
-        XML_ParserFree(parser);
+        parser_free(parser);
     }
 }
 extern "C" fn test_big_tokens_scale_linearly() {
@@ -14503,7 +14802,7 @@ extern "C" fn test_big_tokens_scale_linearly() {
                     b"scanned too many bytes\0".as_ptr() as *const ::core::ffi::c_char,
                 );
             }
-            XML_ParserFree(parser);
+            parser_free(parser);
             i += 1;
         }
     }
@@ -14614,9 +14913,9 @@ extern "C" fn element_decl_counter(
     _name: *const XML_Char,
     model: *mut XML_Content,
 ) {
-    let testdata = mut_from_ptr(user_data as *mut element_decl_data);
-    testdata.count += 1 as ::core::ffi::c_int;
-    ffi_call2(XML_FreeContentModel, testdata.parser, model);
+    let parser = increment_element_decl_count(user_data)
+        .expect("element declaration state should be registered");
+    ffi_call2(XML_FreeContentModel, parser, model);
 }
 extern "C" fn external_inherited_parser(
     p: XML_Parser,
@@ -14629,7 +14928,7 @@ extern "C" fn external_inherited_parser(
     let start = bytes_as_c_char_ptr(b"<!ELEMENT \0");
     let end = bytes_as_c_char_ptr(b" ANY>\n\0");
     let post = bytes_as_c_char_ptr(b"<!ELEMENT xyz ANY>\n\0");
-    let enabled = value_from_ptr(parser_user_data_as::<::core::ffi::c_int>(p));
+    let enabled = reparse_deferral_enabled(p);
     let mut eeeeee: [::core::ffi::c_char; 100] = [0; 100];
     let mut spaces: [::core::ffi::c_char; 100] = [0; 100];
     let fillsize = ::core::mem::size_of_val(&spaces) as ::core::ffi::c_int;
@@ -14657,11 +14956,9 @@ extern "C" fn external_inherited_parser(
     }
 
     let mut testdata = element_decl_data { parser, count: 0 };
-    ffi_call2(
-        XML_SetUserData,
-        parser,
-        (&mut testdata as *mut element_decl_data).cast(),
-    );
+    let user_data = (&mut testdata as *mut element_decl_data).cast::<::core::ffi::c_void>();
+    record_element_decl_state(user_data, parser);
+    parser_set_user_data_for(parser, user_data);
     ffi_call2(
         XML_SetElementDeclHandler,
         parser,
@@ -14685,7 +14982,7 @@ extern "C" fn external_inherited_parser(
         ),
         5864 as ::core::ffi::c_int,
     );
-    if testdata.count != 1 as ::core::ffi::c_int {
+    if element_decl_count(user_data) != 1 as ::core::ffi::c_int {
         fail_test(
             5866 as ::core::ffi::c_int,
             b"check failed: testdata.count == 1\0",
@@ -14702,7 +14999,7 @@ extern "C" fn external_inherited_parser(
         ),
         5871 as ::core::ffi::c_int,
     );
-    if testdata.count != 1 as ::core::ffi::c_int {
+    if element_decl_count(user_data) != 1 as ::core::ffi::c_int {
         fail_test(
             5873 as ::core::ffi::c_int,
             b"check failed: testdata.count == 1\0",
@@ -14723,7 +15020,7 @@ extern "C" fn external_inherited_parser(
         );
         c += 1;
     }
-    if testdata.count != 1 as ::core::ffi::c_int {
+    if element_decl_count(user_data) != 1 as ::core::ffi::c_int {
         fail_test(
             5882 as ::core::ffi::c_int,
             b"check failed: testdata.count == 1\0",
@@ -14741,7 +15038,7 @@ extern "C" fn external_inherited_parser(
         5887 as ::core::ffi::c_int,
     );
     if enabled != 0 {
-        if testdata.count != 1 as ::core::ffi::c_int {
+        if element_decl_count(user_data) != 1 as ::core::ffi::c_int {
             fail_test(
                 5893 as ::core::ffi::c_int,
                 b"check failed: testdata.count == 1\0",
@@ -14762,7 +15059,7 @@ extern "C" fn external_inherited_parser(
             c_0 += 1;
         }
     }
-    if testdata.count != 2 as ::core::ffi::c_int {
+    if element_decl_count(user_data) != 2 as ::core::ffi::c_int {
         fail_test(
             5902 as ::core::ffi::c_int,
             b"check failed: testdata.count == 2\0",
@@ -14779,13 +15076,14 @@ extern "C" fn external_inherited_parser(
         ),
         5907 as ::core::ffi::c_int,
     );
-    if testdata.count != 3 as ::core::ffi::c_int {
+    if element_decl_count(user_data) != 3 as ::core::ffi::c_int {
         fail_test(
             5909 as ::core::ffi::c_int,
             b"check failed: testdata.count == 3\0",
         );
     }
 
+    clear_element_decl_state(user_data);
     parser_free(parser);
     XML_STATUS_OK as ::core::ffi::c_int
 }
@@ -14801,11 +15099,7 @@ extern "C" fn test_reparse_deferral_is_inherited() {
         set_subtest_message(&format!("deferral={enabled}"));
 
         let parser = create_parser_or_fail(5922 as ::core::ffi::c_int);
-        let mut enabled_for_callback = enabled;
-        parser_set_user_data_for(
-            parser,
-            (&mut enabled_for_callback as *mut ::core::ffi::c_int).cast(),
-        );
+        record_reparse_deferral_enabled(parser, enabled);
         parser_set_param_entity_parsing_for(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
         parser_set_external_entity_ref_handler_for(parser, external_inherited_parser_for_tests());
         assert_test_condition(
@@ -15193,7 +15487,7 @@ extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                         data: [0; 2048],
                     };
                     CharData_Init(&raw mut storage);
-                    XML_SetUserData(parser, &raw mut storage as *mut ::core::ffi::c_void);
+                    parser_set_user_data_for(parser, &raw mut storage as *mut ::core::ffi::c_void);
                     XML_SetStartElementHandler(
                         parser,
                         Some(
@@ -15320,7 +15614,7 @@ extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
                                 as *const ::core::ffi::c_char,
                         );
                     }
-                    XML_ParserFree(parser);
+                    parser_free(parser);
                     fillsize = fillsize.offset(1);
                 }
                 bigtoken = bigtoken.offset(1);
@@ -15757,7 +16051,7 @@ extern "C" fn test_varying_buffer_fills() {
                 data: [0; 2048],
             };
             CharData_Init(&raw mut storage);
-            XML_SetUserData(parser, &raw mut storage as *mut ::core::ffi::c_void);
+            parser_set_user_data_for(parser, &raw mut storage as *mut ::core::ffi::c_void);
             XML_SetStartElementHandler(
                 parser,
                 Some(
@@ -15855,7 +16149,7 @@ extern "C" fn test_varying_buffer_fills() {
                         as *const ::core::ffi::c_char,
                 );
             }
-            XML_ParserFree(parser);
+            parser_free(parser);
             test_i += 1;
         }
         free(document as *mut ::core::ffi::c_void);
