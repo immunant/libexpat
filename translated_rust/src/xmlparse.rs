@@ -80,63 +80,69 @@ pub mod siphash_h {
         H
     }
 
-    pub unsafe extern "C" fn sip24_update(
-        mut H: *mut crate::siphash_h::siphash,
-        mut src: *const ::core::ffi::c_void,
-        mut len: crate::__stddef_size_t_h::size_t,
-    ) -> *mut crate::siphash_h::siphash {
-        let (buffer_start, mut buffered) = {
-            let state = &mut *H;
-            let buffer_start = state.buf.as_mut_ptr();
-            let Some(buffered) = state.p.addr().checked_sub(buffer_start.addr()) else {
-                return H;
-            };
-            if buffered > state.buf.len() {
-                return H;
-            }
-            (buffer_start, buffered)
+    /// Returns the number of pending bytes in the ABI state, validating that
+    /// its cursor still refers to the fixed eight-byte buffer.
+    fn sip24_buffered_len(state: &crate::siphash_h::siphash) -> Option<usize> {
+        state
+            .p
+            .addr()
+            .checked_sub(state.buf.as_ptr().addr())
+            .filter(|&buffered| buffered <= state.buf.len())
+    }
+
+    /// Incorporates one externally supplied byte into an already-borrowed
+    /// SipHash state.  This is deliberately byte-oriented so the raw adapter
+    /// below need not forge a slice from the C `(src, len)` pair.
+    fn sip24_update_byte(state: &mut crate::siphash_h::siphash, byte: u8) -> bool {
+        let Some(buffered) = sip24_buffered_len(state) else {
+            return false;
         };
-        let mut input_offset = 0;
-        loop {
-            let writable = 8 - buffered;
-            let remaining = len - input_offset;
-            let copied = writable.min(remaining);
-            for _ in 0..copied {
-                // The caller's `src`/`len` contract is the one this C-facing
-                // implementation already required.  Reading a byte at a time
-                // keeps that boundary explicit without inventing a slice.
-                let byte = src
-                    .cast::<::core::ffi::c_uchar>()
-                    .wrapping_add(input_offset)
-                    .read();
-                let state = &mut *H;
-                state.buf[buffered] = byte;
-                buffered += 1;
-                input_offset += 1;
-                state.p = buffer_start.wrapping_add(buffered);
-            }
+        if buffered == state.buf.len() {
+            return false;
+        }
 
-            if buffered < 8 {
-                break;
-            }
+        state.buf[buffered] = byte;
+        let buffered = buffered + 1;
+        state.p = state.buf.as_mut_ptr().wrapping_add(buffered);
+        if buffered < state.buf.len() {
+            return true;
+        }
 
-            let m = {
-                let state = &mut *H;
-                let m = crate::stdlib::uint64_t::from_le_bytes(state.buf);
-                state.v3 ^= m;
-                m
-            };
-            sip_round(H, 2 as ::core::ffi::c_int);
-            let state = &mut *H;
-            state.v0 ^= m;
-            buffered = 0;
-            state.p = buffer_start;
-            state.c = state.c.wrapping_add(8 as crate::stdlib::uint64_t);
-            if input_offset == len {
-                break;
+        let message = crate::stdlib::uint64_t::from_le_bytes(state.buf);
+        let mut values = [state.v0, state.v1, state.v2, state.v3 ^ message];
+        sip_round_values(&mut values, 2);
+        values[0] ^= message;
+        [state.v0, state.v1, state.v2, state.v3] = values;
+        state.p = state.buf.as_mut_ptr();
+        state.c = state.c.wrapping_add(8);
+        true
+    }
+
+    pub unsafe extern "C" fn sip24_update(
+        H: *mut crate::siphash_h::siphash,
+        src: *const ::core::ffi::c_void,
+        len: crate::__stddef_size_t_h::size_t,
+    ) -> *mut crate::siphash_h::siphash {
+        if H.is_null() || (len != 0 && src.is_null()) {
+            return H;
+        }
+        let state = &mut *H;
+        if sip24_buffered_len(state).is_none() {
+            return H;
+        }
+        for input_offset in 0..len {
+            // The caller's `src`/`len` contract is the raw boundary.  Read a
+            // single byte there and hand it to the reference-based state
+            // transition above; no slice length or lifetime is invented.
+            let byte = src
+                .cast::<::core::ffi::c_uchar>()
+                .wrapping_add(input_offset)
+                .read();
+            if !sip24_update_byte(state, byte) {
+                return H;
             }
         }
-        return H;
+        H
     }
 
     /// Finalizes an already-borrowed SipHash state.  `p` is an internal cursor
