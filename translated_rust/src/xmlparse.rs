@@ -5082,6 +5082,226 @@ extern "C" fn externalEntityContentProcessor(
     )
 }
 
+macro_rules! hash_table_iter_next {
+    ($iter:expr) => {{
+        let mut result: *mut NAMED = ::core::ptr::null_mut::<NAMED>();
+        while $iter.p != $iter.end {
+            let slot = $iter.p;
+            $iter.p = $iter.p.wrapping_add(1);
+            let entry = *slot;
+            if !entry.is_null() {
+                result = entry;
+                break;
+            }
+        }
+        result
+    }};
+}
+
+macro_rules! get_context {
+    ($parser:expr) => {{
+        'get_context: {
+            let parser = $parser;
+            let dtd: *mut DTD = (*parser).m_dtd;
+            let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
+                p: ::core::ptr::null_mut::<*mut NAMED>(),
+                end: ::core::ptr::null_mut::<*mut NAMED>(),
+            };
+            let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
+            if !(*dtd).defaultPrefix.binding.is_null() {
+                let mut i: ::core::ffi::c_int = 0;
+                let mut len: ::core::ffi::c_int = 0;
+                if if (*parser).m_tempPool.ptr
+                    == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                    && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                {
+                    0 as ::core::ffi::c_int
+                } else {
+                    let c2rust_fresh61 = (*parser).m_tempPool.ptr;
+                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                    *c2rust_fresh61 = 0x3d as crate::expat_external_h::XML_Char;
+                    1 as ::core::ffi::c_int
+                } == 0
+                {
+                    break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                }
+                len = (*(*dtd).defaultPrefix.binding).uriLen;
+                if (*parser).m_namespaceSeparator != 0 {
+                    len -= 1;
+                }
+                i = 0 as ::core::ffi::c_int;
+                while i < len {
+                    if if (*parser).m_tempPool.ptr
+                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                        && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh62 = (*parser).m_tempPool.ptr;
+                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                        *c2rust_fresh62 = *(*(*dtd).defaultPrefix.binding).uri.offset(i as isize);
+                        1 as ::core::ffi::c_int
+                    } == 0
+                    {
+                        break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>(
+                        );
+                    }
+                    i += 1;
+                }
+                needSep = crate::expat_h::XML_TRUE;
+            }
+            hashTableIterInit(&mut iter, &(*dtd).prefixes);
+            loop {
+                let mut i_0: ::core::ffi::c_int = 0;
+                let mut len_0: ::core::ffi::c_int = 0;
+                let mut s: *const crate::expat_external_h::XML_Char =
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                let mut prefix: *mut PREFIX = hash_table_iter_next!(iter) as *mut PREFIX;
+                if prefix.is_null() {
+                    break;
+                }
+                if (*prefix).binding.is_null() {
+                    continue;
+                }
+                if needSep as ::core::ffi::c_int != 0
+                    && (if (*parser).m_tempPool.ptr
+                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                        && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh63 = (*parser).m_tempPool.ptr;
+                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                        *c2rust_fresh63 = 0xc as crate::expat_external_h::XML_Char;
+                        1 as ::core::ffi::c_int
+                    }) == 0
+                {
+                    break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                }
+                s = (*prefix).name;
+                while *s != 0 {
+                    if if (*parser).m_tempPool.ptr
+                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                        && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh64 = (*parser).m_tempPool.ptr;
+                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                        *c2rust_fresh64 = *s;
+                        1 as ::core::ffi::c_int
+                    } == 0
+                    {
+                        break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>(
+                        );
+                    }
+                    s = s.offset(1);
+                }
+                if if (*parser).m_tempPool.ptr
+                    == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                    && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                {
+                    0 as ::core::ffi::c_int
+                } else {
+                    let c2rust_fresh65 = (*parser).m_tempPool.ptr;
+                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                    *c2rust_fresh65 = 0x3d as crate::expat_external_h::XML_Char;
+                    1 as ::core::ffi::c_int
+                } == 0
+                {
+                    break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                }
+                len_0 = (*(*prefix).binding).uriLen;
+                if (*parser).m_namespaceSeparator != 0 {
+                    len_0 -= 1;
+                }
+                i_0 = 0 as ::core::ffi::c_int;
+                while i_0 < len_0 {
+                    if if (*parser).m_tempPool.ptr
+                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                        && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh66 = (*parser).m_tempPool.ptr;
+                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                        *c2rust_fresh66 = *(*(*prefix).binding).uri.offset(i_0 as isize);
+                        1 as ::core::ffi::c_int
+                    } == 0
+                    {
+                        break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>(
+                        );
+                    }
+                    i_0 += 1;
+                }
+                needSep = crate::expat_h::XML_TRUE;
+            }
+            hashTableIterInit(&mut iter, &(*dtd).generalEntities);
+            loop {
+                let mut s_0: *const crate::expat_external_h::XML_Char =
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                let mut e: *mut ENTITY = hash_table_iter_next!(iter) as *mut ENTITY;
+                if e.is_null() {
+                    break;
+                }
+                if (*e).open == 0 {
+                    continue;
+                }
+                if needSep as ::core::ffi::c_int != 0
+                    && (if (*parser).m_tempPool.ptr
+                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                        && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh67 = (*parser).m_tempPool.ptr;
+                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                        *c2rust_fresh67 = 0xc as crate::expat_external_h::XML_Char;
+                        1 as ::core::ffi::c_int
+                    }) == 0
+                {
+                    break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                }
+                s_0 = (*e).name;
+                while *s_0 != 0 {
+                    if if (*parser).m_tempPool.ptr
+                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                        && poolGrow(&mut (*parser).m_tempPool, None) == 0
+                    {
+                        0 as ::core::ffi::c_int
+                    } else {
+                        let c2rust_fresh68 = (*parser).m_tempPool.ptr;
+                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                        *c2rust_fresh68 = *s_0;
+                        1 as ::core::ffi::c_int
+                    } == 0
+                    {
+                        break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>(
+                        );
+                    }
+                    s_0 = s_0.offset(1);
+                }
+                needSep = crate::expat_h::XML_TRUE;
+            }
+            if if (*parser).m_tempPool.ptr
+                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                && poolGrow(&mut (*parser).m_tempPool, None) == 0
+            {
+                0 as ::core::ffi::c_int
+            } else {
+                let c2rust_fresh69 = (*parser).m_tempPool.ptr;
+                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                *c2rust_fresh69 = '\0' as i32 as crate::expat_external_h::XML_Char;
+                1 as ::core::ffi::c_int
+            } == 0
+            {
+                break 'get_context ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+            }
+            break 'get_context (*parser).m_tempPool.start;
+        }
+    }};
+}
+
 unsafe extern "C" fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
@@ -5336,7 +5556,7 @@ unsafe extern "C" fn doContent(
                                 let mut context: *const crate::expat_external_h::XML_Char =
                                     ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                                 (*entity).open = crate::expat_h::XML_TRUE;
-                                context = getContext(parser);
+                                context = get_context!(parser);
                                 (*entity).open = crate::expat_h::XML_FALSE;
                                 if context.is_null() {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -11772,219 +11992,6 @@ unsafe extern "C" fn getAttributeId(
         }
     }
     return id;
-}
-
-macro_rules! hash_table_iter_next {
-    ($iter:expr) => {{
-        let mut result: *mut NAMED = ::core::ptr::null_mut::<NAMED>();
-        while $iter.p != $iter.end {
-            let slot = $iter.p;
-            $iter.p = $iter.p.wrapping_add(1);
-            let entry = *slot;
-            if !entry.is_null() {
-                result = entry;
-                break;
-            }
-        }
-        result
-    }};
-}
-
-unsafe extern "C" fn getContext(
-    mut parser: crate::expat_h::XML_Parser,
-) -> *const crate::expat_external_h::XML_Char {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
-    };
-    let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
-    if !(*dtd).defaultPrefix.binding.is_null() {
-        let mut i: ::core::ffi::c_int = 0;
-        let mut len: ::core::ffi::c_int = 0;
-        if if (*parser).m_tempPool.ptr
-            == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(&mut (*parser).m_tempPool, None) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh61 = (*parser).m_tempPool.ptr;
-            (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-            *c2rust_fresh61 = 0x3d as crate::expat_external_h::XML_Char;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        len = (*(*dtd).defaultPrefix.binding).uriLen;
-        if (*parser).m_namespaceSeparator != 0 {
-            len -= 1;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < len {
-            if if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh62 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh62 = *(*(*dtd).defaultPrefix.binding).uri.offset(i as isize);
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            }
-            i += 1;
-        }
-        needSep = crate::expat_h::XML_TRUE;
-    }
-    hashTableIterInit(&mut iter, &(*dtd).prefixes);
-    loop {
-        let mut i_0: ::core::ffi::c_int = 0;
-        let mut len_0: ::core::ffi::c_int = 0;
-        let mut s: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut prefix: *mut PREFIX = hash_table_iter_next!(iter) as *mut PREFIX;
-        if prefix.is_null() {
-            break;
-        }
-        if (*prefix).binding.is_null() {
-            continue;
-        }
-        if needSep as ::core::ffi::c_int != 0
-            && (if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh63 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh63 = 0xc as crate::expat_external_h::XML_Char;
-                1 as ::core::ffi::c_int
-            }) == 0
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        s = (*prefix).name;
-        while *s != 0 {
-            if if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh64 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh64 = *s;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            }
-            s = s.offset(1);
-        }
-        if if (*parser).m_tempPool.ptr
-            == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(&mut (*parser).m_tempPool, None) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh65 = (*parser).m_tempPool.ptr;
-            (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-            *c2rust_fresh65 = 0x3d as crate::expat_external_h::XML_Char;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        len_0 = (*(*prefix).binding).uriLen;
-        if (*parser).m_namespaceSeparator != 0 {
-            len_0 -= 1;
-        }
-        i_0 = 0 as ::core::ffi::c_int;
-        while i_0 < len_0 {
-            if if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh66 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh66 = *(*(*prefix).binding).uri.offset(i_0 as isize);
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            }
-            i_0 += 1;
-        }
-        needSep = crate::expat_h::XML_TRUE;
-    }
-    hashTableIterInit(&mut iter, &(*dtd).generalEntities);
-    loop {
-        let mut s_0: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut e: *mut ENTITY = hash_table_iter_next!(iter) as *mut ENTITY;
-        if e.is_null() {
-            break;
-        }
-        if (*e).open == 0 {
-            continue;
-        }
-        if needSep as ::core::ffi::c_int != 0
-            && (if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh67 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh67 = 0xc as crate::expat_external_h::XML_Char;
-                1 as ::core::ffi::c_int
-            }) == 0
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        s_0 = (*e).name;
-        while *s_0 != 0 {
-            if if (*parser).m_tempPool.ptr
-                == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*parser).m_tempPool, None) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh68 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh68 = *s_0;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            }
-            s_0 = s_0.offset(1);
-        }
-        needSep = crate::expat_h::XML_TRUE;
-    }
-    if if (*parser).m_tempPool.ptr
-        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-        && poolGrow(&mut (*parser).m_tempPool, None) == 0
-    {
-        0 as ::core::ffi::c_int
-    } else {
-        let c2rust_fresh69 = (*parser).m_tempPool.ptr;
-        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-        *c2rust_fresh69 = '\0' as i32 as crate::expat_external_h::XML_Char;
-        1 as ::core::ffi::c_int
-    } == 0
-    {
-        return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    }
-    return (*parser).m_tempPool.start;
 }
 
 unsafe extern "C" fn setContext(
