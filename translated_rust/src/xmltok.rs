@@ -299,6 +299,20 @@ pub enum Scanner {
     InitContentNS,
 }
 
+/// A tokenizer result expressed relative to an already-validated input slice.
+/// Boundary adapters alone turn `next` back into a C cursor.
+#[derive(Copy, Clone)]
+struct ScannerResult {
+    token: ::core::ffi::c_int,
+    next: Option<usize>,
+}
+
+impl ScannerResult {
+    const fn new(token: ::core::ffi::c_int, next: Option<usize>) -> Self {
+        Self { token, next }
+    }
+}
+
 impl Scanner {
     pub unsafe fn scan(
         self,
@@ -332,12 +346,12 @@ impl Scanner {
                         unknown_character_value(enc as usize, &input[offset..])
                     })
                 });
-            let (token, next) = match action {
+            let result = match action {
                 xmltok_impl_c::NormalPrologAction::Token(token, next) => {
                     let next = (token >= crate::src::xmltok::XML_TOK_INVALID_1
                         || token == -crate::src::xmltok::XML_TOK_PROLOG_S_1)
                         .then_some(next);
-                    (token, next)
+                    ScannerResult::new(token, next)
                 }
                 xmltok_impl_c::NormalPrologAction::Literal(open, start) => {
                     let (token, next) = xmltok_impl_c::normal_scan_lit_impl(
@@ -354,7 +368,7 @@ impl Scanner {
                             )
                         },
                     );
-                    (token, next.map(|offset| start + offset))
+                    ScannerResult::new(token, next.map(|offset| start + offset))
                 }
                 xmltok_impl_c::NormalPrologAction::Declaration(start) => {
                     match xmltok_impl_c::normal_scan_decl_impl(&normal.type_0, &input[start..]) {
@@ -378,32 +392,35 @@ impl Scanner {
                                     )
                                 },
                             );
-                            (token, next.map(|offset| comment_start + offset))
+                            ScannerResult::new(
+                                token,
+                                next.map(|offset| comment_start + offset),
+                            )
                         }
                         xmltok_impl_c::NormalScanDeclAction::Token(token, next) => {
-                            (token, next.map(|offset| start + offset))
+                            ScannerResult::new(token, next.map(|offset| start + offset))
                         }
                     }
                 }
                 xmltok_impl_c::NormalPrologAction::ProcessingInstruction(start) => {
                     let (token, next) = xmltok_impl_c::normal_scan_pi_impl(normal, &input[start..]);
-                    (token, next.map(|offset| start + offset))
+                    ScannerResult::new(token, next.map(|offset| start + offset))
                 }
                 xmltok_impl_c::NormalPrologAction::Percent(start) => {
                     let (token, next) =
                         xmltok_impl_c::normal_scan_percent_impl(normal, &input[start..]);
-                    (token, next.map(|offset| start + offset))
+                    ScannerResult::new(token, next.map(|offset| start + offset))
                 }
                 xmltok_impl_c::NormalPrologAction::PoundName(start) => {
                     let (token, next) =
                         xmltok_impl_c::normal_scan_pound_name_impl(normal, &input[start..]);
-                    (token, next.map(|offset| start + offset))
+                    ScannerResult::new(token, next.map(|offset| start + offset))
                 }
             };
-            if let Some(offset) = next {
+            if let Some(offset) = result.next {
                 *next_tok_ptr = ptr.wrapping_add(offset);
             }
-            return token;
+            return result.token;
         }
         if let Self::Big2Prolog = self {
             if ptr >= end {
@@ -413,10 +430,11 @@ impl Scanner {
             let input = ::core::slice::from_raw_parts(ptr, input_len);
             let encoding = &*(enc as *const normal_encoding);
             let (token, next) = xmltok_impl_c::big2_prologTok(encoding, input);
-            if let Some(offset) = next {
+            let result = ScannerResult::new(token, next);
+            if let Some(offset) = result.next {
                 *next_tok_ptr = ptr.wrapping_add(offset);
             }
-            return token;
+            return result.token;
         }
         let scanner: unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
