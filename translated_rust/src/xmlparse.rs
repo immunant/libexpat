@@ -15131,6 +15131,16 @@ unsafe extern "C" fn prologProcessor(
     );
 }
 
+fn prolog_quoted_token_contents(
+    token: &[u8],
+    min_bytes_per_char: ::core::ffi::c_int,
+) -> Option<&[u8]> {
+    let delimiter_width = usize::try_from(min_bytes_per_char).ok()?;
+    let content_start = delimiter_width;
+    let content_end = token.len().checked_sub(delimiter_width)?;
+    (content_start <= content_end).then(|| &token[content_start..content_end])
+}
+
 unsafe extern "C" fn doProlog(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -16492,24 +16502,22 @@ unsafe extern "C" fn doProlog(
                                         (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                         if (*parser).m_startDoctypeDeclHandler {
-                                            if poolStoreString(
-                                                &raw mut (*parser).m_tempPool,
-                                                enc,
-                                                s.wrapping_add(encoding.minBytesPerChar as usize),
-                                                next.wrapping_sub(encoding.minBytesPerChar as usize),
+                                            let Some(system_id) = prolog_quoted_token_contents(
+                                                &token_bytes,
+                                                encoding.minBytesPerChar,
                                             )
-                                            .is_null()
-                                            {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            let Some(system_id) =
-                                                (*parser).m_tempPool.start_ref(false)
-                                            else {
+                                            .and_then(|input| {
+                                                pool_store_name_source(
+                                                    &mut parser.m_tempPool,
+                                                    &encoding,
+                                                    unknown_encoding.as_ref(),
+                                                    input,
+                                                )
+                                            }) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            (*parser).m_doctypeSysid =
-                                                DoctypeSystemId::Pool(system_id);
-                                            (*parser).m_tempPool.commit();
+                                            parser.m_doctypeSysid = DoctypeSystemId::Pool(system_id);
+                                            parser.m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         } else {
                                             (*parser).m_doctypeSysid =
@@ -16648,16 +16656,11 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let notation_pointer = poolStoreString(
-                                                std::ptr::from_mut(&mut dtd.pool),
-                                                enc,
-                                                s,
-                                                next,
-                                            );
-                                            let Some(notation) = pool_string_ref_from_address(
-                                                &dtd.pool,
-                                                notation_pointer.addr(),
-                                                false,
+                                            let Some(notation) = pool_store_name_source(
+                                                &mut dtd.pool,
+                                                &encoding,
+                                                unknown_encoding.as_ref(),
+                                                &token_bytes,
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
@@ -16708,7 +16711,7 @@ unsafe extern "C" fn doProlog(
                                                     entity_base_ref,
                                                     entity_system_id_ref,
                                                     entity_public_id_ref,
-                                                    notation_pointer,
+                                                    pool_string_pointer!(&dtd.pool, notation),
                                                 )
                                             };
                                             let entity_base = entity_base
@@ -16910,22 +16913,16 @@ unsafe extern "C" fn doProlog(
                                         (*parser).m_declNotationPublicId = None;
                                         (*parser).m_declNotationName = None;
                                         if (*parser).m_notationDeclHandler {
-                                            let notation_name = poolStoreString(
-                                                &raw mut (*parser).m_tempPool,
-                                                enc,
-                                                s,
-                                                next,
-                                            );
-                                            if notation_name.is_null() {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            let Some(notation_name) =
-                                                (*parser).m_tempPool.start_ref(false)
-                                            else {
+                                            let Some(notation_name) = pool_store_name_source(
+                                                &mut parser.m_tempPool,
+                                                &encoding,
+                                                unknown_encoding.as_ref(),
+                                                &token_bytes,
+                                            ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            (*parser).m_declNotationName = Some(notation_name);
-                                            (*parser).m_tempPool.commit();
+                                            parser.m_declNotationName = Some(notation_name);
+                                            parser.m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -16965,29 +16962,28 @@ unsafe extern "C" fn doProlog(
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
                                         if (*parser).m_declNotationName.is_some() {
-                                            let stored_public_id = poolStoreString(
-                                                &raw mut (*parser).m_tempPool,
-                                                enc,
-                                                s.wrapping_add(encoding.minBytesPerChar as usize),
-                                                next.wrapping_sub(encoding.minBytesPerChar as usize),
-                                            );
-                                            if stored_public_id.is_null() {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            let parser_ref = &mut *parser;
-                                            let Some(public_id) =
-                                                parser_ref.m_tempPool.start_ref(true)
-                                            else {
+                                            let Some(public_id) = prolog_quoted_token_contents(
+                                                &token_bytes,
+                                                encoding.minBytesPerChar,
+                                            )
+                                            .and_then(|input| {
+                                                pool_store_name_source(
+                                                    &mut parser.m_tempPool,
+                                                    &encoding,
+                                                    unknown_encoding.as_ref(),
+                                                    input,
+                                                )
+                                            }) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             let Some(public_id_chars) =
-                                                parser_ref.m_tempPool.chars_from_mut(public_id)
+                                                parser.m_tempPool.chars_from_mut(public_id)
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             normalizePublicId(public_id_chars);
-                                            parser_ref.m_declNotationPublicId = Some(public_id);
-                                            parser_ref.m_tempPool.commit();
+                                            parser.m_declNotationPublicId = Some(public_id);
+                                            parser.m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -16996,15 +16992,24 @@ unsafe extern "C" fn doProlog(
                                         if (*parser).m_declNotationName.is_some()
                                             && (*parser).m_notationDeclHandler
                                         {
-                                            let mut systemId: *const crate::expat_external_h::XML_Char = poolStoreString(
-                                                &raw mut (*parser).m_tempPool,
-                                                enc,
-                                                s.wrapping_add(encoding.minBytesPerChar as usize),
-                                                next.wrapping_sub(encoding.minBytesPerChar as usize),
-                                            );
-                                            if systemId.is_null() {
+                                            let Some(system_id) = prolog_quoted_token_contents(
+                                                &token_bytes,
+                                                encoding.minBytesPerChar,
+                                            )
+                                            .and_then(|input| {
+                                                pool_store_name_source(
+                                                    &mut parser.m_tempPool,
+                                                    &encoding,
+                                                    unknown_encoding.as_ref(),
+                                                    input,
+                                                )
+                                            }) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
+                                            };
+                                            let system_id = pool_string_pointer!(
+                                                &parser.m_tempPool,
+                                                system_id,
+                                            );
                                             event_target.set_end(
                                                 parser,
                                                 internal_event_start,
@@ -17071,7 +17076,7 @@ unsafe extern "C" fn doProlog(
                                                     handler_arg,
                                                     notation_name,
                                                     base,
-                                                    systemId,
+                                                    system_id,
                                                     public_id,
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
@@ -17872,17 +17877,18 @@ unsafe extern "C" fn doProlog(
                                 let declaration = (*parser)
                                     .m_declEntity
                                     .expect("entity declaration must be set");
-                                let system_id = poolStoreString(
-                                    std::ptr::from_mut(&mut dtd.pool),
-                                    enc,
-                                    s.wrapping_add(encoding.minBytesPerChar as usize),
-                                    next.wrapping_sub(encoding.minBytesPerChar as usize),
-                                );
-                                let Some(system_id) = pool_string_ref_from_address(
-                                    &dtd.pool,
-                                    system_id.addr(),
-                                    false,
-                                ) else {
+                                let Some(system_id) = prolog_quoted_token_contents(
+                                    &token_bytes,
+                                    encoding.minBytesPerChar,
+                                )
+                                .and_then(|input| {
+                                    pool_store_name_source(
+                                        &mut dtd.pool,
+                                        &encoding,
+                                        unknown_encoding.as_ref(),
+                                        input,
+                                    )
+                                }) else {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
                                 let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
@@ -18035,24 +18041,25 @@ unsafe extern "C" fn doProlog(
                 let declaration = (*parser)
                     .m_declEntity
                     .expect("entity declaration must be set");
-                let stored_public_id = poolStoreString(
-                    std::ptr::from_mut(&mut dtd.pool),
-                    enc,
-                    s.wrapping_add(encoding.minBytesPerChar as usize),
-                    next.wrapping_sub(encoding.minBytesPerChar as usize),
-                );
-                if stored_public_id.is_null() {
-                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                let dtd_ref = &mut *dtd;
-                let Some(public_id) = dtd_ref.pool.start_ref(true) else {
+                let Some(public_id) = prolog_quoted_token_contents(
+                    &token_bytes,
+                    encoding.minBytesPerChar,
+                )
+                .and_then(|input| {
+                    pool_store_name_source(
+                        &mut dtd.pool,
+                        &encoding,
+                        unknown_encoding.as_ref(),
+                        input,
+                    )
+                }) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                let Some(public_id_chars) = dtd_ref.pool.chars_from_mut(public_id) else {
+                let Some(public_id_chars) = dtd.pool.chars_from_mut(public_id) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
                 normalizePublicId(public_id_chars);
-                dtd_ref.pool.commit();
+                dtd.pool.commit();
                 let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
