@@ -64,7 +64,7 @@ pub struct encoding {
         ) -> ::core::ffi::c_int,
     >,
     pub updatePosition: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -426,11 +426,11 @@ fn encoding_utf8_convert(
 }
 
 fn encoding_table_ptr() -> *const *const ENCODING {
-    unsafe { &raw const encodings as *const *const ENCODING }
+    unsafe { ::core::ptr::addr_of!(encodings).cast::<*const ENCODING>() }
 }
 
 fn encoding_table_ns_ptr() -> *const *const ENCODING {
-    unsafe { &raw const encodingsNS as *const *const ENCODING }
+    unsafe { ::core::ptr::addr_of!(encodingsNS).cast::<*const ENCODING>() }
 }
 
 fn update_position_with_utf8(
@@ -439,7 +439,7 @@ fn update_position_with_utf8(
     pos: *mut POSITION,
 ) {
     unsafe {
-        normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
+        normal_updatePosition(::core::ptr::addr_of!(utf8_encoding.enc), ptr, end, pos);
     }
 }
 
@@ -458,7 +458,7 @@ fn call_xml_utf8_encode(
 }
 
 fn call_encoding_finder(
-    encoding_finder: unsafe extern "C" fn(
+    encoding_finder: extern "C" fn(
         *const ENCODING,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
@@ -467,7 +467,7 @@ fn call_encoding_finder(
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
 ) -> *const ENCODING {
-    unsafe { encoding_finder(enc, ptr, end) }
+    encoding_finder(enc, ptr, end)
 }
 
 fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char, len: size_t) {
@@ -14186,7 +14186,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -14605,7 +14605,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15026,7 +15026,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15504,7 +15504,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15987,7 +15987,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16406,7 +16406,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16847,7 +16847,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17266,7 +17266,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 normal_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18062,7 +18062,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 little2_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18481,7 +18481,7 @@ static mut little2_encoding: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 little2_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18900,7 +18900,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 little2_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -19319,7 +19319,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 little2_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -19738,7 +19738,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 big2_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -20157,7 +20157,7 @@ static mut big2_encoding: normal_encoding = unsafe {
             ),
             updatePosition: Some(
                 big2_updatePosition
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -20667,7 +20667,7 @@ static KW_no: [::core::ffi::c_char; 3] = [
 ];
 fn doParseXmlDecl(
     encodingFinder: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -20906,9 +20906,7 @@ pub unsafe extern "C" fn XmlUtf16Encode(
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
-    unsafe {
-        return ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int;
-    }
+    ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int
 }
 fn unknown_code_point(enc: *const ENCODING, p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     call_unknown_converter(ref_from_ptr(enc as *const unknown_encoding), p)
@@ -21504,7 +21502,7 @@ pub unsafe extern "C" fn XmlInitEncoding(
         ) as SCANNER;
         (*p).initEnc.updatePosition = Some(
             initUpdatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21512,7 +21510,7 @@ pub unsafe extern "C" fn XmlInitEncoding(
                 ) -> (),
         )
             as Option<
-                unsafe extern "C" fn(
+                extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21573,28 +21571,26 @@ pub unsafe extern "C" fn XmlParseXmlDecl(
     mut encoding: *mut *const ENCODING,
     mut standalone: *mut ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return doParseXmlDecl(
-            Some(
-                findEncoding
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        );
-    }
+    doParseXmlDecl(
+        Some(
+            findEncoding
+                as extern "C" fn(
+                    *const ENCODING,
+                    *const ::core::ffi::c_char,
+                    *const ::core::ffi::c_char,
+                ) -> *const ENCODING,
+        ),
+        isGeneralTextEntity,
+        enc,
+        ptr,
+        end,
+        badPtr,
+        versionPtr,
+        versionEndPtr,
+        encodingName,
+        encoding,
+        standalone,
+    )
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const ENCODING {
@@ -21675,7 +21671,7 @@ pub unsafe extern "C" fn XmlInitEncodingNS(
         ) as SCANNER;
         (*p).initEnc.updatePosition = Some(
             initUpdatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21683,7 +21679,7 @@ pub unsafe extern "C" fn XmlInitEncodingNS(
                 ) -> (),
         )
             as Option<
-                unsafe extern "C" fn(
+                extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21715,28 +21711,26 @@ pub unsafe extern "C" fn XmlParseXmlDeclNS(
     mut encoding: *mut *const ENCODING,
     mut standalone: *mut ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return doParseXmlDecl(
-            Some(
-                findEncodingNS
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> *const ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        );
-    }
+    doParseXmlDecl(
+        Some(
+            findEncodingNS
+                as extern "C" fn(
+                    *const ENCODING,
+                    *const ::core::ffi::c_char,
+                    *const ::core::ffi::c_char,
+                ) -> *const ENCODING,
+        ),
+        isGeneralTextEntity,
+        enc,
+        ptr,
+        end,
+        badPtr,
+        versionPtr,
+        versionEndPtr,
+        encodingName,
+        encoding,
+        standalone,
+    )
 }
 static namingBitmap: [::core::ffi::c_uint; 320] = [
     0 as ::core::ffi::c_int as ::core::ffi::c_uint,
@@ -22592,25 +22586,25 @@ pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
         return enc;
     }
 }
-unsafe extern "C" fn c2rust_run_static_initializers() {
+extern "C" fn c2rust_run_static_initializers() {
     unsafe {
         encodings = [
-            &raw const latin1_encoding.enc,
-            &raw const ascii_encoding.enc,
-            &raw const utf8_encoding.enc,
-            &raw const big2_encoding.enc,
-            &raw const big2_encoding.enc,
-            &raw const little2_encoding.enc,
-            &raw const utf8_encoding.enc,
+            ::core::ptr::addr_of!(latin1_encoding.enc),
+            ::core::ptr::addr_of!(ascii_encoding.enc),
+            ::core::ptr::addr_of!(utf8_encoding.enc),
+            ::core::ptr::addr_of!(big2_encoding.enc),
+            ::core::ptr::addr_of!(big2_encoding.enc),
+            ::core::ptr::addr_of!(little2_encoding.enc),
+            ::core::ptr::addr_of!(utf8_encoding.enc),
         ];
         encodingsNS = [
-            &raw const latin1_encoding_ns.enc,
-            &raw const ascii_encoding_ns.enc,
-            &raw const utf8_encoding_ns.enc,
-            &raw const big2_encoding_ns.enc,
-            &raw const big2_encoding_ns.enc,
-            &raw const little2_encoding_ns.enc,
-            &raw const utf8_encoding_ns.enc,
+            ::core::ptr::addr_of!(latin1_encoding_ns.enc),
+            ::core::ptr::addr_of!(ascii_encoding_ns.enc),
+            ::core::ptr::addr_of!(utf8_encoding_ns.enc),
+            ::core::ptr::addr_of!(big2_encoding_ns.enc),
+            ::core::ptr::addr_of!(big2_encoding_ns.enc),
+            ::core::ptr::addr_of!(little2_encoding_ns.enc),
+            ::core::ptr::addr_of!(utf8_encoding_ns.enc),
         ];
     }
 }
@@ -22618,4 +22612,4 @@ unsafe extern "C" fn c2rust_run_static_initializers() {
 #[cfg_attr(target_os = "linux", link_section = ".init_array")]
 #[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
 #[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [c2rust_run_static_initializers];
+static INIT_ARRAY: [extern "C" fn(); 1] = [c2rust_run_static_initializers];
