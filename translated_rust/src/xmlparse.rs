@@ -2062,7 +2062,7 @@ pub struct XML_ParserStruct {
     // The public identifier is retained in the same temporary pool as the
     // doctype name until the start-declaration callback has returned.
     pub m_doctypePubid: Option<PoolStringRef>,
-    pub m_declAttributeType: *const crate::expat_external_h::XML_Char,
+    pub m_declAttributeType: Option<DeclAttributeType>,
     pub m_declNotationName: *const crate::expat_external_h::XML_Char,
     // Notation public identifiers are retained only while the declaration
     // callback is staged.  Keep their checked temporary-pool location rather
@@ -2362,6 +2362,37 @@ pub struct PoolStringRef {
     // valid while the actual tail-relative ordinal remains lossless.
     block_from_tail: std::num::NonZeroUsize,
     offset: usize,
+}
+
+// Attribute declaration types are either fixed XML keywords or a
+// notation/enumeration retained in the temporary string pool.
+#[derive(Copy, Clone)]
+pub enum DeclAttributeType {
+    Cdata,
+    Id,
+    IdRef,
+    IdRefs,
+    Entity,
+    Entities,
+    NmToken,
+    NmTokens,
+    Temporary(PoolStringRef),
+}
+
+impl DeclAttributeType {
+    fn needs_closing_delimiter(self, pool: &STRING_POOL) -> bool {
+        let Self::Temporary(text) = self else {
+            return false;
+        };
+        let Some(chars) = pool.chars_from(text) else {
+            return false;
+        };
+        chars.first().is_some_and(|first| *first as ::core::ffi::c_int == 0x28)
+            || chars.first().is_some_and(|first| *first as ::core::ffi::c_int == 0x4e)
+                && chars
+                    .get(1)
+                    .is_some_and(|second| *second as ::core::ffi::c_int == 0x4f)
+    }
 }
 
 // A doctype system identifier is either absent, retained in the temporary
@@ -3667,7 +3698,7 @@ fn initial_parser_struct(
         m_doctypeName: None,
         m_doctypeSysid: DoctypeSystemId::None,
         m_doctypePubid: None,
-        m_declAttributeType: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        m_declAttributeType: None,
         m_declNotationName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_declNotationPublicId: None,
         m_declElementType: ::core::ptr::null_mut::<ELEMENT_TYPE>(),
@@ -4096,7 +4127,7 @@ fn parser_init(
     parser.m_doctypeName = None;
     parser.m_doctypeSysid = DoctypeSystemId::None;
     parser.m_doctypePubid = None;
-    parser.m_declAttributeType = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_declAttributeType = None;
     parser.m_declNotationName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     parser.m_declNotationPublicId = None;
     parser.m_declAttributeIsCdata = crate::expat_h::XML_FALSE;
@@ -10920,52 +10951,42 @@ unsafe extern "C" fn doProlog(
                                         (*parser).m_declAttributeId = attribute_name;
                                         (*parser).m_declAttributeIsCdata =
                                             crate::expat_h::XML_FALSE;
-                                        (*parser).m_declAttributeType =
-                                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(
-                                            );
+                                        (*parser).m_declAttributeType = None;
                                         (*parser).m_declAttributeIsId = crate::expat_h::XML_FALSE;
                                         break '_checkAttListDeclHandler;
                                     }
                                     23 => {
                                         (*parser).m_declAttributeIsCdata = crate::expat_h::XML_TRUE;
-                                        (*parser).m_declAttributeType = &raw const atypeCDATA
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Cdata);
                                         break '_checkAttListDeclHandler;
                                     }
                                     24 => {
                                         (*parser).m_declAttributeIsId = crate::expat_h::XML_TRUE;
-                                        (*parser).m_declAttributeType = &raw const atypeID
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Id);
                                         break '_checkAttListDeclHandler;
                                     }
                                     25 => {
-                                        (*parser).m_declAttributeType = &raw const atypeIDREF
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::IdRef);
                                         break '_checkAttListDeclHandler;
                                     }
                                     26 => {
-                                        (*parser).m_declAttributeType = &raw const atypeIDREFS
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::IdRefs);
                                         break '_checkAttListDeclHandler;
                                     }
                                     27 => {
-                                        (*parser).m_declAttributeType = &raw const atypeENTITY
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Entity);
                                         break '_checkAttListDeclHandler;
                                     }
                                     28 => {
-                                        (*parser).m_declAttributeType = &raw const atypeENTITIES
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Entities);
                                         break '_checkAttListDeclHandler;
                                     }
                                     29 => {
-                                        (*parser).m_declAttributeType = &raw const atypeNMTOKEN
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::NmToken);
                                         break '_checkAttListDeclHandler;
                                     }
                                     30 => {
-                                        (*parser).m_declAttributeType = &raw const atypeNMTOKENS
-                                            as *const crate::expat_external_h::XML_Char;
+                                        (*parser).m_declAttributeType = Some(DeclAttributeType::NmTokens);
                                         break '_checkAttListDeclHandler;
                                     }
                                     31 | 32 => {
@@ -10974,7 +10995,7 @@ unsafe extern "C" fn doProlog(
                                         {
                                             let mut prefix: *const crate::expat_external_h::XML_Char =
                                                 ::core::ptr::null:: <crate::expat_external_h::XML_Char>();
-                                            if !(*parser).m_declAttributeType.is_null() {
+                                            if (*parser).m_declAttributeType.is_some() {
                                                 prefix = &raw const enumValueSep
                                                     as *const crate::expat_external_h::XML_Char;
                                             } else {
@@ -11010,12 +11031,8 @@ unsafe extern "C" fn doProlog(
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            parser_ref.m_declAttributeType = parser_ref
-                                                .m_tempPool
-                                                .chars_from(start)
-                                                .map_or(::core::ptr::null(), |chars| {
-                                                    chars.as_ptr()
-                                                });
+                                            parser_ref.m_declAttributeType =
+                                                Some(DeclAttributeType::Temporary(start));
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -11038,19 +11055,15 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             if (*parser).m_attlistDeclHandler
-                                                && !(*parser).m_declAttributeType.is_null()
+                                                && (*parser).m_declAttributeType.is_some()
                                             {
-                                                if *(*parser).m_declAttributeType
-                                                    as ::core::ffi::c_int
-                                                    == 0x28 as ::core::ffi::c_int
-                                                    || *(*parser).m_declAttributeType
-                                                        as ::core::ffi::c_int
-                                                        == 0x4e as ::core::ffi::c_int
-                                                        && *(*parser)
-                                                            .m_declAttributeType
-                                                            .offset(1 as isize)
-                                                            as ::core::ffi::c_int
-                                                            == 0x4f as ::core::ffi::c_int
+                                                if (*parser)
+                                                    .m_declAttributeType
+                                                    .is_some_and(|attribute_type| {
+                                                        attribute_type.needs_closing_delimiter(
+                                                            &(*parser).m_tempPool,
+                                                        )
+                                                    })
                                                 {
                                                     if (if (*parser).m_tempPool.is_full()
                                                         && poolGrow(&raw mut (*parser).m_tempPool)
@@ -11090,12 +11103,8 @@ unsafe extern "C" fn doProlog(
                                                     else {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     };
-                                                    parser_ref.m_declAttributeType = parser_ref
-                                                        .m_tempPool
-                                                        .chars_from(start)
-                                                        .map_or(::core::ptr::null(), |chars| {
-                                                            chars.as_ptr()
-                                                        });
+                                                    parser_ref.m_declAttributeType =
+                                                        Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
                                                 set_event_end!(parser, parser_events, eventEndPP, s);
@@ -11111,11 +11120,57 @@ unsafe extern "C" fn doProlog(
                                                     if attribute_name.is_null() {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
+                                                    let attribute_type = match (*parser)
+                                                        .m_declAttributeType
+                                                    {
+                                                        Some(DeclAttributeType::Cdata) => {
+                                                            (&raw const atypeCDATA)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Id) => (&raw const atypeID)
+                                                            as *const crate::expat_external_h::XML_Char,
+                                                        Some(DeclAttributeType::IdRef) => {
+                                                            (&raw const atypeIDREF)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::IdRefs) => {
+                                                            (&raw const atypeIDREFS)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Entity) => {
+                                                            (&raw const atypeENTITY)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Entities) => {
+                                                            (&raw const atypeENTITIES)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::NmToken) => {
+                                                            (&raw const atypeNMTOKEN)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::NmTokens) => {
+                                                            (&raw const atypeNMTOKENS)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Temporary(type_ref)) => {
+                                                            (*parser)
+                                                                .m_tempPool
+                                                                .chars_from(type_ref)
+                                                                .map_or(::core::ptr::null(), |chars| {
+                                                                    chars.as_ptr()
+                                                                })
+                                                        }
+                                                        None => ::core::ptr::null(),
+                                                    };
+                                                    if attribute_type.is_null() {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    }
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
                                                         (*(*parser).m_declElementType).named.name,
                                                         attribute_name,
-                                                        (*parser).m_declAttributeType,
+                                                        attribute_type,
                                                         ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
                                                         (role
                                                             == crate::src::xmlrole::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE
@@ -11173,19 +11228,15 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             if (*parser).m_attlistDeclHandler
-                                                && !(*parser).m_declAttributeType.is_null()
+                                                && (*parser).m_declAttributeType.is_some()
                                             {
-                                                if *(*parser).m_declAttributeType
-                                                    as ::core::ffi::c_int
-                                                    == 0x28 as ::core::ffi::c_int
-                                                    || *(*parser).m_declAttributeType
-                                                        as ::core::ffi::c_int
-                                                        == 0x4e as ::core::ffi::c_int
-                                                        && *(*parser)
-                                                            .m_declAttributeType
-                                                            .offset(1 as isize)
-                                                            as ::core::ffi::c_int
-                                                            == 0x4f as ::core::ffi::c_int
+                                                if (*parser)
+                                                    .m_declAttributeType
+                                                    .is_some_and(|attribute_type| {
+                                                        attribute_type.needs_closing_delimiter(
+                                                            &(*parser).m_tempPool,
+                                                        )
+                                                    })
                                                 {
                                                     if (if (*parser).m_tempPool.is_full()
                                                         && poolGrow(&raw mut (*parser).m_tempPool)
@@ -11225,12 +11276,8 @@ unsafe extern "C" fn doProlog(
                                                     else {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     };
-                                                    parser_ref.m_declAttributeType = parser_ref
-                                                        .m_tempPool
-                                                        .chars_from(start)
-                                                        .map_or(::core::ptr::null(), |chars| {
-                                                            chars.as_ptr()
-                                                        });
+                                                    parser_ref.m_declAttributeType =
+                                                        Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
                                                 set_event_end!(parser, parser_events, eventEndPP, s);
@@ -11246,11 +11293,57 @@ unsafe extern "C" fn doProlog(
                                                     if attribute_name.is_null() {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
+                                                    let attribute_type = match (*parser)
+                                                        .m_declAttributeType
+                                                    {
+                                                        Some(DeclAttributeType::Cdata) => {
+                                                            (&raw const atypeCDATA)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Id) => (&raw const atypeID)
+                                                            as *const crate::expat_external_h::XML_Char,
+                                                        Some(DeclAttributeType::IdRef) => {
+                                                            (&raw const atypeIDREF)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::IdRefs) => {
+                                                            (&raw const atypeIDREFS)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Entity) => {
+                                                            (&raw const atypeENTITY)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Entities) => {
+                                                            (&raw const atypeENTITIES)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::NmToken) => {
+                                                            (&raw const atypeNMTOKEN)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::NmTokens) => {
+                                                            (&raw const atypeNMTOKENS)
+                                                                as *const crate::expat_external_h::XML_Char
+                                                        }
+                                                        Some(DeclAttributeType::Temporary(type_ref)) => {
+                                                            (*parser)
+                                                                .m_tempPool
+                                                                .chars_from(type_ref)
+                                                                .map_or(::core::ptr::null(), |chars| {
+                                                                    chars.as_ptr()
+                                                                })
+                                                        }
+                                                        None => ::core::ptr::null(),
+                                                    };
+                                                    if attribute_type.is_null() {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    }
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
                                                         (*(*parser).m_declElementType).named.name,
                                                         attribute_name,
-                                                        (*parser).m_declAttributeType,
+                                                        attribute_type,
                                                         attVal,
                                                         (role
                                                             == crate::src::xmlrole::XML_ROLE_FIXED_ATTRIBUTE_VALUE
