@@ -5955,34 +5955,33 @@ fn expat_apply_reallocation_tracking(
 /// Internal allocator implementation behind the exported `expat_realloc`
 /// boundary.  It deliberately keeps the assertion and allocator interaction
 /// out of `expat_realloc_ffi`, whose only job is to dispatch the ABI call.
+fn expat_realloc_missing_parser() -> ! {
+    assert!(false, "parser != NULL");
+    unreachable!()
+}
+
 unsafe fn expat_realloc(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
     mut sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
-    assert!(!parser.is_null(), "parser != NULL");
     if ptr.is_null() {
-        return expat_malloc(parser, size, sourceLine);
+        return expat_malloc(std::ptr::from_mut(parser), size, sourceLine);
     }
     if size == 0 as crate::__stddef_size_t_h::size_t {
-        expat_free(parser, ptr, sourceLine);
+        expat_free(std::ptr::from_mut(parser), ptr, sourceLine);
         return crate::__stddef_null_h::NULL;
     }
     let mut mallocedPtr: *mut ::core::ffi::c_void = (ptr as *mut ::core::ffi::c_char)
         .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
         as *mut ::core::ffi::c_void;
-    let (reallocate, root) = {
-        let parser_state = &*parser;
-        (
-            parser_state
-                .m_mem
-                .realloc_fcn
-                .expect("non-null function pointer"),
-            std::sync::Arc::clone(&parser_state.m_root),
-        )
-    };
+    let reallocate = parser
+        .m_mem
+        .realloc_fcn
+        .expect("non-null function pointer");
+    let root = std::sync::Arc::clone(&parser.m_root);
     let prevSize = root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -6004,7 +6003,7 @@ unsafe fn expat_realloc(
         if let Some(new_total) = report_total {
             expat_heap_stat(
                 &root,
-                parser.addr(),
+                std::ptr::from_mut(parser).addr(),
                 '+' as ::core::ffi::c_char,
                 change.absolute_difference as XmlBigCount,
                 new_total,
@@ -6050,7 +6049,7 @@ unsafe fn expat_realloc(
     if let Some((new_total, peak_total)) = allocation_totals {
         expat_heap_stat(
             &root,
-            parser.addr(),
+            std::ptr::from_mut(parser).addr(),
             (if change.is_increase { '+' } else { '-' }) as ::core::ffi::c_char,
             change.absolute_difference as XmlBigCount,
             new_total,
@@ -6071,6 +6070,10 @@ pub unsafe extern "C" fn expat_realloc_ffi(
     mut size: crate::__stddef_size_t_h::size_t,
     mut sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
+    let parser = match parser.as_mut() {
+        Some(parser) => parser,
+        None => expat_realloc_missing_parser(),
+    };
     expat_realloc(parser, ptr, size, sourceLine)
 }
 unsafe fn XML_ParserCreate(
@@ -25404,12 +25407,7 @@ fn scaffold_allocator() -> impl FnMut(
         Some(Box::new(move |parser: &mut XML_ParserStruct, action| match action {
             ScaffoldAllocationAction::Grow(size) => {
                 let reallocated = unsafe {
-                    expat_realloc(
-                        std::ptr::from_mut(parser),
-                        allocation,
-                        size,
-                        8261 as ::core::ffi::c_int,
-                    )
+                    expat_realloc(parser, allocation, size, 8261 as ::core::ffi::c_int)
                 };
                 if reallocated.is_null() {
                     false
