@@ -5308,7 +5308,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             oldParser,
             parser_dtd_ptr!(parser),
             parser_dtd_ptr!(oldParser),
-            parser,
+            parser_ref,
         ) == 0
             || setContext(parser, context) == 0
         {
@@ -16546,7 +16546,7 @@ unsafe extern "C" fn dtdCopy(
     mut oldParser: crate::expat_h::XML_Parser,
     mut newDtd: *mut DTD,
     mut oldDtd: *const DTD,
-    mut parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
 ) -> ::core::ffi::c_int {
     // These DTDs remain allocated for the whole copy operation: `oldDtd` belongs to
     // the parent parser and `newDtd` to the parser being constructed.  Keeping
@@ -16603,7 +16603,7 @@ unsafe extern "C" fn dtdCopy(
             if name_0.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            let name_0 = name_0.offset(1);
+            let name_0 = name_0.wrapping_add(1);
             let new_a = lookup(
                 oldParser,
                 &raw mut new_dtd.attributeIds,
@@ -16653,7 +16653,7 @@ unsafe extern "C" fn dtdCopy(
             let new_e = &mut *new_e;
             if old_e.nDefaultAtts != 0 {
                 let Some(storage) =
-                    default_attribute_storage_new(&mut *parser, old_e.nDefaultAtts as usize, 7683)
+                    default_attribute_storage_new(parser, old_e.nDefaultAtts as usize, 7683)
                 else {
                     return 0 as ::core::ffi::c_int;
                 };
