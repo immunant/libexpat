@@ -5112,19 +5112,21 @@ pub extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
 pub extern "C" fn XML_GetFeatureList_ffi() -> *const crate::expat_h::XML_Feature {
     XML_GetFeatureList()
 }
-pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+pub extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null()
-        || !(*parser).m_parentParser.is_null()
+    let Some(parser_state) = parser_mut(parser) else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser_state.m_parentParser.is_null()
         || maximumAmplificationFactor.is_nan() as i32 != 0
         || maximumAmplificationFactor < 1.0f32
     {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_accounting.maximumAmplificationFactor = maximumAmplificationFactor;
-    return crate::expat_h::XML_TRUE;
+    parser_state.m_accounting.maximumAmplificationFactor = maximumAmplificationFactor;
+    crate::expat_h::XML_TRUE
 }
 #[export_name = "XML_SetBillionLaughsAttackProtectionMaximumAmplification"]
 
@@ -5134,15 +5136,18 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplificatio
 ) -> crate::expat_h::XML_Bool {
     XML_SetBillionLaughsAttackProtectionMaximumAmplification(parser, maximumAmplificationFactor)
 }
-pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
+pub extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || !(*parser).m_parentParser.is_null() {
+    let Some(parser_state) = parser_mut(parser) else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser_state.m_parentParser.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_accounting.activationThresholdBytes = activationThresholdBytes;
-    return crate::expat_h::XML_TRUE;
+    parser_state.m_accounting.activationThresholdBytes = activationThresholdBytes;
+    crate::expat_h::XML_TRUE
 }
 #[export_name = "XML_SetBillionLaughsAttackProtectionActivationThreshold"]
 
@@ -5152,19 +5157,21 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold
 ) -> crate::expat_h::XML_Bool {
     XML_SetBillionLaughsAttackProtectionActivationThreshold(parser, activationThresholdBytes)
 }
-pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification(
+pub extern "C" fn XML_SetAllocTrackerMaximumAmplification(
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null()
-        || !(*parser).m_parentParser.is_null()
+    let Some(parser_state) = parser_mut(parser) else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser_state.m_parentParser.is_null()
         || maximumAmplificationFactor.is_nan() as i32 != 0
         || maximumAmplificationFactor < 1.0f32
     {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_alloc_tracker.maximumAmplificationFactor = maximumAmplificationFactor;
-    return crate::expat_h::XML_TRUE;
+    parser_state.m_alloc_tracker.maximumAmplificationFactor = maximumAmplificationFactor;
+    crate::expat_h::XML_TRUE
 }
 #[export_name = "XML_SetAllocTrackerMaximumAmplification"]
 
@@ -5174,15 +5181,18 @@ pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification_ffi(
 ) -> crate::expat_h::XML_Bool {
     XML_SetAllocTrackerMaximumAmplification(parser, maximumAmplificationFactor)
 }
-pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold(
+pub extern "C" fn XML_SetAllocTrackerActivationThreshold(
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || !(*parser).m_parentParser.is_null() {
+    let Some(parser_state) = parser_mut(parser) else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser_state.m_parentParser.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_alloc_tracker.activationThresholdBytes = activationThresholdBytes as XmlBigCount;
-    return crate::expat_h::XML_TRUE;
+    parser_state.m_alloc_tracker.activationThresholdBytes = activationThresholdBytes as XmlBigCount;
+    crate::expat_h::XML_TRUE
 }
 #[export_name = "XML_SetAllocTrackerActivationThreshold"]
 
@@ -5192,18 +5202,20 @@ pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold_ffi(
 ) -> crate::expat_h::XML_Bool {
     XML_SetAllocTrackerActivationThreshold(parser, activationThresholdBytes)
 }
-pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
+pub extern "C" fn XML_SetReparseDeferralEnabled(
     mut parser: crate::expat_h::XML_Parser,
     mut enabled: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Bool {
-    if !parser.is_null()
-        && (enabled as ::core::ffi::c_int == crate::expat_h::XML_TRUE as ::core::ffi::c_int
-            || enabled as ::core::ffi::c_int == crate::expat_h::XML_FALSE as ::core::ffi::c_int)
+    if enabled as ::core::ffi::c_int != crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        && enabled as ::core::ffi::c_int != crate::expat_h::XML_FALSE as ::core::ffi::c_int
     {
-        (*parser).m_reparseDeferralEnabled = enabled;
-        return crate::expat_h::XML_TRUE;
+        return crate::expat_h::XML_FALSE;
     }
-    return crate::expat_h::XML_FALSE;
+    let Some(parser_state) = parser_mut(parser) else {
+        return crate::expat_h::XML_FALSE;
+    };
+    parser_state.m_reparseDeferralEnabled = enabled;
+    crate::expat_h::XML_TRUE
 }
 #[export_name = "XML_SetReparseDeferralEnabled"]
 
