@@ -3356,7 +3356,11 @@ pub struct open_internal_entity {
     // The end of an internal-entity default event is measured from its start.
     // This event-local offset stays valid when its pool storage moves.
     pub internalEventEndPtr: Option<usize>,
-    pub next: *mut open_internal_entity,
+    // The active entity stacks own every frame.  Retaining the predecessor as
+    // an index preserves the C frame's link word and LIFO relationship
+    // without keeping an address that vector growth could invalidate.
+    // `usize::MAX` represents the old null link.
+    pub next: usize,
     // Entity ownership lives beside the stable frame node in
     // `InternalEntityStorage`.  Keep this word as a typed frame slot so the
     // configured allocator continues to observe the C frame allocation size.
@@ -14571,19 +14575,9 @@ unsafe extern "C" fn processEntity(
     entityTrackingOnOpen(parser, std::ptr::from_mut(entity), 6389 as ::core::ffi::c_int);
     entity.processed = 0 as ::core::ffi::c_int;
     let next_open_entity = if is_internal_entity {
-        parser_state
-            .m_openInternalEntities
-            .and_then(|index| parser_state.m_activeInternalEntities.get(index))
-            .map_or(::core::ptr::null_mut(), |storage| {
-                std::ptr::from_ref(storage.node()).cast_mut()
-            })
+        parser_state.m_openInternalEntities
     } else {
-        parser_state
-            .m_openValueEntities
-            .and_then(|index| parser_state.m_activeValueEntities.get(index))
-            .map_or(::core::ptr::null_mut(), |storage| {
-                std::ptr::from_ref(storage.node()).cast_mut()
-            })
+        parser_state.m_openValueEntities
     };
     if is_internal_entity {
         parser_state.m_openInternalEntities =
@@ -14594,7 +14588,7 @@ unsafe extern "C" fn processEntity(
     }
     {
         let open_entity = &mut *openEntity;
-        open_entity.next = next_open_entity;
+        open_entity.next = next_open_entity.unwrap_or(usize::MAX);
         open_entity.type_0 = type_0;
         open_entity.startTagLevel = parser_state.m_tagLevel;
         open_entity.betweenDecl = betweenDecl;
@@ -17155,7 +17149,7 @@ fn internal_entity_storage_new(
     node.push(OPEN_INTERNAL_ENTITY {
         internalEventPtr: ::core::ptr::null(),
         internalEventEndPtr: None,
-        next: ::core::ptr::null_mut(),
+        next: usize::MAX,
         entity_slot: 0,
         startTagLevel: 0,
         betweenDecl: crate::expat_h::XML_FALSE,
