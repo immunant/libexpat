@@ -20808,16 +20808,24 @@ unsafe extern "C" fn reportComment(
         let Some(data) = parser_state.m_tempPool.chars_from(event.data) else {
             return 0;
         };
+        // A comment callback may re-enter the parser.  Give it an owned
+        // snapshot so the temporary pool can be released before that
+        // boundary, while preserving the callback argument through return.
+        let mut callback_data = Vec::new();
+        if callback_data.try_reserve_exact(data.len()).is_err() {
+            return 0;
+        }
+        callback_data.extend_from_slice(data);
         let handler_arg = match parser_state.m_handlerArg {
             HandlerArg::UserData => callback_context_pointer!(parser_state),
             HandlerArg::Parser => std::ptr::from_ref(parser_state).cast_mut().cast(),
         };
-        (event.callback, data.as_ptr(), handler_arg)
+        parser_state.m_tempPool.clear();
+        (event.callback, callback_data, handler_arg)
     };
     if let Some(callback) = callback {
-        callback.invoke(handler_arg, data);
+        callback.invoke(handler_arg, data.as_ptr());
     }
-    (&mut *parser).m_tempPool.clear();
     return 1 as ::core::ffi::c_int;
 }
 
