@@ -3037,8 +3037,8 @@ impl SharedDtd {
     // `UnsafeCell` conversion in this owning facade and make the closure
     // higher-ranked so no DTD reference can escape it across a callback or a
     // later parser re-entry.
-    fn inspect<R>(&self, f: impl for<'dtd> FnOnce(&'dtd DTD) -> R) -> R {
-        unsafe { f(&*self.value.get()) }
+    fn inspect<R>(&self, f: impl for<'dtd> FnOnce(&'dtd mut DTD) -> R) -> R {
+        unsafe { f(&mut *self.value.get()) }
     }
 }
 
@@ -10676,8 +10676,7 @@ unsafe fn doContent(
                         // is rewound.  The table owns entity declarations in
                         // boxed typed records, so all declaration inspection
                         // below can stay in ordinary Rust references.
-                        let (restricted_entity_declarations, entity, name) = {
-                            let dtd_state = &mut *dtd.value.get();
+                        let entity_lookup = dtd.inspect(|dtd_state| {
                             let Some(entity_name) = content_token_chars_between(
                                 &source,
                                 s.addr(),
@@ -10686,7 +10685,7 @@ unsafe fn doContent(
                             )
                             .map(bytemuck::cast_slice)
                             else {
-                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                             };
                             let unknown_encoding = match (entity_name.is_empty(), encoding.utf8Convert) {
                                 (false, crate::src::xmltok::Utf8Converter::Unknown) => {
@@ -10699,7 +10698,7 @@ unsafe fn doContent(
                                 crate::src::xmltok::Utf8Converter::Unknown
                             ) && unknown_encoding.is_none()
                             {
-                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                             }
                             let Some(name_ref) = pool_store_name_source(
                                 &mut dtd_state.pool,
@@ -10707,14 +10706,14 @@ unsafe fn doContent(
                                 unknown_encoding.as_ref(),
                                 entity_name,
                             ) else {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
                             };
                             let name = dtd_state
                                 .pool
                                 .chars_from(name_ref)
                                 .map_or(::core::ptr::null(), |chars| chars.as_ptr());
                             if name.is_null() {
-                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                             }
                             let entity = general_entity_mut(dtd_state, name_ref, salt).map(
                                 |entity| {
@@ -10763,7 +10762,11 @@ unsafe fn doContent(
                             let restricted = dtd_state.hasParamEntityRefs == 0
                                 || dtd_state.standalone as ::core::ffi::c_int != 0;
                             dtd_state.pool.rewind();
-                            (restricted, entity, name)
+                            Ok((restricted, entity, name))
+                        });
+                        let (restricted_entity_declarations, entity, name) = match entity_lookup {
+                            Ok(entity_lookup) => entity_lookup,
+                            Err(error) => return error,
                         };
                         if restricted_entity_declarations {
                             let Some((_, _, is_internal, _, _, _, _)) = entity.as_ref() else {
@@ -10859,9 +10862,35 @@ unsafe fn doContent(
                                 }
                             }
                         } else if handlers.external_entity_ref {
-                            (*entity).open = crate::expat_h::XML_TRUE;
+                            // Mark the declaration open through its typed DTD
+                            // key.  The callback may re-enter and grow DTD
+                            // tables, so no `ENTITY` pointer is retained
+                            // across it.
+                            let opened = dtd.inspect(|dtd_state| {
+                                let Some(entity) =
+                                    general_entity_mut(dtd_state, entity_name_ref, salt)
+                                else {
+                                    return false;
+                                };
+                                entity.open = crate::expat_h::XML_TRUE;
+                                true
+                            });
+                            if !opened {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            }
                             let context = getContext(parser);
-                            (*entity).open = crate::expat_h::XML_FALSE;
+                            let closed = dtd.inspect(|dtd_state| {
+                                let Some(entity) =
+                                    general_entity_mut(dtd_state, entity_name_ref, salt)
+                                else {
+                                    return false;
+                                };
+                                entity.open = crate::expat_h::XML_FALSE;
+                                true
+                            });
+                            if !closed {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            }
                             if context.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
