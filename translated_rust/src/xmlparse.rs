@@ -5154,68 +5154,69 @@ fn expat_heap_increase_tolerable(
     }
     tolerable
 }
-pub unsafe extern "C" fn expat_malloc(
-    mut parser: crate::expat_h::XML_Parser,
-    mut size: crate::__stddef_size_t_h::size_t,
-    mut sourceLine: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    if (crate::stdlib::SIZE_MAX as crate::__stddef_size_t_h::size_t).wrapping_sub(size)
-        < ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
-            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-    {
-        return crate::__stddef_null_h::NULL;
-    }
-    let bytesToAllocate: crate::__stddef_size_t_h::size_t =
-        ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
-            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-            .wrapping_add(size);
-    let root = std::sync::Arc::clone(&(*parser).m_root);
+fn expat_allocation_bytes(
+    size: crate::__stddef_size_t_h::size_t,
+) -> Option<crate::__stddef_size_t_h::size_t> {
+    ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+        .checked_add(crate::internal_h::EXPAT_MALLOC_PADDING)?
+        .checked_add(size)
+}
+
+/// Check and reserve the accounting route before asking the configured C
+/// allocator for an opaque token.  All state here is Rust-owned; the foreign
+/// pointer only crosses the boundary after this function has succeeded.
+fn expat_malloc_prepare(
+    parser: &XML_ParserStruct,
+    bytes_to_allocate: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<std::sync::Arc<std::sync::Mutex<RootParserState>>> {
+    let root = std::sync::Arc::clone(&parser.m_root);
     let allocation_would_overflow = {
         let root = root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         (-1 as ::core::ffi::c_int as XmlBigCount).wrapping_sub(root.alloc_tracker.bytesAllocated)
-            < bytesToAllocate as XmlBigCount
+            < bytes_to_allocate as XmlBigCount
     };
     if allocation_would_overflow {
-        return crate::__stddef_null_h::NULL;
+        return None;
     }
     if !expat_heap_increase_tolerable(
         &root,
-        parser.addr(),
-        bytesToAllocate as XmlBigCount,
-        sourceLine,
+        std::ptr::from_ref(parser).addr(),
+        bytes_to_allocate as XmlBigCount,
+        source_line,
     ) {
-        return crate::__stddef_null_h::NULL;
+        return None;
     }
-    let mallocedPtr: *mut ::core::ffi::c_void =
-        (*parser)
-            .m_mem
-            .malloc_fcn
-            .expect("non-null function pointer")(bytesToAllocate);
-    if mallocedPtr.is_null() {
-        return crate::__stddef_null_h::NULL;
-    }
-    // The allocation-test interface observes this prefix value.  The owned
-    // registry below remains the source for internal resize/free accounting.
-    *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t) = size;
-    let payload_offset = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
-        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING);
-    let payload_ptr = mallocedPtr.wrapping_byte_add(payload_offset);
+    Some(root)
+}
+
+/// Register an allocation by its payload address.  The address is an opaque
+/// key: all allocation metadata stays in the root-owned registry rather than
+/// in the allocator's memory.
+fn expat_malloc_record(
+    root: &std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    parser_address: usize,
+    payload_address: usize,
+    payload_size: crate::__stddef_size_t_h::size_t,
+    bytes_allocated: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) {
     let allocation_totals = {
         let mut root = root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         root.allocations.insert(
-            payload_ptr.addr(),
+            payload_address,
             ExpatAllocation {
-                payload_size: size,
+                payload_size,
             },
         );
         root.alloc_tracker.bytesAllocated = root
             .alloc_tracker
             .bytesAllocated
-            .wrapping_add(bytesToAllocate as XmlBigCount);
+            .wrapping_add(bytes_allocated as XmlBigCount);
         if root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
             if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
                 root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
@@ -5230,15 +5231,50 @@ pub unsafe extern "C" fn expat_malloc(
     };
     if let Some((new_total, peak_total)) = allocation_totals {
         expat_heap_stat(
-            &root,
-            parser.addr(),
+            root,
+            parser_address,
             '+' as ::core::ffi::c_char,
-            bytesToAllocate as XmlBigCount,
+            bytes_allocated as XmlBigCount,
             new_total,
             peak_total,
-            sourceLine,
+            source_line,
         );
     }
+}
+
+pub unsafe extern "C" fn expat_malloc(
+    mut parser: crate::expat_h::XML_Parser,
+    mut size: crate::__stddef_size_t_h::size_t,
+    mut sourceLine: ::core::ffi::c_int,
+) -> *mut ::core::ffi::c_void {
+    let Some(bytes_to_allocate) = expat_allocation_bytes(size) else {
+        return crate::__stddef_null_h::NULL;
+    };
+    let parser = &*parser;
+    let Some(root) = expat_malloc_prepare(parser, bytes_to_allocate, sourceLine) else {
+        return crate::__stddef_null_h::NULL;
+    };
+    let mallocedPtr = parser
+        .m_mem
+        .malloc_fcn
+        .expect("non-null function pointer")(bytes_to_allocate);
+    if mallocedPtr.is_null() {
+        return crate::__stddef_null_h::NULL;
+    }
+    // This prefix is the XML_TESTING ABI contract.  The registry is still the
+    // sole source of parser bookkeeping for resize and release.
+    *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t) = size;
+    let payload_offset = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING);
+    let payload_ptr = mallocedPtr.wrapping_byte_add(payload_offset);
+    expat_malloc_record(
+        &root,
+        std::ptr::from_ref(parser).addr(),
+        payload_ptr.addr(),
+        size,
+        bytes_to_allocate,
+        sourceLine,
+    );
     return payload_ptr;
 }
 #[export_name = "expat_malloc"]
@@ -5535,8 +5571,8 @@ pub unsafe extern "C" fn expat_realloc(
             sourceLine,
         );
     }
-    // Keep the externally observable allocation header in sync; internal
-    // bookkeeping intentionally relies on the owned registry instead.
+    // XML_TESTING exposes the allocation prefix through sizeRecordedFor().
+    // Parser bookkeeping itself continues to use the owned allocation registry.
     *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t) = size;
     return payload_ptr;
 }
