@@ -2442,6 +2442,10 @@ pub struct DTD {
     pub scaffCount: ::core::ffi::c_uint,
     pub scaffLevel: ::core::ffi::c_int,
     pub scaffIndex: std::sync::Arc<std::sync::Mutex<Vec<::core::ffi::c_int>>>,
+    // The DTD itself is Rust-owned.  This opaque token preserves the
+    // configured allocator's allocation/free observation for the allocation
+    // that formerly held the DTD object; it is never dereferenced.
+    allocation: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -3455,6 +3459,16 @@ fn empty_string_pool() -> STRING_POOL {
     }
 }
 
+fn empty_hash_table() -> HASH_TABLE {
+    HASH_TABLE {
+        v: None,
+        power: 0,
+        size: 0,
+        used: 0,
+        allocator: None,
+    }
+}
+
 fn initial_encoding() -> crate::src::xmltok::INIT_ENCODING {
     use crate::src::xmltok::{
         AttributeScanner, CharRefNumberDecoder, LiteralScanner, NameLength, NameMatcher,
@@ -3783,7 +3797,10 @@ unsafe extern "C" fn parserCreate(
     if !dtd.is_null() {
         parser.m_dtd = dtd;
     } else {
-        parser.m_dtd = dtdCreate(parser);
+        parser.m_dtd = match dtd_create(parser) {
+            Some(dtd) => Box::into_raw(dtd),
+            None => ::core::ptr::null_mut(),
+        };
         if parser.m_dtd.is_null() {
             parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
             let mut backing = parser.m_atts.backing.take();
@@ -14169,39 +14186,58 @@ unsafe extern "C" fn normalizePublicId(mut publicId: *mut crate::expat_external_
     *p = '\0' as crate::expat_external_h::XML_Char;
 }
 
-unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut DTD {
-    let mut p: *mut DTD = expat_malloc(
-        parser,
-        ::core::mem::size_of::<DTD>(),
-        7500 as ::core::ffi::c_int,
-    ) as *mut DTD;
-    if p.is_null() {
-        return p;
+fn dtd_create(parser: &mut XML_ParserStruct) -> Option<Box<DTD>> {
+    // Preserve the custom allocator's observable DTD allocation while
+    // storing the actual Rust value in a `Box`.  The token is released by
+    // `dtdDestroy` after all nested DTD allocations have been released.
+    let Some(allocation) = (unsafe {
+        allocation_backing(
+            parser,
+            // `allocation` is an ownership token added by the Rust port, not
+            // part of Expat's DTD allocation contract.  Its offset is the
+            // size of the prior DTD layout, which keeps custom allocator
+            // size observations unchanged.
+            ::core::mem::offset_of!(DTD, allocation),
+            7500 as ::core::ffi::c_int,
+        )
+    }) else {
+        return None;
+    };
+    let mut dtd = Box::new(DTD {
+        generalEntities: empty_hash_table(),
+        elementTypes: empty_hash_table(),
+        attributeIds: empty_hash_table(),
+        prefixes: empty_hash_table(),
+        pool: empty_string_pool(),
+        entityValuePool: empty_string_pool(),
+        keepProcessing: crate::expat_h::XML_TRUE,
+        hasParamEntityRefs: crate::expat_h::XML_FALSE,
+        standalone: crate::expat_h::XML_FALSE,
+        paramEntityRead: crate::expat_h::XML_FALSE,
+        paramEntities: empty_hash_table(),
+        defaultPrefix: PREFIX {
+            name: ::core::ptr::null(),
+            binding: ::core::ptr::null_mut(),
+        },
+        in_eldecl: crate::expat_h::XML_FALSE,
+        scaffold: empty_scaffold(),
+        contentStringLen: 0,
+        scaffSize: 0,
+        scaffCount: 0,
+        scaffLevel: 0,
+        scaffIndex: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+        allocation: Some(allocation),
+    });
+    unsafe {
+        poolInit(&raw mut dtd.pool, parser);
+        poolInit(&raw mut dtd.entityValuePool, parser);
+        hashTableInit(&raw mut dtd.generalEntities, parser);
+        hashTableInit(&raw mut dtd.elementTypes, parser);
+        hashTableInit(&raw mut dtd.attributeIds, parser);
+        hashTableInit(&raw mut dtd.prefixes, parser);
+        hashTableInit(&raw mut dtd.paramEntities, parser);
     }
-    poolInit(&raw mut (*p).pool, parser);
-    poolInit(&raw mut (*p).entityValuePool, parser);
-    hashTableInit(&raw mut (*p).generalEntities, parser);
-    hashTableInit(&raw mut (*p).elementTypes, parser);
-    hashTableInit(&raw mut (*p).attributeIds, parser);
-    hashTableInit(&raw mut (*p).prefixes, parser);
-    (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableInit(&raw mut (*p).paramEntities, parser);
-    (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
-    (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    ::core::ptr::write(
-        &raw mut (*p).scaffIndex,
-        std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-    );
-    ::core::ptr::write(&raw mut (*p).scaffold, empty_scaffold());
-    (*p).scaffLevel = 0 as ::core::ffi::c_int;
-    (*p).scaffSize = 0 as ::core::ffi::c_uint;
-    (*p).scaffCount = 0 as ::core::ffi::c_uint;
-    (*p).contentStringLen = 0 as ::core::ffi::c_uint;
-    (*p).keepProcessing = crate::expat_h::XML_TRUE;
-    (*p).hasParamEntityRefs = crate::expat_h::XML_FALSE;
-    (*p).standalone = crate::expat_h::XML_FALSE;
-    return p;
+    Some(dtd)
 }
 
 unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_Parser) {
@@ -14259,6 +14295,10 @@ unsafe extern "C" fn dtdDestroy(
     mut isDocEntity: crate::expat_h::XML_Bool,
     mut parser: crate::expat_h::XML_Parser,
 ) {
+    // `dtd_create` transfers this `Box` through the legacy opaque pointer.
+    // Reclaim it exactly once here, after releasing all allocator-backed
+    // members in the same order as before.
+    let dtd_ptr = p;
     let p = &mut *p;
     let parser = &mut *parser;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
@@ -14295,13 +14335,10 @@ unsafe extern "C" fn dtdDestroy(
             backing(ScaffoldAllocationAction::Free(7593 as ::core::ffi::c_int));
         }
     }
-    ::core::ptr::drop_in_place(&raw mut p.scaffIndex);
-    ::core::ptr::drop_in_place(&raw mut p.scaffold);
-    expat_free(
-        parser,
-        p as *mut DTD as *mut ::core::ffi::c_void,
-        7595 as ::core::ffi::c_int,
-    );
+    if let Some(mut allocation) = p.allocation.take() {
+        allocation(7595 as ::core::ffi::c_int);
+    }
+    drop(Box::from_raw(dtd_ptr));
 }
 
 unsafe extern "C" fn dtdCopy(
