@@ -24085,22 +24085,133 @@ unsafe fn dtdCopy(
             new_e.allocDefaultAtts = old_e.nDefaultAtts;
         }
     }
-    if copyEntityTable(
-        old_dtd,
+    // The table-copy operation uses only checked pool/table access.  Keep it
+    // within this existing DTD-copy boundary so callers do not need a second
+    // state-carrying unsafe helper merely to copy general and parameter tables.
+    let copy_entity_table = |new_table: &mut HASH_TABLE,
+                             new_pool: &mut STRING_POOL,
+                             old_table: &HASH_TABLE| {
+        let mut cached_old_base: Option<PoolStringRef> = None;
+        let mut cached_new_base: Option<PoolStringRef> = None;
+        let Some(slots) = old_table.v.as_ref() else {
+            return 1;
+        };
+        for entry in &slots.entries {
+            let Some(entry) = entry.as_ref() else {
+                continue;
+            };
+            let Some(old_entity) = entry.entity() else {
+                return 0;
+            };
+            let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_entity.named.name)
+            else {
+                return 0;
+            };
+            let Some(new_name) = pool_copy_chars(new_pool, old_name) else {
+                return 0;
+            };
+            let Some(index) = dtd_copy_lookup_index(
+                new_pool,
+                new_table,
+                new_name,
+                ::core::mem::size_of::<ENTITY>(),
+                hash_secret_salt,
+            ) else {
+                return 0;
+            };
+            let Some(new_entity) = new_table
+                .v
+                .as_mut()
+                .and_then(|slots| slots.entries.get_mut(index))
+                .and_then(Option::as_mut)
+                .and_then(|entry| match &mut entry.record {
+                    NamedRecord::Entity(entity) => Some(entity.as_mut()),
+                    _ => None,
+                })
+            else {
+                return 0;
+            };
+            if let Some(old_system_id) = old_entity.systemId {
+                let Some(old_system_id) = pool_terminated_chars(&old_dtd.pool, old_system_id)
+                else {
+                    return 0;
+                };
+                let Some(system_id) = pool_copy_chars(new_pool, old_system_id) else {
+                    return 0;
+                };
+                new_entity.systemId = Some(system_id);
+                if old_entity.base.is_some() {
+                    if old_entity.base == cached_old_base {
+                        new_entity.base = cached_new_base;
+                    } else {
+                        cached_old_base = old_entity.base;
+                        let Some(old_base) = pool_terminated_chars(
+                            &old_dtd.pool,
+                            cached_old_base.expect("base is present after the non-null check"),
+                        ) else {
+                            return 0;
+                        };
+                        let Some(base) = pool_copy_chars(new_pool, old_base) else {
+                            return 0;
+                        };
+                        new_entity.base = Some(base);
+                        cached_new_base = Some(base);
+                    }
+                }
+                if let Some(old_public_id) = old_entity.publicId {
+                    let Some(old_public_id) =
+                        pool_terminated_chars(&old_dtd.pool, old_public_id)
+                    else {
+                        return 0;
+                    };
+                    let Some(public_id) = pool_copy_chars(new_pool, old_public_id) else {
+                        return 0;
+                    };
+                    new_entity.publicId = Some(public_id);
+                }
+            } else {
+                let Some(old_text) = old_entity.textPtr.present() else {
+                    return 0;
+                };
+                let Some(old_text) = entity_text_chars(old_dtd, old_text, old_entity.textLen)
+                else {
+                    return 0;
+                };
+                let Some(new_text) = pool_copy_chars(new_pool, old_text) else {
+                    return 0;
+                };
+                new_entity.textPtr = EntityTextRef {
+                    pool: EntityTextPool::Dtd,
+                    string: Some(new_text),
+                };
+                new_entity.textLen = old_entity.textLen;
+            }
+            if let Some(old_notation) = old_entity.notation {
+                let Some(old_notation) = pool_terminated_chars(&old_dtd.pool, old_notation) else {
+                    return 0;
+                };
+                let Some(notation) = pool_copy_chars(new_pool, old_notation) else {
+                    return 0;
+                };
+                new_entity.notation = Some(notation);
+            }
+            new_entity.is_param = old_entity.is_param;
+            new_entity.is_internal = old_entity.is_internal;
+        }
+        1
+    };
+    if copy_entity_table(
         &mut new_dtd.generalEntities,
         &mut new_dtd.pool,
         &old_dtd.generalEntities,
-        hash_secret_salt,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
     }
-    if copyEntityTable(
-        old_dtd,
+    if copy_entity_table(
         &mut new_dtd.paramEntities,
         &mut new_dtd.pool,
         &old_dtd.paramEntities,
-        hash_secret_salt,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
@@ -24143,124 +24254,6 @@ fn dtd_copy_lookup_index(
         hash_secret_salt,
     )?;
     lookup_existing(pool, table, LookupName::Retained(name), hash_secret_salt)
-}
-
-unsafe fn copyEntityTable(
-    old_dtd: &DTD,
-    new_table: &mut HASH_TABLE,
-    newPool: &mut STRING_POOL,
-    old_table: &HASH_TABLE,
-    hash_secret_salt: ::core::ffi::c_ulong,
-) -> ::core::ffi::c_int {
-    let mut cachedOldBase: Option<PoolStringRef> = None;
-    let mut cachedNewBase: Option<PoolStringRef> = None;
-    let new_pool = newPool;
-    let Some(slots) = old_table.v.as_ref() else {
-        return 1;
-    };
-    for entry in &slots.entries {
-        let Some(entry) = entry.as_ref() else {
-            continue;
-        };
-        let Some(old_e) = entry.entity() else {
-            return 0 as ::core::ffi::c_int;
-        };
-        let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_e.named.name) else {
-            return 0 as ::core::ffi::c_int;
-        };
-        let Some(new_name) = pool_copy_chars(new_pool, old_name) else {
-            return 0 as ::core::ffi::c_int;
-        };
-        let Some(index) = dtd_copy_lookup_index(
-            new_pool,
-            new_table,
-            new_name,
-            ::core::mem::size_of::<ENTITY>(),
-            hash_secret_salt,
-        ) else {
-            return 0 as ::core::ffi::c_int;
-        };
-        // `dtd_copy_lookup_index` has just established this slot in the
-        // typed table.  Keep the record access in this existing unsafe
-        // implementation boundary instead of bouncing it through a second
-        // unsafe helper with the same borrow preconditions.
-        let Some(new_e) = new_table
-            .v
-            .as_mut()
-            .and_then(|slots| slots.entries.get_mut(index))
-            .and_then(Option::as_mut)
-            .and_then(|entry| match &mut entry.record {
-                NamedRecord::Entity(entity) => Some(entity.as_mut()),
-                _ => None,
-            })
-        else {
-            return 0 as ::core::ffi::c_int;
-        };
-        if let Some(old_system_id) = old_e.systemId {
-            let Some(old_system_id) = pool_terminated_chars(&old_dtd.pool, old_system_id) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            let Some(system_id) = pool_copy_chars(new_pool, old_system_id) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            new_e.systemId = Some(system_id);
-            if old_e.base.is_some() {
-                if old_e.base == cachedOldBase {
-                    new_e.base = cachedNewBase;
-                } else {
-                    cachedOldBase = old_e.base;
-                    let Some(old_base) = pool_terminated_chars(
-                        &old_dtd.pool,
-                        cachedOldBase.expect("base is present after the non-null check"),
-                    ) else {
-                        return 0 as ::core::ffi::c_int;
-                    };
-                    let Some(base) = pool_copy_chars(new_pool, old_base) else {
-                        return 0 as ::core::ffi::c_int;
-                    };
-                    new_e.base = Some(base);
-                    cachedNewBase = Some(base);
-                }
-            }
-            if let Some(old_public_id) = old_e.publicId {
-                let Some(old_public_id) = pool_terminated_chars(&old_dtd.pool, old_public_id)
-                else {
-                    return 0 as ::core::ffi::c_int;
-                };
-                let Some(public_id) = pool_copy_chars(new_pool, old_public_id) else {
-                    return 0 as ::core::ffi::c_int;
-                };
-                new_e.publicId = Some(public_id);
-            }
-        } else {
-            let Some(old_text) = old_e.textPtr.present() else {
-                return 0 as ::core::ffi::c_int;
-            };
-            let Some(old_text) = entity_text_chars(old_dtd, old_text, old_e.textLen) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            let Some(new_text) = pool_copy_chars(new_pool, old_text) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            new_e.textPtr = EntityTextRef {
-                pool: EntityTextPool::Dtd,
-                string: Some(new_text),
-            };
-            new_e.textLen = old_e.textLen;
-        }
-        if let Some(old_notation) = old_e.notation {
-            let Some(old_notation) = pool_terminated_chars(&old_dtd.pool, old_notation) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            let Some(notation) = pool_copy_chars(new_pool, old_notation) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            new_e.notation = Some(notation);
-        }
-        new_e.is_param = old_e.is_param;
-        new_e.is_internal = old_e.is_internal;
-    }
-    return 1 as ::core::ffi::c_int;
 }
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
