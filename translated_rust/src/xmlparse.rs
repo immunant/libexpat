@@ -11849,13 +11849,47 @@ unsafe extern "C" fn initializeEncoding(
     );
 }
 
+// Keeps the raw token window at the parser-dispatch boundary.  Everything
+// below this adapter works with the already-bounded input slice, which makes
+// declaration pseudo-attribute offsets ordinary slice ranges.
 unsafe extern "C" fn processXmlDecl(
-    mut parser: crate::expat_h::XML_Parser,
-    mut isGeneralTextEntity: ::core::ffi::c_int,
-    mut s: *const ::core::ffi::c_char,
-    mut next: *const ::core::ffi::c_char,
+    parser: crate::expat_h::XML_Parser,
+    isGeneralTextEntity: ::core::ffi::c_int,
+    s: *const ::core::ffi::c_char,
+    next: *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let encoding = parser_encoding(parser);
+    if parser.is_null() || s.is_null() || next.addr() < s.addr() {
+        return if isGeneralTextEntity != 0 {
+            crate::expat_h::XML_ERROR_TEXT_DECL
+        } else {
+            crate::expat_h::XML_ERROR_XML_DECL
+        };
+    }
+    let encoding = &*parser_encoding(parser);
+    let input = ::core::slice::from_raw_parts(s.cast::<u8>(), next.addr() - s.addr());
+    process_xml_decl(
+        &mut *parser,
+        isGeneralTextEntity,
+        encoding,
+        s,
+        next,
+        input,
+    )
+}
+
+/// Processes a declaration from the tokenizer's validated token window.
+///
+/// The parser reference remains `unsafe` while parser state still carries
+/// boundary callback values, but this implementation never reconstructs the
+/// declaration window from raw pointers.
+unsafe fn process_xml_decl(
+    parser: &mut XML_ParserStruct,
+    isGeneralTextEntity: ::core::ffi::c_int,
+    encoding: &crate::src::xmltok::ENCODING,
+    s: *const ::core::ffi::c_char,
+    next: *const ::core::ffi::c_char,
+    input: &[u8],
+) -> crate::expat_h::XML_Error {
     // The tokenizer returns bounded ranges into the declaration token.  Keep
     // those ranges until their ASCII-only values are copied into the pool.
     let mut encoding_name = None;
@@ -11869,8 +11903,9 @@ unsafe extern "C" fn processXmlDecl(
     let mut standalone: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
     let mut declaration_encoding = None;
     let mut declaration_input: Option<&[u8]> = None;
+    let parser_handle = std::ptr::from_mut(parser);
     if accountingDiffTolerated(
-        parser,
+        parser_handle,
         crate::src::xmltok::XML_TOK_XML_DECL,
         s,
         next,
@@ -11885,15 +11920,8 @@ unsafe extern "C" fn processXmlDecl(
     // from the current event so a successful declaration keeps its callback
     // location instead of clearing it.
     let mut bad_ptr = parser_event_start!(&*parser).unwrap_or(::core::ptr::null());
-    let parsed = if encoding.is_null() || s.is_null() || next.addr() < s.addr() {
-        false
-    } else {
-        // Every caller passes the scanner's bounded token window.  Form it
-        // once here, then keep the tokenizer's result as offsets so no
-        // output pointer can outlive that window.
-        let input = ::core::slice::from_raw_parts(s.cast::<u8>(), next.addr() - s.addr());
+    let parsed = {
         declaration_input = Some(input);
-        let encoding = &*encoding;
         let encoding_info = encoding.xml_decl_info();
         declaration_encoding = Some(encoding_info);
         match crate::src::xmltok::parse_xml_decl_with_info(
@@ -11911,7 +11939,7 @@ unsafe extern "C" fn processXmlDecl(
                     ) {
                         crate::src::xmltok::XmlDeclEncoding::Current => encoding,
                         crate::src::xmltok::XmlDeclEncoding::Known(index) => {
-                            if (*parser).m_ns != 0 {
+                            if parser.m_ns != 0 {
                                 crate::src::xmltok::encodingsNS[index]
                             } else {
                                 crate::src::xmltok::encodings[index]
@@ -11929,7 +11957,7 @@ unsafe extern "C" fn processXmlDecl(
             }
         }
     };
-    set_parser_event_start!(&mut *parser, bad_ptr);
+    set_parser_event_start!(parser, bad_ptr);
     if !parsed {
         if isGeneralTextEntity != 0 {
             return crate::expat_h::XML_ERROR_TEXT_DECL;
@@ -11938,47 +11966,45 @@ unsafe extern "C" fn processXmlDecl(
         }
     }
     if isGeneralTextEntity == 0 && standalone == 1 as ::core::ffi::c_int {
-        let parser_state = &mut *parser;
-        (*parser_dtd_ptr!(parser)).standalone = crate::expat_h::XML_TRUE;
-        if parser_state.m_paramEntityParsing as ::core::ffi::c_uint
+        (*parser_dtd_ptr!(parser_handle)).standalone = crate::expat_h::XML_TRUE;
+        if parser.m_paramEntityParsing as ::core::ffi::c_uint
             == crate::expat_h::XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE as ::core::ffi::c_int
                 as ::core::ffi::c_uint
         {
-            parser_state.m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
+            parser.m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
         }
     }
     let (xml_decl_handler, handler_arg, callback, default_handler) = {
         // Store callback arguments while holding the parser, then release the
         // borrow before invoking user code.  The pool owns these strings until
         // the declaration-processing tail clears it below.
-        let parser_state = &mut *parser;
-        let xml_decl_handler = parser_state.m_xmlDeclHandler;
+        let xml_decl_handler = parser.m_xmlDeclHandler;
         if xml_decl_handler {
             if let Some(encoding_name) = encoding_name.clone() {
                 let Some(stored_name) = pool_store_xml_decl_ascii(
-                    &mut parser_state.m_temp2Pool,
+                    &mut parser.m_temp2Pool,
                     declaration_encoding.expect("a parsed XML declaration has encoding metadata"),
                     declaration_input.expect("a parsed XML declaration has input"),
                     encoding_name,
                 ) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                storedEncName = parser_state
+                storedEncName = parser
                     .m_temp2Pool
                     .chars_from(stored_name)
                     .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                parser_state.m_temp2Pool.commit();
+                parser.m_temp2Pool.commit();
             }
             if let Some(version) = version.clone() {
                 let Some(stored_version) = pool_store_xml_decl_ascii(
-                    &mut parser_state.m_temp2Pool,
+                    &mut parser.m_temp2Pool,
                     declaration_encoding.expect("a parsed XML declaration has encoding metadata"),
                     declaration_input.expect("a parsed XML declaration has input"),
                     version,
                 ) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                storedversion = parser_state
+                storedversion = parser
                     .m_temp2Pool
                     .chars_from(stored_version)
                     .map_or(::core::ptr::null(), |chars| chars.as_ptr());
@@ -11989,16 +12015,16 @@ unsafe extern "C" fn processXmlDecl(
                 .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .get(&(parser as usize))
+                .get(&(parser_handle as usize))
                 .cloned()
         } else {
             None
         };
         (
             xml_decl_handler,
-            handler_arg_from_state!(parser_state),
+            handler_arg_from_state!(parser),
             callback,
-            parser_state.m_defaultHandler,
+            parser.m_defaultHandler,
         )
     };
     if xml_decl_handler {
@@ -12006,12 +12032,9 @@ unsafe extern "C" fn processXmlDecl(
             callback.invoke(handler_arg, storedversion, storedEncName, standalone);
         }
     } else if default_handler {
-        reportDefault(parser, encoding, s, next);
+        reportDefault(parser_handle, encoding, s, next);
     }
-    let has_no_protocol_encoding = {
-        let parser_state = &mut *parser;
-        parser_state.m_protocolEncodingName.is_none()
-    };
+    let has_no_protocol_encoding = parser.m_protocolEncodingName.is_none();
     if has_no_protocol_encoding {
         let parsed_encoding_info =
             declaration_encoding.expect("a parsed XML declaration always has encoding metadata");
@@ -12024,46 +12047,43 @@ unsafe extern "C" fn processXmlDecl(
                 let encoding_name_ptr = encoding_name
                     .as_ref()
                     .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
-                set_parser_event_start!(&mut *parser, encoding_name_ptr);
+                set_parser_event_start!(parser, encoding_name_ptr);
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
-            if !select_known_encoding(parser, newEncoding) {
+            if !select_known_encoding(parser_handle, newEncoding) {
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
         } else if let Some(encoding_name) = encoding_name {
             let encoding_name_ptr = s.wrapping_add(encoding_name.start);
             if storedEncName.is_null() {
-                let parser_state = &mut *parser;
                 let Some(stored_name) = pool_store_xml_decl_ascii(
-                    &mut parser_state.m_temp2Pool,
+                    &mut parser.m_temp2Pool,
                     parsed_encoding_info,
                     declaration_input.expect("a parsed XML declaration has input"),
                     encoding_name,
                 ) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                storedEncName = parser_state
+                storedEncName = parser
                     .m_temp2Pool
                     .chars_from(stored_name)
                     .map_or(::core::ptr::null(), |chars| chars.as_ptr());
             }
             // The unknown-encoding hook is user code, so the pool borrow used
             // to stage its name must end before the hook can re-enter.
-            let result = handleUnknownEncoding(parser, storedEncName);
-            let parser_state = &mut *parser;
-            parser_state.m_temp2Pool.clear();
+            let result = handleUnknownEncoding(parser_handle, storedEncName);
+            parser.m_temp2Pool.clear();
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
                     as ::core::ffi::c_uint
             {
-                set_parser_event_start!(&mut *parser_state, encoding_name_ptr);
+                set_parser_event_start!(parser, encoding_name_ptr);
             }
             return result;
         }
     }
     if !storedEncName.is_null() || !storedversion.is_null() {
-        let parser_state = &mut *parser;
-        parser_state.m_temp2Pool.clear();
+        parser.m_temp2Pool.clear();
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
