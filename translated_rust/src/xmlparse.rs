@@ -2756,7 +2756,22 @@ extern "C" fn moveToFreeBindingList(
         parser_state.m_freeBindingList = b;
     }
 }
-pub unsafe extern "C" fn XML_ParserReset(
+
+#[inline]
+fn tag_mut<'a>(tag: *mut TAG) -> Option<&'a mut TAG> {
+    if tag.is_null() {
+        None
+    } else {
+        Some(helper_unsafe!(&mut *tag))
+    }
+}
+
+#[inline]
+fn expect_tag_mut<'a>(tag: *mut TAG) -> &'a mut TAG {
+    tag_mut(tag).expect("non-null tag")
+}
+
+pub extern "C" fn XML_ParserReset(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
@@ -2766,60 +2781,79 @@ pub unsafe extern "C" fn XML_ParserReset(
     if parser.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    if !(*parser).m_parentParser.is_null() {
+    if !expect_parser_ref(parser).m_parentParser.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    tStk = (*parser).m_tagStack;
+    tStk = expect_parser_ref(parser).m_tagStack;
     while !tStk.is_null() {
-        let mut tag: *mut TAG = tStk;
-        tStk = (*tStk).parent as *mut TAG;
-        (*tag).parent = (*parser).m_freeTagList as *mut tag;
-        moveToFreeBindingList(parser, (*tag).bindings);
-        (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
-        (*parser).m_freeTagList = tag;
+        let tag = tStk;
+        let (next_tag, bindings) = {
+            let tag_ref = expect_tag_mut(tag);
+            (tag_ref.parent as *mut TAG, tag_ref.bindings)
+        };
+        tStk = next_tag;
+        expect_tag_mut(tag).parent = expect_parser_ref(parser).m_freeTagList as *mut tag;
+        moveToFreeBindingList(parser, bindings);
+        expect_tag_mut(tag).bindings = ::core::ptr::null_mut::<BINDING>();
+        expect_parser_mut(parser).m_freeTagList = tag;
     }
-    openEntityList = (*parser).m_openInternalEntities;
+    openEntityList = expect_parser_ref(parser).m_openInternalEntities;
     while !openEntityList.is_null() {
-        let mut openEntity: *mut OPEN_INTERNAL_ENTITY = openEntityList;
-        openEntityList = (*openEntity).next as *mut OPEN_INTERNAL_ENTITY;
-        (*openEntity).next = (*parser).m_freeInternalEntities as *mut open_internal_entity;
-        (*parser).m_freeInternalEntities = openEntity;
+        let openEntity = openEntityList;
+        openEntityList = open_internal_entity_mut(openEntity)
+            .expect("non-null open internal entity")
+            .next as *mut OPEN_INTERNAL_ENTITY;
+        open_internal_entity_mut(openEntity)
+            .expect("non-null open internal entity")
+            .next = expect_parser_ref(parser).m_freeInternalEntities as *mut open_internal_entity;
+        expect_parser_mut(parser).m_freeInternalEntities = openEntity;
     }
-    openEntityList = (*parser).m_openAttributeEntities;
+    openEntityList = expect_parser_ref(parser).m_openAttributeEntities;
     while !openEntityList.is_null() {
-        let mut openEntity_0: *mut OPEN_INTERNAL_ENTITY = openEntityList;
-        openEntityList = (*openEntity_0).next as *mut OPEN_INTERNAL_ENTITY;
-        (*openEntity_0).next = (*parser).m_freeAttributeEntities as *mut open_internal_entity;
-        (*parser).m_freeAttributeEntities = openEntity_0;
+        let openEntity = openEntityList;
+        openEntityList = open_internal_entity_mut(openEntity)
+            .expect("non-null open attribute entity")
+            .next as *mut OPEN_INTERNAL_ENTITY;
+        open_internal_entity_mut(openEntity)
+            .expect("non-null open attribute entity")
+            .next = expect_parser_ref(parser).m_freeAttributeEntities as *mut open_internal_entity;
+        expect_parser_mut(parser).m_freeAttributeEntities = openEntity;
     }
-    openEntityList = (*parser).m_openValueEntities;
+    openEntityList = expect_parser_ref(parser).m_openValueEntities;
     while !openEntityList.is_null() {
-        let mut openEntity_1: *mut OPEN_INTERNAL_ENTITY = openEntityList;
-        openEntityList = (*openEntity_1).next as *mut OPEN_INTERNAL_ENTITY;
-        (*openEntity_1).next = (*parser).m_freeValueEntities as *mut open_internal_entity;
-        (*parser).m_freeValueEntities = openEntity_1;
+        let openEntity = openEntityList;
+        openEntityList = open_internal_entity_mut(openEntity)
+            .expect("non-null open value entity")
+            .next as *mut OPEN_INTERNAL_ENTITY;
+        open_internal_entity_mut(openEntity)
+            .expect("non-null open value entity")
+            .next = expect_parser_ref(parser).m_freeValueEntities as *mut open_internal_entity;
+        expect_parser_mut(parser).m_freeValueEntities = openEntity;
     }
-    moveToFreeBindingList(parser, (*parser).m_inheritedBindings);
+    moveToFreeBindingList(parser, expect_parser_ref(parser).m_inheritedBindings);
     expat_free(
         parser,
-        (*parser).m_unknownEncodingMem,
+        expect_parser_ref(parser).m_unknownEncodingMem,
         1686 as ::core::ffi::c_int,
     );
-    if (*parser).m_unknownEncodingRelease.is_some() {
-        (*parser)
+    if expect_parser_ref(parser).m_unknownEncodingRelease.is_some() {
+        helper_unsafe!(expect_parser_ref(parser)
             .m_unknownEncodingRelease
-            .expect("non-null function pointer")((*parser).m_unknownEncodingData);
+            .expect("non-null function pointer")(
+            expect_parser_ref(parser).m_unknownEncodingData
+        ));
     }
-    poolClear(&mut (*parser).m_tempPool);
-    poolClear(&mut (*parser).m_temp2Pool);
+    poolClear(&mut expect_parser_mut(parser).m_tempPool);
+    poolClear(&mut expect_parser_mut(parser).m_temp2Pool);
     expat_free(
         parser,
-        (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
+        expect_parser_ref(parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
         1691 as ::core::ffi::c_int,
     );
-    (*parser).m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    expect_parser_mut(parser).m_protocolEncodingName =
+        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     parserInit(parser, encodingName);
-    dtdReset((*parser).m_dtd, parser);
+    dtdReset(expect_parser_ref(parser).m_dtd, parser);
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_ParserReset"]
@@ -3060,141 +3094,154 @@ extern "C" fn destroyBindings(mut bindings: *mut BINDING, mut parser: crate::exp
         );
     }
 }
-pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) {
+pub extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) {
     let mut tagList: *mut TAG = ::core::ptr::null_mut::<TAG>();
     let mut entityList: *mut OPEN_INTERNAL_ENTITY = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     if parser.is_null() {
         return;
     }
-    tagList = (*parser).m_tagStack;
+    tagList = expect_parser_ref(parser).m_tagStack;
     loop {
-        let mut p: *mut TAG = ::core::ptr::null_mut::<TAG>();
+        let p: *mut TAG;
         if tagList.is_null() {
-            if (*parser).m_freeTagList.is_null() {
+            if expect_parser_ref(parser).m_freeTagList.is_null() {
                 break;
             }
-            tagList = (*parser).m_freeTagList;
-            (*parser).m_freeTagList = ::core::ptr::null_mut::<TAG>();
+            tagList = expect_parser_ref(parser).m_freeTagList;
+            expect_parser_mut(parser).m_freeTagList = ::core::ptr::null_mut::<TAG>();
         }
         p = tagList;
-        tagList = (*tagList).parent as *mut TAG;
+        tagList = expect_tag_mut(tagList).parent as *mut TAG;
         expat_free(
             parser,
-            (*p).buf.raw as *mut ::core::ffi::c_void,
+            helper_unsafe!(expect_tag_mut(p).buf.raw) as *mut ::core::ffi::c_void,
             1942 as ::core::ffi::c_int,
         );
-        destroyBindings((*p).bindings, parser);
+        destroyBindings(expect_tag_mut(p).bindings, parser);
         expat_free(
             parser,
             p as *mut ::core::ffi::c_void,
             1944 as ::core::ffi::c_int,
         );
     }
-    entityList = (*parser).m_openInternalEntities;
+    entityList = expect_parser_ref(parser).m_openInternalEntities;
     loop {
-        let mut openEntity: *mut OPEN_INTERNAL_ENTITY =
-            ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+        let openEntity: *mut OPEN_INTERNAL_ENTITY;
         if entityList.is_null() {
-            if (*parser).m_freeInternalEntities.is_null() {
+            if expect_parser_ref(parser).m_freeInternalEntities.is_null() {
                 break;
             }
-            entityList = (*parser).m_freeInternalEntities;
-            (*parser).m_freeInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+            entityList = expect_parser_ref(parser).m_freeInternalEntities;
+            expect_parser_mut(parser).m_freeInternalEntities =
+                ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         }
         openEntity = entityList;
-        entityList = (*entityList).next as *mut OPEN_INTERNAL_ENTITY;
+        entityList = open_internal_entity_mut(entityList)
+            .expect("non-null open internal entity")
+            .next as *mut OPEN_INTERNAL_ENTITY;
         expat_free(
             parser,
             openEntity as *mut ::core::ffi::c_void,
             1958 as ::core::ffi::c_int,
         );
     }
-    entityList = (*parser).m_openAttributeEntities;
+    entityList = expect_parser_ref(parser).m_openAttributeEntities;
     loop {
-        let mut openEntity_0: *mut OPEN_INTERNAL_ENTITY =
-            ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+        let openEntity: *mut OPEN_INTERNAL_ENTITY;
         if entityList.is_null() {
-            if (*parser).m_freeAttributeEntities.is_null() {
+            if expect_parser_ref(parser).m_freeAttributeEntities.is_null() {
                 break;
             }
-            entityList = (*parser).m_freeAttributeEntities;
-            (*parser).m_freeAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+            entityList = expect_parser_ref(parser).m_freeAttributeEntities;
+            expect_parser_mut(parser).m_freeAttributeEntities =
+                ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         }
-        openEntity_0 = entityList;
-        entityList = (*entityList).next as *mut OPEN_INTERNAL_ENTITY;
+        openEntity = entityList;
+        entityList = open_internal_entity_mut(entityList)
+            .expect("non-null open attribute entity")
+            .next as *mut OPEN_INTERNAL_ENTITY;
         expat_free(
             parser,
-            openEntity_0 as *mut ::core::ffi::c_void,
+            openEntity as *mut ::core::ffi::c_void,
             1972 as ::core::ffi::c_int,
         );
     }
-    entityList = (*parser).m_openValueEntities;
+    entityList = expect_parser_ref(parser).m_openValueEntities;
     loop {
-        let mut openEntity_1: *mut OPEN_INTERNAL_ENTITY =
-            ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+        let openEntity: *mut OPEN_INTERNAL_ENTITY;
         if entityList.is_null() {
-            if (*parser).m_freeValueEntities.is_null() {
+            if expect_parser_ref(parser).m_freeValueEntities.is_null() {
                 break;
             }
-            entityList = (*parser).m_freeValueEntities;
-            (*parser).m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+            entityList = expect_parser_ref(parser).m_freeValueEntities;
+            expect_parser_mut(parser).m_freeValueEntities =
+                ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
         }
-        openEntity_1 = entityList;
-        entityList = (*entityList).next as *mut OPEN_INTERNAL_ENTITY;
+        openEntity = entityList;
+        entityList = open_internal_entity_mut(entityList)
+            .expect("non-null open value entity")
+            .next as *mut OPEN_INTERNAL_ENTITY;
         expat_free(
             parser,
-            openEntity_1 as *mut ::core::ffi::c_void,
+            openEntity as *mut ::core::ffi::c_void,
             1986 as ::core::ffi::c_int,
         );
     }
-    destroyBindings((*parser).m_freeBindingList, parser);
-    destroyBindings((*parser).m_inheritedBindings, parser);
-    poolDestroy(&mut (*parser).m_tempPool);
-    poolDestroy(&mut (*parser).m_temp2Pool);
+    destroyBindings(expect_parser_ref(parser).m_freeBindingList, parser);
+    destroyBindings(expect_parser_ref(parser).m_inheritedBindings, parser);
+    poolDestroy(&mut expect_parser_mut(parser).m_tempPool);
+    poolDestroy(&mut expect_parser_mut(parser).m_temp2Pool);
     expat_free(
         parser,
-        (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
+        expect_parser_ref(parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
         1992 as ::core::ffi::c_int,
     );
-    if (*parser).m_isParamEntity == 0 && !(*parser).m_dtd.is_null() {
+    if expect_parser_ref(parser).m_isParamEntity == 0 && !expect_parser_ref(parser).m_dtd.is_null()
+    {
         dtdDestroy(
-            (*parser).m_dtd,
-            (*parser).m_parentParser.is_null() as ::core::ffi::c_int as crate::expat_h::XML_Bool,
+            expect_parser_ref(parser).m_dtd,
+            expect_parser_ref(parser).m_parentParser.is_null() as ::core::ffi::c_int
+                as crate::expat_h::XML_Bool,
             parser,
         );
     }
     expat_free(
         parser,
-        (*parser).m_atts as *mut ::core::ffi::c_void,
+        expect_parser_ref(parser).m_atts as *mut ::core::ffi::c_void,
         2002 as ::core::ffi::c_int,
     );
     expat_free(
         parser,
-        (*parser).m_groupConnector as *mut ::core::ffi::c_void,
+        expect_parser_ref(parser).m_groupConnector as *mut ::core::ffi::c_void,
         2006 as ::core::ffi::c_int,
     );
-    (*parser).m_mem.free_fcn.expect("non-null function pointer")(
-        (*parser).m_buffer as *mut ::core::ffi::c_void,
-    );
+    helper_unsafe!(expect_parser_ref(parser)
+        .m_mem
+        .free_fcn
+        .expect("non-null function pointer")(
+        expect_parser_ref(parser).m_buffer as *mut ::core::ffi::c_void
+    ));
     expat_free(
         parser,
-        (*parser).m_dataBuf as *mut ::core::ffi::c_void,
+        expect_parser_ref(parser).m_dataBuf as *mut ::core::ffi::c_void,
         2011 as ::core::ffi::c_int,
     );
     expat_free(
         parser,
-        (*parser).m_nsAtts as *mut ::core::ffi::c_void,
+        expect_parser_ref(parser).m_nsAtts as *mut ::core::ffi::c_void,
         2012 as ::core::ffi::c_int,
     );
     expat_free(
         parser,
-        (*parser).m_unknownEncodingMem,
+        expect_parser_ref(parser).m_unknownEncodingMem,
         2013 as ::core::ffi::c_int,
     );
-    if (*parser).m_unknownEncodingRelease.is_some() {
-        (*parser)
+    if expect_parser_ref(parser).m_unknownEncodingRelease.is_some() {
+        helper_unsafe!(expect_parser_ref(parser)
             .m_unknownEncodingRelease
-            .expect("non-null function pointer")((*parser).m_unknownEncodingData);
+            .expect("non-null function pointer")(
+            expect_parser_ref(parser).m_unknownEncodingData
+        ));
     }
     expat_free(
         parser,
