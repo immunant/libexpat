@@ -12896,12 +12896,10 @@ unsafe extern "C" fn initializeEncoding(
     });
     let s = protocol_name.map_or(::core::ptr::null(), |name| name.as_ptr().cast());
     let initialized = if parser_state.m_ns as ::core::ffi::c_int != 0 {
-        let mut initialized_encoding = ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS(
-            &raw mut parser_state.m_initEncoding,
-            &raw mut initialized_encoding,
-            s,
-        ) != 0
+            &mut parser_state.m_initEncoding,
+            protocol_name,
+        )
     } else {
         crate::src::xmltok::xmltok_ns_c::init_encoding(
             &mut parser_state.m_initEncoding,
