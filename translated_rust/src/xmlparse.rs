@@ -3415,6 +3415,22 @@ impl RawNameSource<'_> {
         }
     }
 
+    /// Narrows this already-validated event window by two cursors known to
+    /// refer to it.  This is deliberately address-based rather than pointer
+    /// arithmetic: callers retain the owning slice and reject ranges outside
+    /// it before a tokenizer helper observes them.
+    fn chars_between(
+        &self,
+        start: usize,
+        end: usize,
+    ) -> Option<&[::core::ffi::c_char]> {
+        let chars = self.chars();
+        let base = chars.as_ptr().addr();
+        let start = start.checked_sub(base)?;
+        let end = end.checked_sub(base)?;
+        chars.get(start..end)
+    }
+
     /// Returns the byte-preserving view used by the tokenizer's conversion
     /// routines.  This keeps conversion callers from recreating a slice from
     /// a pair of C cursors after the owning parser/entity storage has already
@@ -4338,11 +4354,36 @@ struct EventNameMeasurement {
     whitespace_after_name: Option<usize>,
 }
 
-/// Measures a name only after the parser's token cursors have been resolved
-/// into the owning input/entity slice.  `start` and `end` are tokenizer
-/// cursors for one token, not arbitrary foreign pointers.  A processing
-/// instruction may additionally request the leading whitespace length before
-/// its trailing delimiter.
+/// Measures a name from a token window that has already been validated
+/// against its owning parser or entity storage.  A processing instruction may
+/// additionally request the leading whitespace length before its trailing
+/// delimiter.
+fn measure_event_name(
+    encoding: &crate::src::xmltok::ENCODING,
+    normal_encoding: &crate::src::xmltok::normal_encoding,
+    chars: &[::core::ffi::c_char],
+    trailing_delimiter_width: Option<usize>,
+) -> Option<EventNameMeasurement> {
+    let length = encoding.nameLength.measure(
+        normal_encoding,
+        crate::src::xmltok::AttributeSource::Chars(chars),
+    );
+    let whitespace_after_name = trailing_delimiter_width.map(|trailing_width| {
+        let name_end = usize::try_from(length).ok()?;
+        let data_end = chars.len().checked_sub(trailing_width)?;
+        let data = chars.get(name_end..data_end)?;
+        Some(crate::src::xmltok::skip_s(data, encoding.skipS))
+    }).flatten();
+    Some(EventNameMeasurement {
+        length,
+        whitespace_after_name,
+    })
+}
+
+/// Transitional boundary adapter for callers that have not yet converted
+/// their complete token handling to owned cursor ranges.  The raw cursors are
+/// first resolved through parser/entity storage; name measurement itself is
+/// performed by the safe helper above.
 unsafe fn event_name_length(
     parser: crate::expat_h::XML_Parser,
     dtd: *const DTD,
@@ -4355,26 +4396,12 @@ unsafe fn event_name_length(
     let source = event_raw_name_source(&*parser, &*dtd, parser_events, start.addr(), end.addr())?;
     let encoding = &*enc;
     let normal_encoding = &*(enc as *const crate::src::xmltok::normal_encoding);
-    let length = match source {
-        RawNameSource::Bytes(bytes) => encoding.nameLength.measure(
-            normal_encoding,
-            crate::src::xmltok::AttributeSource::Bytes(bytes),
-        ),
-        RawNameSource::Chars(chars) => encoding.nameLength.measure(
-            normal_encoding,
-            crate::src::xmltok::AttributeSource::Chars(chars),
-        ),
-    };
-    let whitespace_after_name = trailing_delimiter_width.map(|trailing_width| {
-        let name_end = usize::try_from(length).ok()?;
-        let data_end = source.len().checked_sub(trailing_width)?;
-        let data = source.chars().get(name_end..data_end)?;
-        Some(crate::src::xmltok::skip_s(data, encoding.skipS))
-    }).flatten();
-    Some(EventNameMeasurement {
-        length,
-        whitespace_after_name,
-    })
+    measure_event_name(
+        encoding,
+        normal_encoding,
+        source.chars(),
+        trailing_delimiter_width,
+    )
 }
 
 fn stored_raw_name_source<'a>(
@@ -10507,8 +10534,15 @@ unsafe fn doContent(
                         Some(storage) => storage,
                         None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                     };
-                    let Some(raw_name_len) =
-                        event_name_length(parser, dtd, parser_events, enc, raw_name, next, None)
+                    let Some(raw_name_len) = measure_event_name(
+                        encoding,
+                        &normal_encoding,
+                        match source.chars_between(raw_name.addr(), next.addr()) {
+                            Some(chars) => chars,
+                            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                        },
+                        None,
+                    )
                     else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
@@ -10630,8 +10664,15 @@ unsafe fn doContent(
                         uriLen: 0,
                         prefixLen: 0,
                     };
-                    let Some(raw_name_len) =
-                        event_name_length(parser, dtd, parser_events, enc, rawName, next, None)
+                    let Some(raw_name_len) = measure_event_name(
+                        encoding,
+                        &normal_encoding,
+                        match source.chars_between(rawName.addr(), next.addr()) {
+                            Some(chars) => chars,
+                            None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                        },
+                        None,
+                    )
                     else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
@@ -10740,8 +10781,15 @@ unsafe fn doContent(
                         rawName_0 = s.wrapping_offset(
                             (encoding.minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
                         );
-                        let Some(raw_name_len) =
-                            event_name_length(parser, dtd, parser_events, enc, rawName_0, next, None)
+                        let Some(raw_name_len) = measure_event_name(
+                            encoding,
+                            &normal_encoding,
+                            match source.chars_between(rawName_0.addr(), next.addr()) {
+                                Some(chars) => chars,
+                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            },
+                            None,
+                        )
                         else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
@@ -11505,7 +11553,15 @@ unsafe extern "C" fn storeAtts(
         // Validate the complete attribute-name suffix against the same token
         // storage that fed the scanner.  In particular, internal entities do
         // not share the outer parser's event cursor.
-        let Some(name_len) = event_name_length(parser, dtd, parser_events, enc, name, attEnd, None)
+        let Some(name_len) = event_name_length(
+            parser,
+            dtd,
+            parser_events,
+            enc,
+            name,
+            attEnd,
+            None,
+        )
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
