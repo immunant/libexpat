@@ -2917,6 +2917,20 @@ struct TestVisibleAllocation {
     backing: AllocationBacking,
 }
 
+/// Create the Rust-owned storage and allocator token used for a test-visible
+/// Expat allocation.  Publishing its payload address remains the caller's
+/// responsibility, so this helper has no raw-pointer boundary.
+fn new_test_visible_allocation(
+    parser: &XML_ParserStruct,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<TestVisibleAllocation> {
+    let storage = TestAllocationStorage::new(size)?;
+    let backing =
+        AllocationBackingFactory::for_parser(parser).allocation_backing(size, source_line)?;
+    Some(TestVisibleAllocation { storage, backing })
+}
+
 impl ParserAllocatorPolicy {
     fn reserve(
         &self,
@@ -5941,15 +5955,9 @@ pub unsafe fn expat_malloc(
     size: crate::__stddef_size_t_h::size_t,
     sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
-    let Some(storage) = TestAllocationStorage::new(size) else {
+    let Some(mut allocation) = new_test_visible_allocation(parser, size, sourceLine) else {
         return crate::__stddef_null_h::NULL;
     };
-    let Some(backing) = AllocationBackingFactory::for_parser(parser)
-        .allocation_backing(size, sourceLine)
-    else {
-        return crate::__stddef_null_h::NULL;
-    };
-    let mut allocation = TestVisibleAllocation { storage, backing };
     let payload_ptr = allocation
         .storage
         .chunks
@@ -6199,10 +6207,33 @@ unsafe fn expat_realloc(
     mut sourceLine: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
     if ptr.is_null() {
-        return expat_malloc(parser, size, sourceLine);
+        let Some(mut allocation) = new_test_visible_allocation(parser, size, sourceLine) else {
+            return crate::__stddef_null_h::NULL;
+        };
+        let payload_ptr = allocation
+            .storage
+            .chunks
+            .as_mut_ptr()
+            .cast::<u8>()
+            .wrapping_add(TestAllocationStorage::payload_offset())
+            .cast::<::core::ffi::c_void>();
+        std::sync::Arc::clone(&parser.m_root)
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .test_allocations
+            .insert(payload_ptr.addr(), allocation);
+        return payload_ptr;
     }
     if size == 0 as crate::__stddef_size_t_h::size_t {
-        expat_free(parser, ptr, sourceLine);
+        let mut allocation = std::sync::Arc::clone(&parser.m_root)
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .test_allocations
+            .remove(&ptr.addr())
+            .expect("expat allocation must be tracked");
+        allocation
+            .backing
+            .apply(ParserAllocationAction::Free(sourceLine));
         return crate::__stddef_null_h::NULL;
     }
     let root = std::sync::Arc::clone(&parser.m_root);
