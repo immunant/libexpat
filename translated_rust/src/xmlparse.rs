@@ -10152,6 +10152,14 @@ unsafe fn doContent(
     mut haveMore: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
+    // `doContent`'s legacy caller supplies an output cursor.  Establish the
+    // short-lived exclusive reference once, so every return path below writes
+    // through the checked boundary reference rather than repeatedly
+    // dereferencing the raw C out-parameter.
+    if nextPtr.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let next_ptr = &mut *nextPtr;
     // Keep the parser state borrowed for ordinary bookkeeping.  The raw
     // handle is only recovered at the legacy callback/token API boundary;
     // no parser-owned field access below needs to dereference it.
@@ -10188,7 +10196,7 @@ unsafe fn doContent(
         (EventCursorTarget::InternalEntity(open_entity_index), Some(window))
     };
     content_update_event_start(
-        &mut *parser,
+        parser,
         event_target,
         parser_events,
         &internal_event_start,
@@ -10257,7 +10265,7 @@ unsafe fn doContent(
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         content_update_event_end(
-            &mut *parser,
+            parser,
             event_target,
             internal_event_start.get(),
             internal_event_window,
@@ -10267,11 +10275,11 @@ unsafe fn doContent(
             match tok {
                 crate::src::xmltok::XML_TOK_TRAILING_CR => {
                     if haveMore != 0 {
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     content_update_event_end(
-                        &mut *parser,
+                        parser,
                         event_target,
                         internal_event_start.get(),
                         internal_event_window,
@@ -10293,26 +10301,26 @@ unsafe fn doContent(
                     if parser.m_tagLevel != startTagLevel {
                         return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
                     }
-                    *nextPtr = end;
+                    *next_ptr = end;
                     return crate::expat_h::XML_ERROR_NONE;
                 }
                 crate::src::xmltok::XML_TOK_NONE => {
                     if haveMore != 0 {
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     if startTagLevel > 0 as ::core::ffi::c_int {
-                        if (*parser).m_tagLevel != startTagLevel {
+                        if parser.m_tagLevel != startTagLevel {
                             return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
                         }
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                 }
                 crate::src::xmltok::XML_TOK_INVALID => {
                     content_update_event_start(
-                        &mut *parser,
+                        parser,
                         event_target,
                         parser_events,
                         &internal_event_start,
@@ -10323,14 +10331,14 @@ unsafe fn doContent(
                 }
                 crate::src::xmltok::XML_TOK_PARTIAL => {
                     if haveMore != 0 {
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     return crate::expat_h::XML_ERROR_UNCLOSED_TOKEN;
                 }
                 crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
                     if haveMore != 0 {
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
@@ -10552,7 +10560,7 @@ unsafe fn doContent(
                             {
                                 return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                             }
-                            (*parser).m_tempPool.rewind();
+                            parser.m_tempPool.rewind();
                         } else if handlers.default {
                             reportDefault(parser, enc, s, next);
                         }
@@ -10826,7 +10834,7 @@ unsafe fn doContent(
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
                     let name_string = poolStoreString(
-                        &raw mut (*parser).m_tempPool,
+                        &raw mut parser.m_tempPool,
                         enc,
                         rawName,
                         rawName.wrapping_offset(raw_name_len.length as isize),
@@ -10834,15 +10842,15 @@ unsafe fn doContent(
                     if name_string.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    let Some(name_ref) = (*parser).m_tempPool.start_ref(false) else {
+                    let Some(name_ref) = parser.m_tempPool.start_ref(false) else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
                     name_0.str = TagNameStorage::TempPool(name_ref);
-                    let raw_name_pointer = (*parser)
+                    let raw_name_pointer = parser
                         .m_tempPool
                         .chars_from(name_ref)
                         .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                    (*parser).m_tempPool.commit();
+                    parser.m_tempPool.commit();
                     let mut app_atts = Vec::new();
                     result_1 = storeAtts(
                         parser,
@@ -10864,7 +10872,7 @@ unsafe fn doContent(
                         return result_1;
                     }
                     let name_pointer = match name_0.str {
-                        TagNameStorage::TempPool(name) => (*parser)
+                        TagNameStorage::TempPool(name) => parser
                             .m_tempPool
                             .chars_from(name)
                             .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
@@ -10873,7 +10881,7 @@ unsafe fn doContent(
                         }
                         _ => ::core::ptr::null(),
                     };
-                    (*parser).m_tempPool.commit();
+                    parser.m_tempPool.commit();
                     let start_handlers = content_token_handlers(parser);
                     if start_handlers.start_element {
                         let callback = START_ELEMENT_HANDLERS
@@ -10897,7 +10905,7 @@ unsafe fn doContent(
                     if end_handlers.end_element {
                         if end_handlers.start_element {
                             content_advance_event_start_to_end(
-                                &mut *parser,
+                                parser,
                                 event_target,
                                 &internal_event_start,
                             );
@@ -10924,9 +10932,9 @@ unsafe fn doContent(
                     if noElmHandlers as ::core::ffi::c_int != 0 && end_handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
-                    poolClear(&mut (*parser).m_tempPool);
+                    poolClear(&mut parser.m_tempPool);
                     freeBindings(parser, bindings);
-                    if close_element_epilog_action(&mut *parser) {
+                    if close_element_epilog_action(parser) {
                         return epilogProcessor(parser, next, end, nextPtr);
                     }
                 }
@@ -10964,7 +10972,7 @@ unsafe fn doContent(
                         };
                         if !names_match {
                             content_update_event_start(
-                                &mut *parser,
+                                parser,
                                 event_target,
                                 parser_events,
                                 &internal_event_start,
@@ -10980,7 +10988,7 @@ unsafe fn doContent(
                             namespace_separator,
                             bindings,
                             storage: mut tag_storage,
-                        } = close_content_tag(&mut *parser, tag_index);
+                        } = close_content_tag(parser, tag_index);
                         let mut end_element_name = ::core::ptr::null();
                         let tag_0 = tag_storage
                             .tag
@@ -11087,7 +11095,7 @@ unsafe fn doContent(
                         // The original implementation makes this storage available for
                         // reuse before it dispatches callbacks.  Keep that ordering so a
                         // re-entrant callback observes the same allocator/free-list state.
-                        (*parser).m_freeTagList.tags.push(tag_storage);
+                        parser.m_freeTagList.tags.push(tag_storage);
                         if has_end_element_handler {
                             let callback = END_ELEMENT_HANDLERS
                                 .get_or_init(|| {
@@ -11108,11 +11116,11 @@ unsafe fn doContent(
                                 };
                                 callback(handler_arg!(parser), end_element_name);
                             }
-                        } else if (*parser).m_defaultHandler {
+                        } else if parser.m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
                         freeBindings(parser, bindings);
-                        if close_element_epilog_action(&mut *parser) {
+                        if close_element_epilog_action(parser) {
                             return epilogProcessor(parser, next, end, nextPtr);
                         }
                     }
@@ -11177,7 +11185,7 @@ unsafe fn doContent(
                     } else if false && handlers.character_data {
                         callCharacterDataHandler(
                             parser,
-                            (*parser).m_dataBuf.chars.as_ptr(),
+                            parser.m_dataBuf.chars.as_ptr(),
                             0 as ::core::ffi::c_int,
                         );
                     } else if handlers.default {
@@ -11191,13 +11199,13 @@ unsafe fn doContent(
                     {
                         return result_2;
                     } else if next.is_null() {
-                        (*parser).m_processor = ProcessorState::CdataSection;
+                        parser.m_processor = ProcessorState::CdataSection;
                         return result_2;
                     }
                 }
                 crate::src::xmltok::XML_TOK_TRAILING_RSQB => {
                     if haveMore != 0 {
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     let handlers = content_token_handlers(parser);
@@ -11261,7 +11269,7 @@ unsafe fn doContent(
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         content_update_event_start(
-                            &mut *parser,
+                            parser,
                             event_target,
                             parser_events,
                             &internal_event_start,
@@ -11270,9 +11278,9 @@ unsafe fn doContent(
                         );
                         return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                     }
-                    if (*parser).m_tagLevel != startTagLevel {
+                    if parser.m_tagLevel != startTagLevel {
                         content_update_event_start(
-                            &mut *parser,
+                            parser,
                             event_target,
                             parser_events,
                             &internal_event_start,
@@ -11281,7 +11289,7 @@ unsafe fn doContent(
                         );
                         return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
                     }
-                    *nextPtr = end;
+                    *next_ptr = end;
                     return crate::expat_h::XML_ERROR_NONE;
                 }
                 crate::src::xmltok::XML_TOK_DATA_CHARS => {
@@ -11347,7 +11355,7 @@ unsafe fn doContent(
                                     None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                                 };
                                 content_update_event_end(
-                                    &mut *parser,
+                                    parser,
                                     event_target,
                                     internal_event_start.get(),
                                     internal_event_window,
@@ -11370,7 +11378,7 @@ unsafe fn doContent(
                                     break;
                                 }
                                 content_update_event_start(
-                                    &mut *parser,
+                                    parser,
                                     event_target,
                                     parser_events,
                                     &internal_event_start,
@@ -11393,7 +11401,7 @@ unsafe fn doContent(
                                 data_len,
                             );
                         }
-                    } else if (*parser).m_defaultHandler {
+                    } else if parser.m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                 }
@@ -11408,7 +11416,7 @@ unsafe fn doContent(
                     }
                 }
                 _ => {
-                    if (*parser).m_defaultHandler {
+                    if parser.m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                 }
@@ -11424,19 +11432,19 @@ unsafe fn doContent(
         match loop_status {
             ContentLoopStatus::Suspended => {
                 content_update_event_start(
-                    &mut *parser,
+                    parser,
                     event_target,
                     parser_events,
                     &internal_event_start,
                     internal_event_window,
                     next.addr(),
                 );
-                *nextPtr = next;
+                *next_ptr = next;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             ContentLoopStatus::Aborted => {
                 content_update_event_start(
-                    &mut *parser,
+                    parser,
                     event_target,
                     parser_events,
                     &internal_event_start,
@@ -11446,14 +11454,14 @@ unsafe fn doContent(
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
             ContentLoopStatus::Reentered => {
-                *nextPtr = next;
+                *next_ptr = next;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             ContentLoopStatus::Continue => {}
         }
         s = next;
         content_update_event_start(
-            &mut *parser,
+            parser,
             event_target,
             parser_events,
             &internal_event_start,
