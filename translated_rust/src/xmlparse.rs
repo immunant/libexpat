@@ -11797,17 +11797,29 @@ unsafe fn storeAtts(
         // Validate the complete attribute-name suffix against the same token
         // storage that fed the scanner.  In particular, internal entities do
         // not share the outer parser's event cursor.
-        let Some(name_len) = event_name_length(
-            parser,
-            dtd,
-            parser_events,
-            enc,
-            name,
-            attEnd,
-            None,
-        )
-        else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let name_len = {
+            let parser_ref = &*parser;
+            let Some(normal_encoding) = entity_value_normal_encoding(parser_ref, enc.addr()) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(name_source) = event_raw_name_source(
+                parser_ref,
+                dtd,
+                parser_events,
+                name.addr(),
+                attEnd.addr(),
+            ) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(name_len) = measure_event_name(
+                &normal_encoding.enc,
+                &normal_encoding,
+                name_source.chars(),
+                None,
+            ) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            name_len
         };
         let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
             parser,
@@ -11843,6 +11855,7 @@ unsafe fn storeAtts(
         let c2rust_fresh23 = attIndex;
         attIndex = attIndex + 1;
         appAtts[c2rust_fresh23 as usize] = att_id_name;
+        let attribute_value_ref;
         if currAtt.normalized == 0 {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             let mut isCdata: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
@@ -11893,6 +11906,7 @@ unsafe fn storeAtts(
             let Some(start) = temp_pool.start_ref(true) else {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             };
+            attribute_value_ref = start;
             appAtts[attIndex as usize] = temp_pool
                 .chars_from(start)
                 .map_or(::core::ptr::null(), |chars| chars.as_ptr());
@@ -11903,38 +11917,33 @@ unsafe fn storeAtts(
             if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
+            let Some(start) = (*parser).m_tempPool.start_ref(true) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            attribute_value_ref = start;
             (*parser).m_tempPool.commit();
         }
         if !matches!((*attId).prefix, AttributePrefix::None) {
             let attribute_prefix = (*attId).prefix;
             if (*attId).xmlns != 0 {
-                let prefix = match attribute_prefix {
+                let binding_prefix = match attribute_prefix {
                     AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
-                    AttributePrefix::Default => &raw mut dtd.defaultPrefix,
-                    AttributePrefix::Named(name) => {
-                        let name = pool_string_pointer!(&dtd.pool, name);
-                        if name.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        let prefix = lookup(
-                            parser,
-                            &raw mut dtd.prefixes,
-                            name as KEY,
-                            0 as crate::__stddef_size_t_h::size_t,
-                        ) as *mut PREFIX;
-                        if prefix.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        prefix
-                    }
+                    AttributePrefix::Default => BindingPrefix::Default,
+                    AttributePrefix::Named(name) => BindingPrefix::Named(name),
                 };
-                let mut result_0: crate::expat_h::XML_Error = addBinding(
-                    parser,
-                    prefix,
-                    attId,
-                    appAtts[attIndex as usize],
-                    bindings,
-                );
+                let Some(uri) = (*parser).m_tempPool.chars_from(attribute_value_ref) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(input) = namespace_binding_input(
+                    &*dtd,
+                    Some(att_id_name_ref),
+                    binding_prefix,
+                    uri,
+                ) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                let mut result_0: crate::expat_h::XML_Error =
+                    add_binding_impl(&mut *parser, binding_prefix, input, bindings);
                 if result_0 as u64 != 0 {
                     return result_0;
                 }
@@ -12025,28 +12034,24 @@ unsafe fn storeAtts(
             if !matches!((*id).prefix, AttributePrefix::None) {
                 let attribute_prefix = (*id).prefix;
                 if (*id).xmlns != 0 {
-                    let prefix = match attribute_prefix {
+                    let binding_prefix = match attribute_prefix {
                         AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
-                        AttributePrefix::Default => &raw mut dtd.defaultPrefix,
-                        AttributePrefix::Named(name) => {
-                            let name = pool_string_pointer!(&dtd.pool, name);
-                            if name.is_null() {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            let prefix = lookup(
-                                parser,
-                                &raw mut dtd.prefixes,
-                                name as KEY,
-                                0 as crate::__stddef_size_t_h::size_t,
-                            ) as *mut PREFIX;
-                            if prefix.is_null() {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            prefix
-                        }
+                        AttributePrefix::Default => BindingPrefix::Default,
+                        AttributePrefix::Named(name) => BindingPrefix::Named(name),
+                    };
+                    let Some(uri) = dtd.pool.chars_from(value_ref) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let Some(input) = namespace_binding_input(
+                        &*dtd,
+                        Some(id_name_ref),
+                        binding_prefix,
+                        uri,
+                    ) else {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
                     let mut result_1: crate::expat_h::XML_Error =
-                        addBinding(parser, prefix, id, value, bindings);
+                        add_binding_impl(&mut *parser, binding_prefix, input, bindings);
                     if result_1 as u64 != 0 {
                         return result_1;
                     }
@@ -12757,7 +12762,7 @@ fn invoke_start_namespace_decl_handler(
 
 fn add_binding_impl(
     parser: &mut XML_ParserStruct,
-    prefix: &PREFIX,
+    binding_prefix: BindingPrefix,
     input: NamespaceBindingInput,
     bindings: &mut Option<BindingId>,
 ) -> crate::expat_h::XML_Error {
@@ -12788,14 +12793,6 @@ fn add_binding_impl(
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     let nextTagBinding = *bindings;
-    let binding_prefix = if input.is_default_prefix {
-        BindingPrefix::Default
-    } else {
-        let Some(name) = prefix.name else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        BindingPrefix::Named(name)
-    };
     let previous_prefix_binding =
         active_binding_id_for_prefix(&parser.m_activeBindings, binding_prefix);
     let binding_id = BindingId(parser.m_nextBindingId);
@@ -12855,76 +12852,36 @@ fn add_binding_impl(
     crate::expat_h::XML_ERROR_NONE
 }
 
-unsafe extern "C" fn addBinding(
-    parser: crate::expat_h::XML_Parser,
-    prefix: *mut PREFIX,
-    attId: *const ATTRIBUTE_ID,
-    uri: *const crate::expat_external_h::XML_Char,
-    bindings: &mut Option<BindingId>,
-) -> crate::expat_h::XML_Error {
-    let Some(parser) = parser.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(prefix) = prefix.as_ref() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    if uri.is_null() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-
-    let attribute_name = attId.as_ref().map(|attribute| attribute.named.name);
-    let mut uri_chars = Vec::new();
-    let uri_bytes = ::core::ffi::CStr::from_ptr(uri).to_bytes();
-    if uri_chars.try_reserve_exact(uri_bytes.len().saturating_add(1)).is_err() {
-        return crate::expat_h::XML_ERROR_NO_MEMORY;
-    }
-    uri_chars.extend(
-        uri_bytes
-            .iter()
-            .copied()
-            .map(|character| character as crate::expat_external_h::XML_Char),
-    );
-    uri_chars.push(0);
-
-    let is_default_prefix = {
-        let Some(dtd_owner) = parser.m_dtd.as_ref() else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        let dtd = &*dtd_owner.value.get();
-        std::ptr::eq(prefix, &dtd.defaultPrefix)
-    };
-    let prefix_name = match prefix.name {
-        None => None,
-        Some(name) => {
-            let Some(dtd_owner) = parser.m_dtd.as_ref() else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let dtd = &*dtd_owner.value.get();
-            let Some(chars) = dtd.pool.chars_from(name) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(chars) = terminated_xml_chars(chars) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
+/// Copies the DTD-owned spelling of a namespace declaration into the owned
+/// callback input used by `add_binding_impl`.  The binding helper may invoke a
+/// user callback, so neither the DTD pool nor a temporary-pool value is
+/// borrowed across that call.
+fn namespace_binding_input(
+    dtd: &DTD,
+    attribute_name: Option<PoolStringRef>,
+    binding_prefix: BindingPrefix,
+    uri: &[crate::expat_external_h::XML_Char],
+) -> Option<NamespaceBindingInput> {
+    let (prefix_name, is_default_prefix) = match binding_prefix {
+        BindingPrefix::Default => (None, true),
+        BindingPrefix::Named(name) => {
+            let chars = pool_terminated_chars(&dtd.pool, name)?;
             let mut copy = Vec::new();
-            if copy.try_reserve_exact(chars.len()).is_err() {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
-            }
+            copy.try_reserve_exact(chars.len()).ok()?;
             copy.extend_from_slice(chars);
-            Some(copy)
+            (Some(copy), false)
         }
     };
-    add_binding_impl(
-        parser,
-        prefix,
-        NamespaceBindingInput {
-            attribute_name,
-            prefix_name,
-            uri: uri_chars,
-            is_default_prefix,
-        },
-        bindings,
-    )
+    let uri = terminated_xml_chars(uri)?;
+    let mut uri_copy = Vec::new();
+    uri_copy.try_reserve_exact(uri.len()).ok()?;
+    uri_copy.extend_from_slice(uri);
+    Some(NamespaceBindingInput {
+        attribute_name,
+        prefix_name,
+        uri: uri_copy,
+        is_default_prefix,
+    })
 }
 
 unsafe extern "C" fn cdataSectionProcessor(
@@ -21441,7 +21398,9 @@ fn set_context_impl(
                     .map(|storage| storage.id);
                 let inherited_binding_result = add_binding_impl(
                     parser,
-                    &prefix,
+                    prefix
+                        .name
+                        .map_or(BindingPrefix::Default, BindingPrefix::Named),
                     NamespaceBindingInput {
                         attribute_name: None,
                         prefix_name,
