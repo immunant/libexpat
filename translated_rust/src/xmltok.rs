@@ -653,7 +653,13 @@ pub mod xmltok_impl_c {
                         Name2Checker::Unknown => unknown_isName(enc, ptr) != 0,
                     };
                 }
-                3 => normal.isName3,
+                3 => {
+                    return match normal.isName3 {
+                        Name3Checker::Never => false,
+                        Name3Checker::Utf8 => utf8_is_name3(input),
+                        Name3Checker::Unknown => unknown_isName(enc, ptr) != 0,
+                    };
+                }
                 4 => normal.isName4,
                 _ => unreachable!(),
             },
@@ -10259,11 +10265,13 @@ pub mod xmltok_impl_c {
     use crate::src::xmltok::utf8_invalid3;
     use crate::src::xmltok::utf8_invalid4;
     use crate::src::xmltok::utf8_is_name2;
+    use crate::src::xmltok::utf8_is_name3;
     use crate::src::xmltok::utf8_isInvalid3;
     use crate::src::xmltok::Invalid2Checker;
     use crate::src::xmltok::Invalid3Checker;
     use crate::src::xmltok::Invalid4Checker;
     use crate::src::xmltok::Name2Checker;
+    use crate::src::xmltok::Name3Checker;
 }
 
 pub mod xmltok_ns_c {
@@ -11699,12 +11707,7 @@ pub struct normal_encoding {
     pub enc: crate::src::xmltok::ENCODING,
     pub type_0: [::core::ffi::c_uchar; 256],
     pub isName2: Name2Checker,
-    pub isName3: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub isName3: Name3Checker,
     pub isName4: Option<
         unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
@@ -11736,6 +11739,13 @@ pub struct normal_encoding {
 
 #[derive(Copy, Clone)]
 pub enum Name2Checker {
+    Never,
+    Utf8,
+    Unknown,
+}
+
+#[derive(Copy, Clone)]
+pub enum Name3Checker {
     Never,
     Utf8,
     Unknown,
@@ -11833,28 +11843,17 @@ fn utf8_is_name2(input: &[u8]) -> bool {
         != 0
 }
 
-unsafe extern "C" fn utf8_isName3(
-    _enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (namingBitmap[(((namePages[(((*(p as *const ::core::ffi::c_uchar).offset(0 as isize)
-        as ::core::ffi::c_int
-        & 0xf as ::core::ffi::c_int)
-        << 4 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(1 as isize) as ::core::ffi::c_int
-            >> 2 as ::core::ffi::c_int
-            & 0xf as ::core::ffi::c_int)) as usize]
+fn utf8_is_name3(input: &[u8]) -> bool {
+    let first = input[0] as ::core::ffi::c_int;
+    let second = input[1] as ::core::ffi::c_int;
+    let third = input[2] as ::core::ffi::c_int;
+    (namingBitmap[(((namePages[(((first & 0xf) << 4) + ((second >> 2) & 0xf)) as usize]
         as ::core::ffi::c_int)
-        << 3 as ::core::ffi::c_int)
-        + ((*(p as *const ::core::ffi::c_uchar).offset(1 as isize) as ::core::ffi::c_int
-            & 3 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int)
-        + (*(p as *const ::core::ffi::c_uchar).offset(2 as isize) as ::core::ffi::c_int
-            >> 5 as ::core::ffi::c_int
-            & 1 as ::core::ffi::c_int)) as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (*(p as *const ::core::ffi::c_uchar).offset(2 as isize) as ::core::ffi::c_int
-                & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
+        << 3)
+        + ((second & 3) << 1)
+        + ((third >> 5) & 1)) as usize]
+        & (1 as ::core::ffi::c_uint) << (third & 0x1f))
+        != 0
 }
 
 unsafe extern "C" fn utf8_isNmstrt2(
@@ -12441,13 +12440,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Utf8,
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName3: Name3Checker::Utf8,
     isName4: Some(
         isNever
             as unsafe extern "C" fn(
@@ -12766,13 +12759,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Utf8,
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName3: Name3Checker::Utf8,
     isName4: Some(
         isNever
             as unsafe extern "C" fn(
@@ -13091,13 +13078,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Utf8,
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName3: Name3Checker::Utf8,
     isName4: Some(
         isNever
             as unsafe extern "C" fn(
@@ -13416,13 +13397,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Utf8,
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName3: Name3Checker::Utf8,
     isName4: Some(
         isNever
             as unsafe extern "C" fn(
@@ -13802,7 +13777,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -14097,7 +14072,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -14413,7 +14388,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
         0,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -14708,7 +14683,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
         0,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -15268,7 +15243,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -15563,7 +15538,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -15858,7 +15833,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -16153,7 +16128,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -16448,7 +16423,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -16743,7 +16718,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
     isName2: Name2Checker::Never,
-    isName3: None,
+    isName3: Name3Checker::Never,
     isName4: None,
     isNmstrt2: None,
     isNmstrt3: None,
@@ -17560,7 +17535,7 @@ fn initialize_unknown_encoding(
 
 fn install_unknown_name_checks(encoding: &mut unknown_encoding) {
     encoding.normal.isName2 = Name2Checker::Unknown;
-    encoding.normal.isName3 = Some(unknown_isName);
+    encoding.normal.isName3 = Name3Checker::Unknown;
     encoding.normal.isName4 = Some(unknown_isName);
     encoding.normal.isNmstrt2 = Some(unknown_isNmstrt);
     encoding.normal.isNmstrt3 = Some(unknown_isNmstrt);
