@@ -1325,11 +1325,41 @@ impl EndNamespaceDeclCallback
 {
 }
 
+/// The fully borrowed data for one end-namespace callback.
+///
+/// The prefix is copied by content processing before binding storage can be
+/// released or reused, and remains live only for this synchronous callback.
+struct EndNamespaceDeclCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    prefix: Option<&'a [crate::expat_external_h::XML_Char]>,
+}
+
+/// Owns the erased C callback while exposing a typed event to parser-side
+/// dispatch.
+struct EndNamespaceDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn Fn(EndNamespaceDeclCallbackEvent<'_>) + Send + Sync>,
+}
+
+impl EndNamespaceDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: EndNamespaceDeclCallback + 'static,
+    {
+        Self {
+            callback: end_namespace_decl_callback_adapter(std::sync::Arc::new(callback)),
+        }
+    }
+
+    fn invoke(&self, event: EndNamespaceDeclCallbackEvent<'_>) {
+        (self.callback)(event);
+    }
+}
+
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an end-namespace callback is installed.
 static END_NAMESPACE_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn EndNamespaceDeclCallback>>,
+        std::collections::HashMap<usize, std::sync::Arc<EndNamespaceDeclCallbackAdapter>>,
     >,
 > = std::sync::OnceLock::new();
 
@@ -1338,7 +1368,7 @@ static END_NAMESPACE_DECL_HANDLERS: std::sync::OnceLock<
 /// Parser state retains only this typed registry entry and its opaque address
 /// key, never the C callback representation itself.
 struct EndNamespaceDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>>,
+    callback: Option<std::sync::Arc<EndNamespaceDeclCallbackAdapter>>,
 }
 
 fn end_namespace_decl_handler_registration<Callback>(
@@ -1348,7 +1378,9 @@ where
     Callback: EndNamespaceDeclCallback + 'static,
 {
     EndNamespaceDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| {
+            std::sync::Arc::new(EndNamespaceDeclCallbackAdapter::new(callback))
+        }),
     }
 }
 
@@ -1992,6 +2024,36 @@ fn two_xml_char_callback_adapter(
             event.first.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
             event.second.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
         );
+    })
+}
+
+/// Converts a registered end-namespace C callback into the typed,
+/// synchronous callback used by content processing.
+///
+/// This is the sole foreign-call boundary for the handler family.  The event
+/// retains the live parser context and the bounded prefix view for exactly the
+/// duration of the call.
+fn end_namespace_decl_callback_adapter(
+    callback: std::sync::Arc<dyn EndNamespaceDeclCallback>,
+) -> std::sync::Arc<dyn Fn(EndNamespaceDeclCallbackEvent<'_>) + Send + Sync> {
+    std::sync::Arc::new(move |event: EndNamespaceDeclCallbackEvent<'_>| {
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return;
+        };
+        // The registration boundary accepts only this ABI callback shape.
+        // The event keeps its parser context and optional terminated prefix
+        // alive for the synchronous callback.
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event.prefix.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            );
+        }
     })
 }
 
@@ -8925,8 +8987,9 @@ fn xml_external_entity_parser_create_impl(
     let mut oldStartNamespaceDeclHandler = false;
     let mut oldStartNamespaceDeclCallback: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>> = None;
     let mut oldEndNamespaceDeclHandler = false;
-    let mut oldEndNamespaceDeclCallback: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>> =
-        None;
+    let mut oldEndNamespaceDeclCallback: Option<
+        std::sync::Arc<EndNamespaceDeclCallbackAdapter>,
+    > = None;
     let mut oldNotStandaloneHandler = false;
     let mut oldNotStandaloneCallback: Option<std::sync::Arc<dyn NotStandaloneCallback>> = None;
     let mut oldExternalEntityRefHandler: Option<std::sync::Arc<dyn ExternalEntityRefCallback>> =
@@ -10474,7 +10537,7 @@ pub unsafe extern "C" fn XML_SetNotationDeclHandler_ffi(
 /// callback representations themselves remain in the boundary registries.
 struct NamespaceDeclHandlerRegistrations {
     start: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>>,
-    end: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>>,
+    end: Option<std::sync::Arc<EndNamespaceDeclCallbackAdapter>>,
 }
 
 /// A start-namespace handler registration prepared from the ABI callback
@@ -10507,7 +10570,9 @@ where
 {
     NamespaceDeclHandlerRegistrations {
         start: start.map(|callback| std::sync::Arc::new(TwoXmlCharCallbackAdapter::new(callback))),
-        end: end.map(|callback| std::sync::Arc::new(callback) as _),
+        end: end.map(|callback| {
+            std::sync::Arc::new(EndNamespaceDeclCallbackAdapter::new(callback))
+        }),
     }
 }
 
@@ -15216,20 +15281,7 @@ fn dispatch_end_namespace_decl_callback(
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     if let Some(callback) = callback {
-        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
-                *mut ::core::ffi::c_void,
-                *const crate::expat_external_h::XML_Char,
-            ),
-        >() else {
-            return;
-        };
-        unsafe {
-            callback(
-                handler_arg_from_state!(parser),
-                prefix.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            );
-        }
+        callback.invoke(EndNamespaceDeclCallbackEvent { parser, prefix });
     }
 }
 
