@@ -5083,8 +5083,8 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     }
     destroyBindings(parser.m_freeBindingList, parser as *mut XML_ParserStruct);
     destroyBindings(parser.m_inheritedBindings, parser as *mut XML_ParserStruct);
-    poolDestroy(&raw mut parser.m_tempPool);
-    poolDestroy(&raw mut parser.m_temp2Pool);
+    poolDestroy(&mut parser.m_tempPool);
+    poolDestroy(&mut parser.m_temp2Pool);
     expat_free(
         parser as *mut XML_ParserStruct,
         parser.m_protocolEncodingName as *mut ::core::ffi::c_void,
@@ -15340,8 +15340,8 @@ unsafe extern "C" fn dtdDestroy(
     hashTableDestroy(&raw mut p.elementTypes);
     hashTableDestroy(&raw mut p.attributeIds);
     hashTableDestroy(&raw mut p.prefixes);
-    poolDestroy(&raw mut p.pool);
-    poolDestroy(&raw mut p.entityValuePool);
+    poolDestroy(&mut p.pool);
+    poolDestroy(&mut p.entityValuePool);
     if isDocEntity != 0 {
         let backing = {
             let mut scaffold = p
@@ -16280,8 +16280,7 @@ unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
     pool.ptr_offset = 0;
 }
 
-unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
-    let pool = &mut *pool;
+fn poolDestroy(pool: &mut STRING_POOL) {
     while let Some(mut block) = pool.storage.active.pop() {
         (block.backing)(StringPoolAllocationAction::Free(8000));
     }
