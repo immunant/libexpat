@@ -1541,12 +1541,30 @@ fn with_parser_mut<R>(
     Some(f(parser))
 }
 
-#[derive(Copy, Clone)]
-#[repr(C)]
+pub struct HASH_TABLE_ITER<'a> {
+    entries: &'a [*mut NAMED],
+    index: usize,
+}
 
-pub struct HASH_TABLE_ITER {
-    pub p: *mut *mut NAMED,
-    pub end: *mut *mut NAMED,
+impl<'a> HASH_TABLE_ITER<'a> {
+    fn new(entries: &'a [*mut NAMED]) -> Self {
+        Self { entries, index: 0 }
+    }
+}
+
+impl Iterator for HASH_TABLE_ITER<'_> {
+    type Item = *mut NAMED;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.index < self.entries.len() {
+            let entry = self.entries[self.index];
+            self.index += 1;
+            if !entry.is_null() {
+                return Some(entry);
+            }
+        }
+        None
+    }
 }
 
 pub type XML_Account = ::core::ffi::c_uint;
@@ -10916,10 +10934,6 @@ unsafe extern "C" fn getContext(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *const crate::expat_external_h::XML_Char {
     let dtd: *mut DTD = (*parser).m_dtd;
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
-    };
     let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
     if !(*dtd).defaultPrefix.binding.is_null() {
         let mut i: ::core::ffi::c_int = 0;
@@ -10962,16 +10976,17 @@ unsafe extern "C" fn getContext(
         }
         needSep = crate::expat_h::XML_TRUE;
     }
-    hashTableIterInit(&raw mut iter, &raw mut (*dtd).prefixes);
-    loop {
+    let prefix_entries = if (*dtd).prefixes.v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts((*dtd).prefixes.v, (*dtd).prefixes.size as usize)
+    };
+    for entry in HASH_TABLE_ITER::new(prefix_entries) {
         let mut i_0: ::core::ffi::c_int = 0;
         let mut len_0: ::core::ffi::c_int = 0;
         let mut s: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut prefix: *mut PREFIX = hashTableIterNext(&raw mut iter) as *mut PREFIX;
-        if prefix.is_null() {
-            break;
-        }
+        let mut prefix: *mut PREFIX = entry as *mut PREFIX;
         if (*prefix).binding.is_null() {
             continue;
         }
@@ -11046,14 +11061,18 @@ unsafe extern "C" fn getContext(
         }
         needSep = crate::expat_h::XML_TRUE;
     }
-    hashTableIterInit(&raw mut iter, &raw mut (*dtd).generalEntities);
-    loop {
+    let general_entity_entries = if (*dtd).generalEntities.v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts(
+            (*dtd).generalEntities.v,
+            (*dtd).generalEntities.size as usize,
+        )
+    };
+    for entry in HASH_TABLE_ITER::new(general_entity_entries) {
         let mut s_0: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut e: *mut ENTITY = hashTableIterNext(&raw mut iter) as *mut ENTITY;
-        if e.is_null() {
-            break;
-        }
+        let mut e: *mut ENTITY = entry as *mut ENTITY;
         if (*e).open == 0 {
             continue;
         }
@@ -11332,16 +11351,13 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
 }
 
 unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_Parser) {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+    let element_entries = if (*p).elementTypes.v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts((*p).elementTypes.v, (*p).elementTypes.size as usize)
     };
-    hashTableIterInit(&raw mut iter, &raw mut (*p).elementTypes);
-    loop {
-        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
-        if e.is_null() {
-            break;
-        }
+    for entry in HASH_TABLE_ITER::new(element_entries) {
+        let mut e: *mut ELEMENT_TYPE = entry as *mut ELEMENT_TYPE;
         if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
             expat_free(
                 parser,
@@ -11387,16 +11403,13 @@ unsafe extern "C" fn dtdDestroy(
     mut isDocEntity: crate::expat_h::XML_Bool,
     mut parser: crate::expat_h::XML_Parser,
 ) {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+    let element_entries = if (*p).elementTypes.v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts((*p).elementTypes.v, (*p).elementTypes.size as usize)
     };
-    hashTableIterInit(&raw mut iter, &raw mut (*p).elementTypes);
-    loop {
-        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
-        if e.is_null() {
-            break;
-        }
+    for entry in HASH_TABLE_ITER::new(element_entries) {
+        let mut e: *mut ELEMENT_TYPE = entry as *mut ELEMENT_TYPE;
         if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
             expat_free(
                 parser,
@@ -11437,18 +11450,15 @@ unsafe extern "C" fn dtdCopy(
     mut oldDtd: *const DTD,
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+    let prefix_entries = if (*oldDtd).prefixes.v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts((*oldDtd).prefixes.v, (*oldDtd).prefixes.size as usize)
     };
-    hashTableIterInit(&raw mut iter, &raw const (*oldDtd).prefixes);
-    loop {
+    for entry in HASH_TABLE_ITER::new(prefix_entries) {
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldP: *const PREFIX = hashTableIterNext(&raw mut iter) as *mut PREFIX;
-        if oldP.is_null() {
-            break;
-        }
+        let mut oldP: *const PREFIX = entry as *mut PREFIX;
         name = poolCopyString(&raw mut (*newDtd).pool, (*oldP).name);
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
@@ -11464,15 +11474,19 @@ unsafe extern "C" fn dtdCopy(
             return 0 as ::core::ffi::c_int;
         }
     }
-    hashTableIterInit(&raw mut iter, &raw const (*oldDtd).attributeIds);
-    loop {
+    let attribute_entries = if (*oldDtd).attributeIds.v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts(
+            (*oldDtd).attributeIds.v,
+            (*oldDtd).attributeIds.size as usize,
+        )
+    };
+    for entry in HASH_TABLE_ITER::new(attribute_entries) {
         let mut newA: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
         let mut name_0: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldA: *const ATTRIBUTE_ID = hashTableIterNext(&raw mut iter) as *mut ATTRIBUTE_ID;
-        if oldA.is_null() {
-            break;
-        }
+        let mut oldA: *const ATTRIBUTE_ID = entry as *mut ATTRIBUTE_ID;
         if if (*newDtd).pool.ptr == (*newDtd).pool.end as *mut crate::expat_external_h::XML_Char
             && poolGrow(&raw mut (*newDtd).pool) == 0
         {
@@ -11515,16 +11529,20 @@ unsafe extern "C" fn dtdCopy(
             }
         }
     }
-    hashTableIterInit(&raw mut iter, &raw const (*oldDtd).elementTypes);
-    loop {
+    let element_entries = if (*oldDtd).elementTypes.v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts(
+            (*oldDtd).elementTypes.v,
+            (*oldDtd).elementTypes.size as usize,
+        )
+    };
+    for entry in HASH_TABLE_ITER::new(element_entries) {
         let mut i: ::core::ffi::c_int = 0;
         let mut newE: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
         let mut name_1: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
-        if oldE.is_null() {
-            break;
-        }
+        let mut oldE: *const ELEMENT_TYPE = entry as *mut ELEMENT_TYPE;
         name_1 = poolCopyString(&raw mut (*newDtd).pool, (*oldE).name);
         if name_1.is_null() {
             return 0 as ::core::ffi::c_int;
@@ -11632,23 +11650,20 @@ unsafe extern "C" fn copyEntityTable(
     mut newPool: *mut STRING_POOL,
     mut oldTable: *const HASH_TABLE,
 ) -> ::core::ffi::c_int {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
-    };
     let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut cachedNewBase: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    hashTableIterInit(&raw mut iter, oldTable);
-    loop {
+    let old_entries = if (*oldTable).v.is_null() {
+        &[] as &[*mut NAMED]
+    } else {
+        ::core::slice::from_raw_parts((*oldTable).v, (*oldTable).size as usize)
+    };
+    for entry in HASH_TABLE_ITER::new(old_entries) {
         let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ENTITY = hashTableIterNext(&raw mut iter) as *mut ENTITY;
-        if oldE.is_null() {
-            break;
-        }
+        let mut oldE: *const ENTITY = entry as *mut ENTITY;
         name = poolCopyString(newPool, (*oldE).name);
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
@@ -11974,30 +11989,6 @@ unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: crate::ex
     (*p).used = 0 as crate::__stddef_size_t_h::size_t;
     (*p).v = ::core::ptr::null_mut::<*mut NAMED>();
     (*p).parser = parser;
-}
-
-unsafe extern "C" fn hashTableIterInit(
-    mut iter: *mut HASH_TABLE_ITER,
-    mut table: *const HASH_TABLE,
-) {
-    (*iter).p = (*table).v;
-    (*iter).end = if !(*iter).p.is_null() {
-        (*iter).p.offset((*table).size as isize)
-    } else {
-        ::core::ptr::null_mut::<*mut NAMED>()
-    };
-}
-
-unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut NAMED {
-    while (*iter).p != (*iter).end {
-        let c2rust_fresh0 = (*iter).p;
-        (*iter).p = (*iter).p.offset(1);
-        let mut tem: *mut NAMED = *c2rust_fresh0;
-        if !tem.is_null() {
-            return tem;
-        }
-    }
-    return ::core::ptr::null_mut::<NAMED>();
 }
 
 unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
