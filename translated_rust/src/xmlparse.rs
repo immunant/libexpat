@@ -2200,7 +2200,10 @@ pub struct XML_ParserStruct {
     m_encoding: EncodingState,
     pub m_initEncoding: crate::src::xmltok::INIT_ENCODING,
     m_internalEncoding: InternalEncoding,
-    pub m_protocolEncodingName: *const crate::expat_external_h::XML_Char,
+    // The protocol-supplied encoding name is a terminated XML character
+    // sequence owned by this parser.  Its opaque backing token preserves the
+    // corresponding allocation through the configured Expat allocator.
+    m_protocolEncodingName: Option<ProtocolEncodingName>,
     pub m_ns: crate::expat_h::XML_Bool,
     pub m_ns_triplets: crate::expat_h::XML_Bool,
     pub m_unknownEncodingMem: *mut ::core::ffi::c_void,
@@ -2305,6 +2308,19 @@ pub struct XML_ParserStruct {
     pub m_alloc_tracker: MALLOC_TRACKER,
     pub m_entity_stats: ENTITY_STATS,
     pub m_reenter: crate::expat_h::XML_Bool,
+}
+
+struct ProtocolEncodingName {
+    chars: Vec<crate::expat_external_h::XML_Char>,
+    backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
+}
+
+impl ProtocolEncodingName {
+    fn release(mut self, source_line: ::core::ffi::c_int) {
+        if let Some(mut backing) = self.backing.take() {
+            backing(source_line);
+        }
+    }
 }
 
 // The parser remains an opaque C handle, and its operations are serialized by
@@ -3975,7 +3991,7 @@ fn initial_parser_struct(
         m_encoding: EncodingState::Initial,
         m_initEncoding: initial_encoding(),
         m_internalEncoding: InternalEncoding::Utf8,
-        m_protocolEncodingName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        m_protocolEncodingName: None,
         m_ns: crate::expat_h::XML_FALSE,
         m_ns_triplets: crate::expat_h::XML_FALSE,
         m_unknownEncodingMem: crate::__stddef_null_h::NULL,
@@ -4280,11 +4296,11 @@ unsafe extern "C" fn parserCreate(
     parser.m_nsAtts = NamespaceAttributeStorage::empty();
     parser.m_nsAttsVersion = 0 as ::core::ffi::c_ulong;
     parser.m_nsAttsPower = 0 as ::core::ffi::c_uchar;
-    parser.m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_protocolEncodingName = None;
     poolInit(&raw mut parser.m_tempPool, parser);
     poolInit(&raw mut parser.m_temp2Pool, parser);
     parserInit(parser, encodingName);
-    if !encodingName.is_null() && parser.m_protocolEncodingName.is_null() {
+    if !encodingName.is_null() && parser.m_protocolEncodingName.is_none() {
         XML_ParserFree(parser);
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
@@ -4513,7 +4529,7 @@ unsafe extern "C" fn parserInit(
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) {
     let protocol_encoding_name = if encodingName.is_null() {
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>()
+        None
     } else {
         copyString(encodingName, parser)
     };
@@ -4607,9 +4623,7 @@ pub unsafe extern "C" fn XML_ParserReset(
         let unknown_encoding_mem = parser_state.m_unknownEncodingMem;
         let unknown_encoding_release = parser_state.m_unknownEncodingRelease;
         let unknown_encoding_data = parser_state.m_unknownEncodingData;
-        let protocol_encoding_name = parser_state.m_protocolEncodingName;
-        parser_state.m_protocolEncodingName =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        let protocol_encoding_name = parser_state.m_protocolEncodingName.take();
         (
             unknown_encoding_mem,
             unknown_encoding_release,
@@ -4625,11 +4639,9 @@ pub unsafe extern "C" fn XML_ParserReset(
     }
     poolClear(&raw mut (*parser).m_tempPool);
     poolClear(&raw mut (*parser).m_temp2Pool);
-    expat_free(
-        parser,
-        protocol_encoding_name as *mut ::core::ffi::c_void,
-        1691 as ::core::ffi::c_int,
-    );
+    if let Some(protocol_encoding_name) = protocol_encoding_name {
+        protocol_encoding_name.release(1691);
+    }
     parserInit(parser, encodingName);
     dtdReset(dtd, parser);
     return crate::expat_h::XML_TRUE;
@@ -4660,19 +4672,20 @@ pub unsafe extern "C" fn XML_SetEncoding(
     if parserBusy(parser) != 0 {
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    expat_free(
-        parser,
-        (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
-        1723 as ::core::ffi::c_int,
-    );
-    if encodingName.is_null() {
-        (*parser).m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    let protocol_encoding_name = (&mut *parser).m_protocolEncodingName.take();
+    if let Some(protocol_encoding_name) = protocol_encoding_name {
+        protocol_encoding_name.release(1723);
+    }
+    let protocol_encoding_name = if encodingName.is_null() {
+        None
     } else {
-        (*parser).m_protocolEncodingName = copyString(encodingName, parser);
-        if (*parser).m_protocolEncodingName.is_null() {
+        let protocol_encoding_name = copyString(encodingName, parser);
+        if protocol_encoding_name.is_none() {
             return crate::expat_h::XML_STATUS_ERROR;
         }
-    }
+        protocol_encoding_name
+    };
+    (&mut *parser).m_protocolEncodingName = protocol_encoding_name;
     return crate::expat_h::XML_STATUS_OK;
 }
 #[export_name = "XML_SetEncoding"]
@@ -5322,11 +5335,9 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     destroyBindings(parser.m_inheritedBindings, parser as *mut XML_ParserStruct);
     poolDestroy(&mut parser.m_tempPool);
     poolDestroy(&mut parser.m_temp2Pool);
-    expat_free(
-        parser as *mut XML_ParserStruct,
-        parser.m_protocolEncodingName as *mut ::core::ffi::c_void,
-        1992 as ::core::ffi::c_int,
-    );
+    if let Some(protocol_encoding_name) = parser.m_protocolEncodingName.take() {
+        protocol_encoding_name.release(1992);
+    }
     if parser.m_isParamEntity == 0 {
         if let Some(dtd) = parser.m_dtd.take() {
             // Non-parameter parsers own a distinct DTD.  A shared DTD can
@@ -10327,7 +10338,10 @@ unsafe extern "C" fn initializeEncoding(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
     let mut s: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    s = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
+    s = (*parser)
+        .m_protocolEncodingName
+        .as_ref()
+        .map_or(::core::ptr::null(), |name| name.chars.as_ptr().cast());
     let mut initialized_encoding = ::core::ptr::null::<crate::src::xmltok::ENCODING>();
     if if (*parser).m_ns as ::core::ffi::c_int != 0 {
         Some(
@@ -10357,7 +10371,13 @@ unsafe extern "C" fn initializeEncoding(
         (*parser).m_encoding = EncodingState::Initial;
         return crate::expat_h::XML_ERROR_NONE;
     }
-    return handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+    return handleUnknownEncoding(
+        parser,
+        (*parser)
+            .m_protocolEncodingName
+            .as_ref()
+            .map_or(::core::ptr::null(), |name| name.chars.as_ptr()),
+    );
 }
 
 unsafe extern "C" fn processXmlDecl(
@@ -10527,7 +10547,7 @@ unsafe extern "C" fn processXmlDecl(
     }
     let has_no_protocol_encoding = {
         let parser_state = &mut *parser;
-        parser_state.m_protocolEncodingName.is_null()
+        parser_state.m_protocolEncodingName.is_none()
     };
     if has_no_protocol_encoding {
         let declaration_encoding = declaration_encoding
@@ -17434,31 +17454,35 @@ unsafe extern "C" fn getElementType(
     return ret;
 }
 
-unsafe extern "C" fn copyString(
+unsafe fn copyString(
     mut s: *const crate::expat_external_h::XML_Char,
     mut parser: crate::expat_h::XML_Parser,
-) -> *mut crate::expat_external_h::XML_Char {
-    let mut charsRequired: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    let mut result: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    while *s.offset(charsRequired as isize) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
-        charsRequired = charsRequired.wrapping_add(1);
+) -> Option<ProtocolEncodingName> {
+    let mut chars_required = 0usize;
+    while *s.add(chars_required) as ::core::ffi::c_int != 0 {
+        chars_required = chars_required.checked_add(1)?;
     }
-    charsRequired = charsRequired.wrapping_add(1);
-    result = expat_malloc(
-        parser,
-        charsRequired.wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-        8456 as ::core::ffi::c_int,
-    ) as *mut crate::expat_external_h::XML_Char;
-    if result.is_null() {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    let chars_required = chars_required.checked_add(1)?;
+    let allocation_size = chars_required
+        .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
+    let Some(mut backing) = allocation_backing(parser, allocation_size, 8456) else {
+        return None;
+    };
+    let mut chars = Vec::new();
+    if chars.try_reserve_exact(chars_required).is_err() {
+        backing(8456);
+        return None;
     }
+    chars.resize(chars_required, 0);
     crate::stdlib::memcpy(
-        result as *mut ::core::ffi::c_void,
-        s as *const ::core::ffi::c_void,
-        charsRequired.wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
+        chars.as_mut_ptr().cast::<::core::ffi::c_void>(),
+        s.cast::<::core::ffi::c_void>(),
+        allocation_size,
     );
-    return result;
+    Some(ProtocolEncodingName {
+        chars,
+        backing: Some(backing),
+    })
 }
 
 unsafe extern "C" fn accountingGetCurrentAmplification(
