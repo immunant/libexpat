@@ -10298,7 +10298,7 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
 /// parser buffer (`XML_ParseBuffer`).  The C cursor ABI remains below the
 /// processor dispatch; this common entry point only works with a checked
 /// parser borrow and, when supplied, a checked input slice.
-unsafe fn XML_Parse(
+fn xml_parse_impl(
     parser: &mut XML_ParserStruct,
     input: Option<&[u8]>,
     len: ::core::ffi::c_int,
@@ -10430,6 +10430,9 @@ pub unsafe extern "C" fn XML_Parse_ffi(
     len: ::core::ffi::c_int,
     isFinal: ::core::ffi::c_int,
 ) -> crate::expat_h::XML_Status {
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_STATUS_ERROR;
+    }
     let Some(parser) = (unsafe { parser.as_mut() }) else {
         return crate::expat_h::XML_STATUS_ERROR;
     };
@@ -10446,7 +10449,7 @@ pub unsafe extern "C" fn XML_Parse_ffi(
     } else {
         unsafe { ::core::slice::from_raw_parts(s.cast::<u8>(), len) }
     };
-    XML_Parse(parser, Some(input), len as ::core::ffi::c_int, isFinal)
+    xml_parse_impl(parser, Some(input), len as ::core::ffi::c_int, isFinal)
 }
 fn parse_buffer_preflight(
     parser: &mut XML_ParserStruct,
@@ -10559,10 +10562,11 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
     mut len: ::core::ffi::c_int,
     mut isFinal: ::core::ffi::c_int,
 ) -> crate::expat_h::XML_Status {
-    let Some(parser) = parser.as_mut() else {
+    if parser.is_null() || !parser.is_aligned() {
         return crate::expat_h::XML_STATUS_ERROR;
-    };
-    XML_Parse(parser, None, len, isFinal)
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    xml_parse_impl(parser, None, len, isFinal)
 }
 unsafe fn xml_get_buffer_impl(
     parser_ref: &mut XML_ParserStruct,
