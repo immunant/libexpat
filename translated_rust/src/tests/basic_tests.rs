@@ -1682,6 +1682,112 @@ fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     ffi_call1(strlen, text) as ::core::ffi::c_int
 }
 
+fn buffer_test_text() -> *const ::core::ffi::c_char {
+    unsafe_global_get!(get_buffer_test_text)
+}
+
+fn parser_free(parser: XML_Parser) {
+    ffi_call1(XML_ParserFree, parser);
+}
+
+fn parser_buffer_for(parser: XML_Parser, len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
+    ffi_call2(XML_GetBuffer, parser, len)
+}
+
+fn current_parser_buffer(len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
+    parser_buffer_for(current_parser(), len)
+}
+
+fn parser_parse_buffer_for(
+    parser: XML_Parser,
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
+) -> XML_Status {
+    ffi_call3(XML_ParseBuffer, parser, len, is_final)
+}
+
+fn current_parser_parse_buffer(
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
+) -> XML_Status {
+    parser_parse_buffer_for(current_parser(), len, is_final)
+}
+
+fn parser_current_byte_index() -> XML_Index {
+    ffi_call1(XML_GetCurrentByteIndex, current_parser())
+}
+
+fn parser_current_byte_count() -> ::core::ffi::c_int {
+    ffi_call1(XML_GetCurrentByteCount, current_parser())
+}
+
+fn parser_input_context(
+    offset: &mut ::core::ffi::c_int,
+    size: &mut ::core::ffi::c_int,
+) -> *const XML_Char {
+    ffi_call3(
+        XML_GetInputContext,
+        current_parser(),
+        offset as *mut ::core::ffi::c_int,
+        size as *mut ::core::ffi::c_int,
+    )
+}
+
+fn parser_set_alloc_tracker_activation_threshold(
+    parser: XML_Parser,
+    activation_threshold_bytes: ::core::ffi::c_ulonglong,
+) -> XML_Bool {
+    ffi_call2(
+        XML_SetAllocTrackerActivationThreshold,
+        parser,
+        activation_threshold_bytes,
+    )
+}
+
+fn copy_c_string_to_buffer(buffer: *mut ::core::ffi::c_void, text: *const ::core::ffi::c_char) {
+    ffi_call3(memcpy, buffer, text.cast(), c_string_len(text) as size_t);
+}
+
+fn create_parser_or_fail(line: ::core::ffi::c_int) -> XML_Parser {
+    let parser = parser_create();
+    if parser.is_null() {
+        fail_test(line, b"check failed: parser != NULL\0");
+    }
+    parser
+}
+
+fn xml_failure_for(parser: XML_Parser, line: ::core::ffi::c_int) {
+    ffi_call3(
+        _xml_failure,
+        parser,
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+    );
+}
+
+fn byte_character_handler_for_tests() -> XML_CharacterDataHandler {
+    Some(
+        byte_character_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    )
+}
+
+fn set_subtest_quoted_text(text: *const ::core::ffi::c_char) {
+    unsafe {
+        set_subtest(bytes_as_c_char_ptr(b"\"%s\"\0"), text);
+    }
+}
+
+fn set_subtest_with_len_first(first_len: ::core::ffi::c_int) {
+    unsafe {
+        set_subtest(bytes_as_c_char_ptr(b"with len=%d first\0"), first_len);
+    }
+}
+
 fn set_subtest_text(text: *const ::core::ffi::c_char) {
     unsafe {
         set_subtest(bytes_as_c_char_ptr(b"%s\0"), text);
@@ -9767,504 +9873,294 @@ unsafe extern "C" fn test_negative_len_parse_buffer() {
         }
     }
 }
-unsafe extern "C" fn get_feature(
-    mut feature_id: XML_FeatureEnum,
-    mut presult: *mut ::core::ffi::c_long,
-) -> XML_Status {
+fn get_feature(feature_id: XML_FeatureEnum) -> Option<::core::ffi::c_long> {
     unsafe {
-        let mut feature: *const XML_Feature = XML_GetFeatureList();
+        let mut feature: *const XML_Feature = ffi_call!(XML_GetFeatureList);
         if feature.is_null() {
-            return XML_STATUS_ERROR;
+            return None;
         }
         while (*feature).feature as ::core::ffi::c_uint
             != XML_FEATURE_END as ::core::ffi::c_int as ::core::ffi::c_uint
         {
             if (*feature).feature as ::core::ffi::c_uint == feature_id as ::core::ffi::c_uint {
-                *presult = (*feature).value;
-                return XML_STATUS_OK;
+                return Some((*feature).value);
             }
             feature = feature.offset(1);
         }
-        return XML_STATUS_ERROR;
+        None
     }
 }
-unsafe extern "C" fn test_get_buffer_1() {
-    unsafe {
-        _check_set_test_info(
-            b"test_get_buffer_1\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3010 as ::core::ffi::c_int,
+extern "C" fn test_get_buffer_1() {
+    set_test_info(b"test_get_buffer_1\0", 3010 as ::core::ffi::c_int);
+    let text = buffer_test_text();
+    let context_bytes = get_feature(XML_FEATURE_CONTEXT_BYTES).unwrap_or(0);
+
+    if !current_parser_buffer(-(12 as ::core::ffi::c_int)).is_null() {
+        fail_test(
+            3017 as ::core::ffi::c_int,
+            b"Negative length buffer not failed\0",
         );
-        let mut text: *const ::core::ffi::c_char = get_buffer_test_text;
-        let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-        let mut context_bytes: ::core::ffi::c_long = 0;
-        if !XML_GetBuffer(g_parser, -(12 as ::core::ffi::c_int)).is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3017 as ::core::ffi::c_int,
-                b"Negative length buffer not failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        buffer = XML_GetBuffer(g_parser, 1536 as ::core::ffi::c_int);
-        if buffer.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3022 as ::core::ffi::c_int,
-                b"1.5K buffer failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !buffer.is_null() {
-        } else {
-            __assert_fail(
-                b"buffer != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3023 as ::core::ffi::c_uint,
-                b"void test_get_buffer_1(void)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        memcpy(buffer, text as *const ::core::ffi::c_void, strlen(text));
-        if XML_ParseBuffer(
-            g_parser,
-            strlen(text) as ::core::ffi::c_int,
-            XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3027 as ::core::ffi::c_int,
-            );
-        }
-        if !XML_GetBuffer(g_parser, INT_MAX).is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3029 as ::core::ffi::c_int,
-                b"INT_MAX buffer not failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if get_feature(XML_FEATURE_CONTEXT_BYTES, &raw mut context_bytes) as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            context_bytes = 0 as ::core::ffi::c_long;
-        }
-        if !XML_GetBuffer(
-            g_parser,
-            (INT_MAX as ::core::ffi::c_long - (context_bytes + 1025 as ::core::ffi::c_long))
-                as ::core::ffi::c_int,
-        )
-        .is_null()
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3044 as ::core::ffi::c_int,
-                b"INT_MAX- buffer not failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetBuffer(g_parser, 1000 as ::core::ffi::c_int).is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3048 as ::core::ffi::c_int,
-                b"1000 buffer failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+
+    let buffer = current_parser_buffer(1536 as ::core::ffi::c_int);
+    if buffer.is_null() {
+        fail_test(3022 as ::core::ffi::c_int, b"1.5K buffer failed\0");
+    }
+
+    copy_c_string_to_buffer(buffer, text);
+    ensure_parser_success(
+        current_parser_parse_buffer(c_string_len(text), XML_FALSE as ::core::ffi::c_int),
+        3027 as ::core::ffi::c_int,
+    );
+
+    if !current_parser_buffer(INT_MAX).is_null() {
+        fail_test(3029 as ::core::ffi::c_int, b"INT_MAX buffer not failed\0");
+    }
+
+    let almost_int_max = (INT_MAX as ::core::ffi::c_long
+        - (context_bytes + 1025 as ::core::ffi::c_long))
+        as ::core::ffi::c_int;
+    if !current_parser_buffer(almost_int_max).is_null() {
+        fail_test(3044 as ::core::ffi::c_int, b"INT_MAX- buffer not failed\0");
+    }
+
+    if current_parser_buffer(1000 as ::core::ffi::c_int).is_null() {
+        fail_test(3048 as ::core::ffi::c_int, b"1000 buffer failed\0");
     }
 }
-unsafe extern "C" fn test_get_buffer_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_get_buffer_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3053 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = get_buffer_test_text;
-        let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-        buffer = XML_GetBuffer(g_parser, 1536 as ::core::ffi::c_int);
-        if buffer.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3060 as ::core::ffi::c_int,
-                b"1.5K buffer failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !buffer.is_null() {
-        } else {
-            __assert_fail(
-                b"buffer != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3061 as ::core::ffi::c_uint,
-                b"void test_get_buffer_2(void)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        memcpy(buffer, text as *const ::core::ffi::c_void, strlen(text));
-        if XML_ParseBuffer(
-            g_parser,
-            strlen(text) as ::core::ffi::c_int,
-            XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3065 as ::core::ffi::c_int,
-            );
-        }
-        if XML_GetBuffer(g_parser, 1024 as ::core::ffi::c_int).is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3069 as ::core::ffi::c_int,
-                b"1024 buffer failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+extern "C" fn test_get_buffer_2() {
+    set_test_info(b"test_get_buffer_2\0", 3053 as ::core::ffi::c_int);
+    let text = buffer_test_text();
+
+    let buffer = current_parser_buffer(1536 as ::core::ffi::c_int);
+    if buffer.is_null() {
+        fail_test(3060 as ::core::ffi::c_int, b"1.5K buffer failed\0");
+    }
+
+    copy_c_string_to_buffer(buffer, text);
+    ensure_parser_success(
+        current_parser_parse_buffer(c_string_len(text), XML_FALSE as ::core::ffi::c_int),
+        3065 as ::core::ffi::c_int,
+    );
+
+    if current_parser_buffer(1024 as ::core::ffi::c_int).is_null() {
+        fail_test(3069 as ::core::ffi::c_int, b"1024 buffer failed\0");
     }
 }
-unsafe extern "C" fn test_get_buffer_3_overflow() {
-    unsafe {
-        _check_set_test_info(
-            b"test_get_buffer_3_overflow\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3075 as ::core::ffi::c_int,
-        );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if !parser.is_null() {
-        } else {
-            __assert_fail(
-                b"parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3077 as ::core::ffi::c_uint,
-                b"void test_get_buffer_3_overflow(void)\0".as_ptr() as *const ::core::ffi::c_char,
+extern "C" fn test_get_buffer_3_overflow() {
+    set_test_info(b"test_get_buffer_3_overflow\0", 3075 as ::core::ffi::c_int);
+    let parser = create_parser_or_fail(3077 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"\n\0");
+    let expected_keep_value = c_string_len(text);
+
+    if parser_status_is_error(ffi_call4(
+        _XML_Parse_SINGLE_BYTES,
+        parser,
+        text,
+        c_string_len(text),
+        XML_FALSE as ::core::ffi::c_int,
+    )) {
+        xml_failure_for(parser, 3087 as ::core::ffi::c_int);
+    }
+
+    assert!(expected_keep_value > 0 as ::core::ffi::c_int);
+    if !parser_buffer_for(
+        parser,
+        INT_MAX - expected_keep_value + 1 as ::core::ffi::c_int,
+    )
+    .is_null()
+    {
+        fail_test(3091 as ::core::ffi::c_int, b"enlarging buffer not failed\0");
+    }
+
+    parser_free(parser);
+}
+extern "C" fn test_buffer_can_grow_to_max() {
+    set_test_info(b"test_buffer_can_grow_to_max\0", 3098 as ::core::ffi::c_int);
+    let prefixes = [
+        bytes_as_c_char_ptr(b"\0"),
+        bytes_as_c_char_ptr(b"<\0"),
+        bytes_as_c_char_ptr(b"<x a='\0"),
+        bytes_as_c_char_ptr(b"<doc><x a='\0"),
+        bytes_as_c_char_ptr(b"<document><x a='\0"),
+        bytes_as_c_char_ptr(b"<averylongelementnamesuchthatitwillhopefullystretchacrossmultiplelinesandlookprettyridiculousitsalsoveryhardtoreadandifyouredoingitihavetowonderifyoureallydonthaveanythingbettertodoofcourseiguessicouldveputsomethingbadinherebutipromisethatididntheybtwhowgreatarespacesandpunctuationforhelpingwithreadabilityprettygreatithinkanywaysthisisprobablylongenoughbye><x a='\0"),
+    ];
+    let maxbuf = INT_MAX / 2 as ::core::ffi::c_int + (INT_MAX & 1 as ::core::ffi::c_int);
+
+    for prefix in prefixes {
+        set_subtest_quoted_text(prefix);
+        let parser = create_parser_or_fail(3128 as ::core::ffi::c_int);
+        let activation_threshold = -(1 as ::core::ffi::c_int) as size_t as ::core::ffi::c_ulonglong;
+        if parser_set_alloc_tracker_activation_threshold(parser, activation_threshold)
+            != XML_TRUE as XML_Bool
+        {
+            fail_test(
+                3128 as ::core::ffi::c_int,
+                b"check failed: XML_SetAllocTrackerActivationThreshold(parser, (size_t)-1) == XML_TRUE\0",
             );
-        };
-        let text: *const ::core::ffi::c_char = b"\n\0".as_ptr() as *const ::core::ffi::c_char;
-        let expectedKeepValue: ::core::ffi::c_int = strlen(text) as ::core::ffi::c_int;
-        if _XML_Parse_SINGLE_BYTES(
+        }
+
+        let prefix_len = c_string_len(prefix);
+        let status = ffi_call4(
+            _XML_Parse_SINGLE_BYTES,
             parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
+            prefix,
+            prefix_len,
             XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3087 as ::core::ffi::c_int,
+        );
+        if parser_status_is_error(status) {
+            xml_failure_for(parser, 3134 as ::core::ffi::c_int);
+        }
+        if parser_buffer_for(parser, maxbuf - prefix_len).is_null() {
+            fail_test(
+                3138 as ::core::ffi::c_int,
+                b"check failed: XML_GetBuffer(parser, maxbuf - prefix_len) != NULL\0",
             );
         }
-        if expectedKeepValue > 0 as ::core::ffi::c_int {
-        } else {
-            __assert_fail(
-                b"expectedKeepValue > 0\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3089 as ::core::ffi::c_uint,
-                b"void test_get_buffer_3_overflow(void)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        if !XML_GetBuffer(
-            parser,
-            INT_MAX - expectedKeepValue + 1 as ::core::ffi::c_int,
-        )
-        .is_null()
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3091 as ::core::ffi::c_int,
-                b"enlarging buffer not failed\0".as_ptr() as *const ::core::ffi::c_char,
+        if !parser_buffer_for(parser, maxbuf + 1 as ::core::ffi::c_int).is_null() {
+            fail_test(
+                3141 as ::core::ffi::c_int,
+                b"check failed: XML_GetBuffer(parser, maxbuf + 1) == NULL\0",
             );
         }
-        XML_ParserFree(parser);
+        parser_free(parser);
     }
 }
-unsafe extern "C" fn test_buffer_can_grow_to_max() {
-    unsafe {
-        _check_set_test_info(
-            b"test_buffer_can_grow_to_max\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3098 as ::core::ffi::c_int,
-        );
-        let prefixes: [*const ::core::ffi::c_char; 6] = [
-            b"\0".as_ptr() as *const ::core::ffi::c_char,
-            b"<\0".as_ptr() as *const ::core::ffi::c_char,
-            b"<x a='\0".as_ptr() as *const ::core::ffi::c_char,
-            b"<doc><x a='\0".as_ptr() as *const ::core::ffi::c_char,
-            b"<document><x a='\0".as_ptr() as *const ::core::ffi::c_char,
-            b"<averylongelementnamesuchthatitwillhopefullystretchacrossmultiplelinesandlookprettyridiculousitsalsoveryhardtoreadandifyouredoingitihavetowonderifyoureallydonthaveanythingbettertodoofcourseiguessicouldveputsomethingbadinherebutipromisethatididntheybtwhowgreatarespacesandpunctuationforhelpingwithreadabilityprettygreatithinkanywaysthisisprobablylongenoughbye><x a='\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-        ];
-        let num_prefixes: ::core::ffi::c_int =
-            (::core::mem::size_of::<[*const ::core::ffi::c_char; 6]>() as usize)
-                .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>() as usize)
-                as ::core::ffi::c_int;
-        let mut maxbuf: ::core::ffi::c_int =
-            INT_MAX / 2 as ::core::ffi::c_int + (INT_MAX & 1 as ::core::ffi::c_int);
-        let mut i: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while i < num_prefixes {
-            set_subtest(
-                b"\"%s\"\0".as_ptr() as *const ::core::ffi::c_char,
-                prefixes[i as usize],
+extern "C" fn test_getbuffer_allocates_on_zero_len() {
+    set_test_info(
+        b"test_getbuffer_allocates_on_zero_len\0",
+        3147 as ::core::ffi::c_int,
+    );
+
+    let mut first_len = 1 as ::core::ffi::c_int;
+    while first_len >= 0 as ::core::ffi::c_int {
+        set_subtest_with_len_first(first_len);
+        let parser = create_parser_or_fail(3151 as ::core::ffi::c_int);
+
+        if parser_buffer_for(parser, first_len).is_null() {
+            fail_test(
+                3152 as ::core::ffi::c_int,
+                b"check failed: XML_GetBuffer(parser, first_len) != NULL\0",
             );
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if !(XML_SetAllocTrackerActivationThreshold(
-                parser,
-                -(1 as ::core::ffi::c_int) as size_t as ::core::ffi::c_ulonglong,
-            ) as ::core::ffi::c_int
-                == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3128 as ::core::ffi::c_int,
-                    b"check failed: XML_SetAllocTrackerActivationThreshold(parser, (size_t)-1) == XML_TRUE\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            let prefix_len: ::core::ffi::c_int = strlen(prefixes[i as usize]) as ::core::ffi::c_int;
-            let s: XML_Status = _XML_Parse_SINGLE_BYTES(
-                parser,
-                prefixes[i as usize],
-                prefix_len,
-                XML_FALSE as ::core::ffi::c_int,
-            ) as XML_Status;
-            if s as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3134 as ::core::ffi::c_int,
-                );
-            }
-            if XML_GetBuffer(parser, maxbuf - prefix_len).is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3138 as ::core::ffi::c_int,
-                    b"check failed: XML_GetBuffer(parser, maxbuf - prefix_len) != NULL\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if !XML_GetBuffer(parser, maxbuf + 1 as ::core::ffi::c_int).is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3141 as ::core::ffi::c_int,
-                    b"check failed: XML_GetBuffer(parser, maxbuf + 1) == NULL\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            XML_ParserFree(parser);
-            i += 1;
         }
-    }
-}
-unsafe extern "C" fn test_getbuffer_allocates_on_zero_len() {
-    unsafe {
-        _check_set_test_info(
-            b"test_getbuffer_allocates_on_zero_len\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3147 as ::core::ffi::c_int,
-        );
-        let mut first_len: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
-        while first_len >= 0 as ::core::ffi::c_int {
-            set_subtest(
-                b"with len=%d first\0".as_ptr() as *const ::core::ffi::c_char,
-                first_len,
+        if parser_buffer_for(parser, 0 as ::core::ffi::c_int).is_null() {
+            fail_test(
+                3153 as ::core::ffi::c_int,
+                b"check failed: XML_GetBuffer(parser, 0) != NULL\0",
             );
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3151 as ::core::ffi::c_int,
-                    b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_GetBuffer(parser, first_len).is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3152 as ::core::ffi::c_int,
-                    b"check failed: XML_GetBuffer(parser, first_len) != NULL\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_GetBuffer(parser, 0 as ::core::ffi::c_int).is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3153 as ::core::ffi::c_int,
-                    b"check failed: XML_GetBuffer(parser, 0) != NULL\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_ParseBuffer(
+        }
+        if !matches!(
+            parser_parse_buffer_for(
                 parser,
                 0 as ::core::ffi::c_int,
                 XML_FALSE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3155 as ::core::ffi::c_int,
-                );
-            }
-            XML_ParserFree(parser);
-            first_len -= 1;
+            )
+                as ::core::ffi::c_uint,
+            value if value == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        ) {
+            xml_failure_for(parser, 3155 as ::core::ffi::c_int);
         }
+
+        parser_free(parser);
+        first_len -= 1;
     }
 }
-unsafe extern "C" fn test_byte_info_at_end() {
-    unsafe {
-        _check_set_test_info(
-            b"test_byte_info_at_end\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3162 as ::core::ffi::c_int,
+extern "C" fn test_byte_info_at_end() {
+    set_test_info(b"test_byte_info_at_end\0", 3162 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<doc></doc>\0");
+
+    if parser_current_byte_index() != -(1 as ::core::ffi::c_int) as XML_Index
+        || parser_current_byte_count() != 0 as ::core::ffi::c_int
+    {
+        fail_test(
+            3167 as ::core::ffi::c_int,
+            b"Byte index/count incorrect at start of parse\0",
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        if XML_GetCurrentByteIndex(g_parser) != -(1 as ::core::ffi::c_int) as XML_Index
-            || XML_GetCurrentByteCount(g_parser) != 0 as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3167 as ::core::ffi::c_int,
-                b"Byte index/count incorrect at start of parse\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3170 as ::core::ffi::c_int,
-            );
-        }
-        if XML_GetCurrentByteCount(g_parser) != 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3173 as ::core::ffi::c_int,
-                b"Terminal byte count incorrect\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetCurrentByteIndex(g_parser) != strlen(text) as XML_Index {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3175 as ::core::ffi::c_int,
-                b"Terminal byte index incorrect\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+
+    ensure_parser_success(
+        parse_single_bytes(text, c_string_len(text)),
+        3170 as ::core::ffi::c_int,
+    );
+
+    if parser_current_byte_count() != 0 as ::core::ffi::c_int {
+        fail_test(
+            3173 as ::core::ffi::c_int,
+            b"Terminal byte count incorrect\0",
+        );
+    }
+    if parser_current_byte_index() != c_string_len(text) as XML_Index {
+        fail_test(
+            3175 as ::core::ffi::c_int,
+            b"Terminal byte index incorrect\0",
+        );
     }
 }
-pub const PRE_ERROR_STR: [::core::ffi::c_char; 8] =
-    unsafe { ::core::mem::transmute::<[u8; 8], [::core::ffi::c_char; 8]>(*b"<doc></\0") };
-unsafe extern "C" fn test_byte_info_at_error() {
-    unsafe {
-        _check_set_test_info(
-            b"test_byte_info_at_error\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3182 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc></wombat></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3187 as ::core::ffi::c_int,
-                b"Syntax error not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetCurrentByteCount(g_parser) != 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3189 as ::core::ffi::c_int,
-                b"Error byte count incorrect\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetCurrentByteIndex(g_parser) as size_t != strlen(PRE_ERROR_STR.as_ptr()) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3191 as ::core::ffi::c_int,
-                b"Error byte index incorrect\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+pub const PRE_ERROR_STR: [::core::ffi::c_char; 8] = [
+    b'<' as ::core::ffi::c_char,
+    b'd' as ::core::ffi::c_char,
+    b'o' as ::core::ffi::c_char,
+    b'c' as ::core::ffi::c_char,
+    b'>' as ::core::ffi::c_char,
+    b'<' as ::core::ffi::c_char,
+    b'/' as ::core::ffi::c_char,
+    0,
+];
+extern "C" fn test_byte_info_at_error() {
+    set_test_info(b"test_byte_info_at_error\0", 3182 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<doc></wombat></doc>\0");
+
+    if !parser_status_is_error(parse_single_bytes(text, c_string_len(text))) {
+        fail_test(3187 as ::core::ffi::c_int, b"Syntax error not faulted\0");
+    }
+    if parser_current_byte_count() != 0 as ::core::ffi::c_int {
+        fail_test(3189 as ::core::ffi::c_int, b"Error byte count incorrect\0");
+    }
+    if parser_current_byte_index() as size_t != c_string_len(PRE_ERROR_STR.as_ptr()) as size_t {
+        fail_test(3191 as ::core::ffi::c_int, b"Error byte index incorrect\0");
     }
 }
-pub const START_ELEMENT: [::core::ffi::c_char; 4] =
-    unsafe { ::core::mem::transmute::<[u8; 4], [::core::ffi::c_char; 4]>(*b"<e>\0") };
-pub const CDATA_TEXT: [::core::ffi::c_char; 6] =
-    unsafe { ::core::mem::transmute::<[u8; 6], [::core::ffi::c_char; 6]>(*b"Hello\0") };
-unsafe extern "C" fn test_byte_info_at_cdata() {
-    unsafe {
-        _check_set_test_info(
-            b"test_byte_info_at_cdata\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3201 as ::core::ffi::c_int,
+pub const START_ELEMENT: [::core::ffi::c_char; 4] = [
+    b'<' as ::core::ffi::c_char,
+    b'e' as ::core::ffi::c_char,
+    b'>' as ::core::ffi::c_char,
+    0,
+];
+pub const CDATA_TEXT: [::core::ffi::c_char; 6] = [
+    b'H' as ::core::ffi::c_char,
+    b'e' as ::core::ffi::c_char,
+    b'l' as ::core::ffi::c_char,
+    b'l' as ::core::ffi::c_char,
+    b'o' as ::core::ffi::c_char,
+    0,
+];
+extern "C" fn test_byte_info_at_cdata() {
+    set_test_info(b"test_byte_info_at_cdata\0", 3201 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<e>Hello</e>\0");
+    let mut offset = 0 as ::core::ffi::c_int;
+    let mut size = 0 as ::core::ffi::c_int;
+    let mut data = ByteTestData {
+        start_element_len: 0,
+        cdata_len: 0,
+        total_string_len: 0,
+    };
+
+    if !parser_input_context(&mut offset, &mut size).is_null() {
+        fail_test(
+            3208 as ::core::ffi::c_int,
+            b"Unexpected context at start of parse\0",
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<e>Hello</e>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut offset: ::core::ffi::c_int = 0;
-        let mut size: ::core::ffi::c_int = 0;
-        let mut data: ByteTestData = ByteTestData {
-            start_element_len: 0,
-            cdata_len: 0,
-            total_string_len: 0,
-        };
-        if !XML_GetInputContext(g_parser, &raw mut offset, &raw mut size).is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3208 as ::core::ffi::c_int,
-                b"Unexpected context at start of parse\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        data.start_element_len = strlen(START_ELEMENT.as_ptr()) as ::core::ffi::c_int;
-        data.cdata_len = strlen(CDATA_TEXT.as_ptr()) as ::core::ffi::c_int;
-        data.total_string_len = strlen(text) as ::core::ffi::c_int;
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                byte_character_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetUserData(g_parser, &raw mut data as *mut ::core::ffi::c_void);
-        if XML_Parse(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3216 as ::core::ffi::c_int,
-            );
-        }
     }
+
+    data.start_element_len = c_string_len(START_ELEMENT.as_ptr());
+    data.cdata_len = c_string_len(CDATA_TEXT.as_ptr());
+    data.total_string_len = c_string_len(text);
+    parser_set_character_data_handler(byte_character_handler_for_tests());
+    parser_set_user_data((&mut data as *mut ByteTestData).cast());
+    ensure_parser_success(
+        parser_parse(text, c_string_len(text), XML_TRUE as ::core::ffi::c_int),
+        3216 as ::core::ffi::c_int,
+    );
 }
 unsafe extern "C" fn test_predefined_entities() {
     unsafe {
