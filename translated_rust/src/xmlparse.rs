@@ -2135,6 +2135,47 @@ impl DataBuffer {
     }
 }
 
+// Parser children share the state that C previously reached by walking their
+// `m_parentParser` raw-pointer chain.  Keeping that state in an owned shared
+// object makes the relationship explicit without extending the parent's
+// lifetime through a borrowed address.  Parser API calls remain serialized by
+// the Expat contract, while the mutex also prevents accidental concurrent
+// mutation through separately-owned child handles.
+struct RootParserState {
+    hash_secret_salt: ::core::ffi::c_ulong,
+    accounting: ACCOUNTING,
+    alloc_tracker: MALLOC_TRACKER,
+    entity_stats: ENTITY_STATS,
+}
+
+impl RootParserState {
+    fn empty() -> Self {
+        Self {
+            hash_secret_salt: 0,
+            accounting: ACCOUNTING {
+                countBytesDirect: 0,
+                countBytesIndirect: 0,
+                debugLevel: 0,
+                maximumAmplificationFactor: 0.0,
+                activationThresholdBytes: 0,
+            },
+            alloc_tracker: MALLOC_TRACKER {
+                bytesAllocated: 0,
+                peakBytesAllocated: 0,
+                debugLevel: 0,
+                maximumAmplificationFactor: 0.0,
+                activationThresholdBytes: 0,
+            },
+            entity_stats: ENTITY_STATS {
+                countEverOpened: 0,
+                currentDepth: 0,
+                maximumDepthSeen: 0,
+                debugLevel: 0,
+            },
+        }
+    }
+}
+
 // The parser buffer itself is Rust-owned.  The allocation token keeps the
 // configured Expat allocator observable: its memory is never dereferenced,
 // but is allocated and released in the same growth/free order as the C
@@ -2316,15 +2357,18 @@ pub struct XML_ParserStruct {
     m_groupConnector: GroupConnectorStorage,
     pub m_groupSize: ::core::ffi::c_uint,
     pub m_namespaceSeparator: crate::expat_external_h::XML_Char,
-    // A child parser observes, but never owns, its parent.  The C lifetime
-    // contract guarantees that a live child has a live parent; represent the
-    // only nullable state explicitly rather than storing a nullable raw
-    // pointer in parser state.
-    pub m_parentParser: Option<::core::ptr::NonNull<XML_ParserStruct>>,
+    // A child parser shares the root-owned allocator and accounting state.
+    // Its parent relationship is represented by the number of edges to that
+    // root, never by a borrowed parser address.
+    m_root: std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    pub m_parentParser: Option<::core::num::NonZeroU32>,
     pub m_parsingStatus: crate::expat_h::XML_ParsingStatus,
     pub m_isParamEntity: crate::expat_h::XML_Bool,
     pub m_useForeignDTD: crate::expat_h::XML_Bool,
     pub m_paramEntityParsing: crate::expat_h::XML_ParamEntityParsing,
+    // Transitional mirrors for root-only state.  Child-facing operations are
+    // being moved to `m_root`; these stay here until every root consumer has
+    // been switched in the same ownership conversion.
     pub m_hash_secret_salt: ::core::ffi::c_ulong,
     pub m_accounting: ACCOUNTING,
     pub m_alloc_tracker: MALLOC_TRACKER,
@@ -3234,14 +3278,18 @@ unsafe extern "C" fn expat_heap_stat(
     mut peakTotal: XmlBigCount,
     mut sourceLine: ::core::ffi::c_int,
 ) {
+    let root = (*rootParser)
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
-        / (*rootParser).m_accounting.countBytesDirect as ::core::ffi::c_float;
+        / root.accounting.countBytesDirect as ::core::ffi::c_float;
     crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"expat: Allocations(%p): Direct %10llu, allocated %c%10llu to %10llu (%10llu peak), amplification %8.2f (xmlparse.c:%d)\n\0"
             .as_ptr() as *const ::core::ffi::c_char,
         rootParser as *mut ::core::ffi::c_void,
-        (*rootParser).m_accounting.countBytesDirect,
+        root.accounting.countBytesDirect,
         operator as ::core::ffi::c_int,
         absDiff,
         newTotal,
@@ -3252,32 +3300,32 @@ unsafe extern "C" fn expat_heap_stat(
 }
 
 fn expat_heap_increase_tolerable_impl(
-    root_parser: &crate::src::xmlparse::XML_ParserStruct,
+    root_parser: &RootParserState,
     increase: XmlBigCount,
 ) -> (bool, Option<XmlBigCount>) {
     let mut newTotal: XmlBigCount = 0 as XmlBigCount;
     let mut tolerable: bool = crate::stdbool_h::true_0 != 0;
     if (-1 as ::core::ffi::c_int as XmlBigCount)
-        .wrapping_sub(root_parser.m_alloc_tracker.bytesAllocated)
+        .wrapping_sub(root_parser.alloc_tracker.bytesAllocated)
         < increase
     {
         tolerable = crate::stdbool_h::false_0 != 0;
     } else {
         newTotal = root_parser
-            .m_alloc_tracker
+            .alloc_tracker
             .bytesAllocated
             .wrapping_add(increase);
-        if newTotal >= root_parser.m_alloc_tracker.activationThresholdBytes {
+        if newTotal >= root_parser.alloc_tracker.activationThresholdBytes {
             assert!(newTotal > 0 as XmlBigCount);
             let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
-                / root_parser.m_accounting.countBytesDirect as ::core::ffi::c_float;
-            if amplification > root_parser.m_alloc_tracker.maximumAmplificationFactor {
+                / root_parser.accounting.countBytesDirect as ::core::ffi::c_float;
+            if amplification > root_parser.alloc_tracker.maximumAmplificationFactor {
                 tolerable = crate::stdbool_h::false_0 != 0;
             }
         }
     }
     let report_total = (!tolerable
-        && root_parser.m_alloc_tracker.debugLevel >= 1 as ::core::ffi::c_ulong)
+        && root_parser.alloc_tracker.debugLevel >= 1 as ::core::ffi::c_ulong)
         .then_some(newTotal);
     (tolerable, report_total)
 }
@@ -3289,8 +3337,11 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
 ) -> bool {
     assert!(!rootParser.is_null());
     assert!(increase > 0 as XmlBigCount);
-    let root_parser = &*rootParser;
-    let (tolerable, report_total) = expat_heap_increase_tolerable_impl(root_parser, increase);
+    let root_parser = (*rootParser)
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let (tolerable, report_total) = expat_heap_increase_tolerable_impl(&root_parser, increase);
     if let Some(new_total) = report_total {
         expat_heap_stat(
             rootParser,
@@ -3314,31 +3365,23 @@ pub unsafe extern "C" fn expat_malloc(
     {
         return crate::__stddef_null_h::NULL;
     }
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_none() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"rootParser->m_parentParser == NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                858 as ::core::ffi::c_uint,
-                b"void *expat_malloc(XML_Parser, size_t, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
     let bytesToAllocate: crate::__stddef_size_t_h::size_t =
         ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
             .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
             .wrapping_add(size);
-    if (-1 as ::core::ffi::c_int as XmlBigCount)
-        .wrapping_sub((*rootParser).m_alloc_tracker.bytesAllocated)
-        < bytesToAllocate as XmlBigCount
-    {
+    let allocation_would_overflow = {
+        let root = (*parser)
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        (-1 as ::core::ffi::c_int as XmlBigCount)
+            .wrapping_sub(root.alloc_tracker.bytesAllocated)
+            < bytesToAllocate as XmlBigCount
+    };
+    if allocation_would_overflow {
         return crate::__stddef_null_h::NULL;
     }
-    if !expat_heap_increase_tolerable(rootParser, bytesToAllocate as XmlBigCount, sourceLine) {
+    if !expat_heap_increase_tolerable(parser, bytesToAllocate as XmlBigCount, sourceLine) {
         return crate::__stddef_null_h::NULL;
     }
     let mallocedPtr: *mut ::core::ffi::c_void =
@@ -3350,25 +3393,27 @@ pub unsafe extern "C" fn expat_malloc(
         return crate::__stddef_null_h::NULL;
     }
     *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t) = size;
-    (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
-        .m_alloc_tracker
-        .bytesAllocated
-        .wrapping_add(bytesToAllocate as XmlBigCount);
-    if (*rootParser).m_alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
-        if (*rootParser).m_alloc_tracker.bytesAllocated
-            > (*rootParser).m_alloc_tracker.peakBytesAllocated
-        {
-            (*rootParser).m_alloc_tracker.peakBytesAllocated =
-                (*rootParser).m_alloc_tracker.bytesAllocated;
+    let allocation_totals = {
+        let mut root = (*parser)
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        root.alloc_tracker.bytesAllocated = root
+            .alloc_tracker
+            .bytesAllocated
+            .wrapping_add(bytesToAllocate as XmlBigCount);
+        if root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
+            if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
+                root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
+            }
+            Some((root.alloc_tracker.bytesAllocated, root.alloc_tracker.peakBytesAllocated))
+        } else {
+            None
         }
-        expat_heap_stat(
-            rootParser,
-            '+' as ::core::ffi::c_char,
-            bytesToAllocate as XmlBigCount,
-            (*rootParser).m_alloc_tracker.bytesAllocated,
-            (*rootParser).m_alloc_tracker.peakBytesAllocated,
-            sourceLine,
-        );
+    };
+    if let Some((new_total, peak_total)) = allocation_totals {
+        expat_heap_stat(parser, '+' as ::core::ffi::c_char, bytesToAllocate as XmlBigCount,
+                        new_total, peak_total, sourceLine);
     }
     return (mallocedPtr as *mut ::core::ffi::c_char)
         .offset(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as isize)
@@ -3404,20 +3449,6 @@ pub unsafe extern "C" fn expat_free(
     if ptr.is_null() {
         return;
     }
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
-    '_c2rust_label_0: {
-        if (*rootParser).m_parentParser.is_none() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"rootParser->m_parentParser == NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                913 as ::core::ffi::c_uint,
-                b"void expat_free(XML_Parser, void *, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
     let mallocedPtr: *mut ::core::ffi::c_void = (ptr as *mut ::core::ffi::c_char)
         .offset(-(crate::internal_h::EXPAT_MALLOC_PADDING as isize))
         .offset(-(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as isize))
@@ -3426,32 +3457,22 @@ pub unsafe extern "C" fn expat_free(
         ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
             .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
             .wrapping_add(*(mallocedPtr as *mut crate::__stddef_size_t_h::size_t));
-    '_c2rust_label_1: {
-        if (*rootParser).m_alloc_tracker.bytesAllocated >= bytesAllocated as XmlBigCount {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"rootParser->m_alloc_tracker.bytesAllocated >= bytesAllocated\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                922 as ::core::ffi::c_uint,
-                b"void expat_free(XML_Parser, void *, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    let allocation_totals = {
+        let mut root = (*parser)
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        assert!(root.alloc_tracker.bytesAllocated >= bytesAllocated as XmlBigCount);
+        root.alloc_tracker.bytesAllocated = root
+            .alloc_tracker
+            .bytesAllocated
+            .wrapping_sub(bytesAllocated as XmlBigCount);
+        (root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong)
+            .then_some((root.alloc_tracker.bytesAllocated, root.alloc_tracker.peakBytesAllocated))
     };
-    (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
-        .m_alloc_tracker
-        .bytesAllocated
-        .wrapping_sub(bytesAllocated as XmlBigCount);
-    if (*rootParser).m_alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
-        expat_heap_stat(
-            rootParser,
-            '-' as ::core::ffi::c_char,
-            bytesAllocated as XmlBigCount,
-            (*rootParser).m_alloc_tracker.bytesAllocated,
-            (*rootParser).m_alloc_tracker.peakBytesAllocated,
-            sourceLine,
-        );
+    if let Some((new_total, peak_total)) = allocation_totals {
+        expat_heap_stat(parser, '-' as ::core::ffi::c_char, bytesAllocated as XmlBigCount,
+                        new_total, peak_total, sourceLine);
     }
     (*parser).m_mem.free_fcn.expect("non-null function pointer")(mallocedPtr);
 }
@@ -3489,20 +3510,6 @@ pub unsafe extern "C" fn expat_realloc(
         expat_free(parser, ptr, sourceLine);
         return crate::__stddef_null_h::NULL;
     }
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
-    '_c2rust_label_0: {
-        if (*rootParser).m_parentParser.is_none() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"rootParser->m_parentParser == NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                954 as ::core::ffi::c_uint,
-                b"void *expat_realloc(XML_Parser, void *, size_t, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
     let mut mallocedPtr: *mut ::core::ffi::c_void = (ptr as *mut ::core::ffi::c_char)
         .offset(-(crate::internal_h::EXPAT_MALLOC_PADDING as isize))
         .offset(-(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>() as isize))
@@ -3516,7 +3523,7 @@ pub unsafe extern "C" fn expat_realloc(
         prevSize.wrapping_sub(size)
     };
     if isIncrease {
-        if !expat_heap_increase_tolerable(rootParser, absDiff as XmlBigCount, sourceLine) {
+        if !expat_heap_increase_tolerable(parser, absDiff as XmlBigCount, sourceLine) {
             return crate::__stddef_null_h::NULL;
         }
     }
@@ -3552,63 +3559,37 @@ pub unsafe extern "C" fn expat_realloc(
     if mallocedPtr.is_null() {
         return crate::__stddef_null_h::NULL;
     }
-    if isIncrease {
-        '_c2rust_label_2: {
-            if (-1 as ::core::ffi::c_int as XmlBigCount)
-                .wrapping_sub((*rootParser).m_alloc_tracker.bytesAllocated)
-                >= absDiff as XmlBigCount
-            {
-            } else {
-                crate::stdlib::__assert_fail(
-                    b"(XmlBigCount)-1 - rootParser->m_alloc_tracker.bytesAllocated >= absDiff\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    988 as ::core::ffi::c_uint,
-                    b"void *expat_realloc(XML_Parser, void *, size_t, int)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-        };
-        (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
-            .m_alloc_tracker
-            .bytesAllocated
-            .wrapping_add(absDiff as XmlBigCount);
-    } else {
-        '_c2rust_label_3: {
-            if (*rootParser).m_alloc_tracker.bytesAllocated >= absDiff as XmlBigCount {
-            } else {
-                crate::stdlib::__assert_fail(
-                    b"rootParser->m_alloc_tracker.bytesAllocated >= absDiff\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    991 as ::core::ffi::c_uint,
-                    b"void *expat_realloc(XML_Parser, void *, size_t, int)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-        };
-        (*rootParser).m_alloc_tracker.bytesAllocated = (*rootParser)
-            .m_alloc_tracker
-            .bytesAllocated
-            .wrapping_sub(absDiff as XmlBigCount);
-    }
-    if (*rootParser).m_alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
-        if (*rootParser).m_alloc_tracker.bytesAllocated
-            > (*rootParser).m_alloc_tracker.peakBytesAllocated
-        {
-            (*rootParser).m_alloc_tracker.peakBytesAllocated =
-                (*rootParser).m_alloc_tracker.bytesAllocated;
+    let allocation_totals = {
+        let mut root = (*parser)
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if isIncrease {
+            assert!((-1 as ::core::ffi::c_int as XmlBigCount)
+                .wrapping_sub(root.alloc_tracker.bytesAllocated) >= absDiff as XmlBigCount);
+            root.alloc_tracker.bytesAllocated = root.alloc_tracker.bytesAllocated
+                .wrapping_add(absDiff as XmlBigCount);
+        } else {
+            assert!(root.alloc_tracker.bytesAllocated >= absDiff as XmlBigCount);
+            root.alloc_tracker.bytesAllocated = root.alloc_tracker.bytesAllocated
+                .wrapping_sub(absDiff as XmlBigCount);
         }
+        if root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
+            if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
+                root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
+            }
+            Some((root.alloc_tracker.bytesAllocated, root.alloc_tracker.peakBytesAllocated))
+        } else {
+            None
+        }
+    };
+    if let Some((new_total, peak_total)) = allocation_totals {
         expat_heap_stat(
-            rootParser,
-            (if isIncrease as ::core::ffi::c_int != 0 {
-                '+' as ::core::ffi::c_int
-            } else {
-                '-' as ::core::ffi::c_int
-            }) as ::core::ffi::c_char,
+            parser,
+            (if isIncrease { '+' } else { '-' }) as ::core::ffi::c_char,
             absDiff as XmlBigCount,
-            (*rootParser).m_alloc_tracker.bytesAllocated,
-            (*rootParser).m_alloc_tracker.peakBytesAllocated,
+            new_total,
+            peak_total,
             sourceLine,
         );
     }
@@ -4075,6 +4056,7 @@ fn initial_parser_struct(
         m_groupConnector: GroupConnectorStorage::empty(),
         m_groupSize: 0,
         m_namespaceSeparator: crate::ascii_h::ASCII_EXCL as crate::expat_external_h::XML_Char,
+        m_root: std::sync::Arc::new(std::sync::Mutex::new(RootParserState::empty())),
         m_parentParser: None,
         m_parsingStatus: crate::expat_h::XML_ParsingStatus {
             parsing: crate::expat_h::XML_INITIALIZED,
@@ -4182,7 +4164,16 @@ unsafe extern "C" fn parserCreate(
                 0 as XmlBigCount
             },
         };
-        parser.m_parentParser = ::core::ptr::NonNull::new(parentParser);
+        if let Some(parent) = parentParser.as_ref() {
+            parser.m_root = std::sync::Arc::clone(&parent.m_root);
+            parser.m_parentParser = Some(
+                ::core::num::NonZeroU32::new(
+                    parent.m_parentParser.map_or(0, ::core::num::NonZeroU32::get)
+                        .saturating_add(1),
+                )
+                .expect("child parser depth is non-zero"),
+            );
+        }
         if parentParser.is_null() {
             parser.m_accounting.countBytesDirect = 0 as XmlBigCount;
         }
@@ -5142,7 +5133,16 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     (*parser).m_ns_triplets = oldns_triplets;
     (*parser).m_hash_secret_salt = oldhash_secret_salt;
     (*parser).m_reparseDeferralEnabled = oldReparseDeferralEnabled;
-    (*parser).m_parentParser = ::core::ptr::NonNull::new(oldParser);
+    (*parser).m_root = std::sync::Arc::clone(&(*oldParser).m_root);
+    (*parser).m_parentParser = Some(
+        ::core::num::NonZeroU32::new(
+            (*oldParser)
+                .m_parentParser
+                .map_or(0, ::core::num::NonZeroU32::get)
+                .saturating_add(1),
+        )
+        .expect("child parser depth is non-zero"),
+    );
     (*parser).m_paramEntityParsing = oldParamEntityParsing;
     (*parser).m_prologState.inEntityValue = oldInEntityValue;
     if !context.is_null() {
@@ -17976,12 +17976,10 @@ unsafe extern "C" fn getRootParserOf(
     mut parser: crate::expat_h::XML_Parser,
     mut outLevelDiff: *mut ::core::ffi::c_uint,
 ) -> crate::expat_h::XML_Parser {
-    let mut rootParser: crate::expat_h::XML_Parser = parser;
-    let mut stepsTakenUpwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
-    while let Some(parent) = (*rootParser).m_parentParser {
-        rootParser = parent.as_ptr();
-        stepsTakenUpwards = stepsTakenUpwards.wrapping_add(1);
-    }
+    let rootParser: crate::expat_h::XML_Parser = parser;
+    let stepsTakenUpwards: ::core::ffi::c_uint = (*parser)
+        .m_parentParser
+        .map_or(0, ::core::num::NonZeroU32::get);
     '_c2rust_label: {
         if (*rootParser).m_parentParser.is_none() {
         } else {
