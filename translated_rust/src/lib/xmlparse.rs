@@ -9508,70 +9508,44 @@ unsafe extern "C" fn defineAttribute(
         return 1 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn setElementTypePrefix(
-    mut parser: XML_Parser,
-    mut elementType: *mut ELEMENT_TYPE,
-) -> ::core::ffi::c_int {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut name: *const XML_Char = ::core::ptr::null::<XML_Char>();
-        name = (*elementType).name;
-        while *name != 0 {
-            if *name as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
-                let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
-                let mut s: *const XML_Char = ::core::ptr::null::<XML_Char>();
-                s = (*elementType).name;
-                while s != name {
-                    if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
-                        && poolGrow(&mut (*dtd).pool) == 0
-                    {
-                        0 as ::core::ffi::c_int
-                    } else {
-                        let c2rust_fresh15 = (*dtd).pool.ptr;
-                        (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                        *c2rust_fresh15 = *s;
-                        1 as ::core::ffi::c_int
-                    } == 0
-                    {
-                        return 0 as ::core::ffi::c_int;
-                    }
-                    s = s.offset(1);
-                }
-                if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
-                    && poolGrow(&mut (*dtd).pool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh16 = (*dtd).pool.ptr;
-                    (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                    *c2rust_fresh16 = '\0' as i32 as XML_Char;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
+fn setElementTypePrefix(parser: XML_Parser, elementType: *mut ELEMENT_TYPE) -> ::core::ffi::c_int {
+    let parser = ptr_mut(parser);
+    let parser_ptr = parser as *mut XML_ParserStruct;
+    let dtd = ptr_mut(parser.m_dtd);
+    let element_type = ptr_mut(elementType);
+    let mut name = element_type.name;
+    while read_xml_char(name) != 0 {
+        if read_xml_char(name) as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
+            let mut s = element_type.name;
+            while s != name {
+                if !pool_append_xml_char(&mut dtd.pool, read_xml_char(s)) {
                     return 0 as ::core::ffi::c_int;
                 }
-                prefix = lookup(
-                    parser,
-                    &raw mut (*dtd).prefixes,
-                    (*dtd).pool.start as KEY,
-                    ::core::mem::size_of::<PREFIX>() as size_t,
-                ) as *mut PREFIX;
-                if prefix.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                if (*prefix).name == (*dtd).pool.start as *const XML_Char {
-                    (*dtd).pool.start = (*dtd).pool.ptr;
-                } else {
-                    (*dtd).pool.ptr = (*dtd).pool.start;
-                }
-                (*elementType).prefix = prefix;
-                break;
-            } else {
-                name = name.offset(1);
+                s = s.wrapping_add(1);
             }
+            if !pool_append_xml_char(&mut dtd.pool, '\0' as i32 as XML_Char) {
+                return 0 as ::core::ffi::c_int;
+            }
+            let prefix = lookup(
+                parser_ptr,
+                &raw mut dtd.prefixes,
+                dtd.pool.start as KEY,
+                ::core::mem::size_of::<PREFIX>() as size_t,
+            ) as *mut PREFIX;
+            if prefix.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            if ptr_ref(prefix).name == dtd.pool.start as *const XML_Char {
+                dtd.pool.start = dtd.pool.ptr;
+            } else {
+                dtd.pool.ptr = dtd.pool.start;
+            }
+            element_type.prefix = prefix;
+            break;
         }
-        return 1 as ::core::ffi::c_int;
+        name = name.wrapping_add(1);
     }
+    1 as ::core::ffi::c_int
 }
 unsafe extern "C" fn getAttributeId(
     mut parser: XML_Parser,
@@ -10537,6 +10511,10 @@ fn expat_free_ptr(parser: XML_Parser, ptr: *mut ::core::ffi::c_void, line: ::cor
     }
 }
 
+fn parser_malloc(parser: &XML_ParserStruct, size: size_t) -> *mut ::core::ffi::c_void {
+    unsafe { parser.m_mem.malloc_fcn.expect("non-null function pointer")(size) }
+}
+
 fn zero_memory(ptr: *mut ::core::ffi::c_void, size: size_t) {
     unsafe {
         memset(ptr, 0 as ::core::ffi::c_int, size);
@@ -10849,6 +10827,15 @@ fn write_xml_char(ptr: *mut XML_Char, value: XML_Char) {
     *ptr_mut(ptr) = value;
 }
 
+fn pool_append_xml_char(pool: &mut STRING_POOL, value: XML_Char) -> bool {
+    if pool.ptr == pool.end as *mut XML_Char && poolGrow(pool) == 0 {
+        return false;
+    }
+    write_xml_char(pool.ptr, value);
+    pool.ptr = pool.ptr.wrapping_add(1);
+    true
+}
+
 fn call_utf8_convert(
     enc: *const ENCODING,
     from_ptr: *mut *const ::core::ffi::c_char,
@@ -11137,193 +11124,176 @@ fn poolGrow(pool: &mut STRING_POOL) -> XML_Bool {
     }
     XML_TRUE
 }
-unsafe extern "C" fn nextScaffoldPart(mut parser: XML_Parser) -> ::core::ffi::c_int {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut me: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-        let mut next: ::core::ffi::c_int = 0;
-        if (*dtd).scaffIndex.is_null() {
-            (*dtd).scaffIndex = expat_malloc(
-                parser,
-                ((*parser).m_groupSize as size_t)
-                    .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>() as size_t),
-                8232 as ::core::ffi::c_int,
-            ) as *mut ::core::ffi::c_int;
-            if (*dtd).scaffIndex.is_null() {
-                return -(1 as ::core::ffi::c_int);
-            }
-            *(*dtd).scaffIndex.offset(0 as ::core::ffi::c_int as isize) = 0 as ::core::ffi::c_int;
-        }
-        if (*dtd).scaffCount > INT_MAX as ::core::ffi::c_uint {
+fn nextScaffoldPart(parser: XML_Parser) -> ::core::ffi::c_int {
+    let parser = ptr_mut(parser);
+    let parser_ptr = parser as *mut XML_ParserStruct;
+    let dtd = ptr_mut(parser.m_dtd);
+    if dtd.scaffIndex.is_null() {
+        dtd.scaffIndex = expat_malloc_ptr::<::core::ffi::c_int>(
+            parser_ptr,
+            (parser.m_groupSize as size_t)
+                .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>() as size_t),
+            8232 as ::core::ffi::c_int,
+        );
+        if dtd.scaffIndex.is_null() {
             return -(1 as ::core::ffi::c_int);
         }
-        if (*dtd).scaffCount >= (*dtd).scaffSize {
-            let mut temp: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-            if !(*dtd).scaffold.is_null() {
-                if (*dtd).scaffSize > UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
-                    return -(1 as ::core::ffi::c_int);
-                }
-                temp = expat_realloc(
-                    parser,
-                    (*dtd).scaffold as *mut ::core::ffi::c_void,
-                    ((*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint) as size_t)
-                        .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>() as size_t),
-                    8261 as ::core::ffi::c_int,
-                ) as *mut CONTENT_SCAFFOLD;
-                if temp.is_null() {
-                    return -(1 as ::core::ffi::c_int);
-                }
-                (*dtd).scaffSize = (*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
-            } else {
-                temp = expat_malloc(
-                    parser,
-                    (32 as size_t)
-                        .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>() as size_t),
-                    8266 as ::core::ffi::c_int,
-                ) as *mut CONTENT_SCAFFOLD;
-                if temp.is_null() {
-                    return -(1 as ::core::ffi::c_int);
-                }
-                (*dtd).scaffSize = INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint;
-            }
-            (*dtd).scaffold = temp;
-        }
-        let c2rust_fresh14 = (*dtd).scaffCount;
-        (*dtd).scaffCount = (*dtd).scaffCount.wrapping_add(1);
-        next = c2rust_fresh14 as ::core::ffi::c_int;
-        me = (*dtd).scaffold.offset(next as isize) as *mut CONTENT_SCAFFOLD;
-        if (*dtd).scaffLevel != 0 {
-            let mut parent: *mut CONTENT_SCAFFOLD = (*dtd).scaffold.offset(
-                *(*dtd)
-                    .scaffIndex
-                    .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
-                    as isize,
-            ) as *mut CONTENT_SCAFFOLD;
-            if (*parent).lastchild != 0 {
-                (*(*dtd).scaffold.offset((*parent).lastchild as isize)).nextsib = next;
-            }
-            if (*parent).childcnt == 0 {
-                (*parent).firstchild = next;
-            }
-            (*parent).lastchild = next;
-            (*parent).childcnt += 1;
-        }
-        (*me).nextsib = 0 as ::core::ffi::c_int;
-        (*me).childcnt = (*me).nextsib;
-        (*me).lastchild = (*me).childcnt;
-        (*me).firstchild = (*me).lastchild;
-        return next;
+        ptr_slice_mut(dtd.scaffIndex, 1)[0] = 0 as ::core::ffi::c_int;
     }
-}
-unsafe extern "C" fn build_model(mut parser: XML_Parser) -> *mut XML_Content {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut ret: *mut XML_Content = ::core::ptr::null_mut::<XML_Content>();
-        let mut str: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
-        if ((*dtd).scaffCount as usize).wrapping_mul(::core::mem::size_of::<XML_Content>() as usize)
-            > (SIZE_MAX as usize).wrapping_sub(
-                ((*dtd).contentStringLen as usize)
-                    .wrapping_mul(::core::mem::size_of::<XML_Char>() as usize),
-            )
-        {
-            return ::core::ptr::null_mut::<XML_Content>();
-        }
-        let allocsize: size_t = ((*dtd).scaffCount as size_t)
-            .wrapping_mul(::core::mem::size_of::<XML_Content>() as size_t)
-            .wrapping_add(
-                ((*dtd).contentStringLen as size_t)
-                    .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+    if dtd.scaffCount > INT_MAX as ::core::ffi::c_uint {
+        return -(1 as ::core::ffi::c_int);
+    }
+    if dtd.scaffCount >= dtd.scaffSize {
+        let temp = if !dtd.scaffold.is_null() {
+            if dtd.scaffSize > UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
+                return -(1 as ::core::ffi::c_int);
+            }
+            let temp = expat_realloc_ptr::<CONTENT_SCAFFOLD>(
+                parser_ptr,
+                dtd.scaffold.cast::<::core::ffi::c_void>(),
+                (dtd.scaffSize.wrapping_mul(2 as ::core::ffi::c_uint) as size_t)
+                    .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>() as size_t),
+                8261 as ::core::ffi::c_int,
             );
-        ret = (*parser)
-            .m_mem
-            .malloc_fcn
-            .expect("non-null function pointer")(allocsize) as *mut XML_Content;
-        if ret.is_null() {
-            return ::core::ptr::null_mut::<XML_Content>();
-        }
-        let mut dest: *mut XML_Content = ret;
-        let destLimit: *mut XML_Content =
-            ret.offset((*dtd).scaffCount as isize) as *mut XML_Content;
-        let mut jobDest: *mut XML_Content = ret;
-        str = ret.offset((*dtd).scaffCount as isize) as *mut XML_Content as *mut XML_Char;
-        let c2rust_fresh11 = jobDest;
-        jobDest = jobDest.offset(1);
-        (*c2rust_fresh11).numchildren = 0 as ::core::ffi::c_uint;
-        while dest < destLimit {
-            let src_node: ::core::ffi::c_int = (*dest).numchildren as ::core::ffi::c_int;
-            (*dest).type_0 = (*(*dtd).scaffold.offset(src_node as isize)).type_0;
-            (*dest).quant = (*(*dtd).scaffold.offset(src_node as isize)).quant;
-            if (*dest).type_0 as ::core::ffi::c_uint
-                == XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                let mut src: *const XML_Char = ::core::ptr::null::<XML_Char>();
-                (*dest).name = str;
-                src = (*(*dtd).scaffold.offset(src_node as isize)).name;
-                loop {
-                    let c2rust_fresh12 = str;
-                    str = str.offset(1);
-                    *c2rust_fresh12 = *src;
-                    if *src == 0 {
-                        break;
-                    }
-                    src = src.offset(1);
-                }
-                (*dest).numchildren = 0 as ::core::ffi::c_uint;
-                (*dest).children = ::core::ptr::null_mut::<XML_Content>();
-            } else {
-                let mut i: ::core::ffi::c_uint = 0;
-                let mut cn: ::core::ffi::c_int = 0;
-                (*dest).name = ::core::ptr::null_mut::<XML_Char>();
-                (*dest).numchildren =
-                    (*(*dtd).scaffold.offset(src_node as isize)).childcnt as ::core::ffi::c_uint;
-                (*dest).children = jobDest;
-                i = 0 as ::core::ffi::c_uint;
-                cn = (*(*dtd).scaffold.offset(src_node as isize)).firstchild;
-                while i < (*dest).numchildren {
-                    let c2rust_fresh13 = jobDest;
-                    jobDest = jobDest.offset(1);
-                    (*c2rust_fresh13).numchildren = cn as ::core::ffi::c_uint;
-                    i = i.wrapping_add(1);
-                    cn = (*(*dtd).scaffold.offset(cn as isize)).nextsib;
-                }
+            if temp.is_null() {
+                return -(1 as ::core::ffi::c_int);
             }
-            dest = dest.offset(1);
-        }
-        return ret;
-    }
-}
-unsafe extern "C" fn getElementType(
-    mut parser: XML_Parser,
-    mut enc: *const ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-) -> *mut ELEMENT_TYPE {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut name: *const XML_Char = poolStoreString(&mut (*dtd).pool, enc, ptr, end);
-        let mut ret: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        if name.is_null() {
-            return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        }
-        ret = lookup(
-            parser,
-            &raw mut (*dtd).elementTypes,
-            name as KEY,
-            ::core::mem::size_of::<ELEMENT_TYPE>() as size_t,
-        ) as *mut ELEMENT_TYPE;
-        if ret.is_null() {
-            return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        }
-        if (*ret).name != name {
-            (*dtd).pool.ptr = (*dtd).pool.start;
+            dtd.scaffSize = dtd.scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
+            temp
         } else {
-            (*dtd).pool.start = (*dtd).pool.ptr;
-            if setElementTypePrefix(parser, ret) == 0 {
-                return ::core::ptr::null_mut::<ELEMENT_TYPE>();
+            let temp = expat_malloc_ptr::<CONTENT_SCAFFOLD>(
+                parser_ptr,
+                (32 as size_t).wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>() as size_t),
+                8266 as ::core::ffi::c_int,
+            );
+            if temp.is_null() {
+                return -(1 as ::core::ffi::c_int);
+            }
+            dtd.scaffSize = INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint;
+            temp
+        };
+        dtd.scaffold = temp;
+    }
+    let next = dtd.scaffCount as ::core::ffi::c_int;
+    dtd.scaffCount = dtd.scaffCount.wrapping_add(1);
+    if dtd.scaffLevel != 0 {
+        let parent_index = ptr_slice(dtd.scaffIndex, dtd.scaffLevel as usize)
+            [dtd.scaffLevel as usize - 1] as usize;
+        let lastchild = {
+            let parent = ptr_mut(dtd.scaffold.wrapping_add(parent_index));
+            let lastchild = parent.lastchild;
+            if parent.childcnt == 0 {
+                parent.firstchild = next;
+            }
+            parent.lastchild = next;
+            parent.childcnt += 1;
+            lastchild
+        };
+        if lastchild != 0 {
+            ptr_mut(dtd.scaffold.wrapping_add(lastchild as usize)).nextsib = next;
+        }
+    }
+    let me = ptr_mut(dtd.scaffold.wrapping_add(next as usize));
+    me.nextsib = 0 as ::core::ffi::c_int;
+    me.childcnt = 0 as ::core::ffi::c_int;
+    me.lastchild = 0 as ::core::ffi::c_int;
+    me.firstchild = 0 as ::core::ffi::c_int;
+    next
+}
+fn build_model(parser: XML_Parser) -> *mut XML_Content {
+    let parser = ptr_mut(parser);
+    let dtd = ptr_mut(parser.m_dtd);
+    let scaff_count = dtd.scaffCount as usize;
+    if scaff_count.wrapping_mul(::core::mem::size_of::<XML_Content>())
+        > (SIZE_MAX as usize).wrapping_sub(
+            (dtd.contentStringLen as usize).wrapping_mul(::core::mem::size_of::<XML_Char>()),
+        )
+    {
+        return ::core::ptr::null_mut::<XML_Content>();
+    }
+    let allocsize: size_t = (dtd.scaffCount as size_t)
+        .wrapping_mul(::core::mem::size_of::<XML_Content>() as size_t)
+        .wrapping_add(
+            (dtd.contentStringLen as size_t)
+                .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+        );
+    let ret = parser_malloc(parser, allocsize) as *mut XML_Content;
+    if ret.is_null() {
+        return ::core::ptr::null_mut::<XML_Content>();
+    }
+    let scaffold = ptr_slice(dtd.scaffold, scaff_count);
+    let str_base = ret.wrapping_add(scaff_count).cast::<XML_Char>();
+    let mut str_offset = 0usize;
+    let mut next_job = 1usize;
+    ptr_mut(ret).numchildren = 0 as ::core::ffi::c_uint;
+    for dest_index in 0..scaff_count {
+        let src_node = ptr_ref(ret.wrapping_add(dest_index)).numchildren as usize;
+        let src = &scaffold[src_node];
+        let is_name = src.type_0 as ::core::ffi::c_uint
+            == XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint;
+        if is_name {
+            let source = xml_char_slice_with_nul(src.name);
+            let str = str_base.wrapping_add(str_offset);
+            let dest = ptr_mut(ret.wrapping_add(dest_index));
+            dest.type_0 = src.type_0;
+            dest.quant = src.quant;
+            dest.name = str;
+            ptr_slice_mut(str, source.len()).copy_from_slice(source);
+            str_offset = str_offset.wrapping_add(source.len());
+            dest.numchildren = 0 as ::core::ffi::c_uint;
+            dest.children = ::core::ptr::null_mut::<XML_Content>();
+        } else {
+            let child_count = src.childcnt as ::core::ffi::c_uint;
+            let first_child = src.firstchild as usize;
+            {
+                let dest = ptr_mut(ret.wrapping_add(dest_index));
+                dest.type_0 = src.type_0;
+                dest.quant = src.quant;
+                dest.name = ::core::ptr::null_mut::<XML_Char>();
+                dest.numchildren = child_count;
+                dest.children = ret.wrapping_add(next_job);
+            }
+            let mut cn = first_child;
+            for _ in 0..child_count as usize {
+                ptr_mut(ret.wrapping_add(next_job)).numchildren = cn as ::core::ffi::c_uint;
+                next_job = next_job.wrapping_add(1);
+                cn = scaffold[cn].nextsib as usize;
             }
         }
-        return ret;
     }
+    ret
+}
+fn getElementType(
+    parser: XML_Parser,
+    enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> *mut ELEMENT_TYPE {
+    let parser = ptr_mut(parser);
+    let parser_ptr = parser as *mut XML_ParserStruct;
+    let dtd = ptr_mut(parser.m_dtd);
+    let name = poolStoreString(&mut dtd.pool, enc, ptr, end);
+    if name.is_null() {
+        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    }
+    let ret = lookup(
+        parser_ptr,
+        &raw mut dtd.elementTypes,
+        name as KEY,
+        ::core::mem::size_of::<ELEMENT_TYPE>() as size_t,
+    ) as *mut ELEMENT_TYPE;
+    if ret.is_null() {
+        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    }
+    if ptr_ref(ret).name != name {
+        dtd.pool.ptr = dtd.pool.start;
+    } else {
+        dtd.pool.start = dtd.pool.ptr;
+        if setElementTypePrefix(parser_ptr, ret) == 0 {
+            return ::core::ptr::null_mut::<ELEMENT_TYPE>();
+        }
+    }
+    ret
 }
 fn copyString(s: *const XML_Char, parser: XML_Parser) -> *mut XML_Char {
     let source = xml_char_slice_with_nul(s);
