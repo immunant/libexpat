@@ -9519,11 +9519,11 @@ unsafe extern "C" fn doProlog(
     mut allowClosingDoctype: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    static mut externalSubsetName: [crate::expat_external_h::XML_Char; 2] = [
+    static externalSubsetName: [crate::expat_external_h::XML_Char; 2] = [
         crate::ascii_h::ASCII_HASH as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
+    static atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
         crate::ascii_h::ASCII_C as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
@@ -9531,12 +9531,12 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeID: [crate::expat_external_h::XML_Char; 3] = [
+    static atypeID: [crate::expat_external_h::XML_Char; 3] = [
         crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeIDREF: [crate::expat_external_h::XML_Char; 6] = [
+    static atypeIDREF: [crate::expat_external_h::XML_Char; 6] = [
         crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
@@ -9544,7 +9544,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_F as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeIDREFS: [crate::expat_external_h::XML_Char; 7] = [
+    static atypeIDREFS: [crate::expat_external_h::XML_Char; 7] = [
         crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
@@ -9553,7 +9553,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeENTITY: [crate::expat_external_h::XML_Char; 7] = [
+    static atypeENTITY: [crate::expat_external_h::XML_Char; 7] = [
         crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -9562,7 +9562,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_Y as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeENTITIES: [crate::expat_external_h::XML_Char; 9] = [
+    static atypeENTITIES: [crate::expat_external_h::XML_Char; 9] = [
         crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -9573,7 +9573,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeNMTOKEN: [crate::expat_external_h::XML_Char; 8] = [
+    static atypeNMTOKEN: [crate::expat_external_h::XML_Char; 8] = [
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -9583,7 +9583,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeNMTOKENS: [crate::expat_external_h::XML_Char; 9] = [
+    static atypeNMTOKENS: [crate::expat_external_h::XML_Char; 9] = [
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -9594,7 +9594,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut notationPrefix: [crate::expat_external_h::XML_Char; 10] = [
+    static notationPrefix: [crate::expat_external_h::XML_Char; 10] = [
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -9606,11 +9606,11 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut enumValueSep: [crate::expat_external_h::XML_Char; 2] = [
+    static enumValueSep: [crate::expat_external_h::XML_Char; 2] = [
         crate::ascii_h::ASCII_PIPE as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    static mut enumValueStart: [crate::expat_external_h::XML_Char; 2] = [
+    static enumValueStart: [crate::expat_external_h::XML_Char; 2] = [
         crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
