@@ -3211,6 +3211,26 @@ macro_rules! uint_mut_from_raw {
     };
 }
 
+macro_rules! parsing_status_mut_from_raw {
+    ($ptr:expr) => {
+        if $ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut *$ptr })
+        }
+    };
+}
+
+macro_rules! int_mut_from_raw {
+    ($ptr:expr) => {
+        if $ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut *$ptr })
+        }
+    };
+}
+
 macro_rules! unsafe_expr {
     ($expr:expr) => {
         unsafe { $expr }
@@ -4227,52 +4247,56 @@ pub unsafe extern "C" fn XML_GetBuffer_ffi(
 ) -> *mut ::core::ffi::c_void {
     XML_GetBuffer(parser, len)
 }
-unsafe extern "C" fn triggerReenter(mut parser: crate::expat_h::XML_Parser) {
-    (*parser).m_reenter = crate::expat_h::XML_TRUE;
+extern "C" fn triggerReenter(mut parser: crate::expat_h::XML_Parser) {
+    debug_assert!(!parser.is_null());
+    let Some(parser) = parser_mut(parser) else {
+        return;
+    };
+    parser.m_reenter = crate::expat_h::XML_TRUE;
 }
-pub unsafe extern "C" fn XML_StopParser(
+pub extern "C" fn XML_StopParser(
     mut parser: crate::expat_h::XML_Parser,
     mut resumable: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Status {
-    if parser.is_null() {
+    let Some(parser) = parser_mut(parser) else {
         return crate::expat_h::XML_STATUS_ERROR;
-    }
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+    };
+    match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
         0 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_NOT_STARTED;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_NOT_STARTED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         3 => {
             if resumable != 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+                parser.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
-            (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+            parser.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
         }
         2 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         1 => {
             if resumable != 0 {
-                if (*parser).m_isParamEntity != 0 {
-                    (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPEND_PE;
+                if parser.m_isParamEntity != 0 {
+                    parser.m_errorCode = crate::expat_h::XML_ERROR_SUSPEND_PE;
                     return crate::expat_h::XML_STATUS_ERROR;
                 }
-                (*parser).m_parsingStatus.parsing = crate::expat_h::XML_SUSPENDED;
+                parser.m_parsingStatus.parsing = crate::expat_h::XML_SUSPENDED;
             } else {
-                (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+                parser.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
             }
         }
         _ => {
             '_c2rust_label: {
-                crate::stdlib::__assert_fail(
+                unsafe_expr!(crate::stdlib::__assert_fail(
                     b"0\0".as_ptr() as *const ::core::ffi::c_char,
                     b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
                     2692 as ::core::ffi::c_uint,
                     b"enum XML_Status XML_StopParser(XML_Parser, XML_Bool)\0".as_ptr()
                         as *const ::core::ffi::c_char,
-                );
+                ));
             };
         }
     }
@@ -4286,31 +4310,34 @@ pub unsafe extern "C" fn XML_StopParser_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_StopParser(parser, resumable)
 }
-pub unsafe extern "C" fn XML_ResumeParser(
+pub extern "C" fn XML_ResumeParser(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Status {
     let mut result: crate::expat_h::XML_Status = crate::expat_h::XML_STATUS_OK;
-    if parser.is_null() {
+    let Some(parser) = parser_mut(parser) else {
         return crate::expat_h::XML_STATUS_ERROR;
-    }
-    if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+    };
+    if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
         != crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        (*parser).m_errorCode = crate::expat_h::XML_ERROR_NOT_SUSPENDED;
+        parser.m_errorCode = crate::expat_h::XML_ERROR_NOT_SUSPENDED;
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    (*parser).m_errorCode = callProcessor(
-        parser,
-        (*parser).m_bufferPtr,
-        (*parser).m_parseEndPtr,
-        &raw mut (*parser).m_bufferPtr,
-    );
-    if (*parser).m_errorCode as ::core::ffi::c_uint
+    parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+    let parser_ptr = parser as *mut XML_ParserStruct;
+    let buffer_ptr = parser.m_bufferPtr;
+    let parse_end_ptr = parser.m_parseEndPtr;
+    parser.m_errorCode = unsafe_expr!(callProcessor(
+        parser_ptr,
+        buffer_ptr,
+        parse_end_ptr,
+        &raw mut (*parser_ptr).m_bufferPtr,
+    ));
+    if parser.m_errorCode as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = Some(
+        parser.m_eventEndPtr = parser.m_eventPtr;
+        parser.m_processor = Some(
             errorProcessor
                 as unsafe extern "C" fn(
                     crate::expat_h::XML_Parser,
@@ -4321,28 +4348,31 @@ pub unsafe extern "C" fn XML_ResumeParser(
         );
         return crate::expat_h::XML_STATUS_ERROR;
     } else {
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+        match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
                 result = crate::expat_h::XML_STATUS_SUSPENDED;
             }
             0 | 1 => {
-                if (*parser).m_parsingStatus.finalBuffer != 0 {
-                    (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+                if parser.m_parsingStatus.finalBuffer != 0 {
+                    parser.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
                     return result;
                 }
             }
             _ => {}
         }
     }
-    (*(*parser).m_encoding)
+    let encoding = parser.m_encoding;
+    let position_ptr = parser.m_positionPtr;
+    let buffer_ptr = parser.m_bufferPtr;
+    unsafe_expr!((*encoding)
         .updatePosition
         .expect("non-null function pointer")(
-        (*parser).m_encoding,
-        (*parser).m_positionPtr,
-        (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
-    );
-    (*parser).m_positionPtr = (*parser).m_bufferPtr;
+        encoding,
+        position_ptr,
+        buffer_ptr,
+        &raw mut (*parser_ptr).m_position,
+    ));
+    parser.m_positionPtr = buffer_ptr;
     return result;
 }
 #[export_name = "XML_ResumeParser"]
@@ -4352,26 +4382,23 @@ pub unsafe extern "C" fn XML_ResumeParser_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_ResumeParser(parser)
 }
-pub unsafe extern "C" fn XML_GetParsingStatus(
+pub extern "C" fn XML_GetParsingStatus(
     mut parser: crate::expat_h::XML_Parser,
     mut status: *mut crate::expat_h::XML_ParsingStatus,
 ) {
-    if parser.is_null() {
+    let Some(parser) = parser_ref(parser) else {
         return;
-    }
-    '_c2rust_label: {
-        if !status.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"status != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2741 as ::core::ffi::c_uint,
-                b"void XML_GetParsingStatus(XML_Parser, XML_ParsingStatus *)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
     };
-    *status = (*parser).m_parsingStatus;
+    let Some(status) = parsing_status_mut_from_raw!(status) else {
+        unsafe_expr!(crate::stdlib::__assert_fail(
+            b"status != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+            b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
+            2741 as ::core::ffi::c_uint,
+            b"void XML_GetParsingStatus(XML_Parser, XML_ParsingStatus *)\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        ));
+    };
+    *status = parser.m_parsingStatus;
 }
 #[export_name = "XML_GetParsingStatus"]
 
@@ -4441,24 +4468,22 @@ pub unsafe extern "C" fn XML_GetCurrentByteCount_ffi(
 ) -> ::core::ffi::c_int {
     XML_GetCurrentByteCount(parser)
 }
-pub unsafe extern "C" fn XML_GetInputContext(
+pub extern "C" fn XML_GetInputContext(
     mut parser: crate::expat_h::XML_Parser,
     mut offset: *mut ::core::ffi::c_int,
     mut size: *mut ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    if parser.is_null() {
+    let Some(parser) = parser_ref(parser) else {
         return ::core::ptr::null::<::core::ffi::c_char>();
-    }
-    if !(*parser).m_eventPtr.is_null() && !(*parser).m_buffer.is_null() {
-        if !offset.is_null() {
-            *offset = (*parser).m_eventPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-                as ::core::ffi::c_int;
+    };
+    if !parser.m_eventPtr.is_null() && !parser.m_buffer.is_null() {
+        if let Some(offset) = int_mut_from_raw!(offset) {
+            *offset = byte_char_ptr_diff(parser.m_eventPtr, parser.m_buffer) as ::core::ffi::c_int;
         }
-        if !size.is_null() {
-            *size = (*parser).m_bufferEnd.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-                as ::core::ffi::c_int;
+        if let Some(size) = int_mut_from_raw!(size) {
+            *size = byte_char_ptr_diff(parser.m_bufferEnd, parser.m_buffer) as ::core::ffi::c_int;
         }
-        return (*parser).m_buffer;
+        return parser.m_buffer;
     }
     return ::core::ptr::null::<::core::ffi::c_char>();
 }
@@ -4471,24 +4496,28 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
 ) -> *const ::core::ffi::c_char {
     XML_GetInputContext(parser, offset, size)
 }
-pub unsafe extern "C" fn XML_GetCurrentLineNumber(
+pub extern "C" fn XML_GetCurrentLineNumber(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Size {
-    if parser.is_null() {
+    let Some(parser) = parser_mut(parser) else {
         return 0 as crate::expat_external_h::XML_Size;
-    }
-    if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
-        (*(*parser).m_encoding)
+    };
+    if !parser.m_eventPtr.is_null() && parser.m_eventPtr >= parser.m_positionPtr {
+        let parser_ptr = parser as *mut XML_ParserStruct;
+        let encoding = parser.m_encoding;
+        let position_ptr = parser.m_positionPtr;
+        let event_ptr = parser.m_eventPtr;
+        unsafe_expr!((*encoding)
             .updatePosition
             .expect("non-null function pointer")(
-            (*parser).m_encoding,
-            (*parser).m_positionPtr,
-            (*parser).m_eventPtr,
-            &raw mut (*parser).m_position,
-        );
-        (*parser).m_positionPtr = (*parser).m_eventPtr;
+            encoding,
+            position_ptr,
+            event_ptr,
+            &raw mut (*parser_ptr).m_position,
+        ));
+        parser.m_positionPtr = event_ptr;
     }
-    return (*parser)
+    return parser
         .m_position
         .lineNumber
         .wrapping_add(1 as crate::expat_external_h::XML_Size);
@@ -4500,24 +4529,28 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber_ffi(
 ) -> crate::expat_external_h::XML_Size {
     XML_GetCurrentLineNumber(parser)
 }
-pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
+pub extern "C" fn XML_GetCurrentColumnNumber(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Size {
-    if parser.is_null() {
+    let Some(parser) = parser_mut(parser) else {
         return 0 as crate::expat_external_h::XML_Size;
-    }
-    if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
-        (*(*parser).m_encoding)
+    };
+    if !parser.m_eventPtr.is_null() && parser.m_eventPtr >= parser.m_positionPtr {
+        let parser_ptr = parser as *mut XML_ParserStruct;
+        let encoding = parser.m_encoding;
+        let position_ptr = parser.m_positionPtr;
+        let event_ptr = parser.m_eventPtr;
+        unsafe_expr!((*encoding)
             .updatePosition
             .expect("non-null function pointer")(
-            (*parser).m_encoding,
-            (*parser).m_positionPtr,
-            (*parser).m_eventPtr,
-            &raw mut (*parser).m_position,
-        );
-        (*parser).m_positionPtr = (*parser).m_eventPtr;
+            encoding,
+            position_ptr,
+            event_ptr,
+            &raw mut (*parser_ptr).m_position,
+        ));
+        parser.m_positionPtr = event_ptr;
     }
-    return (*parser).m_position.columnNumber;
+    return parser.m_position.columnNumber;
 }
 #[export_name = "XML_GetCurrentColumnNumber"]
 
