@@ -4000,28 +4000,17 @@ pub mod xmltok_impl_c {
         Little2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
     }
 
-    pub unsafe extern "C" fn little2_scanComment(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
+    /// Scans a bounded UTF-16LE comment and returns an offset relative to
+    /// `input`.  The caller that owns the ABI cursor translates that offset
+    /// back to a pointer after validating the input window.
+    pub fn little2_scanComment(
+        normal: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
         match little2_scan_comment_impl(normal, input) {
-            Little2ScanOutcome::Token(token, next) => {
-                *nextTokPtr = ptr.add(next);
-                token
-            }
-            Little2ScanOutcome::Partial(token) => token,
-            Little2ScanOutcome::Invalid(at) => {
-                *nextTokPtr = ptr.add(at);
-                crate::src::xmltok::XML_TOK_INVALID_1
-            }
+            Little2ScanOutcome::Token(token, next) => (token, Some(next)),
+            Little2ScanOutcome::Partial(token) => (token, None),
+            Little2ScanOutcome::Invalid(at) => (crate::src::xmltok::XML_TOK_INVALID_1, Some(at)),
         }
     }
 
@@ -4035,7 +4024,7 @@ pub mod xmltok_impl_c {
 
     /// Scan the declaration prefix using bounded UTF-16LE code units.  The
     /// boundary adapter owns converting the returned cursor offset to a C
-    /// pointer (and the comment scanner still has its own boundary adapter).
+    /// pointer.
     fn little2_scan_decl_impl(
         byte_types: &[::core::ffi::c_uchar; 256],
         input: &[::core::ffi::c_char],
@@ -4112,28 +4101,19 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_scanDecl(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
+    /// Scans a bounded UTF-16LE declaration prefix and returns an offset
+    /// relative to `input`.  ABI cursor conversion belongs to the boundary
+    /// that validates the input window.
+    pub fn little2_scanDecl(
+        normal: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
         match little2_scan_decl_impl(&normal.type_0, input) {
             Little2ScanDeclAction::ScanComment => {
-                little2_scanComment(enc, ptr.add(2), end, nextTokPtr)
+                let (token, next) = little2_scanComment(normal, &input[2..]);
+                (token, next.map(|offset| 2 + offset))
             }
-            Little2ScanDeclAction::Return { token, next } => {
-                if let Some(offset) = next {
-                    *nextTokPtr = ptr.add(offset);
-                }
-                token
-            }
+            Little2ScanDeclAction::Return { token, next } => (token, next),
         }
     }
 
