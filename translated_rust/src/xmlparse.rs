@@ -12593,98 +12593,70 @@ fn accountingReportStats(rootParser: &XML_ParserStruct, epilog: &str) {
     );
 }
 
-unsafe extern "C" fn accountingReportDiff(
-    mut rootParser: crate::expat_h::XML_Parser,
-    mut levelsAwayFromRootParser: ::core::ffi::c_uint,
-    mut before: *const ::core::ffi::c_char,
-    mut after: *const ::core::ffi::c_char,
-    mut bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
-    mut source_line: ::core::ffi::c_int,
-    mut account: XML_Account,
+fn write_printable_byte(
+    writer: &mut impl std::io::Write,
+    c: ::core::ffi::c_uchar,
+) -> std::io::Result<()> {
+    match c {
+        0 => writer.write_all(b"\\0"),
+        9 => writer.write_all(b"\\t"),
+        10 => writer.write_all(b"\\n"),
+        13 => writer.write_all(b"\\r"),
+        b'"' => writer.write_all(b"\\\""),
+        b'\\' => writer.write_all(b"\\\\"),
+        32..=126 => writer.write_all(&[c]),
+        1..=15 => write!(writer, "\\x{:X}", c),
+        _ => write!(writer, "\\x{:02X}", c),
+    }
+}
+
+fn accountingReportDiff(
+    rootParser: &XML_ParserStruct,
+    levelsAwayFromRootParser: ::core::ffi::c_uint,
+    context: &[::core::ffi::c_uchar],
+    bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
 ) {
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8513 as ::core::ffi::c_uint,
-                b"void accountingReportDiff(XML_Parser, unsigned int, const char *, const char *, ptrdiff_t, int, enum XML_Account)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b" (+%6ld bytes %s|%u, xmlparse.c:%d) %*s\"\0".as_ptr() as *const ::core::ffi::c_char,
-        bytesMore,
-        if account as ::core::ffi::c_uint
-            == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            b"DIR\0".as_ptr() as *const ::core::ffi::c_char
-        } else {
-            b"EXP\0".as_ptr() as *const ::core::ffi::c_char
-        },
-        levelsAwayFromRootParser,
-        source_line,
-        10 as ::core::ffi::c_int,
-        b"\0".as_ptr() as *const ::core::ffi::c_char,
-    );
-    let ellipis: [::core::ffi::c_char; 5] =
-        ::core::mem::transmute::<[u8; 5], [::core::ffi::c_char; 5]>(*b"[..]\0");
-    let ellipsisLength: crate::__stddef_size_t_h::size_t =
-        (::core::mem::size_of::<[::core::ffi::c_char; 5]>() as crate::__stddef_size_t_h::size_t)
-            .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
-    let contextLength: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
-    let mut walker: *const ::core::ffi::c_char = before;
-    if (*rootParser).m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
-        || after.offset_from(before) as crate::__stddef_ptrdiff_t_h::ptrdiff_t
-            <= (contextLength as crate::__stddef_size_t_h::size_t)
-                .wrapping_add(ellipsisLength)
-                .wrapping_add(contextLength as crate::__stddef_size_t_h::size_t)
-                as crate::__stddef_ptrdiff_t_h::ptrdiff_t
+    if !rootParser.m_parentParser.is_null() {
+        std::process::abort();
+    }
+
+    use std::io::Write as _;
+
+    let account_label = if account as ::core::ffi::c_uint
+        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        while walker < after {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+        "DIR"
+    } else {
+        "EXP"
+    };
+    let contextLength = 10usize;
+    let ellipsis = b"[..]";
+    let mut stderr = std::io::stderr();
+
+    let _ = write!(
+        stderr,
+        " (+{:6} bytes {}|{}, xmlparse.c:{}) {:10}\"",
+        bytesMore, account_label, levelsAwayFromRootParser, source_line, ""
+    );
+
+    if rootParser.m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
+        || context.len() <= contextLength + ellipsis.len() + contextLength
+    {
+        for &byte in context {
+            let _ = write_printable_byte(&mut stderr, byte);
         }
     } else {
-        while walker < before.offset(contextLength as isize) {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+        for &byte in &context[..contextLength] {
+            let _ = write_printable_byte(&mut stderr, byte);
         }
-        crate::stdlib::fprintf(
-            crate::stdlib::stderr,
-            &raw const ellipis as *const ::core::ffi::c_char,
-        );
-        walker = after.offset(-(contextLength as isize));
-        while walker < after {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+        let _ = stderr.write_all(ellipsis);
+        for &byte in &context[context.len() - contextLength..] {
+            let _ = write_printable_byte(&mut stderr, byte);
         }
     }
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"\"\n\0".as_ptr() as *const ::core::ffi::c_char,
-    );
+    let _ = stderr.write_all(b"\"\n");
 }
 
 unsafe extern "C" fn accountingDiffTolerated(
@@ -12753,11 +12725,14 @@ unsafe extern "C" fn accountingDiffTolerated(
             as ::core::ffi::c_int as crate::expat_h::XML_Bool;
     if (*rootParser).m_accounting.debugLevel >= 2 as ::core::ffi::c_ulong {
         accountingReportStats(&*rootParser, "");
+        let context = ::core::slice::from_raw_parts(
+            before as *const ::core::ffi::c_uchar,
+            bytesMore as usize,
+        );
         accountingReportDiff(
-            rootParser,
+            &*rootParser,
             levelsAwayFromRootParser,
-            before,
-            after,
+            context,
             bytesMore,
             source_line,
             account,
