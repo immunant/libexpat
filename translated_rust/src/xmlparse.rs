@@ -8695,20 +8695,37 @@ pub unsafe extern "C" fn XML_GetBase_ffi(
         base: parser.m_curBase,
     })
 }
-pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    if parser.is_null() {
-        return -1 as ::core::ffi::c_int;
+/// The specified-attribute count copied from a validated parser handle.
+///
+/// This value-only state keeps the query implementation independent of the
+/// ABI-shaped parser, whose unrelated callback and allocator fields are not
+/// needed to answer it.
+struct SpecifiedAttributeCountState {
+    count: ::core::ffi::c_int,
+}
+
+fn specified_attribute_count_state(parser: &XML_ParserStruct) -> SpecifiedAttributeCountState {
+    SpecifiedAttributeCountState {
+        count: parser.m_nSpecifiedAtts,
     }
-    return (*parser).m_nSpecifiedAtts;
+}
+
+fn XML_GetSpecifiedAttributeCount(
+    state: Option<SpecifiedAttributeCountState>,
+) -> ::core::ffi::c_int {
+    state.map(|state| state.count).unwrap_or(-1)
 }
 #[export_name = "XML_GetSpecifiedAttributeCount"]
 
 pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    XML_GetSpecifiedAttributeCount(parser)
+    if parser.is_null()
+        || parser.addr() % ::core::mem::align_of::<XML_ParserStruct>() != 0
+    {
+        return XML_GetSpecifiedAttributeCount(None);
+    }
+    XML_GetSpecifiedAttributeCount(Some(specified_attribute_count_state(&*parser)))
 }
 /// The ID-attribute position copied from a validated parser handle.
 ///
