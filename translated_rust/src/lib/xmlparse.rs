@@ -8662,9 +8662,7 @@ extern "C" fn errorProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        return (*parser).m_errorCode;
-    }
+    ptr_ref(parser).m_errorCode
 }
 extern "C" fn storeAttributeValue(
     mut parser: XML_Parser,
