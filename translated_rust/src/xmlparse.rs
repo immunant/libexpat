@@ -4538,6 +4538,10 @@ impl HashTableAllocator {
 }
 
 struct NamedAllocation {
+    // The table's lookup key is fixed when the record is created.  Retaining
+    // it beside the typed record keeps key comparisons from having to reach
+    // through the record's variant-specific owned allocation.
+    key: PoolStringRef,
     record: NamedRecord,
     backing: Box<dyn FnMut(::core::ffi::c_int)>,
 }
@@ -4611,17 +4615,6 @@ impl NamedRecord {
 }
 
 impl NamedAllocation {
-    fn key(&self) -> PoolStringRef {
-        match &self.record {
-            NamedRecord::Prefix(prefix) => prefix
-                .name
-                .expect("prefix hash-table records always have a name"),
-            NamedRecord::Attribute(attribute) => attribute.named.name,
-            NamedRecord::Element(element) => element.named.name,
-            NamedRecord::Entity(entity) => entity.named.name,
-        }
-    }
-
     fn prefix(&self) -> Option<&PREFIX> {
         match &self.record {
             NamedRecord::Prefix(prefix) => Some(prefix),
@@ -12812,7 +12805,7 @@ fn store_atts_element(
             .entries
             .get(index)?
             .as_ref()?
-            .key();
+            .key;
         (false, element_name)
     } else {
         let create_name = poolCopyString(&mut dtd.pool, tag_name)?;
@@ -23818,7 +23811,7 @@ fn lookup_existing(
     loop {
         let slots = table.v.as_ref()?;
         let entry = slots.entries.get(index)?.as_ref()?;
-        if lookup_name_matches(pool, entry.key(), name)? {
+        if lookup_name_matches(pool, entry.key, name)? {
             return Some(index);
         }
         if step == 0 {
@@ -23898,7 +23891,7 @@ fn lookup_impl<'a>(
 
         let mut old_slots = table.v.take()?;
         for entry in old_slots.entries.drain(..).flatten() {
-            let entry_hash = hash_pool_key(pool, entry.key(), salt)?;
+            let entry_hash = hash_pool_key(pool, entry.key, salt)?;
             let mut entry_index = (entry_hash & new_mask) as usize;
             let mut entry_step = 0usize;
             while entries.get(entry_index)?.is_some() {
@@ -23941,7 +23934,11 @@ fn lookup_impl<'a>(
     };
     table.used = table.used.wrapping_add(1);
     let entry = table.v.as_mut()?.entries.get_mut(index)?;
-    *entry = Some(NamedAllocation { record, backing });
+    *entry = Some(NamedAllocation {
+        key: name,
+        record,
+        backing,
+    });
     entry.as_mut().map(|entry| &mut entry.record)
 }
 
@@ -25021,7 +25018,7 @@ fn get_element_type_impl(
             .entries
             .get(index)?
             .as_ref()?
-            .key()
+            .key
     };
     Some((is_new, element_name))
 }
@@ -25082,7 +25079,7 @@ fn set_element_type_prefix_impl(
         .entries
         .get(prefix_index)?
         .as_ref()?
-        .key();
+        .key;
     if prefix_name == prefix_start {
         dtd.pool.commit();
     } else {
