@@ -375,15 +375,9 @@ pub struct tag {
     pub rawName: *const ::core::ffi::c_char,
     pub rawNameLength: ::core::ffi::c_int,
     pub name: TAG_NAME,
-    pub buf: C2Rust_Unnamed,
+    pub buf: *mut XML_Char,
     pub bufEnd: *mut ::core::ffi::c_char,
     pub bindings: *mut BINDING,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union C2Rust_Unnamed {
-    pub raw: *mut ::core::ffi::c_char,
-    pub str: *mut XML_Char,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -2229,7 +2223,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: XML_Parser) {
             tagList = (*tagList).parent as *mut TAG;
             expat_free(
                 parser,
-                (*p).buf.raw as *mut ::core::ffi::c_void,
+                (*p).buf as *mut ::core::ffi::c_void,
                 1942 as ::core::ffi::c_int,
             );
             let mut bindings: *mut BINDING = (*p).bindings;
@@ -4301,10 +4295,9 @@ extern "C" fn doContent(
                         if tag.is_null() {
                             return XML_ERROR_NO_MEMORY;
                         }
-                        (*tag).buf.raw =
-                            expat_malloc(parser, 32 as size_t, 3480 as ::core::ffi::c_int)
-                                as *mut ::core::ffi::c_char;
-                        if (*tag).buf.raw.is_null() {
+                        (*tag).buf = expat_malloc(parser, 32 as size_t, 3480 as ::core::ffi::c_int)
+                            as *mut ::core::ffi::c_char;
+                        if (*tag).buf.is_null() {
                             expat_free(
                                 parser,
                                 tag as *mut ::core::ffi::c_void,
@@ -4312,7 +4305,7 @@ extern "C" fn doContent(
                             );
                             return XML_ERROR_NO_MEMORY;
                         }
-                        (*tag).bufEnd = (*tag).buf.raw.offset(INIT_TAG_BUF_SIZE as isize);
+                        (*tag).bufEnd = (*tag).buf.offset(INIT_TAG_BUF_SIZE as isize);
                     }
                     (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
                     (*tag).parent = (*parser).m_tagStack as *mut tag;
@@ -4326,7 +4319,7 @@ extern "C" fn doContent(
                     let mut rawNameEnd: *const ::core::ffi::c_char =
                         (*tag).rawName.offset((*tag).rawNameLength as isize);
                     let mut fromPtr: *const ::core::ffi::c_char = (*tag).rawName;
-                    toPtr = (*tag).buf.str;
+                    toPtr = (*tag).buf;
                     loop {
                         let mut convLen: ::core::ffi::c_int = 0;
                         let convert_res: XML_Convert_Result =
@@ -4338,7 +4331,7 @@ extern "C" fn doContent(
                                 ((*tag).bufEnd as *mut ICHAR)
                                     .offset(-(1 as ::core::ffi::c_int as isize)),
                             ) as XML_Convert_Result;
-                        convLen = toPtr.offset_from((*tag).buf.str) as ::core::ffi::c_long
+                        convLen = toPtr.offset_from((*tag).buf) as ::core::ffi::c_long
                             as ::core::ffi::c_int;
                         if fromPtr >= rawNameEnd
                             || convert_res as ::core::ffi::c_uint
@@ -4349,18 +4342,18 @@ extern "C" fn doContent(
                             break;
                         } else {
                             if (SIZE_MAX as size_t).wrapping_div(2 as size_t)
-                                < (*tag).bufEnd.offset_from((*tag).buf.raw) as ::core::ffi::c_long
+                                < (*tag).bufEnd.offset_from((*tag).buf) as ::core::ffi::c_long
                                     as size_t
                             {
                                 return XML_ERROR_NO_MEMORY;
                             }
-                            let bufSize: size_t = ((*tag).bufEnd.offset_from((*tag).buf.raw)
+                            let bufSize: size_t = ((*tag).bufEnd.offset_from((*tag).buf)
                                 as ::core::ffi::c_long
                                 as size_t)
                                 .wrapping_mul(2 as size_t);
                             let mut temp: *mut ::core::ffi::c_char = expat_realloc(
                                 parser,
-                                (*tag).buf.raw as *mut ::core::ffi::c_void,
+                                (*tag).buf as *mut ::core::ffi::c_void,
                                 bufSize,
                                 3514 as ::core::ffi::c_int,
                             )
@@ -4368,12 +4361,12 @@ extern "C" fn doContent(
                             if temp.is_null() {
                                 return XML_ERROR_NO_MEMORY;
                             }
-                            (*tag).buf.raw = temp;
+                            (*tag).buf = temp;
                             (*tag).bufEnd = temp.offset(bufSize as isize);
                             toPtr = (temp as *mut XML_Char).offset(convLen as isize);
                         }
                     }
-                    (*tag).name.str = (*tag).buf.str;
+                    (*tag).name.str = (*tag).buf;
                     *toPtr = '\0' as i32 as XML_Char;
                     result_0 = storeAtts(
                         parser,
@@ -10421,15 +10414,15 @@ fn add_mut_c_char(ptr: *mut ::core::ffi::c_char, offset: isize) -> *mut ::core::
 }
 
 fn tag_buf_raw(tag: &TAG) -> *mut ::core::ffi::c_char {
-    unsafe { tag.buf.raw }
+    tag.buf
 }
 
 fn tag_buf_str(tag: &TAG) -> *mut XML_Char {
-    unsafe { tag.buf.str }
+    tag.buf
 }
 
 fn set_tag_buf_raw(tag: &mut TAG, raw: *mut ::core::ffi::c_char) {
-    tag.buf = C2Rust_Unnamed { raw };
+    tag.buf = raw;
 }
 
 fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char, count: usize) {
