@@ -7688,31 +7688,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_scanEndTag(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        match big2_scan_end_tag_impl(normal, input) {
-            Big2ScanOutcome::Token(token, next) => {
-                *nextTokPtr = ptr.add(next);
-                token
-            }
-            Big2ScanOutcome::Partial(token) => token,
-            Big2ScanOutcome::Invalid(at) => {
-                *nextTokPtr = ptr.add(at);
-                crate::src::xmltok::XML_TOK_INVALID_1
-            }
-        }
-    }
-
     pub unsafe extern "C" fn big2_scanHexCharRef(
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,
@@ -11695,7 +11670,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanDecl;
-pub use crate::src::xmltok::xmltok_impl_c::big2_scanEndTag;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPercent;
