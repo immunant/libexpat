@@ -2108,6 +2108,47 @@ fn attlist_decl_handler(parser_key: usize) -> Option<std::sync::Arc<dyn AttlistD
         .cloned()
 }
 
+/// Dispatches an attribute declaration from stable pool handles.
+///
+/// The callback only receives transient, NUL-terminated views.  Resolving all
+/// of them here means prolog state handling retains handles rather than raw
+/// pointers, and it leaves no pool borrow alive after callback re-entry.
+fn dispatch_attlist_decl_callback(
+    callback: &dyn AttlistDeclCallback,
+    parser: &XML_ParserStruct,
+    dtd: &DTD,
+    element_name: PoolStringRef,
+    attribute_name: PoolStringRef,
+    attribute_type: &[crate::expat_external_h::XML_Char],
+    default_value: Option<PoolStringRef>,
+    is_required: ::core::ffi::c_int,
+) -> bool {
+    let Some(element_name) = dtd.pool.chars_from(element_name) else {
+        return false;
+    };
+    let Some(attribute_name) = dtd.pool.chars_from(attribute_name) else {
+        return false;
+    };
+    let default_value = match default_value {
+        Some(default_value) => match dtd.pool.chars_from(default_value) {
+            Some(value) => value.as_ptr(),
+            None => return false,
+        },
+        None => ::core::ptr::null(),
+    };
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            element_name.as_ptr(),
+            attribute_name.as_ptr(),
+            attribute_type.as_ptr(),
+            default_value,
+            is_required,
+        );
+    }
+    true
+}
+
 trait XmlDeclCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -16561,80 +16602,45 @@ unsafe fn doProlog(
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
-                                                    let attribute_name = dtd
-                                                        .pool
-                                                        .chars_from(attribute_name)
-                                                        .map_or(::core::ptr::null(), |chars| {
-                                                            chars.as_ptr()
-                                                        });
-                                                    if attribute_name.is_null() {
-                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                    }
                                                     let attribute_type = match parser
                                                         .m_declAttributeType
                                                     {
-                                                        Some(DeclAttributeType::Cdata) => {
-                                                            (&raw const atypeCDATA)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::Id) => (&raw const atypeID)
-                                                            as *const crate::expat_external_h::XML_Char,
-                                                        Some(DeclAttributeType::IdRef) => {
-                                                            (&raw const atypeIDREF)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::IdRefs) => {
-                                                            (&raw const atypeIDREFS)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::Entity) => {
-                                                            (&raw const atypeENTITY)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::Entities) => {
-                                                            (&raw const atypeENTITIES)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::NmToken) => {
-                                                            (&raw const atypeNMTOKEN)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::NmTokens) => {
-                                                            (&raw const atypeNMTOKENS)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
+                                                        Some(DeclAttributeType::Cdata) => &atypeCDATA[..],
+                                                        Some(DeclAttributeType::Id) => &atypeID[..],
+                                                        Some(DeclAttributeType::IdRef) => &atypeIDREF[..],
+                                                        Some(DeclAttributeType::IdRefs) => &atypeIDREFS[..],
+                                                        Some(DeclAttributeType::Entity) => &atypeENTITY[..],
+                                                        Some(DeclAttributeType::Entities) => &atypeENTITIES[..],
+                                                        Some(DeclAttributeType::NmToken) => &atypeNMTOKEN[..],
+                                                        Some(DeclAttributeType::NmTokens) => &atypeNMTOKENS[..],
                                                         Some(DeclAttributeType::Temporary(type_ref)) => {
-                                                            parser
+                                                            let Some(chars) = parser
                                                                 .m_tempPool
                                                                 .chars_from(type_ref)
-                                                                .map_or(::core::ptr::null(), |chars| {
-                                                                    chars.as_ptr()
-                                                                })
+                                                            else {
+                                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                            };
+                                                            chars
                                                         }
-                                                        None => ::core::ptr::null(),
+                                                        None => return crate::expat_h::XML_ERROR_NO_MEMORY,
                                                     };
-                                                    if attribute_type.is_null() {
-                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                    }
-                                                    callback.invoke(
-                                                        handler_arg_from_state!(parser),
-                                                        dtd
-                                                            .pool
-                                                            .chars_from(
-                                                                parser
-                                                                    .m_declElementType
-                                                                    .expect("element declaration must be set before its callback"),
-                                                            )
-                                                            .expect("element declaration name must remain in the DTD pool")
-                                                            .as_ptr(),
+                                                    if !dispatch_attlist_decl_callback(
+                                                        callback.as_ref(),
+                                                        parser,
+                                                        dtd,
+                                                        parser.m_declElementType.expect(
+                                                            "element declaration must be set before its callback",
+                                                        ),
                                                         attribute_name,
                                                         attribute_type,
-                                                        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                                                        None,
                                                         (role
                                                             == crate::src::xmlrole::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE
                                                                 as ::core::ffi::c_int)
                                                             as ::core::ffi::c_int,
-                                                    );
+                                                    ) {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    }
                                                 }
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
@@ -16644,8 +16650,6 @@ unsafe fn doProlog(
                                     }
                                     37 | 38 => {
                                         if dtd.keepProcessing != 0 {
-                                            let mut attVal: *const crate::expat_external_h::XML_Char =
-                                                ::core::ptr::null:: <crate::expat_external_h::XML_Char>();
                                             let mut result_1: crate::expat_h::XML_Error =
                                                 storeAttributeValue(
                                                     parser,
@@ -16663,12 +16667,6 @@ unsafe fn doProlog(
                                             let Some(start) = dtd_ref.pool.start_ref(true) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            attVal = dtd_ref
-                                                .pool
-                                                .chars_from(start)
-                                                .map_or(::core::ptr::null(), |chars| {
-                                                    chars.as_ptr()
-                                                });
                                             dtd_ref.pool.commit();
                                             let Some(attribute_name) = parser.m_declAttributeId
                                             else {
@@ -16752,80 +16750,45 @@ unsafe fn doProlog(
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
-                                                    let attribute_name = dtd
-                                                        .pool
-                                                        .chars_from(attribute_name)
-                                                        .map_or(::core::ptr::null(), |chars| {
-                                                            chars.as_ptr()
-                                                        });
-                                                    if attribute_name.is_null() {
-                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                    }
                                                     let attribute_type = match parser
                                                         .m_declAttributeType
                                                     {
-                                                        Some(DeclAttributeType::Cdata) => {
-                                                            (&raw const atypeCDATA)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::Id) => (&raw const atypeID)
-                                                            as *const crate::expat_external_h::XML_Char,
-                                                        Some(DeclAttributeType::IdRef) => {
-                                                            (&raw const atypeIDREF)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::IdRefs) => {
-                                                            (&raw const atypeIDREFS)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::Entity) => {
-                                                            (&raw const atypeENTITY)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::Entities) => {
-                                                            (&raw const atypeENTITIES)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::NmToken) => {
-                                                            (&raw const atypeNMTOKEN)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
-                                                        Some(DeclAttributeType::NmTokens) => {
-                                                            (&raw const atypeNMTOKENS)
-                                                                as *const crate::expat_external_h::XML_Char
-                                                        }
+                                                        Some(DeclAttributeType::Cdata) => &atypeCDATA[..],
+                                                        Some(DeclAttributeType::Id) => &atypeID[..],
+                                                        Some(DeclAttributeType::IdRef) => &atypeIDREF[..],
+                                                        Some(DeclAttributeType::IdRefs) => &atypeIDREFS[..],
+                                                        Some(DeclAttributeType::Entity) => &atypeENTITY[..],
+                                                        Some(DeclAttributeType::Entities) => &atypeENTITIES[..],
+                                                        Some(DeclAttributeType::NmToken) => &atypeNMTOKEN[..],
+                                                        Some(DeclAttributeType::NmTokens) => &atypeNMTOKENS[..],
                                                         Some(DeclAttributeType::Temporary(type_ref)) => {
-                                                            parser
+                                                            let Some(chars) = parser
                                                                 .m_tempPool
                                                                 .chars_from(type_ref)
-                                                                .map_or(::core::ptr::null(), |chars| {
-                                                                    chars.as_ptr()
-                                                                })
+                                                            else {
+                                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                            };
+                                                            chars
                                                         }
-                                                        None => ::core::ptr::null(),
+                                                        None => return crate::expat_h::XML_ERROR_NO_MEMORY,
                                                     };
-                                                    if attribute_type.is_null() {
-                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                    }
-                                                    callback.invoke(
-                                                        handler_arg_from_state!(parser),
-                                                        dtd
-                                                            .pool
-                                                            .chars_from(
-                                                                parser
-                                                                    .m_declElementType
-                                                                    .expect("element declaration must be set before its callback"),
-                                                            )
-                                                            .expect("element declaration name must remain in the DTD pool")
-                                                            .as_ptr(),
+                                                    if !dispatch_attlist_decl_callback(
+                                                        callback.as_ref(),
+                                                        parser,
+                                                        dtd,
+                                                        parser.m_declElementType.expect(
+                                                            "element declaration must be set before its callback",
+                                                        ),
                                                         attribute_name,
                                                         attribute_type,
-                                                        attVal,
+                                                        Some(start),
                                                         (role
                                                             == crate::src::xmlrole::XML_ROLE_FIXED_ATTRIBUTE_VALUE
                                                                 as ::core::ffi::c_int)
                                                             as ::core::ffi::c_int,
-                                                    );
+                                                    ) {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    }
                                                 }
                                                 poolClear(&mut parser.m_tempPool);
                                                 handleDefault = crate::expat_h::XML_FALSE;
