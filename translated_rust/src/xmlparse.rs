@@ -5803,13 +5803,57 @@ pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
     XML_ParserCreate_MM(encoding_name, memory_suite, nameSep.as_ref().copied())
 }
 
+struct ParserParentState {
+    root: std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    depth: Option<::core::num::NonZeroU32>,
+    inherited_dtd: Option<std::sync::Arc<SharedDtd>>,
+}
+
 // Parser storage keeps the same physical prefix as expat_malloc allocations,
 // so custom allocators observe the same requested size.  Its payload size is
 // registered with the root state immediately after construction, rather than
-// being read from an in-band raw-memory header during release.
+// being read from an in-band raw-memory header during release.  The first
+// mutable access to the new allocation is kept here, while it remains wholly
+// owned by this allocation boundary.
 unsafe fn allocate_parser_storage(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-) -> Option<crate::expat_h::XML_Parser> {
+    share_parent_dtd: bool,
+    parent: Option<&XML_ParserStruct>,
+) -> Option<(
+    crate::expat_h::XML_Parser,
+    std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    Option<ParserParentState>,
+)> {
+    let increase = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+        .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
+    // Snapshot the parent before allocating the child so an allocator callback
+    // cannot retain a borrow of the opaque parent parser.
+    let parent_state = if let Some(parent) = parent {
+        if !expat_heap_increase_tolerable(
+            &parent.m_root,
+            std::ptr::from_ref(parent).addr(),
+            increase as XmlBigCount,
+            1354 as ::core::ffi::c_int,
+        ) {
+            return None;
+        }
+        let inherited_dtd = if share_parent_dtd {
+            Some(std::sync::Arc::clone(parent.m_dtd.as_ref()?))
+        } else {
+            None
+        };
+        Some(ParserParentState {
+            root: std::sync::Arc::clone(&parent.m_root),
+            depth: parent.m_parentParser,
+            inherited_dtd,
+        })
+    } else {
+        None
+    };
+    if share_parent_dtd && parent_state.is_none() {
+        return None;
+    }
     let allocation_size = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
@@ -5820,13 +5864,95 @@ unsafe fn allocate_parser_storage(
     allocation
         .cast::<crate::__stddef_size_t_h::size_t>()
         .write(::core::mem::size_of::<XML_ParserStruct>());
-    Some(
-        allocation
-            .cast::<u8>()
-            .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
-            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-            .cast::<XML_ParserStruct>(),
-    )
+    let parser_ptr = allocation
+        .cast::<u8>()
+        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+        .cast::<XML_ParserStruct>();
+    ::core::ptr::write(parser_ptr, initial_parser_struct(memory_suite));
+    let root_owner = {
+        let parser = &mut *parser_ptr;
+        let alloc_tracker = MALLOC_TRACKER {
+            bytesAllocated: 0 as XmlBigCount,
+            peakBytesAllocated: 0 as XmlBigCount,
+            debugLevel: if parent.is_none() {
+                environment_decimal_debug_level("EXPAT_MALLOC_DEBUG", 0)
+            } else {
+                0 as ::core::ffi::c_ulong
+            },
+            maximumAmplificationFactor: if parent.is_none() {
+                crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT
+            } else {
+                0.0
+            },
+            activationThresholdBytes: if parent.is_none() {
+                crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as XmlBigCount
+            } else {
+                0 as XmlBigCount
+            },
+        };
+        if let Some(parent_state) = parent_state.as_ref() {
+            parser.m_root = std::sync::Arc::clone(&parent_state.root);
+            parser.m_parentParser = Some(
+                ::core::num::NonZeroU32::new(
+                    parent_state
+                        .depth
+                        .map_or(0, ::core::num::NonZeroU32::get)
+                        .saturating_add(1),
+                )
+                .expect("child parser depth is non-zero"),
+            );
+        } else {
+            parser
+                .m_root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .alloc_tracker = alloc_tracker;
+        }
+        std::sync::Arc::clone(&parser.m_root)
+    };
+    {
+        let mut root = root_owner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        root.allocations.insert(
+            parser_ptr.addr(),
+            ExpatAllocation {
+                payload_size: ::core::mem::size_of::<XML_ParserStruct>(),
+            },
+        );
+        if XmlBigCount::MAX - root.alloc_tracker.bytesAllocated < increase as XmlBigCount {
+            std::process::abort();
+        }
+        root.alloc_tracker.bytesAllocated = root
+            .alloc_tracker
+            .bytesAllocated
+            .wrapping_add(increase as XmlBigCount);
+        let allocation_totals = if root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
+            if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
+                root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
+            }
+            Some((
+                root.alloc_tracker.bytesAllocated,
+                root.alloc_tracker.peakBytesAllocated,
+            ))
+        } else {
+            None
+        };
+        drop(root);
+        if let Some((new_total, peak_total)) = allocation_totals {
+            expat_heap_stat(
+                &root_owner,
+                parser_ptr.addr(),
+                '+' as ::core::ffi::c_char,
+                increase as XmlBigCount,
+                new_total,
+                peak_total,
+                1439 as ::core::ffi::c_int,
+            );
+        }
+    }
+    Some((parser_ptr, root_owner, parent_state))
 }
 
 fn empty_string_pool() -> STRING_POOL {
@@ -6037,129 +6163,11 @@ unsafe fn parser_create_ownership_facade(
     share_parent_dtd: bool,
     parent: Option<&XML_ParserStruct>,
 ) -> crate::expat_h::XML_Parser {
-    let increase: crate::__stddef_size_t_h::size_t =
-        ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
-            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-            .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
-    // Snapshot the parent state before allocating the child.  The snapshot
-    // owns the shared handles, so no Rust borrow of the opaque parent parser
-    // can survive an allocator callback during child construction.
-    let parent_state = if let Some(parent) = parent {
-        if !expat_heap_increase_tolerable(
-            &parent.m_root,
-            std::ptr::from_ref(parent).addr(),
-            increase as XmlBigCount,
-            1354 as ::core::ffi::c_int,
-        ) {
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-        let inherited_dtd = if share_parent_dtd {
-            match parent.m_dtd.as_ref() {
-                Some(dtd) => Some(std::sync::Arc::clone(dtd)),
-                None => return ::core::ptr::null_mut::<XML_ParserStruct>(),
-            }
-        } else {
-            None
-        };
-        Some((
-            std::sync::Arc::clone(&parent.m_root),
-            parent.m_parentParser,
-            inherited_dtd,
-        ))
-    } else {
-        None
-    };
-    if share_parent_dtd && parent_state.is_none() {
+    let Some((parser_ptr, _root_owner, parent_state)) =
+        allocate_parser_storage(memory_suite, share_parent_dtd, parent)
+    else {
         return ::core::ptr::null_mut::<XML_ParserStruct>();
-    }
-    let parser_ptr = match allocate_parser_storage(memory_suite) {
-        Some(parser) => parser,
-        None => return ::core::ptr::null_mut::<XML_ParserStruct>(),
     };
-    ::core::ptr::write(parser_ptr, initial_parser_struct(memory_suite));
-    let root_owner = {
-        let parser = &mut *parser_ptr;
-        let alloc_tracker = MALLOC_TRACKER {
-            bytesAllocated: 0 as XmlBigCount,
-            peakBytesAllocated: 0 as XmlBigCount,
-            debugLevel: if parent.is_none() {
-                environment_decimal_debug_level("EXPAT_MALLOC_DEBUG", 0)
-            } else {
-                0 as ::core::ffi::c_ulong
-            },
-            maximumAmplificationFactor: if parent.is_none() {
-                crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT
-            } else {
-                0.0
-            },
-            activationThresholdBytes: if parent.is_none() {
-                crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as XmlBigCount
-            } else {
-                0 as XmlBigCount
-            },
-        };
-        if let Some((parent_root, parent_depth, _)) = parent_state.as_ref() {
-            parser.m_root = std::sync::Arc::clone(parent_root);
-            parser.m_parentParser = Some(
-                ::core::num::NonZeroU32::new(
-                    parent_depth
-                        .map_or(0, ::core::num::NonZeroU32::get)
-                        .saturating_add(1),
-                )
-                .expect("child parser depth is non-zero"),
-            );
-        } else {
-            parser
-                .m_root
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .alloc_tracker = alloc_tracker;
-        }
-        std::sync::Arc::clone(&parser.m_root)
-    };
-    {
-        let mut root = root_owner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        root.allocations.insert(
-            parser_ptr.addr(),
-            ExpatAllocation {
-                payload_size: ::core::mem::size_of::<XML_ParserStruct>(),
-            },
-        );
-        // Both conditions are invariants of parser ownership/accounting.  They
-        // cannot be recovered from without invalidating the allocator ledger.
-        if (XmlBigCount::MAX - root.alloc_tracker.bytesAllocated < increase as XmlBigCount) {
-            std::process::abort();
-        }
-        root.alloc_tracker.bytesAllocated = root
-            .alloc_tracker
-            .bytesAllocated
-            .wrapping_add(increase as XmlBigCount);
-        let allocation_totals = if root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
-            if root.alloc_tracker.bytesAllocated > root.alloc_tracker.peakBytesAllocated {
-                root.alloc_tracker.peakBytesAllocated = root.alloc_tracker.bytesAllocated;
-            }
-            Some((
-                root.alloc_tracker.bytesAllocated,
-                root.alloc_tracker.peakBytesAllocated,
-            ))
-        } else {
-            None
-        };
-        drop(root);
-        if let Some((new_total, peak_total)) = allocation_totals {
-            expat_heap_stat(
-                &root_owner,
-                parser_ptr.addr(),
-                '+' as ::core::ffi::c_char,
-                increase as XmlBigCount,
-                new_total,
-                peak_total,
-                1439 as ::core::ffi::c_int,
-            );
-        }
-    }
     let parser = &mut *parser_ptr;
     parser.m_buffer = InputBuffer::empty();
     parser.m_bufferLim = 0;
@@ -6219,7 +6227,7 @@ unsafe fn parser_create_ownership_facade(
     if share_parent_dtd {
         parser.m_dtd = parent_state
             .as_ref()
-            .and_then(|(_, _, inherited_dtd)| inherited_dtd.as_ref())
+            .and_then(|state| state.inherited_dtd.as_ref())
             .cloned();
     } else {
         parser.m_dtd = dtd_create(parser);
