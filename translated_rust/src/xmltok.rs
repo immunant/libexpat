@@ -405,6 +405,26 @@ pub enum NameMatcher {
     Big2,
 }
 
+/// Selects the fixed encoded-name length scanner without retaining a raw
+/// callback in each encoding table.
+#[derive(Copy, Clone)]
+pub enum NameLength {
+    Normal,
+    Little2,
+    Big2,
+}
+
+pub unsafe fn name_length(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    match (*enc).nameLength {
+        NameLength::Normal => normal_nameLength(enc, ptr),
+        NameLength::Little2 => little2_nameLength(enc, ptr),
+        NameLength::Big2 => big2_nameLength(enc, ptr),
+    }
+}
+
 impl NameMatcher {
     pub unsafe fn matches_ascii(
         self,
@@ -486,12 +506,7 @@ pub struct encoding {
     pub scanners: [crate::src::xmltok::Scanner; 4],
     pub literalScanners: [crate::src::xmltok::LiteralScanner; 2],
     pub nameMatchesAscii: crate::src::xmltok::NameMatcher,
-    pub nameLength: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub nameLength: crate::src::xmltok::NameLength,
     pub skipS: crate::src::xmltok::WhitespaceSkipper,
     pub getAtts: crate::src::xmltok::AttributeScanner,
     pub charRefNumber: crate::src::xmltok::CharRefNumberDecoder,
@@ -12477,13 +12492,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -12832,13 +12841,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -13187,13 +13190,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -13542,13 +13539,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -13958,13 +13949,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -14259,13 +14244,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -14581,13 +14560,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -14882,13 +14855,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalEntityValue,
         ],
         nameMatchesAscii: NameMatcher::Normal,
-        nameLength: Some(
-            normal_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Normal,
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
         charRefNumber: CharRefNumberDecoder::Normal,
@@ -15448,13 +15415,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: NameMatcher::Little2,
-        nameLength: Some(
-            little2_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Little2,
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: CharRefNumberDecoder::Little2,
@@ -15749,13 +15710,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
             LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: NameMatcher::Little2,
-        nameLength: Some(
-            little2_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Little2,
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: CharRefNumberDecoder::Little2,
@@ -16050,13 +16005,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: NameMatcher::Little2,
-        nameLength: Some(
-            little2_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Little2,
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: CharRefNumberDecoder::Little2,
@@ -16351,13 +16300,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
             LiteralScanner::Little2EntityValue,
         ],
         nameMatchesAscii: NameMatcher::Little2,
-        nameLength: Some(
-            little2_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Little2,
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
         charRefNumber: CharRefNumberDecoder::Little2,
@@ -16652,13 +16595,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::Big2EntityValue,
         ],
         nameMatchesAscii: NameMatcher::Big2,
-        nameLength: Some(
-            big2_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Big2,
         skipS: WhitespaceSkipper::Big2,
         getAtts: AttributeScanner::Big2,
         charRefNumber: CharRefNumberDecoder::Big2,
@@ -16953,13 +16890,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
             LiteralScanner::Big2EntityValue,
         ],
         nameMatchesAscii: NameMatcher::Big2,
-        nameLength: Some(
-            big2_nameLength
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameLength: NameLength::Big2,
         skipS: WhitespaceSkipper::Big2,
         getAtts: AttributeScanner::Big2,
         charRefNumber: CharRefNumberDecoder::Big2,

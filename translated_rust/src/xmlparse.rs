@@ -6256,8 +6256,7 @@ unsafe extern "C" fn doContent(
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     (*tag).name.prefix = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     (*tag).rawName = s.offset((*enc).minBytesPerChar as isize);
-                    (*tag).rawNameLength =
-                        (*enc).nameLength.expect("non-null function pointer")(enc, (*tag).rawName);
+                    (*tag).rawNameLength = crate::src::xmltok::name_length(enc, (*tag).rawName);
                     (*parser).m_tagLevel += 1;
                     let mut rawNameEnd: *const ::core::ffi::c_char =
                         (*tag).rawName.offset((*tag).rawNameLength as isize);
@@ -6362,9 +6361,7 @@ unsafe extern "C" fn doContent(
                         &raw mut (*parser).m_tempPool,
                         enc,
                         rawName,
-                        rawName.offset((*enc).nameLength.expect("non-null function pointer")(
-                            enc, rawName,
-                        ) as isize),
+                        rawName.offset(crate::src::xmltok::name_length(enc, rawName) as isize),
                     );
                     if name_0.str.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -6451,7 +6448,7 @@ unsafe extern "C" fn doContent(
                         let mut tag_0: *mut TAG = (*parser).m_tagStack;
                         rawName_0 =
                             s.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
-                        len = (*enc).nameLength.expect("non-null function pointer")(enc, rawName_0);
+                        len = crate::src::xmltok::name_length(enc, rawName_0);
                         if len != (*tag_0).rawNameLength
                             || crate::stdlib::memcmp(
                                 (*tag_0).rawName as *const ::core::ffi::c_void,
@@ -6899,8 +6896,7 @@ unsafe extern "C" fn storeAtts(
             (*currAtt)
                 .name
                 .offset(
-                    (*enc).nameLength.expect("non-null function pointer")(enc, (*currAtt).name)
-                        as isize,
+                    crate::src::xmltok::name_length(enc, (*currAtt).name) as isize,
                 ),
         );
         if attId.is_null() {
@@ -8070,11 +8066,7 @@ unsafe extern "C" fn processXmlDecl(
                 &raw mut (*parser).m_temp2Pool,
                 encoding,
                 encodingName,
-                encodingName.offset((*encoding)
-                    .nameLength
-                    .expect("non-null function pointer")(
-                    encoding, encodingName
-                ) as isize),
+                encodingName.offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
             );
             if storedEncName.is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -8128,11 +8120,7 @@ unsafe extern "C" fn processXmlDecl(
                     &raw mut (*parser).m_temp2Pool,
                     encoding,
                     encodingName,
-                    encodingName.offset((*encoding)
-                        .nameLength
-                        .expect("non-null function pointer")(
-                        encoding, encodingName
-                    ) as isize),
+                    encodingName.offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
                 );
                 if storedEncName.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -11440,7 +11428,7 @@ unsafe extern "C" fn reportProcessingInstruction(
         return 1 as ::core::ffi::c_int;
     }
     start = start.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
-    tem = start.offset((*enc).nameLength.expect("non-null function pointer")(enc, start) as isize);
+    tem = start.offset(crate::src::xmltok::name_length(enc, start) as isize);
     target = poolStoreString(&raw mut (*parser).m_tempPool, enc, start, tem);
     if target.is_null() {
         return 0 as ::core::ffi::c_int;
