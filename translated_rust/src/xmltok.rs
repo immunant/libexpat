@@ -7692,57 +7692,23 @@ pub mod xmltok_impl_c {
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    pub unsafe extern "C" fn big2_checkPiTarget(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    /// Classifies a complete UTF-16BE processing-instruction target.
+    ///
+    /// The tokenizer hands this helper the already bounded target range, so
+    /// checking `xml` never requires dereferencing a cursor or deriving a
+    /// range from unrelated raw endpoints.
+    pub fn big2_checkPiTarget(
+        target: &[::core::ffi::c_char],
+        token: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as isize {
-            return 1 as ::core::ffi::c_int;
-        }
-        match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            *ptr.offset(1 as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
+        *token = crate::src::xmltok::XML_TOK_PI_1;
+        match big2_pi_target_token(target, 0, target.len()) {
+            Some(classified_token) => {
+                *token = classified_token;
+                1
             }
-            _ => return 1 as ::core::ffi::c_int,
+            None => 0,
         }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            *ptr.offset(1 as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            *ptr.offset(1 as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
     }
 
     fn big2_byte_type(
