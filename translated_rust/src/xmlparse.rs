@@ -5470,33 +5470,33 @@ pub unsafe extern "C" fn expat_realloc_ffi(
 ) -> *mut ::core::ffi::c_void {
     expat_realloc(parser, ptr, size, sourceLine)
 }
-pub unsafe extern "C" fn XML_ParserCreate(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
+unsafe fn XML_ParserCreate(
+    encoding_name: Option<&std::ffi::CStr>,
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> crate::expat_h::XML_Parser {
-    return XML_ParserCreate_MM(
-        encodingName,
-        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-    );
+    parser_create_ownership_facade(encoding_name, memory_suite, None, false, None)
 }
 #[export_name = "XML_ParserCreate"]
 
 pub unsafe extern "C" fn XML_ParserCreate_ffi(
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    XML_ParserCreate(encodingName)
+    let encoding_name = (!encodingName.is_null()).then(|| std::ffi::CStr::from_ptr(encodingName));
+    XML_ParserCreate(
+        encoding_name,
+        crate::expat_h::XML_Memory_Handling_Suite {
+            malloc_fcn: Some(crate::stdlib::malloc),
+            realloc_fcn: Some(crate::stdlib::realloc),
+            free_fcn: Some(crate::stdlib::free),
+        },
+    )
 }
-pub unsafe extern "C" fn XML_ParserCreateNS(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut nsSep: crate::expat_external_h::XML_Char,
+unsafe fn XML_ParserCreateNS(
+    encoding_name: Option<&std::ffi::CStr>,
+    ns_sep: crate::expat_external_h::XML_Char,
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> crate::expat_h::XML_Parser {
-    let mut tmp: [crate::expat_external_h::XML_Char; 2] =
-        [nsSep, 0 as crate::expat_external_h::XML_Char];
-    return XML_ParserCreate_MM(
-        encodingName,
-        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
-        &raw mut tmp as *mut crate::expat_external_h::XML_Char,
-    );
+    parser_create_ownership_facade(encoding_name, memory_suite, Some(ns_sep), false, None)
 }
 #[export_name = "XML_ParserCreateNS"]
 
@@ -5504,7 +5504,16 @@ pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
     mut encodingName: *const crate::expat_external_h::XML_Char,
     mut nsSep: crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    XML_ParserCreateNS(encodingName, nsSep)
+    let encoding_name = (!encodingName.is_null()).then(|| std::ffi::CStr::from_ptr(encodingName));
+    XML_ParserCreateNS(
+        encoding_name,
+        nsSep,
+        crate::expat_h::XML_Memory_Handling_Suite {
+            malloc_fcn: Some(crate::stdlib::malloc),
+            realloc_fcn: Some(crate::stdlib::realloc),
+            free_fcn: Some(crate::stdlib::free),
+        },
+    )
 }
 static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     crate::ascii_h::ASCII_x as crate::expat_external_h::XML_Char,
@@ -5747,18 +5756,12 @@ unsafe fn startParsing(parser: &mut XML_ParserStruct) -> crate::expat_h::XML_Boo
     }
     return crate::expat_h::XML_TRUE;
 }
-pub unsafe extern "C" fn XML_ParserCreate_MM(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
-    mut nameSep: *const crate::expat_external_h::XML_Char,
+unsafe fn XML_ParserCreate_MM(
+    encoding_name: Option<&std::ffi::CStr>,
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+    namespace_separator: Option<crate::expat_external_h::XML_Char>,
 ) -> crate::expat_h::XML_Parser {
-    return parserCreate(
-        encodingName,
-        memsuite,
-        nameSep,
-        false,
-        ::core::ptr::null_mut::<XML_ParserStruct>(),
-    );
+    parser_create_ownership_facade(encoding_name, memory_suite, namespace_separator, false, None)
 }
 #[export_name = "XML_ParserCreate_MM"]
 
@@ -5767,7 +5770,15 @@ pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
     mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
     mut nameSep: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    XML_ParserCreate_MM(encodingName, memsuite, nameSep)
+    let encoding_name = (!encodingName.is_null()).then(|| std::ffi::CStr::from_ptr(encodingName));
+    let memory_suite = memsuite.as_ref().copied().unwrap_or(
+        crate::expat_h::XML_Memory_Handling_Suite {
+            malloc_fcn: Some(crate::stdlib::malloc),
+            realloc_fcn: Some(crate::stdlib::realloc),
+            free_fcn: Some(crate::stdlib::free),
+        },
+    );
+    XML_ParserCreate_MM(encoding_name, memory_suite, nameSep.as_ref().copied())
 }
 
 // Parser storage keeps the same physical prefix as expat_malloc allocations,
@@ -5970,7 +5981,7 @@ fn initial_parser_struct(
 /// Reset construction-only collection state after the parser's mandatory
 /// buffer and DTD allocations have succeeded.  This is deliberately separate
 /// from allocation: it operates only on owned Rust values and can therefore
-/// remain safe while `parserCreate` retains the ABI allocation boundary.
+/// remain safe while the ownership facade retains the ABI allocation boundary.
 fn initialize_parser_collections(parser: &mut XML_ParserStruct) {
     parser.m_freeBindingList = FreeBindingList::empty();
     parser.m_activeBindings = Vec::new();
@@ -5991,36 +6002,30 @@ fn initialize_parser_collections(parser: &mut XML_ParserStruct) {
     parser.m_protocolEncodingName = None;
 }
 
-unsafe extern "C" fn parserCreate(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
-    mut nameSep: *const crate::expat_external_h::XML_Char,
+/// The parser handle has not escaped while this facade runs.  It is the only
+/// construction path that turns the allocator's opaque storage into a parser
+/// object; all subsequent initialization operates through its exclusive
+/// reference.  Keeping that conversion here prevents parser setup from
+/// acquiring fresh raw handles after the ABI-facing caller has validated its
+/// inputs.
+unsafe fn parser_create_ownership_facade(
+    encoding_name: Option<&std::ffi::CStr>,
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+    namespace_separator: Option<crate::expat_external_h::XML_Char>,
     share_parent_dtd: bool,
-    mut parentParser: crate::expat_h::XML_Parser,
+    parent: Option<&XML_ParserStruct>,
 ) -> crate::expat_h::XML_Parser {
     let increase: crate::__stddef_size_t_h::size_t =
         ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
             .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
             .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
-    let memory_suite = if memsuite.is_null() {
-        crate::expat_h::XML_Memory_Handling_Suite {
-            malloc_fcn: Some(crate::stdlib::malloc),
-            realloc_fcn: Some(crate::stdlib::realloc),
-            free_fcn: Some(crate::stdlib::free),
-        }
-    } else {
-        *memsuite
-    };
     // Snapshot the parent state before allocating the child.  The snapshot
     // owns the shared handles, so no Rust borrow of the opaque parent parser
     // can survive an allocator callback during child construction.
-    let parent_state = if parentParser.is_null() {
-        None
-    } else {
-        let parent = &*parentParser;
+    let parent_state = if let Some(parent) = parent {
         if !expat_heap_increase_tolerable(
             &parent.m_root,
-            parentParser.addr(),
+            std::ptr::from_ref(parent).addr(),
             increase as XmlBigCount,
             1354 as ::core::ffi::c_int,
         ) {
@@ -6039,6 +6044,8 @@ unsafe extern "C" fn parserCreate(
             parent.m_parentParser,
             inherited_dtd,
         ))
+    } else {
+        None
     };
     if share_parent_dtd && parent_state.is_none() {
         return ::core::ptr::null_mut::<XML_ParserStruct>();
@@ -6053,17 +6060,17 @@ unsafe extern "C" fn parserCreate(
         let alloc_tracker = MALLOC_TRACKER {
             bytesAllocated: 0 as XmlBigCount,
             peakBytesAllocated: 0 as XmlBigCount,
-            debugLevel: if parentParser.is_null() {
+            debugLevel: if parent.is_none() {
                 environment_decimal_debug_level("EXPAT_MALLOC_DEBUG", 0)
             } else {
                 0 as ::core::ffi::c_ulong
             },
-            maximumAmplificationFactor: if parentParser.is_null() {
+            maximumAmplificationFactor: if parent.is_none() {
                 crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT
             } else {
                 0.0
             },
-            activationThresholdBytes: if parentParser.is_null() {
+            activationThresholdBytes: if parent.is_none() {
                 crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as XmlBigCount
             } else {
                 0 as XmlBigCount
@@ -6220,17 +6227,21 @@ unsafe extern "C" fn parserCreate(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as *mut XML_ParserStruct as usize));
-    poolInit(&raw mut parser.m_tempPool, parser);
-    poolInit(&raw mut parser.m_temp2Pool, parser);
-    parserInit(parser, encodingName);
-    if !encodingName.is_null() && parser.m_protocolEncodingName.is_none() {
+    let parser_handle = std::ptr::from_mut(parser);
+    poolInit(&raw mut parser.m_tempPool, parser_handle);
+    poolInit(&raw mut parser.m_temp2Pool, parser_handle);
+    parserInit(
+        parser_handle,
+        encoding_name.map_or(std::ptr::null(), std::ffi::CStr::as_ptr),
+    );
+    if encoding_name.is_some() && parser.m_protocolEncodingName.is_none() {
         XML_ParserFree(parser);
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
-    if !nameSep.is_null() {
+    if let Some(namespace_separator) = namespace_separator {
         parser.m_ns = crate::expat_h::XML_TRUE;
         parser.m_internalEncoding = InternalEncoding::Utf8Ns;
-        parser.m_namespaceSeparator = *nameSep;
+        parser.m_namespaceSeparator = namespace_separator;
     } else {
         parser.m_internalEncoding = InternalEncoding::Utf8;
     }
@@ -6718,12 +6729,12 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_SetEncoding(parser, encodingName)
 }
-pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut context: *const crate::expat_external_h::XML_Char,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
+unsafe fn XML_ExternalEntityParserCreate(
+    old: &XML_ParserStruct,
+    context: Option<&std::ffi::CStr>,
+    encoding_name: Option<&std::ffi::CStr>,
 ) -> crate::expat_h::XML_Parser {
-    let mut parser: crate::expat_h::XML_Parser = oldParser;
+    let mut parser = std::ptr::from_ref(old).cast_mut();
     let mut oldStartElementHandler = false;
     let mut oldStartElementCallback: Option<std::sync::Arc<dyn StartElementCallback>> = None;
     let mut oldEndElementCallback: Option<std::sync::Arc<dyn EndElementCallback>> = None;
@@ -6775,12 +6786,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldInEntityValue: ::core::ffi::c_int = 0;
     let mut oldns_triplets: crate::expat_h::XML_Bool = 0;
     let mut oldReparseDeferralEnabled: crate::expat_h::XML_Bool = 0;
-    if oldParser.is_null() {
-        return ::core::ptr::null_mut::<XML_ParserStruct>();
-    }
     // The parent parser is only read while we snapshot its configuration.
     // Borrow it once instead of repeatedly dereferencing the opaque handle.
-    let old = &*oldParser;
     oldStartElementHandler = old.m_startElementHandler;
     oldStartElementCallback = START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -6935,27 +6942,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     oldInEntityValue = old.m_prologState.inEntityValue;
     oldns_triplets = old.m_ns_triplets;
     oldReparseDeferralEnabled = old.m_reparseDeferralEnabled;
-    if old.m_ns != 0 {
-        let mut tmp: [crate::expat_external_h::XML_Char; 2] = [
-            old.m_namespaceSeparator,
-            0 as crate::expat_external_h::XML_Char,
-        ];
-        parser = parserCreate(
-            encodingName,
-            &raw const old.m_mem,
-            &raw mut tmp as *mut crate::expat_external_h::XML_Char,
-            context.is_null(),
-            oldParser,
-        );
-    } else {
-        parser = parserCreate(
-            encodingName,
-            &raw const old.m_mem,
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-            context.is_null(),
-            oldParser,
-        );
-    }
+    parser = parser_create_ownership_facade(
+        encoding_name,
+        old.m_mem,
+        (old.m_ns != 0).then_some(old.m_namespaceSeparator),
+        context.is_none(),
+        Some(old),
+    );
     if parser.is_null() {
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
@@ -7145,7 +7138,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     parser_ref.m_reparseDeferralEnabled = oldReparseDeferralEnabled;
     parser_ref.m_paramEntityParsing = oldParamEntityParsing;
     parser_ref.m_prologState.inEntityValue = oldInEntityValue;
-    if !context.is_null() {
+    if let Some(context) = context {
         // Keep the shared owners alive while borrowing their contained DTDs.
         // `dtdCopy` itself operates only on these typed references; this is
         // the sole ownership-boundary conversion for inherited DTD state.
@@ -7158,7 +7151,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         let old_dtd = &*old_dtd_owner.value.get();
         let new_dtd = &mut *new_dtd_owner.value.get();
         if dtdCopy(new_dtd, old_dtd, parser_ref) == 0
-            || setContext(parser, context) == 0
+            || setContext(parser, context.as_ptr()) == 0
         {
             XML_ParserFree(parser);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
@@ -7178,7 +7171,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
     mut context: *const crate::expat_external_h::XML_Char,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    XML_ExternalEntityParserCreate(oldParser, context, encodingName)
+    let Some(old) = oldParser.as_ref() else {
+        return ::core::ptr::null_mut();
+    };
+    let context = (!context.is_null()).then(|| std::ffi::CStr::from_ptr(context));
+    let encoding_name = (!encodingName.is_null())
+        .then(|| std::ffi::CStr::from_ptr(encodingName));
+    XML_ExternalEntityParserCreate(old, context, encoding_name)
 }
 fn destroy_bindings(
     active_bindings: &mut Vec<BindingStorage>,
