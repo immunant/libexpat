@@ -558,11 +558,7 @@ pub struct ext_faults {
     pub error: XML_Error,
 }
 pub type ExtFaults = ext_faults;
-pub const __ASSERT_FUNCTION: [::core::ffi::c_char; 37] = unsafe {
-    ::core::mem::transmute::<[u8; 37], [::core::ffi::c_char; 37]>(
-        *b"void test_alloc_realloc_buffer(void)\0",
-    )
-};
+pub const __ASSERT_FUNCTION: &[u8] = b"void test_alloc_realloc_buffer(void)\0";
 pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
 pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
 pub const EXPAT_MALLOC_ALIGNMENT: usize = ::core::mem::size_of::<::core::ffi::c_longlong>();

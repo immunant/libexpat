@@ -155,11 +155,8 @@ pub struct ExtTest {
     pub encoding: *const XML_Char,
     pub storage: *mut CharData,
 }
-pub const __ASSERT_FUNCTION: [::core::ffi::c_char; 76] = unsafe {
-    ::core::mem::transmute::<[u8; 76], [::core::ffi::c_char; 76]>(
-        *b"enum XML_Status _XML_Parse_SINGLE_BYTES(XML_Parser, const char *, int, int)\0",
-    )
-};
+pub const __ASSERT_FUNCTION: &[u8] =
+    b"enum XML_Status _XML_Parse_SINGLE_BYTES(XML_Parser, const char *, int, int)\0";
 pub const ENOMEM: ::core::ffi::c_int = 12 as ::core::ffi::c_int;
 pub const EINVAL: ::core::ffi::c_int = 22 as ::core::ffi::c_int;
 pub const SIZE_MAX: ::core::ffi::c_ulong = 18446744073709551615 as ::core::ffi::c_ulong;
@@ -254,7 +251,7 @@ pub unsafe extern "C" fn _XML_Parse_SINGLE_BYTES(
                     as *const ::core::ffi::c_char,
                 b"/root/work/expat/tests/common.c\0".as_ptr() as *const ::core::ffi::c_char,
                 200 as ::core::ffi::c_uint,
-                __ASSERT_FUNCTION.as_ptr(),
+                __ASSERT_FUNCTION.as_ptr().cast::<::core::ffi::c_char>(),
             );
         };
         let chunksize: ::core::ffi::c_int = g_chunkSize;
