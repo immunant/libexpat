@@ -987,23 +987,28 @@ pub unsafe fn convert_to_utf8(
 ) -> crate::src::xmltok::XML_Convert_Result {
     let converter = (*enc).utf8Convert;
     let input_start = *from;
-    let input_len = if input_start == from_lim {
-        0
-    } else {
-        from_lim.offset_from(input_start) as usize
+    let Some(input_len) = from_lim.addr().checked_sub(input_start.addr()) else {
+        // A reversed C cursor cannot describe an input window.  Reject it
+        // before constructing a slice (and before relying on `offset_from`'s
+        // same-allocation precondition).
+        return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
     };
     // An empty input window is permitted to use null pointers.  In particular,
     // do not inspect the output cursor or construct a slice in that case.
     if input_len == 0 {
         return crate::src::xmltok::XML_CONVERT_COMPLETED;
     }
+    if input_start.is_null() {
+        return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+    }
 
     let output_start = *to;
-    let output_len = if output_start == to_lim.cast_mut() {
-        0
-    } else {
-        to_lim.offset_from(output_start) as usize
+    let Some(output_len) = to_lim.addr().checked_sub(output_start.addr()) else {
+        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
     };
+    if output_len != 0 && output_start.is_null() {
+        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+    }
     let input = core::slice::from_raw_parts(input_start.cast::<u8>(), input_len);
     let output = if output_len == 0 {
         &mut []
