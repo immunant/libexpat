@@ -266,20 +266,42 @@ fn read_c_char_bytes<const N: usize>(p: *const ::core::ffi::c_char) -> [u8; N] {
     ::core::array::from_fn(|index| read_copy(p.cast::<u8>().wrapping_add(index)))
 }
 
-fn with_ref<T, R>(ptr: *const T, f: impl FnOnce(&T) -> R) -> R {
-    unsafe { f(&*ptr) }
+macro_rules! with_ref {
+    ($ptr:expr, |$value:ident| $body:expr $(,)?) => {{
+        let ptr = $ptr;
+        debug_assert!(!ptr.is_null());
+        let $value = unsafe { &*ptr };
+        $body
+    }};
+    ($ptr:expr, $f:expr $(,)?) => {{
+        let ptr = $ptr;
+        debug_assert!(!ptr.is_null());
+        let value = unsafe { &*ptr };
+        ($f)(value)
+    }};
 }
 
-fn with_mut<T, R>(ptr: *mut T, f: impl FnOnce(&mut T) -> R) -> R {
-    unsafe { f(&mut *ptr) }
+macro_rules! with_mut {
+    ($ptr:expr, |$value:ident| $body:expr $(,)?) => {{
+        let ptr = $ptr;
+        debug_assert!(!ptr.is_null());
+        let $value = unsafe { &mut *ptr };
+        $body
+    }};
+    ($ptr:expr, $f:expr $(,)?) => {{
+        let ptr = $ptr;
+        debug_assert!(!ptr.is_null());
+        let value = unsafe { &mut *ptr };
+        ($f)(value)
+    }};
 }
 
 fn read_copy<T: Copy>(ptr: *const T) -> T {
-    with_ref(ptr, |value| *value)
+    with_ref!(ptr, |value| *value)
 }
 
 fn write_copy<T>(ptr: *mut T, value: T) {
-    with_mut(ptr, |slot| *slot = value)
+    with_mut!(ptr, |slot| *slot = value)
 }
 
 fn add_const_c_char(ptr: *const ::core::ffi::c_char, offset: isize) -> *const ::core::ffi::c_char {
@@ -319,7 +341,7 @@ fn normal_is_invalid(
     width: usize,
     ptr: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    with_ref(enc.cast::<normal_encoding>(), |normal| match width {
+    with_ref!(enc.cast::<normal_encoding>(), |normal| match width {
         2 => normal.isInvalid2.expect("non-null function pointer")(enc, ptr),
         3 => normal.isInvalid3.expect("non-null function pointer")(enc, ptr),
         4 => normal.isInvalid4.expect("non-null function pointer")(enc, ptr),
@@ -332,7 +354,7 @@ fn normal_is_name_start(
     width: usize,
     ptr: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    with_ref(enc.cast::<normal_encoding>(), |normal| match width {
+    with_ref!(enc.cast::<normal_encoding>(), |normal| match width {
         2 => normal.isNmstrt2.expect("non-null function pointer")(enc, ptr),
         3 => normal.isNmstrt3.expect("non-null function pointer")(enc, ptr),
         4 => normal.isNmstrt4.expect("non-null function pointer")(enc, ptr),
@@ -345,7 +367,7 @@ fn normal_is_name_char(
     width: usize,
     ptr: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    with_ref(enc.cast::<normal_encoding>(), |normal| match width {
+    with_ref!(enc.cast::<normal_encoding>(), |normal| match width {
         2 => normal.isName2.expect("non-null function pointer")(enc, ptr),
         3 => normal.isName3.expect("non-null function pointer")(enc, ptr),
         4 => normal.isName4.expect("non-null function pointer")(enc, ptr),
@@ -443,20 +465,20 @@ fn with_attribute_mut<R>(
     index: ::core::ffi::c_int,
     f: impl FnOnce(&mut ATTRIBUTE) -> R,
 ) -> R {
-    with_mut(atts.wrapping_offset(index as isize), f)
+    with_mut!(atts.wrapping_offset(index as isize), f)
 }
 
 fn attribute_value_ptr(
     atts: *mut ATTRIBUTE,
     index: ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    with_ref(atts.wrapping_offset(index as isize).cast_const(), |att| {
+    with_ref!(atts.wrapping_offset(index as isize).cast_const(), |att| {
         att.valuePtr
     })
 }
 
 fn attribute_is_normalized(atts: *mut ATTRIBUTE, index: ::core::ffi::c_int) -> bool {
-    with_ref(atts.wrapping_offset(index as isize).cast_const(), |att| {
+    with_ref!(atts.wrapping_offset(index as isize).cast_const(), |att| {
         att.normalized as ::core::ffi::c_int != 0
     })
 }
@@ -2157,7 +2179,7 @@ fn c_char_distance(
 }
 
 fn normal_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    with_ref(enc.cast::<normal_encoding>(), |normal| {
+    with_ref!(enc.cast::<normal_encoding>(), |normal| {
         normal.type_0[read_c_char(ptr) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
     })
 }
@@ -2175,7 +2197,7 @@ fn big2_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::co
     let high = read_c_char(ptr);
     let low = read_c_char(add_const_c_char(ptr, 1));
     if high as ::core::ffi::c_int == 0 {
-        with_ref(enc.cast::<normal_encoding>(), |normal| {
+        with_ref!(enc.cast::<normal_encoding>(), |normal| {
             normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         })
     } else {
@@ -2184,19 +2206,19 @@ fn big2_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::co
 }
 
 fn line_number(pos: *mut POSITION) -> XML_Size {
-    with_ref(pos.cast_const(), |position| position.lineNumber)
+    with_ref!(pos.cast_const(), |position| position.lineNumber)
 }
 
 fn set_line_number(pos: *mut POSITION, value: XML_Size) {
-    with_mut(pos, |position| position.lineNumber = value)
+    with_mut!(pos, |position| position.lineNumber = value)
 }
 
 fn column_number(pos: *mut POSITION) -> XML_Size {
-    with_ref(pos.cast_const(), |position| position.columnNumber)
+    with_ref!(pos.cast_const(), |position| position.columnNumber)
 }
 
 fn set_column_number(pos: *mut POSITION, value: XML_Size) {
-    with_mut(pos, |position| position.columnNumber = value)
+    with_mut!(pos, |position| position.columnNumber = value)
 }
 
 fn increment_line_number(pos: *mut POSITION) {
@@ -2208,7 +2230,7 @@ fn increment_column_number(pos: *mut POSITION) {
 }
 
 fn encoding_min_bytes_per_char(enc: *const ENCODING) -> isize {
-    with_ref(enc, |encoding| encoding.minBytesPerChar as isize)
+    with_ref!(enc, |encoding| encoding.minBytesPerChar as isize)
 }
 
 fn encoding_name_matches_ascii(
@@ -2218,7 +2240,7 @@ fn encoding_name_matches_ascii(
     ascii_name: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let name_matches_ascii =
-        with_ref(enc, |encoding| encoding.nameMatchesAscii).expect("non-null function pointer");
+        with_ref!(enc, |encoding| encoding.nameMatchesAscii).expect("non-null function pointer");
     name_matches_ascii(enc, ptr, end, ascii_name)
 }
 
@@ -2230,7 +2252,7 @@ fn encoding_utf8_convert(
     to_lim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
     let utf8_convert =
-        with_ref(enc, |encoding| encoding.utf8Convert).expect("non-null function pointer");
+        with_ref!(enc, |encoding| encoding.utf8Convert).expect("non-null function pointer");
     utf8_convert(enc, from_p, from_lim, to_p, to_lim)
 }
 
@@ -2331,7 +2353,7 @@ fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char,
 
 fn unknown_sequence_length(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> isize {
     let byte = read_c_char(ptr) as ::core::ffi::c_uchar as usize;
-    with_ref(enc.cast::<normal_encoding>(), |normal| {
+    with_ref!(enc.cast::<normal_encoding>(), |normal| {
         (normal.type_0[byte] as ::core::ffi::c_int - (BT_LEAD2 as ::core::ffi::c_int - 2)) as isize
     })
 }
@@ -2341,11 +2363,11 @@ fn read_encoding_table_entry(table: *const *const ENCODING, index: usize) -> *co
 }
 
 fn init_encoding_kind(enc: *const INIT_ENCODING) -> ::core::ffi::c_int {
-    with_ref(enc, |init| init.initEnc.isUtf16 as ::core::ffi::c_int)
+    with_ref!(enc, |init| init.initEnc.isUtf16 as ::core::ffi::c_int)
 }
 
 fn init_encoding_ptr_slot(enc: *const INIT_ENCODING) -> *mut *const ENCODING {
-    with_ref(enc, |init| init.encPtr)
+    with_ref!(enc, |init| init.encPtr)
 }
 
 fn set_encoding_ptr(enc_ptr: *mut *const ENCODING, value: *const ENCODING) {
@@ -2562,7 +2584,7 @@ fn dispatch_scanner(
     next_tok_ptr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let enc = read_copy(enc_ptr);
-    let scanner = with_ref(enc, |encoding| encoding.scanners[state as usize]);
+    let scanner = with_ref!(enc, |encoding| encoding.scanners[state as usize]);
     call_scanner(scanner, enc, ptr, end, next_tok_ptr)
 }
 
@@ -4833,7 +4855,7 @@ extern "C" fn normal_isPublicId(
         badPtr,
         |current| {
             let byte = read_c_char(current) as ::core::ffi::c_uchar as usize;
-            with_ref(enc.cast::<normal_encoding>(), |normal| {
+            with_ref!(enc.cast::<normal_encoding>(), |normal| {
                 normal.type_0[byte] as ::core::ffi::c_int
             })
         },
@@ -5504,7 +5526,7 @@ extern "C" fn little2_isPublicId(
             let low = read_c_char(current);
             let high = read_c_char(add_const_c_char(current, 1));
             if high == 0 {
-                with_ref(enc.cast::<normal_encoding>(), |normal| {
+                with_ref!(enc.cast::<normal_encoding>(), |normal| {
                     normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
                 })
             } else {
@@ -6172,7 +6194,7 @@ extern "C" fn big2_isPublicId(
             let high = read_c_char(current);
             let low = read_c_char(add_const_c_char(current, 1));
             if high == 0 {
-                with_ref(enc.cast::<normal_encoding>(), |normal| {
+                with_ref!(enc.cast::<normal_encoding>(), |normal| {
                     normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
                 })
             } else {
@@ -12898,7 +12920,7 @@ pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
     ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int
 }
 fn unknown_code_point(enc: *const ENCODING, p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    with_ref(enc.cast::<unknown_encoding>(), |uenc| {
+    with_ref!(enc.cast::<unknown_encoding>(), |uenc| {
         call_unknown_converter(uenc, p)
     })
 }
@@ -12944,7 +12966,7 @@ extern "C" fn unknown_toUtf8(
     toP: *mut *mut ::core::ffi::c_char,
     toLim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    with_ref(enc.cast::<unknown_encoding>(), |uenc| {
+    with_ref!(enc.cast::<unknown_encoding>(), |uenc| {
         let mut buf: [::core::ffi::c_char; 4] = [0; 4];
         loop {
             let from = read_copy(fromP.cast_const());
@@ -12985,7 +13007,7 @@ extern "C" fn unknown_toUtf16(
     toP: *mut *mut ::core::ffi::c_ushort,
     toLim: *const ::core::ffi::c_ushort,
 ) -> XML_Convert_Result {
-    with_ref(enc.cast::<unknown_encoding>(), |uenc| {
+    with_ref!(enc.cast::<unknown_encoding>(), |uenc| {
         while read_copy(fromP.cast_const()) < fromLim
             && read_copy(toP.cast_const()) < toLim.cast_mut()
         {
