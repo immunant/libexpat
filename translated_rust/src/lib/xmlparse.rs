@@ -585,28 +585,23 @@ pub struct encoding {
             *const ::core::ffi::c_char,
         ) -> ::core::ffi::c_int,
     >,
-    pub nameLength: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
+    pub nameLength:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
     pub skipS: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> *const ::core::ffi::c_char,
+        extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> *const ::core::ffi::c_char,
     >,
     pub getAtts: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             ::core::ffi::c_int,
             *mut ATTRIBUTE,
         ) -> ::core::ffi::c_int,
     >,
-    pub charRefNumber: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
+    pub charRefNumber:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
     pub predefinedEntityName: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -621,7 +616,7 @@ pub struct encoding {
         ) -> (),
     >,
     pub isPublicId: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -655,7 +650,7 @@ pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
 pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
 pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
 pub type SCANNER = Option<
-    unsafe extern "C" fn(
+    extern "C" fn(
         *const ENCODING,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
@@ -10436,7 +10431,7 @@ fn call_scanner(
     end: *const ::core::ffi::c_char,
     next: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe { scanner.expect("non-null function pointer")(enc, start, end, next) }
+    scanner.expect("non-null function pointer")(enc, start, end, next)
 }
 
 fn ptr_slice<'a, T>(ptr: *const T, len: usize) -> &'a [T] {

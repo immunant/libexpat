@@ -36,28 +36,23 @@ pub struct encoding {
             *const ::core::ffi::c_char,
         ) -> ::core::ffi::c_int,
     >,
-    pub nameLength: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
+    pub nameLength:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
     pub skipS: Option<
-        unsafe extern "C" fn(
-            *const ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> *const ::core::ffi::c_char,
+        extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> *const ::core::ffi::c_char,
     >,
     pub getAtts: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             ::core::ffi::c_int,
             *mut ATTRIBUTE,
         ) -> ::core::ffi::c_int,
     >,
-    pub charRefNumber: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
+    pub charRefNumber:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
     pub predefinedEntityName: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -72,7 +67,7 @@ pub struct encoding {
         ) -> (),
     >,
     pub isPublicId: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -12721,21 +12716,21 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -12744,14 +12739,14 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -13122,21 +13117,21 @@ static mut utf8_encoding: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -13145,14 +13140,14 @@ static mut utf8_encoding: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -13525,21 +13520,21 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -13548,14 +13543,14 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -13985,21 +13980,21 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -14008,14 +14003,14 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -14456,21 +14451,21 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -14479,14 +14474,14 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -14857,21 +14852,21 @@ static mut latin1_encoding: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -14880,14 +14875,14 @@ static mut latin1_encoding: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15282,21 +15277,21 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -15305,14 +15300,14 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15683,21 +15678,21 @@ static mut ascii_encoding: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 normal_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 normal_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 normal_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -15706,14 +15701,14 @@ static mut ascii_encoding: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 normal_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 normal_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16375,21 +16370,21 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 little2_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 little2_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -16398,14 +16393,14 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16776,21 +16771,21 @@ static mut little2_encoding: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 little2_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 little2_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -16799,14 +16794,14 @@ static mut little2_encoding: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17177,21 +17172,21 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 little2_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 little2_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -17200,14 +17195,14 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17578,21 +17573,21 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 little2_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 little2_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 little2_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -17601,14 +17596,14 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 little2_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 little2_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17979,21 +17974,21 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 big2_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 big2_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 big2_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -18002,14 +17997,14 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 big2_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 big2_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18380,21 +18375,21 @@ static mut big2_encoding: normal_encoding = unsafe {
             ),
             nameLength: Some(
                 big2_nameLength
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             skipS: Some(
                 big2_skipS
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> *const ::core::ffi::c_char,
             ),
             getAtts: Some(
                 big2_getAtts
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         ::core::ffi::c_int,
@@ -18403,14 +18398,14 @@ static mut big2_encoding: normal_encoding = unsafe {
             ),
             charRefNumber: Some(
                 big2_charRefNumber
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
             predefinedEntityName: Some(
                 big2_predefinedEntityName
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
