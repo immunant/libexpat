@@ -1501,12 +1501,102 @@ pub enum HandlerArg {
     Parser,
 }
 
+// `XML_GetUserData` is a C macro which reads the first word of an
+// `XML_ParserStruct` as `void *`.  Keep that ABI word-sized while retaining
+// only an opaque address token in Rust state.  The token is never
+// dereferenced by Rust; the C-callback boundary resolves its matching opaque
+// context, whose lifetime contract belongs to the caller of XML_SetUserData.
+#[derive(Copy, Clone)]
+struct CallbackContextToken(usize);
+
+impl CallbackContextToken {
+    const EMPTY: Self = Self(0);
+
+    fn from_ffi_address(address: usize) -> Self {
+        Self(address)
+    }
+}
+
+#[repr(transparent)]
+struct CallbackContext(std::sync::atomic::AtomicUsize);
+
+impl CallbackContext {
+    fn empty() -> Self {
+        Self(std::sync::atomic::AtomicUsize::new(0))
+    }
+
+    fn clear(&self) {
+        self.store(CallbackContextToken::EMPTY);
+    }
+
+    fn load(&self) -> CallbackContextToken {
+        CallbackContextToken(self.0.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    fn store(&self, value: CallbackContextToken) {
+        self.0
+            .store(value.0, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+const CALLBACK_CONTEXT_SIZE_MATCHES_C_VOID_POINTER: () = assert!(
+    ::core::mem::size_of::<CallbackContext>() == ::core::mem::size_of::<*mut ::core::ffi::c_void>()
+);
+const CALLBACK_CONTEXT_ALIGNMENT_MATCHES_C_VOID_POINTER: () = assert!(
+    ::core::mem::align_of::<CallbackContext>() == ::core::mem::align_of::<*mut ::core::ffi::c_void>()
+);
+
+// C callback arguments are materialized at the boundary, not recovered from
+// the parser's ABI word.  This avoids an integer-to-pointer conversion while
+// retaining the caller-owned context as a private opaque token; it is only
+// materialized while dispatching a C callback.  Parser entries are removed on
+// reset/free.
+#[derive(Clone)]
+struct CallbackContextRegistration {
+    context: std::sync::Arc<dyn std::any::Any + Send + Sync>,
+}
+
+static CALLBACK_CONTEXTS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, CallbackContextRegistration>>,
+> = std::sync::OnceLock::new();
+
+fn clear_callback_context(parser_key: usize) {
+    CALLBACK_CONTEXTS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
+}
+
+fn copy_callback_context(source: &XML_ParserStruct, destination: &XML_ParserStruct) {
+    let source_key = std::ptr::from_ref(source).addr();
+    let destination_key = std::ptr::from_ref(destination).addr();
+    let mut contexts = CALLBACK_CONTEXTS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(context) = contexts.get(&source_key).cloned() {
+        contexts.insert(destination_key, context);
+    } else {
+        contexts.remove(&destination_key);
+    }
+}
+
 macro_rules! callback_context_pointer {
     ($parser:expr) => {{
         let parser_ref: &XML_ParserStruct = $parser;
-        parser_ref
-            .m_userData
-            .load(std::sync::atomic::Ordering::Relaxed)
+        CALLBACK_CONTEXTS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&std::ptr::from_ref(parser_ref).addr())
+            .and_then(|registration| {
+                registration
+                    .context
+                    .downcast_ref::<std::sync::atomic::AtomicPtr<::core::ffi::c_void>>()
+            })
+            .map(|context| context.load(std::sync::atomic::Ordering::Relaxed))
+            .unwrap_or(::core::ptr::null_mut())
     }};
 }
 
@@ -2329,7 +2419,7 @@ pub struct XML_ParserStruct {
     // This remains first for the public `XML_GetUserData` macro, which reads
     // the word as `void *`.  The value is an opaque token: Rust only loads or
     // stores it for a callback and never dereferences it.
-    m_userData: std::sync::atomic::AtomicPtr<::core::ffi::c_void>,
+    m_userData: CallbackContext,
     // The callback context is represented by its semantic source; no foreign
     // pointer is retained in parser state.
     pub m_handlerArg: HandlerArg,
@@ -4848,7 +4938,7 @@ fn initial_parser_struct(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> XML_ParserStruct {
     XML_ParserStruct {
-        m_userData: std::sync::atomic::AtomicPtr::new(::core::ptr::null_mut()),
+        m_userData: CallbackContext::empty(),
         m_handlerArg: HandlerArg::UserData,
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
@@ -5231,9 +5321,8 @@ fn parser_init(
     parser.m_initEncoding.initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
     parser.m_initEncoding.selected_encoding = None;
     parser.m_encoding = EncodingState::Initial;
-    parser
-        .m_userData
-        .store(::core::ptr::null_mut(), std::sync::atomic::Ordering::Relaxed);
+    parser.m_userData.clear();
+    clear_callback_context(parser_key);
     parser.m_handlerArg = HandlerArg::UserData;
     parser.m_startElementHandler = false;
     START_ELEMENT_HANDLERS
@@ -5655,7 +5744,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
     let mut oldXmlDeclHandler: Option<std::sync::Arc<dyn XmlDeclCallback>> = None;
     let mut oldDeclElementType: Option<PoolStringRef> = None;
-    let mut oldUserData: *mut ::core::ffi::c_void = ::core::ptr::null_mut();
+    let mut oldUserData = CallbackContextToken::EMPTY;
     let mut oldHandlerArg = HandlerArg::UserData;
     let mut oldDefaultExpandInternalEntities: crate::expat_h::XML_Bool = 0;
     let mut oldExternalEntityRefHandlerArg: Option<ExternalEntityRefHandlerArgRegistration> = None;
@@ -5811,7 +5900,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .get(&(parser as usize))
         .cloned();
     oldDeclElementType = old.m_declElementType;
-    oldUserData = old.m_userData.load(std::sync::atomic::Ordering::Relaxed);
+    oldUserData = old.m_userData.load();
     oldHandlerArg = old.m_handlerArg;
     oldDefaultExpandInternalEntities = old.m_defaultExpandInternalEntities;
     oldExternalEntityRefHandlerArg = EXTERNAL_ENTITY_REF_HANDLER_ARGS
@@ -6019,9 +6108,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .insert(parser as usize, callback);
     }
     parser_ref.m_declElementType = oldDeclElementType;
-    parser_ref
-        .m_userData
-        .store(oldUserData, std::sync::atomic::Ordering::Relaxed);
+    parser_ref.m_userData.store(oldUserData);
+    copy_callback_context(old, parser_ref);
     parser_ref.m_handlerArg = oldHandlerArg;
     if let Some(arg) = oldExternalEntityRefHandlerArg.filter(|arg| arg.applies_to_child) {
         EXTERNAL_ENTITY_REF_HANDLER_ARGS
@@ -6087,6 +6175,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     }
     let parser_key = parser as usize;
     let parser = &mut *parser;
+    clear_callback_context(parser_key);
     START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -6363,16 +6452,22 @@ pub unsafe extern "C" fn XML_SetReturnNSTriplet_ffi(
 ) {
     XML_SetReturnNSTriplet(parser, do_nst)
 }
-pub unsafe extern "C" fn XML_SetUserData(
-    mut parser: crate::expat_h::XML_Parser,
-    mut p: *mut ::core::ffi::c_void,
+fn set_user_data(
+    parser: &mut XML_ParserStruct,
+    user_data: CallbackContextToken,
+    callback_context: Option<CallbackContextRegistration>,
 ) {
-    if parser.is_null() {
-        return;
+    parser.m_userData.store(user_data);
+    let parser_key = std::ptr::from_ref(parser).addr();
+    let mut contexts = CALLBACK_CONTEXTS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(callback_context) = callback_context {
+        contexts.insert(parser_key, callback_context);
+    } else {
+        contexts.remove(&parser_key);
     }
-    (*parser)
-        .m_userData
-        .store(p, std::sync::atomic::Ordering::Relaxed);
 }
 #[export_name = "XML_SetUserData"]
 
@@ -6380,7 +6475,19 @@ pub unsafe extern "C" fn XML_SetUserData_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut p: *mut ::core::ffi::c_void,
 ) {
-    XML_SetUserData(parser, p)
+    let Some(parser) = parser.as_mut() else {
+        return;
+    };
+    let callback_context = (!p.is_null()).then(|| {
+        let context: std::sync::Arc<dyn std::any::Any + Send + Sync> =
+            std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(p));
+        CallbackContextRegistration { context }
+    });
+    set_user_data(
+        parser,
+        CallbackContextToken::from_ffi_address(p.addr()),
+        callback_context,
+    );
 }
 pub unsafe extern "C" fn XML_SetBase(
     mut parser: crate::expat_h::XML_Parser,
