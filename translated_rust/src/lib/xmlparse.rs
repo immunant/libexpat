@@ -958,23 +958,42 @@ pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 pub static mut g_reparseDeferralEnabledDefault: XML_Bool = XML_TRUE;
 #[no_mangle]
 pub static mut g_bytesScanned: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
-unsafe extern "C" fn expat_heap_stat(
-    mut rootParser: XML_Parser,
-    mut operator: ::core::ffi::c_char,
-    mut absDiff: XmlBigCount,
-    mut newTotal: XmlBigCount,
-    mut peakTotal: XmlBigCount,
-    mut sourceLine: ::core::ffi::c_int,
+const XMLPARSE_C_FILE: &[u8] = b"/root/work/expat/lib/xmlparse.c\0";
+
+fn xmlparse_assert_fail(
+    assertion: &'static [u8],
+    line: ::core::ffi::c_uint,
+    function: &'static [u8],
+) -> ! {
+    unsafe {
+        __assert_fail(
+            assertion.as_ptr() as *const ::core::ffi::c_char,
+            XMLPARSE_C_FILE.as_ptr() as *const ::core::ffi::c_char,
+            line,
+            function.as_ptr() as *const ::core::ffi::c_char,
+        )
+    }
+}
+
+fn expat_heap_stat(
+    rootParser: &XML_ParserStruct,
+    operator: ::core::ffi::c_char,
+    absDiff: XmlBigCount,
+    newTotal: XmlBigCount,
+    peakTotal: XmlBigCount,
+    sourceLine: ::core::ffi::c_int,
 ) {
     unsafe {
         let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
-            / (*rootParser).m_accounting.countBytesDirect as ::core::ffi::c_float;
+            / rootParser.m_accounting.countBytesDirect as ::core::ffi::c_float;
         fprintf(
             stderr,
             b"expat: Allocations(%p): Direct %10llu, allocated %c%10llu to %10llu (%10llu peak), amplification %8.2f (xmlparse.c:%d)\n\0"
                 .as_ptr() as *const ::core::ffi::c_char,
-            rootParser as *mut ::core::ffi::c_void,
-            (*rootParser).m_accounting.countBytesDirect,
+            (rootParser as *const XML_ParserStruct)
+                .cast_mut()
+                .cast::<::core::ffi::c_void>(),
+            rootParser.m_accounting.countBytesDirect,
             operator as ::core::ffi::c_int,
             absDiff,
             newTotal,
@@ -984,74 +1003,56 @@ unsafe extern "C" fn expat_heap_stat(
         );
     }
 }
-unsafe extern "C" fn expat_heap_increase_tolerable(
-    mut rootParser: XML_Parser,
-    mut increase: XmlBigCount,
-    mut sourceLine: ::core::ffi::c_int,
+fn expat_heap_increase_tolerable(
+    rootParser: &XML_ParserStruct,
+    increase: XmlBigCount,
+    sourceLine: ::core::ffi::c_int,
 ) -> bool {
-    unsafe {
-        if !rootParser.is_null() {
-        } else {
-            __assert_fail(
-                b"rootParser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                815 as ::core::ffi::c_uint,
-                b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if increase > 0 as XmlBigCount {
-        } else {
-            __assert_fail(
-                b"increase > 0\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                816 as ::core::ffi::c_uint,
-                b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        let mut newTotal: XmlBigCount = 0 as XmlBigCount;
-        let mut tolerable: bool = true_0 != 0;
-        if (-(1 as ::core::ffi::c_int) as XmlBigCount)
-            .wrapping_sub((*rootParser).m_alloc_tracker.bytesAllocated)
-            < increase
-        {
-            tolerable = false_0 != 0;
-        } else {
-            newTotal = (*rootParser)
-                .m_alloc_tracker
-                .bytesAllocated
-                .wrapping_add(increase);
-            if newTotal >= (*rootParser).m_alloc_tracker.activationThresholdBytes {
-                if newTotal > 0 as XmlBigCount {
-                } else {
-                    __assert_fail(
-                        b"newTotal > 0\0".as_ptr() as *const ::core::ffi::c_char,
-                        b"/root/work/expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                        828 as ::core::ffi::c_uint,
-                        b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0"
-                            .as_ptr() as *const ::core::ffi::c_char,
-                    );
-                };
-                let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
-                    / (*rootParser).m_accounting.countBytesDirect as ::core::ffi::c_float;
-                if amplification > (*rootParser).m_alloc_tracker.maximumAmplificationFactor {
-                    tolerable = false_0 != 0;
-                }
+    if increase == 0 as XmlBigCount {
+        xmlparse_assert_fail(
+            b"increase > 0\0",
+            816 as ::core::ffi::c_uint,
+            b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0",
+        );
+    }
+    let mut newTotal: XmlBigCount = 0 as XmlBigCount;
+    let mut tolerable: bool = true_0 != 0;
+    if (-(1 as ::core::ffi::c_int) as XmlBigCount)
+        .wrapping_sub(rootParser.m_alloc_tracker.bytesAllocated)
+        < increase
+    {
+        tolerable = false_0 != 0;
+    } else {
+        newTotal = rootParser
+            .m_alloc_tracker
+            .bytesAllocated
+            .wrapping_add(increase);
+        if newTotal >= rootParser.m_alloc_tracker.activationThresholdBytes {
+            if newTotal == 0 as XmlBigCount {
+                xmlparse_assert_fail(
+                    b"newTotal > 0\0",
+                    828 as ::core::ffi::c_uint,
+                    b"_Bool expat_heap_increase_tolerable(XML_Parser, XmlBigCount, int)\0",
+                );
+            }
+            let amplification: ::core::ffi::c_float = newTotal as ::core::ffi::c_float
+                / rootParser.m_accounting.countBytesDirect as ::core::ffi::c_float;
+            if amplification > rootParser.m_alloc_tracker.maximumAmplificationFactor {
+                tolerable = false_0 != 0;
             }
         }
-        if !tolerable && (*rootParser).m_alloc_tracker.debugLevel >= 1 as ::core::ffi::c_ulong {
-            expat_heap_stat(
-                rootParser,
-                '+' as i32 as ::core::ffi::c_char,
-                increase,
-                newTotal,
-                newTotal,
-                sourceLine,
-            );
-        }
-        return tolerable;
     }
+    if !tolerable && rootParser.m_alloc_tracker.debugLevel >= 1 as ::core::ffi::c_ulong {
+        expat_heap_stat(
+            rootParser,
+            '+' as i32 as ::core::ffi::c_char,
+            increase,
+            newTotal,
+            newTotal,
+            sourceLine,
+        );
+    }
+    tolerable
 }
 #[no_mangle]
 pub unsafe extern "C" fn expat_malloc(
@@ -1085,7 +1086,8 @@ pub unsafe extern "C" fn expat_malloc(
         {
             return NULL;
         }
-        if !expat_heap_increase_tolerable(rootParser, bytesToAllocate as XmlBigCount, sourceLine) {
+        if !expat_heap_increase_tolerable(&*rootParser, bytesToAllocate as XmlBigCount, sourceLine)
+        {
             return NULL;
         }
         let mallocedPtr: *mut ::core::ffi::c_void = (*parser)
@@ -1110,7 +1112,7 @@ pub unsafe extern "C" fn expat_malloc(
                     (*rootParser).m_alloc_tracker.bytesAllocated;
             }
             expat_heap_stat(
-                rootParser,
+                &*rootParser,
                 '+' as i32 as ::core::ffi::c_char,
                 bytesToAllocate as XmlBigCount,
                 (*rootParser).m_alloc_tracker.bytesAllocated,
@@ -1178,7 +1180,7 @@ pub unsafe extern "C" fn expat_free(
             .wrapping_sub(bytesAllocated as XmlBigCount);
         if (*rootParser).m_alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
             expat_heap_stat(
-                rootParser,
+                &*rootParser,
                 '-' as i32 as ::core::ffi::c_char,
                 bytesAllocated as XmlBigCount,
                 (*rootParser).m_alloc_tracker.bytesAllocated,
@@ -1237,7 +1239,7 @@ pub unsafe extern "C" fn expat_realloc(
             prevSize.wrapping_sub(size)
         };
         if isIncrease {
-            if !expat_heap_increase_tolerable(rootParser, absDiff as XmlBigCount, sourceLine) {
+            if !expat_heap_increase_tolerable(&*rootParser, absDiff as XmlBigCount, sourceLine) {
                 return NULL;
             }
         }
@@ -1315,7 +1317,7 @@ pub unsafe extern "C" fn expat_realloc(
                     (*rootParser).m_alloc_tracker.bytesAllocated;
             }
             expat_heap_stat(
-                rootParser,
+                &*rootParser,
                 (if isIncrease as ::core::ffi::c_int != 0 {
                     '+' as i32
                 } else {
@@ -1400,15 +1402,13 @@ static mut implicitContext: [XML_Char; 41] = [
     ASCII_e as XML_Char,
     '\0' as i32 as XML_Char,
 ];
-unsafe extern "C" fn ENTROPY_DEBUG(
-    mut label: *const ::core::ffi::c_char,
-    mut entropy: ::core::ffi::c_ulong,
+fn ENTROPY_DEBUG(
+    label: *const ::core::ffi::c_char,
+    entropy: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_ulong {
     unsafe {
-        if getDebugLevel(
-            b"EXPAT_ENTROPY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-            0 as ::core::ffi::c_ulong,
-        ) >= 1 as ::core::ffi::c_ulong
+        if getDebugLevel(b"EXPAT_ENTROPY_DEBUG\0", 0 as ::core::ffi::c_ulong)
+            >= 1 as ::core::ffi::c_ulong
         {
             fprintf(
                 stderr,
@@ -1421,7 +1421,7 @@ unsafe extern "C" fn ENTROPY_DEBUG(
                 ::core::mem::size_of::<::core::ffi::c_ulong>() as ::core::ffi::c_ulong,
             );
         }
-        return entropy;
+        entropy
     }
 }
 fn generate_hash_secret_salt() -> ::core::ffi::c_ulong {
@@ -1446,14 +1446,7 @@ fn assert_root_parser(
     if root_parser.m_parentParser.is_null() {
         return;
     }
-    unsafe {
-        __assert_fail(
-            b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-            line,
-            function.as_ptr() as *const ::core::ffi::c_char,
-        );
-    }
+    xmlparse_assert_fail(b"! rootParser->m_parentParser\0", line, function);
 }
 
 fn get_hash_secret_salt(parser: &mut XML_ParserStruct) -> ::core::ffi::c_ulong {
@@ -1582,7 +1575,7 @@ unsafe extern "C" fn parserCreate(
         if !parentParser.is_null() {
             let rootParser: XML_Parser = getRootParserOf(&mut *parentParser, None) as XML_Parser;
             if !expat_heap_increase_tolerable(
-                rootParser,
+                &*rootParser,
                 increase as XmlBigCount,
                 1354 as ::core::ffi::c_int,
             ) {
@@ -1656,10 +1649,8 @@ unsafe extern "C" fn parserCreate(
             ::core::mem::size_of::<MALLOC_TRACKER>() as size_t,
         );
         if parentParser.is_null() {
-            (*parser).m_alloc_tracker.debugLevel = getDebugLevel(
-                b"EXPAT_MALLOC_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-                0 as ::core::ffi::c_ulong,
-            );
+            (*parser).m_alloc_tracker.debugLevel =
+                getDebugLevel(b"EXPAT_MALLOC_DEBUG\0", 0 as ::core::ffi::c_ulong);
             (*parser).m_alloc_tracker.maximumAmplificationFactor =
                 EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
             (*parser).m_alloc_tracker.activationThresholdBytes =
@@ -1709,7 +1700,7 @@ unsafe extern "C" fn parserCreate(
                     (*rootParser_0).m_alloc_tracker.bytesAllocated;
             }
             expat_heap_stat(
-                rootParser_0,
+                &*rootParser_0,
                 '+' as i32 as ::core::ffi::c_char,
                 increase as XmlBigCount,
                 (*rootParser_0).m_alloc_tracker.bytesAllocated,
@@ -1906,10 +1897,8 @@ unsafe extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const
             0 as ::core::ffi::c_int,
             ::core::mem::size_of::<ACCOUNTING>() as size_t,
         );
-        (*parser).m_accounting.debugLevel = getDebugLevel(
-            b"EXPAT_ACCOUNTING_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-            0 as ::core::ffi::c_ulong,
-        );
+        (*parser).m_accounting.debugLevel =
+            getDebugLevel(b"EXPAT_ACCOUNTING_DEBUG\0", 0 as ::core::ffi::c_ulong);
         (*parser).m_accounting.maximumAmplificationFactor =
             EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
         (*parser).m_accounting.activationThresholdBytes =
@@ -1920,10 +1909,8 @@ unsafe extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const
             0 as ::core::ffi::c_int,
             ::core::mem::size_of::<ENTITY_STATS>() as size_t,
         );
-        (*parser).m_entity_stats.debugLevel = getDebugLevel(
-            b"EXPAT_ENTITY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-            0 as ::core::ffi::c_ulong,
-        );
+        (*parser).m_entity_stats.debugLevel =
+            getDebugLevel(b"EXPAT_ENTITY_DEBUG\0", 0 as ::core::ffi::c_ulong);
     }
 }
 #[no_mangle]
@@ -11918,30 +11905,30 @@ pub unsafe extern "C" fn unsignedCharToPrintable(
         };
     }
 }
-unsafe extern "C" fn getDebugLevel(
-    mut variableName: *const ::core::ffi::c_char,
-    mut defaultDebugLevel: ::core::ffi::c_ulong,
+fn getDebugLevel(
+    variableName: &[u8],
+    defaultDebugLevel: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_ulong {
-    unsafe {
-        let valueOrNull: *const ::core::ffi::c_char = getenv(variableName);
-        if valueOrNull.is_null() {
-            return defaultDebugLevel;
-        }
-        let value: *const ::core::ffi::c_char = valueOrNull;
-        *__errno_location() = 0 as ::core::ffi::c_int;
-        let mut afterValue: *mut ::core::ffi::c_char =
-            ::core::ptr::null_mut::<::core::ffi::c_char>();
-        let mut debugLevel: ::core::ffi::c_ulong =
-            strtoul(value, &raw mut afterValue, 10 as ::core::ffi::c_int);
-        if *__errno_location() != 0 as ::core::ffi::c_int
-            || afterValue == value as *mut ::core::ffi::c_char
-            || *afterValue.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                != '\0' as i32
-        {
-            *__errno_location() = 0 as ::core::ffi::c_int;
-            return defaultDebugLevel;
-        }
-        return debugLevel;
+    let variable_name = match variableName.strip_suffix(b"\0") {
+        Some(name) => name,
+        None => variableName,
+    };
+    let variable_name = match ::core::str::from_utf8(variable_name) {
+        Ok(name) => name,
+        Err(_) => return defaultDebugLevel,
+    };
+    let value = match ::std::env::var(variable_name) {
+        Ok(value) => value,
+        Err(_) => return defaultDebugLevel,
+    };
+    let value = value.trim_start();
+    let value = value.strip_prefix('+').unwrap_or(value);
+    if value.is_empty() {
+        return defaultDebugLevel;
+    }
+    match value.parse::<::core::ffi::c_ulong>() {
+        Ok(level) => level,
+        Err(_) => defaultDebugLevel,
     }
 }
 pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
