@@ -10296,7 +10296,7 @@ unsafe fn doContent(
             // Recover the C cursor from the slice only after the offset has
             // been checked, rather than advancing the incoming raw cursor.
             let source = match event_raw_name_source(
-                &*parser_ptr,
+                parser,
                 &*dtd,
                 parser_events,
                 s.addr(),
@@ -10345,7 +10345,7 @@ unsafe fn doContent(
             };
             offset
         };
-        if !accounting_raw_slice_diff_tolerated(
+        if !accounting_slice_diff_tolerated(
             parser,
             tok,
             &source,
@@ -10353,9 +10353,8 @@ unsafe fn doContent(
             account_after,
             3337 as ::core::ffi::c_int,
             account,
-            true,
-        )
-        {
+        ) {
+            cdata_accounting_on_abort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         content_update_event_end(
@@ -10449,7 +10448,7 @@ unsafe fn doContent(
                     // and UTF-16 without manufacturing a slice from a raw
                     // cursor.
                     let predefined = match event_raw_name_source(
-                        &*parser,
+                        parser,
                         &*dtd,
                         parser_events,
                         entity_start.addr(),
@@ -10474,7 +10473,7 @@ unsafe fn doContent(
                         predefined as crate::expat_external_h::XML_Char;
                     if ch != 0 {
                         let entity_bytes = bytemuck::bytes_of(&ch);
-                        let _ = accounting_raw_slice_diff_tolerated(
+                        let _ = accounting_slice_diff_tolerated(
                             parser,
                             tok,
                             entity_bytes,
@@ -10482,7 +10481,6 @@ unsafe fn doContent(
                             entity_bytes.len(),
                             3403 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
-                            false,
                         );
                         let handlers = content_token_handlers(parser);
                         if handlers.character_data {
@@ -10494,7 +10492,7 @@ unsafe fn doContent(
                             reportDefault(parser, enc, s, next);
                         }
                     } else {
-                        let salt = (&*parser)
+                        let salt = parser
                             .m_root
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -10775,7 +10773,7 @@ unsafe fn doContent(
                     parser.m_tagStack = Some(tag_index);
                     let raw_name = s.wrapping_offset(encoding.minBytesPerChar as isize);
                     let raw_name_storage = match event_raw_name_storage(
-                        &*parser,
+                        parser,
                         &*dtd,
                         parser_events,
                         raw_name.addr(),
@@ -11106,7 +11104,7 @@ unsafe fn doContent(
                         };
                         len = raw_name_len.length;
                         let (tag_index, names_match) = match content_end_tag_match(
-                            &*parser,
+                            parser,
                             &*dtd,
                             startTagLevel,
                             parser_events,
@@ -11277,7 +11275,7 @@ unsafe fn doContent(
                     // or active entity that owns it before decoding.  This
                     // avoids manufacturing a byte slice from raw cursors.
                     let Some(token) = event_raw_name_source(
-                        &*parser,
+                        parser,
                         &*dtd,
                         parser_events,
                         s.addr(),
