@@ -3843,6 +3843,11 @@ struct RootParserState {
     // XML_TESTING allocation payloads are Rust-owned so their size prefix can
     // be maintained without dereferencing foreign storage.
     test_allocations: std::collections::HashMap<usize, TestVisibleAllocation>,
+    // Public XML_Mem* allocations are owned by their caller, but their
+    // allocator release route belongs to this parser.  Keep that route as an
+    // opaque closure keyed by the allocation address, so XML_MemFree need
+    // not carry either a raw allocation pointer or the ABI memory suite.
+    public_memory_releases: std::collections::HashMap<usize, Box<dyn FnOnce()>>,
 }
 
 #[derive(Copy, Clone)]
@@ -3876,6 +3881,7 @@ impl RootParserState {
             },
             allocations: std::collections::HashMap::new(),
             test_allocations: std::collections::HashMap::new(),
+            public_memory_releases: std::collections::HashMap::new(),
         }
     }
 }
@@ -11135,10 +11141,20 @@ unsafe fn XML_MemMalloc(
     parser: &mut XML_ParserStruct,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    parser
+    let allocation = parser
         .m_mem
         .malloc_fcn
-        .expect("non-null function pointer")(size)
+        .expect("non-null function pointer")(size);
+    if !allocation.is_null() {
+        let release = parser.m_mem.free_fcn.expect("non-null function pointer");
+        parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .public_memory_releases
+            .insert(allocation.addr(), Box::new(move || release(allocation)));
+    }
+    allocation
 }
 #[export_name = "XML_MemMalloc"]
 
@@ -11156,10 +11172,21 @@ unsafe fn XML_MemRealloc(
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    parser
+    let allocation = parser
         .m_mem
         .realloc_fcn
-        .expect("non-null function pointer")(ptr, size)
+        .expect("non-null function pointer")(ptr, size);
+    if !allocation.is_null() {
+        let release = parser.m_mem.free_fcn.expect("non-null function pointer");
+        let mut root = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        root.public_memory_releases.remove(&ptr.addr());
+        root.public_memory_releases
+            .insert(allocation.addr(), Box::new(move || release(allocation)));
+    }
+    allocation
 }
 #[export_name = "XML_MemRealloc"]
 
@@ -11173,11 +11200,20 @@ pub unsafe extern "C" fn XML_MemRealloc_ffi(
     };
     XML_MemRealloc(parser, ptr, size)
 }
-unsafe fn XML_MemFree(
-    parser: &mut XML_ParserStruct,
-    mut ptr: *mut ::core::ffi::c_void,
-) {
-    parser.m_mem.free_fcn.expect("non-null function pointer")(ptr);
+/// Releases an allocation returned by XML_MemMalloc or XML_MemRealloc.
+///
+/// The ABI wrapper converts the pointer to its opaque address key.  The
+/// release closure was recorded at allocation time, so allocator selection
+/// and foreign-pointer handling stay outside this safe implementation.
+fn XML_MemFree(root: &std::sync::Arc<std::sync::Mutex<RootParserState>>, address: usize) {
+    let release = root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .public_memory_releases
+        .remove(&address);
+    if let Some(release) = release {
+        release();
+    }
 }
 #[export_name = "XML_MemFree"]
 
@@ -11188,7 +11224,7 @@ pub unsafe extern "C" fn XML_MemFree_ffi(
     let Some(parser) = parser.as_mut() else {
         return;
     };
-    XML_MemFree(parser, ptr)
+    XML_MemFree(&parser.m_root, ptr.addr())
 }
 enum DefaultCurrentEvent {
     ParserInput { start: usize, bytes: Vec<u8> },
