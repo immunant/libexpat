@@ -1,4 +1,7 @@
 use ::c2rust_bitfields;
+use std::ffi::CStr;
+use std::ptr::NonNull;
+
 extern "C" {
     pub type _IO_wide_data;
     pub type _IO_codecvt;
@@ -212,14 +215,214 @@ pub struct TestCase {
 }
 pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
 pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
+
+fn c_str(bytes: &'static [u8]) -> &'static CStr {
+    CStr::from_bytes_with_nul(bytes).expect("static C string literal")
+}
+
+fn acc_tests_file() -> &'static CStr {
+    c_str(b"/root/work/expat/tests/acc_tests.c\0")
+}
+
+struct AccountingTestApi;
+
+impl AccountingTestApi {
+    fn set_test_info(function: &'static CStr, line: ::core::ffi::c_int) {
+        unsafe { _check_set_test_info(function.as_ptr(), acc_tests_file().as_ptr(), line) }
+    }
+
+    fn fail(line: ::core::ffi::c_int, message: &'static CStr) -> ! {
+        unsafe { _fail(acc_tests_file().as_ptr(), line, message.as_ptr()) }
+    }
+
+    fn xml_failure(parser: XML_Parser, line: ::core::ffi::c_int) {
+        unsafe { _xml_failure(parser, acc_tests_file().as_ptr(), line) }
+    }
+
+    fn strlen(value: *const ::core::ffi::c_char) -> size_t {
+        unsafe { strlen(value) }
+    }
+
+    fn strcmp(
+        left: *const ::core::ffi::c_char,
+        right: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        unsafe { strcmp(left, right) }
+    }
+
+    fn unsigned_char_to_printable(value: ::core::ffi::c_uchar) -> *const ::core::ffi::c_char {
+        unsafe { unsignedCharToPrintable(value) }
+    }
+
+    fn set_subtest_char(value: ::core::ffi::c_uint) {
+        unsafe { set_subtest(c_str(b"char %u\0").as_ptr(), value) }
+    }
+
+    fn set_subtest_label(label: &'static CStr) {
+        unsafe { set_subtest(label.as_ptr()) }
+    }
+
+    fn set_subtest_threshold(offset_of_threshold: ::core::ffi::c_int, expected_status: XML_Status) {
+        unsafe {
+            set_subtest(
+                c_str(b"offsetOfThreshold=%d, expectedStatus=%d\0").as_ptr(),
+                offset_of_threshold,
+                expected_status as ::core::ffi::c_uint,
+            )
+        }
+    }
+
+    fn report_direct_bytes_mismatch(
+        document_index: size_t,
+        count_cases: size_t,
+        expected: ::core::ffi::c_ulonglong,
+        actual: ::core::ffi::c_ulonglong,
+    ) {
+        unsafe {
+            fprintf(
+                stderr,
+                c_str(
+                    b"Document %lu of %lu: Expected %llu count direct bytes, got %llu instead.\n\0",
+                )
+                .as_ptr(),
+                document_index,
+                count_cases,
+                expected,
+                actual,
+            );
+        }
+    }
+
+    fn report_indirect_bytes_mismatch(
+        document_index: size_t,
+        count_cases: size_t,
+        expected: ::core::ffi::c_ulonglong,
+        actual: ::core::ffi::c_ulonglong,
+    ) {
+        unsafe {
+            fprintf(
+                stderr,
+                c_str(
+                    b"Document %lu of %lu: Expected %llu count indirect bytes, got %llu instead.\n\0",
+                )
+                .as_ptr(),
+                document_index,
+                count_cases,
+                expected,
+                actual,
+            );
+        }
+    }
+
+    fn set_maximum_amplification_raw(
+        parser: XML_Parser,
+        maximum_amplification_factor: ::core::ffi::c_float,
+    ) -> bool {
+        unsafe {
+            XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+                parser,
+                maximum_amplification_factor,
+            ) == XML_TRUE
+        }
+    }
+
+    fn set_activation_threshold_raw(
+        parser: XML_Parser,
+        activation_threshold_bytes: ::core::ffi::c_ulonglong,
+    ) -> bool {
+        unsafe {
+            XML_SetBillionLaughsAttackProtectionActivationThreshold(
+                parser,
+                activation_threshold_bytes,
+            ) == XML_TRUE
+        }
+    }
+}
+
+struct OwnedParser(NonNull<XML_ParserStruct>);
+
+impl OwnedParser {
+    fn new(encoding: *const XML_Char) -> Option<Self> {
+        NonNull::new(unsafe { XML_ParserCreate(encoding) }).map(Self)
+    }
+
+    fn new_external_entity(
+        parent: &Self,
+        context: *const XML_Char,
+        encoding: *const XML_Char,
+    ) -> Option<Self> {
+        NonNull::new(unsafe { XML_ExternalEntityParserCreate(parent.as_raw(), context, encoding) })
+            .map(Self)
+    }
+
+    fn as_raw(&self) -> XML_Parser {
+        self.0.as_ptr()
+    }
+
+    fn set_external_entity_ref_handler(&self, handler: XML_ExternalEntityRefHandler) {
+        unsafe { XML_SetExternalEntityRefHandler(self.as_raw(), handler) }
+    }
+
+    fn set_user_data(&self, user_data: *mut ::core::ffi::c_void) {
+        unsafe { XML_SetUserData(self.as_raw(), user_data) }
+    }
+
+    fn set_param_entity_parsing(&self, parsing: XML_ParamEntityParsing) -> ::core::ffi::c_int {
+        unsafe { XML_SetParamEntityParsing(self.as_raw(), parsing) }
+    }
+
+    fn set_maximum_amplification(
+        &self,
+        maximum_amplification_factor: ::core::ffi::c_float,
+    ) -> bool {
+        AccountingTestApi::set_maximum_amplification_raw(
+            self.as_raw(),
+            maximum_amplification_factor,
+        )
+    }
+
+    fn set_activation_threshold(
+        &self,
+        activation_threshold_bytes: ::core::ffi::c_ulonglong,
+    ) -> bool {
+        AccountingTestApi::set_activation_threshold_raw(self.as_raw(), activation_threshold_bytes)
+    }
+
+    fn parse_single_bytes(
+        &self,
+        text: *const ::core::ffi::c_char,
+        len: ::core::ffi::c_int,
+        is_final: ::core::ffi::c_int,
+    ) -> XML_Status {
+        unsafe { _XML_Parse_SINGLE_BYTES(self.as_raw(), text, len, is_final) }
+    }
+
+    fn get_error_code(&self) -> XML_Error {
+        unsafe { XML_GetErrorCode(self.as_raw()) }
+    }
+
+    fn count_bytes_direct(&self) -> ::core::ffi::c_ulonglong {
+        unsafe { testingAccountingGetCountBytesDirect(self.as_raw()) }
+    }
+
+    fn count_bytes_indirect(&self) -> ::core::ffi::c_ulonglong {
+        unsafe { testingAccountingGetCountBytesIndirect(self.as_raw()) }
+    }
+}
+
+impl Drop for OwnedParser {
+    fn drop(&mut self) {
+        unsafe { XML_ParserFree(self.as_raw()) }
+    }
+}
+
 extern "C" fn test_accounting_precision() {
-    unsafe {
-        _check_set_test_info(
-            b"test_accounting_precision\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            59 as ::core::ffi::c_int,
-        );
-        let mut cases: [AccountingTestCase; 36] = [
+    AccountingTestApi::set_test_info(
+        c_str(b"test_accounting_precision\0"),
+        59 as ::core::ffi::c_int,
+    );
+    let strlen = AccountingTestApi::strlen as fn(*const ::core::ffi::c_char) -> size_t;
+    let mut cases: [AccountingTestCase; 36] = [
             AccountingTestCase {
                 primaryText: b"<e/>\0".as_ptr() as *const ::core::ffi::c_char,
                 firstExternalText: ::core::ptr::null::<::core::ffi::c_char>(),
@@ -598,269 +801,187 @@ extern "C" fn test_accounting_precision() {
                 ) as ::core::ffi::c_ulonglong,
             },
         ];
-        let countCases: size_t = (::core::mem::size_of::<[AccountingTestCase; 36]>() as size_t)
-            .wrapping_div(::core::mem::size_of::<AccountingTestCase>() as size_t);
-        let mut u: size_t = 0 as size_t;
-        while u < countCases {
-            let expectedCountBytesDirect: ::core::ffi::c_ulonglong =
-                strlen(cases[u as usize].primaryText) as ::core::ffi::c_ulonglong;
-            let expectedCountBytesIndirect: ::core::ffi::c_ulonglong =
-                ((if !cases[u as usize].firstExternalText.is_null() {
-                    strlen(cases[u as usize].firstExternalText)
+    let countCases: size_t = (::core::mem::size_of::<[AccountingTestCase; 36]>() as size_t)
+        .wrapping_div(::core::mem::size_of::<AccountingTestCase>() as size_t);
+    let mut u: size_t = 0 as size_t;
+    while u < countCases {
+        let expectedCountBytesDirect: ::core::ffi::c_ulonglong =
+            AccountingTestApi::strlen(cases[u as usize].primaryText) as ::core::ffi::c_ulonglong;
+        let expectedCountBytesIndirect: ::core::ffi::c_ulonglong =
+            ((if !cases[u as usize].firstExternalText.is_null() {
+                AccountingTestApi::strlen(cases[u as usize].firstExternalText)
+            } else {
+                0 as size_t
+            })
+            .wrapping_add(
+                (if !cases[u as usize].secondExternalText.is_null() {
+                    AccountingTestApi::strlen(cases[u as usize].secondExternalText)
                 } else {
                     0 as size_t
-                })
-                .wrapping_add(
-                    (if !cases[u as usize].secondExternalText.is_null() {
-                        strlen(cases[u as usize].secondExternalText)
-                    } else {
-                        0 as size_t
-                    }),
-                ) as ::core::ffi::c_ulonglong)
-                    .wrapping_add(cases[u as usize].expectedCountBytesIndirectExtra);
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            if !cases[u as usize].firstExternalText.is_null() {
-                XML_SetExternalEntityRefHandler(
-                    parser,
-                    Some(
-                        accounting_external_entity_ref_handler
-                            as unsafe extern "C" fn(
-                                XML_Parser,
-                                *const XML_Char,
-                                *const XML_Char,
-                                *const XML_Char,
-                                *const XML_Char,
-                            )
-                                -> ::core::ffi::c_int,
-                    ),
-                );
-                XML_SetUserData(
-                    parser,
-                    (&raw mut cases as *mut AccountingTestCase).offset(u as isize)
-                        as *mut AccountingTestCase as *mut ::core::ffi::c_void,
-                );
+                }),
+            ) as ::core::ffi::c_ulonglong)
+                .wrapping_add(cases[u as usize].expectedCountBytesIndirectExtra);
+        let parser = match OwnedParser::new(::core::ptr::null::<XML_Char>()) {
+            Some(parser) => parser,
+            None => {
+                AccountingTestApi::fail(260 as ::core::ffi::c_int, c_str(b"Parser not created\0"))
             }
-            let mut status: XML_Status = _XML_Parse_SINGLE_BYTES(
-                parser,
-                cases[u as usize].primaryText,
-                strlen(cases[u as usize].primaryText) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
+        };
+        parser.set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        if !cases[u as usize].firstExternalText.is_null() {
+            parser.set_external_entity_ref_handler(Some(
+                accounting_external_entity_ref_handler
+                    as unsafe extern "C" fn(
+                        XML_Parser,
+                        *const XML_Char,
+                        *const XML_Char,
+                        *const XML_Char,
+                        *const XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ));
+            parser.set_user_data(
+                (&mut cases[u as usize] as *mut AccountingTestCase) as *mut ::core::ffi::c_void,
             );
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    parser,
-                    b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    264 as ::core::ffi::c_int,
-                );
-            }
-            let actualCountBytesDirect: ::core::ffi::c_ulonglong =
-                testingAccountingGetCountBytesDirect(parser) as ::core::ffi::c_ulonglong;
-            let actualCountBytesIndirect: ::core::ffi::c_ulonglong =
-                testingAccountingGetCountBytesIndirect(parser) as ::core::ffi::c_ulonglong;
-            XML_ParserFree(parser);
-            if actualCountBytesDirect != expectedCountBytesDirect {
-                fprintf(
-                    stderr,
-                    b"Document %lu of %lu: Expected %llu count direct bytes, got %llu instead.\n\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                    u.wrapping_add(1 as size_t),
-                    countCases,
-                    expectedCountBytesDirect,
-                    actualCountBytesDirect,
-                );
-                _fail(
-                    b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    280 as ::core::ffi::c_int,
-                    b"Count of direct bytes is off\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if actualCountBytesIndirect != expectedCountBytesIndirect {
-                fprintf(
-                    stderr,
-                    b"Document %lu of %lu: Expected %llu count indirect bytes, got %llu instead.\n\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                    u.wrapping_add(1 as size_t),
-                    countCases,
-                    expectedCountBytesIndirect,
-                    actualCountBytesIndirect,
-                );
-                _fail(
-                    b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    290 as ::core::ffi::c_int,
-                    b"Count of indirect bytes is off\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            u = u.wrapping_add(1);
         }
+        let status: XML_Status = parser.parse_single_bytes(
+            cases[u as usize].primaryText,
+            AccountingTestApi::strlen(cases[u as usize].primaryText) as ::core::ffi::c_int,
+            XML_TRUE as ::core::ffi::c_int,
+        );
+        if status as ::core::ffi::c_uint
+            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            AccountingTestApi::xml_failure(parser.as_raw(), 264 as ::core::ffi::c_int);
+        }
+        let actualCountBytesDirect: ::core::ffi::c_ulonglong =
+            parser.count_bytes_direct() as ::core::ffi::c_ulonglong;
+        let actualCountBytesIndirect: ::core::ffi::c_ulonglong =
+            parser.count_bytes_indirect() as ::core::ffi::c_ulonglong;
+        drop(parser);
+        if actualCountBytesDirect != expectedCountBytesDirect {
+            AccountingTestApi::report_direct_bytes_mismatch(
+                u.wrapping_add(1 as size_t),
+                countCases,
+                expectedCountBytesDirect,
+                actualCountBytesDirect,
+            );
+            AccountingTestApi::fail(
+                280 as ::core::ffi::c_int,
+                c_str(b"Count of direct bytes is off\0"),
+            );
+        }
+        if actualCountBytesIndirect != expectedCountBytesIndirect {
+            AccountingTestApi::report_indirect_bytes_mismatch(
+                u.wrapping_add(1 as size_t),
+                countCases,
+                expectedCountBytesIndirect,
+                actualCountBytesIndirect,
+            );
+            AccountingTestApi::fail(
+                290 as ::core::ffi::c_int,
+                c_str(b"Count of indirect bytes is off\0"),
+            );
+        }
+        u = u.wrapping_add(1);
     }
 }
 extern "C" fn test_billion_laughs_attack_protection_api() {
-    unsafe {
-        _check_set_test_info(
-            b"test_billion_laughs_attack_protection_api\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            296 as ::core::ffi::c_int,
+    AccountingTestApi::set_test_info(
+        c_str(b"test_billion_laughs_attack_protection_api\0"),
+        296 as ::core::ffi::c_int,
+    );
+    let parserWithoutParent = match OwnedParser::new(::core::ptr::null::<XML_Char>()) {
+        Some(parser) => parser,
+        None => AccountingTestApi::fail(
+            301 as ::core::ffi::c_int,
+            c_str(b"parserWithoutParent is NULL\0"),
+        ),
+    };
+    let parserWithParent = match OwnedParser::new_external_entity(
+        &parserWithoutParent,
+        c_str(b"entity123\0").as_ptr(),
+        ::core::ptr::null::<XML_Char>(),
+    ) {
+        Some(parser) => parser,
+        None => AccountingTestApi::fail(
+            303 as ::core::ffi::c_int,
+            c_str(b"parserWithParent is NULL\0"),
+        ),
+    };
+    if AccountingTestApi::set_maximum_amplification_raw(
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+        123.0f32,
+    ) {
+        AccountingTestApi::fail(
+            308 as ::core::ffi::c_int,
+            c_str(b"Call with NULL parser is NOT supposed to succeed\0"),
         );
-        let mut parserWithoutParent: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let mut parserWithParent: XML_Parser = XML_ExternalEntityParserCreate(
-            parserWithoutParent,
-            b"entity123\0".as_ptr() as *const XML_Char,
-            ::core::ptr::null::<XML_Char>(),
+    }
+    if AccountingTestApi::set_maximum_amplification_raw(parserWithParent.as_raw(), 123.0f32) {
+        AccountingTestApi::fail(
+            312 as ::core::ffi::c_int,
+            c_str(b"Call with non-root parser is NOT supposed to succeed\0"),
         );
-        if parserWithoutParent.is_null() {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                301 as ::core::ffi::c_int,
-                b"parserWithoutParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if parserWithParent.is_null() {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                303 as ::core::ffi::c_int,
-                b"parserWithParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-            ::core::ptr::null_mut::<XML_ParserStruct>(),
-            123.0f32,
-        ) as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                308 as ::core::ffi::c_int,
-                b"Call with NULL parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithParent, 123.0f32)
-            as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                312 as ::core::ffi::c_int,
-                b"Call with non-root parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-            parserWithoutParent,
-            ::core::f32::NAN,
-        ) as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                316 as ::core::ffi::c_int,
-                b"Call with NaN limit is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithoutParent, -1.0f32)
-            as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                320 as ::core::ffi::c_int,
-                b"Call with negative limit is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithoutParent, 0.9f32)
-            as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                324 as ::core::ffi::c_int,
-                b"Call with positive limit <1.0 is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(parserWithoutParent, 1.0f32)
-            as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                330 as ::core::ffi::c_int,
-                b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-            parserWithoutParent,
-            123456.789f32,
-        ) as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                334 as ::core::ffi::c_int,
-                b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-            parserWithoutParent,
-            ::core::f32::INFINITY,
-        ) as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                338 as ::core::ffi::c_int,
-                b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionActivationThreshold(
-            ::core::ptr::null_mut::<XML_ParserStruct>(),
-            123 as ::core::ffi::c_ulonglong,
-        ) as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                343 as ::core::ffi::c_int,
-                b"Call with NULL parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionActivationThreshold(
-            parserWithParent,
-            123 as ::core::ffi::c_ulonglong,
-        ) as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                347 as ::core::ffi::c_int,
-                b"Call with non-root parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetBillionLaughsAttackProtectionActivationThreshold(
-            parserWithoutParent,
-            123 as ::core::ffi::c_ulonglong,
-        ) as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                353 as ::core::ffi::c_int,
-                b"Call with non-NULL parentless parser is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parserWithParent);
-        XML_ParserFree(parserWithoutParent);
+    }
+    if parserWithoutParent.set_maximum_amplification(::core::f32::NAN) {
+        AccountingTestApi::fail(
+            316 as ::core::ffi::c_int,
+            c_str(b"Call with NaN limit is NOT supposed to succeed\0"),
+        );
+    }
+    if parserWithoutParent.set_maximum_amplification(-1.0f32) {
+        AccountingTestApi::fail(
+            320 as ::core::ffi::c_int,
+            c_str(b"Call with negative limit is NOT supposed to succeed\0"),
+        );
+    }
+    if parserWithoutParent.set_maximum_amplification(0.9f32) {
+        AccountingTestApi::fail(
+            324 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit <1.0 is NOT supposed to succeed\0"),
+        );
+    }
+    if !parserWithoutParent.set_maximum_amplification(1.0f32) {
+        AccountingTestApi::fail(
+            330 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit >=1.0 is supposed to succeed\0"),
+        );
+    }
+    if !parserWithoutParent.set_maximum_amplification(123456.789f32) {
+        AccountingTestApi::fail(
+            334 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit >=1.0 is supposed to succeed\0"),
+        );
+    }
+    if !parserWithoutParent.set_maximum_amplification(::core::f32::INFINITY) {
+        AccountingTestApi::fail(
+            338 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit >=1.0 is supposed to succeed\0"),
+        );
+    }
+    if AccountingTestApi::set_activation_threshold_raw(
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+        123 as ::core::ffi::c_ulonglong,
+    ) {
+        AccountingTestApi::fail(
+            343 as ::core::ffi::c_int,
+            c_str(b"Call with NULL parser is NOT supposed to succeed\0"),
+        );
+    }
+    if AccountingTestApi::set_activation_threshold_raw(
+        parserWithParent.as_raw(),
+        123 as ::core::ffi::c_ulonglong,
+    ) {
+        AccountingTestApi::fail(
+            347 as ::core::ffi::c_int,
+            c_str(b"Call with non-root parser is NOT supposed to succeed\0"),
+        );
+    }
+    if !parserWithoutParent.set_activation_threshold(123 as ::core::ffi::c_ulonglong) {
+        AccountingTestApi::fail(
+            353 as ::core::ffi::c_int,
+            c_str(b"Call with non-NULL parentless parser is supposed to succeed\0"),
+        );
     }
 }
 enum AccountingCallbackTest {
@@ -869,205 +990,150 @@ enum AccountingCallbackTest {
 }
 
 fn run_accounting_callback_test(test: AccountingCallbackTest) {
-    unsafe {
-        match test {
-            AccountingCallbackTest::UnsignedCharToPrintable => {
-                _check_set_test_info(
-                    b"test_helper_unsigned_char_to_printable\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    360 as ::core::ffi::c_int,
-                );
-                let mut uc: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
-                loop {
-                    set_subtest(
-                        b"char %u\0".as_ptr() as *const ::core::ffi::c_char,
-                        uc as ::core::ffi::c_uint,
+    match test {
+        AccountingCallbackTest::UnsignedCharToPrintable => {
+            AccountingTestApi::set_test_info(
+                c_str(b"test_helper_unsigned_char_to_printable\0"),
+                360 as ::core::ffi::c_int,
+            );
+            let mut uc: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
+            loop {
+                AccountingTestApi::set_subtest_char(uc as ::core::ffi::c_uint);
+                let printable =
+                    AccountingTestApi::unsigned_char_to_printable(uc) as *const ::core::ffi::c_char;
+                if printable.is_null() {
+                    AccountingTestApi::fail(
+                        367 as ::core::ffi::c_int,
+                        c_str(b"unsignedCharToPrintable returned NULL\0"),
                     );
-                    let printable = unsignedCharToPrintable(uc) as *const ::core::ffi::c_char;
-                    if printable.is_null() {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            367 as ::core::ffi::c_int,
-                            b"unsignedCharToPrintable returned NULL\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    } else if strlen(printable) < 1 as ::core::ffi::c_int as size_t {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            369 as ::core::ffi::c_int,
-                            b"unsignedCharToPrintable returned empty string\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    if uc as ::core::ffi::c_int
-                        == -(1 as ::core::ffi::c_int) as ::core::ffi::c_uchar as ::core::ffi::c_int
-                    {
-                        break;
-                    }
-                    uc = uc.wrapping_add(1);
+                } else if AccountingTestApi::strlen(printable) < 1 as ::core::ffi::c_int as size_t {
+                    AccountingTestApi::fail(
+                        369 as ::core::ffi::c_int,
+                        c_str(b"unsignedCharToPrintable returned empty string\0"),
+                    );
                 }
-                set_subtest(b"char 'A'\0".as_ptr() as *const ::core::ffi::c_char);
-                if strcmp(
-                    unsignedCharToPrintable('A' as i32 as ::core::ffi::c_uchar),
-                    b"A\0".as_ptr() as *const ::core::ffi::c_char,
-                ) != 0 as ::core::ffi::c_int
+                if uc as ::core::ffi::c_int
+                    == -(1 as ::core::ffi::c_int) as ::core::ffi::c_uchar as ::core::ffi::c_int
                 {
-                    _fail(
-                        b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        378 as ::core::ffi::c_int,
-                        b"unsignedCharToPrintable result mistaken\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                    );
+                    break;
                 }
-                set_subtest(b"char '\\'\0".as_ptr() as *const ::core::ffi::c_char);
-                if strcmp(
-                    unsignedCharToPrintable('\\' as i32 as ::core::ffi::c_uchar),
-                    b"\\\\\0".as_ptr() as *const ::core::ffi::c_char,
-                ) != 0 as ::core::ffi::c_int
-                {
-                    _fail(
-                        b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        381 as ::core::ffi::c_int,
-                        b"unsignedCharToPrintable result mistaken\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                    );
-                }
+                uc = uc.wrapping_add(1);
             }
-            AccountingCallbackTest::AmplificationIsolatedExternalParser => {
-                _check_set_test_info(
-                    b"test_amplification_isolated_external_parser\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    b"/root/work/expat/tests/acc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    385 as ::core::ffi::c_int,
+            AccountingTestApi::set_subtest_label(c_str(b"char 'A'\0"));
+            if AccountingTestApi::strcmp(
+                AccountingTestApi::unsigned_char_to_printable('A' as i32 as ::core::ffi::c_uchar),
+                c_str(b"A\0").as_ptr(),
+            ) != 0 as ::core::ffi::c_int
+            {
+                AccountingTestApi::fail(
+                    378 as ::core::ffi::c_int,
+                    c_str(b"unsignedCharToPrintable result mistaken\0"),
                 );
-                let doc = b"<!ENTITY % p1 '123456789_123456789_1234567'>\0";
-                let doc_len = doc.len() as ::core::ffi::c_int - 1 as ::core::ffi::c_int;
-                let maximum_tolerated_amplification: ::core::ffi::c_float = 2.0f32;
-                let cases = [
-                    TestCase {
-                        offsetOfThreshold: -(2 as ::core::ffi::c_int),
-                        expectedStatus: XML_STATUS_ERROR,
-                    },
-                    TestCase {
-                        offsetOfThreshold: -(1 as ::core::ffi::c_int),
-                        expectedStatus: XML_STATUS_ERROR,
-                    },
-                    TestCase {
-                        offsetOfThreshold: 0 as ::core::ffi::c_int,
-                        expectedStatus: XML_STATUS_ERROR,
-                    },
-                    TestCase {
-                        offsetOfThreshold: 1 as ::core::ffi::c_int,
-                        expectedStatus: XML_STATUS_OK,
-                    },
-                    TestCase {
-                        offsetOfThreshold: 2 as ::core::ffi::c_int,
-                        expectedStatus: XML_STATUS_OK,
-                    },
-                ];
+            }
+            AccountingTestApi::set_subtest_label(c_str(b"char '\\'\0"));
+            if AccountingTestApi::strcmp(
+                AccountingTestApi::unsigned_char_to_printable('\\' as i32 as ::core::ffi::c_uchar),
+                c_str(b"\\\\\0").as_ptr(),
+            ) != 0 as ::core::ffi::c_int
+            {
+                AccountingTestApi::fail(
+                    381 as ::core::ffi::c_int,
+                    c_str(b"unsignedCharToPrintable result mistaken\0"),
+                );
+            }
+        }
+        AccountingCallbackTest::AmplificationIsolatedExternalParser => {
+            AccountingTestApi::set_test_info(
+                c_str(b"test_amplification_isolated_external_parser\0"),
+                385 as ::core::ffi::c_int,
+            );
+            let doc = b"<!ENTITY % p1 '123456789_123456789_1234567'>\0";
+            let doc_len = doc.len() as ::core::ffi::c_int - 1 as ::core::ffi::c_int;
+            let maximum_tolerated_amplification: ::core::ffi::c_float = 2.0f32;
+            let cases = [
+                TestCase {
+                    offsetOfThreshold: -(2 as ::core::ffi::c_int),
+                    expectedStatus: XML_STATUS_ERROR,
+                },
+                TestCase {
+                    offsetOfThreshold: -(1 as ::core::ffi::c_int),
+                    expectedStatus: XML_STATUS_ERROR,
+                },
+                TestCase {
+                    offsetOfThreshold: 0 as ::core::ffi::c_int,
+                    expectedStatus: XML_STATUS_ERROR,
+                },
+                TestCase {
+                    offsetOfThreshold: 1 as ::core::ffi::c_int,
+                    expectedStatus: XML_STATUS_OK,
+                },
+                TestCase {
+                    offsetOfThreshold: 2 as ::core::ffi::c_int,
+                    expectedStatus: XML_STATUS_OK,
+                },
+            ];
 
-                for case in cases {
-                    let offset_of_threshold = case.offsetOfThreshold;
-                    let expected_status = case.expectedStatus;
-                    let activation_threshold_bytes =
-                        (doc_len + offset_of_threshold) as ::core::ffi::c_ulonglong;
-                    set_subtest(
-                        b"offsetOfThreshold=%d, expectedStatus=%d\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        offset_of_threshold,
-                        expected_status as ::core::ffi::c_uint,
-                    );
-                    let parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-                    if parser.is_null() {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            414 as ::core::ffi::c_int,
-                            b"check failed: parser != NULL\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    if !(XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-                        parser,
-                        maximum_tolerated_amplification,
-                    ) as ::core::ffi::c_int
-                        == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
+            for case in cases {
+                let offset_of_threshold = case.offsetOfThreshold;
+                let expected_status = case.expectedStatus;
+                let activation_threshold_bytes =
+                    (doc_len + offset_of_threshold) as ::core::ffi::c_ulonglong;
+                AccountingTestApi::set_subtest_threshold(offset_of_threshold, expected_status);
+                let parser = match OwnedParser::new(::core::ptr::null::<XML_Char>()) {
+                    Some(parser) => parser,
+                    None => AccountingTestApi::fail(
+                        414 as ::core::ffi::c_int,
+                        c_str(b"check failed: parser != NULL\0"),
+                    ),
+                };
+                if !parser.set_maximum_amplification(maximum_tolerated_amplification) {
+                    AccountingTestApi::fail(
                             418 as ::core::ffi::c_int,
-                            b"check failed: XML_SetBillionLaughsAttackProtectionMaximumAmplification( parser, maximumToleratedAmplification) == XML_TRUE\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
+                            c_str(b"check failed: XML_SetBillionLaughsAttackProtectionMaximumAmplification( parser, maximumToleratedAmplification) == XML_TRUE\0"),
                         );
-                    }
-                    if !(XML_SetBillionLaughsAttackProtectionActivationThreshold(
-                        parser,
-                        activation_threshold_bytes,
-                    ) as ::core::ffi::c_int
-                        == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            421 as ::core::ffi::c_int,
-                            b"check failed: XML_SetBillionLaughsAttackProtectionActivationThreshold( parser, activationThresholdBytes) == XML_TRUE\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    }
-                    let ext_parser = XML_ExternalEntityParserCreate(
-                        parser,
-                        ::core::ptr::null::<XML_Char>(),
-                        ::core::ptr::null::<XML_Char>(),
-                    );
-                    if ext_parser.is_null() {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            424 as ::core::ffi::c_int,
-                            b"check failed: ext_parser != NULL\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    let actual_status = _XML_Parse_SINGLE_BYTES(
-                        ext_parser,
-                        doc.as_ptr().cast::<::core::ffi::c_char>(),
-                        doc_len,
-                        XML_TRUE as ::core::ffi::c_int,
-                    ) as XML_Status;
-                    if !(actual_status as ::core::ffi::c_uint
-                        == expected_status as ::core::ffi::c_uint)
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            429 as ::core::ffi::c_int,
-                            b"check failed: actualStatus == expectedStatus\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    if actual_status as ::core::ffi::c_uint
-                        != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-                        && !(XML_GetErrorCode(ext_parser) as ::core::ffi::c_uint
-                            == XML_ERROR_AMPLIFICATION_LIMIT_BREACH as ::core::ffi::c_int
-                                as ::core::ffi::c_uint)
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/acc_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            432 as ::core::ffi::c_int,
-                            b"check failed: XML_GetErrorCode(ext_parser) == XML_ERROR_AMPLIFICATION_LIMIT_BREACH\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    }
-                    XML_ParserFree(ext_parser);
-                    XML_ParserFree(parser);
                 }
+                if !parser.set_activation_threshold(activation_threshold_bytes) {
+                    AccountingTestApi::fail(
+                            421 as ::core::ffi::c_int,
+                            c_str(b"check failed: XML_SetBillionLaughsAttackProtectionActivationThreshold( parser, activationThresholdBytes) == XML_TRUE\0"),
+                        );
+                }
+                let ext_parser = match OwnedParser::new_external_entity(
+                    &parser,
+                    ::core::ptr::null::<XML_Char>(),
+                    ::core::ptr::null::<XML_Char>(),
+                ) {
+                    Some(parser) => parser,
+                    None => AccountingTestApi::fail(
+                        424 as ::core::ffi::c_int,
+                        c_str(b"check failed: ext_parser != NULL\0"),
+                    ),
+                };
+                let actual_status = ext_parser.parse_single_bytes(
+                    doc.as_ptr().cast::<::core::ffi::c_char>(),
+                    doc_len,
+                    XML_TRUE as ::core::ffi::c_int,
+                ) as XML_Status;
+                if !(actual_status as ::core::ffi::c_uint == expected_status as ::core::ffi::c_uint)
+                {
+                    AccountingTestApi::fail(
+                        429 as ::core::ffi::c_int,
+                        c_str(b"check failed: actualStatus == expectedStatus\0"),
+                    );
+                }
+                if actual_status as ::core::ffi::c_uint
+                    != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+                    && !(ext_parser.get_error_code() as ::core::ffi::c_uint
+                        == XML_ERROR_AMPLIFICATION_LIMIT_BREACH as ::core::ffi::c_int
+                            as ::core::ffi::c_uint)
+                {
+                    AccountingTestApi::fail(
+                            432 as ::core::ffi::c_int,
+                            c_str(b"check failed: XML_GetErrorCode(ext_parser) == XML_ERROR_AMPLIFICATION_LIMIT_BREACH\0"),
+                        );
+                }
+                drop(ext_parser);
+                drop(parser);
             }
         }
     }
