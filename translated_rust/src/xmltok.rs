@@ -8306,66 +8306,27 @@ pub use crate::xmltok_impl_h::BT_SEMI;
 pub use crate::xmltok_impl_h::BT_SOL;
 pub use crate::xmltok_impl_h::BT_TRAIL;
 pub use crate::xmltok_impl_h::BT_VERBAR;
+
+pub type NORMAL_ENCODING_CHAR_CHECK = extern "C" fn(
+    *const crate::src::xmltok::ENCODING,
+    *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int;
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct normal_encoding {
     pub enc: crate::src::xmltok::ENCODING,
     pub type_0: [::core::ffi::c_uchar; 256],
-    pub isName2: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isName3: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isName4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt2: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt3: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid2: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid3: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub isName2: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isName3: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isName4: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isNmstrt2: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isNmstrt3: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isNmstrt4: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isInvalid2: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isInvalid3: Option<NORMAL_ENCODING_CHAR_CHECK>,
+    pub isInvalid4: Option<NORMAL_ENCODING_CHAR_CHECK>,
 }
 
 pub const UTF8_cval2: C2Rust_Unnamed_8 = 192;
@@ -8496,31 +8457,29 @@ fn normal_char_check(
     width: usize,
     check: NormalCharCheck,
 ) -> bool {
-    let callback = unsafe {
-        let normal = &*(enc as *const normal_encoding);
-        match check {
-            NormalCharCheck::Invalid => match width {
-                2 => normal.isInvalid2,
-                3 => normal.isInvalid3,
-                4 => normal.isInvalid4,
-                _ => None,
-            },
-            NormalCharCheck::Name => match width {
-                2 => normal.isName2,
-                3 => normal.isName3,
-                4 => normal.isName4,
-                _ => None,
-            },
-            NormalCharCheck::NameStart => match width {
-                2 => normal.isNmstrt2,
-                3 => normal.isNmstrt3,
-                4 => normal.isNmstrt4,
-                _ => None,
-            },
-        }
+    let normal = normal_encoding_ref(enc);
+    let callback = match check {
+        NormalCharCheck::Invalid => match width {
+            2 => normal.isInvalid2,
+            3 => normal.isInvalid3,
+            4 => normal.isInvalid4,
+            _ => None,
+        },
+        NormalCharCheck::Name => match width {
+            2 => normal.isName2,
+            3 => normal.isName3,
+            4 => normal.isName4,
+            _ => None,
+        },
+        NormalCharCheck::NameStart => match width {
+            2 => normal.isNmstrt2,
+            3 => normal.isNmstrt3,
+            4 => normal.isNmstrt4,
+            _ => None,
+        },
     };
     match callback {
-        Some(callback) => unsafe { callback(enc, p) != 0 },
+        Some(callback) => callback(enc, p) != 0,
         None => false,
     }
 }
@@ -10389,14 +10348,17 @@ fn byte_distance(
     (to as isize).wrapping_sub(from as isize) as ::core::ffi::c_long
 }
 
+fn normal_encoding_ref<'a>(
+    enc: *const crate::src::xmltok::ENCODING,
+) -> &'a crate::src::xmltok::normal_encoding {
+    unsafe { &*(enc as *const normal_encoding) }
+}
+
 fn normal_byte_type(
     enc: *const crate::src::xmltok::ENCODING,
     byte: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        (*(enc as *const normal_encoding)).type_0[byte as ::core::ffi::c_uchar as usize]
-            as ::core::ffi::c_int
-    }
+    normal_encoding_ref(enc).type_0[byte as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
 }
 
 fn position_mut<'a>(
@@ -11157,69 +11119,15 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
-    isName2: Some(
-        utf8_isName2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt2: Some(
-        utf8_isNmstrt2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid2: Some(
-        utf8_isInvalid2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName2: Some(utf8_isName2 as NORMAL_ENCODING_CHAR_CHECK),
+    isName3: Some(utf8_isName3 as NORMAL_ENCODING_CHAR_CHECK),
+    isName4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt2: Some(utf8_isNmstrt2 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt3: Some(utf8_isNmstrt3 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid2: Some(utf8_isInvalid2 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid3: Some(utf8_isInvalid3 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid4: Some(utf8_isInvalid4 as NORMAL_ENCODING_CHAR_CHECK),
 };
 
 static utf8_encoding: normal_encoding = normal_encoding {
@@ -11629,69 +11537,15 @@ static utf8_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
-    isName2: Some(
-        utf8_isName2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt2: Some(
-        utf8_isNmstrt2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid2: Some(
-        utf8_isInvalid2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName2: Some(utf8_isName2 as NORMAL_ENCODING_CHAR_CHECK),
+    isName3: Some(utf8_isName3 as NORMAL_ENCODING_CHAR_CHECK),
+    isName4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt2: Some(utf8_isNmstrt2 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt3: Some(utf8_isNmstrt3 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid2: Some(utf8_isInvalid2 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid3: Some(utf8_isInvalid3 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid4: Some(utf8_isInvalid4 as NORMAL_ENCODING_CHAR_CHECK),
 };
 
 static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
@@ -12101,69 +11955,15 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
-    isName2: Some(
-        utf8_isName2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt2: Some(
-        utf8_isNmstrt2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid2: Some(
-        utf8_isInvalid2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName2: Some(utf8_isName2 as NORMAL_ENCODING_CHAR_CHECK),
+    isName3: Some(utf8_isName3 as NORMAL_ENCODING_CHAR_CHECK),
+    isName4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt2: Some(utf8_isNmstrt2 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt3: Some(utf8_isNmstrt3 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid2: Some(utf8_isInvalid2 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid3: Some(utf8_isInvalid3 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid4: Some(utf8_isInvalid4 as NORMAL_ENCODING_CHAR_CHECK),
 };
 
 static internal_utf8_encoding: normal_encoding = normal_encoding {
@@ -12573,69 +12373,15 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
     ],
-    isName2: Some(
-        utf8_isName2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName3: Some(
-        utf8_isName3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isName4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt2: Some(
-        utf8_isNmstrt2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt3: Some(
-        utf8_isNmstrt3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid2: Some(
-        utf8_isInvalid2
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid3: Some(
-        utf8_isInvalid3
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isName2: Some(utf8_isName2 as NORMAL_ENCODING_CHAR_CHECK),
+    isName3: Some(utf8_isName3 as NORMAL_ENCODING_CHAR_CHECK),
+    isName4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt2: Some(utf8_isNmstrt2 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt3: Some(utf8_isNmstrt3 as NORMAL_ENCODING_CHAR_CHECK),
+    isNmstrt4: Some(isNever as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid2: Some(utf8_isInvalid2 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid3: Some(utf8_isInvalid3 as NORMAL_ENCODING_CHAR_CHECK),
+    isInvalid4: Some(utf8_isInvalid4 as NORMAL_ENCODING_CHAR_CHECK),
 };
 
 extern "C" fn latin1_toUtf8(
@@ -18050,123 +17796,15 @@ pub fn XmlInitUnknownEncoding(
     e.userData = userData;
     e.convert = convert;
     if convert.is_some() {
-        e.normal.isName2 = Some(
-            unknown_isName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isName3 = Some(
-            unknown_isName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isName4 = Some(
-            unknown_isName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isNmstrt2 = Some(
-            unknown_isNmstrt
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isNmstrt3 = Some(
-            unknown_isNmstrt
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isNmstrt4 = Some(
-            unknown_isNmstrt
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isInvalid2 = Some(
-            unknown_isInvalid
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isInvalid3 = Some(
-            unknown_isInvalid
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
-        e.normal.isInvalid4 = Some(
-            unknown_isInvalid
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-            >;
+        e.normal.isName2 = Some(unknown_isName as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isName3 = Some(unknown_isName as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isName4 = Some(unknown_isName as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isNmstrt2 = Some(unknown_isNmstrt as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isNmstrt3 = Some(unknown_isNmstrt as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isNmstrt4 = Some(unknown_isNmstrt as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isInvalid2 = Some(unknown_isInvalid as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isInvalid3 = Some(unknown_isInvalid as NORMAL_ENCODING_CHAR_CHECK);
+        e.normal.isInvalid4 = Some(unknown_isInvalid as NORMAL_ENCODING_CHAR_CHECK);
     }
     e.normal.enc.utf8Convert = Some(
         unknown_toUtf8
