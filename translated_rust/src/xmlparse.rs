@@ -2296,7 +2296,11 @@ pub struct C2Rust_Unnamed_1 {
 #[repr(C)]
 
 pub struct TAG_NAME {
-    pub str: *const crate::expat_external_h::XML_Char,
+    // Tag names either reside in the tag's allocator-backed buffer or in the
+    // temporary pool used for an empty element.  An offset/reference keeps
+    // that distinction explicit without retaining an address into either
+    // allocation.
+    pub str: TagNameStorage,
     // When namespace processing is active, this is the character offset of
     // the local part within the tag's allocator-backed name buffer.  Keeping
     // an offset rather than a pointer lets that buffer move during
@@ -2305,6 +2309,17 @@ pub struct TAG_NAME {
     pub strLen: ::core::ffi::c_int,
     pub uriLen: ::core::ffi::c_int,
     pub prefixLen: ::core::ffi::c_int,
+}
+
+#[derive(Copy, Clone)]
+pub enum TagNameStorage {
+    Unset,
+    TagBuffer { offset: usize },
+    TempPool(PoolStringRef),
+    // The expanded namespace name remains in the active binding's
+    // allocator-backed URI buffer.  Its binding is resolved from the DTD
+    // when the callback needs an address, rather than retained here.
+    NamespaceUri,
 }
 #[repr(C)]
 
@@ -6822,9 +6837,6 @@ unsafe extern "C" fn storeRawNames(
             if temp.is_null() {
                 return crate::expat_h::XML_FALSE;
             }
-            if (*tag).name.str == tag_buf as *const crate::expat_external_h::XML_Char {
-                (*tag).name.str = temp as *mut crate::expat_external_h::XML_Char;
-            }
             (*tag).bufEnd = temp;
             (*tag).bufSize = bufSize;
             rawNameBuf = temp.offset(nameLen as isize);
@@ -7422,13 +7434,14 @@ unsafe extern "C" fn doContent(
                                 .offset(convLen as isize);
                         }
                     }
-                    (*tag).name.str = (*tag).bufEnd as *mut crate::expat_external_h::XML_Char;
+                    (*tag).name.str = TagNameStorage::TagBuffer { offset: 0 };
                     *toPtr = '\0' as crate::expat_external_h::XML_Char;
                     result_0 = storeAtts(
                         parser,
                         enc,
                         s,
                         &raw mut (*tag).name,
+                        tag,
                         &raw mut (*tag).bindings,
                         account,
                     );
@@ -7443,9 +7456,19 @@ unsafe extern "C" fn doContent(
                             .get(&(parser as usize))
                             .cloned();
                         if let Some(callback) = callback {
+                            let name = match (*tag).name.str {
+                                TagNameStorage::TagBuffer { offset } => ((*tag).bufEnd
+                                    as *const crate::expat_external_h::XML_Char)
+                                    .offset(offset as isize),
+                                TagNameStorage::NamespaceUri => namespace_name_pointer(
+                                    parser,
+                                    (*tag).bufEnd as *const crate::expat_external_h::XML_Char,
+                                ),
+                                _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            };
                             callback.invoke(
                                 (*parser).m_handlerArg,
-                                (*tag).name.str,
+                                name,
                                 (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
                             );
                         }
@@ -7462,27 +7485,36 @@ unsafe extern "C" fn doContent(
                     let mut bindings: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
                     let mut noElmHandlers: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
                     let mut name_0: TAG_NAME = TAG_NAME {
-                        str: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                        str: TagNameStorage::Unset,
                         localPart: None,
                         strLen: 0,
                         uriLen: 0,
                         prefixLen: 0,
                     };
-                    name_0.str = poolStoreString(
+                    let name_string = poolStoreString(
                         &raw mut (*parser).m_tempPool,
                         enc,
                         rawName,
                         rawName.offset(crate::src::xmltok::name_length(enc, rawName) as isize),
                     );
-                    if name_0.str.is_null() {
+                    if name_string.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
+                    let Some(name_ref) = (*parser).m_tempPool.start_ref(false) else {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    };
+                    name_0.str = TagNameStorage::TempPool(name_ref);
+                    let raw_name_pointer = (*parser)
+                        .m_tempPool
+                        .chars_from(name_ref)
+                        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
                     (*parser).m_tempPool.commit();
                     result_1 = storeAtts(
                         parser,
                         enc,
                         s,
                         &raw mut name_0,
+                        ::core::ptr::null_mut(),
                         &raw mut bindings,
                         XML_ACCOUNT_NONE,
                     );
@@ -7493,6 +7525,16 @@ unsafe extern "C" fn doContent(
                         freeBindings(parser, bindings);
                         return result_1;
                     }
+                    let name_pointer = match name_0.str {
+                        TagNameStorage::TempPool(name) => (*parser)
+                            .m_tempPool
+                            .chars_from(name)
+                            .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                        TagNameStorage::NamespaceUri => {
+                            namespace_name_pointer(parser, raw_name_pointer)
+                        }
+                        _ => ::core::ptr::null(),
+                    };
                     (*parser).m_tempPool.commit();
                     if (*parser).m_startElementHandler {
                         let callback = START_ELEMENT_HANDLERS
@@ -7504,7 +7546,7 @@ unsafe extern "C" fn doContent(
                         if let Some(callback) = callback {
                             callback.invoke(
                                 (*parser).m_handlerArg,
-                                name_0.str,
+                                name_pointer,
                                 (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
                             );
                         }
@@ -7521,7 +7563,10 @@ unsafe extern "C" fn doContent(
                             .get(&(parser as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            callback.invoke((*parser).m_handlerArg, name_0.str);
+                            callback.invoke(
+                                (*parser).m_handlerArg,
+                                name_pointer,
+                            );
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
@@ -7581,13 +7626,26 @@ unsafe extern "C" fn doContent(
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             let mut uri: *mut crate::expat_external_h::XML_Char =
                                 ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+                            let name = match (*tag_0).name.str {
+                                TagNameStorage::TagBuffer { offset } => ((*tag_0).bufEnd
+                                    as *const crate::expat_external_h::XML_Char)
+                                    .offset(offset as isize),
+                                TagNameStorage::NamespaceUri => {
+                                    namespace_name_pointer(
+                                        parser,
+                                        (*tag_0).bufEnd
+                                            as *const crate::expat_external_h::XML_Char,
+                                    )
+                                }
+                                _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                            };
                             if let Some(localPartOffset) = (*tag_0).name.localPart {
                                 localPart = ((*tag_0).bufEnd
                                     as *const crate::expat_external_h::XML_Char)
                                     .offset(localPartOffset as isize);
                             }
                             if (*parser).m_ns as ::core::ffi::c_int != 0 && !localPart.is_null() {
-                                uri = ((*tag_0).name.str as *mut crate::expat_external_h::XML_Char)
+                                uri = (name as *mut crate::expat_external_h::XML_Char)
                                     .offset((*tag_0).name.uriLen as isize);
                                 while *localPart != 0 {
                                     let c2rust_fresh18 = localPart;
@@ -7632,7 +7690,10 @@ unsafe extern "C" fn doContent(
                                 .get(&(parser as usize))
                                 .cloned();
                             if let Some(callback) = callback {
-                                callback.invoke((*parser).m_handlerArg, (*tag_0).name.str);
+                                callback.invoke(
+                                    (*parser).m_handlerArg,
+                                    name,
+                                );
                             }
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
@@ -7898,11 +7959,51 @@ unsafe extern "C" fn freeBindings(
     }
 }
 
+unsafe fn namespace_name_pointer(
+    parser: crate::expat_h::XML_Parser,
+    name: *const crate::expat_external_h::XML_Char,
+) -> *const crate::expat_external_h::XML_Char {
+    let dtd = (*parser).m_dtd;
+    if dtd.is_null() {
+        return ::core::ptr::null();
+    }
+    let dtd_ref = &mut *dtd;
+    let element = lookup(
+        parser,
+        &raw mut dtd_ref.elementTypes,
+        name as KEY,
+        0,
+    ) as *mut ELEMENT_TYPE;
+    if element.is_null() {
+        return ::core::ptr::null();
+    }
+    let element_ref = &*element;
+    let binding = if element_ref.hasPrefix != 0 {
+        let prefix_name = pool_string_pointer(&raw const dtd_ref.pool, element_ref.prefix);
+        if prefix_name.is_null() {
+            return ::core::ptr::null();
+        }
+        let prefix = lookup(parser, &raw mut dtd_ref.prefixes, prefix_name as KEY, 0) as *mut PREFIX;
+        if prefix.is_null() {
+            return ::core::ptr::null();
+        }
+        (*prefix).binding
+    } else {
+        dtd_ref.defaultPrefix.binding
+    };
+    if binding.is_null() {
+        ::core::ptr::null()
+    } else {
+        (*binding).uri
+    }
+}
+
 unsafe extern "C" fn storeAtts(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut attStr: *const ::core::ffi::c_char,
     mut tagNamePtr: *mut TAG_NAME,
+    mut tagPtr: *mut TAG,
     mut bindingsPtr: *mut *mut BINDING,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
@@ -7920,15 +8021,29 @@ unsafe extern "C" fn storeAtts(
     let mut localPart: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut localPartOffset: usize = 0;
+    let tag_name_state = &mut *tagNamePtr;
+    let tag_name = match tag_name_state.str {
+        TagNameStorage::TagBuffer { offset } if !tagPtr.is_null() => {
+            ((*tagPtr).bufEnd as *const crate::expat_external_h::XML_Char).offset(offset as isize)
+        }
+        TagNameStorage::TempPool(name) => (*parser)
+            .m_tempPool
+            .chars_from(name)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+        _ => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    };
+    if tag_name.is_null() {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    }
     elementType = lookup(
         parser,
         &raw mut (*dtd).elementTypes,
-        (*tagNamePtr).str as KEY,
+        tag_name as KEY,
         0 as crate::__stddef_size_t_h::size_t,
     ) as *mut ELEMENT_TYPE;
     if elementType.is_null() {
         let mut name: *const crate::expat_external_h::XML_Char =
-            poolCopyString(&raw mut (*dtd).pool, (*tagNamePtr).str);
+            poolCopyString(&raw mut (*dtd).pool, tag_name);
         if name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -8485,8 +8600,9 @@ unsafe extern "C" fn storeAtts(
     }
     binding = *bindingsPtr;
     while !binding.is_null() {
-        *(*(*binding).attId).name.offset(-1 as isize) = 0 as crate::expat_external_h::XML_Char;
-        binding = (*binding).nextTagBinding as *mut BINDING;
+        let binding_ref = &*binding;
+        *(*binding_ref.attId).name.offset(-1 as isize) = 0 as crate::expat_external_h::XML_Char;
+        binding = binding_ref.nextTagBinding as *mut BINDING;
     }
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
@@ -8509,7 +8625,7 @@ unsafe extern "C" fn storeAtts(
         if binding.is_null() {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
         }
-        localPart = (*tagNamePtr).str;
+        localPart = tag_name;
         loop {
             let c2rust_fresh35 = localPart;
             localPart = localPart.offset(1);
@@ -8520,23 +8636,24 @@ unsafe extern "C" fn storeAtts(
         }
     } else if !(*dtd).defaultPrefix.binding.is_null() {
         binding = (*dtd).defaultPrefix.binding;
-        localPart = (*tagNamePtr).str;
+        localPart = tag_name;
     } else {
         return crate::expat_h::XML_ERROR_NONE;
     }
+    let binding_ref = &mut *binding;
     prefixLen = 0 as ::core::ffi::c_int;
-    if (*parser).m_ns_triplets as ::core::ffi::c_int != 0 && !(*(*binding).prefix).name.is_null() {
+    if (*parser).m_ns_triplets as ::core::ffi::c_int != 0 && !(*binding_ref.prefix).name.is_null() {
         loop {
             let c2rust_fresh36 = prefixLen;
             prefixLen = prefixLen + 1;
-            if *(*(*binding).prefix).name.offset(c2rust_fresh36 as isize) == 0 {
+            if *(*binding_ref.prefix).name.offset(c2rust_fresh36 as isize) == 0 {
                 break;
             }
         }
     }
-    (*tagNamePtr).localPart = Some(localPartOffset);
-    (*tagNamePtr).uriLen = (*binding).uriLen;
-    (*tagNamePtr).prefixLen = prefixLen;
+    tag_name_state.localPart = Some(localPartOffset);
+    tag_name_state.uriLen = binding_ref.uriLen;
+    tag_name_state.prefixLen = prefixLen;
     i = 0 as ::core::ffi::c_int;
     loop {
         let c2rust_fresh37 = i;
@@ -8545,14 +8662,13 @@ unsafe extern "C" fn storeAtts(
             break;
         }
     }
-    if (*binding).uriLen > crate::limits_h::INT_MAX - prefixLen
-        || i > crate::limits_h::INT_MAX - ((*binding).uriLen + prefixLen)
+    if binding_ref.uriLen > crate::limits_h::INT_MAX - prefixLen
+        || i > crate::limits_h::INT_MAX - (binding_ref.uriLen + prefixLen)
     {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
-    n = i + (*binding).uriLen + prefixLen;
-    if n > (*binding).uriAlloc {
-        let mut p: *mut TAG = ::core::ptr::null_mut::<TAG>();
+    n = i + binding_ref.uriLen + prefixLen;
+    if n > binding_ref.uriAlloc {
         if n > crate::limits_h::INT_MAX - EXPAND_SPARE {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -8565,28 +8681,21 @@ unsafe extern "C" fn storeAtts(
         if uri.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        (*binding).uriAlloc = n + EXPAND_SPARE;
+        binding_ref.uriAlloc = n + EXPAND_SPARE;
         crate::stdlib::memcpy(
             uri as *mut ::core::ffi::c_void,
-            (*binding).uri as *const ::core::ffi::c_void,
-            ((*binding).uriLen as crate::__stddef_size_t_h::size_t)
+            binding_ref.uri as *const ::core::ffi::c_void,
+            (binding_ref.uriLen as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
         );
-        p = (*parser).m_tagStack;
-        while !p.is_null() {
-            if (*p).name.str == (*binding).uri as *const crate::expat_external_h::XML_Char {
-                (*p).name.str = uri;
-            }
-            p = (*p).parent as *mut TAG;
-        }
         expat_free(
             parser,
-            (*binding).uri as *mut ::core::ffi::c_void,
+            binding_ref.uri as *mut ::core::ffi::c_void,
             4278 as ::core::ffi::c_int,
         );
-        (*binding).uri = uri;
+        binding_ref.uri = uri;
     }
-    uri = (*binding).uri.offset((*binding).uriLen as isize);
+    uri = binding_ref.uri.offset(binding_ref.uriLen as isize);
     crate::stdlib::memcpy(
         uri as *mut ::core::ffi::c_void,
         localPart as *const ::core::ffi::c_void,
@@ -8598,12 +8707,12 @@ unsafe extern "C" fn storeAtts(
         *uri = (*parser).m_namespaceSeparator;
         crate::stdlib::memcpy(
             uri.offset(1 as ::core::ffi::c_int as isize) as *mut ::core::ffi::c_void,
-            (*(*binding).prefix).name as *const ::core::ffi::c_void,
+            (*binding_ref.prefix).name as *const ::core::ffi::c_void,
             (prefixLen as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
         );
     }
-    (*tagNamePtr).str = (*binding).uri;
+    tag_name_state.str = TagNameStorage::NamespaceUri;
     return crate::expat_h::XML_ERROR_NONE;
 }
 
