@@ -11062,7 +11062,11 @@ pub mod xmltok_ns_c {
         mut encPtr: *mut *const crate::src::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let mut i: ::core::ffi::c_int = getEncodingIndex(name);
+        let mut i: ::core::ffi::c_int = if name.is_null() {
+            NO_ENC as ::core::ffi::c_int
+        } else {
+            encoding_index(unsafe { core::ffi::CStr::from_ptr(name) }.to_bytes())
+        };
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return 0 as ::core::ffi::c_int;
         }
@@ -11110,7 +11114,8 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
+        let name_len = buf.iter().position(|&byte| byte == 0).unwrap_or(buf.len());
+        i = encoding_index_chars(&buf[..name_len]);
         if i == UTF_16_ENC as ::core::ffi::c_int
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
@@ -11247,7 +11252,11 @@ pub mod xmltok_ns_c {
         mut encPtr: *mut *const crate::src::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let mut i: ::core::ffi::c_int = getEncodingIndex(name);
+        let mut i: ::core::ffi::c_int = if name.is_null() {
+            NO_ENC as ::core::ffi::c_int
+        } else {
+            encoding_index(unsafe { core::ffi::CStr::from_ptr(name) }.to_bytes())
+        };
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return 0 as ::core::ffi::c_int;
         }
@@ -11295,7 +11304,8 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
+        let name_len = buf.iter().position(|&byte| byte == 0).unwrap_or(buf.len());
+        i = encoding_index_chars(&buf[..name_len]);
         if i == UTF_16_ENC as ::core::ffi::c_int
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
@@ -11368,12 +11378,14 @@ pub mod xmltok_ns_c {
         )
     }
     use crate::src::xmltok::doParseXmlDecl;
-    use crate::src::xmltok::getEncodingIndex;
+    use crate::src::xmltok::encoding_index;
+    use crate::src::xmltok::encoding_index_chars;
     use crate::src::xmltok::initScan;
     use crate::src::xmltok::internal_little2_encoding;
     use crate::src::xmltok::internal_little2_encoding_ns;
     use crate::src::xmltok::internal_utf8_encoding;
     use crate::src::xmltok::internal_utf8_encoding_ns;
+    use crate::src::xmltok::NO_ENC;
     use crate::src::xmltok::UNKNOWN_ENC;
     use crate::src::xmltok::UTF_16_ENC;
 }
@@ -18064,15 +18076,30 @@ fn encoding_index(name: &[u8]) -> ::core::ffi::c_int {
         })
 }
 
-/// # Safety
-///
-/// `name` is either null or points to a readable, NUL-terminated C string.
-unsafe extern "C" fn getEncodingIndex(name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    if name.is_null() {
-        return NO_ENC as ::core::ffi::c_int;
-    }
-    let name = unsafe { core::ffi::CStr::from_ptr(name) }.to_bytes();
-    encoding_index(name)
+/// Looks up the ASCII encoding names in a tokenizer-owned C-character buffer.
+/// The buffer is already bounded and NUL-terminated by the converter, so no
+/// C-string reconstruction or allocation is required here.
+fn encoding_index_chars(name: &[::core::ffi::c_char]) -> ::core::ffi::c_int {
+    const ENCODING_NAMES: [&[u8]; 6] = [
+        b"iso-8859-1",
+        b"us-ascii",
+        b"utf-8",
+        b"utf-16",
+        b"utf-16be",
+        b"utf-16le",
+    ];
+
+    ENCODING_NAMES
+        .iter()
+        .position(|candidate| {
+            name.len() == candidate.len()
+                && name.iter().zip(candidate.iter()).all(|(&left, &right)| {
+                    (left as u8).to_ascii_uppercase() == right.to_ascii_uppercase()
+                })
+        })
+        .map_or(UNKNOWN_ENC as ::core::ffi::c_int, |index| {
+            index as ::core::ffi::c_int
+        })
 }
 
 #[derive(Copy, Clone)]
