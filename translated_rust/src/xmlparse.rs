@@ -1340,24 +1340,11 @@ where
     }
 }
 
-trait EndNamespaceDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        prefix: *const crate::expat_external_h::XML_Char,
-    );
-}
+trait EndNamespaceDeclCallback: Send + Sync + std::any::Any {}
 
 impl EndNamespaceDeclCallback
     for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        prefix: *const crate::expat_external_h::XML_Char,
-    ) {
-        self(user_data, prefix);
-    }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
@@ -14153,8 +14140,16 @@ fn dispatch_end_namespace_decl_callback(
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     if let Some(callback) = callback {
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return;
+        };
         unsafe {
-            callback.invoke(
+            callback(
                 handler_arg_from_state!(parser),
                 prefix.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
             );
