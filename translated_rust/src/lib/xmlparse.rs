@@ -4655,8 +4655,8 @@ extern "C" fn doContent(
                                         }
                                     } else {
                                         result = processEntity(
-                                            parser,
-                                            entity,
+                                            &mut *parser,
+                                            &mut *entity,
                                             XML_FALSE,
                                             ENTITY_INTERNAL,
                                         );
@@ -8042,8 +8042,8 @@ extern "C" fn doProlog(
                                             XML_FALSE as ::core::ffi::c_int
                                         }) as XML_Bool;
                                     result_4 = processEntity(
-                                        parser,
-                                        entity_1,
+                                        &mut *parser,
+                                        &mut *entity_1,
                                         betweenDecl,
                                         ENTITY_INTERNAL,
                                     );
@@ -8553,87 +8553,95 @@ extern "C" fn epilogProcessor(
         ptr_mut(parser).m_eventPtr = s;
     }
 }
-extern "C" fn processEntity(
-    mut parser: XML_Parser,
-    mut entity: *mut ENTITY,
+fn processEntity(
+    parser: &mut XML_ParserStruct,
+    entity: &mut ENTITY,
     mut betweenDecl: XML_Bool,
     mut type_0: EntityType,
 ) -> XML_Error {
-    unsafe {
-        let mut openEntity: *mut OPEN_INTERNAL_ENTITY =
-            ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        let mut openEntityList: *mut *mut OPEN_INTERNAL_ENTITY =
-            ::core::ptr::null_mut::<*mut OPEN_INTERNAL_ENTITY>();
-        let mut freeEntityList: *mut *mut OPEN_INTERNAL_ENTITY =
-            ::core::ptr::null_mut::<*mut OPEN_INTERNAL_ENTITY>();
-        match type_0 as ::core::ffi::c_uint {
-            0 => {
-                (*parser).m_processor = Some(
-                    internalEntityProcessor
-                        as extern "C" fn(
-                            XML_Parser,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> XML_Error,
-                );
-                openEntityList = &raw mut (*parser).m_openInternalEntities;
-                freeEntityList = &raw mut (*parser).m_freeInternalEntities;
-            }
-            1 => {
-                openEntityList = &raw mut (*parser).m_openAttributeEntities;
-                freeEntityList = &raw mut (*parser).m_freeAttributeEntities;
-            }
-            2 => {
-                openEntityList = &raw mut (*parser).m_openValueEntities;
-                freeEntityList = &raw mut (*parser).m_freeValueEntities;
-            }
+    if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        parser.m_processor = Some(
+            internalEntityProcessor
+                as extern "C" fn(
+                    XML_Parser,
+                    *const ::core::ffi::c_char,
+                    *const ::core::ffi::c_char,
+                    *mut *const ::core::ffi::c_char,
+                ) -> XML_Error,
+        );
+    }
+
+    let openEntity = {
+        let (openEntityList, freeEntityList) = match type_0 as ::core::ffi::c_uint {
+            0 => (
+                &raw mut parser.m_openInternalEntities,
+                &raw mut parser.m_freeInternalEntities,
+            ),
+            1 => (
+                &raw mut parser.m_openAttributeEntities,
+                &raw mut parser.m_freeAttributeEntities,
+            ),
+            2 => (
+                &raw mut parser.m_openValueEntities,
+                &raw mut parser.m_freeValueEntities,
+            ),
             _ => {
                 if 0 as ::core::ffi::c_int != 0 {
+                    unreachable!();
                 } else {
-                    __assert_fail(
-                        b"0\0".as_ptr() as *const ::core::ffi::c_char,
-                        b"/root/work/expat/lib/xmlparse.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
+                    xmlparse_assert_fail!(
+                        b"0\0",
                         6374 as ::core::ffi::c_uint,
-                        b"enum XML_Error processEntity(XML_Parser, ENTITY *, XML_Bool, enum EntityType)\0"
-                            .as_ptr() as *const ::core::ffi::c_char,
+                        b"enum XML_Error processEntity(XML_Parser, ENTITY *, XML_Bool, enum EntityType)\0",
                     );
-                };
+                }
             }
-        }
-        if !(*freeEntityList).is_null() {
-            openEntity = *freeEntityList;
-            *freeEntityList = (*openEntity).next as *mut OPEN_INTERNAL_ENTITY;
+        };
+
+        let freeEntityList = ptr_mut(freeEntityList);
+        let openEntity = if !(*freeEntityList).is_null() {
+            let openEntity = *freeEntityList;
+            *freeEntityList = ptr_mut(openEntity).next as *mut OPEN_INTERNAL_ENTITY;
+            openEntity
         } else {
-            openEntity = expat_malloc(
-                parser,
+            let openEntity = expat_malloc_ptr!(
+                parser as *mut XML_ParserStruct,
                 ::core::mem::size_of::<OPEN_INTERNAL_ENTITY>() as size_t,
                 6382 as ::core::ffi::c_int,
-            ) as *mut OPEN_INTERNAL_ENTITY;
+                OPEN_INTERNAL_ENTITY,
+            );
             if openEntity.is_null() {
                 return XML_ERROR_NO_MEMORY;
             }
-        }
-        (*entity).open = XML_TRUE;
-        (*entity).hasMore = XML_TRUE;
-        entityTrackingOnOpen(&mut *parser, &*entity, 6389 as ::core::ffi::c_int);
-        (*entity).processed = 0 as ::core::ffi::c_int;
-        (*openEntity).next = *openEntityList as *mut open_internal_entity;
+            openEntity
+        };
+
+        let openEntityList = ptr_mut(openEntityList);
+        ptr_mut(openEntity).next = *openEntityList as *mut open_internal_entity;
         *openEntityList = openEntity;
-        (*openEntity).entity = entity;
-        (*openEntity).type_0 = type_0;
-        (*openEntity).startTagLevel = (*parser).m_tagLevel;
-        (*openEntity).betweenDecl = betweenDecl;
-        (*openEntity).internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        (*openEntity).internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        if type_0 as ::core::ffi::c_uint
-            == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            triggerReenter(parser);
-        }
-        return XML_ERROR_NONE;
+        openEntity
+    };
+
+    entity.open = XML_TRUE;
+    entity.hasMore = XML_TRUE;
+    entityTrackingOnOpen(parser, entity, 6389 as ::core::ffi::c_int);
+    entity.processed = 0 as ::core::ffi::c_int;
+
+    let openEntity = ptr_mut(openEntity);
+    openEntity.entity = entity as *mut ENTITY;
+    openEntity.type_0 = type_0;
+    openEntity.startTagLevel = parser.m_tagLevel;
+    openEntity.betweenDecl = betweenDecl;
+    openEntity.internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    openEntity.internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+
+    if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        parser.m_reenter = XML_TRUE;
     }
+
+    XML_ERROR_NONE
 }
 extern "C" fn internalEntityProcessor(
     mut parser: XML_Parser,
@@ -9088,8 +9096,12 @@ extern "C" fn appendAttributeValue(
                                     return XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
                                 } else {
                                     let mut result: XML_Error = XML_ERROR_NONE;
-                                    result =
-                                        processEntity(parser, entity, XML_FALSE, ENTITY_ATTRIBUTE);
+                                    result = processEntity(
+                                        &mut *parser,
+                                        &mut *entity,
+                                        XML_FALSE,
+                                        ENTITY_ATTRIBUTE,
+                                    );
                                     if result as ::core::ffi::c_uint
                                         == XML_ERROR_NONE as ::core::ffi::c_int
                                             as ::core::ffi::c_uint
@@ -9262,7 +9274,12 @@ extern "C" fn storeEntityValue(
                                         (*dtd).keepProcessing = (*dtd).standalone;
                                     }
                                 } else {
-                                    result = processEntity(parser, entity, XML_FALSE, ENTITY_VALUE);
+                                    result = processEntity(
+                                        &mut *parser,
+                                        &mut *entity,
+                                        XML_FALSE,
+                                        ENTITY_VALUE,
+                                    );
                                     break;
                                 }
                             }
