@@ -1289,7 +1289,7 @@ static START_NAMESPACE_DECL_HANDLERS: std::sync::OnceLock<
 trait EndElementCallback: Send + Sync + std::any::Any {}
 
 impl EndElementCallback
-    for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
+    for extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
 {
 }
 
@@ -2140,15 +2140,20 @@ fn dispatch_end_element_callback(
     parser: &XML_ParserStruct,
     name: &[crate::expat_external_h::XML_Char],
 ) -> bool {
+    // The safe callback representation is valid only for the documented
+    // NUL-terminated name view prepared by the content processors.
+    if name.last().copied() != Some(0) {
+        return false;
+    }
     let Some(callback) = (callback as &dyn std::any::Any).downcast_ref::<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *mut ::core::ffi::c_void,
             *const crate::expat_external_h::XML_Char,
         ),
     >() else {
         return false;
     };
-    unsafe { callback(handler_arg_from_state!(parser), name.as_ptr()) }
+    callback(handler_arg_from_state!(parser), name.as_ptr());
     true
 }
 
@@ -9700,6 +9705,16 @@ pub unsafe extern "C" fn XML_SetElementHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // An end-element callback receives a validated, callback-scoped XML name
+    // from `dispatch_end_element_callback`.  Its C ABI is identical; this
+    // conversion records that the adapter, rather than every dispatch site,
+    // now discharges the callback's pointer preconditions.
+    let end: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    > = unsafe { ::core::mem::transmute(end) };
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_start_element_handler(parser, parser_address, start);
     set_end_element_handler(parser, parser_address, end);
@@ -9771,6 +9786,14 @@ pub unsafe extern "C" fn XML_SetEndElementHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // See `XML_SetElementHandler_ffi`: dispatch supplies the valid,
+    // NUL-terminated callback view before this safe representation is called.
+    let end: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    > = unsafe { ::core::mem::transmute(end) };
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_end_element_handler(parser, parser_address, end)
 }
