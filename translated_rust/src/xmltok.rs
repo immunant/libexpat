@@ -237,6 +237,15 @@ pub enum Utf8Converter {
     Big2,
     Unknown,
 }
+
+#[derive(Copy, Clone)]
+pub enum Utf16Converter {
+    Utf8,
+    Latin1,
+    Little2,
+    Big2,
+    Unknown,
+}
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -301,15 +310,8 @@ pub struct encoding {
         ) -> ::core::ffi::c_int,
     >,
     pub utf8Convert: crate::src::xmltok::Utf8Converter,
-    pub utf16Convert: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *mut *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *mut *mut ::core::ffi::c_ushort,
-            *const ::core::ffi::c_ushort,
-        ) -> crate::src::xmltok::XML_Convert_Result,
-    >,
+    /// Selects the fixed UTF-16 converter without retaining a raw callback.
+    pub utf16Convert: crate::src::xmltok::Utf16Converter,
     pub minBytesPerChar: ::core::ffi::c_int,
     pub isUtf8: ::core::ffi::c_char,
     pub isUtf16: ::core::ffi::c_char,
@@ -14518,16 +14520,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Utf8,
-        utf16Convert: Some(
-            utf8_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -14981,16 +14974,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Utf8,
-        utf16Convert: Some(
-            utf8_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -15444,16 +15428,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Utf8,
-        utf16Convert: Some(
-            utf8_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -15907,16 +15882,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Utf8,
-        utf16Convert: Some(
-            utf8_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Utf8,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -16431,16 +16397,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Latin1,
-        utf16Convert: Some(
-            latin1_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -16840,16 +16797,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Latin1,
-        utf16Convert: Some(
-            latin1_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -17270,16 +17218,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Ascii,
-        utf16Convert: Some(
-            latin1_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -17679,16 +17618,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Ascii,
-        utf16Convert: Some(
-            latin1_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Latin1,
         minBytesPerChar: 1 as ::core::ffi::c_int,
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -18436,16 +18366,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Little2,
-        utf16Convert: Some(
-            little2_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
@@ -18845,16 +18766,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Little2,
-        utf16Convert: Some(
-            little2_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
@@ -19254,16 +19166,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Little2,
-        utf16Convert: Some(
-            little2_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
@@ -19663,16 +19566,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Little2,
-        utf16Convert: Some(
-            little2_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Little2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
@@ -20072,16 +19966,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Big2,
-        utf16Convert: Some(
-            big2_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Big2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -20481,16 +20366,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
                 ) -> ::core::ffi::c_int,
         ),
         utf8Convert: Utf8Converter::Big2,
-        utf16Convert: Some(
-            big2_toUtf16
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> crate::src::xmltok::XML_Convert_Result,
-        ),
+        utf16Convert: Utf16Converter::Big2,
         minBytesPerChar: 2 as ::core::ffi::c_int,
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
@@ -21613,25 +21489,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
             >;
     }
     (*e).normal.enc.utf8Convert = Utf8Converter::Unknown;
-    (*e).normal.enc.utf16Convert = Some(
-        unknown_toUtf16
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *mut *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *mut *mut ::core::ffi::c_ushort,
-                *const ::core::ffi::c_ushort,
-            ) -> crate::src::xmltok::XML_Convert_Result,
-    )
-        as Option<
-            unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *mut *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *mut *mut ::core::ffi::c_ushort,
-                *const ::core::ffi::c_ushort,
-            ) -> crate::src::xmltok::XML_Convert_Result,
-        >;
+    (*e).normal.enc.utf16Convert = Utf16Converter::Unknown;
     return &raw mut (*e).normal.enc;
 }
 #[export_name = "XmlInitUnknownEncoding"]
