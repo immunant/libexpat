@@ -1950,6 +1950,26 @@ impl NotStandaloneCallback
 {
 }
 
+/// A not-standalone handler registration prepared from the ABI callback value.
+///
+/// Parser state records only whether a handler is installed; the callable
+/// foreign callback remains in the boundary registry keyed by the opaque
+/// parser address.
+struct NotStandaloneHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn NotStandaloneCallback>>,
+}
+
+fn not_standalone_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> NotStandaloneHandlerRegistration
+where
+    Callback: NotStandaloneCallback + 'static,
+{
+    NotStandaloneHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 /// Invokes the not-standalone callback after the parser has captured the
 /// callback's typed view of its handler context.  Keeping the ABI call here
 /// lets parser state machines report the event without directly invoking a
@@ -1971,6 +1991,26 @@ fn dispatch_not_standalone_callback(
 static NOT_STANDALONE_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn NotStandaloneCallback>>>,
 > = std::sync::OnceLock::new();
+
+fn set_not_standalone_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: NotStandaloneHandlerRegistration,
+) {
+    parser.m_notStandaloneHandler = registration.callback.is_some();
+    let mut handlers = NOT_STANDALONE_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
+        }
+    }
+}
 
 /// Dispatches character data that is already held in typed Rust storage.
 ///
@@ -9712,34 +9752,19 @@ pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_end_namespace_decl_handler(parser, parser_address, registration)
 }
-pub unsafe extern "C" fn XML_SetNotStandaloneHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_NotStandaloneHandler,
-) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_notStandaloneHandler = handler.is_some();
-    let mut handlers = NOT_STANDALONE_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    match handler {
-        Some(callback) => {
-            handlers.insert(parser as usize, std::sync::Arc::new(callback));
-        }
-        None => {
-            handlers.remove(&(parser as usize));
-        }
-    }
-}
 #[export_name = "XML_SetNotStandaloneHandler"]
 
 pub unsafe extern "C" fn XML_SetNotStandaloneHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_NotStandaloneHandler,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_NotStandaloneHandler,
 ) {
-    XML_SetNotStandaloneHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = not_standalone_handler_registration(handler);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_not_standalone_handler(parser, parser_address, registration);
 }
 #[export_name = "XML_SetExternalEntityRefHandler"]
 
