@@ -2734,10 +2734,8 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
 ) -> crate::expat_h::XML_Bool {
     XML_ParserReset(parser, encodingName)
 }
-unsafe extern "C" fn parserBusy(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Bool {
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+fn parserBusy(parser: &XML_ParserStruct) -> crate::expat_h::XML_Bool {
+    match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
         1 | 3 => return crate::expat_h::XML_TRUE,
         0 | 2 | _ => return crate::expat_h::XML_FALSE,
     };
@@ -2749,7 +2747,7 @@ pub unsafe extern "C" fn XML_SetEncoding(
     if parser.is_null() {
         return crate::expat_h::XML_STATUS_ERROR;
     }
-    if parserBusy(parser) != 0 {
+    if parserBusy(&*parser) != 0 {
         return crate::expat_h::XML_STATUS_ERROR;
     }
     expat_free(
@@ -3145,7 +3143,7 @@ pub unsafe extern "C" fn XML_UseForeignDTD(
     if parser.is_null() {
         return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
     }
-    if parserBusy(parser) != 0 {
+    if parserBusy(&*parser) != 0 {
         return crate::expat_h::XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
     }
     (*parser).m_useForeignDTD = useDTD;
@@ -3166,7 +3164,7 @@ pub unsafe extern "C" fn XML_SetReturnNSTriplet(
     if parser.is_null() {
         return;
     }
-    if parserBusy(parser) != 0 {
+    if parserBusy(&*parser) != 0 {
         return;
     }
     (*parser).m_ns_triplets = (if do_nst != 0 {
@@ -3760,7 +3758,7 @@ pub unsafe extern "C" fn XML_SetParamEntityParsing(
     if parser.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    if parserBusy(parser) != 0 {
+    if parserBusy(&*parser) != 0 {
         return 0 as ::core::ffi::c_int;
     }
     (*parser).m_paramEntityParsing = peParsing;
@@ -3796,7 +3794,7 @@ pub unsafe extern "C" fn XML_SetHashSalt(
             );
         }
     };
-    if parserBusy(rootParser) != 0 {
+    if parserBusy(&*rootParser) != 0 {
         return 0 as ::core::ffi::c_int;
     }
     (*rootParser).m_hash_secret_salt = hash_salt;
@@ -6332,8 +6330,7 @@ unsafe extern "C" fn storeAtts(
                     p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
                     c: 0,
                 };
-                let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-                copy_salt_to_sipkey(parser, &raw mut sip_key);
+                let sip_key = sipkey_from_hash_secret_salt(get_hash_secret_salt(parser));
                 sip24_init(&mut sip_state, &sip_key);
                 *(s as *mut crate::expat_external_h::XML_Char)
                     .offset(-1 as ::core::ffi::c_int as isize) =
@@ -11747,13 +11744,15 @@ fn keylen(s: &CStr) -> crate::__stddef_size_t_h::size_t {
     s.to_bytes().len()
 }
 
-unsafe extern "C" fn copy_salt_to_sipkey(
-    mut parser: crate::expat_h::XML_Parser,
-    mut key: *mut crate::siphash_h::sipkey,
-) {
-    (*key).k[0 as ::core::ffi::c_int as usize] = 0 as crate::stdlib::uint64_t;
-    (*key).k[1 as ::core::ffi::c_int as usize] =
-        get_hash_secret_salt(parser) as crate::stdlib::uint64_t;
+fn sipkey_from_hash_secret_salt(
+    hash_secret_salt: ::core::ffi::c_ulong,
+) -> crate::siphash_h::sipkey {
+    crate::siphash_h::sipkey {
+        k: [
+            0 as crate::stdlib::uint64_t,
+            hash_secret_salt as crate::stdlib::uint64_t,
+        ],
+    }
 }
 
 unsafe extern "C" fn hash(
@@ -11769,8 +11768,7 @@ unsafe extern "C" fn hash(
         p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
         c: 0,
     };
-    let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-    copy_salt_to_sipkey(parser, &raw mut key);
+    let key = sipkey_from_hash_secret_salt(get_hash_secret_salt(parser));
     sip24_init(&mut state, &key);
     let key = CStr::from_ptr(s as *const ::core::ffi::c_char);
     let key_bytes = &key.to_bytes()[..keylen(key)];
@@ -12204,9 +12202,7 @@ unsafe extern "C" fn poolStoreString(
     return (*pool).start;
 }
 
-unsafe extern "C" fn poolBytesToAllocateFor(
-    mut blockSize: ::core::ffi::c_int,
-) -> crate::__stddef_size_t_h::size_t {
+fn poolBytesToAllocateFor(blockSize: ::core::ffi::c_int) -> crate::__stddef_size_t_h::size_t {
     let stretch: crate::__stddef_size_t_h::size_t = ::core::mem::size_of::<
         crate::expat_external_h::XML_Char,
     >() as crate::__stddef_size_t_h::size_t;
