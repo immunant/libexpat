@@ -2248,6 +2248,41 @@ fn internal_encoding(encoding: InternalEncoding) -> &'static crate::src::xmltok:
     crate::src::xmltok::internal_utf8_encoding_table(matches!(encoding, InternalEncoding::Utf8Ns))
 }
 
+/// Resolves the complete tokenizer table used for entity-value scanning.
+///
+/// `ENCODING` is the ABI-visible prefix of `normal_encoding`; treating an
+/// arbitrary pointer to that prefix as a complete table used to require an
+/// unchecked reinterpretation in `storeEntityValue`.  Entity values can only
+/// use the parser's selected input encoding or its fixed internal UTF-8
+/// encoding, so match the pointer address against those owned tables instead.
+fn entity_value_normal_encoding(
+    parser: &XML_ParserStruct,
+    encoding_address: usize,
+) -> Option<crate::src::xmltok::normal_encoding> {
+    let parser_encoding = match parser.m_encoding {
+        EncodingState::Initial => parser
+            .m_initEncoding
+            .selected_encoding
+            .and_then(|index| crate::src::xmltok::initial_known_encoding(index, parser.m_ns != 0)),
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .and_then(UnknownEncodingMemory::initialized_encoding)
+            .map(|encoding| &encoding.normal),
+    };
+    if let Some(encoding) = parser_encoding
+        .filter(|encoding| std::ptr::from_ref(&encoding.enc).addr() == encoding_address)
+    {
+        return Some(*encoding);
+    }
+
+    let internal = crate::src::xmltok::internal_utf8_normal_encoding(matches!(
+        parser.m_internalEncoding,
+        InternalEncoding::Utf8Ns
+    ));
+    (std::ptr::from_ref(&internal.enc).addr() == encoding_address).then_some(*internal)
+}
+
 // The conversion scratch buffer is Rust-owned, while the allocation token
 // preserves the configured Expat allocator's allocation/free accounting.
 // The token's memory is deliberately never dereferenced.
@@ -18286,10 +18321,14 @@ unsafe fn storeEntityValue(
     let parser = &mut *parser;
     let enc_ptr = enc;
     // Entity-value literal scanners need the complete normal-encoding table.
-    // All callers reach this processor only after the tokenizer has selected
-    // one; keeping that conversion here confines it to the legacy cursor
-    // adapter while scanning itself stays slice based.
-    let enc = &*(enc as *const crate::src::xmltok::normal_encoding);
+    // The ABI prefix is never reinterpreted: only tables owned by this parser
+    // or its fixed internal UTF-8 representation are valid at this point.
+    let Some(enc) = entity_value_normal_encoding(parser, enc.addr()) else {
+        return EntityValueResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            next_offset: None,
+        };
+    };
     let dtd = &mut *parser_dtd_ptr!(parser);
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     let oldInEntityValue = parser.m_prologState.inEntityValue;
@@ -18319,7 +18358,7 @@ unsafe fn storeEntityValue(
                 break;
             };
             let input = input.chars();
-            let scan = crate::src::xmltok::xmltok_impl_c::scan_entity_value(enc, input);
+            let scan = crate::src::xmltok::xmltok_impl_c::scan_entity_value(&enc, input);
             let char_ref = if scan.token == crate::src::xmltok::XML_TOK_CHAR_REF {
                 let Some(next_offset) = scan.next else {
                     result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
