@@ -6345,12 +6345,17 @@ pub unsafe extern "C" fn expat_realloc_ffi(
     };
     expat_realloc(parser, ptr, size, sourceLine)
 }
-unsafe fn XML_ParserCreate(
+fn parser_create_default(
     encoding_name: Option<&std::ffi::CStr>,
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-) -> crate::expat_h::XML_Parser {
-    parser_create_ownership_facade(encoding_name, memory_suite, None, false, None)
-        .map_or_else(::core::ptr::null_mut, Box::into_raw)
+) -> Option<Box<XML_ParserStruct>> {
+    parser_create_ownership(ParserCreationRequest {
+        encoding_name,
+        memory_suite,
+        namespace_separator: None,
+        share_parent_dtd: false,
+        parent: None,
+    })
 }
 #[export_name = "XML_ParserCreate"]
 
@@ -6358,21 +6363,26 @@ pub unsafe extern "C" fn XML_ParserCreate_ffi(
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
     let encoding_name = (!encodingName.is_null()).then(|| std::ffi::CStr::from_ptr(encodingName));
-    XML_ParserCreate(
-        encoding_name,
-        crate::expat_h::XML_Memory_Handling_Suite {
-            malloc_fcn: Some(crate::stdlib::malloc),
-            realloc_fcn: Some(crate::stdlib::realloc),
-            free_fcn: Some(crate::stdlib::free),
-        },
-    )
+    let memory_suite = crate::expat_h::XML_Memory_Handling_Suite {
+        malloc_fcn: Some(crate::stdlib::malloc),
+        realloc_fcn: Some(crate::stdlib::realloc),
+        free_fcn: Some(crate::stdlib::free),
+    };
+    parser_create_default(encoding_name, memory_suite)
+        .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 unsafe fn XML_ParserCreateNS(
     encoding_name: Option<&std::ffi::CStr>,
     ns_sep: crate::expat_external_h::XML_Char,
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> crate::expat_h::XML_Parser {
-    parser_create_ownership_facade(encoding_name, memory_suite, Some(ns_sep), false, None)
+    parser_create_ownership(ParserCreationRequest {
+        encoding_name,
+        memory_suite,
+        namespace_separator: Some(ns_sep),
+        share_parent_dtd: false,
+        parent: None,
+    })
         .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 #[export_name = "XML_ParserCreateNS"]
@@ -6973,7 +6983,13 @@ unsafe fn XML_ParserCreate_MM(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
     namespace_separator: Option<crate::expat_external_h::XML_Char>,
 ) -> crate::expat_h::XML_Parser {
-    parser_create_ownership_facade(encoding_name, memory_suite, namespace_separator, false, None)
+    parser_create_ownership(ParserCreationRequest {
+        encoding_name,
+        memory_suite,
+        namespace_separator,
+        share_parent_dtd: false,
+        parent: None,
+    })
         .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 #[export_name = "XML_ParserCreate_MM"]
@@ -7000,6 +7016,16 @@ struct ParserParentState {
     inherited_dtd: Option<std::sync::Arc<SharedDtd>>,
 }
 
+/// The fully validated inputs for the Rust-owned parser construction path.
+/// Raw C handles are converted before reaching this request.
+struct ParserCreationRequest<'a> {
+    encoding_name: Option<&'a std::ffi::CStr>,
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+    namespace_separator: Option<crate::expat_external_h::XML_Char>,
+    share_parent_dtd: bool,
+    parent: Option<&'a XML_ParserStruct>,
+}
+
 /// Construct a parser through the single allocator-aware ownership boundary.
 ///
 /// Parser storage keeps the same physical prefix as `expat_malloc`
@@ -7008,13 +7034,16 @@ struct ParserParentState {
 /// construction, rather than being read from an in-band raw-memory header
 /// during release. The first mutable access to the new allocation is kept
 /// here, while it remains wholly owned by this allocation boundary.
-unsafe fn parser_create_ownership_facade(
-    encoding_name: Option<&std::ffi::CStr>,
-    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-    namespace_separator: Option<crate::expat_external_h::XML_Char>,
-    share_parent_dtd: bool,
-    parent: Option<&XML_ParserStruct>,
+fn parser_create_ownership(
+    request: ParserCreationRequest<'_>,
 ) -> Option<Box<XML_ParserStruct>> {
+    let ParserCreationRequest {
+        encoding_name,
+        memory_suite,
+        namespace_separator,
+        share_parent_dtd,
+        parent,
+    } = request;
     let increase = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
@@ -8166,15 +8195,13 @@ fn xml_external_entity_parser_create_impl(
     oldInEntityValue = old.m_prologState.inEntityValue;
     oldns_triplets = old.m_ns_triplets;
     oldReparseDeferralEnabled = old.m_reparseDeferralEnabled;
-    let mut parser_owner = match unsafe {
-        parser_create_ownership_facade(
-            encoding_name,
-            old.m_mem,
-            (old.m_ns != 0).then_some(old.m_namespaceSeparator),
-            context.is_none(),
-            Some(old),
-        )
-    } {
+    let mut parser_owner = match parser_create_ownership(ParserCreationRequest {
+        encoding_name,
+        memory_suite: old.m_mem,
+        namespace_separator: (old.m_ns != 0).then_some(old.m_namespaceSeparator),
+        share_parent_dtd: context.is_none(),
+        parent: Some(old),
+    }) {
         Some(parser_owner) => parser_owner,
         None => return None,
     };
