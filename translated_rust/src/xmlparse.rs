@@ -1708,8 +1708,6 @@ pub const XML_ACCOUNT_ENTITY_EXPANSION: XML_Account = 1;
 pub const XML_ACCOUNT_DIRECT: XML_Account = 0;
 
 pub type ICHAR = ::core::ffi::c_char;
-static mut xmlLen: ::core::ffi::c_int = 0;
-static mut xmlnsLen: ::core::ffi::c_int = 0;
 
 pub const INIT_TAG_BUF_SIZE: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 
@@ -2202,7 +2200,7 @@ pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
 ) -> crate::expat_h::XML_Parser {
     XML_ParserCreateNS(encodingName, nsSep)
 }
-static mut implicitContext: [crate::expat_external_h::XML_Char; 41] = [
+static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     crate::ascii_h::ASCII_x as crate::expat_external_h::XML_Char,
     crate::ascii_h::ASCII_m as crate::expat_external_h::XML_Char,
     crate::ascii_h::ASCII_l as crate::expat_external_h::XML_Char,
@@ -2388,10 +2386,7 @@ unsafe extern "C" fn startParsing(
         (*parser).m_hash_secret_salt = generate_hash_secret_salt(parser);
     }
     if (*parser).m_ns != 0 {
-        return setContext(
-            parser,
-            &raw const implicitContext as *const crate::expat_external_h::XML_Char,
-        );
+        return setContext(parser, implicitContext.as_ptr());
     }
     return crate::expat_h::XML_TRUE;
 }
@@ -6796,7 +6791,7 @@ unsafe extern "C" fn addBinding(
     mut uri: *const crate::expat_external_h::XML_Char,
     mut bindingsPtr: *mut *mut BINDING,
 ) -> crate::expat_h::XML_Error {
-    static mut xmlNamespace: [crate::expat_external_h::XML_Char; 37] = [
+    static xmlNamespace: [crate::expat_external_h::XML_Char; 37] = [
         crate::ascii_h::ASCII_h as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
@@ -6835,7 +6830,7 @@ unsafe extern "C" fn addBinding(
         crate::ascii_h::ASCII_e as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut xmlnsNamespace: [crate::expat_external_h::XML_Char; 30] = [
+    static xmlnsNamespace: [crate::expat_external_h::XML_Char; 30] = [
         crate::ascii_h::ASCII_h as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_t as crate::expat_external_h::XML_Char,
@@ -6872,6 +6867,8 @@ unsafe extern "C" fn addBinding(
     let mut isXMLNS: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
     let mut b: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
     let mut len: ::core::ffi::c_int = 0;
+    let xml_len = (xmlNamespace.len() - 1) as ::core::ffi::c_int;
+    let xmlns_len = (xmlnsNamespace.len() - 1) as ::core::ffi::c_int;
     if *uri as ::core::ffi::c_int == '\0' as i32 && !(*prefix).name.is_null() {
         return crate::expat_h::XML_ERROR_UNDECLARING_PREFIX;
     }
@@ -6901,7 +6898,7 @@ unsafe extern "C" fn addBinding(
     len = 0 as ::core::ffi::c_int;
     while *uri.offset(len as isize) != 0 {
         if isXML as ::core::ffi::c_int != 0
-            && (len > xmlLen
+            && (len > xml_len
                 || *uri.offset(len as isize) as ::core::ffi::c_int
                     != xmlNamespace[len as usize] as ::core::ffi::c_int)
         {
@@ -6909,7 +6906,7 @@ unsafe extern "C" fn addBinding(
         }
         if mustBeXML == 0
             && isXMLNS as ::core::ffi::c_int != 0
-            && (len > xmlnsLen
+            && (len > xmlns_len
                 || *uri.offset(len as isize) as ::core::ffi::c_int
                     != xmlnsNamespace[len as usize] as ::core::ffi::c_int)
         {
@@ -6924,9 +6921,9 @@ unsafe extern "C" fn addBinding(
         }
         len += 1;
     }
-    isXML = (isXML as ::core::ffi::c_int != 0 && len == xmlLen) as ::core::ffi::c_int
+    isXML = (isXML as ::core::ffi::c_int != 0 && len == xml_len) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
-    isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == xmlnsLen) as ::core::ffi::c_int
+    isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == xmlns_len) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
     if mustBeXML as ::core::ffi::c_int != isXML as ::core::ffi::c_int {
         return (if mustBeXML as ::core::ffi::c_int != 0 {
@@ -7975,11 +7972,11 @@ unsafe extern "C" fn doProlog(
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
     let mut c2rust_current_block: u64;
-    static mut externalSubsetName: [crate::expat_external_h::XML_Char; 2] = [
+    static externalSubsetName: [crate::expat_external_h::XML_Char; 2] = [
         crate::ascii_h::ASCII_HASH as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
+    static atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
         crate::ascii_h::ASCII_C as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
@@ -7987,12 +7984,12 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_A as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeID: [crate::expat_external_h::XML_Char; 3] = [
+    static atypeID: [crate::expat_external_h::XML_Char; 3] = [
         crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeIDREF: [crate::expat_external_h::XML_Char; 6] = [
+    static atypeIDREF: [crate::expat_external_h::XML_Char; 6] = [
         crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
@@ -8000,7 +7997,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_F as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeIDREFS: [crate::expat_external_h::XML_Char; 7] = [
+    static atypeIDREFS: [crate::expat_external_h::XML_Char; 7] = [
         crate::ascii_h::ASCII_I as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_R as crate::expat_external_h::XML_Char,
@@ -8009,7 +8006,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeENTITY: [crate::expat_external_h::XML_Char; 7] = [
+    static atypeENTITY: [crate::expat_external_h::XML_Char; 7] = [
         crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -8018,7 +8015,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_Y as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeENTITIES: [crate::expat_external_h::XML_Char; 9] = [
+    static atypeENTITIES: [crate::expat_external_h::XML_Char; 9] = [
         crate::ascii_h::ASCII_E as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -8029,7 +8026,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeNMTOKEN: [crate::expat_external_h::XML_Char; 8] = [
+    static atypeNMTOKEN: [crate::expat_external_h::XML_Char; 8] = [
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -8039,7 +8036,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut atypeNMTOKENS: [crate::expat_external_h::XML_Char; 9] = [
+    static atypeNMTOKENS: [crate::expat_external_h::XML_Char; 9] = [
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_M as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -8050,7 +8047,7 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_S as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut notationPrefix: [crate::expat_external_h::XML_Char; 10] = [
+    static notationPrefix: [crate::expat_external_h::XML_Char; 10] = [
         crate::ascii_h::ASCII_N as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_O as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_T as crate::expat_external_h::XML_Char,
@@ -8062,11 +8059,11 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut enumValueSep: [crate::expat_external_h::XML_Char; 2] = [
+    static enumValueSep: [crate::expat_external_h::XML_Char; 2] = [
         crate::ascii_h::ASCII_PIPE as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
-    static mut enumValueStart: [crate::expat_external_h::XML_Char; 2] = [
+    static enumValueStart: [crate::expat_external_h::XML_Char; 2] = [
         crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
         '\0' as i32 as crate::expat_external_h::XML_Char,
     ];
@@ -8231,7 +8228,7 @@ unsafe extern "C" fn doProlog(
                 (*parser).m_declEntity = lookup(
                     parser,
                     &raw mut (*dtd).paramEntities,
-                    &raw const externalSubsetName as KEY,
+                    externalSubsetName.as_ptr() as KEY,
                     ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                 ) as *mut ENTITY;
                 if (*parser).m_declEntity.is_null() {
@@ -8298,7 +8295,7 @@ unsafe extern "C" fn doProlog(
                         let mut entity: *mut ENTITY = lookup(
                             parser,
                             &raw mut (*dtd).paramEntities,
-                            &raw const externalSubsetName as KEY,
+                            externalSubsetName.as_ptr() as KEY,
                             ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                         ) as *mut ENTITY;
                         if entity.is_null() {
@@ -8358,7 +8355,7 @@ unsafe extern "C" fn doProlog(
                         let mut entity_0: *mut ENTITY = lookup(
                             parser,
                             &raw mut (*dtd).paramEntities,
-                            &raw const externalSubsetName as KEY,
+                            externalSubsetName.as_ptr() as KEY,
                             ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                         ) as *mut ENTITY;
                         if entity_0.is_null() {
@@ -8426,44 +8423,36 @@ unsafe extern "C" fn doProlog(
             }
             23 => {
                 (*parser).m_declAttributeIsCdata = crate::expat_h::XML_TRUE;
-                (*parser).m_declAttributeType =
-                    &raw const atypeCDATA as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeCDATA.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             24 => {
                 (*parser).m_declAttributeIsId = crate::expat_h::XML_TRUE;
-                (*parser).m_declAttributeType =
-                    &raw const atypeID as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeID.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             25 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeIDREF as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeIDREF.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             26 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeIDREFS as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeIDREFS.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             27 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeENTITY as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeENTITY.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             28 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeENTITIES as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeENTITIES.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             29 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeNMTOKEN as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeNMTOKEN.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             30 => {
-                (*parser).m_declAttributeType =
-                    &raw const atypeNMTOKENS as *const crate::expat_external_h::XML_Char;
+                (*parser).m_declAttributeType = atypeNMTOKENS.as_ptr();
                 c2rust_current_block = 11852364650731333344;
             }
             31 | 32 => {
@@ -8473,16 +8462,15 @@ unsafe extern "C" fn doProlog(
                     let mut prefix: *const crate::expat_external_h::XML_Char =
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     if !(*parser).m_declAttributeType.is_null() {
-                        prefix =
-                            &raw const enumValueSep as *const crate::expat_external_h::XML_Char;
+                        prefix = enumValueSep.as_ptr();
                     } else {
                         prefix = if role
                             == crate::src::xmlrole::XML_ROLE_ATTRIBUTE_NOTATION_VALUE
                                 as ::core::ffi::c_int
                         {
-                            &raw const notationPrefix as *const crate::expat_external_h::XML_Char
+                            notationPrefix.as_ptr()
                         } else {
-                            &raw const enumValueStart as *const crate::expat_external_h::XML_Char
+                            enumValueStart.as_ptr()
                         };
                     }
                     if poolAppendString(&raw mut (*parser).m_tempPool, prefix).is_null() {
@@ -8729,8 +8717,7 @@ unsafe extern "C" fn doProlog(
                     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                     handleDefault = crate::expat_h::XML_FALSE;
                 } else {
-                    (*parser).m_doctypeSysid =
-                        &raw const externalSubsetName as *const crate::expat_external_h::XML_Char;
+                    (*parser).m_doctypeSysid = externalSubsetName.as_ptr();
                 }
                 if (*dtd).standalone == 0
                     && (*parser).m_paramEntityParsing as u64 == 0
@@ -8747,7 +8734,7 @@ unsafe extern "C" fn doProlog(
                     (*parser).m_declEntity = lookup(
                         parser,
                         &raw mut (*dtd).paramEntities,
-                        &raw const externalSubsetName as KEY,
+                        externalSubsetName.as_ptr() as KEY,
                         ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
                     if (*parser).m_declEntity.is_null() {
@@ -13491,18 +13478,3 @@ unsafe extern "C" fn getDebugLevel(
     }
     return debugLevel;
 }
-unsafe extern "C" fn c2rust_run_static_initializers() {
-    xmlLen = (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 37]>()
-        as ::core::ffi::c_int as usize)
-        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
-        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
-    xmlnsLen = (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 30]>()
-        as ::core::ffi::c_int as usize)
-        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
-        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
-}
-#[used]
-#[cfg_attr(target_os = "linux", link_section = ".init_array")]
-#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
-#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [c2rust_run_static_initializers];
