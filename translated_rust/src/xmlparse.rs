@@ -11678,6 +11678,76 @@ impl NamespaceTagNameUpdate {
     }
 }
 
+// `storeAtts` only needs a stable snapshot of the element declaration while
+// it scans the start tag.  Taking that snapshot through the typed hash-table
+// API avoids retaining a legacy `ELEMENT_TYPE` pointer while DTD pools and
+// tables can grow during attribute processing.
+#[derive(Clone)]
+struct StoreAttsElement {
+    has_prefix: crate::expat_h::XML_Bool,
+    prefix: PoolStringRef,
+    id_attribute: Option<PoolStringRef>,
+    default_attributes: Vec<DEFAULT_ATTRIBUTE>,
+}
+
+fn store_atts_element(
+    dtd: &mut DTD,
+    tag_name: &[crate::expat_external_h::XML_Char],
+    namespaces_enabled: bool,
+    salt: ::core::ffi::c_ulong,
+) -> Option<StoreAttsElement> {
+    // Match the legacy probe/create sequence exactly.  The old initial probe
+    // retains one DTD-pool copy even when it finds no element; creation then
+    // retains a second copy.  Besides preserving failure behavior, this keeps
+    // configured allocator observations in the same order.
+    let probe_name = poolCopyString(&mut dtd.pool, tag_name)?;
+    let (is_new, element_name) = if let Some(index) = lookup_existing(
+        &dtd.pool,
+        &dtd.elementTypes,
+        LookupName::Retained(probe_name),
+        salt,
+    ) {
+        let element_name = dtd
+            .elementTypes
+            .v
+            .as_ref()?
+            .entries
+            .get(index)?
+            .as_ref()?
+            .key();
+        (false, element_name)
+    } else {
+        let create_name = poolCopyString(&mut dtd.pool, tag_name)?;
+        get_element_type_impl(dtd, salt, create_name)?
+    };
+    if is_new && namespaces_enabled {
+        set_element_type_prefix_impl(dtd, salt, element_name)?;
+    }
+    let index = lookup_existing(
+        &dtd.pool,
+        &dtd.elementTypes,
+        LookupName::Retained(element_name),
+        salt,
+    )?;
+    let element = dtd
+        .elementTypes
+        .v
+        .as_ref()?
+        .entries
+        .get(index)?
+        .as_ref()?
+        .element()?;
+    Some(StoreAttsElement {
+        has_prefix: element.hasPrefix,
+        prefix: element.prefix,
+        id_attribute: element.idAtt,
+        default_attributes: element
+            .defaultAtts
+            .as_ref()
+            .map_or_else(Vec::new, |attributes| attributes.values.clone()),
+    })
+}
+
 unsafe fn storeAtts(
     parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -11695,7 +11765,6 @@ unsafe fn storeAtts(
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
     let dtd = &mut *dtd_owner.value.get();
-    let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     let mut nDefaultAtts: ::core::ffi::c_int = 0;
     let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     let mut i: ::core::ffi::c_int = 0;
@@ -11711,40 +11780,18 @@ unsafe fn storeAtts(
         };
         chars
     };
-    elementType = lookup(
-        parser_ptr,
-        &raw mut dtd.elementTypes,
-        tag_name.as_ptr() as KEY,
-        0 as crate::__stddef_size_t_h::size_t,
-    ) as *mut ELEMENT_TYPE;
-    if elementType.is_null() {
-        let Some(name_ref) = poolCopyString(&mut dtd.pool, tag_name) else {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        };
-        let Some(name) = dtd.pool.chars_from(name_ref).map(|chars| chars.as_ptr()) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        elementType = lookup(
-            parser_ptr,
-            &raw mut dtd.elementTypes,
-            name as KEY,
-            ::core::mem::size_of::<ELEMENT_TYPE>(),
-        ) as *mut ELEMENT_TYPE;
-        if elementType.is_null() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        if parser.m_ns as ::core::ffi::c_int != 0 {
-            let salt = parser
-                .m_root
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .hash_secret_salt;
-            if set_element_type_prefix_impl(dtd, salt, name_ref).is_none() {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
-            }
-        }
-    }
-    nDefaultAtts = (*elementType).nDefaultAtts;
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let Some(element_type) = store_atts_element(dtd, tag_name, parser.m_ns != 0, salt) else {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    };
+    nDefaultAtts = match ::core::ffi::c_int::try_from(element_type.default_attributes.len()) {
+        Ok(count) => count,
+        Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    };
     let att_token_len;
     n = {
         // `attEnd` is the tokenizer's end cursor for this exact start-tag.
@@ -11895,11 +11942,8 @@ unsafe fn storeAtts(
                 let mut j: ::core::ffi::c_int = 0;
                 j = 0 as ::core::ffi::c_int;
                 while j < nDefaultAtts {
-                    let default_att = (*elementType)
-                        .defaultAtts
-                        .as_ref()
-                        .expect("default attribute storage must exist for a non-empty list")
-                        .values
+                    let default_att = element_type
+                        .default_attributes
                         .get(j as usize)
                         .expect("default attribute count must match stored values");
                     let default_name = default_att.id.map_or(::core::ptr::null(), |name| {
@@ -11908,11 +11952,8 @@ unsafe fn storeAtts(
                             .map_or(::core::ptr::null(), |chars| chars.as_ptr())
                     });
                     if default_name == att_id_name {
-                        isCdata = (*elementType)
-                            .defaultAtts
-                            .as_ref()
-                            .expect("default attribute storage must exist for a non-empty list")
-                            .values
+                        isCdata = element_type
+                            .default_attributes
                             .get(j as usize)
                             .expect("default attribute count must match stored values")
                             .isCdata;
@@ -12002,7 +12043,7 @@ unsafe fn storeAtts(
         i += 1;
     }
     (*parser).m_nSpecifiedAtts = attIndex;
-    if let Some(id_att_name) = (*elementType).idAtt {
+    if let Some(id_att_name) = element_type.id_attribute {
         let id_att_name = dtd
             .pool
             .chars_from(id_att_name)
@@ -12023,11 +12064,8 @@ unsafe fn storeAtts(
     }
     i = 0 as ::core::ffi::c_int;
     while i < nDefaultAtts {
-        let da = (*elementType)
-            .defaultAtts
-            .as_ref()
-            .expect("default attribute storage must exist for a non-empty list")
-            .values
+        let da = element_type
+            .default_attributes
             .get(i as usize)
             .expect("default attribute count must match stored values");
         let Some(id_name_ref) = da.id else {
@@ -12468,10 +12506,10 @@ unsafe fn storeAtts(
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
     }
-    let (binding_index, local_part_offset) = if (*elementType).hasPrefix != 0 {
+    let (binding_index, local_part_offset) = if element_type.has_prefix != 0 {
         let Some(binding_id) = active_binding_id_for_prefix(
             &(*parser).m_activeBindings,
-            BindingPrefix::Named((*elementType).prefix),
+            BindingPrefix::Named(element_type.prefix),
         ) else {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
         };
