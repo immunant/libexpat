@@ -539,47 +539,61 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    fn check_pi_target_ascii(
+        chars: [::core::ffi::c_int; 3],
+        tok: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (1 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
+        let mut upper = false;
+        *tok = crate::src::xmltok::XML_TOK_PI_1;
+        for (actual, lower, upper_case) in [
+            (
+                chars[0],
+                crate::ascii_h::ASCII_x_1,
+                crate::ascii_h::ASCII_X_1,
+            ),
+            (
+                chars[1],
+                crate::ascii_h::ASCII_m_1,
+                crate::ascii_h::ASCII_M_1,
+            ),
+            (
+                chars[2],
+                crate::ascii_h::ASCII_l_1,
+                crate::ascii_h::ASCII_L_1,
+            ),
+        ] {
+            if actual == lower {
+                continue;
+            }
+            if actual == upper_case {
+                upper = true;
+                continue;
+            }
             return 1 as ::core::ffi::c_int;
         }
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
+        if upper {
             return 0 as ::core::ffi::c_int;
         }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
+        *tok = crate::src::xmltok::XML_TOK_XML_DECL_1;
+        1 as ::core::ffi::c_int
+    }
+
+    pub fn normal_checkPiTarget(
+        target: &[::core::ffi::c_char],
+        tok: &mut ::core::ffi::c_int,
+    ) -> ::core::ffi::c_int {
+        *tok = crate::src::xmltok::XML_TOK_PI_1;
+        let [x, m, l] = target else {
+            return 1 as ::core::ffi::c_int;
+        };
+        check_pi_target_ascii(
+            [
+                *x as ::core::ffi::c_int,
+                *m as ::core::ffi::c_int,
+                *l as ::core::ffi::c_int,
+            ],
+            tok,
+        )
     }
 
     pub unsafe extern "C" fn normal_scanPi(
@@ -752,7 +766,11 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_118 = 13349765058737954042;
                 }
                 21 | 9 | 10 => {
-                    if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if normal_checkPiTarget(
+                        ::core::slice::from_raw_parts(target, ptr.offset_from(target) as usize),
+                        &mut tok,
+                    ) == 0
+                    {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -841,7 +859,11 @@ pub mod xmltok_impl_c {
                     return crate::src::xmltok::XML_TOK_PARTIAL_1;
                 }
                 15 => {
-                    if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if normal_checkPiTarget(
+                        ::core::slice::from_raw_parts(target, ptr.offset_from(target) as usize),
+                        &mut tok,
+                    ) == 0
+                    {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -4835,65 +4857,37 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    pub fn little2_checkPiTarget(
+        target: &[::core::ffi::c_char],
+        tok: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
+        *tok = crate::src::xmltok::XML_TOK_PI_1;
+        if target.len() != 6 {
             return 1 as ::core::ffi::c_int;
         }
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
+        let x = &target[0..2];
+        let m = &target[2..4];
+        let l = &target[4..6];
+        check_pi_target_ascii(
+            [
+                if x[1] == 0 {
+                    x[0] as ::core::ffi::c_int
+                } else {
+                    -1
+                },
+                if m[1] == 0 {
+                    m[0] as ::core::ffi::c_int
+                } else {
+                    -1
+                },
+                if l[1] == 0 {
+                    l[0] as ::core::ffi::c_int
+                } else {
+                    -1
+                },
+            ],
+            tok,
+        )
     }
 
     pub unsafe extern "C" fn little2_scanPi(
@@ -5060,7 +5054,11 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_118 = 13349765058737954042;
                 }
                 21 | 9 | 10 => {
-                    if little2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if little2_checkPiTarget(
+                        ::core::slice::from_raw_parts(target, ptr.offset_from(target) as usize),
+                        &mut tok,
+                    ) == 0
+                    {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -5136,7 +5134,11 @@ pub mod xmltok_impl_c {
                     return crate::src::xmltok::XML_TOK_PARTIAL_1;
                 }
                 15 => {
-                    if little2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if little2_checkPiTarget(
+                        ::core::slice::from_raw_parts(target, ptr.offset_from(target) as usize),
+                        &mut tok,
+                    ) == 0
+                    {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -9399,65 +9401,37 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+    pub fn big2_checkPiTarget(
+        target: &[::core::ffi::c_char],
+        tok: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
+        *tok = crate::src::xmltok::XML_TOK_PI_1;
+        if target.len() != 6 {
             return 1 as ::core::ffi::c_int;
         }
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
+        let x = &target[0..2];
+        let m = &target[2..4];
+        let l = &target[4..6];
+        check_pi_target_ascii(
+            [
+                if x[0] == 0 {
+                    x[1] as ::core::ffi::c_int
+                } else {
+                    -1
+                },
+                if m[0] == 0 {
+                    m[1] as ::core::ffi::c_int
+                } else {
+                    -1
+                },
+                if l[0] == 0 {
+                    l[1] as ::core::ffi::c_int
+                } else {
+                    -1
+                },
+            ],
+            tok,
+        )
     }
 
     pub unsafe extern "C" fn big2_scanPi(
@@ -9626,7 +9600,11 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_118 = 13349765058737954042;
                 }
                 21 | 9 | 10 => {
-                    if big2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if big2_checkPiTarget(
+                        ::core::slice::from_raw_parts(target, ptr.offset_from(target) as usize),
+                        &mut tok,
+                    ) == 0
+                    {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -9703,7 +9681,11 @@ pub mod xmltok_impl_c {
                     return crate::src::xmltok::XML_TOK_PARTIAL_1;
                 }
                 15 => {
-                    if big2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if big2_checkPiTarget(
+                        ::core::slice::from_raw_parts(target, ptr.offset_from(target) as usize),
+                        &mut tok,
+                    ) == 0
+                    {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
