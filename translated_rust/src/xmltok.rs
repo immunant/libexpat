@@ -234,7 +234,7 @@ pub struct encoding {
     pub scanners: [crate::src::xmltok::SCANNER; 4],
     pub literalScanners: [crate::src::xmltok::SCANNER; 2],
     pub nameMatchesAscii: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const crate::src::xmltok::ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -4495,23 +4495,25 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn normal_nameMatchesAscii(
+    pub extern "C" fn normal_nameMatchesAscii(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
         mut ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 1 as ::core::ffi::c_long {
-                return 0 as ::core::ffi::c_int;
+        unsafe {
+            while *ptr2 != 0 {
+                if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 1 as ::core::ffi::c_long {
+                    return 0 as ::core::ffi::c_int;
+                }
+                if !(*ptr1 as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int) {
+                    return 0 as ::core::ffi::c_int;
+                }
+                ptr1 = ptr1.offset(1 as ::core::ffi::c_int as isize);
+                ptr2 = ptr2.offset(1);
             }
-            if !(*ptr1 as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int) {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(1 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+            return (ptr1 == end1) as ::core::ffi::c_int;
         }
-        return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
     pub unsafe extern "C" fn normal_nameLength(
@@ -9031,27 +9033,29 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn little2_nameMatchesAscii(
+    pub extern "C" fn little2_nameMatchesAscii(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
         mut ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                return 0 as ::core::ffi::c_int;
+        unsafe {
+            while *ptr2 != 0 {
+                if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
+                    return 0 as ::core::ffi::c_int;
+                }
+                if !(*ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
+                    == 0 as ::core::ffi::c_int
+                    && *ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
+                        == *ptr2 as ::core::ffi::c_int)
+                {
+                    return 0 as ::core::ffi::c_int;
+                }
+                ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
+                ptr2 = ptr2.offset(1);
             }
-            if !(*ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+            return (ptr1 == end1) as ::core::ffi::c_int;
         }
-        return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
     pub unsafe extern "C" fn little2_nameLength(
@@ -13667,27 +13671,29 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn big2_nameMatchesAscii(
+    pub extern "C" fn big2_nameMatchesAscii(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
         mut ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                return 0 as ::core::ffi::c_int;
+        unsafe {
+            while *ptr2 != 0 {
+                if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
+                    return 0 as ::core::ffi::c_int;
+                }
+                if !(*ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
+                    == 0 as ::core::ffi::c_int
+                    && *ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
+                        == *ptr2 as ::core::ffi::c_int)
+                {
+                    return 0 as ::core::ffi::c_int;
+                }
+                ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
+                ptr2 = ptr2.offset(1);
             }
-            if !(*ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+            return (ptr1 == end1) as ::core::ffi::c_int;
         }
-        return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
     pub unsafe extern "C" fn big2_nameLength(
@@ -15963,7 +15969,7 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -16435,7 +16441,7 @@ static utf8_encoding: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -16907,7 +16913,7 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -17379,7 +17385,7 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -17912,7 +17918,7 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -18330,7 +18336,7 @@ static latin1_encoding: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -18769,7 +18775,7 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -19187,7 +19193,7 @@ static ascii_encoding: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             normal_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -19981,7 +19987,7 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -20399,7 +20405,7 @@ static little2_encoding: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -20817,7 +20823,7 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21235,7 +21241,7 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             little2_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21653,7 +21659,7 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             big2_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -22071,7 +22077,7 @@ static big2_encoding: normal_encoding = normal_encoding {
         ],
         nameMatchesAscii: Some(
             big2_nameMatchesAscii
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,

@@ -455,9 +455,7 @@ fn name_matches_ascii(
     end: *const ::core::ffi::c_char,
     keyword: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        enc.nameMatchesAscii.expect("non-null function pointer")(enc as *const _, ptr, end, keyword)
-    }
+    enc.nameMatchesAscii.expect("non-null function pointer")(enc as *const _, ptr, end, keyword)
 }
 
 extern "C" fn prolog0(
