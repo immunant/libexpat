@@ -1780,7 +1780,7 @@ type Processor = unsafe extern "C" fn(
 
 pub struct HASH_TABLE_ITER {
     pub p: *mut *mut NAMED,
-    pub end: *mut *mut NAMED,
+    pub remaining: crate::__stddef_size_t_h::size_t,
 }
 
 pub type XML_Account = ::core::ffi::c_uint;
@@ -11273,7 +11273,7 @@ unsafe extern "C" fn getContext(
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        remaining: 0 as crate::__stddef_size_t_h::size_t,
     };
     let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
     if !(*dtd).defaultPrefix.binding.is_null() {
@@ -11685,7 +11685,7 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
 unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_Parser) {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        remaining: 0 as crate::__stddef_size_t_h::size_t,
     };
     hashTableIterInit(&raw mut iter, &raw mut (*p).elementTypes);
     loop {
@@ -11740,7 +11740,7 @@ unsafe extern "C" fn dtdDestroy(
 ) {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        remaining: 0 as crate::__stddef_size_t_h::size_t,
     };
     hashTableIterInit(&raw mut iter, &raw mut (*p).elementTypes);
     loop {
@@ -11795,7 +11795,7 @@ unsafe extern "C" fn dtdCopy(
     let new_dtd = &mut *newDtd;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        remaining: 0 as crate::__stddef_size_t_h::size_t,
     };
     hashTableIterInit(&raw mut iter, &raw const old_dtd.prefixes);
     loop {
@@ -11987,7 +11987,7 @@ unsafe extern "C" fn copyEntityTable(
 ) -> ::core::ffi::c_int {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        remaining: 0 as crate::__stddef_size_t_h::size_t,
     };
     let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -12329,18 +12329,18 @@ unsafe extern "C" fn hashTableIterInit(
     mut iter: *mut HASH_TABLE_ITER,
     mut table: *const HASH_TABLE,
 ) {
-    (*iter).p = (*table).v;
-    (*iter).end = if !(*iter).p.is_null() {
-        (*iter).p.offset((*table).size as isize)
-    } else {
-        ::core::ptr::null_mut::<*mut NAMED>()
-    };
+    let iter = &mut *iter;
+    let table = &*table;
+    iter.p = table.v;
+    iter.remaining = table.size;
 }
 
 unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut NAMED {
-    while (*iter).p != (*iter).end {
-        let c2rust_fresh0 = (*iter).p;
-        (*iter).p = (*iter).p.offset(1);
+    let iter = &mut *iter;
+    while iter.remaining != 0 {
+        let c2rust_fresh0 = iter.p;
+        iter.p = iter.p.offset(1);
+        iter.remaining = iter.remaining.wrapping_sub(1);
         let mut tem: *mut NAMED = *c2rust_fresh0;
         if !tem.is_null() {
             return tem;
