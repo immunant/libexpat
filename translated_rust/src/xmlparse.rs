@@ -14432,35 +14432,87 @@ unsafe extern "C" fn externalParEntInitProcessor(
     };
 }
 
+/// Scans one entity-value prolog token from the parser-owned input buffer.
+///
+/// Processor cursors are still part of the C-compatible dispatch ABI, but an
+/// entity-value prolog always belongs to this parser's input buffer.  Resolve
+/// the address pair through that owner before constructing the tokenizer
+/// view, so an arbitrary cursor pair can only produce the normal invalid
+/// token result rather than an unchecked slice.
+fn entity_value_init_scan(
+    parser: &mut XML_ParserStruct,
+    start_address: usize,
+    end_address: usize,
+) -> crate::src::xmltok::ScannerResult {
+    let Some(input) = parser
+        .m_buffer
+        .window_from_addresses(start_address, end_address)
+    else {
+        return crate::src::xmltok::ScannerResult::new(
+            crate::src::xmltok::XML_TOK_INVALID,
+            None,
+        );
+    };
+    let chars: &[::core::ffi::c_char] = bytemuck::cast_slice(input);
+    if let Some(normal_encoding) = current_parser_normal_encoding(parser) {
+        return crate::src::xmltok::ScannerContext::normal(
+            normal_encoding.enc.scanners[0],
+            &normal_encoding,
+            chars,
+        )
+        .scan();
+    }
+    crate::src::xmltok::ScannerContext::initial(
+        parser.m_initEncoding.initEnc.scanners[0],
+        &mut parser.m_initEncoding,
+        chars,
+    )
+    .scan()
+}
+
 unsafe extern "C" fn entityValueInitProcessor(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: crate::expat_h::XML_Parser,
+    s: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    nextPtr: *mut *const ::core::ffi::c_char,
+) -> crate::expat_h::XML_Error {
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(next_ptr) = nextPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    entity_value_init_processor_impl(parser, s, end, next_ptr)
+}
+
+unsafe fn entity_value_init_processor_impl(
+    parser: &mut XML_ParserStruct,
     mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next_ptr: &mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let mut tok: ::core::ffi::c_int = 0;
     let mut start: *const ::core::ffi::c_char = s;
     let mut next: *const ::core::ffi::c_char = start;
-    set_parser_event_start!(&mut *parser, start);
+    set_parser_event_start_address(parser, start.addr());
     loop {
-        let encoding = parser_encoding(parser);
-        let scan = scanner_context_from_raw(
-            (*encoding).scanners[0 as usize],
-            encoding,
-            start,
-            end,
-        )
-        .scan();
+        let scan = entity_value_init_scan(parser, start.addr(), end.addr());
         tok = scan.token;
         if let Some(offset) = scan.next {
+            let Some(next_address) = start.addr().checked_add(offset) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            if next_address > end.addr() {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
             next = start.wrapping_add(offset);
         }
-        set_parser_event_end!(parser, next);
+        set_parser_event_end_address(parser, next.addr());
         if tok <= 0 as ::core::ffi::c_int {
-            if (*parser).m_parsingStatus.finalBuffer == 0
+            if parser.m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
             {
-                *nextPtr = s;
+                *next_ptr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             match tok {
@@ -14476,8 +14528,8 @@ unsafe extern "C" fn entityValueInitProcessor(
                 crate::src::xmltok::XML_TOK_NONE | _ => {}
             }
             return storeEntityValue(
-                parser,
-                parser_encoding(parser),
+                std::ptr::from_mut(parser),
+                std::ptr::from_ref(current_parser_encoding(parser)),
                 s,
                 end,
                 XML_ACCOUNT_DIRECT,
@@ -14485,23 +14537,28 @@ unsafe extern "C" fn entityValueInitProcessor(
             .error;
         } else if tok == crate::src::xmltok::XML_TOK_XML_DECL {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-            result = processXmlDecl(parser, 0 as ::core::ffi::c_int, start, next);
+            result = processXmlDecl(
+                std::ptr::from_mut(parser),
+                0 as ::core::ffi::c_int,
+                start,
+                next,
+            );
             if result as ::core::ffi::c_uint
                 != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
                 return result;
             }
-            if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+            if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
                 == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
             {
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
-            *nextPtr = next;
-            (*parser).m_processor = ProcessorState::EntityValue;
-            return entityValueProcessor(parser, next, end, nextPtr);
+            *next_ptr = next;
+            parser.m_processor = ProcessorState::EntityValue;
+            return entityValueProcessor(std::ptr::from_mut(parser), next, end, next_ptr);
         } else if tok == crate::src::xmltok::XML_TOK_BOM {
             if accountingDiffTolerated(
-                parser,
+                std::ptr::from_mut(parser),
                 tok,
                 s,
                 next,
@@ -14510,17 +14567,17 @@ unsafe extern "C" fn entityValueInitProcessor(
                 None,
             ) == 0
             {
-                accountingOnAbort(parser);
+                accountingOnAbort(std::ptr::from_mut(parser));
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
-            *nextPtr = next;
+            *next_ptr = next;
             s = next;
         } else if tok == crate::src::xmltok::XML_TOK_INSTANCE_START {
-            *nextPtr = next;
+            *next_ptr = next;
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
         start = next;
-        set_parser_event_start!(&mut *parser, start);
+        set_parser_event_start_address(parser, start.addr());
     }
 }
 
