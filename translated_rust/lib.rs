@@ -716,7 +716,12 @@ pub mod expat_h {
                 *const ::core::ffi::c_char,
             ) -> ::core::ffi::c_int,
         >,
-        pub release: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+        // `data` is an opaque token owned by the unknown-encoding handler.
+        // Expat only returns it to this paired callback and never dereferences
+        // it, so calling the callback has no Rust-side memory precondition.
+        // A callback that interprets the token remains responsible for its own
+        // foreign-resource invariants.
+        pub release: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
     }
 
     pub type XML_UnknownEncodingHandler = Option<

@@ -18405,7 +18405,7 @@ fn unknown_encoding_release_callback_adapter(
 ) -> Option<Box<dyn FnOnce() + Send>> {
     info.release.map(|callback| {
         let context = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
-        Box::new(move || unsafe {
+        Box::new(move || {
             callback(context.load(std::sync::atomic::Ordering::Relaxed));
         }) as Box<dyn FnOnce() + Send>
     })
