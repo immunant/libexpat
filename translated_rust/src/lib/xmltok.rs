@@ -19426,57 +19426,42 @@ extern "C" fn initScanContent(
         next_tok_ptr,
     )
 }
+
+pub(crate) fn init_encoding_state(
+    init: &mut INIT_ENCODING,
+    enc_ptr: &mut *const ENCODING,
+    name: *const ::core::ffi::c_char,
+    namespace_aware: bool,
+) -> ::core::ffi::c_int {
+    let i = getEncodingIndex(name);
+    if i == UNKNOWN_ENC as ::core::ffi::c_int {
+        return 0 as ::core::ffi::c_int;
+    }
+
+    init.initEnc.isUtf16 = i as ::core::ffi::c_char;
+    init.initEnc.scanners[XML_PROLOG_STATE as usize] = Some(if namespace_aware {
+        initScanPrologNS
+    } else {
+        initScanProlog
+    });
+    init.initEnc.scanners[XML_CONTENT_STATE as usize] = Some(if namespace_aware {
+        initScanContentNS
+    } else {
+        initScanContent
+    });
+    init.initEnc.updatePosition = Some(initUpdatePosition);
+    init.encPtr = enc_ptr;
+    *enc_ptr = ::core::ptr::addr_of_mut!(init.initEnc).cast_const();
+    1 as ::core::ffi::c_int
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn XmlInitEncoding(
     mut p: *mut INIT_ENCODING,
     mut encPtr: *mut *const ENCODING,
     mut name: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut i: ::core::ffi::c_int = getEncodingIndex(name);
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return 0 as ::core::ffi::c_int;
-        }
-        (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = Some(
-            initScanProlog
-                as extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ) as SCANNER;
-        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = Some(
-            initScanContent
-                as extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ) as SCANNER;
-        (*p).initEnc.updatePosition = Some(
-            initUpdatePosition
-                as extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut POSITION,
-                ) -> (),
-        )
-            as Option<
-                extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut POSITION,
-                ) -> (),
-            >;
-        (*p).encPtr = encPtr;
-        *encPtr = &raw mut (*p).initEnc;
-        return 1 as ::core::ffi::c_int;
-    }
+    unsafe { init_encoding_state(&mut *p, &mut *encPtr, name, false) }
 }
 fn find_encoding(
     encoding_table: *const *const ENCODING,
@@ -19607,51 +19592,7 @@ pub unsafe extern "C" fn XmlInitEncodingNS(
     mut encPtr: *mut *const ENCODING,
     mut name: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut i: ::core::ffi::c_int = getEncodingIndex(name);
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return 0 as ::core::ffi::c_int;
-        }
-        (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
-        (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = Some(
-            initScanPrologNS
-                as extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ) as SCANNER;
-        (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = Some(
-            initScanContentNS
-                as extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ) as SCANNER;
-        (*p).initEnc.updatePosition = Some(
-            initUpdatePosition
-                as extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut POSITION,
-                ) -> (),
-        )
-            as Option<
-                extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut POSITION,
-                ) -> (),
-            >;
-        (*p).encPtr = encPtr;
-        *encPtr = &raw mut (*p).initEnc;
-        return 1 as ::core::ffi::c_int;
-    }
+    unsafe { init_encoding_state(&mut *p, &mut *encPtr, name, true) }
 }
 extern "C" fn findEncodingNS(
     enc: *const ENCODING,

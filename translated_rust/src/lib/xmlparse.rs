@@ -934,8 +934,79 @@ pub struct XML_Feature {
     pub value: ::core::ffi::c_long,
 }
 pub type C2Rust_Unnamed_0 = ::core::ffi::c_int;
-static mut xmlLen: ::core::ffi::c_int = 0;
-static mut xmlnsLen: ::core::ffi::c_int = 0;
+const XML_NAMESPACE: [XML_Char; 37] = [
+    ASCII_h as XML_Char,
+    ASCII_t as XML_Char,
+    ASCII_t as XML_Char,
+    ASCII_p as XML_Char,
+    ASCII_COLON as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_PERIOD as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_3 as XML_Char,
+    ASCII_PERIOD as XML_Char,
+    ASCII_o as XML_Char,
+    ASCII_r as XML_Char,
+    ASCII_g as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_X as XML_Char,
+    ASCII_M as XML_Char,
+    ASCII_L as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_1 as XML_Char,
+    ASCII_9 as XML_Char,
+    ASCII_9 as XML_Char,
+    ASCII_8 as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_n as XML_Char,
+    ASCII_a as XML_Char,
+    ASCII_m as XML_Char,
+    ASCII_e as XML_Char,
+    ASCII_s as XML_Char,
+    ASCII_p as XML_Char,
+    ASCII_a as XML_Char,
+    ASCII_c as XML_Char,
+    ASCII_e as XML_Char,
+    '\0' as i32 as XML_Char,
+];
+const XML_NAMESPACE_LEN: ::core::ffi::c_int = XML_NAMESPACE.len() as ::core::ffi::c_int - 1;
+const XMLNS_NAMESPACE: [XML_Char; 30] = [
+    ASCII_h as XML_Char,
+    ASCII_t as XML_Char,
+    ASCII_t as XML_Char,
+    ASCII_p as XML_Char,
+    ASCII_COLON as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_PERIOD as XML_Char,
+    ASCII_w as XML_Char,
+    ASCII_3 as XML_Char,
+    ASCII_PERIOD as XML_Char,
+    ASCII_o as XML_Char,
+    ASCII_r as XML_Char,
+    ASCII_g as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_2 as XML_Char,
+    ASCII_0 as XML_Char,
+    ASCII_0 as XML_Char,
+    ASCII_0 as XML_Char,
+    ASCII_SLASH as XML_Char,
+    ASCII_x as XML_Char,
+    ASCII_m as XML_Char,
+    ASCII_l as XML_Char,
+    ASCII_n as XML_Char,
+    ASCII_s as XML_Char,
+    ASCII_SLASH as XML_Char,
+    '\0' as i32 as XML_Char,
+];
+const XMLNS_NAMESPACE_LEN: ::core::ffi::c_int = XMLNS_NAMESPACE.len() as ::core::ffi::c_int - 1;
 pub const SIZE_MAX: ::core::ffi::c_ulong = 18446744073709551615 as ::core::ffi::c_ulong;
 pub const INIT_TAG_BUF_SIZE: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 pub const INIT_DATA_BUF_SIZE: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
@@ -985,7 +1056,7 @@ fn add_bytes_scanned(bytes: size_t) {
 }
 
 fn implicit_context_ptr() -> *const XML_Char {
-    unsafe { &raw const implicitContext as *const XML_Char }
+    IMPLICIT_CONTEXT.as_ptr()
 }
 
 fn init_protocol_encoding(
@@ -1020,8 +1091,23 @@ fn c_str_bytes<'a>(ptr: *const ::core::ffi::c_char) -> &'a [u8] {
 }
 
 fn append_printable_byte(buffer: &mut Vec<u8>, value: ::core::ffi::c_uchar) {
-    let printable = unsafe { unsignedCharToPrintable(value) };
-    buffer.extend_from_slice(c_str_bytes(printable));
+    match value {
+        b'\0' => buffer.extend_from_slice(b"\\0"),
+        b'\t' => buffer.extend_from_slice(b"\\t"),
+        b'\n' => buffer.extend_from_slice(b"\\n"),
+        b'\r' => buffer.extend_from_slice(b"\\r"),
+        b'"' => buffer.extend_from_slice(b"\\\""),
+        b'\\' => buffer.extend_from_slice(b"\\\\"),
+        0x20..=0x7e => buffer.push(value),
+        _ => {
+            const HEX_DIGITS: &[u8; 16] = b"0123456789ABCDEF";
+            buffer.extend_from_slice(b"\\x");
+            if value >= 0x10 {
+                buffer.push(HEX_DIGITS[(value >> 4) as usize]);
+            }
+            buffer.push(HEX_DIGITS[(value & 0x0f) as usize]);
+        }
+    }
 }
 
 fn expat_heap_stat(
@@ -1406,7 +1492,7 @@ pub unsafe extern "C" fn XML_ParserCreateNS(
         );
     }
 }
-static mut implicitContext: [XML_Char; 41] = [
+static IMPLICIT_CONTEXT: [XML_Char; 41] = [
     ASCII_x as XML_Char,
     ASCII_m as XML_Char,
     ASCII_l as XML_Char,
@@ -5481,77 +5567,6 @@ extern "C" fn addBinding(
     mut bindingsPtr: *mut *mut BINDING,
 ) -> XML_Error {
     unsafe {
-        static mut xmlNamespace: [XML_Char; 37] = [
-            ASCII_h as XML_Char,
-            ASCII_t as XML_Char,
-            ASCII_t as XML_Char,
-            ASCII_p as XML_Char,
-            ASCII_COLON as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_PERIOD as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_3 as XML_Char,
-            ASCII_PERIOD as XML_Char,
-            ASCII_o as XML_Char,
-            ASCII_r as XML_Char,
-            ASCII_g as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_X as XML_Char,
-            ASCII_M as XML_Char,
-            ASCII_L as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_1 as XML_Char,
-            ASCII_9 as XML_Char,
-            ASCII_9 as XML_Char,
-            ASCII_8 as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_n as XML_Char,
-            ASCII_a as XML_Char,
-            ASCII_m as XML_Char,
-            ASCII_e as XML_Char,
-            ASCII_s as XML_Char,
-            ASCII_p as XML_Char,
-            ASCII_a as XML_Char,
-            ASCII_c as XML_Char,
-            ASCII_e as XML_Char,
-            '\0' as i32 as XML_Char,
-        ];
-        static mut xmlnsNamespace: [XML_Char; 30] = [
-            ASCII_h as XML_Char,
-            ASCII_t as XML_Char,
-            ASCII_t as XML_Char,
-            ASCII_p as XML_Char,
-            ASCII_COLON as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_PERIOD as XML_Char,
-            ASCII_w as XML_Char,
-            ASCII_3 as XML_Char,
-            ASCII_PERIOD as XML_Char,
-            ASCII_o as XML_Char,
-            ASCII_r as XML_Char,
-            ASCII_g as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_2 as XML_Char,
-            ASCII_0 as XML_Char,
-            ASCII_0 as XML_Char,
-            ASCII_0 as XML_Char,
-            ASCII_SLASH as XML_Char,
-            ASCII_x as XML_Char,
-            ASCII_m as XML_Char,
-            ASCII_l as XML_Char,
-            ASCII_n as XML_Char,
-            ASCII_s as XML_Char,
-            ASCII_SLASH as XML_Char,
-            '\0' as i32 as XML_Char,
-        ];
         let mut mustBeXML: XML_Bool = XML_FALSE;
         let mut isXML: XML_Bool = XML_TRUE;
         let mut isXMLNS: XML_Bool = XML_TRUE;
@@ -5586,17 +5601,17 @@ extern "C" fn addBinding(
         len = 0 as ::core::ffi::c_int;
         while *uri.offset(len as isize) != 0 {
             if isXML as ::core::ffi::c_int != 0
-                && (len > xmlLen
+                && (len > XML_NAMESPACE_LEN
                     || *uri.offset(len as isize) as ::core::ffi::c_int
-                        != xmlNamespace[len as usize] as ::core::ffi::c_int)
+                        != XML_NAMESPACE[len as usize] as ::core::ffi::c_int)
             {
                 isXML = XML_FALSE;
             }
             if mustBeXML == 0
                 && isXMLNS as ::core::ffi::c_int != 0
-                && (len > xmlnsLen
+                && (len > XMLNS_NAMESPACE_LEN
                     || *uri.offset(len as isize) as ::core::ffi::c_int
-                        != xmlnsNamespace[len as usize] as ::core::ffi::c_int)
+                        != XMLNS_NAMESPACE[len as usize] as ::core::ffi::c_int)
             {
                 isXMLNS = XML_FALSE;
             }
@@ -5609,10 +5624,10 @@ extern "C" fn addBinding(
             }
             len += 1;
         }
-        isXML =
-            (isXML as ::core::ffi::c_int != 0 && len == xmlLen) as ::core::ffi::c_int as XML_Bool;
-        isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == xmlnsLen) as ::core::ffi::c_int
+        isXML = (isXML as ::core::ffi::c_int != 0 && len == XML_NAMESPACE_LEN) as ::core::ffi::c_int
             as XML_Bool;
+        isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == XMLNS_NAMESPACE_LEN)
+            as ::core::ffi::c_int as XML_Bool;
         if mustBeXML as ::core::ffi::c_int != isXML as ::core::ffi::c_int {
             return (if mustBeXML as ::core::ffi::c_int != 0 {
                 XML_ERROR_RESERVED_PREFIX_XML as ::core::ffi::c_int
@@ -12836,18 +12851,3 @@ pub const ASCII_HASH: ::core::ffi::c_int = 0x23 as ::core::ffi::c_int;
 pub const ASCII_PIPE: ::core::ffi::c_int = 0x7c as ::core::ffi::c_int;
 pub const ASCII_COMMA: ::core::ffi::c_int = 0x2c as ::core::ffi::c_int;
 pub const __INT_MAX__: ::core::ffi::c_int = 2147483647 as ::core::ffi::c_int;
-extern "C" fn c2rust_run_static_initializers() {
-    unsafe {
-        xmlLen = (::core::mem::size_of::<[XML_Char; 37]>() as ::core::ffi::c_int as usize)
-            .wrapping_div(::core::mem::size_of::<XML_Char>() as usize)
-            .wrapping_sub(1 as usize) as ::core::ffi::c_int;
-        xmlnsLen = (::core::mem::size_of::<[XML_Char; 30]>() as ::core::ffi::c_int as usize)
-            .wrapping_div(::core::mem::size_of::<XML_Char>() as usize)
-            .wrapping_sub(1 as usize) as ::core::ffi::c_int;
-    }
-}
-#[used]
-#[cfg_attr(target_os = "linux", link_section = ".init_array")]
-#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
-#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [c2rust_run_static_initializers];
