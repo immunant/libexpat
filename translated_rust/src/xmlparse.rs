@@ -12546,37 +12546,23 @@ unsafe extern "C" fn copyString(
     return result;
 }
 
-unsafe extern "C" fn accountingGetCurrentAmplification(
-    mut rootParser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_float {
+fn accountingGetCurrentAmplification(rootParser: &XML_ParserStruct) -> ::core::ffi::c_float {
     let lenOfShortestInclude: crate::__stddef_size_t_h::size_t =
         (::core::mem::size_of::<[::core::ffi::c_char; 23]>() as crate::__stddef_size_t_h::size_t)
             .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
-    let countBytesOutput: XmlBigCount = (*rootParser)
+    let countBytesOutput: XmlBigCount = rootParser
         .m_accounting
         .countBytesDirect
-        .wrapping_add((*rootParser).m_accounting.countBytesIndirect);
-    let amplificationFactor: ::core::ffi::c_float =
-        if (*rootParser).m_accounting.countBytesDirect != 0 {
-            countBytesOutput as ::core::ffi::c_float
-                / (*rootParser).m_accounting.countBytesDirect as ::core::ffi::c_float
-        } else {
-            (lenOfShortestInclude as XmlBigCount)
-                .wrapping_add((*rootParser).m_accounting.countBytesIndirect)
-                as ::core::ffi::c_float
-                / lenOfShortestInclude as ::core::ffi::c_float
-        };
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8480 as ::core::ffi::c_uint,
-                b"float accountingGetCurrentAmplification(XML_Parser)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+        .wrapping_add(rootParser.m_accounting.countBytesIndirect);
+    let amplificationFactor: ::core::ffi::c_float = if rootParser.m_accounting.countBytesDirect != 0
+    {
+        countBytesOutput as ::core::ffi::c_float
+            / rootParser.m_accounting.countBytesDirect as ::core::ffi::c_float
+    } else {
+        (lenOfShortestInclude as XmlBigCount)
+            .wrapping_add(rootParser.m_accounting.countBytesIndirect)
+            as ::core::ffi::c_float
+            / lenOfShortestInclude as ::core::ffi::c_float
     };
     return amplificationFactor;
 }
@@ -12604,7 +12590,7 @@ unsafe extern "C" fn accountingReportStats(
         return;
     }
     let amplificationFactor: ::core::ffi::c_float =
-        accountingGetCurrentAmplification(rootParser) as ::core::ffi::c_float;
+        accountingGetCurrentAmplification(&*rootParser) as ::core::ffi::c_float;
     crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"expat: Accounting(%p): Direct %10llu, indirect %10llu, amplification %8.2f%s\0".as_ptr()
@@ -12777,7 +12763,7 @@ unsafe extern "C" fn accountingDiffTolerated(
         .countBytesDirect
         .wrapping_add((*rootParser).m_accounting.countBytesIndirect);
     let amplificationFactor: ::core::ffi::c_float =
-        accountingGetCurrentAmplification(rootParser) as ::core::ffi::c_float;
+        accountingGetCurrentAmplification(&*rootParser) as ::core::ffi::c_float;
     let tolerated: crate::expat_h::XML_Bool =
         (countBytesOutput < (*rootParser).m_accounting.activationThresholdBytes
             || amplificationFactor <= (*rootParser).m_accounting.maximumAmplificationFactor)
