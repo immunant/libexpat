@@ -9315,28 +9315,29 @@ pub unsafe extern "C" fn XML_SetCdataSectionHandler_ffi(
         handlers,
     )
 }
-pub unsafe extern "C" fn XML_SetStartCdataSectionHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartCdataSectionHandler,
-) {
-    if !parser.is_null() {
-        (*parser).m_startCdataSectionHandler = start.is_some();
-        let mut handlers = START_CDATA_SECTION_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match start {
-            Some(callback) => {
-                handlers.insert(
-                    parser as usize,
-                    std::sync::Arc::new(CdataSectionCallbackAdapter {
-                        callback: std::sync::Arc::new(callback),
-                    }),
-                );
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+fn set_start_cdata_section_handler<Callback>(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    start: Option<Callback>,
+) where
+    Callback: EndCdataSectionCallback + 'static,
+{
+    let callback = start.map(|callback| {
+        std::sync::Arc::new(CdataSectionCallbackAdapter {
+            callback: std::sync::Arc::new(callback),
+        })
+    });
+    parser.m_startCdataSectionHandler = callback.is_some();
+    let mut handlers = START_CDATA_SECTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
@@ -9346,7 +9347,14 @@ pub unsafe extern "C" fn XML_SetStartCdataSectionHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartCdataSectionHandler,
 ) {
-    XML_SetStartCdataSectionHandler(parser, start)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let Some(parser) = (unsafe { parser.as_mut() }) else {
+        return;
+    };
+    set_start_cdata_section_handler(parser, parser_address, start)
 }
 fn set_end_cdata_section_handler(
     parser: &mut XML_ParserStruct,
