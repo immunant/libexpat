@@ -11300,15 +11300,15 @@ fn xml_default_current_impl(parser: &mut XML_ParserStruct) {
     }
 }
 
-pub unsafe fn XML_DefaultCurrent(parser: &mut XML_ParserStruct) {
-    xml_default_current_impl(parser)
-}
 #[export_name = "XML_DefaultCurrent"]
 
-pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
-    let Some(parser) = parser.as_mut() else {
+pub unsafe extern "C" fn XML_DefaultCurrent_ffi(parser: crate::expat_h::XML_Parser) {
+    if parser.is_null()
+        || parser.addr() % ::core::mem::align_of::<XML_ParserStruct>() != 0
+    {
         return;
-    };
+    }
+    let parser = &mut *parser;
     xml_default_current_impl(parser)
 }
 pub unsafe extern "C" fn XML_ErrorString(
