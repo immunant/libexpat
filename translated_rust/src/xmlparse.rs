@@ -7261,19 +7261,8 @@ unsafe fn call_processor_impl(
     call_processor_dispatch(ProcessorCall { parser, input })
 }
 
-unsafe fn XML_ParserCreate_MM(
-    encoding_name: Option<&std::ffi::CStr>,
-    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-    namespace_separator: Option<crate::expat_external_h::XML_Char>,
-) -> crate::expat_h::XML_Parser {
-    parser_create_ownership(ParserCreationRequest {
-        encoding_name,
-        memory_suite,
-        namespace_separator,
-        share_parent_dtd: false,
-        parent: None,
-    })
-        .map_or_else(::core::ptr::null_mut, Box::into_raw)
+fn parser_create_mm(request: ParserCreationRequest<'_>) -> Option<Box<XML_ParserStruct>> {
+    parser_create_ownership(request)
 }
 #[export_name = "XML_ParserCreate_MM"]
 
@@ -7290,7 +7279,14 @@ pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
             free_fcn: Some(crate::stdlib::free),
         },
     );
-    XML_ParserCreate_MM(encoding_name, memory_suite, nameSep.as_ref().copied())
+    parser_create_mm(ParserCreationRequest {
+        encoding_name,
+        memory_suite,
+        namespace_separator: nameSep.as_ref().copied(),
+        share_parent_dtd: false,
+        parent: None,
+    })
+        .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 
 struct ParserParentState {
