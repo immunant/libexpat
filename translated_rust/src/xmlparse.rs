@@ -1626,7 +1626,7 @@ static DEFAULT_HANDLERS: std::sync::OnceLock<
 trait StartDoctypeDeclCallback: Send + Sync + std::any::Any {}
 
 impl StartDoctypeDeclCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
@@ -1888,7 +1888,7 @@ fn default_callback_adapter(
 impl StartDoctypeDeclCallbackAdapter {
     fn invoke(&self, event: StartDoctypeDeclCallbackEvent<'_>) {
         let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *const crate::expat_external_h::XML_Char,
@@ -1898,19 +1898,17 @@ impl StartDoctypeDeclCallbackAdapter {
         >() else {
             return;
         };
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event.name.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event
-                    .system_id
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event
-                    .public_id
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event.has_internal_subset,
-            );
-        }
+        callback(
+            handler_arg_from_state!(event.parser),
+            event.name.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event
+                .system_id
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event
+                .public_id
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event.has_internal_subset,
+        );
     }
 }
 
@@ -10346,6 +10344,17 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // The exported setter is the ABI boundary: start-doctype dispatch always
+    // supplies the callback's documented, live nullable XML-character views.
+    let start: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            ::core::ffi::c_int,
+        ),
+    > = unsafe { ::core::mem::transmute(start) };
     let handlers = doctype_decl_handlers(start, end);
     let parser = parser.as_mut().expect("non-null parser was checked");
     XML_SetDoctypeDeclHandler(
@@ -10384,6 +10393,17 @@ pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // The exported setter is the ABI boundary: start-doctype dispatch always
+    // supplies the callback's documented, live nullable XML-character views.
+    let start: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            ::core::ffi::c_int,
+        ),
+    > = unsafe { ::core::mem::transmute(start) };
     let registration = start_doctype_decl_handler_registration(start);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_start_doctype_decl_handler(parser, parser_address, registration)
