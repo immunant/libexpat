@@ -1636,6 +1636,13 @@ impl HASH_TABLE {
         }
     }
 
+    fn entries_mut(&mut self) -> impl Iterator<Item = *mut NAMED> + '_ {
+        self.slots_mut()
+            .iter()
+            .copied()
+            .filter(|entry| !entry.is_null())
+    }
+
     fn free_slots_vector(&mut self) {
         ExpatAllocator::new(self.parser).free(
             self.v as *mut ::core::ffi::c_void,
@@ -1681,6 +1688,16 @@ pub struct ELEMENT_TYPE {
     pub allocDefaultAtts: ::core::ffi::c_int,
     pub defaultAtts: *mut DEFAULT_ATTRIBUTE,
 }
+
+impl DTD {
+    fn element_types_mut(&mut self) -> impl Iterator<Item = &mut ELEMENT_TYPE> + '_ {
+        self.elementTypes.entries_mut().map(|entry| {
+            // The elementTypes table stores only ELEMENT_TYPE allocations, and each slot is yielded once.
+            unsafe { &mut *(entry as *mut ELEMENT_TYPE) }
+        })
+    }
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -2966,7 +2983,7 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
         copied_encoding_name
     };
     parserInit(&mut *parser, protocol_encoding_name);
-    dtdReset((*parser).m_dtd, parser);
+    dtdReset(&mut *(*parser).m_dtd, parser);
     return crate::expat_h::XML_TRUE;
 }
 fn parserBusy(parser: &XML_ParserStruct) -> crate::expat_h::XML_Bool {
@@ -3327,7 +3344,7 @@ pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Pars
     );
     if (*parser).m_isParamEntity == 0 && !(*parser).m_dtd.is_null() {
         dtdDestroy(
-            (*parser).m_dtd,
+            &mut *(*parser).m_dtd,
             (*parser).m_parentParser.is_null() as ::core::ffi::c_int as crate::expat_h::XML_Bool,
             parser,
         );
@@ -11777,96 +11794,79 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
     return p;
 }
 
-unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_Parser) {
-    let element_entries = if (*p).elementTypes.v.is_null() {
-        &[] as &[*mut NAMED]
-    } else {
-        ::core::slice::from_raw_parts((*p).elementTypes.v, (*p).elementTypes.size as usize)
-    };
-    for entry in HASH_TABLE_ITER::new(element_entries) {
-        let mut e: *mut ELEMENT_TYPE = entry as *mut ELEMENT_TYPE;
-        if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
-            expat_free(
-                parser,
-                (*e).defaultAtts as *mut ::core::ffi::c_void,
+fn dtdReset(p: &mut DTD, parser: crate::expat_h::XML_Parser) {
+    let allocator = ExpatAllocator::new(parser);
+    for element_type in p.element_types_mut() {
+        if element_type.allocDefaultAtts != 0 as ::core::ffi::c_int {
+            allocator.free(
+                element_type.defaultAtts as *mut ::core::ffi::c_void,
                 7539 as ::core::ffi::c_int,
             );
         }
     }
-    hashTableClear(&mut (*p).generalEntities);
-    (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableClear(&mut (*p).paramEntities);
-    hashTableClear(&mut (*p).elementTypes);
-    hashTableClear(&mut (*p).attributeIds);
-    hashTableClear(&mut (*p).prefixes);
-    poolClear(&mut (*p).pool);
-    poolClear(&mut (*p).entityValuePool);
-    (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
-    (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    expat_free(
-        parser,
-        (*p).scaffIndex as *mut ::core::ffi::c_void,
+    hashTableClear(&mut p.generalEntities);
+    p.paramEntityRead = crate::expat_h::XML_FALSE;
+    hashTableClear(&mut p.paramEntities);
+    hashTableClear(&mut p.elementTypes);
+    hashTableClear(&mut p.attributeIds);
+    hashTableClear(&mut p.prefixes);
+    poolClear(&mut p.pool);
+    poolClear(&mut p.entityValuePool);
+    p.defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    p.defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
+    p.in_eldecl = crate::expat_h::XML_FALSE;
+    allocator.free(
+        p.scaffIndex as *mut ::core::ffi::c_void,
         7556 as ::core::ffi::c_int,
     );
-    (*p).scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
-    expat_free(
-        parser,
-        (*p).scaffold as *mut ::core::ffi::c_void,
+    p.scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
+    allocator.free(
+        p.scaffold as *mut ::core::ffi::c_void,
         7558 as ::core::ffi::c_int,
     );
-    (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-    (*p).scaffLevel = 0 as ::core::ffi::c_int;
-    (*p).scaffSize = 0 as ::core::ffi::c_uint;
-    (*p).scaffCount = 0 as ::core::ffi::c_uint;
-    (*p).contentStringLen = 0 as ::core::ffi::c_uint;
-    (*p).keepProcessing = crate::expat_h::XML_TRUE;
-    (*p).hasParamEntityRefs = crate::expat_h::XML_FALSE;
-    (*p).standalone = crate::expat_h::XML_FALSE;
+    p.scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
+    p.scaffLevel = 0 as ::core::ffi::c_int;
+    p.scaffSize = 0 as ::core::ffi::c_uint;
+    p.scaffCount = 0 as ::core::ffi::c_uint;
+    p.contentStringLen = 0 as ::core::ffi::c_uint;
+    p.keepProcessing = crate::expat_h::XML_TRUE;
+    p.hasParamEntityRefs = crate::expat_h::XML_FALSE;
+    p.standalone = crate::expat_h::XML_FALSE;
 }
 
-unsafe extern "C" fn dtdDestroy(
-    mut p: *mut DTD,
-    mut isDocEntity: crate::expat_h::XML_Bool,
-    mut parser: crate::expat_h::XML_Parser,
+fn dtdDestroy(
+    p: &mut DTD,
+    isDocEntity: crate::expat_h::XML_Bool,
+    parser: crate::expat_h::XML_Parser,
 ) {
-    let element_entries = if (*p).elementTypes.v.is_null() {
-        &[] as &[*mut NAMED]
-    } else {
-        ::core::slice::from_raw_parts((*p).elementTypes.v, (*p).elementTypes.size as usize)
-    };
-    for entry in HASH_TABLE_ITER::new(element_entries) {
-        let mut e: *mut ELEMENT_TYPE = entry as *mut ELEMENT_TYPE;
-        if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
-            expat_free(
-                parser,
-                (*e).defaultAtts as *mut ::core::ffi::c_void,
+    let allocator = ExpatAllocator::new(parser);
+    for element_type in p.element_types_mut() {
+        if element_type.allocDefaultAtts != 0 as ::core::ffi::c_int {
+            allocator.free(
+                element_type.defaultAtts as *mut ::core::ffi::c_void,
                 7580 as ::core::ffi::c_int,
             );
         }
     }
-    hashTableDestroy(&mut (*p).generalEntities);
-    hashTableDestroy(&mut (*p).paramEntities);
-    hashTableDestroy(&mut (*p).elementTypes);
-    hashTableDestroy(&mut (*p).attributeIds);
-    hashTableDestroy(&mut (*p).prefixes);
-    poolDestroy(&mut (*p).pool);
-    poolDestroy(&mut (*p).entityValuePool);
+    hashTableDestroy(&mut p.generalEntities);
+    hashTableDestroy(&mut p.paramEntities);
+    hashTableDestroy(&mut p.elementTypes);
+    hashTableDestroy(&mut p.attributeIds);
+    hashTableDestroy(&mut p.prefixes);
+    poolDestroy(&mut p.pool);
+    poolDestroy(&mut p.entityValuePool);
     if isDocEntity != 0 {
-        expat_free(
-            parser,
-            (*p).scaffIndex as *mut ::core::ffi::c_void,
+        allocator.free(
+            p.scaffIndex as *mut ::core::ffi::c_void,
             7592 as ::core::ffi::c_int,
         );
-        expat_free(
-            parser,
-            (*p).scaffold as *mut ::core::ffi::c_void,
+        allocator.free(
+            p.scaffold as *mut ::core::ffi::c_void,
             7593 as ::core::ffi::c_int,
         );
     }
-    expat_free(
-        parser,
-        p as *mut ::core::ffi::c_void,
+    allocator.free(
+        p as *mut DTD as *mut ::core::ffi::c_void,
         7595 as ::core::ffi::c_int,
     );
 }
