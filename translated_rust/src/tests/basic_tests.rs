@@ -2102,6 +2102,16 @@ fn parse_single_bytes_c_string_for(
     )
 }
 
+fn parser_parse_c_string_for(parser: XML_Parser, text: *const ::core::ffi::c_char) -> XML_Status {
+    ffi_call4(
+        XML_Parse,
+        parser,
+        text,
+        c_string_len(text),
+        XML_TRUE as ::core::ffi::c_int,
+    )
+}
+
 fn parser_reset_for(parser: XML_Parser) {
     ffi_call2(XML_ParserReset, parser, ::core::ptr::null::<XML_Char>());
 }
@@ -2123,6 +2133,15 @@ fn parser_resume() -> XML_Status {
 
 fn parser_resume_for(parser: XML_Parser) -> XML_Status {
     ffi_call1(XML_ResumeParser, parser)
+}
+
+fn parser_resume_until_not_suspended(parser: XML_Parser, mut status: XML_Status) -> XML_Status {
+    while status as ::core::ffi::c_uint
+        == XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        status = parser_resume_for(parser);
+    }
+    status
 }
 
 fn parser_parsing_status() -> XML_ParsingStatus {
@@ -2530,6 +2549,10 @@ fn external_entity_loader_handler_for_tests() -> XML_ExternalEntityRefHandler {
     Some(external_entity_loader)
 }
 
+fn external_entity_public_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_public)
+}
+
 fn external_entity_loader2_handler_for_tests() -> XML_ExternalEntityRefHandler {
     Some(external_entity_loader2)
 }
@@ -2753,6 +2776,24 @@ fn record_element_end_handler_for_tests() -> XML_EndElementHandler {
 fn dummy_cdata_handler_for_tests() -> XML_CharacterDataHandler {
     Some(
         dummy_cdata_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    )
+}
+
+fn accumulate_and_suspend_comment_handler_for_tests() -> XML_CommentHandler {
+    Some(
+        accumulate_and_suspend_comment_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
+    )
+}
+
+fn accumulate_char_data_and_suspend_handler_for_tests() -> XML_CharacterDataHandler {
+    Some(
+        accumulate_char_data_and_suspend
             as unsafe extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const XML_Char,
@@ -3115,6 +3156,48 @@ fn assert_dummy_handler_flags(
     if dummy_handler_flags() != expected {
         fail_test(line, message);
     }
+}
+
+fn write_utf8_start_tag_doc(
+    doc: &mut [::core::ffi::c_char; 1024],
+    at_name_start: bool,
+    tag_name: *const ::core::ffi::c_char,
+) {
+    ffi_call!(
+        snprintf,
+        doc.as_mut_ptr(),
+        doc.len() as size_t,
+        bytes_as_c_char_ptr(b"<%s%s><!--\0"),
+        if at_name_start {
+            bytes_as_c_char_ptr(b"\0")
+        } else {
+            bytes_as_c_char_ptr(b"a\0")
+        },
+        tag_name,
+    );
+}
+
+fn log_utf8_start_tag_failure(
+    case_index: usize,
+    at_name_start: bool,
+    tag_name: *const ::core::ffi::c_char,
+    error_code: XML_Error,
+) {
+    ffi_call!(
+        fprintf,
+        standard_error(),
+        bytes_as_c_char_ptr(
+            b"FAIL case %2u (%sat name start, %u-byte sequence, error code %d)\n\0",
+        ),
+        (case_index as ::core::ffi::c_uint).wrapping_add(1 as ::core::ffi::c_uint),
+        if at_name_start {
+            bytes_as_c_char_ptr(b"    \0")
+        } else {
+            bytes_as_c_char_ptr(b"not \0")
+        },
+        c_string_len(tag_name) as ::core::ffi::c_uint,
+        error_code as ::core::ffi::c_uint,
+    );
 }
 
 fn write_illegal_utf8_input(buffer: &mut [u8; 100], ordinal: ::core::ffi::c_int) {
@@ -10733,50 +10816,22 @@ extern "C" fn test_group_choice() {
     );
 }
 extern "C" fn test_standalone_parameter_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_standalone_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3671 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='yes'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/' [\n<!ENTITY % entity '<!ELEMENT doc (#PCDATA)>'>\n%entity;\n]>\n<doc></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut dtd_data: [::core::ffi::c_char; 22] = ::core::mem::transmute::<
-            [u8; 22],
-            [::core::ffi::c_char; 22],
-        >(*b"<!ENTITY % e1 'foo'>\n\0");
-        parser_set_user_data(
-            &raw mut dtd_data as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-        );
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_public
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3685 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(
+        b"test_standalone_parameter_entity\0",
+        3671 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' standalone='yes'?>\n<!DOCTYPE doc SYSTEM 'http://example.org/' [\n<!ENTITY % entity '<!ELEMENT doc (#PCDATA)>'>\n%entity;\n]>\n<doc></doc>\0",
+    );
+    let mut dtd_data = (*b"<!ENTITY % e1 'foo'>\n\0").map(|byte| byte as ::core::ffi::c_char);
+
+    parser_set_user_data(dtd_data.as_mut_ptr().cast::<::core::ffi::c_void>());
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_public_handler_for_tests());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        3685 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_skipped_parameter_entity() {
     set_test_info(
@@ -12096,216 +12151,184 @@ extern "C" fn test_utf8_in_cdata_section_2() {
     run_character_check(text, expected, 4876 as ::core::ffi::c_int);
 }
 extern "C" fn test_utf8_in_start_tags() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf8_in_start_tags\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4880 as ::core::ffi::c_int,
-        );
-        let mut cases: [test_case; 24] = [
-            test_case {
-                goodName: true_0 != 0,
-                goodNameStart: true_0 != 0,
-                tagName: b":\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xBA\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: true_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"9\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xB9\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: true_0 != 0,
-                goodNameStart: true_0 != 0,
-                tagName: b"\xDB\xA5\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\x9B\xA5\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xDB%\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xDB\xE5\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: true_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xCC\x81\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\x8C\x81\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xCC\x01\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xCC\xC1\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: true_0 != 0,
-                goodNameStart: true_0 != 0,
-                tagName: b"\xE0\xA4\x85\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xA0\xA4\x85\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0$\x85\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0\xE4\x85\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0\xA4\x05\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0\xA4\xC5\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: true_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0\xA4\x81\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xA0\xA4\x81\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0$\x81\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0\xE4\x81\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0\xA4\x01\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            test_case {
-                goodName: false_0 != 0,
-                goodNameStart: false_0 != 0,
-                tagName: b"\xE0\xA4\xC1\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-        ];
-        let atNameStart: [bool; 2] = [true_0 != 0, false_0 != 0];
-        let mut i: size_t = 0 as size_t;
-        let mut doc: [::core::ffi::c_char; 1024] = [0; 1024];
-        let mut failCount: size_t = 0 as size_t;
-        if g_reparseDeferralEnabledDefault != 0 {
-            return;
-        }
-        while i
-            < (::core::mem::size_of::<[test_case; 24]>() as usize)
-                .wrapping_div(::core::mem::size_of::<test_case>() as usize)
-        {
-            let mut j: size_t = 0 as size_t;
-            while j
-                < (::core::mem::size_of::<[bool; 2]>() as usize)
-                    .wrapping_div(::core::mem::size_of::<bool>() as usize)
-            {
-                let expectedSuccess: bool = if atNameStart[j as usize] as ::core::ffi::c_int != 0 {
-                    cases[i as usize].goodNameStart as ::core::ffi::c_int
-                } else {
-                    cases[i as usize].goodName as ::core::ffi::c_int
-                } != 0;
-                snprintf(
-                    &raw mut doc as *mut ::core::ffi::c_char,
-                    ::core::mem::size_of::<[::core::ffi::c_char; 1024]>() as size_t,
-                    b"<%s%s><!--\0".as_ptr() as *const ::core::ffi::c_char,
-                    if atNameStart[j as usize] as ::core::ffi::c_int != 0 {
-                        b"\0".as_ptr() as *const ::core::ffi::c_char
-                    } else {
-                        b"a\0".as_ptr() as *const ::core::ffi::c_char
-                    },
-                    cases[i as usize].tagName,
-                );
-                let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-                let status: XML_Status = _XML_Parse_SINGLE_BYTES(
-                    parser,
-                    &raw mut doc as *mut ::core::ffi::c_char,
-                    strlen(&raw mut doc as *mut ::core::ffi::c_char) as ::core::ffi::c_int,
-                    XML_FALSE as ::core::ffi::c_int,
-                ) as XML_Status;
-                let mut success: bool = true_0 != 0;
-                if (status as ::core::ffi::c_uint
-                    == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
-                    as ::core::ffi::c_int
-                    != expectedSuccess as ::core::ffi::c_int
-                {
-                    success = false_0 != 0;
-                }
-                if status as ::core::ffi::c_uint
-                    == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-                    && XML_GetErrorCode(parser) as ::core::ffi::c_uint
-                        != XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    success = false_0 != 0;
-                }
-                if !success {
-                    fprintf(
-                        stderr,
-                        b"FAIL case %2u (%sat name start, %u-byte sequence, error code %d)\n\0"
-                            .as_ptr() as *const ::core::ffi::c_char,
-                        (i as ::core::ffi::c_uint).wrapping_add(1 as ::core::ffi::c_uint),
-                        if atNameStart[j as usize] as ::core::ffi::c_int != 0 {
-                            b"    \0".as_ptr() as *const ::core::ffi::c_char
-                        } else {
-                            b"not \0".as_ptr() as *const ::core::ffi::c_char
-                        },
-                        strlen(cases[i as usize].tagName) as ::core::ffi::c_uint,
-                        XML_GetErrorCode(parser) as ::core::ffi::c_uint,
-                    );
-                    failCount = failCount.wrapping_add(1);
-                }
-                parser_free(parser);
-                j = j.wrapping_add(1);
-            }
-            i = i.wrapping_add(1);
-        }
-        if failCount > 0 as size_t {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4981 as ::core::ffi::c_int,
-                b"UTF-8 regression detected\0".as_ptr() as *const ::core::ffi::c_char,
+    set_test_info(b"test_utf8_in_start_tags\0", 4880 as ::core::ffi::c_int);
+    let cases: [test_case; 24] = [
+        test_case {
+            goodName: true_0 != 0,
+            goodNameStart: true_0 != 0,
+            tagName: b":\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xBA\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: true_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"9\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xB9\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: true_0 != 0,
+            goodNameStart: true_0 != 0,
+            tagName: b"\xDB\xA5\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\x9B\xA5\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xDB%\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xDB\xE5\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: true_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xCC\x81\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\x8C\x81\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xCC\x01\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xCC\xC1\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: true_0 != 0,
+            goodNameStart: true_0 != 0,
+            tagName: b"\xE0\xA4\x85\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xA0\xA4\x85\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0$\x85\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0\xE4\x85\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0\xA4\x05\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0\xA4\xC5\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: true_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0\xA4\x81\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xA0\xA4\x81\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0$\x81\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0\xE4\x81\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0\xA4\x01\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        test_case {
+            goodName: false_0 != 0,
+            goodNameStart: false_0 != 0,
+            tagName: b"\xE0\xA4\xC1\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+    ];
+    let at_name_start_cases = [true_0 != 0, false_0 != 0];
+    let mut doc: [::core::ffi::c_char; 1024] = [0; 1024];
+    let mut fail_count: size_t = 0 as size_t;
+
+    if reparse_deferral_enabled_default() {
+        return;
+    }
+
+    for (case_index, case) in cases.iter().enumerate() {
+        for &at_name_start in &at_name_start_cases {
+            let expected_success = if at_name_start {
+                case.goodNameStart
+            } else {
+                case.goodName
+            };
+
+            write_utf8_start_tag_doc(&mut doc, at_name_start, case.tagName);
+            let parser = parser_create();
+            let status = parse_single_bytes_with_final_for(
+                parser,
+                doc.as_ptr(),
+                c_string_len(doc.as_ptr()),
+                XML_FALSE as ::core::ffi::c_int,
             );
+            let mut success = true_0 != 0;
+
+            if (status as ::core::ffi::c_uint
+                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
+                != expected_success
+            {
+                success = false_0 != 0;
+            }
+            if status as ::core::ffi::c_uint
+                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+                && parser_error_code_for(parser) as ::core::ffi::c_uint
+                    != XML_ERROR_INVALID_TOKEN as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                success = false_0 != 0;
+            }
+            if !success {
+                log_utf8_start_tag_failure(
+                    case_index,
+                    at_name_start,
+                    case.tagName,
+                    parser_error_code_for(parser),
+                );
+                fail_count = fail_count.wrapping_add(1);
+            }
+
+            parser_free(parser);
         }
+    }
+
+    if fail_count > 0 as size_t {
+        fail_test(4981 as ::core::ffi::c_int, b"UTF-8 regression detected\0");
     }
 }
 extern "C" fn test_trailing_spaces_in_elements() {
@@ -12909,121 +12932,67 @@ extern "C" fn test_deep_nested_entity_delayed_interpretation() {
     parser_free(parser);
 }
 extern "C" fn test_nested_entity_suspend() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nested_entity_suspend\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5601 as ::core::ffi::c_int,
-        );
-        let text: *const ::core::ffi::c_char = b"<!DOCTYPE a [\n  <!ENTITY e1 '<!--e1-->'>\n  <!ENTITY e2 '<!--e2 head-->&e1;<!--e2 tail-->'>\n  <!ENTITY e3 '<!--e3 head-->&e2;<!--e3 tail-->'>\n]>\n<a><!--start-->&e3;<!--end--></a>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let expected: *const XML_Char =
-            b"starte3 heade2 heade1e2 taile3 tailend\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let mut parserPlusStorage: ParserPlusStorage = ParserPlusStorage {
-            parser: parser,
-            storage: &raw mut storage,
-        };
-        XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetCommentHandler(
-            parser,
-            Some(
-                accumulate_and_suspend_comment_handler
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-            ),
-        );
-        parser_set_user_data_for(
-            parser,
-            &raw mut parserPlusStorage as *mut ::core::ffi::c_void,
-        );
-        let mut status: XML_Status = XML_Parse(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        );
-        while status as ::core::ffi::c_uint
-            == XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            status = XML_ResumeParser(parser);
-        }
-        if status as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5624 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-        parser_free(parser);
-    }
+    set_test_info(b"test_nested_entity_suspend\0", 5601 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE a [\n  <!ENTITY e1 '<!--e1-->'>\n  <!ENTITY e2 '<!--e2 head-->&e1;<!--e2 tail-->'>\n  <!ENTITY e3 '<!--e3 head-->&e2;<!--e3 tail-->'>\n]>\n<a><!--start-->&e3;<!--end--></a>\0",
+    );
+    let expected = bytes_as_xml_char_ptr(b"starte3 heade2 heade1e2 taile3 tailend\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    char_data_init(&mut storage);
+    let parser = parser_create();
+    let mut parser_plus_storage = ParserPlusStorage {
+        parser,
+        storage: &mut storage,
+    };
+
+    parser_set_param_entity_parsing_for(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_comment_handler_for(parser, accumulate_and_suspend_comment_handler_for_tests());
+    parser_set_user_data_for(
+        parser,
+        (&mut parser_plus_storage as *mut ParserPlusStorage).cast(),
+    );
+
+    let status = parser_resume_until_not_suspended(parser, parser_parse_c_string_for(parser, text));
+    ensure_parser_success_for(parser, status, 5624 as ::core::ffi::c_int);
+    char_data_check_xml_chars(&mut storage, expected);
+    parser_free(parser);
 }
 extern "C" fn test_nested_entity_suspend_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nested_entity_suspend_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5631 as ::core::ffi::c_int,
-        );
-        let text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY ge1 'head1Ztail1'>\n  <!ENTITY ge2 'head2&ge1;tail2'>\n  <!ENTITY ge3 'head3&ge2;tail3'>\n]>\n<doc>&ge3;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let expected: *const XML_Char =
-            b"head3head2head1Ztail1tail2tail3\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let mut parserPlusStorage: ParserPlusStorage = ParserPlusStorage {
-            parser: parser,
-            storage: &raw mut storage,
-        };
-        XML_SetCharacterDataHandler(
-            parser,
-            Some(
-                accumulate_char_data_and_suspend
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data_for(
-            parser,
-            &raw mut parserPlusStorage as *mut ::core::ffi::c_void,
-        );
-        let mut status: XML_Status = XML_Parse(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        );
-        while status as ::core::ffi::c_uint
-            == XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            status = XML_ResumeParser(parser);
-        }
-        if status as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5653 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-        parser_free(parser);
-    }
+    set_test_info(
+        b"test_nested_entity_suspend_2\0",
+        5631 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ENTITY ge1 'head1Ztail1'>\n  <!ENTITY ge2 'head2&ge1;tail2'>\n  <!ENTITY ge3 'head3&ge2;tail3'>\n]>\n<doc>&ge3;</doc>\0",
+    );
+    let expected = bytes_as_xml_char_ptr(b"head3head2head1Ztail1tail2tail3\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    char_data_init(&mut storage);
+    let parser = parser_create();
+    let mut parser_plus_storage = ParserPlusStorage {
+        parser,
+        storage: &mut storage,
+    };
+
+    parser_set_character_data_handler_for(
+        parser,
+        accumulate_char_data_and_suspend_handler_for_tests(),
+    );
+    parser_set_user_data_for(
+        parser,
+        (&mut parser_plus_storage as *mut ParserPlusStorage).cast(),
+    );
+
+    let status = parser_resume_until_not_suspended(parser, parser_parse_c_string_for(parser, text));
+    ensure_parser_success_for(parser, status, 5653 as ::core::ffi::c_int);
+    char_data_check_xml_chars(&mut storage, expected);
+    parser_free(parser);
 }
 extern "C" fn test_big_tokens_scale_linearly() {
     set_test_info(
