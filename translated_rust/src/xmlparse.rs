@@ -1701,35 +1701,29 @@ static NOT_STANDALONE_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn NotStandaloneCallback>>>,
 > = std::sync::OnceLock::new();
 
-unsafe fn callCharacterDataHandler(
-    parser: crate::expat_h::XML_Parser,
-    data: *const crate::expat_external_h::XML_Char,
-    len: ::core::ffi::c_int,
-) {
-    let callback = CHARACTER_DATA_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
-        .cloned();
-    if let Some(callback) = callback {
-        callback.invoke(handler_arg!(parser), data, len);
-    }
-}
-
 /// Dispatches character data that is already held in typed Rust storage.
 ///
 /// The parser key and callback context are derived from a live parser borrow,
 /// while `data` supplies a checked length and a valid temporary callback view.
 /// Keep the raw ABI call at this narrow boundary so content processing itself
 /// does not need the legacy raw callback adapter.
-fn dispatch_character_data_slice(
+fn dispatch_character_data_callback(
+    callback: &dyn CharacterDataCallback,
     parser: &XML_ParserStruct,
     data: &[crate::expat_external_h::XML_Char],
 ) {
     let Ok(len) = ::core::ffi::c_int::try_from(data.len()) else {
         return;
     };
+    unsafe {
+        callback.invoke(handler_arg_from_state!(parser), data.as_ptr(), len);
+    }
+}
+
+fn dispatch_character_data_slice(
+    parser: &XML_ParserStruct,
+    data: &[crate::expat_external_h::XML_Char],
+) {
     let callback = CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -1737,9 +1731,7 @@ fn dispatch_character_data_slice(
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     if let Some(callback) = callback {
-        unsafe {
-            callback.invoke(handler_arg_from_state!(parser), data.as_ptr(), len);
-        }
+        dispatch_character_data_callback(callback.as_ref(), parser, data);
     }
 }
 
@@ -11453,7 +11445,7 @@ unsafe fn doContent(
                             {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             }
-                            let (data_start, data_len) = {
+                            let written = {
                                 let data_buf_end = parser.m_dataBufEnd;
                                 let Some(output) = parser
                                     .m_dataBuf
@@ -11468,13 +11460,12 @@ unsafe fn doContent(
                                     &source,
                                     bytemuck::cast_slice_mut(output),
                                 );
-                                let Some(data_len) = ::core::ffi::c_int::try_from(written).ok()
-                                else {
-                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                                };
-                                (output.as_ptr(), data_len)
+                                written
                             };
-                            callCharacterDataHandler(parser, data_start, data_len);
+                            let Some(data) = parser.m_dataBuf.chars.get(..written) else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            dispatch_character_data_slice(parser, data);
                         } else {
                             // `source` is the complete bounded window from
                             // `s` through `end`.  Dispatch it directly from
@@ -11552,7 +11543,7 @@ unsafe fn doContent(
                                 {
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 }
-                                let (convert_res_0, consumed, written, data_start) = {
+                                let (convert_res_0, consumed, written) = {
                                     let data_buf_end = parser.m_dataBufEnd;
                                     let Some(output) = parser
                                         .m_dataBuf
@@ -11568,7 +11559,7 @@ unsafe fn doContent(
                                             remaining,
                                             bytemuck::cast_slice_mut(output),
                                         );
-                                    (result, consumed, written, output.as_ptr())
+                                    (result, consumed, written)
                                 };
                                 let Some(next_offset) = remaining_offset.checked_add(consumed) else {
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -11585,14 +11576,13 @@ unsafe fn doContent(
                                     internal_event_window,
                                     s.addr(),
                                 );
-                                let data_len = match ::core::ffi::c_int::try_from(written).ok() {
-                                    Some(len) => len,
-                                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                let Some(data) = parser.m_dataBuf.chars.get(..written) else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 };
-                                charDataHandler.invoke(
-                                    handler_arg_from_state!(parser),
-                                    data_start,
-                                    data_len,
+                                dispatch_character_data_callback(
+                                    charDataHandler.as_ref(),
+                                    parser,
+                                    data,
                                 );
                                 if convert_res_0 as ::core::ffi::c_uint
                                     == crate::src::xmltok::XML_CONVERT_COMPLETED
