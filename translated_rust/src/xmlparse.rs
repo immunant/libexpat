@@ -1591,6 +1591,40 @@ pub struct HASH_TABLE {
     pub used: crate::__stddef_size_t_h::size_t,
     pub parser: crate::expat_h::XML_Parser,
 }
+
+impl HASH_TABLE {
+    fn slots_mut(&mut self) -> &mut [*mut NAMED] {
+        if self.v.is_null() || self.size == 0 {
+            &mut []
+        } else {
+            unsafe { ::core::slice::from_raw_parts_mut(self.v, self.size as usize) }
+        }
+    }
+
+    fn free_slots_vector(&mut self) {
+        ExpatAllocator::new(self.parser).free(
+            self.v as *mut ::core::ffi::c_void,
+            7938 as ::core::ffi::c_int,
+        );
+    }
+}
+
+struct ExpatAllocator {
+    parser: crate::expat_h::XML_Parser,
+}
+
+impl ExpatAllocator {
+    fn new(parser: crate::expat_h::XML_Parser) -> Self {
+        Self { parser }
+    }
+
+    fn free(&self, ptr: *mut ::core::ffi::c_void, source_line: ::core::ffi::c_int) {
+        unsafe {
+            expat_free(self.parser, ptr, source_line);
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -12351,26 +12385,15 @@ fn free_hash_table_entries(
     clear_slots: bool,
     free_vector: bool,
 ) {
-    unsafe {
-        let mut i: crate::__stddef_size_t_h::size_t = 0;
-        while i < table.size {
-            expat_free(
-                table.parser,
-                *table.v.offset(i as isize) as *mut ::core::ffi::c_void,
-                source_line,
-            );
-            if clear_slots {
-                *table.v.offset(i as isize) = ::core::ptr::null_mut::<NAMED>();
-            }
-            i = i.wrapping_add(1);
+    let allocator = ExpatAllocator::new(table.parser);
+    for slot in table.slots_mut() {
+        allocator.free(*slot as *mut ::core::ffi::c_void, source_line);
+        if clear_slots {
+            *slot = ::core::ptr::null_mut::<NAMED>();
         }
-        if free_vector {
-            expat_free(
-                table.parser,
-                table.v as *mut ::core::ffi::c_void,
-                7938 as ::core::ffi::c_int,
-            );
-        }
+    }
+    if free_vector {
+        table.free_slots_vector();
     }
 }
 
