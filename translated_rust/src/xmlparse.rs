@@ -8809,51 +8809,85 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
 ) -> ::core::ffi::c_int {
     XML_SetHashSalt(parser, hash_salt)
 }
+/// Parses either a supplied input slice (`XML_Parse`) or the caller-filled
+/// parser buffer (`XML_ParseBuffer`).  The C cursor ABI remains below the
+/// processor dispatch; this common entry point only works with a checked
+/// parser borrow and, when supplied, a checked input slice.
 unsafe fn XML_Parse(
     parser: &mut XML_ParserStruct,
-    input: &[u8],
-    mut isFinal: ::core::ffi::c_int,
+    input: Option<&[u8]>,
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
 ) -> crate::expat_h::XML_Status {
-    let Ok(len) = ::core::ffi::c_int::try_from(input.len()) else {
-        parser.m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
-        return crate::expat_h::XML_STATUS_ERROR;
-    };
-    match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
-        3 => {
-            parser.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
-            return crate::expat_h::XML_STATUS_ERROR;
-        }
-        2 => {
-            parser.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
-            return crate::expat_h::XML_STATUS_ERROR;
-        }
-        0 => {
-            if parser.m_parentParser.is_none() && startParsing(parser) == 0 {
-                parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+    let len = match input {
+        Some(input) => match ::core::ffi::c_int::try_from(input.len()) {
+            Ok(len) => len,
+            Err(_) => {
+                parser.m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
+        },
+        None if len < 0 => {
+            parser.m_errorCode = crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+            return crate::expat_h::XML_STATUS_ERROR;
         }
-        _ => {}
-    }
-    parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    if xml_get_buffer_impl(parser, len).is_none() {
-        return crate::expat_h::XML_STATUS_ERROR;
-    }
-    let Some(end) = parser.m_bufferEnd.checked_add(input.len()) else {
-        parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        return crate::expat_h::XML_STATUS_ERROR;
+        None => len,
     };
-    let Some(destination) = parser
-        .m_buffer
-        .bytes
-        .as_mut()
-        .and_then(|buffer| buffer.get_mut(parser.m_bufferEnd..end))
-    else {
-        parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        return crate::expat_h::XML_STATUS_ERROR;
+
+    let needs_start = match input {
+        Some(_) => match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
+            3 => {
+                parser.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+                return crate::expat_h::XML_STATUS_ERROR;
+            }
+            2 => {
+                parser.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+                return crate::expat_h::XML_STATUS_ERROR;
+            }
+            0 => parser.m_parentParser.is_none(),
+            _ => false,
+        },
+        None => match parse_buffer_preflight(parser, len) {
+            Ok(needs_start) => needs_start,
+            Err(status) => return status,
+        },
     };
-    destination.copy_from_slice(input);
-    XML_ParseBuffer(parser, len, isFinal)
+    if needs_start && startParsing(parser) == 0 {
+        parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+        return crate::expat_h::XML_STATUS_ERROR;
+    }
+
+    if let Some(input) = input {
+        parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+        if xml_get_buffer_impl(parser, len).is_none() {
+            return crate::expat_h::XML_STATUS_ERROR;
+        }
+        let Some(end) = parser.m_bufferEnd.checked_add(input.len()) else {
+            parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return crate::expat_h::XML_STATUS_ERROR;
+        };
+        let Some(destination) = parser
+            .m_buffer
+            .bytes
+            .as_mut()
+            .and_then(|buffer| buffer.get_mut(parser.m_bufferEnd..end))
+        else {
+            parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return crate::expat_h::XML_STATUS_ERROR;
+        };
+        destination.copy_from_slice(input);
+    }
+
+    let input = match parse_buffer_begin(parser, len as usize, is_final) {
+        Some(input) => input,
+        None => {
+            parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return crate::expat_h::XML_STATUS_ERROR;
+        }
+    };
+    let (error, processed_to) = call_processor_impl(parser, input);
+    parser.m_errorCode = error;
+    parse_buffer_finish(parser, processed_to, is_final)
 }
 
 #[export_name = "XML_Parse"]
@@ -8879,7 +8913,7 @@ pub unsafe extern "C" fn XML_Parse_ffi(
     } else {
         unsafe { ::core::slice::from_raw_parts(s.cast::<u8>(), len) }
     };
-    unsafe { XML_Parse(parser, input, isFinal) }
+    XML_Parse(parser, Some(input), len as ::core::ffi::c_int, isFinal)
 }
 fn parse_buffer_preflight(
     parser: &mut XML_ParserStruct,
@@ -8985,41 +9019,6 @@ fn parse_buffer_finish(
     result
 }
 
-/// Processes the caller-owned portion of the parser input buffer.
-///
-/// The raw processor ABI is confined to this adapter.  Its safe helpers carry
-/// byte offsets, so no unvalidated cursor can select a buffer range.
-unsafe fn parse_buffer_impl(
-    parser: &mut XML_ParserStruct,
-    len: ::core::ffi::c_int,
-    is_final: ::core::ffi::c_int,
-) -> crate::expat_h::XML_Status {
-    let needs_start = match parse_buffer_preflight(parser, len) {
-        Ok(needs_start) => needs_start,
-        Err(status) => return status,
-    };
-    if needs_start && startParsing(parser) == 0 {
-        parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-        return crate::expat_h::XML_STATUS_ERROR;
-    }
-    let input = match parse_buffer_begin(parser, len as usize, is_final) {
-        Some(input) => input,
-        None => {
-            parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            return crate::expat_h::XML_STATUS_ERROR;
-        }
-    };
-    let (error, processed_to) = call_processor_impl(parser, input);
-    parser.m_errorCode = error;
-    parse_buffer_finish(parser, processed_to, is_final)
-}
-pub unsafe fn XML_ParseBuffer(
-    parser: &mut XML_ParserStruct,
-    len: ::core::ffi::c_int,
-    isFinal: ::core::ffi::c_int,
-) -> crate::expat_h::XML_Status {
-    parse_buffer_impl(parser, len, isFinal)
-}
 #[export_name = "XML_ParseBuffer"]
 
 pub unsafe extern "C" fn XML_ParseBuffer_ffi(
@@ -9030,7 +9029,7 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
     let Some(parser) = parser.as_mut() else {
         return crate::expat_h::XML_STATUS_ERROR;
     };
-    XML_ParseBuffer(parser, len, isFinal)
+    XML_Parse(parser, None, len, isFinal)
 }
 unsafe fn xml_get_buffer_impl(
     parser_ref: &mut XML_ParserStruct,
