@@ -8491,6 +8491,89 @@ unsafe extern "C" fn doProlog(
         eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
         eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
     }
+    let next_scaffold_part = |parser: crate::expat_h::XML_Parser,
+                              dtd: *mut DTD|
+     -> ::core::ffi::c_int {
+        let mut me: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
+        let mut next: ::core::ffi::c_int = 0;
+        if (*dtd).scaffIndex.is_null() {
+            (*dtd).scaffIndex = expat_malloc(
+                parser,
+                ((*parser).m_groupSize as crate::__stddef_size_t_h::size_t)
+                    .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>()
+                        as crate::__stddef_size_t_h::size_t),
+                8232 as ::core::ffi::c_int,
+            ) as *mut ::core::ffi::c_int;
+            if (*dtd).scaffIndex.is_null() {
+                return -1 as ::core::ffi::c_int;
+            }
+            *(*dtd).scaffIndex.offset(0 as ::core::ffi::c_int as isize) = 0 as ::core::ffi::c_int;
+        }
+        if (*dtd).scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
+            return -1 as ::core::ffi::c_int;
+        }
+        if (*dtd).scaffCount >= (*dtd).scaffSize {
+            let mut temp: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
+            if !(*dtd).scaffold.is_null() {
+                if (*dtd).scaffSize
+                    > crate::limits_h::UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint)
+                {
+                    return -1 as ::core::ffi::c_int;
+                }
+                temp = expat_realloc(
+                    parser,
+                    (*dtd).scaffold as *mut ::core::ffi::c_void,
+                    ((*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
+                        as crate::__stddef_size_t_h::size_t)
+                        .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()
+                            as crate::__stddef_size_t_h::size_t),
+                    8261 as ::core::ffi::c_int,
+                ) as *mut CONTENT_SCAFFOLD;
+                if temp.is_null() {
+                    return -1 as ::core::ffi::c_int;
+                }
+                (*dtd).scaffSize = (*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
+            } else {
+                temp = expat_malloc(
+                    parser,
+                    (32 as crate::__stddef_size_t_h::size_t)
+                        .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()
+                            as crate::__stddef_size_t_h::size_t),
+                    8266 as ::core::ffi::c_int,
+                ) as *mut CONTENT_SCAFFOLD;
+                if temp.is_null() {
+                    return -1 as ::core::ffi::c_int;
+                }
+                (*dtd).scaffSize = INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint;
+            }
+            (*dtd).scaffold = temp;
+        }
+        let c2rust_fresh14 = (*dtd).scaffCount;
+        (*dtd).scaffCount = (*dtd).scaffCount.wrapping_add(1);
+        next = c2rust_fresh14 as ::core::ffi::c_int;
+        me = (*dtd).scaffold.offset(next as isize) as *mut CONTENT_SCAFFOLD;
+        if (*dtd).scaffLevel != 0 {
+            let mut parent: *mut CONTENT_SCAFFOLD = (*dtd).scaffold.offset(
+                *(*dtd)
+                    .scaffIndex
+                    .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
+                    as isize,
+            ) as *mut CONTENT_SCAFFOLD;
+            if (*parent).lastchild != 0 {
+                (*(*dtd).scaffold.offset((*parent).lastchild as isize)).nextsib = next;
+            }
+            if (*parent).childcnt == 0 {
+                (*parent).firstchild = next;
+            }
+            (*parent).lastchild = next;
+            (*parent).childcnt += 1;
+        }
+        (*me).nextsib = 0 as ::core::ffi::c_int;
+        (*me).childcnt = (*me).nextsib;
+        (*me).lastchild = (*me).childcnt;
+        (*me).firstchild = (*me).lastchild;
+        return next;
+    };
     loop {
         let mut role: ::core::ffi::c_int = 0;
         let mut handleDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
@@ -9626,7 +9709,7 @@ unsafe extern "C" fn doProlog(
                     .m_groupConnector
                     .offset((*parser).m_prologState.level as isize) = 0 as ::core::ffi::c_char;
                 if (*dtd).in_eldecl != 0 {
-                    let mut myindex: ::core::ffi::c_int = nextScaffoldPart(parser);
+                    let mut myindex: ::core::ffi::c_int = next_scaffold_part(parser, dtd);
                     if myindex < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -10123,7 +10206,7 @@ unsafe extern "C" fn doProlog(
                     } else {
                         next.offset(-((*enc).minBytesPerChar as isize))
                     };
-                    let mut myindex_0: ::core::ffi::c_int = nextScaffoldPart(parser);
+                    let mut myindex_0: ::core::ffi::c_int = next_scaffold_part(parser, dtd);
                     if myindex_0 < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -12886,89 +12969,6 @@ fn poolGrow(
         }
         return crate::expat_h::XML_TRUE;
     }
-}
-
-unsafe extern "C" fn nextScaffoldPart(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut me: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-    let mut next: ::core::ffi::c_int = 0;
-    if (*dtd).scaffIndex.is_null() {
-        (*dtd).scaffIndex = expat_malloc(
-            parser,
-            ((*parser).m_groupSize as crate::__stddef_size_t_h::size_t)
-                .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>()
-                    as crate::__stddef_size_t_h::size_t),
-            8232 as ::core::ffi::c_int,
-        ) as *mut ::core::ffi::c_int;
-        if (*dtd).scaffIndex.is_null() {
-            return -1 as ::core::ffi::c_int;
-        }
-        *(*dtd).scaffIndex.offset(0 as ::core::ffi::c_int as isize) = 0 as ::core::ffi::c_int;
-    }
-    if (*dtd).scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
-        return -1 as ::core::ffi::c_int;
-    }
-    if (*dtd).scaffCount >= (*dtd).scaffSize {
-        let mut temp: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-        if !(*dtd).scaffold.is_null() {
-            if (*dtd).scaffSize > crate::limits_h::UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
-                return -1 as ::core::ffi::c_int;
-            }
-            temp = expat_realloc(
-                parser,
-                (*dtd).scaffold as *mut ::core::ffi::c_void,
-                ((*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
-                    as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()
-                        as crate::__stddef_size_t_h::size_t),
-                8261 as ::core::ffi::c_int,
-            ) as *mut CONTENT_SCAFFOLD;
-            if temp.is_null() {
-                return -1 as ::core::ffi::c_int;
-            }
-            (*dtd).scaffSize = (*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
-        } else {
-            temp = expat_malloc(
-                parser,
-                (32 as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()
-                        as crate::__stddef_size_t_h::size_t),
-                8266 as ::core::ffi::c_int,
-            ) as *mut CONTENT_SCAFFOLD;
-            if temp.is_null() {
-                return -1 as ::core::ffi::c_int;
-            }
-            (*dtd).scaffSize = INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint;
-        }
-        (*dtd).scaffold = temp;
-    }
-    let c2rust_fresh14 = (*dtd).scaffCount;
-    (*dtd).scaffCount = (*dtd).scaffCount.wrapping_add(1);
-    next = c2rust_fresh14 as ::core::ffi::c_int;
-    me = (*dtd).scaffold.offset(next as isize) as *mut CONTENT_SCAFFOLD;
-    if (*dtd).scaffLevel != 0 {
-        let mut parent: *mut CONTENT_SCAFFOLD = (*dtd).scaffold.offset(
-            *(*dtd)
-                .scaffIndex
-                .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
-                as isize,
-        ) as *mut CONTENT_SCAFFOLD;
-        if (*parent).lastchild != 0 {
-            (*(*dtd).scaffold.offset((*parent).lastchild as isize)).nextsib = next;
-        }
-        if (*parent).childcnt == 0 {
-            (*parent).firstchild = next;
-        }
-        (*parent).lastchild = next;
-        (*parent).childcnt += 1;
-    }
-    (*me).nextsib = 0 as ::core::ffi::c_int;
-    (*me).childcnt = (*me).nextsib;
-    (*me).lastchild = (*me).childcnt;
-    (*me).firstchild = (*me).lastchild;
-    return next;
 }
 
 fn accountingGetCurrentAmplification(rootParser: &XML_ParserStruct) -> ::core::ffi::c_float {
