@@ -556,11 +556,7 @@ pub unsafe fn convert_to_utf8(
 
 pub struct INIT_ENCODING {
     pub initEnc: crate::src::xmltok::ENCODING,
-    selected_encoding: Option<usize>,
-}
-
-pub fn take_initial_encoding_selection(initial_encoding: &mut INIT_ENCODING) -> Option<usize> {
-    initial_encoding.selected_encoding.take()
+    pub(crate) selected_encoding: Option<usize>,
 }
 
 pub type CONVERTER = Option<
