@@ -2961,11 +2961,25 @@ impl ParserAllocatorPolicy {
         size: crate::__stddef_size_t_h::size_t,
         source_line: ::core::ffi::c_int,
     ) -> Option<AllocationBacking> {
+        AllocationBacking::from_allocator_policy(self, size, source_line)
+    }
+}
+
+impl AllocationBacking {
+    /// Construct an opaque allocation token from a parser policy whose
+    /// allocator route was captured while the parser was valid.  The token
+    /// is the sole owner of the foreign allocation address; callers can only
+    /// drive it through `ParserAllocationAction`.
+    fn from_allocator_policy(
+        policy: &ParserAllocatorPolicy,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> Option<Self> {
         let bytes = expat_allocation_bytes(size)?;
-        if !self.reserve(bytes, source_line) {
+        if !policy.reserve(bytes, source_line) {
             return None;
         }
-        let malloc = self.memory_suite.malloc_fcn.expect("non-null function pointer");
+        let malloc = policy.memory_suite.malloc_fcn.expect("non-null function pointer");
         let allocation = unsafe { malloc(bytes) };
         if allocation.is_null() {
             return None;
@@ -2977,14 +2991,14 @@ impl ParserAllocatorPolicy {
             .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING);
         let mut allocation = allocation.wrapping_byte_add(payload_offset);
         expat_malloc_record(
-            &self.root,
-            self.parser_address,
+            &policy.root,
+            policy.parser_address,
             allocation.addr(),
             size,
             bytes,
             source_line,
         );
-        let policy = self.clone();
+        let policy = policy.clone();
         Some(AllocationBacking {
             actions: Box::new(move |action| match action {
                 ParserAllocationAction::Grow { size, source_line } => {
