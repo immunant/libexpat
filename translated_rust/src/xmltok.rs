@@ -333,19 +333,48 @@ pub unsafe fn check_public_id(
     }
 }
 #[derive(Copy, Clone)]
-#[repr(C)]
+pub enum NameMatcher {
+    Normal,
+    Little2,
+    Big2,
+}
 
+impl NameMatcher {
+    pub unsafe fn matches_ascii(
+        self,
+        mut ptr1: *const ::core::ffi::c_char,
+        end1: *const ::core::ffi::c_char,
+        mut ptr2: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let width = match self {
+            Self::Normal => 1,
+            Self::Little2 | Self::Big2 => 2,
+        };
+        while *ptr2 != 0 {
+            if end1.offset_from(ptr1) < width {
+                return 0;
+            }
+            let matches = match self {
+                Self::Normal => *ptr1 == *ptr2,
+                Self::Little2 => *ptr1.offset(1) == 0 && *ptr1 == *ptr2,
+                Self::Big2 => *ptr1 == 0 && *ptr1.offset(1) == *ptr2,
+            };
+            if !matches {
+                return 0;
+            }
+            ptr1 = ptr1.offset(width);
+            ptr2 = ptr2.offset(1);
+        }
+        (ptr1 == end1) as ::core::ffi::c_int
+    }
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
 pub struct encoding {
     pub scanners: [crate::src::xmltok::SCANNER; 4],
     pub literalScanners: [crate::src::xmltok::LiteralScanner; 2],
-    pub nameMatchesAscii: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub nameMatchesAscii: crate::src::xmltok::NameMatcher,
     pub nameLength: Option<
         unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
@@ -4291,25 +4320,6 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn normal_nameMatchesAscii(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr1: *const ::core::ffi::c_char,
-        mut end1: *const ::core::ffi::c_char,
-        mut ptr2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if end1.offset_from(ptr1) < 1 as isize {
-                return 0 as ::core::ffi::c_int;
-            }
-            if !(*ptr1 as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int) {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(1 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
-        }
-        return (ptr1 == end1) as ::core::ffi::c_int;
-    }
-
     pub unsafe extern "C" fn normal_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -8177,27 +8187,6 @@ pub mod xmltok_impl_c {
             _ => {}
         }
         return 0 as ::core::ffi::c_int;
-    }
-
-    pub unsafe extern "C" fn little2_nameMatchesAscii(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr1: *const ::core::ffi::c_char,
-        mut end1: *const ::core::ffi::c_char,
-        mut ptr2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if end1.offset_from(ptr1) < 2 as isize {
-                return 0 as ::core::ffi::c_int;
-            }
-            if !(*ptr1.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr1.offset(0 as isize) as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int)
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
-        }
-        return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
     pub unsafe extern "C" fn little2_nameLength(
@@ -12074,27 +12063,6 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn big2_nameMatchesAscii(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr1: *const ::core::ffi::c_char,
-        mut end1: *const ::core::ffi::c_char,
-        mut ptr2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if end1.offset_from(ptr1) < 2 as isize {
-                return 0 as ::core::ffi::c_int;
-            }
-            if !(*ptr1.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr1.offset(1 as isize) as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int)
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
-        }
-        return (ptr1 == end1) as ::core::ffi::c_int;
-    }
-
     pub unsafe extern "C" fn big2_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -12218,7 +12186,6 @@ pub mod xmltok_impl_c {
     
     
     
-
     use crate::src::xmltok::checkCharRefNumber;
     use crate::src::xmltok::nametab_h::namePages;
     use crate::src::xmltok::nametab_h::namingBitmap;
@@ -12279,6 +12246,7 @@ pub mod xmltok_impl_c {
     
     
     
+
 }
 
 pub mod xmltok_ns_c {
@@ -13647,7 +13615,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::big2_nameLength;
-pub use crate::src::xmltok::xmltok_impl_c::big2_nameMatchesAscii;
 pub use crate::src::xmltok::xmltok_impl_c::big2_predefinedEntityName;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanAtts;
@@ -13675,7 +13642,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::little2_nameLength;
-pub use crate::src::xmltok::xmltok_impl_c::little2_nameMatchesAscii;
 pub use crate::src::xmltok::xmltok_impl_c::little2_predefinedEntityName;
 pub use crate::src::xmltok::xmltok_impl_c::little2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
@@ -13703,7 +13669,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;
-pub use crate::src::xmltok::xmltok_impl_c::normal_nameMatchesAscii;
 pub use crate::src::xmltok::xmltok_impl_c::normal_predefinedEntityName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanAtts;
@@ -14327,15 +14292,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -14757,15 +14714,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -15187,15 +15136,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -15617,15 +15558,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -16108,15 +16041,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -16484,15 +16409,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -16881,15 +16798,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -17257,15 +17166,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
             LiteralScanner::NormalAttributeValue,
             LiteralScanner::NormalEntityValue,
         ],
-        nameMatchesAscii: Some(
-            normal_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Normal,
         nameLength: Some(
             normal_nameLength
                 as unsafe extern "C" fn(
@@ -17981,15 +17882,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::Little2AttributeValue,
             LiteralScanner::Little2EntityValue,
         ],
-        nameMatchesAscii: Some(
-            little2_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Little2,
         nameLength: Some(
             little2_nameLength
                 as unsafe extern "C" fn(
@@ -18357,15 +18250,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
             LiteralScanner::Little2AttributeValue,
             LiteralScanner::Little2EntityValue,
         ],
-        nameMatchesAscii: Some(
-            little2_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Little2,
         nameLength: Some(
             little2_nameLength
                 as unsafe extern "C" fn(
@@ -18733,15 +18618,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::Little2AttributeValue,
             LiteralScanner::Little2EntityValue,
         ],
-        nameMatchesAscii: Some(
-            little2_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Little2,
         nameLength: Some(
             little2_nameLength
                 as unsafe extern "C" fn(
@@ -19109,15 +18986,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
             LiteralScanner::Little2AttributeValue,
             LiteralScanner::Little2EntityValue,
         ],
-        nameMatchesAscii: Some(
-            little2_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Little2,
         nameLength: Some(
             little2_nameLength
                 as unsafe extern "C" fn(
@@ -19485,15 +19354,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
             LiteralScanner::Big2AttributeValue,
             LiteralScanner::Big2EntityValue,
         ],
-        nameMatchesAscii: Some(
-            big2_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Big2,
         nameLength: Some(
             big2_nameLength
                 as unsafe extern "C" fn(
@@ -19861,15 +19722,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
             LiteralScanner::Big2AttributeValue,
             LiteralScanner::Big2EntityValue,
         ],
-        nameMatchesAscii: Some(
-            big2_nameMatchesAscii
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        nameMatchesAscii: NameMatcher::Big2,
         nameLength: Some(
             big2_nameLength
                 as unsafe extern "C" fn(
@@ -20447,8 +20300,7 @@ unsafe extern "C" fn doParseXmlDecl(
         *badPtr = ptr;
         return 0 as ::core::ffi::c_int;
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
+    if (*enc).nameMatchesAscii.matches_ascii(
         name,
         nameEnd,
         &raw const KW_version as *const ::core::ffi::c_char,
@@ -20486,8 +20338,7 @@ unsafe extern "C" fn doParseXmlDecl(
             return 1 as ::core::ffi::c_int;
         }
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
+    if (*enc).nameMatchesAscii.matches_ascii(
         name,
         nameEnd,
         &raw const KW_encoding as *const ::core::ffi::c_char,
@@ -20527,8 +20378,7 @@ unsafe extern "C" fn doParseXmlDecl(
             return 1 as ::core::ffi::c_int;
         }
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
+    if (*enc).nameMatchesAscii.matches_ascii(
         name,
         nameEnd,
         &raw const KW_standalone as *const ::core::ffi::c_char,
@@ -20538,8 +20388,7 @@ unsafe extern "C" fn doParseXmlDecl(
         *badPtr = name;
         return 0 as ::core::ffi::c_int;
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
+    if (*enc).nameMatchesAscii.matches_ascii(
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
         &raw const KW_yes as *const ::core::ffi::c_char,
@@ -20548,8 +20397,7 @@ unsafe extern "C" fn doParseXmlDecl(
         if !standalone.is_null() {
             *standalone = 1 as ::core::ffi::c_int;
         }
-    } else if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
+    } else if (*enc).nameMatchesAscii.matches_ascii(
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
         &raw const KW_no as *const ::core::ffi::c_char,
