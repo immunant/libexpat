@@ -8743,6 +8743,7 @@ unsafe extern "C" fn doContent(
                     result_0 = storeAtts(
                         parser,
                         enc,
+                        parser_events,
                         s,
                         next,
                         &raw mut (*tag).name,
@@ -8818,6 +8819,7 @@ unsafe extern "C" fn doContent(
                     result_1 = storeAtts(
                         parser,
                         enc,
+                        parser_events,
                         s,
                         next,
                         &raw mut name_0,
@@ -9407,6 +9409,7 @@ unsafe fn namespace_name_pointer(
 unsafe extern "C" fn storeAtts(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
+    parser_events: bool,
     mut attStr: *const ::core::ffi::c_char,
     mut attEnd: *const ::core::ffi::c_char,
     mut tagNamePtr: *mut TAG_NAME,
@@ -9478,7 +9481,7 @@ unsafe extern "C" fn storeAtts(
         // after both cursors have been validated as offsets within it.  In
         // particular, an internal entity never uses the outer parser event
         // cursor, which may be absent or refer to a different buffer.
-        let source = if enc == parser_encoding(parser) {
+        let source = if parser_events {
             let Some(bytes) = (*parser).m_buffer.bytes.as_deref() else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -9574,7 +9577,7 @@ unsafe extern "C" fn storeAtts(
             .resize_with(new_capacity, AttributeStorage::blank_record);
         (*parser).m_attsSize = new_atts_size;
         if n > oldAttsSize {
-            let source = if enc == parser_encoding(parser) {
+            let source = if parser_events {
                 let Some(bytes) = (*parser).m_buffer.bytes.as_deref() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
@@ -9658,7 +9661,7 @@ unsafe extern "C" fn storeAtts(
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
         if *att_id_name.offset(-1 as isize) != 0 {
-            if enc == parser_encoding(parser) {
+            if parser_events {
                 set_parser_event_start!(&mut *parser, name);
             }
             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
