@@ -25823,8 +25823,7 @@ fn hash_table_clear(table: &mut HASH_TABLE) {
     table.used = 0 as crate::__stddef_size_t_h::size_t;
 }
 
-unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
-    let table = &mut *table;
+fn hashTableDestroy(table: &mut HASH_TABLE) {
     if let Some(mut slots) = table.v.take() {
         for entry in slots.entries {
             if let Some(mut entry) = entry {
