@@ -7866,7 +7866,13 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
         .then(|| std::ffi::CStr::from_ptr(encodingName));
     xml_set_encoding_impl(parser, encoding_name)
 }
-unsafe fn XML_ExternalEntityParserCreate(
+/// Builds a child external-entity parser from an already-validated parent.
+///
+/// The parent is borrowed for the duration of configuration only, and the
+/// returned parser remains uniquely owned by its `Box`.  Those two ownership
+/// facts discharge the narrow allocator-construction and rollback boundaries
+/// below; all of the child configuration itself is ordinary Rust state.
+fn xml_external_entity_parser_create_impl(
     old: &XML_ParserStruct,
     old_parser_key: usize,
     context: Option<&std::ffi::CStr>,
@@ -8079,13 +8085,15 @@ unsafe fn XML_ExternalEntityParserCreate(
     oldInEntityValue = old.m_prologState.inEntityValue;
     oldns_triplets = old.m_ns_triplets;
     oldReparseDeferralEnabled = old.m_reparseDeferralEnabled;
-    let mut parser_owner = match parser_create_ownership_facade(
-        encoding_name,
-        old.m_mem,
-        (old.m_ns != 0).then_some(old.m_namespaceSeparator),
-        context.is_none(),
-        Some(old),
-    ) {
+    let mut parser_owner = match unsafe {
+        parser_create_ownership_facade(
+            encoding_name,
+            old.m_mem,
+            (old.m_ns != 0).then_some(old.m_namespaceSeparator),
+            context.is_none(),
+            Some(old),
+        )
+    } {
         Some(parser_owner) => parser_owner,
         None => return None,
     };
@@ -8299,7 +8307,9 @@ unsafe fn XML_ExternalEntityParserCreate(
             _ => false,
         };
         if !copied_and_restored {
-            parser_free_owned(parser_ref);
+            // This parser has not escaped its owning Box, so it is the sole
+            // mutable owner while rollback releases its installed resources.
+            unsafe { parser_free_owned(parser_ref) };
             return None;
         }
         parser_ref.m_processor = ProcessorState::ExternalEntityInit;
@@ -8310,6 +8320,7 @@ unsafe fn XML_ExternalEntityParserCreate(
     }
     Some(parser_owner)
 }
+
 #[export_name = "XML_ExternalEntityParserCreate"]
 
 pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
@@ -8324,7 +8335,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
     let context = (!context.is_null()).then(|| std::ffi::CStr::from_ptr(context));
     let encoding_name = (!encodingName.is_null())
         .then(|| std::ffi::CStr::from_ptr(encodingName));
-    XML_ExternalEntityParserCreate(old, old_parser_key, context, encoding_name)
+    xml_external_entity_parser_create_impl(old, old_parser_key, context, encoding_name)
         .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 fn destroy_bindings(parser: &mut XML_ParserStruct, mut bindings: Option<BindingId>) {
