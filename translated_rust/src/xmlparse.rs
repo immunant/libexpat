@@ -3768,6 +3768,34 @@ fn event_raw_name_source<'a>(
     Some(RawNameSource::Chars(text.get(start..end)?))
 }
 
+/// Resolves a complete start-tag token into the storage that owns both of its
+/// cursors.  Parser-buffer events and internal-entity events deliberately use
+/// different backing storage, so callers never derive a range from cursors
+/// belonging to different allocations.
+fn attribute_token_source<'a>(
+    parser_events: bool,
+    input: &'a InputBuffer,
+    open_entity_index: Option<usize>,
+    active_entities: &'a [InternalEntityStorage],
+    dtd: &'a DTD,
+    start_address: usize,
+    end_address: usize,
+) -> Option<crate::src::xmltok::AttributeSource<'a>> {
+    if parser_events {
+        return input
+            .window_from_addresses(start_address, end_address)
+            .map(crate::src::xmltok::AttributeSource::Bytes);
+    }
+
+    let open_entity = active_entities.get(open_entity_index?)?.node();
+    let text = entity_text_chars(dtd, open_entity.eventText, open_entity.eventTextLen)?;
+    let start = start_address.checked_sub(text.as_ptr().addr())?;
+    let end = end_address.checked_sub(text.as_ptr().addr())?;
+    (start <= end)
+        .then(|| text.get(start..end))?
+        .map(crate::src::xmltok::AttributeSource::Chars)
+}
+
 /// Measures a name only after the parser's token cursors have been resolved
 /// into the owning input/entity slice.  `start` and `end` are tokenizer
 /// cursors for one token, not arbitrary foreign pointers.
@@ -10002,56 +10030,23 @@ unsafe extern "C" fn storeAtts(
     let att_token_len;
     n = {
         // `attEnd` is the tokenizer's end cursor for this exact start-tag.
-        // Rebuild the scanner input from the owning parser/entity slice only
-        // after both cursors have been validated as offsets within it.  In
-        // particular, an internal entity never uses the outer parser event
-        // cursor, which may be absent or refer to a different buffer.
-        let source = if parser_events {
-            let Some(bytes) = (*parser).m_buffer.bytes.as_deref() else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let base = bytes.as_ptr().addr();
-            let Some(start) = attStr.addr().checked_sub(base) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(end) = attEnd.addr().checked_sub(base) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(source) = bytes.get(start..end) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            crate::src::xmltok::AttributeSource::Bytes(source)
-        } else {
-            let Some(open_entity_index) = (*parser).m_openInternalEntities else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(open_entity) = (&(*parser).m_activeInternalEntities)
-                .get(open_entity_index)
-                .map(InternalEntityStorage::node)
-            else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(text) =
-                entity_text_chars(&*dtd, open_entity.eventText, open_entity.eventTextLen)
-            else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let base = text.as_ptr().addr();
-            let Some(start) = attStr.addr().checked_sub(base) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(end) = attEnd.addr().checked_sub(base) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(text) = text.get(start..end) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            crate::src::xmltok::AttributeSource::Chars(text)
+        // Rebuild the scanner input only after both cursors have been
+        // validated against the parser buffer or the active entity text.
+        let parser_ref = &mut *parser;
+        let Some(source) = attribute_token_source(
+            parser_events,
+            &parser_ref.m_buffer,
+            parser_ref.m_openInternalEntities,
+            &parser_ref.m_activeInternalEntities,
+            &*dtd,
+            attStr.addr(),
+            attEnd.addr(),
+        ) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         // Keep the scanner's output borrow local: it fills the owned records
         // before later parser work can grow them or invoke a callback.
         att_token_len = source.len();
-        let parser_ref = &mut *parser;
         let records = &mut parser_ref.m_atts.records;
         (*enc).getAtts.scan(
             &*(enc as *const crate::src::xmltok::normal_encoding),
@@ -10104,52 +10099,22 @@ unsafe extern "C" fn storeAtts(
             .resize_with(new_capacity, AttributeStorage::blank_record);
         (*parser).m_attsSize = new_atts_size;
         if n > oldAttsSize {
-            let source = if parser_events {
-                let Some(bytes) = (*parser).m_buffer.bytes.as_deref() else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let base = bytes.as_ptr().addr();
-                let Some(start) = attStr.addr().checked_sub(base) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(end) = attEnd.addr().checked_sub(base) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(source) = bytes.get(start..end) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                crate::src::xmltok::AttributeSource::Bytes(source)
-            } else {
-                let Some(open_entity_index) = (*parser).m_openInternalEntities else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(open_entity) = (&(*parser).m_activeInternalEntities)
-                    .get(open_entity_index)
-                    .map(InternalEntityStorage::node)
-                else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(text) =
-                    entity_text_chars(&*dtd, open_entity.eventText, open_entity.eventTextLen)
-                else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let base = text.as_ptr().addr();
-                let Some(start) = attStr.addr().checked_sub(base) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(end) = attEnd.addr().checked_sub(base) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(text) = text.get(start..end) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                crate::src::xmltok::AttributeSource::Chars(text)
+            let parser_ref = &mut *parser;
+            let Some(source) = attribute_token_source(
+                parser_events,
+                &parser_ref.m_buffer,
+                parser_ref.m_openInternalEntities,
+                &parser_ref.m_activeInternalEntities,
+                &*dtd,
+                attStr.addr(),
+                attEnd.addr(),
+            ) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             (*enc).getAtts.scan(
                 &*(enc as *const crate::src::xmltok::normal_encoding),
                 source,
-                &mut (*parser).m_atts.records,
+                &mut parser_ref.m_atts.records,
             );
         }
     }
