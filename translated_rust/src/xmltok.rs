@@ -15762,22 +15762,22 @@ unsafe extern "C" fn utf8_isInvalid4(
                 }) != 0) as ::core::ffi::c_int
         }) != 0) as ::core::ffi::c_int;
 }
-pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
-    mut from: *const ::core::ffi::c_char,
-    mut fromLimRef: *mut *const ::core::ffi::c_char,
-) {
-    let mut fromLim: *const ::core::ffi::c_char = *fromLimRef;
+pub fn _INTERNAL_trim_to_complete_utf8_characters(
+    from: &[::core::ffi::c_char],
+) -> crate::__stddef_size_t_h::size_t {
+    let mut fromLim: crate::__stddef_size_t_h::size_t = from.len();
     let mut walked: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    while fromLim > from {
-        let prev: ::core::ffi::c_uchar =
-            *fromLim.offset(-1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar;
+    while fromLim > 0 {
+        let prev: ::core::ffi::c_uchar = from[fromLim - 1] as ::core::ffi::c_uchar;
         if prev as ::core::ffi::c_uint & 0xf8 as ::core::ffi::c_uint == 0xf0 as ::core::ffi::c_uint
         {
             if walked.wrapping_add(1 as crate::__stddef_size_t_h::size_t)
                 >= 4 as crate::__stddef_size_t_h::size_t
             {
-                fromLim =
-                    fromLim.offset((4 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
+                fromLim = fromLim.wrapping_add(
+                    (4 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
+                        as crate::__stddef_size_t_h::size_t,
+                );
                 break;
             } else {
                 walked = 0 as crate::__stddef_size_t_h::size_t;
@@ -15788,8 +15788,10 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
             if walked.wrapping_add(1 as crate::__stddef_size_t_h::size_t)
                 >= 3 as crate::__stddef_size_t_h::size_t
             {
-                fromLim =
-                    fromLim.offset((3 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
+                fromLim = fromLim.wrapping_add(
+                    (3 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
+                        as crate::__stddef_size_t_h::size_t,
+                );
                 break;
             } else {
                 walked = 0 as crate::__stddef_size_t_h::size_t;
@@ -15800,8 +15802,10 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
             if walked.wrapping_add(1 as crate::__stddef_size_t_h::size_t)
                 >= 2 as crate::__stddef_size_t_h::size_t
             {
-                fromLim =
-                    fromLim.offset((2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
+                fromLim = fromLim.wrapping_add(
+                    (2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
+                        as crate::__stddef_size_t_h::size_t,
+                );
                 break;
             } else {
                 walked = 0 as crate::__stddef_size_t_h::size_t;
@@ -15811,10 +15815,10 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
         {
             break;
         }
-        fromLim = fromLim.offset(-1);
+        fromLim = fromLim.wrapping_sub(1);
         walked = walked.wrapping_add(1);
     }
-    *fromLimRef = fromLim;
+    fromLim
 }
 #[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
 
@@ -15822,7 +15826,15 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
     mut from: *const ::core::ffi::c_char,
     mut fromLimRef: *mut *const ::core::ffi::c_char,
 ) {
-    _INTERNAL_trim_to_complete_utf8_characters(from, fromLimRef)
+    let fromLim = *fromLimRef;
+    if fromLim <= from {
+        return;
+    }
+    let bytes = ::core::slice::from_raw_parts(
+        from,
+        fromLim.offset_from(from) as crate::__stddef_size_t_h::size_t,
+    );
+    *fromLimRef = from.add(_INTERNAL_trim_to_complete_utf8_characters(bytes));
 }
 unsafe extern "C" fn utf8_toUtf8(
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -15842,7 +15854,13 @@ unsafe extern "C" fn utf8_toUtf8(
         output_exhausted = crate::stdbool_h::true_0 != 0;
     }
     let fromLimBefore: *const ::core::ffi::c_char = fromLim;
-    _INTERNAL_trim_to_complete_utf8_characters(*fromP, &raw mut fromLim);
+    if fromLim > *fromP {
+        let bytes = ::core::slice::from_raw_parts(
+            *fromP,
+            fromLim.offset_from(*fromP) as crate::__stddef_size_t_h::size_t,
+        );
+        fromLim = (*fromP).add(_INTERNAL_trim_to_complete_utf8_characters(bytes));
+    }
     if fromLim < fromLimBefore {
         input_incomplete = crate::stdbool_h::true_0 != 0;
     }

@@ -4060,8 +4060,8 @@ pub unsafe extern "C" fn XML_GetBuffer_ffi(
 ) -> *mut ::core::ffi::c_void {
     XML_GetBuffer(parser, len)
 }
-unsafe extern "C" fn triggerReenter(mut parser: crate::expat_h::XML_Parser) {
-    (*parser).m_reenter = crate::expat_h::XML_TRUE;
+fn triggerReenter(parser: &mut XML_ParserStruct) {
+    parser.m_reenter = crate::expat_h::XML_TRUE;
 }
 pub unsafe extern "C" fn XML_StopParser(
     mut parser: crate::expat_h::XML_Parser,
@@ -9639,7 +9639,7 @@ unsafe extern "C" fn processEntity(
     (*openEntity).internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
     if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        triggerReenter(parser);
+        triggerReenter(&mut *parser);
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
@@ -9719,7 +9719,7 @@ unsafe extern "C" fn internalEntityProcessor(
         if (*entity).is_param == 0 && (*openEntity).startTagLevel != (*parser).m_tagLevel {
             return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
         }
-        triggerReenter(parser);
+        triggerReenter(&mut *parser);
         return result;
     }
     entityTrackingOnClose(parser, entity, 6470 as ::core::ffi::c_int);
@@ -9764,7 +9764,7 @@ unsafe extern "C" fn internalEntityProcessor(
             )
         };
     }
-    triggerReenter(parser);
+    triggerReenter(&mut *parser);
     return crate::expat_h::XML_ERROR_NONE;
 }
 
@@ -12781,35 +12781,35 @@ unsafe extern "C" fn accountingDiffTolerated(
     }
     return tolerated;
 }
-pub unsafe extern "C" fn testingAccountingGetCountBytesDirect(
-    mut parser: crate::expat_h::XML_Parser,
+pub fn testingAccountingGetCountBytesDirect(
+    parser: Option<&XML_ParserStruct>,
 ) -> ::core::ffi::c_ulonglong {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_ulonglong;
+    match parser {
+        Some(parser) => parser.m_accounting.countBytesDirect as ::core::ffi::c_ulonglong,
+        None => 0 as ::core::ffi::c_ulonglong,
     }
-    return (*parser).m_accounting.countBytesDirect as ::core::ffi::c_ulonglong;
 }
 #[export_name = "testingAccountingGetCountBytesDirect"]
 
 pub unsafe extern "C" fn testingAccountingGetCountBytesDirect_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    testingAccountingGetCountBytesDirect(parser)
+    testingAccountingGetCountBytesDirect(parser.as_ref())
 }
-pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect(
-    mut parser: crate::expat_h::XML_Parser,
+pub fn testingAccountingGetCountBytesIndirect(
+    parser: Option<&XML_ParserStruct>,
 ) -> ::core::ffi::c_ulonglong {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_ulonglong;
+    match parser {
+        Some(parser) => parser.m_accounting.countBytesIndirect as ::core::ffi::c_ulonglong,
+        None => 0 as ::core::ffi::c_ulonglong,
     }
-    return (*parser).m_accounting.countBytesIndirect as ::core::ffi::c_ulonglong;
 }
 #[export_name = "testingAccountingGetCountBytesIndirect"]
 
 pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    testingAccountingGetCountBytesIndirect(parser)
+    testingAccountingGetCountBytesIndirect(parser.as_ref())
 }
 unsafe extern "C" fn entityTrackingReportStats(
     mut rootParser: crate::expat_h::XML_Parser,
