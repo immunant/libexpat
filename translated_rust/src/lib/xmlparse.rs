@@ -9338,43 +9338,53 @@ extern "C" fn reportProcessingInstruction(
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut target: *const XML_Char = ::core::ptr::null::<XML_Char>();
-        let mut data: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
-        let mut tem: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        if (*parser).m_processingInstructionHandler.is_none() {
-            if (*parser).m_defaultHandler.is_some() {
-                reportDefault(parser, enc, start, end);
-            }
-            return 1 as ::core::ffi::c_int;
+    let parser = ptr_mut(parser);
+    let enc_ref = ptr_ref(enc);
+    let mut target: *const XML_Char = ::core::ptr::null::<XML_Char>();
+    let mut data: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
+    let mut tem: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    if parser.m_processingInstructionHandler.is_none() {
+        if parser.m_defaultHandler.is_some() {
+            reportDefault(parser, enc, start, end);
         }
-        start = start.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
-        tem = start
-            .offset((*enc).nameLength.expect("non-null function pointer")(enc, start) as isize);
-        target = poolStoreString(&mut (*parser).m_tempPool, enc, start, tem);
-        if target.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-        data = poolStoreString(
-            &mut (*parser).m_tempPool,
-            enc,
-            (*enc).skipS.expect("non-null function pointer")(enc, tem),
-            end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize)),
-        );
-        if data.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        let data_len = ::core::ffi::CStr::from_ptr(data.cast_const())
-            .to_bytes_with_nul()
-            .len();
-        normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
-        (*parser)
-            .m_processingInstructionHandler
-            .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
-        poolClear(&mut (*parser).m_tempPool);
         return 1 as ::core::ffi::c_int;
     }
+    start = add_const_c_char(
+        start,
+        (enc_ref.minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
+    );
+    tem = add_const_c_char(
+        start,
+        enc_ref.nameLength.expect("non-null function pointer")(enc, start) as isize,
+    );
+    target = poolStoreString(&mut parser.m_tempPool, enc, start, tem);
+    if target.is_null() {
+        return 0 as ::core::ffi::c_int;
+    }
+    parser.m_tempPool.start = parser.m_tempPool.ptr;
+    data = poolStoreString(
+        &mut parser.m_tempPool,
+        enc,
+        enc_ref.skipS.expect("non-null function pointer")(enc, tem),
+        add_const_c_char(
+            end,
+            -((enc_ref.minBytesPerChar * 2 as ::core::ffi::c_int) as isize),
+        ),
+    );
+    if data.is_null() {
+        return 0 as ::core::ffi::c_int;
+    }
+    normalize_c_string_lines(data);
+    call_handler_two_args(
+        parser
+            .m_processingInstructionHandler
+            .expect("non-null function pointer"),
+        parser.m_handlerArg,
+        target,
+        data,
+    );
+    poolClear(&mut parser.m_tempPool);
+    1 as ::core::ffi::c_int
 }
 extern "C" fn reportComment(
     mut parser: XML_Parser,
@@ -9382,33 +9392,38 @@ extern "C" fn reportComment(
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut data: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
-        if (*parser).m_commentHandler.is_none() {
-            if (*parser).m_defaultHandler.is_some() {
-                reportDefault(parser, enc, start, end);
-            }
-            return 1 as ::core::ffi::c_int;
+    let parser = ptr_mut(parser);
+    let enc_ref = ptr_ref(enc);
+    let mut data: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
+    if parser.m_commentHandler.is_none() {
+        if parser.m_defaultHandler.is_some() {
+            reportDefault(parser, enc, start, end);
         }
-        data = poolStoreString(
-            &mut (*parser).m_tempPool,
-            enc,
-            start.offset(((*enc).minBytesPerChar * 4 as ::core::ffi::c_int) as isize),
-            end.offset(-(((*enc).minBytesPerChar * 3 as ::core::ffi::c_int) as isize)),
-        );
-        if data.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        let data_len = ::core::ffi::CStr::from_ptr(data.cast_const())
-            .to_bytes_with_nul()
-            .len();
-        normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
-        (*parser)
-            .m_commentHandler
-            .expect("non-null function pointer")((*parser).m_handlerArg, data);
-        poolClear(&mut (*parser).m_tempPool);
         return 1 as ::core::ffi::c_int;
     }
+    data = poolStoreString(
+        &mut parser.m_tempPool,
+        enc,
+        add_const_c_char(
+            start,
+            (enc_ref.minBytesPerChar * 4 as ::core::ffi::c_int) as isize,
+        ),
+        add_const_c_char(
+            end,
+            -((enc_ref.minBytesPerChar * 3 as ::core::ffi::c_int) as isize),
+        ),
+    );
+    if data.is_null() {
+        return 0 as ::core::ffi::c_int;
+    }
+    normalize_c_string_lines(data);
+    call_handler_one_arg(
+        parser.m_commentHandler.expect("non-null function pointer"),
+        parser.m_handlerArg,
+        data,
+    );
+    poolClear(&mut parser.m_tempPool);
+    1 as ::core::ffi::c_int
 }
 extern "C" fn reportDefault(
     mut parser: XML_Parser,
@@ -9416,59 +9431,52 @@ extern "C" fn reportDefault(
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) {
-    unsafe {
-        if (*enc).isUtf8 == 0 {
-            let mut convert_res: XML_Convert_Result = XML_CONVERT_COMPLETED;
-            let mut eventPP: *mut *const ::core::ffi::c_char =
-                ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-            let mut eventEndPP: *mut *const ::core::ffi::c_char =
-                ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-            if enc == (*parser).m_encoding {
-                eventPP = &raw mut (*parser).m_eventPtr;
-                eventEndPP = &raw mut (*parser).m_eventEndPtr;
-            } else {
-                eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-                eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
-            }
-            loop {
-                let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
-                convert_res = (*enc).utf8Convert.expect("non-null function pointer")(
-                    enc,
-                    &raw mut s,
-                    end,
-                    &raw mut dataPtr,
-                    (*parser).m_dataBufEnd as *mut ICHAR,
-                );
-                *eventEndPP = s;
-                (*parser)
-                    .m_defaultHandler
-                    .expect("non-null function pointer")(
-                    (*parser).m_handlerArg,
-                    (*parser).m_dataBuf,
-                    dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR) as ::core::ffi::c_long
-                        as ::core::ffi::c_int,
-                );
-                *eventPP = s;
-                if !(convert_res as ::core::ffi::c_uint
-                    != XML_CONVERT_COMPLETED as ::core::ffi::c_int as ::core::ffi::c_uint
-                    && convert_res as ::core::ffi::c_uint
-                        != XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
-                            as ::core::ffi::c_uint)
-                {
-                    break;
-                }
-            }
+    let parser = ptr_mut(parser);
+    let enc_ref = ptr_ref(enc);
+    if enc_ref.isUtf8 == 0 {
+        let mut convert_res: XML_Convert_Result = XML_CONVERT_COMPLETED;
+        let (event_pp, event_end_pp) = if enc == parser.m_encoding {
+            (&raw mut parser.m_eventPtr, &raw mut parser.m_eventEndPtr)
         } else {
-            (*parser)
-                .m_defaultHandler
-                .expect("non-null function pointer")(
-                (*parser).m_handlerArg,
-                s as *const XML_Char,
-                (end as *const XML_Char).offset_from(s as *const XML_Char) as ::core::ffi::c_long
-                    as ::core::ffi::c_int,
-            );
+            let open_internal_entities = ptr_mut(parser.m_openInternalEntities);
+            (
+                &raw mut open_internal_entities.internalEventPtr,
+                &raw mut open_internal_entities.internalEventEndPtr,
+            )
         };
-    }
+        loop {
+            let mut data_ptr: *mut ICHAR = parser.m_dataBuf as *mut ICHAR;
+            convert_res = enc_ref.utf8Convert.expect("non-null function pointer")(
+                enc,
+                &raw mut s,
+                end,
+                &raw mut data_ptr,
+                parser.m_dataBufEnd as *mut ICHAR,
+            );
+            write_copy(event_end_pp, s);
+            call_handler_two_args(
+                parser.m_defaultHandler.expect("non-null function pointer"),
+                parser.m_handlerArg,
+                parser.m_dataBuf,
+                xml_char_len(parser.m_dataBuf, data_ptr) as ::core::ffi::c_int,
+            );
+            write_copy(event_pp, s);
+            if !(convert_res as ::core::ffi::c_uint
+                != XML_CONVERT_COMPLETED as ::core::ffi::c_int as ::core::ffi::c_uint
+                && convert_res as ::core::ffi::c_uint
+                    != XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int as ::core::ffi::c_uint)
+            {
+                break;
+            }
+        }
+    } else {
+        call_handler_two_args(
+            parser.m_defaultHandler.expect("non-null function pointer"),
+            parser.m_handlerArg,
+            s as *const XML_Char,
+            xml_char_len(s as *const XML_Char, end as *const XML_Char) as ::core::ffi::c_int,
+        );
+    };
 }
 extern "C" fn defineAttribute(
     mut type_0: *mut ELEMENT_TYPE,
@@ -10473,6 +10481,11 @@ fn c_str_bytes_with_nul<'a>(ptr: *const ::core::ffi::c_char) -> &'a [u8] {
     unsafe { ::core::ffi::CStr::from_ptr(ptr).to_bytes_with_nul() }
 }
 
+fn normalize_c_string_lines(buffer: *mut XML_Char) {
+    let len = c_str_bytes_with_nul(buffer.cast_const()).len();
+    normalizeLines(ptr_slice_mut(buffer, len));
+}
+
 fn key_bytes<'a>(key: KEY) -> &'a [u8] {
     let (terminator, bytes) = c_str_bytes_with_nul(key)
         .split_last()
@@ -10515,6 +10528,23 @@ fn call_end_namespace_decl_handler(
     prefix_name: *const XML_Char,
 ) {
     unsafe { handler(user_data, prefix_name) }
+}
+
+fn call_handler_two_args<A, B>(
+    handler: unsafe extern "C" fn(*mut ::core::ffi::c_void, A, B) -> (),
+    user_data: *mut ::core::ffi::c_void,
+    arg0: A,
+    arg1: B,
+) {
+    unsafe { handler(user_data, arg0, arg1) }
+}
+
+fn call_handler_one_arg<A>(
+    handler: unsafe extern "C" fn(*mut ::core::ffi::c_void, A) -> (),
+    user_data: *mut ::core::ffi::c_void,
+    arg0: A,
+) {
+    unsafe { handler(user_data, arg0) }
 }
 
 fn zero_memory(ptr: *mut ::core::ffi::c_void, size: size_t) {
