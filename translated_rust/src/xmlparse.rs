@@ -18187,38 +18187,38 @@ fn poolGrow(pool: &mut STRING_POOL) -> crate::expat_h::XML_Bool {
     crate::expat_h::XML_TRUE
 }
 
-unsafe extern "C" fn nextScaffoldPart(
-    mut parser: crate::expat_h::XML_Parser,
+fn next_scaffold_part_impl(
+    group_size: ::core::ffi::c_uint,
+    dtd: &mut DTD,
+    allocate: &mut dyn FnMut(
+        crate::__stddef_size_t_h::size_t,
+    ) -> Option<Box<dyn FnMut(ScaffoldAllocationAction) -> bool>>,
 ) -> ::core::ffi::c_int {
-    let dtd = parser_dtd_ptr!(parser);
     {
-        let mut scaff_index = (*dtd)
+        let mut scaff_index = dtd
             .scaffIndex
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         if scaff_index.is_empty() {
-            if scaff_index
-                .try_reserve_exact((*parser).m_groupSize as usize)
-                .is_err()
-            {
+            if scaff_index.try_reserve_exact(group_size as usize).is_err() {
                 return -1 as ::core::ffi::c_int;
             }
             scaff_index.push(0);
         }
     }
-    if (*dtd).scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
+    if dtd.scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
         return -1 as ::core::ffi::c_int;
     }
-    let mut scaffold = (*dtd)
+    let mut scaffold = dtd
         .scaffold
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if (*dtd).scaffCount >= (*dtd).scaffSize {
+    if dtd.scaffCount >= dtd.scaffSize {
         let new_size = if scaffold.backing.is_some() {
-            if (*dtd).scaffSize > crate::limits_h::UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
+            if dtd.scaffSize > crate::limits_h::UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
                 return -1 as ::core::ffi::c_int;
             }
-            (*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
+            dtd.scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
         } else {
             INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint
         };
@@ -18233,44 +18233,25 @@ unsafe extern "C" fn nextScaffoldPart(
                 return -1 as ::core::ffi::c_int;
             }
         } else {
-            let allocation = expat_malloc(
-                parser,
+            let Some(backing) = allocate(
                 (32 as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()),
-                8266 as ::core::ffi::c_int,
-            );
-            if allocation.is_null() {
+            ) else {
                 return -1 as ::core::ffi::c_int;
-            }
-            let mut allocation = allocation;
-            scaffold.backing = Some(Box::new(move |action| match action {
-                ScaffoldAllocationAction::Grow(size) => {
-                    let reallocated =
-                        expat_realloc(parser, allocation, size, 8261 as ::core::ffi::c_int);
-                    if reallocated.is_null() {
-                        false
-                    } else {
-                        allocation = reallocated;
-                        true
-                    }
-                }
-                ScaffoldAllocationAction::Free(source_line) => {
-                    expat_free(parser, allocation, source_line);
-                    true
-                }
-            }));
+            };
+            scaffold.backing = Some(backing);
         }
-        (*dtd).scaffSize = new_size;
+        dtd.scaffSize = new_size;
     }
-    let next = (*dtd).scaffCount as ::core::ffi::c_int;
-    (*dtd).scaffCount = (*dtd).scaffCount.wrapping_add(1);
-    if (*dtd).scaffLevel != 0 {
+    let next = dtd.scaffCount as ::core::ffi::c_int;
+    dtd.scaffCount = dtd.scaffCount.wrapping_add(1);
+    if dtd.scaffLevel != 0 {
         let parent_index = {
-            let scaff_index = (*dtd)
+            let scaff_index = dtd
                 .scaffIndex
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            match scaff_index.get(((*dtd).scaffLevel - 1) as usize).copied() {
+            match scaff_index.get((dtd.scaffLevel - 1) as usize).copied() {
                 Some(index) => index,
                 None => return -1 as ::core::ffi::c_int,
             }
@@ -18309,6 +18290,48 @@ unsafe extern "C" fn nextScaffoldPart(
         scaffold.nodes.push(node);
     }
     return next;
+}
+
+unsafe extern "C" fn nextScaffoldPart(
+    mut parser: crate::expat_h::XML_Parser,
+) -> ::core::ffi::c_int {
+    let group_size = (*parser).m_groupSize;
+    let dtd = parser_dtd_ptr!(parser);
+    if dtd.is_null() {
+        return -1;
+    }
+    let dtd = &mut *dtd;
+    let mut allocate = scaffold_allocator(parser);
+    next_scaffold_part_impl(group_size, dtd, &mut allocate)
+}
+
+unsafe fn scaffold_allocator(
+    parser: crate::expat_h::XML_Parser,
+) -> impl FnMut(
+    crate::__stddef_size_t_h::size_t,
+) -> Option<Box<dyn FnMut(ScaffoldAllocationAction) -> bool>> {
+    move |size| {
+        let allocation = expat_malloc(parser, size, 8266 as ::core::ffi::c_int);
+        if allocation.is_null() {
+            return None;
+        }
+        let mut allocation = allocation;
+        Some(Box::new(move |action| match action {
+            ScaffoldAllocationAction::Grow(size) => {
+                let reallocated = expat_realloc(parser, allocation, size, 8261 as ::core::ffi::c_int);
+                if reallocated.is_null() {
+                    false
+                } else {
+                    allocation = reallocated;
+                    true
+                }
+            }
+            ScaffoldAllocationAction::Free(source_line) => {
+                expat_free(parser, allocation, source_line);
+                true
+            }
+        }) as Box<dyn FnMut(ScaffoldAllocationAction) -> bool>)
+    }
 }
 
 unsafe extern "C" fn build_model(
