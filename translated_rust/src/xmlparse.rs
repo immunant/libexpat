@@ -2039,7 +2039,9 @@ pub struct XML_ParserStruct {
     // grow that pool, including for a valid empty string at a slab boundary.
     pub m_doctypeName: Option<PoolStringRef>,
     pub m_doctypeSysid: *const crate::expat_external_h::XML_Char,
-    pub m_doctypePubid: *const crate::expat_external_h::XML_Char,
+    // The public identifier is retained in the same temporary pool as the
+    // doctype name until the start-declaration callback has returned.
+    pub m_doctypePubid: Option<PoolStringRef>,
     pub m_declAttributeType: *const crate::expat_external_h::XML_Char,
     pub m_declNotationName: *const crate::expat_external_h::XML_Char,
     // Notation public identifiers are retained only while the declaration
@@ -3582,7 +3584,7 @@ fn initial_parser_struct(
         m_declEntity: ::core::ptr::null_mut::<ENTITY>(),
         m_doctypeName: None,
         m_doctypeSysid: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-        m_doctypePubid: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        m_doctypePubid: None,
         m_declAttributeType: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_declNotationName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_declNotationPublicId: None,
@@ -4006,7 +4008,7 @@ fn parser_init(
     parser.m_declEntity = ::core::ptr::null_mut::<ENTITY>();
     parser.m_doctypeName = None;
     parser.m_doctypeSysid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    parser.m_doctypePubid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    parser.m_doctypePubid = None;
     parser.m_declAttributeType = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     parser.m_declNotationName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     parser.m_declNotationPublicId = None;
@@ -10372,10 +10374,7 @@ unsafe extern "C" fn doProlog(
                                             };
                                             (*parser).m_doctypeName = Some(doctype_name);
                                             (*parser).m_tempPool.commit();
-                                            (*parser).m_doctypePubid = ::core::ptr::null::<
-                                                crate::expat_external_h::XML_Char,
-                                            >(
-                                            );
+                                            (*parser).m_doctypePubid = None;
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         (*parser).m_doctypeSysid =
@@ -10411,11 +10410,21 @@ unsafe extern "C" fn doProlog(
                                                         .map_or(::core::ptr::null(), |chars| {
                                                             chars.as_ptr()
                                                         });
+                                                    let doctype_pubid = parser_ref
+                                                        .m_doctypePubid
+                                                        .and_then(|public_id| {
+                                                            parser_ref
+                                                                .m_tempPool
+                                                                .chars_from(public_id)
+                                                        })
+                                                        .map_or(::core::ptr::null(), |chars| {
+                                                            chars.as_ptr()
+                                                        });
                                                     (
                                                         doctype_name,
                                                         parser_ref.m_handlerArg,
                                                         parser_ref.m_doctypeSysid,
-                                                        parser_ref.m_doctypePubid,
+                                                        doctype_pubid,
                                                     )
                                                 };
                                                 callback.invoke(
@@ -10464,10 +10473,6 @@ unsafe extern "C" fn doProlog(
                                         }
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                         if (*parser).m_startDoctypeDeclHandler {
-                                            let mut pubId: *mut crate::expat_external_h::XML_Char =
-                                                ::core::ptr::null_mut::<
-                                                    crate::expat_external_h::XML_Char,
-                                                >();
                                             if crate::src::xmltok::check_public_id(
                                                 (*enc).isPublicId,
                                                 enc,
@@ -10478,18 +10483,22 @@ unsafe extern "C" fn doProlog(
                                             {
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             }
-                                            pubId = poolStoreString(
+                                            let pub_id = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
                                                 s.offset((*enc).minBytesPerChar as isize),
                                                 next.offset(-((*enc).minBytesPerChar as isize)),
                                             );
-                                            if pubId.is_null() {
+                                            if pub_id.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            normalizePublicId(pubId);
-                                            (*parser).m_tempPool.commit();
-                                            (*parser).m_doctypePubid = pubId;
+                                            normalizePublicId(pub_id);
+                                            let parser_ref = &mut *parser;
+                                            let Some(pub_id) = parser_ref.m_tempPool.start_ref(true) else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
+                                            parser_ref.m_tempPool.commit();
+                                            parser_ref.m_doctypePubid = Some(pub_id);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                             break '_alreadyChecked;
                                         }
@@ -10528,11 +10537,21 @@ unsafe extern "C" fn doProlog(
                                                         .map_or(::core::ptr::null(), |chars| {
                                                             chars.as_ptr()
                                                         });
+                                                    let doctype_pubid = parser_ref
+                                                        .m_doctypePubid
+                                                        .and_then(|public_id| {
+                                                            parser_ref
+                                                                .m_tempPool
+                                                                .chars_from(public_id)
+                                                        })
+                                                        .map_or(::core::ptr::null(), |chars| {
+                                                            chars.as_ptr()
+                                                        });
                                                     (
                                                         doctype_name,
                                                         parser_ref.m_handlerArg,
                                                         parser_ref.m_doctypeSysid,
-                                                        parser_ref.m_doctypePubid,
+                                                        doctype_pubid,
                                                     )
                                                 };
                                                 callback.invoke(
