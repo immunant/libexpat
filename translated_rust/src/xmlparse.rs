@@ -16302,7 +16302,7 @@ unsafe extern "C" fn epilogProcessor(
                 bytes: input_for_scan.bytes.get(cursor..).unwrap_or(&[]),
                 chars: input_for_scan.chars.get(cursor..).unwrap_or(&[]),
             },
-            std::ptr::from_ref(encoding).addr(),
+            encoding.unknown_converter_id,
         )
     };
     let parser_for_account = parser;

@@ -337,7 +337,7 @@ enum ScannerContextKind<'a> {
         scanner: Scanner,
         encoding: &'a normal_encoding,
         input: ScannerInput<'a>,
-        encoding_id: usize,
+        unknown_converter_id: Option<usize>,
     },
 }
 
@@ -363,8 +363,9 @@ impl<'a> ScannerContext<'a> {
     }
 
     /// Builds a normal-encoding request from a caller-validated character
-    /// slice.  `encoding_id` preserves the table identity needed by scanner
-    /// state without retaining a raw pointer in this API.
+    /// slice.  Unknown encodings retain their registration key in the typed
+    /// encoding state, so scanner dispatch never derives an identity from a
+    /// pointer.
     pub(crate) fn normal(
         scanner: Scanner,
         encoding: &'a normal_encoding,
@@ -378,9 +379,7 @@ impl<'a> ScannerContext<'a> {
             scanner,
             encoding,
             input,
-            // Keep the identity of the exposed encoding prefix: unknown
-            // encoding registrations are keyed by that stable table address.
-            encoding_id: ::core::ptr::from_ref(&encoding.enc).addr(),
+            unknown_converter_id: encoding.unknown_converter_id,
         })
     }
 
@@ -424,8 +423,8 @@ impl<'a> ScannerContext<'a> {
                 scanner,
                 encoding,
                 input,
-                encoding_id,
-            } => scanner.scan_result(encoding, input, encoding_id),
+                unknown_converter_id,
+            } => scanner.scan_result(encoding, input, unknown_converter_id),
         }
     }
 }
@@ -434,9 +433,14 @@ impl Scanner {
         self,
         encoding: &normal_encoding,
         input: ScannerInput<'_>,
-        encoding_id: usize,
+        unknown_converter_id: Option<usize>,
     ) -> ScannerResult {
-        crate::src::xmltok::xmltok_impl_c::scan_result(self, encoding, input, encoding_id)
+        crate::src::xmltok::xmltok_impl_c::scan_result(
+            self,
+            encoding,
+            input,
+            unknown_converter_id,
+        )
     }
 }
 
@@ -10656,7 +10660,7 @@ pub mod xmltok_impl_c {
         scanner: crate::src::xmltok::Scanner,
         encoding: &normal_encoding,
         input: crate::src::xmltok::ScannerInput<'_>,
-        encoding_id: usize,
+        unknown_converter_id: Option<usize>,
     ) -> crate::src::xmltok::ScannerResult {
         use crate::src::xmltok::{Scanner, ScannerResult};
 
@@ -10669,7 +10673,7 @@ pub mod xmltok_impl_c {
                     NormalPrologCharCheck::Name => NormalCharCheck::Name,
                 };
                 normal_char_check(encoding, kind, width, &bytes[offset..], || {
-                    unknown_character_value(encoding_id, &bytes[offset..])
+                    unknown_character_value_for(unknown_converter_id, &bytes[offset..])
                 })
             });
             match action {
@@ -10690,7 +10694,10 @@ pub mod xmltok_impl_c {
                                 NormalCharCheck::Invalid,
                                 width,
                                 &bytes[start + offset..],
-                                || unknown_character_value(encoding_id, &bytes[start + offset..]),
+                                || unknown_character_value_for(
+                                    unknown_converter_id,
+                                    &bytes[start + offset..],
+                                ),
                             )
                         },
                     );
@@ -10709,8 +10716,8 @@ pub mod xmltok_impl_c {
                                         NormalCharCheck::Invalid,
                                         width,
                                         &bytes[comment_start + offset..],
-                                        || unknown_character_value(
-                                            encoding_id,
+                                        || unknown_character_value_for(
+                                            unknown_converter_id,
                                             &bytes[comment_start + offset..],
                                         ),
                                     )
@@ -10747,7 +10754,7 @@ pub mod xmltok_impl_c {
                     NormalCharCheck::Invalid,
                     width,
                     &input.bytes[offset..],
-                    || unknown_character_value(encoding_id, &input.bytes[offset..]),
+                    || unknown_character_value_for(unknown_converter_id, &input.bytes[offset..]),
                 )
             },
         ) {
@@ -10759,7 +10766,10 @@ pub mod xmltok_impl_c {
                         kind,
                         width,
                         &input.bytes[start + offset..],
-                        || unknown_character_value(encoding_id, &input.bytes[start + offset..]),
+                        || unknown_character_value_for(
+                            unknown_converter_id,
+                            &input.bytes[start + offset..],
+                        ),
                     )
                 });
                 ScannerResult::new(result.token, result.next.map(|next| start + next))
@@ -10829,7 +10839,10 @@ pub mod xmltok_impl_c {
                             break ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(at));
                         }
                         NormalIgnoreSectionOutcome::UnknownInvalid { at, width, level: saved_level } => {
-                            if unknown_is_invalid(unknown_character_value(encoding_id, &input.bytes[at..])) {
+                            if unknown_is_invalid(unknown_character_value_for(
+                                unknown_converter_id,
+                                &input.bytes[at..],
+                            )) {
                                 break ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(at));
                             }
                             start = at + width;
@@ -10931,6 +10944,7 @@ pub mod xmltok_impl_c {
     use crate::src::xmltok::normal_encoding;
     use crate::src::xmltok::unicode_byte_type;
     use crate::src::xmltok::unknown_character_value;
+    use crate::src::xmltok::unknown_character_value_for;
     use crate::src::xmltok::unknown_is_invalid;
     use crate::src::xmltok::unknown_is_name;
     use crate::src::xmltok::unknown_is_name_start;
@@ -12315,6 +12329,9 @@ pub use crate::xmltok_impl_h::BT_VERBAR;
 
 pub struct normal_encoding {
     pub enc: crate::src::xmltok::ENCODING,
+    /// Registry identity for an owned unknown encoding.  Built-in tables have
+    /// no converter, so their normal scanner path carries `None`.
+    pub(crate) unknown_converter_id: Option<usize>,
     pub type_0: [::core::ffi::c_uchar; 256],
     pub isName2: Name2Checker,
     pub isName3: Name3Checker,
@@ -12732,6 +12749,7 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -13027,6 +13045,7 @@ static utf8_encoding: normal_encoding = normal_encoding {
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -13338,6 +13357,7 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -13633,6 +13653,7 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -13963,6 +13984,7 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -14258,6 +14280,7 @@ static latin1_encoding: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -14553,6 +14576,7 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -14848,6 +14872,7 @@ static ascii_encoding: normal_encoding = normal_encoding {
         isUtf8: 1 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -15348,6 +15373,7 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -15643,6 +15669,7 @@ static little2_encoding: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -15938,6 +15965,7 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -16233,6 +16261,7 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 1 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -16528,6 +16557,7 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -16823,6 +16853,7 @@ static big2_encoding: normal_encoding = normal_encoding {
         isUtf8: 0 as ::core::ffi::c_char,
         isUtf16: 0 as ::core::ffi::c_char,
     },
+    unknown_converter_id: None,
     type_0: [
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
         crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -17654,6 +17685,19 @@ fn unknown_character_value(storage_id: usize, input: &[u8]) -> ::core::ffi::c_in
         .invoke(input)
 }
 
+/// Resolves the converter retained by typed tokenizer state.  Reaching this
+/// path without a registration is an internal state violation: only unknown
+/// encodings install the corresponding character checks.
+fn unknown_character_value_for(
+    converter_id: Option<usize>,
+    input: &[u8],
+) -> ::core::ffi::c_int {
+    unknown_character_value(
+        converter_id.expect("unknown character checks require a converter registration"),
+        input,
+    )
+}
+
 fn unknown_is_name(c: ::core::ffi::c_int) -> bool {
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return false;
@@ -17928,6 +17972,7 @@ pub(crate) fn initialize_unknown_encoding_state(
     if has_converter {
         install_unknown_name_checks(&mut encoding);
     }
+    encoding.normal.unknown_converter_id = Some(storage_id);
     encoding.normal.enc.utf8Convert = Utf8Converter::Unknown;
     encoding.normal.enc.utf16Convert = Utf16Converter::Unknown;
     register_unknown_encoding_converter(storage_id, converter);
@@ -18183,7 +18228,7 @@ fn initial_scan_result(
                 return ScannerResult::new(crate::src::xmltok::XML_TOK_INVALID_1, Some(0));
             };
             initial.selected_encoding = Some(encoding_index);
-            encoding.enc.scanners[state.scanner_index()].scan_result(encoding, input, 0)
+            encoding.enc.scanners[state.scanner_index()].scan_result(encoding, input, None)
         }
     }
 }
