@@ -1536,6 +1536,10 @@ fn parser_set_start_element_handler(handler: XML_StartElementHandler) {
     ffi_call2(XML_SetStartElementHandler, current_parser(), handler);
 }
 
+fn parser_set_start_element_handler_for(parser: XML_Parser, handler: XML_StartElementHandler) {
+    ffi_call2(XML_SetStartElementHandler, parser, handler);
+}
+
 fn parser_set_end_element_handler(handler: XML_EndElementHandler) {
     ffi_call2(XML_SetEndElementHandler, current_parser(), handler);
 }
@@ -1668,6 +1672,10 @@ fn parser_set_external_entity_ref_handler_for(
     handler: XML_ExternalEntityRefHandler,
 ) {
     ffi_call2(XML_SetExternalEntityRefHandler, parser, handler);
+}
+
+fn parser_set_reparse_deferral_enabled(parser: XML_Parser, enabled: XML_Bool) -> bool {
+    ffi_call2(XML_SetReparseDeferralEnabled, parser, enabled) != 0
 }
 
 fn parser_resume() -> XML_Status {
@@ -1973,6 +1981,17 @@ fn record_element_start_handler_for_tests() -> XML_StartElementHandler {
     )
 }
 
+fn start_element_event_handler_for_tests() -> XML_StartElementHandler {
+    Some(
+        start_element_event_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *mut *const XML_Char,
+            ) -> (),
+    )
+}
+
 fn end_element_event_handler2_for_tests() -> XML_EndElementHandler {
     Some(
         end_element_event_handler2
@@ -2027,6 +2046,19 @@ fn buffer_test_text() -> *const ::core::ffi::c_char {
 
 fn parser_free(parser: XML_Parser) {
     ffi_call1(XML_ParserFree, parser);
+}
+
+fn external_inherited_parser_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(
+        external_inherited_parser
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+            ) -> ::core::ffi::c_int,
+    )
 }
 
 fn parser_error_code_for(parser: XML_Parser) -> XML_Error {
@@ -15360,173 +15392,104 @@ extern "C" fn test_big_tokens_scale_linearly() {
     }
 }
 extern "C" fn test_set_reparse_deferral() {
-    unsafe {
-        _check_set_test_info(
-            b"test_set_reparse_deferral\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5746 as ::core::ffi::c_int,
+    set_test_info(b"test_set_reparse_deferral\0", 5746 as ::core::ffi::c_int);
+
+    let pre = bytes_as_c_char_ptr(b"<d>\0");
+    let start = bytes_as_c_char_ptr(b"<x attr='\0");
+    let end = bytes_as_c_char_ptr(b"'></x>\0");
+    let eeeeee = [b'e' as ::core::ffi::c_char; 100];
+    let fillsize = ::core::mem::size_of_val(&eeeeee) as ::core::ffi::c_int;
+
+    for enabled in 0..=1 {
+        set_subtest_message(&format!("deferral={enabled}"));
+
+        let parser = create_parser_or_fail(5758 as ::core::ffi::c_int);
+        assert_test_condition(
+            parser_set_reparse_deferral_enabled(parser, enabled as XML_Bool),
+            5759 as ::core::ffi::c_int,
+            b"check failed: XML_SetReparseDeferralEnabled(parser, enabled)\0",
         );
-        let pre: *const ::core::ffi::c_char = b"<d>\0".as_ptr() as *const ::core::ffi::c_char;
-        let start: *const ::core::ffi::c_char =
-            b"<x attr='\0".as_ptr() as *const ::core::ffi::c_char;
-        let end: *const ::core::ffi::c_char = b"'></x>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut eeeeee: [::core::ffi::c_char; 100] = [0; 100];
-        let fillsize: ::core::ffi::c_int =
-            ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as ::core::ffi::c_int;
-        memset(
-            &raw mut eeeeee as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            'e' as i32,
-            fillsize as size_t,
+        assert_test_condition(
+            !parser_buffer_for(parser, fillsize * 10103 as ::core::ffi::c_int).is_null(),
+            5761 as ::core::ffi::c_int,
+            b"check failed: XML_GetBuffer(parser, fillsize * 10103) != NULL\0",
         );
-        let mut enabled: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while enabled <= 1 as ::core::ffi::c_int {
-            set_subtest(
-                b"deferral=%d\0".as_ptr() as *const ::core::ffi::c_char,
-                enabled,
-            );
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5758 as ::core::ffi::c_int,
-                    b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_SetReparseDeferralEnabled(parser, enabled as XML_Bool) == 0 {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5759 as ::core::ffi::c_int,
-                    b"check failed: XML_SetReparseDeferralEnabled(parser, enabled)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_GetBuffer(parser, fillsize * 10103 as ::core::ffi::c_int).is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5761 as ::core::ffi::c_int,
-                    b"check failed: XML_GetBuffer(parser, fillsize * 10103) != NULL\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            let mut storage: CharData = CharData {
-                count: 0,
-                data: [0; 2048],
-            };
-            CharData_Init(&raw mut storage);
-            XML_SetUserData(parser, &raw mut storage as *mut ::core::ffi::c_void);
-            XML_SetStartElementHandler(
-                parser,
-                Some(
-                    start_element_event_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            let mut status: XML_Status = XML_STATUS_ERROR;
-            status = XML_Parse(
+
+        let mut storage = CharData {
+            count: 0,
+            data: [0; 2048],
+        };
+        char_data_init(&mut storage);
+        parser_set_user_data_for(parser, (&mut storage as *mut CharData).cast());
+        parser_set_start_element_handler_for(parser, start_element_event_handler_for_tests());
+
+        ensure_parser_success_for(
+            parser,
+            parser_parse_for(
                 parser,
                 pre,
-                strlen(pre) as ::core::ffi::c_int,
+                c_string_len(pre),
                 XML_FALSE as ::core::ffi::c_int,
-            );
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5772 as ::core::ffi::c_int,
-                );
-            }
-            CharData_CheckXMLChars(&raw mut storage, b"d\0".as_ptr() as *const XML_Char);
-            status = XML_Parse(
+            ),
+            5772 as ::core::ffi::c_int,
+        );
+        char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"d\0"));
+
+        ensure_parser_success_for(
+            parser,
+            parser_parse_for(
                 parser,
                 start,
-                strlen(start) as ::core::ffi::c_int,
+                c_string_len(start),
                 XML_FALSE as ::core::ffi::c_int,
-            );
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
+            ),
+            5779 as ::core::ffi::c_int,
+        );
+        char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"d\0"));
+
+        for _ in 0..100 {
+            ensure_parser_success_for(
+                parser,
+                parser_parse_for(
                     parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5779 as ::core::ffi::c_int,
-                );
-            }
-            CharData_CheckXMLChars(&raw mut storage, b"d\0".as_ptr() as *const XML_Char);
-            let mut c: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-            while c < 100 as ::core::ffi::c_int {
-                status = XML_Parse(
-                    parser,
-                    &raw mut eeeeee as *mut ::core::ffi::c_char,
+                    eeeeee.as_ptr(),
                     fillsize,
                     XML_FALSE as ::core::ffi::c_int,
-                );
-                if status as ::core::ffi::c_uint
-                    != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    _xml_failure(
-                        parser,
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        5787 as ::core::ffi::c_int,
-                    );
-                }
-                c += 1;
-            }
-            CharData_CheckXMLChars(&raw mut storage, b"d\0".as_ptr() as *const XML_Char);
-            status = XML_Parse(
+                ),
+                5787 as ::core::ffi::c_int,
+            );
+        }
+        char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"d\0"));
+
+        ensure_parser_success_for(
+            parser,
+            parser_parse_for(
                 parser,
                 end,
-                strlen(end) as ::core::ffi::c_int,
+                c_string_len(end),
                 XML_FALSE as ::core::ffi::c_int,
-            );
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
+            ),
+            5795 as ::core::ffi::c_int,
+        );
+
+        if enabled != 0 {
+            char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"d\0"));
+            for _ in 0..101 {
+                ensure_parser_success_for(
                     parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5795 as ::core::ffi::c_int,
-                );
-            }
-            if enabled != 0 {
-                CharData_CheckXMLChars(&raw mut storage, b"d\0".as_ptr() as *const XML_Char);
-                let mut c_0: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-                while c_0 < 101 as ::core::ffi::c_int {
-                    status = XML_Parse(
+                    parser_parse_for(
                         parser,
-                        &raw mut eeeeee as *mut ::core::ffi::c_char,
+                        eeeeee.as_ptr(),
                         fillsize,
                         XML_FALSE as ::core::ffi::c_int,
-                    );
-                    if status as ::core::ffi::c_uint
-                        != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        _xml_failure(
-                            parser,
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            5806 as ::core::ffi::c_int,
-                        );
-                    }
-                    c_0 += 1;
-                }
+                    ),
+                    5806 as ::core::ffi::c_int,
+                );
             }
-            CharData_CheckXMLChars(&raw mut storage, b"dx\0".as_ptr() as *const XML_Char);
-            XML_ParserFree(parser);
-            enabled += 1 as ::core::ffi::c_int;
         }
+
+        char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"dx\0"));
+        parser_free(parser);
     }
 }
 extern "C" fn element_decl_counter(
@@ -15710,390 +15673,229 @@ extern "C" fn external_inherited_parser(
     XML_STATUS_OK as ::core::ffi::c_int
 }
 extern "C" fn test_reparse_deferral_is_inherited() {
-    unsafe {
-        _check_set_test_info(
-            b"test_reparse_deferral_is_inherited\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5915 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_reparse_deferral_is_inherited\0",
+        5915 as ::core::ffi::c_int,
+    );
+
+    let text = bytes_as_c_char_ptr(b"<!DOCTYPE document SYSTEM 'something.ext'><document/>\0");
+
+    for enabled in 0..=1 {
+        set_subtest_message(&format!("deferral={enabled}"));
+
+        let parser = create_parser_or_fail(5922 as ::core::ffi::c_int);
+        let mut enabled_for_callback = enabled;
+        parser_set_user_data_for(
+            parser,
+            (&mut enabled_for_callback as *mut ::core::ffi::c_int).cast(),
         );
-        let text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE document SYSTEM 'something.ext'><document/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut enabled: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while enabled <= 1 as ::core::ffi::c_int {
-            set_subtest(
-                b"deferral=%d\0".as_ptr() as *const ::core::ffi::c_char,
-                enabled,
-            );
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5922 as ::core::ffi::c_int,
-                    b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            XML_SetUserData(parser, &raw mut enabled as *mut ::core::ffi::c_void);
-            XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                parser,
-                Some(
-                    external_inherited_parser
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if XML_SetReparseDeferralEnabled(parser, enabled as XML_Bool) == 0 {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5928 as ::core::ffi::c_int,
-                    b"check failed: XML_SetReparseDeferralEnabled(parser, enabled)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if XML_Parse(
+        parser_set_param_entity_parsing_for(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+        parser_set_external_entity_ref_handler_for(parser, external_inherited_parser_for_tests());
+        assert_test_condition(
+            parser_set_reparse_deferral_enabled(parser, enabled as XML_Bool),
+            5928 as ::core::ffi::c_int,
+            b"check failed: XML_SetReparseDeferralEnabled(parser, enabled)\0",
+        );
+        ensure_parser_success_for(
+            parser,
+            parser_parse_for(
                 parser,
                 text,
-                strlen(text) as ::core::ffi::c_int,
+                c_string_len(text),
                 XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5930 as ::core::ffi::c_int,
-                );
-            }
-            XML_ParserFree(parser);
-            enabled += 1;
-        }
+            ),
+            5930 as ::core::ffi::c_int,
+        );
+        parser_free(parser);
     }
 }
 extern "C" fn test_set_reparse_deferral_on_null_parser() {
-    unsafe {
-        _check_set_test_info(
-            b"test_set_reparse_deferral_on_null_parser\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5937 as ::core::ffi::c_int,
-        );
-        if !(XML_SetReparseDeferralEnabled(
+    set_test_info(
+        b"test_set_reparse_deferral_on_null_parser\0",
+        5937 as ::core::ffi::c_int,
+    );
+
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(
             ::core::ptr::null_mut::<XML_ParserStruct>(),
             0 as XML_Bool,
-        ) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5938 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(NULL, 0) == XML_FALSE\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(XML_SetReparseDeferralEnabled(
+        ),
+        5938 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(NULL, 0) == XML_FALSE\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(
             ::core::ptr::null_mut::<XML_ParserStruct>(),
             1 as XML_Bool,
-        ) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5939 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(NULL, 1) == XML_FALSE\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(XML_SetReparseDeferralEnabled(
+        ),
+        5939 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(NULL, 1) == XML_FALSE\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(
             ::core::ptr::null_mut::<XML_ParserStruct>(),
             10 as XML_Bool,
-        ) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5940 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(NULL, 10) == XML_FALSE\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(XML_SetReparseDeferralEnabled(
+        ),
+        5940 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(NULL, 10) == XML_FALSE\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(
             ::core::ptr::null_mut::<XML_ParserStruct>(),
             100 as XML_Bool,
-        ) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5941 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(NULL, 100) == XML_FALSE\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(XML_SetReparseDeferralEnabled(
+        ),
+        5941 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(NULL, 100) == XML_FALSE\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(
             ::core::ptr::null_mut::<XML_ParserStruct>(),
             (-(2147483647 as ::core::ffi::c_int) - 1 as ::core::ffi::c_int) as XML_Bool,
-        ) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                5943 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(NULL, (XML_Bool)INT_MIN) == XML_FALSE\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(XML_SetReparseDeferralEnabled(
+        ),
+        5943 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(NULL, (XML_Bool)INT_MIN) == XML_FALSE\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(
             ::core::ptr::null_mut::<XML_ParserStruct>(),
             2147483647 as ::core::ffi::c_int as XML_Bool,
-        ) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                5945 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(NULL, (XML_Bool)INT_MAX) == XML_FALSE\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    }
+        ),
+        5945 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(NULL, (XML_Bool)INT_MAX) == XML_FALSE\0",
+    );
 }
 extern "C" fn test_set_reparse_deferral_on_the_fly() {
-    unsafe {
-        _check_set_test_info(
-            b"test_set_reparse_deferral_on_the_fly\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5949 as ::core::ffi::c_int,
-        );
-        let pre: *const ::core::ffi::c_char =
-            b"<d><x attr='\0".as_ptr() as *const ::core::ffi::c_char;
-        let end: *const ::core::ffi::c_char = b"'></x>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut iiiiii: [::core::ffi::c_char; 100] = [0; 100];
-        let fillsize: ::core::ffi::c_int =
-            ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as ::core::ffi::c_int;
-        memset(
-            &raw mut iiiiii as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            'i' as i32,
-            fillsize as size_t,
-        );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if parser.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5957 as ::core::ffi::c_int,
-                b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetReparseDeferralEnabled(parser, 1 as ::core::ffi::c_int as XML_Bool) == 0 {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5958 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(parser, XML_TRUE)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUserData(parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetStartElementHandler(
-            parser,
-            Some(
-                start_element_event_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        let mut status: XML_Status = XML_STATUS_ERROR;
-        status = XML_Parse(
+    set_test_info(
+        b"test_set_reparse_deferral_on_the_fly\0",
+        5949 as ::core::ffi::c_int,
+    );
+
+    let pre = bytes_as_c_char_ptr(b"<d><x attr='\0");
+    let end = bytes_as_c_char_ptr(b"'></x>\0");
+    let iiiiii = [b'i' as ::core::ffi::c_char; 100];
+    let fillsize = ::core::mem::size_of_val(&iiiiii) as ::core::ffi::c_int;
+
+    let parser = create_parser_or_fail(5957 as ::core::ffi::c_int);
+    assert_test_condition(
+        parser_set_reparse_deferral_enabled(parser, 1 as ::core::ffi::c_int as XML_Bool),
+        5958 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(parser, XML_TRUE)\0",
+    );
+
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    char_data_init(&mut storage);
+    parser_set_user_data_for(parser, (&mut storage as *mut CharData).cast());
+    parser_set_start_element_handler_for(parser, start_element_event_handler_for_tests());
+
+    ensure_parser_success_for(
+        parser,
+        parser_parse_for(
             parser,
             pre,
-            strlen(pre) as ::core::ffi::c_int,
+            c_string_len(pre),
             XML_FALSE as ::core::ffi::c_int,
-        );
-        if status as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5969 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, b"d\0".as_ptr() as *const XML_Char);
-        status = XML_Parse(
+        ),
+        5969 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"d\0"));
+
+    ensure_parser_success_for(
+        parser,
+        parser_parse_for(
             parser,
-            &raw mut iiiiii as *mut ::core::ffi::c_char,
+            iiiiii.as_ptr(),
             fillsize,
             XML_FALSE as ::core::ffi::c_int,
-        );
-        if status as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5976 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, b"d\0".as_ptr() as *const XML_Char);
-        status = XML_Parse(
+        ),
+        5976 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"d\0"));
+
+    ensure_parser_success_for(
+        parser,
+        parser_parse_for(
             parser,
             end,
-            strlen(end) as ::core::ffi::c_int,
+            c_string_len(end),
             XML_FALSE as ::core::ffi::c_int,
-        );
-        if status as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5983 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, b"d\0".as_ptr() as *const XML_Char);
-        if XML_SetReparseDeferralEnabled(parser, 0 as ::core::ffi::c_int as XML_Bool) == 0 {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5988 as ::core::ffi::c_int,
-                b"check failed: XML_SetReparseDeferralEnabled(parser, XML_FALSE)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        status = XML_Parse(
+        ),
+        5983 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"d\0"));
+
+    assert_test_condition(
+        parser_set_reparse_deferral_enabled(parser, 0 as ::core::ffi::c_int as XML_Bool),
+        5988 as ::core::ffi::c_int,
+        b"check failed: XML_SetReparseDeferralEnabled(parser, XML_FALSE)\0",
+    );
+    ensure_parser_success_for(
+        parser,
+        parser_parse_for(
             parser,
-            b"\0".as_ptr() as *const ::core::ffi::c_char,
+            bytes_as_c_char_ptr(b"\0"),
             0 as ::core::ffi::c_int,
             XML_FALSE as ::core::ffi::c_int,
-        );
-        if status as ::core::ffi::c_uint
-            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5992 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, b"dx\0".as_ptr() as *const XML_Char);
-        XML_ParserFree(parser);
-    }
+        ),
+        5992 as ::core::ffi::c_int,
+    );
+    char_data_check_xml_chars(&mut storage, bytes_as_xml_char_ptr(b"dx\0"));
+    parser_free(parser);
 }
 extern "C" fn test_set_bad_reparse_option() {
-    unsafe {
-        _check_set_test_info(
-            b"test_set_bad_reparse_option\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            6000 as ::core::ffi::c_int,
-        );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if !(0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 2 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6002 as ::core::ffi::c_int,
-                b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 2)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 3 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6003 as ::core::ffi::c_int,
-                b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 3)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 99 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6004 as ::core::ffi::c_int,
-                b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 99)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 127 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6005 as ::core::ffi::c_int,
-                b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 127)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 128 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6006 as ::core::ffi::c_int,
-                b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 128)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 129 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6007 as ::core::ffi::c_int,
-                b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 129)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 255 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6008 as ::core::ffi::c_int,
-                b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 255)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 0 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6009 as ::core::ffi::c_int,
-                b"check failed: XML_TRUE == XML_SetReparseDeferralEnabled(parser, 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int
-            == XML_SetReparseDeferralEnabled(parser, 1 as XML_Bool) as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6010 as ::core::ffi::c_int,
-                b"check failed: XML_TRUE == XML_SetReparseDeferralEnabled(parser, 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parser);
-    }
+    set_test_info(b"test_set_bad_reparse_option\0", 6000 as ::core::ffi::c_int);
+
+    let parser = create_parser_or_fail(6001 as ::core::ffi::c_int);
+
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(parser, 2 as XML_Bool),
+        6002 as ::core::ffi::c_int,
+        b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 2)\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(parser, 3 as XML_Bool),
+        6003 as ::core::ffi::c_int,
+        b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 3)\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(parser, 99 as XML_Bool),
+        6004 as ::core::ffi::c_int,
+        b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 99)\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(parser, 127 as XML_Bool),
+        6005 as ::core::ffi::c_int,
+        b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 127)\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(parser, 128 as XML_Bool),
+        6006 as ::core::ffi::c_int,
+        b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 128)\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(parser, 129 as XML_Bool),
+        6007 as ::core::ffi::c_int,
+        b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 129)\0",
+    );
+    assert_test_condition(
+        !parser_set_reparse_deferral_enabled(parser, 255 as XML_Bool),
+        6008 as ::core::ffi::c_int,
+        b"check failed: XML_FALSE == XML_SetReparseDeferralEnabled(parser, 255)\0",
+    );
+    assert_test_condition(
+        parser_set_reparse_deferral_enabled(parser, 0 as XML_Bool),
+        6009 as ::core::ffi::c_int,
+        b"check failed: XML_TRUE == XML_SetReparseDeferralEnabled(parser, 0)\0",
+    );
+    assert_test_condition(
+        parser_set_reparse_deferral_enabled(parser, 1 as XML_Bool),
+        6010 as ::core::ffi::c_int,
+        b"check failed: XML_TRUE == XML_SetReparseDeferralEnabled(parser, 1)\0",
+    );
+
+    parser_free(parser);
 }
 static G_TOTAL_ALLOC: AtomicUsize = AtomicUsize::new(0);
 static G_BIGGEST_ALLOC: AtomicUsize = AtomicUsize::new(0);
