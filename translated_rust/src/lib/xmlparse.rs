@@ -9736,337 +9736,179 @@ extern "C" fn getAttributeId(
     id
 }
 extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-            p: ::core::ptr::null_mut::<*mut NAMED>(),
-            end: ::core::ptr::null_mut::<*mut NAMED>(),
-        };
-        let mut needSep: XML_Bool = XML_FALSE;
-        if !(*dtd).defaultPrefix.binding.is_null() {
-            let mut i: ::core::ffi::c_int = 0;
-            let mut len: ::core::ffi::c_int = 0;
-            if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                && poolGrow(&mut (*parser).m_tempPool) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh61 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh61 = 0x3d as XML_Char;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return ::core::ptr::null::<XML_Char>();
-            }
-            len = (*(*dtd).defaultPrefix.binding).uriLen;
-            if (*parser).m_namespaceSeparator != 0 {
-                len -= 1;
-            }
-            i = 0 as ::core::ffi::c_int;
-            while i < len {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh62 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh62 = *(*(*dtd).defaultPrefix.binding).uri.offset(i as isize);
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return ::core::ptr::null::<XML_Char>();
-                }
-                i += 1;
-            }
-            needSep = XML_TRUE;
+    let parser = ptr_mut(parser);
+    let dtd = ptr_mut(parser.m_dtd);
+    let mut iter = HASH_TABLE_ITER {
+        p: ::core::ptr::null_mut::<*mut NAMED>(),
+        end: ::core::ptr::null_mut::<*mut NAMED>(),
+    };
+    let mut need_sep = false;
+
+    if !dtd.defaultPrefix.binding.is_null() {
+        let binding = ptr_ref(dtd.defaultPrefix.binding);
+        let mut len = binding.uriLen;
+        if parser.m_namespaceSeparator != 0 {
+            len -= 1;
         }
-        hashTableIterInit(&raw mut iter, &raw mut (*dtd).prefixes);
-        loop {
-            let mut i_0: ::core::ffi::c_int = 0;
-            let mut len_0: ::core::ffi::c_int = 0;
-            let mut s: *const XML_Char = ::core::ptr::null::<XML_Char>();
-            let mut prefix: *mut PREFIX = hashTableIterNext(&raw mut iter) as *mut PREFIX;
-            if prefix.is_null() {
-                break;
-            }
-            if (*prefix).binding.is_null() {
-                continue;
-            }
-            if needSep as ::core::ffi::c_int != 0
-                && (if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh63 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh63 = 0xc as XML_Char;
-                    1 as ::core::ffi::c_int
-                }) == 0
-            {
-                return ::core::ptr::null::<XML_Char>();
-            }
-            s = (*prefix).name;
-            while *s != 0 {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh64 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh64 = *s;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return ::core::ptr::null::<XML_Char>();
-                }
-                s = s.offset(1);
-            }
-            if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                && poolGrow(&mut (*parser).m_tempPool) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh65 = (*parser).m_tempPool.ptr;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                *c2rust_fresh65 = 0x3d as XML_Char;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return ::core::ptr::null::<XML_Char>();
-            }
-            len_0 = (*(*prefix).binding).uriLen;
-            if (*parser).m_namespaceSeparator != 0 {
-                len_0 -= 1;
-            }
-            i_0 = 0 as ::core::ffi::c_int;
-            while i_0 < len_0 {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh66 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh66 = *(*(*prefix).binding).uri.offset(i_0 as isize);
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return ::core::ptr::null::<XML_Char>();
-                }
-                i_0 += 1;
-            }
-            needSep = XML_TRUE;
-        }
-        hashTableIterInit(&raw mut iter, &raw mut (*dtd).generalEntities);
-        loop {
-            let mut s_0: *const XML_Char = ::core::ptr::null::<XML_Char>();
-            let mut e: *mut ENTITY = hashTableIterNext(&raw mut iter) as *mut ENTITY;
-            if e.is_null() {
-                break;
-            }
-            if (*e).open == 0 {
-                continue;
-            }
-            if needSep as ::core::ffi::c_int != 0
-                && (if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh67 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh67 = 0xc as XML_Char;
-                    1 as ::core::ffi::c_int
-                }) == 0
-            {
-                return ::core::ptr::null::<XML_Char>();
-            }
-            s_0 = (*e).name;
-            while *s_0 != 0 {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh68 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh68 = *s_0;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return ::core::ptr::null::<XML_Char>();
-                }
-                s_0 = s_0.offset(1);
-            }
-            needSep = XML_TRUE;
-        }
-        if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-            && poolGrow(&mut (*parser).m_tempPool) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh69 = (*parser).m_tempPool.ptr;
-            (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-            *c2rust_fresh69 = '\0' as i32 as XML_Char;
-            1 as ::core::ffi::c_int
-        } == 0
+        if !pool_append_xml_char(&mut parser.m_tempPool, 0x3d as XML_Char)
+            || !pool_append_xml_chars(&mut parser.m_tempPool, ptr_slice(binding.uri, len as usize))
         {
             return ::core::ptr::null::<XML_Char>();
         }
-        return (*parser).m_tempPool.start;
+        need_sep = true;
     }
+
+    hashTableIterInit(&mut iter, &raw const dtd.prefixes);
+    loop {
+        let prefix = hashTableIterNext(&mut iter) as *mut PREFIX;
+        if prefix.is_null() {
+            break;
+        }
+        let prefix = ptr_ref(prefix);
+        if prefix.binding.is_null() {
+            continue;
+        }
+
+        let binding = ptr_ref(prefix.binding);
+        let mut len = binding.uriLen;
+        if parser.m_namespaceSeparator != 0 {
+            len -= 1;
+        }
+        if (need_sep && !pool_append_xml_char(&mut parser.m_tempPool, 0xc as XML_Char))
+            || !pool_append_xml_c_string(&mut parser.m_tempPool, prefix.name)
+            || !pool_append_xml_char(&mut parser.m_tempPool, 0x3d as XML_Char)
+            || !pool_append_xml_chars(&mut parser.m_tempPool, ptr_slice(binding.uri, len as usize))
+        {
+            return ::core::ptr::null::<XML_Char>();
+        }
+        need_sep = true;
+    }
+
+    hashTableIterInit(&mut iter, &raw const dtd.generalEntities);
+    loop {
+        let entity = hashTableIterNext(&mut iter) as *mut ENTITY;
+        if entity.is_null() {
+            break;
+        }
+        let entity = ptr_ref(entity);
+        if entity.open == 0 {
+            continue;
+        }
+        if (need_sep && !pool_append_xml_char(&mut parser.m_tempPool, 0xc as XML_Char))
+            || !pool_append_xml_c_string(&mut parser.m_tempPool, entity.name)
+        {
+            return ::core::ptr::null::<XML_Char>();
+        }
+        need_sep = true;
+    }
+
+    if !pool_append_xml_char(&mut parser.m_tempPool, '\0' as i32 as XML_Char) {
+        return ::core::ptr::null::<XML_Char>();
+    }
+
+    parser.m_tempPool.start
 }
 extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_Char) -> XML_Bool {
-    unsafe {
-        if context.is_null() {
-            return XML_FALSE;
-        }
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut s: *const XML_Char = context;
-        while *context as ::core::ffi::c_int != '\0' as i32 {
-            if *s as ::core::ffi::c_int == 0xc as ::core::ffi::c_int
-                || *s as ::core::ffi::c_int == '\0' as i32
-            {
-                let mut e: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh76 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh76 = '\0' as i32 as XML_Char;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return XML_FALSE;
-                }
-                e = lookup(
-                    parser,
-                    &raw mut (*dtd).generalEntities,
-                    (*parser).m_tempPool.start as KEY,
-                    0 as size_t,
-                ) as *mut ENTITY;
-                if !e.is_null() {
-                    (*e).open = XML_TRUE;
-                }
-                if *s as ::core::ffi::c_int != '\0' as i32 {
-                    s = s.offset(1);
-                }
-                context = s;
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-            } else if *s as ::core::ffi::c_int == 0x3d as ::core::ffi::c_int {
-                let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
-                if (*parser)
-                    .m_tempPool
-                    .ptr
-                    .offset_from((*parser).m_tempPool.start)
-                    as ::core::ffi::c_long
-                    == 0 as ::core::ffi::c_long
-                {
-                    prefix = &raw mut (*dtd).defaultPrefix;
-                } else {
-                    if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                        && poolGrow(&mut (*parser).m_tempPool) == 0
-                    {
-                        0 as ::core::ffi::c_int
-                    } else {
-                        let c2rust_fresh77 = (*parser).m_tempPool.ptr;
-                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                        *c2rust_fresh77 = '\0' as i32 as XML_Char;
-                        1 as ::core::ffi::c_int
-                    } == 0
-                    {
-                        return XML_FALSE;
-                    }
-                    prefix = lookup(
-                        parser,
-                        &raw mut (*dtd).prefixes,
-                        (*parser).m_tempPool.start as KEY,
-                        ::core::mem::size_of::<PREFIX>() as size_t,
-                    ) as *mut PREFIX;
-                    if prefix.is_null() {
-                        return XML_FALSE;
-                    }
-                    if (*prefix).name == (*parser).m_tempPool.start as *const XML_Char {
-                        (*prefix).name = poolCopyString(&mut (*dtd).pool, (*prefix).name);
-                        if (*prefix).name.is_null() {
-                            return XML_FALSE;
-                        }
-                    }
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-                }
-                context = s.offset(1 as ::core::ffi::c_int as isize);
-                while *context as ::core::ffi::c_int != 0xc as ::core::ffi::c_int
-                    && *context as ::core::ffi::c_int != '\0' as i32
-                {
-                    if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                        && poolGrow(&mut (*parser).m_tempPool) == 0
-                    {
-                        0 as ::core::ffi::c_int
-                    } else {
-                        let c2rust_fresh78 = (*parser).m_tempPool.ptr;
-                        (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                        *c2rust_fresh78 = *context;
-                        1 as ::core::ffi::c_int
-                    } == 0
-                    {
-                        return XML_FALSE;
-                    }
-                    context = context.offset(1);
-                }
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh79 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh79 = '\0' as i32 as XML_Char;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return XML_FALSE;
-                }
-                if addBinding(
-                    parser,
-                    prefix,
-                    ::core::ptr::null::<ATTRIBUTE_ID>(),
-                    (*parser).m_tempPool.start,
-                    &raw mut (*parser).m_inheritedBindings,
-                ) as ::core::ffi::c_uint
-                    != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return XML_FALSE;
-                }
-                (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-                if *context as ::core::ffi::c_int != '\0' as i32 {
-                    context = context.offset(1);
-                }
-                s = context;
-            } else {
-                if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
-                    && poolGrow(&mut (*parser).m_tempPool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh80 = (*parser).m_tempPool.ptr;
-                    (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
-                    *c2rust_fresh80 = *s;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return XML_FALSE;
-                }
-                s = s.offset(1);
-            }
-        }
-        return XML_TRUE;
+    if context.is_null() {
+        return XML_FALSE;
     }
+
+    let parser_ptr = parser;
+    let parser = ptr_mut(parser);
+    let dtd = ptr_mut(parser.m_dtd);
+    let mut s = context;
+
+    while read_xml_char(context) as ::core::ffi::c_int != '\0' as i32 {
+        let current = read_xml_char(s) as ::core::ffi::c_int;
+        if current == 0xc as ::core::ffi::c_int || current == '\0' as i32 {
+            if !pool_append_xml_char(&mut parser.m_tempPool, '\0' as i32 as XML_Char) {
+                return XML_FALSE;
+            }
+
+            let entity = lookup(
+                parser_ptr,
+                &raw mut dtd.generalEntities,
+                parser.m_tempPool.start as KEY,
+                0 as size_t,
+            ) as *mut ENTITY;
+            if !entity.is_null() {
+                ptr_mut(entity).open = XML_TRUE;
+            }
+
+            if current != '\0' as i32 {
+                s = s.wrapping_add(1);
+            }
+            context = s;
+            parser.m_tempPool.ptr = parser.m_tempPool.start;
+        } else if current == 0x3d as ::core::ffi::c_int {
+            let prefix: *mut PREFIX = if parser.m_tempPool.ptr == parser.m_tempPool.start {
+                &raw mut dtd.defaultPrefix
+            } else {
+                if !pool_append_xml_char(&mut parser.m_tempPool, '\0' as i32 as XML_Char) {
+                    return XML_FALSE;
+                }
+
+                let prefix = lookup(
+                    parser_ptr,
+                    &raw mut dtd.prefixes,
+                    parser.m_tempPool.start as KEY,
+                    ::core::mem::size_of::<PREFIX>() as size_t,
+                ) as *mut PREFIX;
+                if prefix.is_null() {
+                    return XML_FALSE;
+                }
+
+                let prefix_ref = ptr_mut(prefix);
+                if prefix_ref.name == parser.m_tempPool.start as *const XML_Char {
+                    prefix_ref.name = poolCopyString(&mut dtd.pool, prefix_ref.name);
+                    if prefix_ref.name.is_null() {
+                        return XML_FALSE;
+                    }
+                }
+
+                parser.m_tempPool.ptr = parser.m_tempPool.start;
+                prefix
+            };
+
+            context = s.wrapping_add(1);
+            while {
+                let ch = read_xml_char(context) as ::core::ffi::c_int;
+                ch != 0xc as ::core::ffi::c_int && ch != '\0' as i32
+            } {
+                if !pool_append_xml_char(&mut parser.m_tempPool, read_xml_char(context)) {
+                    return XML_FALSE;
+                }
+                context = context.wrapping_add(1);
+            }
+            if !pool_append_xml_char(&mut parser.m_tempPool, '\0' as i32 as XML_Char) {
+                return XML_FALSE;
+            }
+            if addBinding(
+                parser_ptr,
+                prefix,
+                ::core::ptr::null::<ATTRIBUTE_ID>(),
+                parser.m_tempPool.start,
+                &raw mut parser.m_inheritedBindings,
+            ) as ::core::ffi::c_uint
+                != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                return XML_FALSE;
+            }
+
+            parser.m_tempPool.ptr = parser.m_tempPool.start;
+            if read_xml_char(context) as ::core::ffi::c_int != '\0' as i32 {
+                context = context.wrapping_add(1);
+            }
+            s = context;
+        } else {
+            if !pool_append_xml_char(&mut parser.m_tempPool, read_xml_char(s)) {
+                return XML_FALSE;
+            }
+            s = s.wrapping_add(1);
+        }
+    }
+
+    XML_TRUE
 }
 fn normalizePublicId(buffer: &mut [XML_Char]) {
     let mut write = 0usize;
@@ -10869,6 +10711,28 @@ fn pool_append_xml_char(pool: &mut STRING_POOL, value: XML_Char) -> bool {
     write_xml_char(pool.ptr, value);
     pool.ptr = pool.ptr.wrapping_add(1);
     true
+}
+
+fn pool_append_xml_chars(pool: &mut STRING_POOL, chars: &[XML_Char]) -> bool {
+    for &ch in chars {
+        if !pool_append_xml_char(pool, ch) {
+            return false;
+        }
+    }
+    true
+}
+
+fn pool_append_xml_c_string(pool: &mut STRING_POOL, mut s: *const XML_Char) -> bool {
+    loop {
+        let ch = read_xml_char(s);
+        if ch == 0 {
+            return true;
+        }
+        if !pool_append_xml_char(pool, ch) {
+            return false;
+        }
+        s = s.wrapping_add(1);
+    }
 }
 
 fn call_utf8_convert(
