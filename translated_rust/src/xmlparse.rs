@@ -1719,17 +1719,28 @@ unsafe fn callCharacterDataHandler(
 
 /// Dispatches character data that is already held in typed Rust storage.
 ///
-/// This keeps the raw callback boundary in `callCharacterDataHandler`; callers
-/// with a bounded `XML_Char` slice do not need to manufacture raw parser or
-/// data pointers themselves.
-unsafe fn call_character_data_handler_slice(
-    parser: &mut XML_ParserStruct,
+/// The parser key and callback context are derived from a live parser borrow,
+/// while `data` supplies a checked length and a valid temporary callback view.
+/// Keep the raw ABI call at this narrow boundary so content processing itself
+/// does not need the legacy raw callback adapter.
+fn dispatch_character_data_slice(
+    parser: &XML_ParserStruct,
     data: &[crate::expat_external_h::XML_Char],
 ) {
     let Ok(len) = ::core::ffi::c_int::try_from(data.len()) else {
         return;
     };
-    callCharacterDataHandler(std::ptr::from_mut(parser), data.as_ptr(), len);
+    let callback = CHARACTER_DATA_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&std::ptr::from_ref(parser).addr())
+        .cloned();
+    if let Some(callback) = callback {
+        unsafe {
+            callback.invoke(handler_arg_from_state!(parser), data.as_ptr(), len);
+        }
+    }
 }
 
 unsafe fn callElementDeclHandler(
@@ -10470,7 +10481,7 @@ unsafe fn doContent(
                     if handlers.character_data {
                         let c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
-                        call_character_data_handler_slice(parser, core::slice::from_ref(&c));
+                        dispatch_character_data_slice(parser, core::slice::from_ref(&c));
                     } else if handlers.default {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
                     }
@@ -10564,7 +10575,7 @@ unsafe fn doContent(
                         );
                         let handlers = content_token_handlers(parser);
                         if handlers.character_data {
-                            call_character_data_handler_slice(
+                            dispatch_character_data_slice(
                                 parser,
                                 core::slice::from_ref(&ch),
                             );
@@ -11377,7 +11388,7 @@ unsafe fn doContent(
                         let Some(chars) = buf.get(..encoded) else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
-                        call_character_data_handler_slice(parser, chars);
+                        dispatch_character_data_slice(parser, chars);
                     } else if handlers.default {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
@@ -11390,7 +11401,7 @@ unsafe fn doContent(
                     if handlers.character_data {
                         let c_0: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
-                        call_character_data_handler_slice(parser, core::slice::from_ref(&c_0));
+                        dispatch_character_data_slice(parser, core::slice::from_ref(&c_0));
                     } else if handlers.default {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
