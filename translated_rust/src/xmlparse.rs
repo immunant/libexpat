@@ -2524,8 +2524,8 @@ unsafe extern "C" fn parserCreate(
     (*parser).m_nsAttsVersion = 0 as ::core::ffi::c_ulong;
     (*parser).m_nsAttsPower = 0 as ::core::ffi::c_uchar;
     (*parser).m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    poolInit(&raw mut (*parser).m_tempPool, parser);
-    poolInit(&raw mut (*parser).m_temp2Pool, parser);
+    poolInit(&mut (*parser).m_tempPool, parser);
+    poolInit(&mut (*parser).m_temp2Pool, parser);
     parserInit(parser, encodingName);
     if !encodingName.is_null() && (*parser).m_protocolEncodingName.is_null() {
         if !dtd.is_null() {
@@ -11323,14 +11323,14 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
     if p.is_null() {
         return p;
     }
-    poolInit(&raw mut (*p).pool, parser);
-    poolInit(&raw mut (*p).entityValuePool, parser);
-    hashTableInit(&raw mut (*p).generalEntities, parser);
-    hashTableInit(&raw mut (*p).elementTypes, parser);
-    hashTableInit(&raw mut (*p).attributeIds, parser);
-    hashTableInit(&raw mut (*p).prefixes, parser);
+    poolInit(&mut (*p).pool, parser);
+    poolInit(&mut (*p).entityValuePool, parser);
+    hashTableInit(&mut (*p).generalEntities, parser);
+    hashTableInit(&mut (*p).elementTypes, parser);
+    hashTableInit(&mut (*p).attributeIds, parser);
+    hashTableInit(&mut (*p).prefixes, parser);
     (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableInit(&raw mut (*p).paramEntities, parser);
+    hashTableInit(&mut (*p).paramEntities, parser);
     (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     (*p).in_eldecl = crate::expat_h::XML_FALSE;
@@ -11979,21 +11979,21 @@ unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
     );
 }
 
-unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: crate::expat_h::XML_Parser) {
-    (*p).power = 0 as ::core::ffi::c_uchar;
-    (*p).size = 0 as crate::__stddef_size_t_h::size_t;
-    (*p).used = 0 as crate::__stddef_size_t_h::size_t;
-    (*p).v = ::core::ptr::null_mut::<*mut NAMED>();
-    (*p).parser = parser;
+fn hashTableInit(p: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
+    p.power = 0 as ::core::ffi::c_uchar;
+    p.size = 0 as crate::__stddef_size_t_h::size_t;
+    p.used = 0 as crate::__stddef_size_t_h::size_t;
+    p.v = ::core::ptr::null_mut::<*mut NAMED>();
+    p.parser = parser;
 }
 
-unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
-    (*pool).blocks = ::core::ptr::null_mut::<BLOCK>();
-    (*pool).freeBlocks = ::core::ptr::null_mut::<BLOCK>();
-    (*pool).start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    (*pool).ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    (*pool).end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    (*pool).parser = parser;
+fn poolInit(pool: &mut STRING_POOL, parser: crate::expat_h::XML_Parser) {
+    pool.blocks = ::core::ptr::null_mut::<BLOCK>();
+    pool.freeBlocks = ::core::ptr::null_mut::<BLOCK>();
+    pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    pool.end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    pool.parser = parser;
 }
 
 unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
