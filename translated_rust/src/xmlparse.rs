@@ -1463,7 +1463,7 @@ struct CommentCallbackInvocation<'a> {
 trait CommentCallback: Send + Sync + std::any::Any {}
 
 impl CommentCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
     ) -> ()
@@ -1870,7 +1870,7 @@ macro_rules! handler_arg_from_state {
 impl CommentCallbackAdapter {
     fn invoke(&self, invocation: CommentCallbackInvocation<'_>) {
         let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
             ),
@@ -1879,12 +1879,10 @@ impl CommentCallbackAdapter {
         };
         // `invocation` guarantees the data pointer is a live, terminated
         // parser-owned XML-character sequence for this call.
-        unsafe {
-            callback(
-                handler_arg_from_state!(invocation.parser),
-                invocation.data.as_ptr(),
-            )
-        }
+        callback(
+            handler_arg_from_state!(invocation.parser),
+            invocation.data.as_ptr(),
+        )
     }
 }
 
