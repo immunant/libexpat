@@ -2975,6 +2975,17 @@ impl AllocationBacking {
         size: crate::__stddef_size_t_h::size_t,
         source_line: ::core::ffi::c_int,
     ) -> Option<Self> {
+        Self::from_allocator_policy_foreign_callbacks(policy, size, source_line)
+    }
+
+    /// Performs the configured allocator callbacks for an opaque backing
+    /// token.  This is the only constructor that crosses the allocator ABI;
+    /// the public constructor above remains an ordinary ownership dispatch.
+    fn from_allocator_policy_foreign_callbacks(
+        policy: &ParserAllocatorPolicy,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> Option<Self> {
         let bytes = expat_allocation_bytes(size)?;
         if !policy.reserve(bytes, source_line) {
             return None;
