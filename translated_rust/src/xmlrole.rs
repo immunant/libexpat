@@ -208,9 +208,6 @@ pub use crate::src::xmltok::XML_TOK_POUND_NAME;
 pub use crate::src::xmltok::XML_TOK_PREFIXED_NAME;
 pub use crate::src::xmltok::XML_TOK_PROLOG_S;
 pub use crate::src::xmltok::XML_TOK_XML_DECL;
-use core::ops::{Deref, DerefMut};
-use core::ptr::NonNull;
-
 pub type PROLOG_HANDLER = extern "C" fn(
     *mut crate::src::xmlrole::PROLOG_STATE,
     ::core::ffi::c_int,
@@ -451,86 +448,31 @@ static KW_SYSTEM: [::core::ffi::c_char; 7] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-struct PrologStatePtr(NonNull<crate::src::xmlrole::PROLOG_STATE>);
-
-impl PrologStatePtr {
-    #[inline]
-    fn new(state: *mut crate::src::xmlrole::PROLOG_STATE) -> Self {
-        debug_assert!(!state.is_null());
-        Self(NonNull::new(state).expect("non-null PROLOG_STATE"))
-    }
-
-    #[inline]
-    fn as_ptr(self) -> *mut crate::src::xmlrole::PROLOG_STATE {
-        self.0.as_ptr()
-    }
-}
-
-impl Deref for PrologStatePtr {
-    type Target = crate::src::xmlrole::PROLOG_STATE;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.0.as_ref() }
-    }
-}
-
-impl DerefMut for PrologStatePtr {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { self.0.as_mut() }
-    }
-}
-
-struct EncodingPtr(NonNull<crate::src::xmltok::ENCODING>);
-
-impl EncodingPtr {
-    #[inline]
-    fn new(enc: *const crate::src::xmltok::ENCODING) -> Self {
-        debug_assert!(!enc.is_null());
-        Self(NonNull::new(enc.cast_mut()).expect("non-null ENCODING"))
-    }
-
-    #[inline]
-    fn as_ptr(self) -> *const crate::src::xmltok::ENCODING {
-        self.0.as_ptr() as *const crate::src::xmltok::ENCODING
-    }
-}
-
-impl Deref for EncodingPtr {
-    type Target = crate::src::xmltok::ENCODING;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.0.as_ref() }
-    }
-}
-
-#[inline]
-fn state_ptr(state: *mut crate::src::xmlrole::PROLOG_STATE) -> PrologStatePtr {
-    PrologStatePtr::new(state)
-}
-
-#[inline]
-fn enc_ptr(enc: *const crate::src::xmltok::ENCODING) -> EncodingPtr {
-    EncodingPtr::new(enc)
-}
-
 macro_rules! state_mut {
     ($state:expr) => {{
-        state_ptr($state)
+        let state = $state;
+        debug_assert!(!state.is_null());
+        unsafe { state.as_mut() }.expect("non-null PROLOG_STATE")
     }};
 }
 
 macro_rules! enc_ref {
     ($enc:expr) => {{
-        enc_ptr($enc)
+        let enc = $enc;
+        debug_assert!(!enc.is_null());
+        unsafe { enc.as_ref() }.expect("non-null ENCODING")
+    }};
+}
+
+macro_rules! unsafe_expr {
+    ($expr:expr) => {{
+        unsafe { $expr }
     }};
 }
 
 macro_rules! name_matches_ascii_at {
     ($enc:expr, $ptr:expr, $end:expr, $keyword:expr $(,)?) => {{
-        let enc: &crate::src::xmltok::ENCODING = &*$enc;
+        let enc: &crate::src::xmltok::ENCODING = $enc;
         let name_matches = enc.nameMatchesAscii.expect("non-null function pointer");
         unsafe {
             name_matches(
@@ -544,7 +486,7 @@ macro_rules! name_matches_ascii_at {
 }
 
 #[inline]
-fn set_handler(state: &mut PrologStatePtr, handler: PROLOG_HANDLER) {
+fn set_handler(state: &mut crate::src::xmlrole::PROLOG_STATE, handler: PROLOG_HANDLER) {
     state.handler = Some(handler);
 }
 
@@ -556,12 +498,15 @@ fn name_matches_ascii(
     offset_chars: ::core::ffi::c_int,
     keyword: *const ::core::ffi::c_char,
 ) -> bool {
-    name_matches_ascii_at!(
-        enc,
-        ptr.wrapping_offset((offset_chars * enc.minBytesPerChar) as isize),
-        end,
-        keyword,
-    )
+    let name_matches = enc.nameMatchesAscii.expect("non-null function pointer");
+    unsafe_expr!(
+        name_matches(
+            enc as *const crate::src::xmltok::ENCODING,
+            ptr.wrapping_offset((offset_chars * enc.minBytesPerChar) as isize),
+            end,
+            keyword,
+        )
+    ) != 0
 }
 
 extern "C" fn prolog0(
@@ -1378,7 +1323,7 @@ extern "C" fn externalSubset0(
     if tok == crate::src::xmltok::XML_TOK_XML_DECL {
         return crate::src::xmlrole::XML_ROLE_TEXT_DECL as ::core::ffi::c_int;
     }
-    return externalSubset1(state.as_ptr(), tok, ptr, end, enc.as_ptr());
+    return externalSubset1(state, tok, ptr, end, enc);
 }
 
 extern "C" fn externalSubset1(
@@ -1428,7 +1373,7 @@ extern "C" fn externalSubset1(
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
         }
-        _ => return internalSubset(state.as_ptr(), tok, ptr, end, enc.as_ptr()),
+        _ => return internalSubset(state, tok, ptr, end, enc),
     }
     return common(state, tok);
 }
@@ -3953,7 +3898,10 @@ extern "C" fn error(
     return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
 }
 
-fn common(mut state: PrologStatePtr, mut tok: ::core::ffi::c_int) -> ::core::ffi::c_int {
+fn common(
+    mut state: &mut crate::src::xmlrole::PROLOG_STATE,
+    mut tok: ::core::ffi::c_int,
+) -> ::core::ffi::c_int {
     if state.documentEntity == 0 && tok == crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF_1 {
         return crate::src::xmlrole::XML_ROLE_INNER_PARAM_ENTITY_REF as ::core::ffi::c_int;
     }
