@@ -1073,11 +1073,11 @@ fn run_accounting_callback_test(test: AccountingCallbackTest) {
     }
 }
 
-unsafe extern "C" fn test_helper_unsigned_char_to_printable() {
+extern "C" fn test_helper_unsigned_char_to_printable() {
     run_accounting_callback_test(AccountingCallbackTest::UnsignedCharToPrintable);
 }
 
-unsafe extern "C" fn test_amplification_isolated_external_parser() {
+extern "C" fn test_amplification_isolated_external_parser() {
     run_accounting_callback_test(AccountingCallbackTest::AmplificationIsolatedExternalParser);
 }
 #[no_mangle]
