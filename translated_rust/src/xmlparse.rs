@@ -6170,31 +6170,6 @@ unsafe fn call_processor_impl(
     (ret, next)
 }
 
-unsafe fn startParsing(parser: &mut XML_ParserStruct) -> crate::expat_h::XML_Bool {
-    // Its callers retain the parser allocation and exclusive access for this
-    // initialization step, so the hash state and namespace settings stay
-    // behind one checked borrow.
-    let needs_salt = parser
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .hash_secret_salt
-        == 0;
-    if needs_salt {
-        parser
-            .m_root
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .hash_secret_salt = generate_hash_secret_salt(parser as *mut XML_ParserStruct);
-    }
-    if parser.m_ns != 0 {
-        return setContext(
-            parser as *mut XML_ParserStruct,
-            &raw const implicitContext as *const crate::expat_external_h::XML_Char,
-        );
-    }
-    return crate::expat_h::XML_TRUE;
-}
 unsafe fn XML_ParserCreate_MM(
     encoding_name: Option<&std::ffi::CStr>,
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
@@ -9073,9 +9048,32 @@ unsafe fn XML_Parse(
             Err(status) => return status,
         },
     };
-    if needs_start && startParsing(parser) == 0 {
-        parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-        return crate::expat_h::XML_STATUS_ERROR;
+    if needs_start {
+        // Parser initialization is exclusive to this parse entry point.  Keep
+        // the salt and namespace setup alongside the state transition rather
+        // than routing through a separate unsafe helper.
+        let needs_salt = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .hash_secret_salt
+            == 0;
+        if needs_salt {
+            parser
+                .m_root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .hash_secret_salt = generate_hash_secret_salt(parser as *mut XML_ParserStruct);
+        }
+        if parser.m_ns != 0
+            && setContext(
+                parser as *mut XML_ParserStruct,
+                &raw const implicitContext as *const crate::expat_external_h::XML_Char,
+            ) == 0
+        {
+            parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+            return crate::expat_h::XML_STATUS_ERROR;
+        }
     }
 
     if let Some(input) = input {
