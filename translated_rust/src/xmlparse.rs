@@ -17262,6 +17262,25 @@ unsafe fn appendAttributeValue(
     mut account: XML_Account,
 ) -> (crate::expat_h::XML_Error, *const ::core::ffi::c_char) {
     let enc_ptr: *const crate::src::xmltok::ENCODING = enc;
+    // Literal scanners retain the C cursor ABI, but all token inspection below
+    // is performed through this one checked view.  In particular, a scanner
+    // result must remain within this window before it can select a token or an
+    // entity-name subrange.
+    if ptr.is_null()
+        || end.is_null()
+        || !ptr.is_aligned()
+        || !end.is_aligned()
+    {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+    }
+    let Some(input_len) = end.addr().checked_sub(ptr.addr()) else {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+    };
+    if input_len > isize::MAX as usize {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+    }
+    let input_start = ptr;
+    let input = ::core::slice::from_raw_parts(input_start, input_len);
     let dtd = &mut *parser_dtd_ptr!(parser);
     let pool_is_dtd_pool = ::core::ptr::eq(pool, &mut dtd.pool);
     loop {
@@ -17282,6 +17301,15 @@ unsafe fn appendAttributeValue(
             _ => unreachable!("attribute literal scanner must match its table slot"),
         };
         let mut tok: ::core::ffi::c_int = scanner(enc_ptr, ptr, end, &raw mut next);
+        let Some(cursor) = ptr.addr().checked_sub(input_start.addr()) else {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+        };
+        let Some(next_offset) = next.addr().checked_sub(input_start.addr()) else {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+        };
+        if cursor > next_offset || next_offset > input.len() {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+        }
         if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
         {
             accountingOnAbort(parser);
@@ -17312,8 +17340,15 @@ unsafe fn appendAttributeValue(
                     let Some(token_len) = next.addr().checked_sub(ptr.addr()) else {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                     };
-                    let token = ::core::slice::from_raw_parts(ptr.cast::<u8>(), token_len);
-                    let mut n: ::core::ffi::c_int = enc.charRefNumber.decode(token);
+                    if token_len != next_offset - cursor {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    }
+                    let Some(token) = input.get(cursor..next_offset) else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    };
+                    let mut n: ::core::ffi::c_int = enc
+                        .charRefNumber
+                        .decode(bytemuck::cast_slice(token));
                     if n < 0 as ::core::ffi::c_int {
                         if enc_ptr == parser_encoding(parser) {
                             set_parser_event_start!(&mut *parser, ptr);
@@ -17369,7 +17404,17 @@ unsafe fn appendAttributeValue(
                         | crate::src::xmltok::PredefinedEntityNameMatcher::Big2 => 9,
                     };
                     let entity_name = if entity_len <= max_entity_name_len {
-                        ::core::slice::from_raw_parts(entity_start, entity_len)
+                        let Some(entity_start_offset) = cursor.checked_add(char_width) else {
+                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                        };
+                        let Some(entity_end_offset) = next_offset.checked_sub(char_width) else {
+                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                        };
+                        let Some(entity_name) = input.get(entity_start_offset..entity_end_offset)
+                        else {
+                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                        };
+                        entity_name
                     } else {
                         &[]
                     };
