@@ -2764,6 +2764,14 @@ enum ParserAllocationAction {
         size: crate::__stddef_size_t_h::size_t,
         source_line: ::core::ffi::c_int,
     },
+    // Some legacy callers replace their opaque allocation rather than
+    // reallocating it.  Keep that callback ordering explicit while the Rust
+    // collection reserves its own readable storage separately.
+    Replace {
+        size: crate::__stddef_size_t_h::size_t,
+        allocation_source_line: ::core::ffi::c_int,
+        free_source_line: ::core::ffi::c_int,
+    },
     Free(::core::ffi::c_int),
 }
 
@@ -2819,6 +2827,20 @@ fn scratch_allocation_backing(
                 false
             } else {
                 allocation = reallocated;
+                true
+            }
+        }
+        ParserAllocationAction::Replace {
+            size,
+            allocation_source_line,
+            free_source_line,
+        } => {
+            let replacement = unsafe { expat_malloc(parser, size, allocation_source_line) };
+            if replacement.is_null() {
+                false
+            } else {
+                unsafe { expat_free(parser, allocation, free_source_line) };
+                allocation = replacement;
                 true
             }
         }
@@ -4212,20 +4234,10 @@ struct BindingStorage {
     // configured allocator's allocation/reallocation/free sequence.
     uri: Vec<crate::expat_external_h::XML_Char>,
     binding_backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
-    uri_backing: Option<Box<dyn FnMut(BindingUriAllocationAction) -> bool>>,
-}
-
-enum BindingUriAllocationAction {
-    Grow {
-        size: crate::__stddef_size_t_h::size_t,
-        source_line: ::core::ffi::c_int,
-    },
-    Replace {
-        size: crate::__stddef_size_t_h::size_t,
-        allocation_source_line: ::core::ffi::c_int,
-        free_source_line: ::core::ffi::c_int,
-    },
-    Free(::core::ffi::c_int),
+    // The token accepts a temporary parser borrow when it needs to cross the
+    // allocator boundary.  It therefore retains no raw parser handle while
+    // this binding is parked in the active or free owner vectors.
+    uri_backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>>,
 }
 
 struct FreeBindingList {
@@ -4245,22 +4257,26 @@ impl FreeBindingList {
 // tokens have been made, binding storage itself is ordinary owned Rust state.
 struct BindingStorageBacking {
     binding: Box<dyn FnMut(::core::ffi::c_int)>,
-    uri: Box<dyn FnMut(BindingUriAllocationAction) -> bool>,
+    uri: Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>,
 }
 
 impl BindingStorageBacking {
-    fn release(mut self, source_line: ::core::ffi::c_int) {
-        (self.uri)(BindingUriAllocationAction::Free(source_line));
+    fn release(mut self, parser: &mut XML_ParserStruct, source_line: ::core::ffi::c_int) {
+        (self.uri)(parser, ParserAllocationAction::Free(source_line));
         (self.binding)(source_line);
     }
 }
 
 impl BindingStorage {
-    fn new(uri_capacity: usize, mut backing: BindingStorageBacking) -> Option<Self> {
+    fn new(
+        parser: &mut XML_ParserStruct,
+        uri_capacity: usize,
+        mut backing: BindingStorageBacking,
+    ) -> Option<Self> {
         let mut binding = Vec::new();
         let mut uri = Vec::new();
         if binding.try_reserve_exact(1).is_err() || uri.try_reserve_exact(uri_capacity).is_err() {
-            backing.release(4545 as ::core::ffi::c_int);
+            backing.release(parser, 4545 as ::core::ffi::c_int);
             return None;
         }
         uri.resize(uri_capacity, 0);
@@ -4287,50 +4303,11 @@ impl BindingStorage {
             .expect("binding storage has one binding")
     }
 
-    fn grow_uri(&mut self, capacity: usize, source_line: ::core::ffi::c_int) -> bool {
-        if capacity <= self.uri.len() {
-            return true;
-        }
-        if self
-            .uri
-            .try_reserve_exact(capacity - self.uri.len())
-            .is_err()
-        {
-            return false;
-        }
-        let Some(uri_backing) = self.uri_backing.as_mut() else {
-            return false;
-        };
-        let Some(size) =
-            capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())
-        else {
-            return false;
-        };
-        if !uri_backing(BindingUriAllocationAction::Grow { size, source_line }) {
-            return false;
-        }
-        self.uri.resize(capacity, 0);
-        let binding = self.binding_mut();
-        binding.uriAlloc = capacity as ::core::ffi::c_int;
-        true
-    }
-
-    fn release(mut self) {
-        if let Some(uri_backing) = self.uri_backing.as_mut() {
-            uri_backing(BindingUriAllocationAction::Free(1919 as ::core::ffi::c_int));
-        }
-        self.uri_backing = None;
-        if let Some(binding_backing) = self.binding_backing.as_mut() {
-            binding_backing(1920 as ::core::ffi::c_int);
-        }
-        self.binding_backing = None;
-    }
-
-    fn replace_uri(
+    fn grow_uri(
         &mut self,
+        parser: &mut XML_ParserStruct,
         capacity: usize,
-        allocation_source_line: ::core::ffi::c_int,
-        free_source_line: ::core::ffi::c_int,
+        source_line: ::core::ffi::c_int,
     ) -> bool {
         if capacity <= self.uri.len() {
             return true;
@@ -4350,11 +4327,7 @@ impl BindingStorage {
         else {
             return false;
         };
-        if !uri_backing(BindingUriAllocationAction::Replace {
-            size,
-            allocation_source_line,
-            free_source_line,
-        }) {
+        if !uri_backing(parser, ParserAllocationAction::Grow { size, source_line }) {
             return false;
         }
         self.uri.resize(capacity, 0);
@@ -4362,6 +4335,85 @@ impl BindingStorage {
         binding.uriAlloc = capacity as ::core::ffi::c_int;
         true
     }
+
+    fn release(mut self, parser: &mut XML_ParserStruct) {
+        if let Some(uri_backing) = self.uri_backing.as_mut() {
+            uri_backing(parser, ParserAllocationAction::Free(1919 as ::core::ffi::c_int));
+        }
+        self.uri_backing = None;
+        if let Some(binding_backing) = self.binding_backing.as_mut() {
+            binding_backing(1920 as ::core::ffi::c_int);
+        }
+        self.binding_backing = None;
+    }
+
+}
+
+/// Replace a binding URI's allocator token without retaining either an owner
+/// borrow or a raw parser handle across the allocator callback.
+fn replace_active_binding_uri(
+    parser: &mut XML_ParserStruct,
+    binding_index: usize,
+    capacity: usize,
+    allocation_source_line: ::core::ffi::c_int,
+    free_source_line: ::core::ffi::c_int,
+) -> bool {
+    let (binding_id, mut uri_backing) = {
+        let Some(storage) = parser.m_activeBindings.get_mut(binding_index) else {
+            return false;
+        };
+        if capacity <= storage.uri.len() {
+            return true;
+        }
+        if storage
+            .uri
+            .try_reserve_exact(capacity - storage.uri.len())
+            .is_err()
+        {
+            return false;
+        }
+        (storage.id, storage.uri_backing.take())
+    };
+    let Some(size) =
+        capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())
+    else {
+        let Some(storage) = parser
+            .m_activeBindings
+            .iter_mut()
+            .find(|storage| storage.id == binding_id)
+        else {
+            return false;
+        };
+        storage.uri_backing = uri_backing;
+        return false;
+    };
+    let replaced = uri_backing.as_mut().is_some_and(|backing| {
+        backing(
+            parser,
+            ParserAllocationAction::Replace {
+                size,
+                allocation_source_line,
+                free_source_line,
+            },
+        )
+    });
+    let Some(storage) = parser
+        .m_activeBindings
+        .iter_mut()
+        .find(|storage| storage.id == binding_id)
+    else {
+        if let Some(backing) = uri_backing.as_mut() {
+            backing(parser, ParserAllocationAction::Free(free_source_line));
+        }
+        return false;
+    };
+    storage.uri_backing = uri_backing;
+    if !replaced {
+        return false;
+    }
+    storage.uri.resize(capacity, 0);
+    storage.binding_mut().uriAlloc = capacity as ::core::ffi::c_int;
+    true
 }
 
 fn tag_storage_new(
@@ -4392,13 +4444,13 @@ fn tag_storage_new(
     })
 }
 
-fn release_tag_storage(active_bindings: &mut Vec<BindingStorage>, mut storage: TagStorage) {
+fn release_tag_storage(parser: &mut XML_ParserStruct, mut storage: TagStorage) {
     let tag = storage
         .tag
         .first_mut()
         .expect("tag storage always contains its allocated tag");
     tag.buffer.release(1942 as ::core::ffi::c_int);
-    destroy_bindings(active_bindings, tag.bindings);
+    destroy_bindings(parser, tag.bindings);
     if let Some(mut backing) = storage.backing.take() {
         backing(1944 as ::core::ffi::c_int);
     }
@@ -7406,21 +7458,21 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
     XML_ExternalEntityParserCreate(old, old_parser_key, context, encoding_name)
         .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
-fn destroy_bindings(
-    active_bindings: &mut Vec<BindingStorage>,
-    mut bindings: Option<BindingId>,
-) {
+fn destroy_bindings(parser: &mut XML_ParserStruct, mut bindings: Option<BindingId>) {
     while let Some(binding_id) = bindings {
-        let Some(index) = active_bindings.iter().position(|storage| storage.id == binding_id)
+        let Some(index) = parser
+            .m_activeBindings
+            .iter()
+            .position(|storage| storage.id == binding_id)
         else {
             std::process::abort();
         };
-        bindings = active_bindings[index]
+        bindings = parser.m_activeBindings[index]
             .binding
             .first()
             .expect("binding storage has one binding")
             .nextTagBinding;
-        active_bindings.swap_remove(index).release();
+        parser.m_activeBindings.swap_remove(index).release(parser);
     }
 }
 /// Releases parser-owned resources after the ABI boundary has converted the
@@ -7545,11 +7597,11 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
         .remove(&parser_key);
     let active_tags = std::mem::take(&mut parser.m_activeTags);
     for storage in active_tags.into_iter().rev() {
-        release_tag_storage(&mut parser.m_activeBindings, storage);
+        release_tag_storage(parser, storage);
     }
     let free_tags = std::mem::take(&mut parser.m_freeTagList.tags);
     for storage in free_tags.into_iter().rev() {
-        release_tag_storage(&mut parser.m_activeBindings, storage);
+        release_tag_storage(parser, storage);
     }
     let active_internal_entities = std::mem::take(&mut parser.m_activeInternalEntities);
     for storage in active_internal_entities.into_iter().rev() {
@@ -7577,13 +7629,13 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
     }
     let free_bindings = std::mem::take(&mut parser.m_freeBindingList.bindings);
     for binding in free_bindings.into_iter().rev() {
-        binding.release();
+        binding.release(parser);
     }
     let inherited_bindings = parser
         .m_inheritedBindings
         .and_then(|index| parser.m_activeBindings.get(index))
         .map(|storage| storage.id);
-    destroy_bindings(&mut parser.m_activeBindings, inherited_bindings);
+    destroy_bindings(parser, inherited_bindings);
     poolDestroy(&mut parser.m_tempPool);
     poolDestroy(&mut parser.m_temp2Pool);
     if let Some(protocol_encoding_name) = parser.m_protocolEncodingName.take() {
@@ -13699,7 +13751,9 @@ unsafe fn storeAtts(
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
         let parser_state = &mut *parser_ptr;
-        if !parser_state.m_activeBindings[binding_index].replace_uri(
+        if !replace_active_binding_uri(
+            parser_state,
+            binding_index,
             (n + EXPAND_SPARE) as usize,
             4270 as ::core::ffi::c_int,
             4278 as ::core::ffi::c_int,
@@ -13845,11 +13899,12 @@ fn new_binding_storage(
     )?;
     let uri_size =
         uri_capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
-    let Some(uri_backing) = binding_uri_allocation_backing(parser, uri_size, 4543) else {
+    let Some(uri_backing) = scratch_allocation_backing(parser, uri_size, 4543) else {
         binding_backing(4545);
         return None;
     };
     BindingStorage::new(
+        parser,
         uri_capacity,
         BindingStorageBacking {
             binding: binding_backing,
@@ -13938,7 +13993,7 @@ fn add_binding_impl(
         },
     };
     if uri_capacity > storage.uri.len()
-        && !storage.grow_uri(uri_capacity, 4517 as ::core::ffi::c_int)
+        && !storage.grow_uri(parser, uri_capacity, 4517 as ::core::ffi::c_int)
     {
         parser.m_freeBindingList.bindings.push(storage);
         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -15862,53 +15917,6 @@ fn parser_allocation_backing(
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
     unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }
-}
-
-/// Acquires the URI token paired with a namespace binding's Rust-owned URI
-/// buffer.  The closure retains the allocator token only; all readable URI
-/// data remains in `BindingStorage::uri`.
-fn binding_uri_allocation_backing(
-    parser: &mut XML_ParserStruct,
-    size: crate::__stddef_size_t_h::size_t,
-    source_line: ::core::ffi::c_int,
-) -> Option<Box<dyn FnMut(BindingUriAllocationAction) -> bool>> {
-    let parser_handle = std::ptr::from_mut(parser);
-    let allocation = unsafe { expat_malloc(parser_handle, size, source_line) };
-    if allocation.is_null() {
-        return None;
-    }
-    let mut allocation = allocation;
-    Some(Box::new(move |action| match action {
-        BindingUriAllocationAction::Grow { size, source_line } => {
-            let reallocated =
-                unsafe { expat_realloc(parser_handle, allocation, size, source_line) };
-            if reallocated.is_null() {
-                false
-            } else {
-                allocation = reallocated;
-                true
-            }
-        }
-        BindingUriAllocationAction::Replace {
-            size,
-            allocation_source_line,
-            free_source_line,
-        } => {
-            let replacement =
-                unsafe { expat_malloc(parser_handle, size, allocation_source_line) };
-            if replacement.is_null() {
-                false
-            } else {
-                unsafe { expat_free(parser_handle, allocation, free_source_line) };
-                allocation = replacement;
-                true
-            }
-        }
-        BindingUriAllocationAction::Free(source_line) => {
-            unsafe { expat_free(parser_handle, allocation, source_line) };
-            true
-        }
-    }))
 }
 
 /// Acquires the observable Expat allocation paired with the typed Rust owner
