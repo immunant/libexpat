@@ -2076,27 +2076,6 @@ unsafe extern "C" fn generate_hash_secret_salt(
     );
 }
 
-unsafe extern "C" fn get_hash_secret_salt(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_ulong {
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1251 as ::core::ffi::c_uint,
-                b"unsigned long get_hash_secret_salt(XML_Parser)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    return (*rootParser).m_hash_secret_salt;
-}
-
 unsafe extern "C" fn callProcessor(
     mut parser: crate::expat_h::XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -6280,7 +6259,25 @@ unsafe extern "C" fn storeAtts(
                     c: 0,
                 };
                 let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-                copy_salt_to_sipkey(parser, &raw mut sip_key);
+                let root_parser: crate::expat_h::XML_Parser =
+                    getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+                        as crate::expat_h::XML_Parser;
+                '_c2rust_label: {
+                    if (*root_parser).m_parentParser.is_null() {
+                    } else {
+                        crate::stdlib::__assert_fail(
+                            b"! rootParser->m_parentParser\0".as_ptr()
+                                as *const ::core::ffi::c_char,
+                            b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
+                            1251 as ::core::ffi::c_uint,
+                            b"unsigned long get_hash_secret_salt(XML_Parser)\0".as_ptr()
+                                as *const ::core::ffi::c_char,
+                        );
+                    }
+                };
+                sip_key.k[0 as ::core::ffi::c_int as usize] = 0 as crate::stdlib::uint64_t;
+                sip_key.k[1 as ::core::ffi::c_int as usize] =
+                    (*root_parser).m_hash_secret_salt as crate::stdlib::uint64_t;
                 sip24_init(&mut sip_state, &sip_key);
                 *(s as *mut crate::expat_external_h::XML_Char)
                     .offset(-1 as ::core::ffi::c_int as isize) =
@@ -6334,14 +6331,12 @@ unsafe extern "C" fn storeAtts(
                         break;
                     }
                 }
-                let local_name_bytes_len = keylen(s as KEY)
-                    .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-                        as crate::__stddef_size_t_h::size_t);
+                let local_name = std::ffi::CStr::from_ptr(s);
                 sip24_update(
                     &mut sip_state,
                     ::core::slice::from_raw_parts(
-                        s as *const ::core::ffi::c_uchar,
-                        local_name_bytes_len,
+                        local_name.as_ptr() as *const ::core::ffi::c_uchar,
+                        local_name.to_bytes().len(),
                     ),
                 );
                 loop {
@@ -11698,59 +11693,31 @@ unsafe extern "C" fn copyEntityTable(
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 
-unsafe extern "C" fn keyeq(mut s1: KEY, mut s2: KEY) -> crate::expat_h::XML_Bool {
-    while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int {
-        if *s1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            return crate::expat_h::XML_TRUE;
-        }
-        s1 = s1.offset(1);
-        s2 = s2.offset(1);
-    }
-    return crate::expat_h::XML_FALSE;
-}
-
-unsafe extern "C" fn keylen(mut s: KEY) -> crate::__stddef_size_t_h::size_t {
-    let mut len: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    while *s != 0 {
-        s = s.offset(1);
-        len = len.wrapping_add(1);
-    }
-    return len;
-}
-
-unsafe extern "C" fn copy_salt_to_sipkey(
-    mut parser: crate::expat_h::XML_Parser,
-    mut key: *mut crate::siphash_h::sipkey,
-) {
-    (*key).k[0 as ::core::ffi::c_int as usize] = 0 as crate::stdlib::uint64_t;
-    (*key).k[1 as ::core::ffi::c_int as usize] =
-        get_hash_secret_salt(parser) as crate::stdlib::uint64_t;
-}
-
 unsafe extern "C" fn hash(
     mut parser: crate::expat_h::XML_Parser,
     mut s: KEY,
 ) -> ::core::ffi::c_ulong {
-    let mut state: crate::siphash_h::siphash = crate::siphash_h::siphash {
-        v0: 0,
-        v1: 0,
-        v2: 0,
-        v3: 0,
-        buf: [0; 8],
-        p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
-        c: 0,
-    };
     let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-    copy_salt_to_sipkey(parser, &raw mut key);
-    sip24_init(&mut state, &key);
-    let bytes_len = keylen(s)
-        .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-            as crate::__stddef_size_t_h::size_t);
-    sip24_update(
-        &mut state,
-        ::core::slice::from_raw_parts(s as *const ::core::ffi::c_uchar, bytes_len),
-    );
-    return sip24_final(&mut state) as ::core::ffi::c_ulong;
+    let root_parser: crate::expat_h::XML_Parser =
+        getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
+            as crate::expat_h::XML_Parser;
+    '_c2rust_label: {
+        if (*root_parser).m_parentParser.is_null() {
+        } else {
+            crate::stdlib::__assert_fail(
+                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
+                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
+                1251 as ::core::ffi::c_uint,
+                b"unsigned long get_hash_secret_salt(XML_Parser)\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+            );
+        }
+    };
+    key.k[0 as ::core::ffi::c_int as usize] = 0 as crate::stdlib::uint64_t;
+    key.k[1 as ::core::ffi::c_int as usize] =
+        (*root_parser).m_hash_secret_salt as crate::stdlib::uint64_t;
+    let key_bytes = std::ffi::CStr::from_ptr(s).to_bytes();
+    return siphash24(key_bytes, &key) as ::core::ffi::c_ulong;
 }
 
 unsafe extern "C" fn lookup(
@@ -11791,7 +11758,9 @@ unsafe extern "C" fn lookup(
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
         i = (h & mask) as crate::__stddef_size_t_h::size_t;
         while !(*(*table).v.offset(i as isize)).is_null() {
-            if keyeq(name, (**(*table).v.offset(i as isize)).name) != 0 {
+            if std::ffi::CStr::from_ptr(name)
+                == std::ffi::CStr::from_ptr((**(*table).v.offset(i as isize)).name)
+            {
                 return *(*table).v.offset(i as isize);
             }
             if step == 0 {
