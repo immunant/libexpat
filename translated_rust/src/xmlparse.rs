@@ -2252,6 +2252,13 @@ impl InputBuffer {
         let end = end.checked_sub(base)?;
         (start <= end && end <= bytes.len()).then(|| &bytes[start..end])
     }
+
+    fn offset_from_address(&self, address: usize) -> Option<usize> {
+        let bytes = self.bytes.as_deref()?;
+        address
+            .checked_sub(bytes.as_ptr().addr())
+            .filter(|offset| *offset <= bytes.len())
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -3018,7 +3025,7 @@ pub type TAG = tag;
 #[repr(C)]
 
 pub struct tag {
-    pub rawName: *const ::core::ffi::c_char,
+    rawName: RawNameStorage,
     pub rawNameLength: ::core::ffi::c_int,
     pub name: TAG_NAME,
     // The tag name's converted and raw forms occupy this Rust-owned byte
@@ -3027,6 +3034,66 @@ pub struct tag {
     // allocation pointer in parser state.
     buffer: TagBufferStorage,
     pub bindings: *mut BINDING,
+}
+
+// A raw tag name must remain comparable after parsing an internal entity or
+// after a callback grows the input buffer.  Keep a checked owner-relative
+// location until `storeRawNames` moves it into the tag buffer.
+#[derive(Copy, Clone)]
+enum RawNameStorage {
+    Unset,
+    InputBuffer(usize),
+    EntityText {
+        text: EntityTextRef,
+        length: ::core::ffi::c_int,
+        offset: usize,
+    },
+    TagBuffer(usize),
+}
+
+enum RawNameSource<'a> {
+    Bytes(&'a [u8]),
+    Chars(&'a [::core::ffi::c_char]),
+}
+
+impl RawNameSource<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Bytes(bytes) => bytes.len(),
+            Self::Chars(chars) => chars.len(),
+        }
+    }
+
+    fn same_bytes(&self, other: &Self) -> bool {
+        self.len() == other.len()
+            && match (self, other) {
+                (Self::Bytes(left), Self::Bytes(right)) => left == right,
+                (Self::Bytes(left), Self::Chars(right)) => left
+                    .iter()
+                    .zip(right.iter())
+                    .all(|(&left, &right)| left == right as u8),
+                (Self::Chars(left), Self::Bytes(right)) => left
+                    .iter()
+                    .zip(right.iter())
+                    .all(|(&left, &right)| left as u8 == right),
+                (Self::Chars(left), Self::Chars(right)) => left == right,
+            }
+    }
+
+    fn copy_into(&self, destination: &mut [::core::ffi::c_char]) -> bool {
+        if self.len() != destination.len() {
+            return false;
+        }
+        match self {
+            Self::Bytes(bytes) => {
+                for (destination, &source) in destination.iter_mut().zip(bytes.iter()) {
+                    *destination = source as ::core::ffi::c_char;
+                }
+            }
+            Self::Chars(chars) => destination.copy_from_slice(chars),
+        }
+        true
+    }
 }
 
 struct TagBufferStorage {
@@ -3131,7 +3198,7 @@ unsafe fn tag_storage_new(
         return None;
     }
     tag.push(TAG {
-        rawName: ::core::ptr::null(),
+        rawName: RawNameStorage::Unset,
         rawNameLength: 0,
         name: TAG_NAME {
             str: TagNameStorage::Unset,
@@ -3415,6 +3482,92 @@ fn entity_text_chars(
     match text.pool {
         EntityTextPool::Dtd => dtd.pool.chars_at(string, length),
         EntityTextPool::EntityValue => dtd.entityValuePool.chars_at(string, length),
+    }
+}
+
+fn event_raw_name_storage(
+    parser: &XML_ParserStruct,
+    dtd: &DTD,
+    parser_events: bool,
+    address: usize,
+) -> Option<RawNameStorage> {
+    if parser_events {
+        return Some(RawNameStorage::InputBuffer(
+            parser.m_buffer.offset_from_address(address)?,
+        ));
+    }
+
+    let open_entity = parser
+        .m_openInternalEntities
+        .and_then(|index| parser.m_activeInternalEntities.get(index))?
+        .node();
+    let text = entity_text_chars(dtd, open_entity.eventText, open_entity.eventTextLen)?;
+    let offset = address
+        .checked_sub(text.as_ptr().addr())
+        .filter(|offset| *offset <= text.len())?;
+    Some(RawNameStorage::EntityText {
+        text: open_entity.eventText,
+        length: open_entity.eventTextLen,
+        offset,
+    })
+}
+
+fn event_raw_name_source<'a>(
+    parser: &'a XML_ParserStruct,
+    dtd: &'a DTD,
+    parser_events: bool,
+    start: usize,
+    end: usize,
+) -> Option<RawNameSource<'a>> {
+    if parser_events {
+        return Some(RawNameSource::Bytes(
+            parser.m_buffer.window_from_addresses(start, end)?,
+        ));
+    }
+
+    let open_entity = parser
+        .m_openInternalEntities
+        .and_then(|index| parser.m_activeInternalEntities.get(index))?
+        .node();
+    let text = entity_text_chars(dtd, open_entity.eventText, open_entity.eventTextLen)?;
+    let start = start.checked_sub(text.as_ptr().addr())?;
+    let end = end.checked_sub(text.as_ptr().addr())?;
+    Some(RawNameSource::Chars(text.get(start..end)?))
+}
+
+fn stored_raw_name_source<'a>(
+    parser: &'a XML_ParserStruct,
+    dtd: &'a DTD,
+    tag: &'a TAG,
+) -> Option<RawNameSource<'a>> {
+    let length = usize::try_from(tag.rawNameLength).ok()?;
+    match tag.rawName {
+        RawNameStorage::TagBuffer(offset) => Some(RawNameSource::Chars(
+            tag.buffer.bytes.get(offset..offset.checked_add(length)?)?,
+        )),
+        storage => retained_raw_name_source(parser, dtd, storage, length),
+    }
+}
+
+fn retained_raw_name_source<'a>(
+    parser: &'a XML_ParserStruct,
+    dtd: &'a DTD,
+    storage: RawNameStorage,
+    length: usize,
+) -> Option<RawNameSource<'a>> {
+    match storage {
+        RawNameStorage::Unset => None,
+        RawNameStorage::InputBuffer(offset) => Some(RawNameSource::Bytes(
+            parser.m_buffer.bytes.as_deref()?.get(offset..offset.checked_add(length)?)?,
+        )),
+        RawNameStorage::EntityText {
+            text,
+            length: text_length,
+            offset,
+        } => Some(RawNameSource::Chars(
+            entity_text_chars(dtd, text, text_length)?.get(offset..offset.checked_add(length)?)?,
+        )),
+        RawNameStorage::TagBuffer(_) => None,
     }
 }
 
@@ -7994,23 +8147,26 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled_ffi(
 unsafe extern "C" fn storeRawNames(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Bool {
-    let mut tag_index = (*parser).m_tagStack;
+    let dtd = &*parser_dtd_ptr!(parser);
+    let parser = &mut *parser;
+    let mut tag_index = parser.m_tagStack;
     while let Some(index) = tag_index {
-        let Some(storage) = (&mut (*parser).m_activeTags).get_mut(index) else {
+        let Some(storage) = parser.m_activeTags.get_mut(index) else {
             return crate::expat_h::XML_FALSE;
         };
-        let tag = storage.tag.as_mut_ptr();
+        let tag = &mut *storage.tag.as_mut_ptr();
         let mut nameLen: crate::__stddef_size_t_h::size_t =
             ::core::mem::size_of::<crate::expat_external_h::XML_Char>().wrapping_mul(
-                ((*tag).name.strLen + 1 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t,
+                (tag.name.strLen + 1 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t,
             );
-        let mut rawNameLen: crate::__stddef_size_t_h::size_t = 0;
-        let mut rawNameBuf: *mut ::core::ffi::c_char =
-            (*tag).buffer.bytes.as_mut_ptr().offset(nameLen as isize);
-        if (*tag).rawName == rawNameBuf as *const ::core::ffi::c_char {
+        let raw_name_offset = nameLen as usize;
+        if matches!(tag.rawName, RawNameStorage::TagBuffer(offset) if offset == raw_name_offset) {
             break;
         }
-        rawNameLen = (((*tag).rawNameLength as usize).wrapping_add(
+        let Some(raw_name_len) = usize::try_from(tag.rawNameLength).ok() else {
+            return crate::expat_h::XML_FALSE;
+        };
+        let rawNameLen = (raw_name_len.wrapping_add(
             ::core::mem::size_of::<crate::expat_external_h::XML_Char>().wrapping_sub(1 as usize),
         ) & !::core::mem::size_of::<crate::expat_external_h::XML_Char>()
             .wrapping_sub(1 as usize)) as crate::__stddef_size_t_h::size_t;
@@ -8020,18 +8176,39 @@ unsafe extern "C" fn storeRawNames(
             return crate::expat_h::XML_FALSE;
         }
         let bufSize = nameLen.wrapping_add(rawNameLen);
-        if bufSize > (*tag).buffer.bytes.len() {
-            if !(*tag).buffer.grow(bufSize, 3151 as ::core::ffi::c_int) {
+        if bufSize > tag.buffer.bytes.len() {
+            if !tag.buffer.grow(bufSize, 3151 as ::core::ffi::c_int) {
                 return crate::expat_h::XML_FALSE;
             }
-            rawNameBuf = (*tag).buffer.bytes.as_mut_ptr().offset(nameLen as isize);
         }
-        crate::stdlib::memcpy(
-            rawNameBuf as *mut ::core::ffi::c_void,
-            (*tag).rawName as *const ::core::ffi::c_void,
-            (*tag).rawNameLength as crate::__stddef_size_t_h::size_t,
-        );
-        (*tag).rawName = rawNameBuf;
+        let raw_name_end = match raw_name_offset.checked_add(raw_name_len) {
+            Some(end) => end,
+            None => return crate::expat_h::XML_FALSE,
+        };
+        match tag.rawName {
+            RawNameStorage::TagBuffer(old_offset) => {
+                let Some(old_end) = old_offset.checked_add(raw_name_len) else {
+                    return crate::expat_h::XML_FALSE;
+                };
+                if old_end > tag.buffer.bytes.len() {
+                    return crate::expat_h::XML_FALSE;
+                }
+                tag.buffer.bytes.copy_within(old_offset..old_end, raw_name_offset);
+            }
+            _ => {
+                let Some(raw_name) =
+                    retained_raw_name_source(parser, dtd, tag.rawName, raw_name_len)
+                else {
+                    return crate::expat_h::XML_FALSE;
+                };
+                if !raw_name
+                    .copy_into(&mut tag.buffer.bytes[raw_name_offset..raw_name_end])
+                {
+                    return crate::expat_h::XML_FALSE;
+                }
+            }
+        }
+        tag.rawName = RawNameStorage::TagBuffer(raw_name_offset);
         tag_index = index.checked_sub(1);
     }
     return crate::expat_h::XML_TRUE;
@@ -8674,12 +8851,21 @@ unsafe extern "C" fn doContent(
                     (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
                     parser_state.m_tagStack = Some(tag_index);
                     (*tag).name.localPart = None;
-                    (*tag).rawName = s.wrapping_offset((*enc).minBytesPerChar as isize);
-                    (*tag).rawNameLength = crate::src::xmltok::name_length(enc, (*tag).rawName);
+                    let raw_name = s.wrapping_offset((*enc).minBytesPerChar as isize);
+                    (*tag).rawName = match event_raw_name_storage(
+                        &*parser,
+                        &*dtd,
+                        parser_events,
+                        raw_name.addr(),
+                    ) {
+                        Some(storage) => storage,
+                        None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                    };
+                    (*tag).rawNameLength = crate::src::xmltok::name_length(enc, raw_name);
                     (*parser).m_tagLevel += 1;
                     let mut rawNameEnd: *const ::core::ffi::c_char =
-                        (*tag).rawName.wrapping_offset((*tag).rawNameLength as isize);
-                    let mut fromPtr: *const ::core::ffi::c_char = (*tag).rawName;
+                        raw_name.wrapping_offset((*tag).rawNameLength as isize);
+                    let mut fromPtr: *const ::core::ffi::c_char = raw_name;
                     toPtr = (*tag).buffer.bytes.as_mut_ptr()
                         as *mut crate::expat_external_h::XML_Char;
                     loop {
@@ -8941,13 +9127,25 @@ unsafe extern "C" fn doContent(
                         rawName_0 =
                             s.wrapping_offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
                         len = crate::src::xmltok::name_length(enc, rawName_0);
-                        if len != (*tag_0).rawNameLength
-                            || crate::stdlib::memcmp(
-                                (*tag_0).rawName as *const ::core::ffi::c_void,
-                                rawName_0 as *const ::core::ffi::c_void,
-                                len as crate::__stddef_size_t_h::size_t,
-                            ) != 0 as ::core::ffi::c_int
-                        {
+                        let names_match = if len == (*tag_0).rawNameLength {
+                            let end = rawName_0.wrapping_offset(len as isize).addr();
+                            match (
+                                event_raw_name_source(
+                                    &*parser,
+                                    &*dtd,
+                                    parser_events,
+                                    rawName_0.addr(),
+                                    end,
+                                ),
+                                stored_raw_name_source(&*parser, &*dtd, &*tag_0),
+                            ) {
+                                (Some(actual), Some(expected)) => actual.same_bytes(&expected),
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        };
+                        if !names_match {
                             update_event_start(rawName_0);
                             return crate::expat_h::XML_ERROR_TAG_MISMATCH;
                         }
