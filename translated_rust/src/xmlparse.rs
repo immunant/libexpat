@@ -1977,6 +1977,19 @@ enum AttributeAllocationAction {
     Free(::core::ffi::c_int),
 }
 
+// Namespace-attribute duplicate detection is a parser-owned scratch table.
+// Its allocation token remains opaque so the configured Expat allocator sees
+// the same allocation, growth, and release sequence as the original table.
+struct NamespaceAttributeStorage {
+    entries: Vec<NS_ATT>,
+    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, NamespaceAttributeAllocationAction) -> bool>>,
+}
+
+enum NamespaceAttributeAllocationAction {
+    Grow(crate::__stddef_size_t_h::size_t),
+    Free(::core::ffi::c_int),
+}
+
 // Content-model group separators are parser-owned bytes.  Their backing
 // allocation remains an opaque token so a configured Expat allocator sees
 // the same allocation, growth, and release sequence as the C buffer.
@@ -2020,6 +2033,23 @@ impl AttributeStorage {
             valuePtr: ::core::ptr::null(),
             valueEnd: ::core::ptr::null(),
             normalized: 0,
+        }
+    }
+}
+
+impl NamespaceAttributeStorage {
+    fn empty() -> Self {
+        Self {
+            entries: Vec::new(),
+            backing: None,
+        }
+    }
+
+    fn blank_entry() -> NS_ATT {
+        NS_ATT {
+            version: 0,
+            hash: 0,
+            uriName: None,
         }
     }
 }
@@ -2191,7 +2221,7 @@ pub struct XML_ParserStruct {
     pub m_nSpecifiedAtts: ::core::ffi::c_int,
     pub m_idAttIndex: ::core::ffi::c_int,
     m_atts: AttributeStorage,
-    pub m_nsAtts: *mut NS_ATT,
+    m_nsAtts: NamespaceAttributeStorage,
     pub m_nsAttsVersion: ::core::ffi::c_ulong,
     pub m_nsAttsPower: ::core::ffi::c_uchar,
     pub m_position: crate::src::xmltok::POSITION,
@@ -3863,7 +3893,7 @@ fn initial_parser_struct(
         m_nSpecifiedAtts: 0,
         m_idAttIndex: 0,
         m_atts: AttributeStorage::empty(),
-        m_nsAtts: ::core::ptr::null_mut::<NS_ATT>(),
+        m_nsAtts: NamespaceAttributeStorage::empty(),
         m_nsAttsVersion: 0,
         m_nsAttsPower: 0,
         m_position: crate::src::xmltok::POSITION {
@@ -4115,7 +4145,7 @@ unsafe extern "C" fn parserCreate(
     parser.m_namespaceSeparator = crate::ascii_h::ASCII_EXCL as crate::expat_external_h::XML_Char;
     parser.m_ns = crate::expat_h::XML_FALSE;
     parser.m_ns_triplets = crate::expat_h::XML_FALSE;
-    parser.m_nsAtts = ::core::ptr::null_mut::<NS_ATT>();
+    parser.m_nsAtts = NamespaceAttributeStorage::empty();
     parser.m_nsAttsVersion = 0 as ::core::ffi::c_ulong;
     parser.m_nsAttsPower = 0 as ::core::ffi::c_uchar;
     parser.m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -5166,11 +5196,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     }
     parser.m_buffer.bytes = None;
     parser.m_dataBuf.release(2011 as ::core::ffi::c_int);
-    expat_free(
-        parser as *mut XML_ParserStruct,
-        parser.m_nsAtts as *mut ::core::ffi::c_void,
-        2012 as ::core::ffi::c_int,
-    );
+    let mut ns_atts_backing = parser.m_nsAtts.backing.take();
+    if let Some(backing) = ns_atts_backing.as_mut() {
+        backing(parser, NamespaceAttributeAllocationAction::Free(2012));
+    }
+    parser.m_nsAtts.entries = Vec::new();
     crate::src::xmltok::unregister_unknown_encoding_converter(parser.m_unknownEncodingMem as usize);
     expat_free(
         parser as *mut XML_ParserStruct,
@@ -9116,7 +9146,6 @@ unsafe extern "C" fn storeAtts(
         if nPrefixes << 1 as ::core::ffi::c_int >> (*parser).m_nsAttsPower as ::core::ffi::c_int
             != 0
         {
-            let mut temp_0: *mut NS_ATT = ::core::ptr::null_mut::<NS_ATT>();
             loop {
                 let c2rust_fresh28 = (*parser).m_nsAttsPower;
                 (*parser).m_nsAttsPower = (*parser).m_nsAttsPower.wrapping_add(1);
@@ -9135,26 +9164,57 @@ unsafe extern "C" fn storeAtts(
             }
             nsAttsSize =
                 (1 as ::core::ffi::c_uint) << (*parser).m_nsAttsPower as ::core::ffi::c_int;
-            temp_0 = expat_realloc(
-                parser,
-                (*parser).m_nsAtts as *mut ::core::ffi::c_void,
-                (nsAttsSize as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<NS_ATT>()),
-                4089 as ::core::ffi::c_int,
-            ) as *mut NS_ATT;
-            if temp_0.is_null() {
+            let Ok(ns_atts_capacity) = usize::try_from(nsAttsSize) else {
                 (*parser).m_nsAttsPower = oldNsAttsPower;
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
+            };
+            let parser_ref = &mut *parser;
+            if parser_ref.m_nsAtts.entries.is_empty() {
+                let Some(storage) = namespace_attribute_storage_new(parser_ref, ns_atts_capacity, 4089)
+                else {
+                    parser_ref.m_nsAttsPower = oldNsAttsPower;
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                parser_ref.m_nsAtts = storage;
+            } else {
+                let additional = ns_atts_capacity.saturating_sub(parser_ref.m_nsAtts.entries.len());
+                if parser_ref
+                    .m_nsAtts
+                    .entries
+                    .try_reserve_exact(additional)
+                    .is_err()
+                {
+                    parser_ref.m_nsAttsPower = oldNsAttsPower;
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
+                let allocation_size = match ns_atts_capacity.checked_mul(::core::mem::size_of::<NS_ATT>()) {
+                    Some(size) => size,
+                    None => {
+                        parser_ref.m_nsAttsPower = oldNsAttsPower;
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                };
+                let mut backing = parser_ref.m_nsAtts.backing.take();
+                let grew = backing.as_mut().is_some_and(|backing| {
+                    backing(parser_ref, NamespaceAttributeAllocationAction::Grow(allocation_size))
+                });
+                parser_ref.m_nsAtts.backing = backing;
+                if !grew {
+                    parser_ref.m_nsAttsPower = oldNsAttsPower;
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
+                parser_ref
+                    .m_nsAtts
+                    .entries
+                    .resize_with(ns_atts_capacity, NamespaceAttributeStorage::blank_entry);
             }
-            (*parser).m_nsAtts = temp_0;
             version = 0 as ::core::ffi::c_ulong;
         }
         if version == 0 {
             version = INIT_ATTS_VERSION as ::core::ffi::c_ulong;
-            j_0 = nsAttsSize;
-            while j_0 != 0 as ::core::ffi::c_uint {
-                j_0 = j_0.wrapping_sub(1);
-                (*(*parser).m_nsAtts.offset(j_0 as isize)).version = version;
+            let parser_ref = &mut *parser;
+            for entry in parser_ref.m_nsAtts.entries.iter_mut() {
+                entry.version = version;
             }
         }
         version = version.wrapping_sub(1);
@@ -9258,8 +9318,18 @@ unsafe extern "C" fn storeAtts(
                 let mut mask: ::core::ffi::c_ulong =
                     nsAttsSize.wrapping_sub(1 as ::core::ffi::c_uint) as ::core::ffi::c_ulong;
                 j_0 = (uriHash & mask) as ::core::ffi::c_uint;
-                while (*parser_ref.m_nsAtts.offset(j_0 as isize)).version == version {
-                    if uriHash == (*parser_ref.m_nsAtts.offset(j_0 as isize)).hash {
+                while parser_ref
+                    .m_nsAtts
+                    .entries
+                    .get(j_0 as usize)
+                    .is_some_and(|entry| entry.version == version)
+                {
+                    let entry = parser_ref
+                        .m_nsAtts
+                        .entries
+                        .get(j_0 as usize)
+                        .expect("namespace attribute index must fit table capacity");
+                    if uriHash == entry.hash {
                         let Some(start) = parser_ref.m_tempPool.start_ref(true) else {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         };
@@ -9270,8 +9340,7 @@ unsafe extern "C" fn storeAtts(
                         if s1.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        let Some(uri_name) = (*parser_ref.m_nsAtts.offset(j_0 as isize)).uriName
-                        else {
+                        let Some(uri_name) = entry.uriName else {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         };
                         let s2 = pool_string_pointer(&raw const parser_ref.m_tempPool, uri_name);
@@ -9346,13 +9415,16 @@ unsafe extern "C" fn storeAtts(
                 }
                 parser_ref.m_tempPool.commit();
                 appAtts[i as usize] = s;
-                (*parser_ref.m_nsAtts.offset(j_0 as isize)).version = version;
-                (*parser_ref.m_nsAtts.offset(j_0 as isize)).hash = uriHash;
+                let Some(entry) = parser_ref.m_nsAtts.entries.get_mut(j_0 as usize) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                entry.version = version;
+                entry.hash = uriHash;
                 let Some(uri_name) = pool_string_ref(&raw const parser_ref.m_tempPool, s, false)
                 else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                (*parser_ref.m_nsAtts.offset(j_0 as isize)).uriName = Some(uri_name);
+                entry.uriName = Some(uri_name);
                 nPrefixes -= 1;
                 if nPrefixes == 0 {
                     i += 2 as ::core::ffi::c_int;
@@ -15959,6 +16031,48 @@ unsafe fn attribute_storage_new(
     records.resize_with(capacity, AttributeStorage::blank_record);
     Some(AttributeStorage {
         records,
+        backing: Some(backing),
+    })
+}
+
+unsafe fn namespace_attribute_storage_new(
+    parser: &mut XML_ParserStruct,
+    capacity: usize,
+    source_line: ::core::ffi::c_int,
+) -> Option<NamespaceAttributeStorage> {
+    let allocation_size = capacity.checked_mul(::core::mem::size_of::<NS_ATT>())?;
+    let mut allocation = expat_malloc(parser, allocation_size, source_line);
+    if allocation.is_null() {
+        return None;
+    }
+    let mut backing: Box<
+        dyn FnMut(&mut XML_ParserStruct, NamespaceAttributeAllocationAction) -> bool,
+    > = Box::new(move |parser, action| match action {
+        NamespaceAttributeAllocationAction::Grow(size) => {
+            let reallocated = expat_realloc(parser, allocation, size, 4089);
+            if reallocated.is_null() {
+                false
+            } else {
+                allocation = reallocated;
+                true
+            }
+        }
+        NamespaceAttributeAllocationAction::Free(free_source_line) => {
+            expat_free(parser, allocation, free_source_line);
+            true
+        }
+    });
+    let mut entries = Vec::new();
+    if entries.try_reserve_exact(capacity).is_err() {
+        backing(
+            parser,
+            NamespaceAttributeAllocationAction::Free(source_line),
+        );
+        return None;
+    }
+    entries.resize_with(capacity, NamespaceAttributeStorage::blank_entry);
+    Some(NamespaceAttributeStorage {
+        entries,
         backing: Some(backing),
     })
 }
