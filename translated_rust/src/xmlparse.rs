@@ -3639,6 +3639,26 @@ type StringPoolBlockBacking = Box<dyn FnMut(StringPoolAllocationAction) -> bool>
 type StringPoolAllocate =
     Box<dyn FnMut(crate::__stddef_size_t_h::size_t) -> Option<StringPoolBlockBacking>>;
 
+/// The parser-specific allocator route is captured once while the raw handle
+/// is available, then cloned into each pool that needs to allocate blocks.
+/// The factory returns only opaque allocation tokens; pool state never keeps a
+/// dereferenceable parser back-pointer.
+#[derive(Clone)]
+struct StringPoolAllocator {
+    allocate: std::sync::Arc<
+        dyn Fn(crate::__stddef_size_t_h::size_t) -> Option<StringPoolBlockBacking>,
+    >,
+}
+
+impl StringPoolAllocator {
+    fn allocate(
+        &self,
+        size: crate::__stddef_size_t_h::size_t,
+    ) -> Option<StringPoolBlockBacking> {
+        (self.allocate)(size)
+    }
+}
+
 struct StringPoolBlock {
     chars: Vec<crate::expat_external_h::XML_Char>,
     backing: StringPoolBlockBacking,
@@ -6072,8 +6092,9 @@ unsafe fn allocate_parser_storage(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as *mut XML_ParserStruct as usize));
     let parser_handle = std::ptr::from_mut(parser);
-    pool_init(&mut parser.m_tempPool, parser_handle);
-    pool_init(&mut parser.m_temp2Pool, parser_handle);
+    let string_pool_allocator = string_pool_allocator(parser_handle);
+    pool_init(&mut parser.m_tempPool, string_pool_allocator.clone());
+    pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
     if !parser_initialize_from_cstr(parser, encoding_name) {
         XML_ParserFree(parser);
         return None;
@@ -22772,10 +22793,9 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
     // that route once at the raw-handle boundary, then clone its safe factory
     // into each table instead of repeating unsafe setup for every table.
     let hash_table_allocator = unsafe { hash_table_allocator(parser) };
-    unsafe {
-        pool_init(&mut dtd.pool, parser);
-        pool_init(&mut dtd.entityValuePool, parser);
-    }
+    let string_pool_allocator = unsafe { string_pool_allocator(parser) };
+    pool_init(&mut dtd.pool, string_pool_allocator.clone());
+    pool_init(&mut dtd.entityValuePool, string_pool_allocator);
     hash_table_init(&mut dtd.generalEntities, hash_table_allocator.clone());
     hash_table_init(&mut dtd.elementTypes, hash_table_allocator.clone());
     hash_table_init(&mut dtd.attributeIds, hash_table_allocator.clone());
@@ -24115,17 +24135,12 @@ fn dispatch_external_entity_ref_event_handler(
 }
 
 
-/// Initialize a parser-owned string pool.  The caller supplies the pool as
-/// an exclusive borrow, so the allocator token factory is the only remaining
-/// raw-handle boundary.
-unsafe fn pool_init(pool: &mut STRING_POOL, parser: crate::expat_h::XML_Parser) {
-    pool.storage = StringPoolStorage {
-        active: Vec::new(),
-        free: Vec::new(),
-        // Keep the parser handle confined to the allocator token factory.
-        // Slabs never need to retain it as parser state: each backing token
-        // owns the allocation it must later grow or free.
-        allocate: Some(Box::new(move |size| {
+/// Capture a parser-owned pool allocation route while the raw parser handle
+/// is confined to the allocator boundary.  The returned factory can be
+/// cloned for multiple pools without giving their state parser access.
+unsafe fn string_pool_allocator(parser: crate::expat_h::XML_Parser) -> StringPoolAllocator {
+    StringPoolAllocator {
+        allocate: std::sync::Arc::new(move |size| {
             let allocation = expat_malloc(parser, size, 8201 as ::core::ffi::c_int);
             if allocation.is_null() {
                 return None;
@@ -24146,7 +24161,17 @@ unsafe fn pool_init(pool: &mut STRING_POOL, parser: crate::expat_h::XML_Parser) 
                     true
                 }
             }))
-        })),
+        }),
+    }
+}
+
+/// Initialize a parser-owned string pool from an already-captured allocator
+/// route.  Pool bookkeeping itself is entirely owned Rust state.
+fn pool_init(pool: &mut STRING_POOL, allocator: StringPoolAllocator) {
+    pool.storage = StringPoolStorage {
+        active: Vec::new(),
+        free: Vec::new(),
+        allocate: Some(Box::new(move |size| allocator.allocate(size))),
     };
     pool.start = None;
     pool.ptr_offset = 0;
