@@ -2047,7 +2047,10 @@ pub struct XML_ParserStruct {
     // than an address into a growable slab.
     pub m_declNotationPublicId: Option<PoolStringRef>,
     pub m_declElementType: *mut ELEMENT_TYPE,
-    pub m_declAttributeId: *mut ATTRIBUTE_ID,
+    // Attribute declarations refer to an identifier owned by the DTD hash
+    // table.  The pool-backed name is stable across table growth, unlike a
+    // pointer into the table's allocator-backed record storage.
+    pub m_declAttributeId: Option<PoolStringRef>,
     pub m_declAttributeIsCdata: crate::expat_h::XML_Bool,
     pub m_declAttributeIsId: crate::expat_h::XML_Bool,
     pub m_dtd: *mut DTD,
@@ -3584,7 +3587,7 @@ fn initial_parser_struct(
         m_declNotationName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_declNotationPublicId: None,
         m_declElementType: ::core::ptr::null_mut::<ELEMENT_TYPE>(),
-        m_declAttributeId: ::core::ptr::null_mut::<ATTRIBUTE_ID>(),
+        m_declAttributeId: None,
         m_declAttributeIsCdata: crate::expat_h::XML_FALSE,
         m_declAttributeIsId: crate::expat_h::XML_FALSE,
         m_dtd: ::core::ptr::null_mut::<DTD>(),
@@ -3999,7 +4002,7 @@ fn parser_init(
     parser.m_reparseDeferralEnabled = reparse_deferral_enabled;
     parser.m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
     parser.m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    parser.m_declAttributeId = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    parser.m_declAttributeId = None;
     parser.m_declEntity = ::core::ptr::null_mut::<ENTITY>();
     parser.m_doctypeName = None;
     parser.m_doctypeSysid = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -8445,6 +8448,7 @@ unsafe extern "C" fn storeAtts(
             currAtt
                 .name
                 .offset(crate::src::xmltok::name_length(enc, currAtt.name) as isize),
+            None,
         );
         if attId.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -10693,11 +10697,18 @@ unsafe extern "C" fn doProlog(
                                         break '_checkAttListDeclHandler;
                                     }
                                     22 => {
-                                        (*parser).m_declAttributeId =
-                                            getAttributeId(parser, enc, s, next);
-                                        if (*parser).m_declAttributeId.is_null() {
+                                        let mut attribute_name = None;
+                                        let attribute_id = getAttributeId(
+                                            parser,
+                                            enc,
+                                            s,
+                                            next,
+                                            Some(&mut attribute_name),
+                                        );
+                                        if attribute_id.is_null() {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
+                                        (*parser).m_declAttributeId = attribute_name;
                                         (*parser).m_declAttributeIsCdata =
                                             crate::expat_h::XML_FALSE;
                                         (*parser).m_declAttributeType =
@@ -10802,9 +10813,13 @@ unsafe extern "C" fn doProlog(
                                     }
                                     35 | 36 => {
                                         if (*dtd).keepProcessing != 0 {
+                                            let Some(attribute_name) = (*parser).m_declAttributeId
+                                            else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
                                             if defineAttribute(
                                                 (*parser).m_declElementType,
-                                                (*parser).m_declAttributeId,
+                                                attribute_name,
                                                 (*parser).m_declAttributeIsCdata,
                                                 (*parser).m_declAttributeIsId,
                                                 None,
@@ -10878,10 +10893,19 @@ unsafe extern "C" fn doProlog(
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser as usize)
                                                 {
+                                                    let attribute_name = (*dtd)
+                                                        .pool
+                                                        .chars_from(attribute_name)
+                                                        .map_or(::core::ptr::null(), |chars| {
+                                                            chars.as_ptr()
+                                                        });
+                                                    if attribute_name.is_null() {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    }
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
                                                         (*(*parser).m_declElementType).named.name,
-                                                        (*(*parser).m_declAttributeId).name,
+                                                        attribute_name,
                                                         (*parser).m_declAttributeType,
                                                         ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
                                                         (role
@@ -10924,9 +10948,13 @@ unsafe extern "C" fn doProlog(
                                                     chars.as_ptr()
                                                 });
                                             dtd_ref.pool.commit();
+                                            let Some(attribute_name) = (*parser).m_declAttributeId
+                                            else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
                                             if defineAttribute(
                                                 (*parser).m_declElementType,
-                                                (*parser).m_declAttributeId,
+                                                attribute_name,
                                                 (*parser).m_declAttributeIsCdata,
                                                 crate::expat_h::XML_FALSE,
                                                 Some(start),
@@ -11000,10 +11028,19 @@ unsafe extern "C" fn doProlog(
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser as usize)
                                                 {
+                                                    let attribute_name = (*dtd)
+                                                        .pool
+                                                        .chars_from(attribute_name)
+                                                        .map_or(::core::ptr::null(), |chars| {
+                                                            chars.as_ptr()
+                                                        });
+                                                    if attribute_name.is_null() {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    }
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
                                                         (*(*parser).m_declElementType).named.name,
-                                                        (*(*parser).m_declAttributeId).name,
+                                                        attribute_name,
                                                         (*parser).m_declAttributeType,
                                                         attVal,
                                                         (role
@@ -13673,24 +13710,38 @@ unsafe extern "C" fn reportDefault(
 
 unsafe fn defineAttribute(
     mut type_0: *mut ELEMENT_TYPE,
-    mut attId: *mut ATTRIBUTE_ID,
+    att_name: PoolStringRef,
     mut isCdata: crate::expat_h::XML_Bool,
     mut isId: crate::expat_h::XML_Bool,
     value: Option<PoolStringRef>,
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    if type_0.is_null() || attId.is_null() || parser.is_null() {
+    if type_0.is_null() || parser.is_null() {
         return 0 as ::core::ffi::c_int;
     }
     let parser = &mut *parser;
     if parser.m_dtd.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    let type_0 = &mut *type_0;
-    let Some(att_name) = pool_string_ref(&raw const (*parser.m_dtd).pool, (*attId).name, false)
-    else {
+    let dtd = &mut *parser.m_dtd;
+    let att_name_pointer = dtd
+        .pool
+        .chars_from(att_name)
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    if att_name_pointer.is_null() {
         return 0 as ::core::ffi::c_int;
-    };
+    }
+    let attId = lookup(
+        parser as *mut XML_ParserStruct,
+        &raw mut dtd.attributeIds,
+        att_name_pointer as KEY,
+        0,
+    ) as *mut ATTRIBUTE_ID;
+    if attId.is_null() {
+        return 0 as ::core::ffi::c_int;
+    }
+    let attId = &mut *attId;
+    let type_0 = &mut *type_0;
     if value.is_some() || isId as ::core::ffi::c_int != 0 {
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
@@ -13709,7 +13760,7 @@ unsafe fn defineAttribute(
             }
             i += 1;
         }
-        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_none() && (*attId).xmlns == 0 {
+        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_none() && attId.xmlns == 0 {
             type_0.idAtt = Some(att_name);
         }
     }
@@ -13759,7 +13810,7 @@ unsafe fn defineAttribute(
             value,
         });
     if isCdata == 0 {
-        (*attId).maybeTokenized = crate::expat_h::XML_TRUE;
+        attId.maybeTokenized = crate::expat_h::XML_TRUE;
     }
     type_0.nDefaultAtts += 1 as ::core::ffi::c_int;
     return 1 as ::core::ffi::c_int;
@@ -13847,11 +13898,12 @@ unsafe extern "C" fn setElementTypePrefix(
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn getAttributeId(
+unsafe fn getAttributeId(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
+    retained_name: Option<&mut Option<PoolStringRef>>,
 ) -> *mut ATTRIBUTE_ID {
     let parser_ptr = parser;
     let parser = &mut *parser;
@@ -13936,7 +13988,36 @@ unsafe extern "C" fn getAttributeId(
             }
         }
     }
-    id
+    let id_name = id.name;
+    if let Some(retained_name) = retained_name {
+        let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
+        let name = dtd
+            .pool
+            .storage
+            .active
+            .iter()
+            .enumerate()
+            .find_map(|(block_index, block)| {
+                let block_start = block.chars.as_ptr();
+                let byte_offset = id_name.addr().wrapping_sub(block_start.addr());
+                let capacity_bytes = block.chars.len().wrapping_mul(char_size);
+                if id_name.addr() < block_start.addr()
+                    || byte_offset >= capacity_bytes
+                    || byte_offset % char_size != 0
+                {
+                    return None;
+                }
+                Some(PoolStringRef {
+                    block_from_tail: std::num::NonZeroUsize::new(block_index.checked_add(1)?)?,
+                    offset: byte_offset / char_size,
+                })
+            });
+        let Some(name) = name else {
+            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+        };
+        *retained_name = Some(name);
+    }
+    id as *mut ATTRIBUTE_ID
 }
 
 // The string pool owns the resulting context.  Keep the raw-pointer work for
