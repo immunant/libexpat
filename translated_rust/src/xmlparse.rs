@@ -19784,7 +19784,10 @@ unsafe extern "C" fn processEntity(
 ) -> crate::expat_h::XML_Error {
     let parser_state = &mut *parser;
     let entity = &mut *entity;
-    let mut openEntity: *mut OPEN_INTERNAL_ENTITY = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+    // Active entity frames are owned by their respective parser stacks.  Keep
+    // the index selected at allocation time rather than a raw address into a
+    // vector that later bookkeeping could grow.
+    let mut open_entity_index: Option<usize> = None;
     let mut is_internal_entity = false;
     let mut is_attribute_entity = false;
     match type_0 as ::core::ffi::c_uint {
@@ -19820,8 +19823,8 @@ unsafe extern "C" fn processEntity(
                 {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                let Some(backing) = allocation_backing(
-                    parser,
+                let Some(backing) = parser_allocation_backing(
+                    parser_state,
                     ::core::mem::size_of::<OPEN_INTERNAL_ENTITY>(),
                     6382 as ::core::ffi::c_int,
                 ) else {
@@ -19834,8 +19837,8 @@ unsafe extern "C" fn processEntity(
                 };
                 storage
             };
-            openEntity = std::ptr::from_mut(storage.node_mut());
             parser_state.m_activeInternalEntities.push(storage);
+            open_entity_index = parser_state.m_activeInternalEntities.len().checked_sub(1);
         }
         1 => {
             is_attribute_entity = true;
@@ -19864,8 +19867,8 @@ unsafe extern "C" fn processEntity(
                 {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                let Some(backing) = allocation_backing(
-                    parser,
+                let Some(backing) = parser_allocation_backing(
+                    parser_state,
                     ::core::mem::size_of::<OPEN_INTERNAL_ENTITY>(),
                     6382 as ::core::ffi::c_int,
                 ) else {
@@ -19901,8 +19904,8 @@ unsafe extern "C" fn processEntity(
                 {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                let Some(backing) = allocation_backing(
-                    parser,
+                let Some(backing) = parser_allocation_backing(
+                    parser_state,
                     ::core::mem::size_of::<OPEN_INTERNAL_ENTITY>(),
                     6382 as ::core::ffi::c_int,
                 ) else {
@@ -19915,8 +19918,8 @@ unsafe extern "C" fn processEntity(
                 };
                 storage
             };
-            openEntity = std::ptr::from_mut(storage.node_mut());
             parser_state.m_activeValueEntities.push(storage);
+            open_entity_index = parser_state.m_activeValueEntities.len().checked_sub(1);
         }
         // `EntityType` is selected exclusively by the parser's three
         // entity-processing paths.  Keep the C assertion's non-returning
@@ -19927,19 +19930,14 @@ unsafe extern "C" fn processEntity(
     if is_attribute_entity {
         entity.open = crate::expat_h::XML_TRUE;
         entity.hasMore = crate::expat_h::XML_TRUE;
-        entityTrackingOnOpen(
-            parser,
-            std::ptr::from_mut(entity),
-            6389 as ::core::ffi::c_int,
-        );
+        entity_tracking_on_open(parser_state, entity, 6389 as ::core::ffi::c_int);
         entity.processed = 0 as ::core::ffi::c_int;
         return crate::expat_h::XML_ERROR_NONE;
     }
-    if openEntity.is_null() {
+    let Some(open_entity_index) = open_entity_index else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let dtd = parser_dtd_ptr!(parser_state);
-    if dtd.is_null() {
+    };
+    if parser_state.m_dtd.is_none() {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
     let name = entity.named.name;
@@ -19952,9 +19950,9 @@ unsafe extern "C" fn processEntity(
         },
     };
     let storage = if is_internal_entity {
-        parser_state.m_activeInternalEntities.last_mut()
+        parser_state.m_activeInternalEntities.get_mut(open_entity_index)
     } else {
-        parser_state.m_activeValueEntities.last_mut()
+        parser_state.m_activeValueEntities.get_mut(open_entity_index)
     };
     let Some(storage) = storage else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -19962,11 +19960,7 @@ unsafe extern "C" fn processEntity(
     storage.entity_ref = Some(entity_ref);
     entity.open = crate::expat_h::XML_TRUE;
     entity.hasMore = crate::expat_h::XML_TRUE;
-    entityTrackingOnOpen(
-        parser,
-        std::ptr::from_mut(entity),
-        6389 as ::core::ffi::c_int,
-    );
+    entity_tracking_on_open(parser_state, entity, 6389 as ::core::ffi::c_int);
     entity.processed = 0 as ::core::ffi::c_int;
     let next_open_entity = if is_internal_entity {
         parser_state.m_openInternalEntities
@@ -19979,17 +19973,23 @@ unsafe extern "C" fn processEntity(
     } else {
         parser_state.m_openValueEntities = parser_state.m_activeValueEntities.len().checked_sub(1);
     }
-    {
-        let open_entity = &mut *openEntity;
-        open_entity.next = next_open_entity.unwrap_or(usize::MAX);
-        open_entity.type_0 = type_0;
-        open_entity.startTagLevel = parser_state.m_tagLevel;
-        open_entity.betweenDecl = betweenDecl;
-        open_entity.internalEventPtr = None;
-        open_entity.internalEventEndPtr = None;
-        open_entity.eventText = entity.textPtr;
-        open_entity.eventTextLen = entity.textLen;
-    }
+    let open_entity = if is_internal_entity {
+        parser_state.m_activeInternalEntities.get_mut(open_entity_index)
+    } else {
+        parser_state.m_activeValueEntities.get_mut(open_entity_index)
+    };
+    let Some(open_entity) = open_entity else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let open_entity = open_entity.node_mut();
+    open_entity.next = next_open_entity.unwrap_or(usize::MAX);
+    open_entity.type_0 = type_0;
+    open_entity.startTagLevel = parser_state.m_tagLevel;
+    open_entity.betweenDecl = betweenDecl;
+    open_entity.internalEventPtr = None;
+    open_entity.internalEventEndPtr = None;
+    open_entity.eventText = entity.textPtr;
+    open_entity.eventTextLen = entity.textLen;
     if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
     {
         trigger_reenter(parser_state);
