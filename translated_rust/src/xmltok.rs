@@ -4137,21 +4137,21 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_checkPiTarget(
-        _enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        tokPtr: *mut ::core::ffi::c_int,
+    /// Classifies a bounded UTF-16LE processing-instruction target.  Keeping
+    /// the target as a slice ensures that the six-byte `xml` check below is
+    /// only performed after its bounds have been validated by the caller.
+    pub fn little2_checkPiTarget(
+        target: &[::core::ffi::c_char],
+        token: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) != 6 {
+        *token = crate::src::xmltok::XML_TOK_PI_1;
+        if target.len() != 6 {
             return 1 as ::core::ffi::c_int;
         }
 
-        let input = ::core::slice::from_raw_parts(ptr, 6);
-        match little2_pi_target_token(input, 0, 6) {
-            Some(token) => {
-                *tokPtr = token;
+        match little2_pi_target_token(target, 0, 6) {
+            Some(classified_token) => {
+                *token = classified_token;
                 1
             }
             None => 0,
