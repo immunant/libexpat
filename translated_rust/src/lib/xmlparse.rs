@@ -1166,6 +1166,14 @@ macro_rules! call_character_data_handler {
     }};
 }
 
+macro_rules! call_start_namespace_decl_handler {
+    ($handler:expr, $handler_arg:expr, $prefix:expr, $uri:expr $(,)?) => {{
+        unsafe {
+            $handler.expect("non-null function pointer")($handler_arg, $prefix, $uri);
+        }
+    }};
+}
+
 macro_rules! unknown_encoding_size {
     () => {{
         unsafe { XmlSizeOfUnknownEncoding() as size_t }
@@ -5853,166 +5861,170 @@ extern "C" fn addBinding(
     mut uri: *const XML_Char,
     mut bindingsPtr: *mut *mut BINDING,
 ) -> XML_Error {
-    unsafe {
-        let mut mustBeXML: XML_Bool = XML_FALSE;
-        let mut isXML: XML_Bool = XML_TRUE;
-        let mut isXMLNS: XML_Bool = XML_TRUE;
-        let mut b: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
-        let mut len: ::core::ffi::c_int = 0;
-        if *uri as ::core::ffi::c_int == '\0' as i32 && !(*prefix).name.is_null() {
-            return XML_ERROR_UNDECLARING_PREFIX;
+    let mut mustBeXML: XML_Bool = XML_FALSE;
+    let mut isXML: XML_Bool = XML_TRUE;
+    let mut isXMLNS: XML_Bool = XML_TRUE;
+    let prefix_name = ptr_ref(prefix).name;
+    if read_xml_char(uri) as ::core::ffi::c_int == '\0' as i32 && !prefix_name.is_null() {
+        return XML_ERROR_UNDECLARING_PREFIX;
+    }
+    if !prefix_name.is_null() {
+        match c_str_bytes_with_nul(prefix_name) {
+            b"xmlns\0" => return XML_ERROR_RESERVED_PREFIX_XMLNS,
+            b"xml\0" => mustBeXML = XML_TRUE,
+            _ => {}
         }
-        if !(*prefix).name.is_null()
-            && *(*prefix).name.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x78 as ::core::ffi::c_int
-            && *(*prefix).name.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x6d as ::core::ffi::c_int
-            && *(*prefix).name.offset(2 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x6c as ::core::ffi::c_int
+    }
+
+    let parser_ref = ptr_ref(parser);
+    let namespace_separator = parser_ref.m_namespaceSeparator;
+    let ns_enabled = parser_ref.m_ns as ::core::ffi::c_int != 0;
+    let uri_bytes = c_str_bytes_with_nul(uri.cast());
+    let uri_len = uri_bytes.len() - 1;
+
+    for (index, &byte) in uri_bytes[..uri_len].iter().enumerate() {
+        let uri_char = byte as XML_Char;
+        let len = index as ::core::ffi::c_int;
+        if isXML as ::core::ffi::c_int != 0
+            && (len > XML_NAMESPACE_LEN || uri_char != XML_NAMESPACE[index])
         {
-            if *(*prefix).name.offset(3 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x6e as ::core::ffi::c_int
-                && *(*prefix).name.offset(4 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x73 as ::core::ffi::c_int
-                && *(*prefix).name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == '\0' as i32
-            {
-                return XML_ERROR_RESERVED_PREFIX_XMLNS;
-            }
-            if *(*prefix).name.offset(3 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == '\0' as i32
-            {
-                mustBeXML = XML_TRUE;
-            }
+            isXML = XML_FALSE;
         }
-        len = 0 as ::core::ffi::c_int;
-        while *uri.offset(len as isize) != 0 {
-            if isXML as ::core::ffi::c_int != 0
-                && (len > XML_NAMESPACE_LEN
-                    || *uri.offset(len as isize) as ::core::ffi::c_int
-                        != XML_NAMESPACE[len as usize] as ::core::ffi::c_int)
-            {
-                isXML = XML_FALSE;
-            }
-            if mustBeXML == 0
-                && isXMLNS as ::core::ffi::c_int != 0
-                && (len > XMLNS_NAMESPACE_LEN
-                    || *uri.offset(len as isize) as ::core::ffi::c_int
-                        != XMLNS_NAMESPACE[len as usize] as ::core::ffi::c_int)
-            {
-                isXMLNS = XML_FALSE;
-            }
-            if (*parser).m_ns as ::core::ffi::c_int != 0
-                && *uri.offset(len as isize) as ::core::ffi::c_int
-                    == (*parser).m_namespaceSeparator as ::core::ffi::c_int
-                && is_rfc3986_uri_char(*uri.offset(len as isize)) == 0
-            {
-                return XML_ERROR_SYNTAX;
-            }
-            len += 1;
+        if mustBeXML == 0
+            && isXMLNS as ::core::ffi::c_int != 0
+            && (len > XMLNS_NAMESPACE_LEN || uri_char != XMLNS_NAMESPACE[index])
+        {
+            isXMLNS = XML_FALSE;
         }
-        isXML = (isXML as ::core::ffi::c_int != 0 && len == XML_NAMESPACE_LEN) as ::core::ffi::c_int
-            as XML_Bool;
-        isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == XMLNS_NAMESPACE_LEN)
-            as ::core::ffi::c_int as XML_Bool;
-        if mustBeXML as ::core::ffi::c_int != isXML as ::core::ffi::c_int {
-            return (if mustBeXML as ::core::ffi::c_int != 0 {
-                XML_ERROR_RESERVED_PREFIX_XML as ::core::ffi::c_int
-            } else {
-                XML_ERROR_RESERVED_NAMESPACE_URI as ::core::ffi::c_int
-            }) as XML_Error;
+        if ns_enabled
+            && uri_char as ::core::ffi::c_int == namespace_separator as ::core::ffi::c_int
+            && is_rfc3986_uri_char(uri_char) == 0
+        {
+            return XML_ERROR_SYNTAX;
         }
-        if isXMLNS != 0 {
-            return XML_ERROR_RESERVED_NAMESPACE_URI;
-        }
-        if (*parser).m_namespaceSeparator != 0 {
-            len += 1;
-        }
-        if !(*parser).m_freeBindingList.is_null() {
-            b = (*parser).m_freeBindingList;
-            if len > (*b).uriAlloc {
-                if len > INT_MAX - EXPAND_SPARE {
-                    return XML_ERROR_NO_MEMORY;
-                }
-                let mut temp: *mut XML_Char = expat_realloc(
-                    parser,
-                    (*b).uri as *mut ::core::ffi::c_void,
-                    (::core::mem::size_of::<XML_Char>() as size_t)
-                        .wrapping_mul((len + 24 as ::core::ffi::c_int) as size_t),
-                    4517 as ::core::ffi::c_int,
-                ) as *mut XML_Char;
-                if temp.is_null() {
-                    return XML_ERROR_NO_MEMORY;
-                }
-                (*b).uri = temp;
-                (*b).uriAlloc = len + EXPAND_SPARE;
-            }
-            (*parser).m_freeBindingList = (*b).nextTagBinding as *mut BINDING;
+    }
+
+    let mut len = uri_len as ::core::ffi::c_int;
+    isXML = (isXML as ::core::ffi::c_int != 0 && len == XML_NAMESPACE_LEN) as ::core::ffi::c_int
+        as XML_Bool;
+    isXMLNS = (isXMLNS as ::core::ffi::c_int != 0 && len == XMLNS_NAMESPACE_LEN)
+        as ::core::ffi::c_int as XML_Bool;
+    if mustBeXML as ::core::ffi::c_int != isXML as ::core::ffi::c_int {
+        return (if mustBeXML as ::core::ffi::c_int != 0 {
+            XML_ERROR_RESERVED_PREFIX_XML as ::core::ffi::c_int
         } else {
-            b = expat_malloc(
-                parser,
-                ::core::mem::size_of::<BINDING>() as size_t,
-                4525 as ::core::ffi::c_int,
-            ) as *mut BINDING;
-            if b.is_null() {
-                return XML_ERROR_NO_MEMORY;
-            }
+            XML_ERROR_RESERVED_NAMESPACE_URI as ::core::ffi::c_int
+        }) as XML_Error;
+    }
+    if isXMLNS != 0 {
+        return XML_ERROR_RESERVED_NAMESPACE_URI;
+    }
+    if namespace_separator != 0 {
+        len += 1;
+    }
+
+    let b = if !ptr_ref(parser).m_freeBindingList.is_null() {
+        let binding = ptr_ref(parser).m_freeBindingList;
+        if len > ptr_ref(binding).uriAlloc {
             if len > INT_MAX - EXPAND_SPARE {
                 return XML_ERROR_NO_MEMORY;
             }
-            (*b).uri = expat_malloc(
+            let temp = expat_realloc_ptr!(
                 parser,
+                ptr_ref(binding).uri.cast::<::core::ffi::c_void>(),
                 (::core::mem::size_of::<XML_Char>() as size_t)
                     .wrapping_mul((len + 24 as ::core::ffi::c_int) as size_t),
-                4543 as ::core::ffi::c_int,
-            ) as *mut XML_Char;
-            if (*b).uri.is_null() {
-                expat_free(
-                    parser,
-                    b as *mut ::core::ffi::c_void,
-                    4545 as ::core::ffi::c_int,
-                );
+                4517 as ::core::ffi::c_int,
+                XML_Char,
+            );
+            if temp.is_null() {
                 return XML_ERROR_NO_MEMORY;
             }
-            (*b).uriAlloc = len + EXPAND_SPARE;
+            let binding_mut = ptr_mut(binding);
+            binding_mut.uri = temp;
+            binding_mut.uriAlloc = len + EXPAND_SPARE;
         }
-        (*b).uriLen = len;
-        memcpy(
-            (*b).uri as *mut ::core::ffi::c_void,
-            uri as *const ::core::ffi::c_void,
-            (len as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+        ptr_mut(parser).m_freeBindingList = ptr_ref(binding).nextTagBinding;
+        binding
+    } else {
+        let binding = expat_malloc_ptr!(
+            parser,
+            ::core::mem::size_of::<BINDING>() as size_t,
+            4525 as ::core::ffi::c_int,
+            BINDING,
         );
-        if (*parser).m_namespaceSeparator != 0 {
-            *(*b).uri.offset((len - 1 as ::core::ffi::c_int) as isize) =
-                (*parser).m_namespaceSeparator;
+        if binding.is_null() {
+            return XML_ERROR_NO_MEMORY;
         }
-        (*b).prefix = prefix as *mut prefix;
-        (*b).attId = attId as *const attribute_id;
-        (*b).prevPrefixBinding = (*prefix).binding as *mut binding;
-        if *uri as ::core::ffi::c_int == '\0' as i32
-            && prefix == &raw mut (*(*parser).m_dtd).defaultPrefix
-        {
-            (*prefix).binding = ::core::ptr::null_mut::<BINDING>();
+        if len > INT_MAX - EXPAND_SPARE {
+            return XML_ERROR_NO_MEMORY;
+        }
+        let uri_storage = expat_malloc_ptr!(
+            parser,
+            (::core::mem::size_of::<XML_Char>() as size_t)
+                .wrapping_mul((len + 24 as ::core::ffi::c_int) as size_t),
+            4543 as ::core::ffi::c_int,
+            XML_Char,
+        );
+        if uri_storage.is_null() {
+            expat_free_ptr!(
+                parser,
+                binding as *mut ::core::ffi::c_void,
+                4545 as ::core::ffi::c_int,
+            );
+            return XML_ERROR_NO_MEMORY;
+        }
+        let binding_mut = ptr_mut(binding);
+        binding_mut.uri = uri_storage;
+        binding_mut.uriAlloc = len + EXPAND_SPARE;
+        binding
+    };
+
+    let previous_binding = ptr_ref(prefix).binding;
+    {
+        let binding = ptr_mut(b);
+        binding.uriLen = len;
+        copy_xml_chars(binding.uri, uri, len as usize);
+        if namespace_separator != 0 {
+            write_xml_char(
+                binding.uri.wrapping_add((len - 1) as usize),
+                namespace_separator,
+            );
+        }
+        binding.prefix = prefix;
+        binding.attId = attId;
+        binding.prevPrefixBinding = previous_binding;
+        binding.nextTagBinding = *ptr_ref(bindingsPtr);
+    }
+
+    let default_prefix = {
+        let dtd = ptr_mut(ptr_ref(parser).m_dtd);
+        &raw mut dtd.defaultPrefix
+    };
+    ptr_mut(prefix).binding =
+        if read_xml_char(uri) as ::core::ffi::c_int == '\0' as i32 && prefix == default_prefix {
+            ::core::ptr::null_mut::<BINDING>()
         } else {
-            (*prefix).binding = b;
-        }
-        (*b).nextTagBinding = *bindingsPtr as *mut binding;
-        *bindingsPtr = b;
-        if !attId.is_null() && (*parser).m_startNamespaceDeclHandler.is_some() {
-            (*parser)
-                .m_startNamespaceDeclHandler
-                .expect("non-null function pointer")(
-                (*parser).m_handlerArg,
-                (*prefix).name,
-                if !(*prefix).binding.is_null() {
+            b
+        };
+    *ptr_mut(bindingsPtr) = b;
+
+    let parser_ref = ptr_ref(parser);
+    if !attId.is_null() {
+        if let Some(handler) = parser_ref.m_startNamespaceDeclHandler {
+            call_start_namespace_decl_handler!(
+                Some(handler),
+                parser_ref.m_handlerArg,
+                ptr_ref(prefix).name,
+                if !ptr_ref(prefix).binding.is_null() {
                     uri
                 } else {
                     ::core::ptr::null::<XML_Char>()
                 },
             );
         }
-        return XML_ERROR_NONE;
     }
+    XML_ERROR_NONE
 }
 extern "C" fn cdataSectionProcessor(
     mut parser: XML_Parser,
