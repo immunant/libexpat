@@ -4514,44 +4514,40 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn normal_nameLength(
+    pub extern "C" fn normal_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut start: *const ::core::ffi::c_char = ptr;
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
+            match super::normal_byte_type(enc, super::utf8_byte(ptr, 0)) {
                 5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(3);
                 }
                 7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(4);
                 }
                 29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(1);
                 }
                 _ => {
-                    return ptr.offset_from(start) as ::core::ffi::c_long as ::core::ffi::c_int;
+                    return super::byte_distance(start, ptr) as ::core::ffi::c_int;
                 }
             }
         }
     }
 
-    pub unsafe extern "C" fn normal_skipS(
+    pub extern "C" fn normal_skipS(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
         loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
+            match super::normal_byte_type(enc, super::utf8_byte(ptr, 0)) {
                 10 | 9 | 21 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(1);
                 }
                 _ => return ptr,
             }
@@ -9052,60 +9048,54 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn little2_nameLength(
+    pub extern "C" fn little2_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut start: *const ::core::ffi::c_char = ptr;
         loop {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
+            match if super::utf8_byte(ptr, 1) == 0 as ::core::ffi::c_int {
+                super::normal_byte_type(enc, super::utf8_byte(ptr, 0))
             } else {
                 unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
+                    super::utf8_byte(ptr, 1) as ::core::ffi::c_uchar as ::core::ffi::c_char,
+                    super::utf8_byte(ptr, 0) as ::core::ffi::c_uchar as ::core::ffi::c_char,
                 )
             } {
                 5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(3);
                 }
                 7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(4);
                 }
                 29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 _ => {
-                    return ptr.offset_from(start) as ::core::ffi::c_long as ::core::ffi::c_int;
+                    return super::byte_distance(start, ptr) as ::core::ffi::c_int;
                 }
             }
         }
     }
 
-    pub unsafe extern "C" fn little2_skipS(
+    pub extern "C" fn little2_skipS(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
         loop {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
+            match if super::utf8_byte(ptr, 1) == 0 as ::core::ffi::c_int {
+                super::normal_byte_type(enc, super::utf8_byte(ptr, 0))
             } else {
                 unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
+                    super::utf8_byte(ptr, 1) as ::core::ffi::c_uchar as ::core::ffi::c_char,
+                    super::utf8_byte(ptr, 0) as ::core::ffi::c_uchar as ::core::ffi::c_char,
                 )
             } {
                 10 | 9 | 21 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 _ => return ptr,
             }
@@ -13686,62 +13676,54 @@ pub mod xmltok_impl_c {
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn big2_nameLength(
+    pub extern "C" fn big2_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut start: *const ::core::ffi::c_char = ptr;
         loop {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
+            match if super::utf8_byte(ptr, 0) == 0 as ::core::ffi::c_int {
+                super::normal_byte_type(enc, super::utf8_byte(ptr, 1))
             } else {
                 unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
+                    super::utf8_byte(ptr, 0) as ::core::ffi::c_uchar as ::core::ffi::c_char,
+                    super::utf8_byte(ptr, 1) as ::core::ffi::c_uchar as ::core::ffi::c_char,
                 )
             } {
                 5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(3);
                 }
                 7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(4);
                 }
                 29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 _ => {
-                    return ptr.offset_from(start) as ::core::ffi::c_long as ::core::ffi::c_int;
+                    return super::byte_distance(start, ptr) as ::core::ffi::c_int;
                 }
             }
         }
     }
 
-    pub unsafe extern "C" fn big2_skipS(
+    pub extern "C" fn big2_skipS(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
     ) -> *const ::core::ffi::c_char {
         loop {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
+            match if super::utf8_byte(ptr, 0) == 0 as ::core::ffi::c_int {
+                super::normal_byte_type(enc, super::utf8_byte(ptr, 1))
             } else {
                 unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
+                    super::utf8_byte(ptr, 0) as ::core::ffi::c_uchar as ::core::ffi::c_char,
+                    super::utf8_byte(ptr, 1) as ::core::ffi::c_uchar as ::core::ffi::c_char,
                 )
             } {
                 10 | 9 | 21 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 _ => return ptr,
             }
@@ -15555,6 +15537,16 @@ fn byte_distance(
     to: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_long {
     (to as isize).wrapping_sub(from as isize) as ::core::ffi::c_long
+}
+
+fn normal_byte_type(
+    enc: *const crate::src::xmltok::ENCODING,
+    byte: ::core::ffi::c_int,
+) -> ::core::ffi::c_int {
+    unsafe {
+        (*(enc as *const normal_encoding)).type_0[byte as ::core::ffi::c_uchar as usize]
+            as ::core::ffi::c_int
+    }
 }
 
 extern "C" fn utf8_isName2(
