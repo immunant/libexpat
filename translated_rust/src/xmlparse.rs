@@ -18337,45 +18337,21 @@ unsafe fn doProlog(
                                     41 | 42 => {
                                         if dtd.in_eldecl != 0 {
                                             if parser.m_elementDeclHandler {
-                                                let mut content: *mut crate::expat_h::XML_Content =
-                                                    parser
-                                                        .m_mem
-                                                        .malloc_fcn
-                                                        .expect("non-null function pointer")(
-                                                        ::core::mem::size_of::<
-                                                            crate::expat_h::XML_Content,
-                                                        >(
-                                                        ),
-                                                    )
-                                                        as *mut crate::expat_h::XML_Content;
+                                                let content = build_model(
+                                                    parser,
+                                                    dtd,
+                                                    ContentModelSource::Simple(if role
+                                                        == crate::src::xmlrole::XML_ROLE_CONTENT_ANY
+                                                            as ::core::ffi::c_int
+                                                    {
+                                                        crate::expat_h::XML_CTYPE_ANY
+                                                    } else {
+                                                        crate::expat_h::XML_CTYPE_EMPTY
+                                                    }),
+                                                );
                                                 if content.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                let content_ref = &mut *content;
-                                                content_ref.quant = crate::expat_h::XML_CQUANT_NONE;
-                                                content_ref.name = ::core::ptr::null_mut::<
-                                                    crate::expat_external_h::XML_Char,
-                                                >(
-                                                );
-                                                content_ref.numchildren = 0 as ::core::ffi::c_uint;
-                                                content_ref.children = ::core::ptr::null_mut::<
-                                                    crate::expat_h::XML_Content,
-                                                >(
-                                                );
-                                                content_ref.type_0 = (if role
-                                                    == crate::src::xmlrole::XML_ROLE_CONTENT_ANY
-                                                        as ::core::ffi::c_int
-                                                {
-                                                    crate::expat_h::XML_CTYPE_ANY
-                                                        as ::core::ffi::c_int
-                                                } else {
-                                                    crate::expat_h::XML_CTYPE_EMPTY
-                                                        as ::core::ffi::c_int
-                                                })
-                                                    as crate::expat_h::XML_Content_Type;
-                                                // The handler receives ownership of this ABI allocation;
-                                                // end the checked mutable borrow before it can re-enter.
-                                                content = std::ptr::from_mut(content_ref);
                                                 event_target.set_end(
                                                     parser,
                                                     internal_event_start,
@@ -18745,7 +18721,7 @@ unsafe fn doProlog(
                     if dtd.scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
                             let mut model: *mut crate::expat_h::XML_Content =
-                                build_model(parser, dtd);
+                                build_model(parser, dtd, ContentModelSource::Scaffold);
                             if model.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
@@ -24243,6 +24219,12 @@ fn scaffold_allocator() -> impl FnMut(
     }
 }
 
+#[derive(Copy, Clone)]
+enum ContentModelSource {
+    Scaffold,
+    Simple(crate::expat_h::XML_Content_Type),
+}
+
 // `build_model` is reached from the parser's declaration state machine with
 // its exclusive parser borrow already established.  Keep that typed borrow at
 // this internal boundary; only the final ABI-owned model allocation remains
@@ -24250,9 +24232,12 @@ fn scaffold_allocator() -> impl FnMut(
 unsafe fn build_model(
     parser: &mut XML_ParserStruct,
     dtd: &mut DTD,
+    source: ContentModelSource,
 ) -> *mut crate::expat_h::XML_Content {
-    let content_count = dtd.scaffCount as usize;
-    let string_count = dtd.contentStringLen as usize;
+    let (content_count, string_count) = match source {
+        ContentModelSource::Scaffold => (dtd.scaffCount as usize, dtd.contentStringLen as usize),
+        ContentModelSource::Simple(_) => (1, 0),
+    };
     let Some(content_bytes) =
         content_count.checked_mul(::core::mem::size_of::<crate::expat_h::XML_Content>())
     else {
@@ -24295,79 +24280,83 @@ unsafe fn build_model(
     child_starts.resize(content_count, None::<usize>);
     name_offsets.resize(content_count, None::<usize>);
 
-    let scaffold = dtd
-        .scaffold
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let mut job_dest = 1usize;
-    contents[0].numchildren = 0;
-    for dest_index in 0..content_count {
-        let source_index = contents[dest_index].numchildren as usize;
-        let Some(source) = scaffold.nodes.get(source_index) else {
-            return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-        };
-        contents[dest_index].type_0 = source.type_0;
-        contents[dest_index].quant = source.quant;
-        if source.type_0 == crate::expat_h::XML_CTYPE_NAME {
-            let name_ref = source
-                .name
-                .expect("name content scaffold must have a pool name");
-            let Some(block_index) = name_ref.block_from_tail.get().checked_sub(1) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            let Some(block) = dtd.pool.storage.active.get(block_index) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            let Some(name) = block.chars.get(name_ref.offset..) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            let Some(nul_offset) = name.iter().position(|&ch| ch == 0) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            let Some(name_len) = nul_offset.checked_add(1) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            let Some(name_end) = names.len().checked_add(name_len) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            if name_end > string_count {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            }
-            name_offsets[dest_index] = Some(names.len());
-            names.extend_from_slice(&name[..name_len]);
-            contents[dest_index].numchildren = 0;
-        } else {
-            let Ok(child_count) = usize::try_from(source.childcnt) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            let Some(next_job_dest) = job_dest.checked_add(child_count) else {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            };
-            if next_job_dest > content_count {
-                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-            }
-            contents[dest_index].numchildren = child_count as ::core::ffi::c_uint;
-            if child_count != 0 {
-                child_starts[dest_index] = Some(job_dest);
-            }
-            let mut child_index = source.firstchild;
-            for child_dest in job_dest..next_job_dest {
-                let Ok(child_index_usize) = usize::try_from(child_index) else {
+    match source {
+        ContentModelSource::Simple(type_0) => contents[0].type_0 = type_0,
+        ContentModelSource::Scaffold => {
+            let scaffold = dtd
+                .scaffold
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut job_dest = 1usize;
+            contents[0].numchildren = 0;
+            for dest_index in 0..content_count {
+                let source_index = contents[dest_index].numchildren as usize;
+                let Some(source) = scaffold.nodes.get(source_index) else {
                     return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
                 };
-                let Some(child) = scaffold.nodes.get(child_index_usize) else {
-                    return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-                };
-                contents[child_dest].numchildren = child_index as ::core::ffi::c_uint;
-                child_index = child.nextsib;
+                contents[dest_index].type_0 = source.type_0;
+                contents[dest_index].quant = source.quant;
+                if source.type_0 == crate::expat_h::XML_CTYPE_NAME {
+                    let name_ref = source
+                        .name
+                        .expect("name content scaffold must have a pool name");
+                    let Some(block_index) = name_ref.block_from_tail.get().checked_sub(1) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    let Some(block) = dtd.pool.storage.active.get(block_index) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    let Some(name) = block.chars.get(name_ref.offset..) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    let Some(nul_offset) = name.iter().position(|&ch| ch == 0) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    let Some(name_len) = nul_offset.checked_add(1) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    let Some(name_end) = names.len().checked_add(name_len) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    if name_end > string_count {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    }
+                    name_offsets[dest_index] = Some(names.len());
+                    names.extend_from_slice(&name[..name_len]);
+                    contents[dest_index].numchildren = 0;
+                } else {
+                    let Ok(child_count) = usize::try_from(source.childcnt) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    let Some(next_job_dest) = job_dest.checked_add(child_count) else {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    };
+                    if next_job_dest > content_count {
+                        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                    }
+                    contents[dest_index].numchildren = child_count as ::core::ffi::c_uint;
+                    if child_count != 0 {
+                        child_starts[dest_index] = Some(job_dest);
+                    }
+                    let mut child_index = source.firstchild;
+                    for child_dest in job_dest..next_job_dest {
+                        let Ok(child_index_usize) = usize::try_from(child_index) else {
+                            return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                        };
+                        let Some(child) = scaffold.nodes.get(child_index_usize) else {
+                            return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                        };
+                        contents[child_dest].numchildren = child_index as ::core::ffi::c_uint;
+                        child_index = child.nextsib;
+                    }
+                    job_dest = next_job_dest;
+                }
             }
-            job_dest = next_job_dest;
+            if job_dest != content_count || names.len() != string_count {
+                return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+            }
         }
     }
-    if job_dest != content_count || names.len() != string_count {
-        return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    }
-    drop(scaffold);
 
     let ret = parser
         .m_mem
