@@ -3774,8 +3774,116 @@ impl HashTableAllocator {
 }
 
 struct NamedAllocation {
-    bytes: Vec<usize>,
+    record: NamedRecord,
     backing: Box<dyn FnMut(::core::ffi::c_int)>,
+}
+
+// Hash tables contain only these four record kinds.  Keeping the owner typed
+// means table clients that only need to inspect a record never have to
+// reinterpret an allocation as a different Rust type.
+enum NamedRecord {
+    Prefix(Box<PREFIX>),
+    Attribute(Box<ATTRIBUTE_ID>),
+    Element(Box<ELEMENT_TYPE>),
+    Entity(Box<ENTITY>),
+}
+
+impl NamedRecord {
+    fn new(create_size: usize, name: PoolStringRef) -> Option<Self> {
+        if create_size == ::core::mem::size_of::<PREFIX>() {
+            return Some(Self::Prefix(Box::new(PREFIX { name: Some(name) })));
+        }
+        if create_size == ::core::mem::size_of::<ATTRIBUTE_ID>() {
+            return Some(Self::Attribute(Box::new(ATTRIBUTE_ID {
+                named: NAMED { name },
+                prefix: AttributePrefix::None,
+                maybeTokenized: crate::expat_h::XML_FALSE,
+                xmlns: crate::expat_h::XML_FALSE,
+            })));
+        }
+        if create_size == ::core::mem::size_of::<ELEMENT_TYPE>() {
+            return Some(Self::Element(Box::new(ELEMENT_TYPE {
+                named: NAMED { name },
+                // This value is ignored until `hasPrefix` is set.  Use the
+                // element's own valid pool handle rather than a zeroed,
+                // invalid `PoolStringRef` placeholder.
+                prefix: name,
+                hasPrefix: crate::expat_h::XML_FALSE,
+                idAtt: None,
+                nDefaultAtts: 0,
+                allocDefaultAtts: 0,
+                defaultAtts: None,
+            })));
+        }
+        if create_size == ::core::mem::size_of::<ENTITY>() {
+            return Some(Self::Entity(Box::new(ENTITY {
+                named: NAMED { name },
+                textPtr: EntityTextRef {
+                    pool: EntityTextPool::Dtd,
+                    string: None,
+                },
+                textLen: 0,
+                processed: 0,
+                systemId: None,
+                base: None,
+                publicId: None,
+                notation: None,
+                open: crate::expat_h::XML_FALSE,
+                hasMore: crate::expat_h::XML_FALSE,
+                is_param: crate::expat_h::XML_FALSE,
+                is_internal: crate::expat_h::XML_FALSE,
+            })));
+        }
+        None
+    }
+}
+
+impl NamedAllocation {
+    fn key(&self) -> PoolStringRef {
+        match &self.record {
+            NamedRecord::Prefix(prefix) => prefix
+                .name
+                .expect("prefix hash-table records always have a name"),
+            NamedRecord::Attribute(attribute) => attribute.named.name,
+            NamedRecord::Element(element) => element.named.name,
+            NamedRecord::Entity(entity) => entity.named.name,
+        }
+    }
+
+    fn prefix(&self) -> Option<&PREFIX> {
+        match &self.record {
+            NamedRecord::Prefix(prefix) => Some(prefix),
+            _ => None,
+        }
+    }
+
+    fn attribute(&self) -> Option<&ATTRIBUTE_ID> {
+        match &self.record {
+            NamedRecord::Attribute(attribute) => Some(attribute),
+            _ => None,
+        }
+    }
+
+    fn element(&self) -> Option<&ELEMENT_TYPE> {
+        match &self.record {
+            NamedRecord::Element(element) => Some(element),
+            _ => None,
+        }
+    }
+
+    fn element_mut(&mut self) -> Option<&mut ELEMENT_TYPE> {
+        match &mut self.record {
+            NamedRecord::Element(element) => Some(element),
+            _ => None,
+        }
+    }
+
+    fn entity(&self) -> Option<&ENTITY> {
+        match &self.record {
+            NamedRecord::Entity(entity) => Some(entity),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -18574,7 +18682,9 @@ unsafe extern "C" fn getContext(
         needSep = crate::expat_h::XML_TRUE;
     }
     for entry in hash_table_entries(&dtd.prefixes) {
-        let prefix = &*(entry.bytes.as_ptr() as *const PREFIX);
+        let Some(prefix) = entry.prefix() else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
         let Some(prefix_name) = prefix.name else {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         };
@@ -18628,7 +18738,9 @@ unsafe extern "C" fn getContext(
         needSep = crate::expat_h::XML_TRUE;
     }
     for entry in hash_table_entries(&dtd.generalEntities) {
-        let e = &*(entry.bytes.as_ptr() as *const ENTITY);
+        let Some(e) = entry.entity() else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
         if e.open == 0 {
             continue;
         }
@@ -18933,7 +19045,9 @@ unsafe fn release_element_default_attributes(
     };
 
     for entry in slots.entries.iter_mut().flatten() {
-        let element = &mut *entry.bytes.as_mut_ptr().cast::<ELEMENT_TYPE>();
+        let Some(element) = entry.element_mut() else {
+            continue;
+        };
         if let Some(mut default_atts) = element.defaultAtts.take() {
             (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7539));
         }
@@ -19050,7 +19164,9 @@ unsafe fn dtdCopy(
             let Some(entry) = entry.as_ref() else {
                 continue;
             };
-            let old_p = &*(entry.bytes.as_ptr() as *const PREFIX);
+            let Some(old_p) = entry.prefix() else {
+                return 0 as ::core::ffi::c_int;
+            };
             let Some(old_name_ref) = old_p.name else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -19084,7 +19200,9 @@ unsafe fn dtdCopy(
             let Some(entry) = entry.as_ref() else {
                 continue;
             };
-            let old_a = &*(entry.bytes.as_ptr() as *const ATTRIBUTE_ID);
+            let Some(old_a) = entry.attribute() else {
+                return 0 as ::core::ffi::c_int;
+            };
             if if new_dtd.pool.is_full() && poolGrow(&mut new_dtd.pool) == 0 {
                 0 as ::core::ffi::c_int
             } else {
@@ -19149,7 +19267,9 @@ unsafe fn dtdCopy(
             let Some(entry) = entry.as_ref() else {
                 continue;
             };
-            let old_e = &*(entry.bytes.as_ptr() as *const ELEMENT_TYPE);
+            let Some(old_e) = entry.element() else {
+                return 0 as ::core::ffi::c_int;
+            };
             let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_e.named.name) else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -19338,7 +19458,9 @@ unsafe fn copyEntityTable(
         let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let old_e = &*(entry.bytes.as_ptr() as *const ENTITY);
+        let Some(old_e) = entry.entity() else {
+            return 0 as ::core::ffi::c_int;
+        };
         let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_e.named.name) else {
             return 0 as ::core::ffi::c_int;
         };
@@ -19700,15 +19822,18 @@ unsafe extern "C" fn lookup(
         while table.v.as_ref().expect("initialized hash table").entries[i].is_some() {
             let entry = table.v.as_ref().expect("initialized hash table").entries[i]
                 .as_ref()
-                .expect("occupied hash table slot")
-                .bytes
-                .as_ptr() as *mut NAMED;
-            let entry_name = pool_string_pointer!(&(*dtd).pool, (*entry).name);
+                .expect("occupied hash table slot");
+            let entry_name = pool_string_pointer!(&(*dtd).pool, entry.key());
             if entry_name.is_null() {
                 return ::core::ptr::null_mut::<NAMED>();
             }
             if keyeq(name, entry_name) != 0 {
-                return entry;
+                return match &entry.record {
+                    NamedRecord::Prefix(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+                    NamedRecord::Attribute(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+                    NamedRecord::Element(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+                    NamedRecord::Entity(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+                };
             }
             if step == 0 {
                 step = ((h & !mask) >> table.power as ::core::ffi::c_int - 1 as ::core::ffi::c_int
@@ -19764,8 +19889,7 @@ unsafe extern "C" fn lookup(
             while i < table.size {
                 let entry = table.v.as_mut().expect("initialized hash table").entries[i].take();
                 if let Some(entry) = entry {
-                    let named = entry.bytes.as_ptr() as *mut NAMED;
-                    let named_name = pool_string_pointer!(&(*dtd).pool, (*named).name);
+                    let named_name = pool_string_pointer!(&(*dtd).pool, entry.key());
                     if named_name.is_null() {
                         return ::core::ptr::null_mut::<NAMED>();
                     }
@@ -19830,21 +19954,6 @@ unsafe extern "C" fn lookup(
     else {
         return ::core::ptr::null_mut::<NAMED>();
     };
-    let word_size = ::core::mem::size_of::<usize>();
-    let Some(words) = createSize
-        .checked_add(word_size.wrapping_sub(1))
-        .map(|size| size / word_size)
-    else {
-        backing(7915 as ::core::ffi::c_int);
-        return ::core::ptr::null_mut::<NAMED>();
-    };
-    let mut bytes = Vec::new();
-    if bytes.try_reserve_exact(words).is_err() {
-        backing(7915 as ::core::ffi::c_int);
-        return ::core::ptr::null_mut::<NAMED>();
-    }
-    bytes.resize(words, 0);
-    let entry = bytes.as_mut_ptr() as *mut NAMED;
     // Lookup normally receives a name from the DTD pool.  Context restoration
     // also uses a temporary-pool name, which must be copied before the table
     // retains it because that temporary pool is rewound immediately after.
@@ -19858,9 +19967,18 @@ unsafe extern "C" fn lookup(
         };
         name
     };
-    (*entry).name = name;
+    let Some(record) = NamedRecord::new(createSize, name) else {
+        backing(7915 as ::core::ffi::c_int);
+        return ::core::ptr::null_mut::<NAMED>();
+    };
+    let entry = match &record {
+        NamedRecord::Prefix(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+        NamedRecord::Attribute(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+        NamedRecord::Element(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+        NamedRecord::Entity(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+    };
     table.v.as_mut().expect("initialized hash table").entries[i] =
-        Some(NamedAllocation { bytes, backing });
+        Some(NamedAllocation { record, backing });
     table.used = table.used.wrapping_add(1);
     return entry;
 }
@@ -19928,7 +20046,12 @@ unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut N
             .and_then(|slots| slots.entries.get(index))
             .and_then(|entry| entry.as_ref());
         if let Some(tem) = tem {
-            return tem.bytes.as_ptr() as *mut NAMED;
+            return match &tem.record {
+                NamedRecord::Prefix(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+                NamedRecord::Attribute(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+                NamedRecord::Element(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+                NamedRecord::Entity(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
+            };
         }
     }
     return ::core::ptr::null_mut::<NAMED>();
