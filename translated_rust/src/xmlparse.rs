@@ -6106,7 +6106,7 @@ unsafe fn allocate_parser_storage(
     pool_init(&mut parser.m_tempPool, string_pool_allocator.clone());
     pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
     if !parser_initialize_from_cstr(parser, encoding_name) {
-        XML_ParserFree(parser);
+        parser_free_owned(parser);
         return None;
     }
     if let Some(namespace_separator) = namespace_separator {
@@ -7242,7 +7242,7 @@ unsafe fn XML_ExternalEntityParserCreate(
         let old_dtd_owner = old.m_dtd.clone();
         let new_dtd_owner = parser_ref.m_dtd.clone();
         let (Some(old_dtd_owner), Some(new_dtd_owner)) = (old_dtd_owner, new_dtd_owner) else {
-            XML_ParserFree(parser_ref);
+            parser_free_owned(parser_ref);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         };
         let copied_and_restored = old_dtd_owner.inspect(|old_dtd| {
@@ -7252,7 +7252,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             })
         });
         if !copied_and_restored {
-            XML_ParserFree(parser_ref);
+            parser_free_owned(parser_ref);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
         parser_ref.m_processor = ProcessorState::ExternalEntityInit;
@@ -7295,7 +7295,9 @@ fn destroy_bindings(
         active_bindings.swap_remove(index).release();
     }
 }
-pub unsafe fn XML_ParserFree(parser: &mut XML_ParserStruct) {
+/// Releases parser-owned resources after the ABI boundary has converted the
+/// opaque parser handle into its exclusive Rust owner.
+unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
     let parser_key = std::ptr::from_mut(parser).addr();
     clear_callback_context(parser_key);
     START_ELEMENT_HANDLERS
@@ -7518,7 +7520,7 @@ pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Pars
     let Some(parser) = parser.as_mut() else {
         return;
     };
-    XML_ParserFree(parser)
+    parser_free_owned(parser)
 }
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
     if !parser.is_null() {
