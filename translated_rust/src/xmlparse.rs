@@ -4707,7 +4707,7 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
 pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
     XML_DefaultCurrent(parser)
 }
-pub unsafe extern "C" fn XML_ErrorString(
+pub extern "C" fn XML_ErrorString(
     mut code: crate::expat_h::XML_Error,
 ) -> *const crate::expat_external_h::XML_LChar {
     match code as ::core::ffi::c_uint {
@@ -4852,7 +4852,7 @@ pub unsafe extern "C" fn XML_ErrorString_ffi(
 ) -> *const crate::expat_external_h::XML_LChar {
     XML_ErrorString(code)
 }
-pub unsafe extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::XML_LChar {
+pub extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::XML_LChar {
     return b"expat_2.7.4\0".as_ptr() as *const crate::expat_external_h::XML_LChar;
 }
 #[export_name = "XML_ExpatVersion"]
@@ -4860,7 +4860,7 @@ pub unsafe extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::X
 pub unsafe extern "C" fn XML_ExpatVersion_ffi() -> *const crate::expat_external_h::XML_LChar {
     XML_ExpatVersion()
 }
-pub unsafe extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
+pub extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
     let mut version: crate::expat_h::XML_Expat_Version = crate::expat_h::XML_Expat_Version {
         major: 0,
         minor: 0,
@@ -6779,7 +6779,7 @@ unsafe extern "C" fn storeAtts(
     return crate::expat_h::XML_ERROR_NONE;
 }
 
-unsafe extern "C" fn is_rfc3986_uri_char(
+extern "C" fn is_rfc3986_uri_char(
     mut candidate: crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
     match candidate as ::core::ffi::c_int {

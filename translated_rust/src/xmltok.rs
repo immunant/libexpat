@@ -13897,7 +13897,7 @@ pub mod xmltok_impl_c {
 }
 
 pub mod xmltok_ns_c {
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncoding() -> *const crate::src::xmltok::ENCODING {
+    pub extern "C" fn XmlGetUtf8InternalEncoding() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_utf8_encoding.enc;
     }
     #[export_name = "XmlGetUtf8InternalEncoding"]
@@ -13906,7 +13906,7 @@ pub mod xmltok_ns_c {
     {
         XmlGetUtf8InternalEncoding()
     }
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncoding() -> *const crate::src::xmltok::ENCODING {
+    pub extern "C" fn XmlGetUtf16InternalEncoding() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_little2_encoding.enc;
     }
     #[export_name = "XmlGetUtf16InternalEncoding"]
@@ -14117,7 +14117,7 @@ pub mod xmltok_ns_c {
             standalone,
         )
     }
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
+    pub extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_utf8_encoding_ns.enc;
     }
     #[export_name = "XmlGetUtf8InternalEncodingNS"]
@@ -14126,8 +14126,7 @@ pub mod xmltok_ns_c {
     ) -> *const crate::src::xmltok::ENCODING {
         XmlGetUtf8InternalEncodingNS()
     }
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const crate::src::xmltok::ENCODING
-    {
+    pub extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_little2_encoding_ns.enc;
     }
     #[export_name = "XmlGetUtf16InternalEncodingNS"]
@@ -15532,7 +15531,7 @@ pub type C2Rust_Unnamed_9 = ::core::ffi::c_int;
 
 pub const US_ASCII_ENC: C2Rust_Unnamed_9 = 1;
 
-unsafe extern "C" fn isNever(
+extern "C" fn isNever(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
@@ -22570,7 +22569,7 @@ unsafe extern "C" fn toAscii(
     };
 }
 
-unsafe extern "C" fn isSpace(mut c: ::core::ffi::c_int) -> ::core::ffi::c_int {
+extern "C" fn isSpace(mut c: ::core::ffi::c_int) -> ::core::ffi::c_int {
     match c {
         32 | 13 | 10 | 9 => return 1 as ::core::ffi::c_int,
         _ => {}
@@ -22886,7 +22885,7 @@ unsafe extern "C" fn doParseXmlDecl(
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
+extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
     match result >> 8 as ::core::ffi::c_int {
         216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => return -1 as ::core::ffi::c_int,
         0 => {
@@ -22993,7 +22992,7 @@ pub unsafe extern "C" fn XmlUtf16Encode_ffi(
 ) -> ::core::ffi::c_int {
     XmlUtf16Encode(charNum, buf)
 }
-pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
+pub extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
     return ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int;
 }
 #[export_name = "XmlSizeOfUnknownEncoding"]
