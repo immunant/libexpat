@@ -10929,49 +10929,42 @@ macro_rules! parser_uses_encoding {
     }};
 }
 
-/// Adapts parser-owned C cursors to the tokenizer's bounded scanner request.
-///
-/// Parser processors still receive their input through the C-compatible
-/// cursor ABI.  Validate that cursor pair here, at that boundary, before
-/// passing only a slice and typed encoding reference to the tokenizer core.
-unsafe fn scanner_context_from_raw<'a>(
-    scanner: crate::src::xmltok::Scanner,
-    enc: *const crate::src::xmltok::ENCODING,
-    ptr: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-) -> crate::src::xmltok::ScannerContext<'a> {
-    // `from_raw_parts` requires a non-null, aligned base even for an empty
-    // range.  Do not form a slice until the range is ordered and representable.
-    if enc.is_null()
-        || !enc.is_aligned()
-        || ptr.is_null()
-        || end.is_null()
-        || !ptr.is_aligned()
-        || !end.is_aligned()
-    {
-        return crate::src::xmltok::ScannerContext::invalid();
-    }
-    let Some(span) = end.addr().checked_sub(ptr.addr()) else {
-        return crate::src::xmltok::ScannerContext::invalid();
-    };
-    if span > isize::MAX as usize {
-        return crate::src::xmltok::ScannerContext::invalid();
-    }
-    let chars = ::core::slice::from_raw_parts(ptr, span);
-    match scanner {
-        crate::src::xmltok::Scanner::InitProlog
-        | crate::src::xmltok::Scanner::InitContent
-        | crate::src::xmltok::Scanner::InitPrologNS
-        | crate::src::xmltok::Scanner::InitContentNS => crate::src::xmltok::ScannerContext::initial(
-            scanner,
-            &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING),
-            chars,
-        ),
-        _ => crate::src::xmltok::ScannerContext::normal(
-            scanner,
-            &*(enc as *const crate::src::xmltok::normal_encoding),
-            chars,
-        ),
+/// Scans a prolog cursor range after resolving it through the parser's live
+/// input buffer.  The tokenizer receives only a checked slice; the initial
+/// scanner keeps its mutable selection state in the parser without casting an
+/// encoding-table pointer into a different representation.
+fn scan_prolog_processor_input(
+    parser: &mut XML_ParserStruct,
+    start_address: usize,
+    end_address: usize,
+) -> Option<crate::src::xmltok::ScannerResult> {
+    let input = parser
+        .m_buffer
+        .window_from_addresses(start_address, end_address)?;
+    let chars: &[::core::ffi::c_char] = bytemuck::cast_slice(input);
+    match parser.m_encoding {
+        EncodingState::Initial if parser.m_initEncoding.selected_encoding.is_none() => {
+            let scanner = parser.m_initEncoding.initEnc.scanners[0];
+            Some(
+                crate::src::xmltok::ScannerContext::initial(
+                    scanner,
+                    &mut parser.m_initEncoding,
+                    chars,
+                )
+                .scan(),
+            )
+        }
+        EncodingState::Initial | EncodingState::Unknown => {
+            let encoding = current_parser_normal_encoding(parser)?;
+            Some(
+                crate::src::xmltok::ScannerContext::normal(
+                    encoding.enc.scanners[0],
+                    &encoding,
+                    chars,
+                )
+                .scan(),
+            )
+        }
     }
 }
 
@@ -17043,16 +17036,22 @@ unsafe extern "C" fn prologProcessor(
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
     let mut next: *const ::core::ffi::c_char = s;
-    let scan_encoding = std::ptr::from_ref(current_parser_encoding(parser));
-    let scan = scanner_context_from_raw(
-        (*scan_encoding).scanners[0 as usize],
-        scan_encoding,
-        s,
-        end,
-    )
-    .scan();
+    let Some(scan) = scan_prolog_processor_input(parser, s.addr(), end.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     let mut tok: ::core::ffi::c_int = scan.token;
     if let Some(offset) = scan.next {
+        let Some(next_address) = s.addr().checked_add(offset) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        if next_address > end.addr()
+            || parser
+            .m_buffer
+            .window_from_addresses(s.addr(), next_address)
+            .is_none()
+        {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        }
         next = s.wrapping_add(offset);
     }
     return doProlog(
