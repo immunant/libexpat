@@ -1881,6 +1881,78 @@ static EXTERNAL_ENTITY_REF_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+// Explicit external-entity callback arguments are boundary-only values.  The
+// parser records neither their address nor a parser-typed alias; this registry
+// retains a callable boundary adapter keyed by the opaque parser handle.
+trait ExternalEntityRefHandlerArgInvoker {
+    unsafe fn invoke(
+        &self,
+        handler: &dyn ExternalEntityRefCallback,
+        context: *const crate::expat_external_h::XML_Char,
+        base: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+    ) -> ::core::ffi::c_int;
+}
+
+impl<F> ExternalEntityRefHandlerArgInvoker for F
+where
+    F: Fn(
+        &dyn ExternalEntityRefCallback,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+    ) -> ::core::ffi::c_int,
+{
+    unsafe fn invoke(
+        &self,
+        handler: &dyn ExternalEntityRefCallback,
+        context: *const crate::expat_external_h::XML_Char,
+        base: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+    ) -> ::core::ffi::c_int {
+        self(handler, context, base, system_id, public_id)
+    }
+}
+
+#[derive(Clone)]
+struct ExternalEntityRefHandlerArgRegistration {
+    // This is false when the caller explicitly supplied the parent parser,
+    // which has the same child-parser meaning as the default NULL argument.
+    applies_to_child: bool,
+    invoke: std::sync::Arc<dyn ExternalEntityRefHandlerArgInvoker>,
+}
+
+// The captured foreign value is never dereferenced by Rust; it is forwarded
+// only while invoking the registered C callback.  As with the parser's former
+// opaque raw field, callers are responsible for serializing access to a parser
+// and for keeping the callback context valid for that call.
+unsafe impl Send for ExternalEntityRefHandlerArgRegistration {}
+unsafe impl Sync for ExternalEntityRefHandlerArgRegistration {}
+
+static EXTERNAL_ENTITY_REF_HANDLER_ARGS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, ExternalEntityRefHandlerArgRegistration>>,
+> = std::sync::OnceLock::new();
+
+unsafe fn external_entity_ref_handler_arg_registration(
+    arg: *mut ::core::ffi::c_void,
+    parser: crate::expat_h::XML_Parser,
+) -> ExternalEntityRefHandlerArgRegistration {
+    let callback_arg = arg.cast::<XML_ParserStruct>();
+    ExternalEntityRefHandlerArgRegistration {
+        applies_to_child: callback_arg != parser,
+        invoke: std::sync::Arc::new(move |
+            handler: &dyn ExternalEntityRefCallback,
+            context: *const crate::expat_external_h::XML_Char,
+            base: *const crate::expat_external_h::XML_Char,
+            system_id: *const crate::expat_external_h::XML_Char,
+            public_id: *const crate::expat_external_h::XML_Char,
+        | handler.invoke(callback_arg, context, base, system_id, public_id)),
+    }
+}
+
 trait SkippedEntityCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -2120,7 +2192,6 @@ pub struct XML_ParserStruct {
     pub m_endNamespaceDeclHandler: bool,
     pub m_notStandaloneHandler: bool,
     pub m_externalEntityRefHandler: bool,
-    pub m_externalEntityRefHandlerArg: crate::expat_h::XML_Parser,
     pub m_skippedEntityHandler: bool,
     pub m_unknownEncodingHandler: bool,
     pub m_elementDeclHandler: bool,
@@ -3891,7 +3962,6 @@ fn initial_parser_struct(
         m_endNamespaceDeclHandler: false,
         m_notStandaloneHandler: false,
         m_externalEntityRefHandler: false,
-        m_externalEntityRefHandlerArg: ::core::ptr::null_mut::<XML_ParserStruct>(),
         m_skippedEntityHandler: false,
         m_unknownEncodingHandler: false,
         m_elementDeclHandler: false,
@@ -4335,6 +4405,11 @@ fn parser_init(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
+    EXTERNAL_ENTITY_REF_HANDLER_ARGS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
     parser.m_skippedEntityHandler = false;
     SKIPPED_ENTITY_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -4451,7 +4526,6 @@ unsafe extern "C" fn parserInit(
     let parser_key = parser as usize;
     let parser_state = &mut *parser;
     parser_state.m_protocolEncodingName = protocol_encoding_name;
-    parser_state.m_externalEntityRefHandlerArg = parser;
     parser_init(
         parser_state,
         parser_key,
@@ -4653,8 +4727,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldUserData: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut oldHandlerArg = HandlerArg::UserData;
     let mut oldDefaultExpandInternalEntities: crate::expat_h::XML_Bool = 0;
-    let mut oldExternalEntityRefHandlerArg: crate::expat_h::XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
+    let mut oldExternalEntityRefHandlerArg: Option<ExternalEntityRefHandlerArgRegistration> =
+        None;
     let mut oldParamEntityParsing: crate::expat_h::XML_ParamEntityParsing =
         crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
     let mut oldInEntityValue: ::core::ffi::c_int = 0;
@@ -4797,7 +4871,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     oldUserData = (*parser).m_userData;
     oldHandlerArg = (*parser).m_handlerArg;
     oldDefaultExpandInternalEntities = (*parser).m_defaultExpandInternalEntities;
-    oldExternalEntityRefHandlerArg = (*parser).m_externalEntityRefHandlerArg;
+    oldExternalEntityRefHandlerArg = EXTERNAL_ENTITY_REF_HANDLER_ARGS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldParamEntityParsing = (*parser).m_paramEntityParsing;
     oldInEntityValue = (*parser).m_prologState.inEntityValue;
     oldns_triplets = (*parser).m_ns_triplets;
@@ -4984,8 +5063,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     (*parser).m_declElementType = oldDeclElementType;
     (*parser).m_userData = oldUserData;
     (*parser).m_handlerArg = oldHandlerArg;
-    if oldExternalEntityRefHandlerArg != oldParser {
-        (*parser).m_externalEntityRefHandlerArg = oldExternalEntityRefHandlerArg;
+    if let Some(arg) = oldExternalEntityRefHandlerArg.filter(|arg| arg.applies_to_child) {
+        EXTERNAL_ENTITY_REF_HANDLER_ARGS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, arg);
     }
     (*parser).m_defaultExpandInternalEntities = oldDefaultExpandInternalEntities;
     (*parser).m_ns_triplets = oldns_triplets;
@@ -5143,6 +5226,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
     EXTERNAL_ENTITY_REF_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
+    EXTERNAL_ENTITY_REF_HANDLER_ARGS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -6084,11 +6172,18 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg(
     if parser.is_null() {
         return;
     }
-    if !arg.is_null() {
-        (*parser).m_externalEntityRefHandlerArg = arg as crate::expat_h::XML_Parser;
+    let mut args = EXTERNAL_ENTITY_REF_HANDLER_ARGS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if arg.is_null() {
+        args.remove(&(parser as usize));
     } else {
-        (*parser).m_externalEntityRefHandlerArg = parser;
-    };
+        args.insert(
+            parser as usize,
+            external_entity_ref_handler_arg_registration(arg, parser),
+        );
+    }
 }
 #[export_name = "XML_SetExternalEntityRefHandlerArg"]
 
@@ -7988,7 +8083,7 @@ unsafe extern "C" fn doContent(
                                 .expect("installed external entity handler");
                             if invoke_external_entity_ref_handler(
                                 handler.as_ref(),
-                                (*parser).m_externalEntityRefHandlerArg,
+                                parser,
                                 context,
                                 &raw const (*dtd).pool,
                                 entity,
@@ -11390,7 +11485,7 @@ unsafe extern "C" fn doProlog(
                                                     .expect("installed external entity handler");
                                                 if invoke_external_entity_ref_handler(
                                                     handler.as_ref(),
-                                                    (*parser).m_externalEntityRefHandlerArg,
+                                                    parser,
                                                     ::core::ptr::null(),
                                                     dtd_pool as *const STRING_POOL,
                                                     entity,
@@ -11472,7 +11567,7 @@ unsafe extern "C" fn doProlog(
                                                     .expect("installed external entity handler");
                                                 if invoke_external_entity_ref_handler(
                                                     handler.as_ref(),
-                                                    (*parser).m_externalEntityRefHandlerArg,
+                                                    parser,
                                                     ::core::ptr::null(),
                                                     dtd_pool as *const STRING_POOL,
                                                     entity_0,
@@ -13087,7 +13182,7 @@ unsafe extern "C" fn doProlog(
                                                     .expect("installed external entity handler");
                                                 if invoke_external_entity_ref_handler(
                                                     handler.as_ref(),
-                                                    (*parser).m_externalEntityRefHandlerArg,
+                                                    parser,
                                                     ::core::ptr::null(),
                                                     dtd_pool as *const STRING_POOL,
                                                     entity_1,
@@ -14400,7 +14495,7 @@ unsafe extern "C" fn storeEntityValue(
                                             .expect("installed external entity handler");
                                         if invoke_external_entity_ref_handler(
                                             handler.as_ref(),
-                                            parser.m_externalEntityRefHandlerArg,
+                                            std::ptr::from_mut(parser),
                                             ::core::ptr::null(),
                                             &raw const dtd.pool,
                                             entity,
@@ -16552,19 +16647,25 @@ unsafe fn invoke_external_entity_ref_handler(
     entity: *const ENTITY,
 ) -> ::core::ffi::c_int {
     let entity = &*entity;
-    handler.invoke(
-        parser,
-        context,
-        entity
-            .base
-            .map_or(::core::ptr::null(), |base| pool_string_pointer(pool, base)),
-        entity.systemId.map_or(::core::ptr::null(), |system_id| {
-            pool_string_pointer(pool, system_id)
-        }),
-        entity.publicId.map_or(::core::ptr::null(), |public_id| {
-            pool_string_pointer(pool, public_id)
-        }),
-    )
+    let base = entity
+        .base
+        .map_or(::core::ptr::null(), |base| pool_string_pointer(pool, base));
+    let system_id = entity.systemId.map_or(::core::ptr::null(), |system_id| {
+        pool_string_pointer(pool, system_id)
+    });
+    let public_id = entity.publicId.map_or(::core::ptr::null(), |public_id| {
+        pool_string_pointer(pool, public_id)
+    });
+    let callback_arg = EXTERNAL_ENTITY_REF_HANDLER_ARGS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
+    match callback_arg {
+        Some(arg) => arg.invoke.invoke(handler, context, base, system_id, public_id),
+        None => handler.invoke(parser, context, base, system_id, public_id),
+    }
 }
 
 unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
