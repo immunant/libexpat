@@ -4185,7 +4185,18 @@ pub unsafe extern "C" fn XML_ResumeParser_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_ResumeParser(parser)
 }
-pub unsafe extern "C" fn XML_GetParsingStatus(
+pub fn XML_GetParsingStatus(
+    parser: Option<&XML_ParserStruct>,
+    status: &mut crate::expat_h::XML_ParsingStatus,
+) {
+    let Some(parser) = parser else {
+        return;
+    };
+    *status = parser.m_parsingStatus;
+}
+#[export_name = "XML_GetParsingStatus"]
+
+pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut status: *mut crate::expat_h::XML_ParsingStatus,
 ) {
@@ -4204,40 +4215,40 @@ pub unsafe extern "C" fn XML_GetParsingStatus(
             );
         }
     };
-    *status = (*parser).m_parsingStatus;
+    XML_GetParsingStatus(
+        parser.as_ref(),
+        status.as_mut().expect("status was checked"),
+    )
 }
-#[export_name = "XML_GetParsingStatus"]
-
-pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut status: *mut crate::expat_h::XML_ParsingStatus,
-) {
-    XML_GetParsingStatus(parser, status)
-}
-pub unsafe extern "C" fn XML_GetErrorCode(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() {
-        return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+pub fn XML_GetErrorCode(parser: Option<&XML_ParserStruct>) -> crate::expat_h::XML_Error {
+    match parser {
+        Some(parser) => parser.m_errorCode,
+        None => crate::expat_h::XML_ERROR_INVALID_ARGUMENT,
     }
-    return (*parser).m_errorCode;
 }
 #[export_name = "XML_GetErrorCode"]
 
 pub unsafe extern "C" fn XML_GetErrorCode_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
-    XML_GetErrorCode(parser)
+    XML_GetErrorCode(parser.as_ref())
 }
-pub unsafe extern "C" fn XML_GetCurrentByteIndex(
-    mut parser: crate::expat_h::XML_Parser,
+fn byte_offset(
+    end: *const ::core::ffi::c_char,
+    start: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_long {
+    (end as isize).wrapping_sub(start as isize) as ::core::ffi::c_long
+}
+
+pub fn XML_GetCurrentByteIndex(
+    parser: Option<&XML_ParserStruct>,
 ) -> crate::expat_external_h::XML_Index {
-    if parser.is_null() {
+    let Some(parser) = parser else {
         return -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index;
-    }
-    if !(*parser).m_eventPtr.is_null() {
-        return (*parser).m_parseEndByteIndex as ::core::ffi::c_long
-            - (*parser).m_parseEndPtr.offset_from((*parser).m_eventPtr) as ::core::ffi::c_long;
+    };
+    if !parser.m_eventPtr.is_null() {
+        return parser.m_parseEndByteIndex as ::core::ffi::c_long
+            - byte_offset(parser.m_parseEndPtr, parser.m_eventPtr);
     }
     return -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index;
 }
@@ -4246,17 +4257,14 @@ pub unsafe extern "C" fn XML_GetCurrentByteIndex(
 pub unsafe extern "C" fn XML_GetCurrentByteIndex_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Index {
-    XML_GetCurrentByteIndex(parser)
+    XML_GetCurrentByteIndex(parser.as_ref())
 }
-pub unsafe extern "C" fn XML_GetCurrentByteCount(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    if parser.is_null() {
+pub fn XML_GetCurrentByteCount(parser: Option<&XML_ParserStruct>) -> ::core::ffi::c_int {
+    let Some(parser) = parser else {
         return 0 as ::core::ffi::c_int;
-    }
-    if !(*parser).m_eventEndPtr.is_null() && !(*parser).m_eventPtr.is_null() {
-        return (*parser).m_eventEndPtr.offset_from((*parser).m_eventPtr) as ::core::ffi::c_long
-            as ::core::ffi::c_int;
+    };
+    if !parser.m_eventEndPtr.is_null() && !parser.m_eventPtr.is_null() {
+        return byte_offset(parser.m_eventEndPtr, parser.m_eventPtr) as ::core::ffi::c_int;
     }
     return 0 as ::core::ffi::c_int;
 }
@@ -4265,28 +4273,26 @@ pub unsafe extern "C" fn XML_GetCurrentByteCount(
 pub unsafe extern "C" fn XML_GetCurrentByteCount_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    XML_GetCurrentByteCount(parser)
+    XML_GetCurrentByteCount(parser.as_ref())
 }
-pub unsafe extern "C" fn XML_GetInputContext(
-    mut parser: crate::expat_h::XML_Parser,
-    mut offset: *mut ::core::ffi::c_int,
-    mut size: *mut ::core::ffi::c_int,
-) -> *const ::core::ffi::c_char {
-    if parser.is_null() {
-        return ::core::ptr::null::<::core::ffi::c_char>();
+struct XmlInputContext {
+    buffer: *const ::core::ffi::c_char,
+    offset: ::core::ffi::c_int,
+    size: ::core::ffi::c_int,
+}
+
+fn XML_GetInputContext(parser: Option<&XML_ParserStruct>) -> Option<XmlInputContext> {
+    let Some(parser) = parser else {
+        return None;
+    };
+    if !parser.m_eventPtr.is_null() && !parser.m_buffer.is_null() {
+        return Some(XmlInputContext {
+            buffer: parser.m_buffer,
+            offset: byte_offset(parser.m_eventPtr, parser.m_buffer) as ::core::ffi::c_int,
+            size: byte_offset(parser.m_bufferEnd, parser.m_buffer) as ::core::ffi::c_int,
+        });
     }
-    if !(*parser).m_eventPtr.is_null() && !(*parser).m_buffer.is_null() {
-        if !offset.is_null() {
-            *offset = (*parser).m_eventPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-                as ::core::ffi::c_int;
-        }
-        if !size.is_null() {
-            *size = (*parser).m_bufferEnd.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-                as ::core::ffi::c_int;
-        }
-        return (*parser).m_buffer;
-    }
-    return ::core::ptr::null::<::core::ffi::c_char>();
+    None
 }
 #[export_name = "XML_GetInputContext"]
 
@@ -4295,7 +4301,18 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
     mut offset: *mut ::core::ffi::c_int,
     mut size: *mut ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    XML_GetInputContext(parser, offset, size)
+    match XML_GetInputContext(parser.as_ref()) {
+        Some(context) => {
+            if !offset.is_null() {
+                *offset = context.offset;
+            }
+            if !size.is_null() {
+                *size = context.size;
+            }
+            context.buffer
+        }
+        None => ::core::ptr::null::<::core::ffi::c_char>(),
+    }
 }
 pub unsafe extern "C" fn XML_GetCurrentLineNumber(
     mut parser: crate::expat_h::XML_Parser,
@@ -4700,18 +4717,20 @@ pub extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
 pub unsafe extern "C" fn XML_GetFeatureList_ffi() -> *const crate::expat_h::XML_Feature {
     XML_GetFeatureList()
 }
-pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-    mut parser: crate::expat_h::XML_Parser,
-    mut maximumAmplificationFactor: ::core::ffi::c_float,
+pub fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    parser: Option<&mut XML_ParserStruct>,
+    maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null()
-        || !(*parser).m_parentParser.is_null()
+    let Some(parser) = parser else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser.m_parentParser.is_null()
         || maximumAmplificationFactor.is_nan() as i32 != 0
         || maximumAmplificationFactor < 1.0f32
     {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_accounting.maximumAmplificationFactor = maximumAmplificationFactor;
+    parser.m_accounting.maximumAmplificationFactor = maximumAmplificationFactor;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetBillionLaughsAttackProtectionMaximumAmplification"]
@@ -4720,16 +4739,22 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplificatio
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetBillionLaughsAttackProtectionMaximumAmplification(parser, maximumAmplificationFactor)
+    XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+        parser.as_mut(),
+        maximumAmplificationFactor,
+    )
 }
-pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
-    mut parser: crate::expat_h::XML_Parser,
-    mut activationThresholdBytes: ::core::ffi::c_ulonglong,
+pub fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
+    parser: Option<&mut XML_ParserStruct>,
+    activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || !(*parser).m_parentParser.is_null() {
+    let Some(parser) = parser else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser.m_parentParser.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_accounting.activationThresholdBytes = activationThresholdBytes;
+    parser.m_accounting.activationThresholdBytes = activationThresholdBytes;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetBillionLaughsAttackProtectionActivationThreshold"]
@@ -4738,20 +4763,25 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetBillionLaughsAttackProtectionActivationThreshold(parser, activationThresholdBytes)
+    XML_SetBillionLaughsAttackProtectionActivationThreshold(
+        parser.as_mut(),
+        activationThresholdBytes,
+    )
 }
-pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification(
-    mut parser: crate::expat_h::XML_Parser,
-    mut maximumAmplificationFactor: ::core::ffi::c_float,
+pub fn XML_SetAllocTrackerMaximumAmplification(
+    parser: Option<&mut XML_ParserStruct>,
+    maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null()
-        || !(*parser).m_parentParser.is_null()
+    let Some(parser) = parser else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser.m_parentParser.is_null()
         || maximumAmplificationFactor.is_nan() as i32 != 0
         || maximumAmplificationFactor < 1.0f32
     {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_alloc_tracker.maximumAmplificationFactor = maximumAmplificationFactor;
+    parser.m_alloc_tracker.maximumAmplificationFactor = maximumAmplificationFactor;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetAllocTrackerMaximumAmplification"]
@@ -4760,16 +4790,19 @@ pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetAllocTrackerMaximumAmplification(parser, maximumAmplificationFactor)
+    XML_SetAllocTrackerMaximumAmplification(parser.as_mut(), maximumAmplificationFactor)
 }
-pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold(
-    mut parser: crate::expat_h::XML_Parser,
-    mut activationThresholdBytes: ::core::ffi::c_ulonglong,
+pub fn XML_SetAllocTrackerActivationThreshold(
+    parser: Option<&mut XML_ParserStruct>,
+    activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || !(*parser).m_parentParser.is_null() {
+    let Some(parser) = parser else {
+        return crate::expat_h::XML_FALSE;
+    };
+    if !parser.m_parentParser.is_null() {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser).m_alloc_tracker.activationThresholdBytes = activationThresholdBytes as XmlBigCount;
+    parser.m_alloc_tracker.activationThresholdBytes = activationThresholdBytes as XmlBigCount;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetAllocTrackerActivationThreshold"]
@@ -4778,18 +4811,19 @@ pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetAllocTrackerActivationThreshold(parser, activationThresholdBytes)
+    XML_SetAllocTrackerActivationThreshold(parser.as_mut(), activationThresholdBytes)
 }
-pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enabled: crate::expat_h::XML_Bool,
+pub fn XML_SetReparseDeferralEnabled(
+    parser: Option<&mut XML_ParserStruct>,
+    enabled: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Bool {
-    if !parser.is_null()
-        && (enabled as ::core::ffi::c_int == crate::expat_h::XML_TRUE as ::core::ffi::c_int
-            || enabled as ::core::ffi::c_int == crate::expat_h::XML_FALSE as ::core::ffi::c_int)
-    {
-        (*parser).m_reparseDeferralEnabled = enabled;
-        return crate::expat_h::XML_TRUE;
+    if let Some(parser) = parser {
+        if enabled as ::core::ffi::c_int == crate::expat_h::XML_TRUE as ::core::ffi::c_int
+            || enabled as ::core::ffi::c_int == crate::expat_h::XML_FALSE as ::core::ffi::c_int
+        {
+            parser.m_reparseDeferralEnabled = enabled;
+            return crate::expat_h::XML_TRUE;
+        }
     }
     return crate::expat_h::XML_FALSE;
 }
@@ -4799,7 +4833,7 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut enabled: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetReparseDeferralEnabled(parser, enabled)
+    XML_SetReparseDeferralEnabled(parser.as_mut(), enabled)
 }
 unsafe extern "C" fn storeRawNames(
     mut parser: crate::expat_h::XML_Parser,
