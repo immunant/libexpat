@@ -3136,28 +3136,28 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
 pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Parser) {
     XML_ParserFree(parser)
 }
-pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
-    if !parser.is_null() {
-        (*parser).m_handlerArg = parser as *mut ::core::ffi::c_void;
-    }
+pub extern "C" fn XML_UseParserAsHandlerArg(parser: crate::expat_h::XML_Parser) {
+    with_parser_mut(parser, |parser_ref| {
+        parser_ref.m_handlerArg = parser as *mut ::core::ffi::c_void;
+    });
 }
 #[export_name = "XML_UseParserAsHandlerArg"]
 
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg_ffi(mut parser: crate::expat_h::XML_Parser) {
     XML_UseParserAsHandlerArg(parser)
 }
-pub unsafe extern "C" fn XML_UseForeignDTD(
-    mut parser: crate::expat_h::XML_Parser,
-    mut useDTD: crate::expat_h::XML_Bool,
+pub extern "C" fn XML_UseForeignDTD(
+    parser: crate::expat_h::XML_Parser,
+    useDTD: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
-    if parser.is_null() {
-        return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
-    }
-    if parserBusy(&*parser) != 0 {
-        return crate::expat_h::XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
-    }
-    (*parser).m_useForeignDTD = useDTD;
-    return crate::expat_h::XML_ERROR_NONE;
+    with_parser_mut(parser, |parser| {
+        if parserBusy(parser) != 0 {
+            return crate::expat_h::XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
+        }
+        parser.m_useForeignDTD = useDTD;
+        crate::expat_h::XML_ERROR_NONE
+    })
+    .unwrap_or(crate::expat_h::XML_ERROR_INVALID_ARGUMENT)
 }
 #[export_name = "XML_UseForeignDTD"]
 
@@ -3167,21 +3167,20 @@ pub unsafe extern "C" fn XML_UseForeignDTD_ffi(
 ) -> crate::expat_h::XML_Error {
     XML_UseForeignDTD(parser, useDTD)
 }
-pub unsafe extern "C" fn XML_SetReturnNSTriplet(
-    mut parser: crate::expat_h::XML_Parser,
-    mut do_nst: ::core::ffi::c_int,
+pub extern "C" fn XML_SetReturnNSTriplet(
+    parser: crate::expat_h::XML_Parser,
+    do_nst: ::core::ffi::c_int,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    if parserBusy(&*parser) != 0 {
-        return;
-    }
-    (*parser).m_ns_triplets = (if do_nst != 0 {
-        crate::expat_h::XML_TRUE as ::core::ffi::c_int
-    } else {
-        crate::expat_h::XML_FALSE as ::core::ffi::c_int
-    }) as crate::expat_h::XML_Bool;
+    with_parser_mut(parser, |parser| {
+        if parserBusy(parser) != 0 {
+            return;
+        }
+        parser.m_ns_triplets = (if do_nst != 0 {
+            crate::expat_h::XML_TRUE as ::core::ffi::c_int
+        } else {
+            crate::expat_h::XML_FALSE as ::core::ffi::c_int
+        }) as crate::expat_h::XML_Bool;
+    });
 }
 #[export_name = "XML_SetReturnNSTriplet"]
 
@@ -3191,19 +3190,15 @@ pub unsafe extern "C" fn XML_SetReturnNSTriplet_ffi(
 ) {
     XML_SetReturnNSTriplet(parser, do_nst)
 }
-pub unsafe extern "C" fn XML_SetUserData(
-    mut parser: crate::expat_h::XML_Parser,
-    mut p: *mut ::core::ffi::c_void,
-) {
-    if parser.is_null() {
-        return;
-    }
-    if (*parser).m_handlerArg == (*parser).m_userData {
-        (*parser).m_userData = p;
-        (*parser).m_handlerArg = (*parser).m_userData;
-    } else {
-        (*parser).m_userData = p;
-    };
+pub extern "C" fn XML_SetUserData(parser: crate::expat_h::XML_Parser, p: *mut ::core::ffi::c_void) {
+    with_parser_mut(parser, |parser| {
+        if parser.m_handlerArg == parser.m_userData {
+            parser.m_userData = p;
+            parser.m_handlerArg = parser.m_userData;
+        } else {
+            parser.m_userData = p;
+        };
+    });
 }
 #[export_name = "XML_SetUserData"]
 
@@ -3239,13 +3234,11 @@ pub unsafe extern "C" fn XML_SetBase_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_SetBase(parser, p)
 }
-pub unsafe extern "C" fn XML_GetBase(
-    mut parser: crate::expat_h::XML_Parser,
+pub extern "C" fn XML_GetBase(
+    parser: crate::expat_h::XML_Parser,
 ) -> *const crate::expat_external_h::XML_Char {
-    if parser.is_null() {
-        return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    }
-    return (*parser).m_curBase;
+    with_parser_mut(parser, |parser| parser.m_curBase)
+        .unwrap_or(::core::ptr::null::<crate::expat_external_h::XML_Char>())
 }
 #[export_name = "XML_GetBase"]
 
@@ -3254,13 +3247,10 @@ pub unsafe extern "C" fn XML_GetBase_ffi(
 ) -> *const crate::expat_external_h::XML_Char {
     XML_GetBase(parser)
 }
-pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount(
-    mut parser: crate::expat_h::XML_Parser,
+pub extern "C" fn XML_GetSpecifiedAttributeCount(
+    parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    if parser.is_null() {
-        return -1 as ::core::ffi::c_int;
-    }
-    return (*parser).m_nSpecifiedAtts;
+    with_parser_mut(parser, |parser| parser.m_nSpecifiedAtts).unwrap_or(-1 as ::core::ffi::c_int)
 }
 #[export_name = "XML_GetSpecifiedAttributeCount"]
 
@@ -3269,13 +3259,10 @@ pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount_ffi(
 ) -> ::core::ffi::c_int {
     XML_GetSpecifiedAttributeCount(parser)
 }
-pub unsafe extern "C" fn XML_GetIdAttributeIndex(
-    mut parser: crate::expat_h::XML_Parser,
+pub extern "C" fn XML_GetIdAttributeIndex(
+    parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    if parser.is_null() {
-        return -1 as ::core::ffi::c_int;
-    }
-    return (*parser).m_idAttIndex;
+    with_parser_mut(parser, |parser| parser.m_idAttIndex).unwrap_or(-1 as ::core::ffi::c_int)
 }
 #[export_name = "XML_GetIdAttributeIndex"]
 
@@ -3753,18 +3740,18 @@ pub unsafe extern "C" fn XML_SetXmlDeclHandler_ffi(
 ) {
     XML_SetXmlDeclHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetParamEntityParsing(
-    mut parser: crate::expat_h::XML_Parser,
-    mut peParsing: crate::expat_h::XML_ParamEntityParsing,
+pub extern "C" fn XML_SetParamEntityParsing(
+    parser: crate::expat_h::XML_Parser,
+    peParsing: crate::expat_h::XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_int;
-    }
-    if parserBusy(&*parser) != 0 {
-        return 0 as ::core::ffi::c_int;
-    }
-    (*parser).m_paramEntityParsing = peParsing;
-    return 1 as ::core::ffi::c_int;
+    with_parser_mut(parser, |parser| {
+        if parserBusy(parser) != 0 {
+            return 0 as ::core::ffi::c_int;
+        }
+        parser.m_paramEntityParsing = peParsing;
+        1 as ::core::ffi::c_int
+    })
+    .unwrap_or(0 as ::core::ffi::c_int)
 }
 #[export_name = "XML_SetParamEntityParsing"]
 
@@ -4303,13 +4290,11 @@ pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
 ) {
     XML_GetParsingStatus(parser, status)
 }
-pub unsafe extern "C" fn XML_GetErrorCode(
-    mut parser: crate::expat_h::XML_Parser,
+pub extern "C" fn XML_GetErrorCode(
+    parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
-    if parser.is_null() {
-        return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
-    }
-    return (*parser).m_errorCode;
+    with_parser_mut(parser, |parser| parser.m_errorCode)
+        .unwrap_or(crate::expat_h::XML_ERROR_INVALID_ARGUMENT)
 }
 #[export_name = "XML_GetErrorCode"]
 
