@@ -2276,7 +2276,10 @@ pub struct XML_ParserStruct {
     m_freeTagList: FreeTagList,
     m_activeTags: Vec<TagStorage>,
     pub m_inheritedBindings: *mut BINDING,
-    pub m_freeBindingList: *mut BINDING,
+    // Binding nodes are returned to this parser-owned LIFO reuse list.  A
+    // present head always names an allocated node, so express nullability
+    // separately from the non-null node address.
+    pub m_freeBindingList: Option<::core::ptr::NonNull<BINDING>>,
     pub m_attsSize: ::core::ffi::c_int,
     pub m_nSpecifiedAtts: ::core::ffi::c_int,
     pub m_idAttIndex: ::core::ffi::c_int,
@@ -4016,7 +4019,7 @@ fn initial_parser_struct(
         m_freeTagList: FreeTagList::empty(),
         m_activeTags: Vec::new(),
         m_inheritedBindings: ::core::ptr::null_mut::<BINDING>(),
-        m_freeBindingList: ::core::ptr::null_mut::<BINDING>(),
+        m_freeBindingList: None,
         m_attsSize: 0,
         m_nSpecifiedAtts: 0,
         m_idAttIndex: 0,
@@ -4256,7 +4259,7 @@ unsafe extern "C" fn parserCreate(
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
     }
-    parser.m_freeBindingList = ::core::ptr::null_mut::<BINDING>();
+    parser.m_freeBindingList = None;
     parser.m_freeTagList = FreeTagList::empty();
     parser.m_freeInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_freeAttributeEntities = None;
@@ -4542,8 +4545,11 @@ unsafe extern "C" fn moveToFreeBindingList(
     while !bindings.is_null() {
         let mut b: *mut BINDING = bindings;
         bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = parser.m_freeBindingList as *mut binding;
-        parser.m_freeBindingList = b;
+        (*b).nextTagBinding = parser
+            .m_freeBindingList
+            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
+            as *mut binding;
+        parser.m_freeBindingList = ::core::ptr::NonNull::new(b);
     }
 }
 pub unsafe extern "C" fn XML_ParserReset(
@@ -5307,7 +5313,12 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
             1986 as ::core::ffi::c_int,
         );
     }
-    destroyBindings(parser.m_freeBindingList, parser as *mut XML_ParserStruct);
+    destroyBindings(
+        parser
+            .m_freeBindingList
+            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr),
+        parser as *mut XML_ParserStruct,
+    );
     destroyBindings(parser.m_inheritedBindings, parser as *mut XML_ParserStruct);
     poolDestroy(&mut parser.m_tempPool);
     poolDestroy(&mut parser.m_temp2Pool);
@@ -8503,8 +8514,11 @@ unsafe extern "C" fn doContent(
                                 }
                             }
                             (*tag_0).bindings = (*(*tag_0).bindings).nextTagBinding as *mut BINDING;
-                            (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-                            (*parser).m_freeBindingList = b;
+                            (*b).nextTagBinding = (*parser)
+                                .m_freeBindingList
+                                .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
+                                as *mut binding;
+                            (*parser).m_freeBindingList = ::core::ptr::NonNull::new(b);
                             (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
                         }
                         if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
@@ -8787,8 +8801,11 @@ unsafe extern "C" fn freeBindings(
             }
         }
         bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-        (*parser).m_freeBindingList = b;
+        (*b).nextTagBinding = (*parser)
+            .m_freeBindingList
+            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
+            as *mut binding;
+        (*parser).m_freeBindingList = ::core::ptr::NonNull::new(b);
         (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
     }
 }
@@ -9825,8 +9842,8 @@ unsafe extern "C" fn addBinding(
         };
     }
     let parser_ptr = parser as *mut XML_ParserStruct;
-    let b: &mut BINDING = if !parser.m_freeBindingList.is_null() {
-        let b_ptr = parser.m_freeBindingList;
+    let b: &mut BINDING = if let Some(free_binding) = parser.m_freeBindingList {
+        let b_ptr = free_binding.as_ptr();
         let b = &mut *b_ptr;
         if len > b.uriAlloc {
             if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
@@ -9845,7 +9862,7 @@ unsafe extern "C" fn addBinding(
             b.uri = temp;
             b.uriAlloc = len + EXPAND_SPARE;
         }
-        parser.m_freeBindingList = b.nextTagBinding;
+        parser.m_freeBindingList = ::core::ptr::NonNull::new(b.nextTagBinding);
         b
     } else {
         let b_ptr = expat_malloc(
