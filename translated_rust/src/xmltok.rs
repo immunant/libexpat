@@ -607,7 +607,10 @@ trait UnknownEncodingConverter: Send + Sync {
 }
 
 impl UnknownEncodingConverter
-    for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const ::core::ffi::c_char) -> ::core::ffi::c_int
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int
 {
     unsafe fn invoke(
         &self,
@@ -704,36 +707,29 @@ pub mod xmltok_impl_c {
                 _ => unreachable!(),
             },
             NormalCharCheck::NameStart => match width {
-                2 => {
-                    match normal.isNmstrt2 {
-                        crate::src::xmltok::NameStart2Checker::Never => {
-                            Some(isNever as unsafe extern "C" fn(_, _) -> _)
-                        }
-                        crate::src::xmltok::NameStart2Checker::Utf8 => {
-                            return crate::src::xmltok::utf8_is_name_start2(input);
-                        }
-                        crate::src::xmltok::NameStart2Checker::Unknown => {
-                            Some(
-                                crate::src::xmltok::unknown_isNmstrt
-                                    as unsafe extern "C" fn(_, _) -> _,
-                            )
-                        }
-                    }
-                }
-                3 => match normal.isNmstrt3 {
-                    NameStart3Checker::Never => {
+                2 => match normal.isNmstrt2 {
+                    crate::src::xmltok::NameStart2Checker::Never => {
                         Some(isNever as unsafe extern "C" fn(_, _) -> _)
                     }
-                    NameStart3Checker::Utf8 => return utf8_is_name_start3(input),
-                    NameStart3Checker::Unknown => Some(
-                        unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _,
+                    crate::src::xmltok::NameStart2Checker::Utf8 => {
+                        return crate::src::xmltok::utf8_is_name_start2(input);
+                    }
+                    crate::src::xmltok::NameStart2Checker::Unknown => Some(
+                        crate::src::xmltok::unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _,
                     ),
+                },
+                3 => match normal.isNmstrt3 {
+                    NameStart3Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
+                    NameStart3Checker::Utf8 => return utf8_is_name_start3(input),
+                    NameStart3Checker::Unknown => {
+                        Some(unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _)
+                    }
                 },
                 4 => match normal.isNmstrt4 {
                     NameStart4Checker::Never => return false,
-                    NameStart4Checker::Unknown => Some(
-                        unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _,
-                    ),
+                    NameStart4Checker::Unknown => {
+                        Some(unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _)
+                    }
                 },
                 _ => unreachable!(),
             },
@@ -1355,11 +1351,8 @@ pub mod xmltok_impl_c {
         }
         let encoding = &*(enc as *const normal_encoding);
         let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), end.offset_from(ptr) as usize);
-        let (token, next_offset) = normal_cdata_section_tok(
-            input,
-            &encoding.type_0,
-            encoding.enc.isUtf8 != 0,
-        );
+        let (token, next_offset) =
+            normal_cdata_section_tok(input, &encoding.type_0, encoding.enc.isUtf8 != 0);
         if let Some(next_offset) = next_offset {
             *nextTokPtr = ptr.add(next_offset);
         }
@@ -2215,21 +2208,22 @@ pub mod xmltok_impl_c {
             }
             NormalScanLtAction::EndTag(start) => {
                 let end_tag_input = &input[start..];
-                let result = normal_scan_end_tag_impl(normal, end_tag_input, |kind, offset, width| {
-                    let kind = match kind {
-                        NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
-                        NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
-                        NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
-                    };
-                    normal_char_check(
-                        normal,
-                        kind,
-                        width,
-                        enc,
-                        ptr.add(start + offset),
-                        &end_tag_input[offset..],
-                    )
-                });
+                let result =
+                    normal_scan_end_tag_impl(normal, end_tag_input, |kind, offset, width| {
+                        let kind = match kind {
+                            NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
+                            NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
+                            NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
+                        };
+                        normal_char_check(
+                            normal,
+                            kind,
+                            width,
+                            enc,
+                            ptr.add(start + offset),
+                            &end_tag_input[offset..],
+                        )
+                    });
                 if let Some(next) = result.next {
                     *nextTokPtr = ptr.add(start + next);
                 }
@@ -3289,10 +3283,9 @@ pub mod xmltok_impl_c {
                     }
                     let invalid = match enc.invalid2 {
                         Invalid2Checker::Never => false,
-                        Invalid2Checker::Utf8 => utf8_invalid2(&[
-                            input[pos] as u8,
-                            input[pos + 1] as u8,
-                        ]),
+                        Invalid2Checker::Utf8 => {
+                            utf8_invalid2(&[input[pos] as u8, input[pos + 1] as u8])
+                        }
                         Invalid2Checker::Unknown => {
                             return NormalIgnoreSectionOutcome::UnknownInvalid {
                                 at: pos,
@@ -3480,10 +3473,22 @@ pub mod xmltok_impl_c {
 
     #[derive(Copy, Clone)]
     enum NormalAttributeAction {
-        Name { attribute: ::core::ffi::c_int, offset: usize },
-        ValueStart { attribute: ::core::ffi::c_int, offset: usize },
-        ValueEnd { attribute: ::core::ffi::c_int, offset: usize },
-        Normalized { attribute: ::core::ffi::c_int, value: ::core::ffi::c_char },
+        Name {
+            attribute: ::core::ffi::c_int,
+            offset: usize,
+        },
+        ValueStart {
+            attribute: ::core::ffi::c_int,
+            offset: usize,
+        },
+        ValueEnd {
+            attribute: ::core::ffi::c_int,
+            offset: usize,
+        },
+        Normalized {
+            attribute: ::core::ffi::c_int,
+            value: ::core::ffi::c_char,
+        },
     }
 
     /// Scans a complete single-byte start-tag token using only bounded slice
@@ -3494,7 +3499,11 @@ pub mod xmltok_impl_c {
         mut report: impl FnMut(NormalAttributeAction),
     ) -> ::core::ffi::c_int {
         #[derive(Copy, Clone, Eq, PartialEq)]
-        enum State { InName, InValue, Other }
+        enum State {
+            InName,
+            InValue,
+            Other,
+        }
 
         let mut state = State::InName;
         let mut n_atts = 0;
@@ -3508,12 +3517,23 @@ pub mod xmltok_impl_c {
             match kind {
                 5 | 6 | 7 | 29 | 22 | 24 => {
                     if state == State::Other {
-                        report(NormalAttributeAction::Name { attribute: n_atts, offset: index });
+                        report(NormalAttributeAction::Name {
+                            attribute: n_atts,
+                            offset: index,
+                        });
                         normalized = true;
-                        report(NormalAttributeAction::Normalized { attribute: n_atts, value: 1 });
+                        report(NormalAttributeAction::Normalized {
+                            attribute: n_atts,
+                            value: 1,
+                        });
                         state = State::InName;
                     }
-                    index += match kind { 5 => 2, 6 => 3, 7 => 4, _ => 1 };
+                    index += match kind {
+                        5 => 2,
+                        6 => 3,
+                        7 => 4,
+                        _ => 1,
+                    };
                     continue;
                 }
                 12 | 13 => {
@@ -3523,34 +3543,48 @@ pub mod xmltok_impl_c {
                         crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int
                     };
                     if state != State::InValue {
-                        report(NormalAttributeAction::ValueStart { attribute: n_atts, offset: index + 1 });
+                        report(NormalAttributeAction::ValueStart {
+                            attribute: n_atts,
+                            offset: index + 1,
+                        });
                         value_start = Some(index + 1);
                         state = State::InValue;
                         open = quote_kind;
                     } else if open == quote_kind {
                         state = State::Other;
-                        report(NormalAttributeAction::ValueEnd { attribute: n_atts, offset: index });
+                        report(NormalAttributeAction::ValueEnd {
+                            attribute: n_atts,
+                            offset: index,
+                        });
                         n_atts += 1;
                         value_start = None;
                     }
                 }
                 3 => {
                     normalized = false;
-                    report(NormalAttributeAction::Normalized { attribute: n_atts, value: 0 });
+                    report(NormalAttributeAction::Normalized {
+                        attribute: n_atts,
+                        value: 0,
+                    });
                 }
                 21 => {
                     if state == State::InName {
                         state = State::Other;
-                    } else if state == State::InValue && normalized
+                    } else if state == State::InValue
+                        && normalized
                         && (value_start == Some(index)
                             || byte != crate::ascii_h::ASCII_SPACE as u8
                             || source.get(index + 1) == Some(&(crate::ascii_h::ASCII_SPACE as u8))
-                            || source.get(index + 1)
+                            || source
+                                .get(index + 1)
                                 .map(|next| byte_types[*next as usize] as ::core::ffi::c_int)
                                 == Some(open))
                     {
                         normalized = false;
-                        report(NormalAttributeAction::Normalized { attribute: n_atts, value: 0 });
+                        report(NormalAttributeAction::Normalized {
+                            attribute: n_atts,
+                            value: 0,
+                        });
                     }
                 }
                 9 | 10 => {
@@ -3558,7 +3592,10 @@ pub mod xmltok_impl_c {
                         state = State::Other;
                     } else if state == State::InValue {
                         normalized = false;
-                        report(NormalAttributeAction::Normalized { attribute: n_atts, value: 0 });
+                        report(NormalAttributeAction::Normalized {
+                            attribute: n_atts,
+                            value: 0,
+                        });
                     }
                 }
                 11 | 17 if state != State::InValue => return n_atts,
@@ -3596,8 +3633,12 @@ pub mod xmltok_impl_c {
             let slot = atts.add(attribute as usize);
             match action {
                 NormalAttributeAction::Name { offset, .. } => (*slot).name = ptr.add(offset),
-                NormalAttributeAction::ValueStart { offset, .. } => (*slot).valuePtr = ptr.add(offset),
-                NormalAttributeAction::ValueEnd { offset, .. } => (*slot).valueEnd = ptr.add(offset),
+                NormalAttributeAction::ValueStart { offset, .. } => {
+                    (*slot).valuePtr = ptr.add(offset)
+                }
+                NormalAttributeAction::ValueEnd { offset, .. } => {
+                    (*slot).valueEnd = ptr.add(offset)
+                }
                 NormalAttributeAction::Normalized { value, .. } => (*slot).normalized = value,
             }
         })
@@ -3881,7 +3922,10 @@ pub mod xmltok_impl_c {
 
     enum Little2ScanDeclAction {
         ScanComment,
-        Return { token: ::core::ffi::c_int, next: Option<usize> },
+        Return {
+            token: ::core::ffi::c_int,
+            next: Option<usize>,
+        },
     }
 
     /// Scan the declaration prefix using bounded UTF-16LE code units.  The
@@ -3894,7 +3938,10 @@ pub mod xmltok_impl_c {
         let partial = crate::src::xmltok::XML_TOK_PARTIAL_1;
         let invalid = crate::src::xmltok::XML_TOK_INVALID_1;
         if input.len() < 2 {
-            return Little2ScanDeclAction::Return { token: partial, next: None };
+            return Little2ScanDeclAction::Return {
+                token: partial,
+                next: None,
+            };
         }
 
         match little2_byte_type(byte_types, input, 0) {
@@ -3906,7 +3953,12 @@ pub mod xmltok_impl_c {
                 };
             }
             22 | 24 => {}
-            _ => return Little2ScanDeclAction::Return { token: invalid, next: Some(0) },
+            _ => {
+                return Little2ScanDeclAction::Return {
+                    token: invalid,
+                    next: Some(0),
+                }
+            }
         }
 
         let mut ptr = 2;
@@ -3914,10 +3966,19 @@ pub mod xmltok_impl_c {
             match little2_byte_type(byte_types, input, ptr) {
                 30 => {
                     if input.len().saturating_sub(ptr) < 4 {
-                        return Little2ScanDeclAction::Return { token: partial, next: None };
+                        return Little2ScanDeclAction::Return {
+                            token: partial,
+                            next: None,
+                        };
                     }
-                    if matches!(little2_byte_type(byte_types, input, ptr + 2), 21 | 9 | 10 | 30) {
-                        return Little2ScanDeclAction::Return { token: invalid, next: Some(ptr) };
+                    if matches!(
+                        little2_byte_type(byte_types, input, ptr + 2),
+                        21 | 9 | 10 | 30
+                    ) {
+                        return Little2ScanDeclAction::Return {
+                            token: invalid,
+                            next: Some(ptr),
+                        };
                     }
                     return Little2ScanDeclAction::Return {
                         token: crate::src::xmltok::XML_TOK_DECL_OPEN_1,
@@ -3931,11 +3992,19 @@ pub mod xmltok_impl_c {
                     };
                 }
                 22 | 24 => ptr += 2,
-                _ => return Little2ScanDeclAction::Return { token: invalid, next: Some(ptr) },
+                _ => {
+                    return Little2ScanDeclAction::Return {
+                        token: invalid,
+                        next: Some(ptr),
+                    }
+                }
             }
         }
 
-        Little2ScanDeclAction::Return { token: partial, next: None }
+        Little2ScanDeclAction::Return {
+            token: partial,
+            next: None,
+        }
     }
 
     pub unsafe extern "C" fn little2_scanDecl(
@@ -3951,7 +4020,9 @@ pub mod xmltok_impl_c {
         let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
         let normal = &*(enc as *const normal_encoding);
         match little2_scan_decl_impl(&normal.type_0, input) {
-            Little2ScanDeclAction::ScanComment => little2_scanComment(enc, ptr.add(2), end, nextTokPtr),
+            Little2ScanDeclAction::ScanComment => {
+                little2_scanComment(enc, ptr.add(2), end, nextTokPtr)
+            }
             Little2ScanDeclAction::Return { token, next } => {
                 if let Some(offset) = next {
                     *nextTokPtr = ptr.add(offset);
@@ -6441,10 +6512,9 @@ pub mod xmltok_impl_c {
                             token,
                             next: Some(next + 2),
                         },
-                        Little2ScanResult { token, next: None } => Little2AttributeValueToken {
-                            token,
-                            next: None,
-                        },
+                        Little2ScanResult { token, next: None } => {
+                            Little2AttributeValueToken { token, next: None }
+                        }
                     };
                 }
                 3 => {
@@ -6589,10 +6659,9 @@ pub mod xmltok_impl_c {
                             token,
                             next: Some(next + 2),
                         },
-                        Little2ScanResult { token, next: None } => Little2EntityValueToken {
-                            token,
-                            next: None,
-                        },
+                        Little2ScanResult { token, next: None } => {
+                            Little2EntityValueToken { token, next: None }
+                        }
                     };
                 }
                 3 => {
@@ -9224,17 +9293,12 @@ pub mod xmltok_impl_c {
         while offset + 2 <= input.len() {
             match big2_byte_type(enc, input, offset) {
                 9 | 10 | 11 | 21 | 30 | 32 | 36 => {
-                    return Big2ScanOutcome::Token(
-                        crate::src::xmltok::XML_TOK_POUND_NAME_1,
-                        offset,
-                    )
+                    return Big2ScanOutcome::Token(crate::src::xmltok::XML_TOK_POUND_NAME_1, offset)
                 }
                 _ => match big2_check_name(enc, input, offset, false) {
                     Big2NameCheck::Advance(next) => offset = next,
                     Big2NameCheck::PartialChar => {
-                        return Big2ScanOutcome::Partial(
-                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
-                        )
+                        return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1)
                     }
                     Big2NameCheck::Invalid => return Big2ScanOutcome::Invalid(offset),
                 },
@@ -9715,10 +9779,9 @@ pub mod xmltok_impl_c {
                             token,
                             next: Some(next),
                         },
-                        Big2ScanOutcome::Partial(token) => Big2AttributeValueToken {
-                            token,
-                            next: None,
-                        },
+                        Big2ScanOutcome::Partial(token) => {
+                            Big2AttributeValueToken { token, next: None }
+                        }
                         Big2ScanOutcome::Invalid(next) => Big2AttributeValueToken {
                             token: crate::src::xmltok::XML_TOK_INVALID_1,
                             next: Some(next),
@@ -9864,10 +9927,9 @@ pub mod xmltok_impl_c {
                             token,
                             next: Some(next),
                         },
-                        Big2ScanOutcome::Partial(token) => Big2EntityValueToken {
-                            token,
-                            next: None,
-                        },
+                        Big2ScanOutcome::Partial(token) => {
+                            Big2EntityValueToken { token, next: None }
+                        }
                         Big2ScanOutcome::Invalid(next) => Big2EntityValueToken {
                             token: crate::src::xmltok::XML_TOK_INVALID_1,
                             next: Some(next),
@@ -9890,10 +9952,9 @@ pub mod xmltok_impl_c {
                             },
                             next: Some(next + 2),
                         },
-                        Big2ScanOutcome::Partial(token) => Big2EntityValueToken {
-                            token,
-                            next: None,
-                        },
+                        Big2ScanOutcome::Partial(token) => {
+                            Big2EntityValueToken { token, next: None }
+                        }
                         Big2ScanOutcome::Invalid(next) => Big2EntityValueToken {
                             token: crate::src::xmltok::XML_TOK_INVALID_1,
                             next: Some(next + 2),
@@ -10014,9 +10075,7 @@ pub mod xmltok_impl_c {
                     if input[pos] == 0 && input[pos + 1] == b'!' as ::core::ffi::c_char {
                         pos += 2;
                         if input.len() - pos < 2 {
-                            return Big2ScanOutcome::Partial(
-                                crate::src::xmltok::XML_TOK_PARTIAL_1,
-                            );
+                            return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
                         }
                         if input[pos] == 0 && input[pos + 1] == b'[' as ::core::ffi::c_char {
                             level += 1;
@@ -10032,9 +10091,7 @@ pub mod xmltok_impl_c {
                     if input[pos] == 0 && input[pos + 1] == b']' as ::core::ffi::c_char {
                         pos += 2;
                         if input.len() - pos < 2 {
-                            return Big2ScanOutcome::Partial(
-                                crate::src::xmltok::XML_TOK_PARTIAL_1,
-                            );
+                            return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
                         }
                         if input[pos] == 0 && input[pos + 1] == b'>' as ::core::ffi::c_char {
                             pos += 2;
@@ -10445,16 +10502,16 @@ pub mod xmltok_impl_c {
     use crate::src::xmltok::nametab_h::nmstrtPages;
     use crate::src::xmltok::normal_encoding;
     use crate::src::xmltok::unicode_byte_type;
-    use crate::src::xmltok::unknown_isName;
     use crate::src::xmltok::unknown_isInvalid;
+    use crate::src::xmltok::unknown_isName;
     use crate::src::xmltok::unknown_isNmstrt;
     use crate::src::xmltok::utf8_invalid2;
     use crate::src::xmltok::utf8_invalid3;
     use crate::src::xmltok::utf8_invalid4;
+    use crate::src::xmltok::utf8_isInvalid3;
     use crate::src::xmltok::utf8_is_name2;
     use crate::src::xmltok::utf8_is_name3;
     use crate::src::xmltok::utf8_is_name_start3;
-    use crate::src::xmltok::utf8_isInvalid3;
     use crate::src::xmltok::Invalid2Checker;
     use crate::src::xmltok::Invalid3Checker;
     use crate::src::xmltok::Invalid4Checker;
@@ -11753,7 +11810,6 @@ pub use crate::stdbool_h::false_0;
 pub use crate::stdbool_h::true_0;
 
 pub use crate::src::xmltok::xmltok_impl_c::big2_attributeValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::Big2AttributeAction;
 pub use crate::src::xmltok::xmltok_impl_c::big2_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_charRefNumber;
 pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
@@ -11826,6 +11882,7 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::skip_s;
+pub use crate::src::xmltok::xmltok_impl_c::Big2AttributeAction;
 pub use crate::src::xmltok::xmltok_ns_c::encodings;
 pub use crate::src::xmltok::xmltok_ns_c::encodingsNS;
 pub use crate::src::xmltok::xmltok_ns_c::findEncoding;
@@ -12028,11 +12085,9 @@ fn utf8_is_name2(input: &[u8]) -> bool {
     (namingBitmap[(((namePages[(input[0] as ::core::ffi::c_int >> 2 as ::core::ffi::c_int
         & 7 as ::core::ffi::c_int) as usize] as ::core::ffi::c_int)
         << 3 as ::core::ffi::c_int)
-        + ((input[0] as ::core::ffi::c_int & 3 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int)
-        + (input[1] as ::core::ffi::c_int
-            >> 5 as ::core::ffi::c_int
-            & 1 as ::core::ffi::c_int)) as usize]
+        + ((input[0] as ::core::ffi::c_int & 3 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int)
+        + (input[1] as ::core::ffi::c_int >> 5 as ::core::ffi::c_int & 1 as ::core::ffi::c_int))
+        as usize]
         & (1 as ::core::ffi::c_uint)
             << (input[1] as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
         != 0
@@ -12061,12 +12116,10 @@ fn utf8_is_name_start2(input: &[u8]) -> bool {
     (namingBitmap[(((nmstrtPages[(first as ::core::ffi::c_int >> 2 as ::core::ffi::c_int
         & 7 as ::core::ffi::c_int) as usize] as ::core::ffi::c_int)
         << 3 as ::core::ffi::c_int)
-        + ((first as ::core::ffi::c_int & 3 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int)
+        + ((first as ::core::ffi::c_int & 3 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int)
         + (second as ::core::ffi::c_int >> 5 as ::core::ffi::c_int & 1 as ::core::ffi::c_int))
         as usize]
-        & (1 as ::core::ffi::c_uint)
-            << (second as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
+        & (1 as ::core::ffi::c_uint) << (second as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
         != 0
 }
 
@@ -15018,9 +15071,7 @@ fn big2_toUtf16(
     // leave the leading surrogate untouched as well.
     let mut input_len = input.len() & !1;
     let mut result = crate::src::xmltok::XML_CONVERT_COMPLETED;
-    if input_len > output.len().saturating_mul(2)
-        && input[input_len - 2] & 0xf8 == 0xd8
-    {
+    if input_len > output.len().saturating_mul(2) && input[input_len - 2] & 0xf8 == 0xd8 {
         input_len -= 2;
         result = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
     }
