@@ -4147,22 +4147,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_updatePosition(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        pos: *mut crate::src::xmltok::POSITION,
-    ) {
-        let byte_len = unsafe { end.offset_from(ptr) };
-        if byte_len <= 0 {
-            return;
-        }
-        let encoding = unsafe { &*(enc as *const normal_encoding) };
-        let bytes = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), byte_len as usize) };
-        let pos = unsafe { &mut *pos };
-        normal_update_position(encoding, bytes, pos);
-    }
-
     enum Little2ScanOutcome {
         Token(::core::ffi::c_int, usize),
         Partial(::core::ffi::c_int),
@@ -12242,7 +12226,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPoundName;
-pub use crate::src::xmltok::xmltok_impl_c::normal_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::skip_s;
 pub use crate::src::xmltok::xmltok_impl_c::Big2AttributeAction;
 pub use crate::src::xmltok::xmltok_ns_c::encodings;
