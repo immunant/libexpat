@@ -6603,38 +6603,32 @@ extern "C" fn entityValueProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut start: *const ::core::ffi::c_char = s;
-        let mut next: *const ::core::ffi::c_char = s;
-        let mut enc: *const ENCODING = (*parser).m_encoding;
-        let mut tok: ::core::ffi::c_int = 0;
-        loop {
-            tok = (*enc).scanners[0 as ::core::ffi::c_int as usize]
-                .expect("non-null function pointer")(
-                enc, start, end, &raw mut next
-            );
-            if tok <= 0 as ::core::ffi::c_int {
-                if (*parser).m_parsingStatus.finalBuffer == 0 && tok != XML_TOK_INVALID {
-                    *nextPtr = s;
-                    return XML_ERROR_NONE;
-                }
-                match tok {
-                    XML_TOK_INVALID => return XML_ERROR_INVALID_TOKEN,
-                    XML_TOK_PARTIAL => return XML_ERROR_UNCLOSED_TOKEN,
-                    XML_TOK_PARTIAL_CHAR => return XML_ERROR_PARTIAL_CHAR,
-                    XML_TOK_NONE | _ => {}
-                }
-                return storeEntityValue(
-                    parser,
-                    enc,
-                    s,
-                    end,
-                    XML_ACCOUNT_DIRECT,
-                    ::core::ptr::null_mut::<*const ::core::ffi::c_char>(),
-                );
+    let mut start: *const ::core::ffi::c_char = s;
+    let mut next: *const ::core::ffi::c_char = s;
+    let enc = ptr_ref(parser).m_encoding;
+    loop {
+        let tok = call_scanner(ptr_ref(enc).scanners[0], enc, start, end, &raw mut next);
+        if tok <= 0 as ::core::ffi::c_int {
+            if ptr_ref(parser).m_parsingStatus.finalBuffer == 0 && tok != XML_TOK_INVALID {
+                write_copy(nextPtr, s);
+                return XML_ERROR_NONE;
             }
-            start = next;
+            match tok {
+                XML_TOK_INVALID => return XML_ERROR_INVALID_TOKEN,
+                XML_TOK_PARTIAL => return XML_ERROR_UNCLOSED_TOKEN,
+                XML_TOK_PARTIAL_CHAR => return XML_ERROR_PARTIAL_CHAR,
+                XML_TOK_NONE | _ => {}
+            }
+            return storeEntityValue(
+                parser,
+                enc,
+                s,
+                end,
+                XML_ACCOUNT_DIRECT,
+                ::core::ptr::null_mut::<*const ::core::ffi::c_char>(),
+            );
         }
+        start = next;
     }
 }
 extern "C" fn prologProcessor(
