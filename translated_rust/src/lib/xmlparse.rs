@@ -10430,12 +10430,20 @@ fn ptr_slice_mut<'a, T>(ptr: *mut T, len: usize) -> &'a mut [T] {
     }
 }
 
+fn c_str_bytes_with_nul<'a>(ptr: *const ::core::ffi::c_char) -> &'a [u8] {
+    unsafe { ::core::ffi::CStr::from_ptr(ptr).to_bytes_with_nul() }
+}
+
 fn key_bytes<'a>(key: KEY) -> &'a [u8] {
-    unsafe { ::core::ffi::CStr::from_ptr(key).to_bytes() }
+    let (terminator, bytes) = c_str_bytes_with_nul(key)
+        .split_last()
+        .expect("C strings are NUL terminated");
+    debug_assert_eq!(*terminator, b'\0');
+    bytes
 }
 
 fn xml_char_slice_with_nul<'a>(ptr: *const XML_Char) -> &'a [XML_Char] {
-    let len = unsafe { ::core::ffi::CStr::from_ptr(ptr).to_bytes_with_nul().len() };
+    let len = c_str_bytes_with_nul(ptr).len();
     ptr_slice(ptr, len)
 }
 
@@ -10471,9 +10479,10 @@ fn call_end_namespace_decl_handler(
 }
 
 fn zero_memory(ptr: *mut ::core::ffi::c_void, size: size_t) {
-    unsafe {
-        memset(ptr, 0 as ::core::ffi::c_int, size);
+    if size == 0 {
+        return;
     }
+    ptr_slice_mut(ptr.cast::<u8>(), size).fill(0);
 }
 
 fn table_slots(table: &HASH_TABLE) -> &[*mut NAMED] {
