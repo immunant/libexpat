@@ -13899,40 +13899,42 @@ pub mod xmltok_ns_c {
         };
         XmlInitEncoding(unsafe { &mut *p }, unsafe { &mut *encPtr }, name)
     }
-    pub unsafe extern "C" fn findEncoding(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    fn find_encoding(
+        encoding_table: [*const crate::src::xmltok::ENCODING; 7],
+        enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
     ) -> *const crate::src::xmltok::ENCODING {
-        let mut buf: [::core::ffi::c_char; 128] = ::core::mem::transmute:: <
-            [u8; 128],
-            [::core::ffi::c_char; 128],
-        >(
-            *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-        );
-        let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        (*enc).utf8Convert.expect("non-null function pointer")(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128 as ::core::ffi::c_int as isize)
-                .offset(-(1 as ::core::ffi::c_int as isize)),
-        );
-        if ptr != end {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+        let mut buf = [0 as ::core::ffi::c_char; 128];
+        let mut p = buf.as_mut_ptr();
+        unsafe {
+            (*enc).utf8Convert.expect("non-null function pointer")(
+                enc,
+                &raw mut ptr,
+                end,
+                &raw mut p,
+                p.wrapping_add(127),
+            );
+            if ptr != end {
+                return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+            }
+            *p = 0 as ::core::ffi::c_char;
+            if streqci(&buf, &KW_UTF_16) != 0 && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int {
+                return enc;
+            }
         }
-        *p = 0 as ::core::ffi::c_char;
-        if streqci(&buf, &KW_UTF_16) != 0 && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int {
-            return enc;
-        }
-        i = getEncodingIndex(Some(&buf));
+        let i = getEncodingIndex(Some(&buf));
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
-        let encoding_table = encodings();
         return encoding_table[i as usize];
+    }
+    pub extern "C" fn findEncoding(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+    ) -> *const crate::src::xmltok::ENCODING {
+        find_encoding(encodings(), enc, ptr, end)
     }
     #[export_name = "XmlParseXmlDecl"]
 
@@ -14147,40 +14149,12 @@ pub mod xmltok_ns_c {
         };
         XmlInitEncodingNS(unsafe { &mut *p }, unsafe { &mut *encPtr }, name)
     }
-    pub unsafe extern "C" fn findEncodingNS(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
+    pub extern "C" fn findEncodingNS(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
     ) -> *const crate::src::xmltok::ENCODING {
-        let mut buf: [::core::ffi::c_char; 128] = ::core::mem::transmute:: <
-            [u8; 128],
-            [::core::ffi::c_char; 128],
-        >(
-            *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-        );
-        let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        (*enc).utf8Convert.expect("non-null function pointer")(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128 as ::core::ffi::c_int as isize)
-                .offset(-(1 as ::core::ffi::c_int as isize)),
-        );
-        if ptr != end {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-        }
-        *p = 0 as ::core::ffi::c_char;
-        if streqci(&buf, &KW_UTF_16) != 0 && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int {
-            return enc;
-        }
-        i = getEncodingIndex(Some(&buf));
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-        }
-        let encoding_table = encodingsNS();
-        return encoding_table[i as usize];
+        find_encoding(encodingsNS(), enc, ptr, end)
     }
     #[export_name = "XmlParseXmlDeclNS"]
 
