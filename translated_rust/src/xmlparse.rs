@@ -3272,6 +3272,37 @@ macro_rules! open_internal_entity_ref_from_raw {
     };
 }
 
+#[inline]
+fn open_internal_entity_mut<'a>(
+    entity: *mut OPEN_INTERNAL_ENTITY,
+) -> Option<&'a mut OPEN_INTERNAL_ENTITY> {
+    if entity.is_null() {
+        None
+    } else {
+        Some(helper_unsafe!(&mut *entity))
+    }
+}
+
+#[inline]
+fn active_event_pointer_slots(
+    parser: &mut XML_ParserStruct,
+    enc: *const crate::src::xmltok::ENCODING,
+) -> (
+    *mut *const ::core::ffi::c_char,
+    *mut *const ::core::ffi::c_char,
+) {
+    if enc == parser.m_encoding {
+        (&raw mut parser.m_eventPtr, &raw mut parser.m_eventEndPtr)
+    } else {
+        let open_entity = open_internal_entity_mut(parser.m_openInternalEntities)
+            .expect("non-null open internal entity");
+        (
+            &raw mut open_entity.internalEventPtr,
+            &raw mut open_entity.internalEventEndPtr,
+        )
+    }
+}
+
 macro_rules! dtd_ref_from_raw {
     ($dtd:expr) => {
         if $dtd.is_null() {
@@ -7238,7 +7269,7 @@ extern "C" fn cdataSectionProcessor(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let parser_state = expect_parser_ref(parser);
-    let mut result: crate::expat_h::XML_Error = unsafe_expr!(doCdataSection(
+    let mut result: crate::expat_h::XML_Error = doCdataSection(
         parser,
         parser_state.m_encoding,
         &raw mut start,
@@ -7247,7 +7278,7 @@ extern "C" fn cdataSectionProcessor(
         (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         XML_ACCOUNT_DIRECT,
-    ));
+    );
     if result as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -7265,7 +7296,7 @@ extern "C" fn cdataSectionProcessor(
     return result;
 }
 
-unsafe extern "C" fn doCdataSection(
+extern "C" fn doCdataSection(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut startPtr: *mut *const ::core::ffi::c_char,
@@ -7274,54 +7305,46 @@ unsafe extern "C" fn doCdataSection(
     mut haveMore: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let mut s: *const ::core::ffi::c_char = *startPtr;
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    let mut eventEndPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    if enc == (*parser).m_encoding {
-        eventPP = &raw mut (*parser).m_eventPtr;
-        *eventPP = s;
-        eventEndPP = &raw mut (*parser).m_eventEndPtr;
-    } else {
-        eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-        eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
-    }
-    *eventPP = s;
-    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    let parser_state = expect_parser_mut(parser);
+    let enc_ref = helper_unsafe!(&*enc);
+    let mut s: *const ::core::ffi::c_char = helper_unsafe!(*startPtr);
+    let (eventPP, eventEndPP) = active_event_pointer_slots(parser_state, enc);
+    helper_unsafe!(*eventPP = s);
+    helper_unsafe!(*startPtr = ::core::ptr::null::<::core::ffi::c_char>());
     loop {
         let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int = (*enc).scanners[2 as ::core::ffi::c_int as usize]
+        let mut tok: ::core::ffi::c_int = helper_unsafe!(enc_ref.scanners
+            [2 as ::core::ffi::c_int as usize]
             .expect("non-null function pointer")(
             enc, s, end, &raw mut next
-        );
+        ));
         if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
             accountingOnAbort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
-        *eventEndPP = next;
+        helper_unsafe!(*eventEndPP = next);
         match tok {
             crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE => {
-                if (*parser).m_endCdataSectionHandler.is_some() {
-                    (*parser)
+                if parser_state.m_endCdataSectionHandler.is_some() {
+                    helper_unsafe!(parser_state
                         .m_endCdataSectionHandler
                         .expect("non-null function pointer")(
-                        (*parser).m_handlerArg
-                    );
-                } else if false && (*parser).m_characterDataHandler.is_some() {
-                    (*parser)
+                        parser_state.m_handlerArg
+                    ));
+                } else if false && parser_state.m_characterDataHandler.is_some() {
+                    helper_unsafe!(parser_state
                         .m_characterDataHandler
                         .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
-                        (*parser).m_dataBuf,
+                        parser_state.m_handlerArg,
+                        parser_state.m_dataBuf,
                         0 as ::core::ffi::c_int,
-                    );
-                } else if (*parser).m_defaultHandler.is_some() {
+                    ));
+                } else if parser_state.m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
-                *startPtr = next;
-                *nextPtr = next;
-                if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                helper_unsafe!(*startPtr = next);
+                helper_unsafe!(*nextPtr = next);
+                if parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint
                     == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     return crate::expat_h::XML_ERROR_ABORTED;
@@ -7330,44 +7353,47 @@ unsafe extern "C" fn doCdataSection(
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                if (*parser).m_characterDataHandler.is_some() {
+                if parser_state.m_characterDataHandler.is_some() {
                     let mut c: crate::expat_external_h::XML_Char =
                         0xa as crate::expat_external_h::XML_Char;
-                    (*parser)
+                    helper_unsafe!(parser_state
                         .m_characterDataHandler
                         .expect("non-null function pointer")(
-                        (*parser).m_handlerArg,
+                        parser_state.m_handlerArg,
                         &raw mut c,
                         1 as ::core::ffi::c_int,
-                    );
-                } else if (*parser).m_defaultHandler.is_some() {
+                    ));
+                } else if parser_state.m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_CHARS => {
                 let mut charDataHandler: crate::expat_h::XML_CharacterDataHandler =
-                    (*parser).m_characterDataHandler;
+                    parser_state.m_characterDataHandler;
                 if charDataHandler.is_some() {
-                    if (*enc).isUtf8 == 0 {
+                    if enc_ref.isUtf8 == 0 {
                         loop {
-                            let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
+                            let mut dataPtr: *mut ICHAR = parser_state.m_dataBuf as *mut ICHAR;
                             let convert_res: crate::src::xmltok::XML_Convert_Result =
-                                (*enc).utf8Convert.expect("non-null function pointer")(
+                                helper_unsafe!(enc_ref
+                                    .utf8Convert
+                                    .expect("non-null function pointer")(
                                     enc,
                                     &raw mut s,
                                     next,
                                     &raw mut dataPtr,
-                                    (*parser).m_dataBufEnd as *mut ICHAR,
-                                )
+                                    parser_state.m_dataBufEnd as *mut ICHAR,
+                                ))
                                     as crate::src::xmltok::XML_Convert_Result;
-                            *eventEndPP = next;
-                            charDataHandler.expect("non-null function pointer")(
-                                (*parser).m_handlerArg,
-                                (*parser).m_dataBuf,
-                                dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR)
-                                    as ::core::ffi::c_long
+                            helper_unsafe!(*eventEndPP = next);
+                            helper_unsafe!(charDataHandler.expect("non-null function pointer")(
+                                parser_state.m_handlerArg,
+                                parser_state.m_dataBuf,
+                                helper_unsafe!(
+                                    dataPtr.offset_from(parser_state.m_dataBuf as *mut ICHAR)
+                                ) as ::core::ffi::c_long
                                     as ::core::ffi::c_int,
-                            );
+                            ));
                             if convert_res as ::core::ffi::c_uint
                                 == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                                     as ::core::ffi::c_uint
@@ -7378,64 +7404,64 @@ unsafe extern "C" fn doCdataSection(
                             {
                                 break;
                             }
-                            *eventPP = s;
+                            helper_unsafe!(*eventPP = s);
                         }
                     } else {
-                        charDataHandler.expect("non-null function pointer")(
-                            (*parser).m_handlerArg,
+                        helper_unsafe!(charDataHandler.expect("non-null function pointer")(
+                            parser_state.m_handlerArg,
                             s as *const crate::expat_external_h::XML_Char,
-                            (next as *const crate::expat_external_h::XML_Char)
-                                .offset_from(s as *const crate::expat_external_h::XML_Char)
+                            helper_unsafe!((next as *const crate::expat_external_h::XML_Char)
+                                .offset_from(s as *const crate::expat_external_h::XML_Char))
                                 as ::core::ffi::c_long
                                 as ::core::ffi::c_int,
-                        );
+                        ));
                     }
-                } else if (*parser).m_defaultHandler.is_some() {
+                } else if parser_state.m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_INVALID => {
-                *eventPP = next;
+                helper_unsafe!(*eventPP = next);
                 return crate::expat_h::XML_ERROR_INVALID_TOKEN;
             }
             crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
                 if haveMore != 0 {
-                    *nextPtr = s;
+                    helper_unsafe!(*nextPtr = s);
                     return crate::expat_h::XML_ERROR_NONE;
                 }
                 return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
             }
             crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
                 if haveMore != 0 {
-                    *nextPtr = s;
+                    helper_unsafe!(*nextPtr = s);
                     return crate::expat_h::XML_ERROR_NONE;
                 }
                 return crate::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION;
             }
             _ => {
-                *eventPP = next;
+                helper_unsafe!(*eventPP = next);
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
         }
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+        match parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
-                *eventPP = next;
-                *nextPtr = next;
+                helper_unsafe!(*eventPP = next);
+                helper_unsafe!(*nextPtr = next);
                 return crate::expat_h::XML_ERROR_NONE;
             }
             2 => {
-                *eventPP = next;
+                helper_unsafe!(*eventPP = next);
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
             1 => {
-                if (*parser).m_reenter != 0 {
+                if parser_state.m_reenter != 0 {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
             }
             _ => {}
         }
         s = next;
-        *eventPP = s;
+        helper_unsafe!(*eventPP = s);
     }
 }
 
@@ -7446,7 +7472,7 @@ extern "C" fn ignoreSectionProcessor(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let parser_state = expect_parser_ref(parser);
-    let mut result: crate::expat_h::XML_Error = unsafe_expr!(doIgnoreSection(
+    let mut result: crate::expat_h::XML_Error = doIgnoreSection(
         parser,
         parser_state.m_encoding,
         &raw mut start,
@@ -7454,7 +7480,7 @@ extern "C" fn ignoreSectionProcessor(
         endPtr,
         (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
-    ));
+    );
     if result as ::core::ffi::c_uint
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -7467,7 +7493,7 @@ extern "C" fn ignoreSectionProcessor(
     return result;
 }
 
-unsafe extern "C" fn doIgnoreSection(
+extern "C" fn doIgnoreSection(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut startPtr: *mut *const ::core::ffi::c_char,
@@ -7475,29 +7501,18 @@ unsafe extern "C" fn doIgnoreSection(
     mut nextPtr: *mut *const ::core::ffi::c_char,
     mut haveMore: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
-    let mut next: *const ::core::ffi::c_char = *startPtr;
+    let parser_state = expect_parser_mut(parser);
+    let enc_ref = helper_unsafe!(&*enc);
+    let mut next: *const ::core::ffi::c_char = helper_unsafe!(*startPtr);
     let mut tok: ::core::ffi::c_int = 0;
-    let mut s: *const ::core::ffi::c_char = *startPtr;
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    let mut eventEndPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    if enc == (*parser).m_encoding {
-        eventPP = &raw mut (*parser).m_eventPtr;
-        *eventPP = s;
-        eventEndPP = &raw mut (*parser).m_eventEndPtr;
-    } else {
-        eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-        eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
-    }
-    *eventPP = s;
-    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    tok = (*enc).scanners[3 as ::core::ffi::c_int as usize].expect("non-null function pointer")(
-        enc,
-        s,
-        end,
-        &raw mut next,
-    );
+    let mut s: *const ::core::ffi::c_char = helper_unsafe!(*startPtr);
+    let (eventPP, eventEndPP) = active_event_pointer_slots(parser_state, enc);
+    helper_unsafe!(*eventPP = s);
+    helper_unsafe!(*startPtr = ::core::ptr::null::<::core::ffi::c_char>());
+    tok = helper_unsafe!(enc_ref.scanners[3 as ::core::ffi::c_int as usize]
+        .expect("non-null function pointer")(
+        enc, s, end, &raw mut next
+    ));
     if accountingDiffTolerated(
         parser,
         tok,
@@ -7510,15 +7525,15 @@ unsafe extern "C" fn doIgnoreSection(
         accountingOnAbort(parser);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
-    *eventEndPP = next;
+    helper_unsafe!(*eventEndPP = next);
     match tok {
         crate::src::xmltok::XML_TOK_IGNORE_SECT => {
-            if (*parser).m_defaultHandler.is_some() {
+            if parser_state.m_defaultHandler.is_some() {
                 reportDefault(parser, enc, s, next);
             }
-            *startPtr = next;
-            *nextPtr = next;
-            if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+            helper_unsafe!(*startPtr = next);
+            helper_unsafe!(*nextPtr = next);
+            if parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint
                 == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
             {
                 return crate::expat_h::XML_ERROR_ABORTED;
@@ -7527,25 +7542,25 @@ unsafe extern "C" fn doIgnoreSection(
             }
         }
         crate::src::xmltok::XML_TOK_INVALID => {
-            *eventPP = next;
+            helper_unsafe!(*eventPP = next);
             return crate::expat_h::XML_ERROR_INVALID_TOKEN;
         }
         crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
             if haveMore != 0 {
-                *nextPtr = s;
+                helper_unsafe!(*nextPtr = s);
                 return crate::expat_h::XML_ERROR_NONE;
             }
             return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
         }
         crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
             if haveMore != 0 {
-                *nextPtr = s;
+                helper_unsafe!(*nextPtr = s);
                 return crate::expat_h::XML_ERROR_NONE;
             }
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
         _ => {
-            *eventPP = next;
+            helper_unsafe!(*eventPP = next);
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
     };
