@@ -11139,44 +11139,80 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     xml_parse_impl(parser, None, len, isFinal)
 }
-unsafe fn xml_get_buffer_impl(
-    parser_ref: &mut XML_ParserStruct,
-    mut len: ::core::ffi::c_int,
+/// The subset of parser state needed to grow its owned input buffer.
+///
+/// All cursors are checked offsets into `buffer`, so this settings object
+/// keeps the implementation independent of the opaque parser handle.
+struct XmlGetBufferSettings<'a> {
+    parsing: ::core::ffi::c_uint,
+    error_code: &'a mut crate::expat_h::XML_Error,
+    buffer: &'a mut InputBuffer,
+    buffer_ptr: &'a mut Option<usize>,
+    buffer_end: &'a mut usize,
+    buffer_lim: &'a mut usize,
+    last_buffer_request_size: &'a mut ::core::ffi::c_int,
+    event_ptr: &'a mut Option<usize>,
+    event_end_ptr: &'a mut Option<usize>,
+    position_ptr: &'a mut Option<usize>,
+    allocation_factory: AllocationBackingFactory,
+}
+
+impl<'a> XmlGetBufferSettings<'a> {
+    fn from_parser(parser: &'a mut XML_ParserStruct) -> Self {
+        let allocation_factory = parser
+            .m_allocationBackingFactory
+            .as_ref()
+            .expect("parser allocation factory is installed during construction")
+            .clone();
+        Self {
+            parsing: parser.m_parsingStatus.parsing as ::core::ffi::c_uint,
+            error_code: &mut parser.m_errorCode,
+            buffer: &mut parser.m_buffer,
+            buffer_ptr: &mut parser.m_bufferPtr,
+            buffer_end: &mut parser.m_bufferEnd,
+            buffer_lim: &mut parser.m_bufferLim,
+            last_buffer_request_size: &mut parser.m_lastBufferRequestSize,
+            event_ptr: &mut parser.m_eventPtr,
+            event_end_ptr: &mut parser.m_eventEndPtr,
+            position_ptr: &mut parser.m_positionPtr,
+            allocation_factory,
+        }
+    }
+}
+
+fn xml_get_buffer_impl(
+    settings: XmlGetBufferSettings<'_>,
+    len: ::core::ffi::c_int,
 ) -> Option<usize> {
     if len < 0 as ::core::ffi::c_int {
-        parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+        *settings.error_code = crate::expat_h::XML_ERROR_NO_MEMORY;
         return None;
     }
-    match parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint {
+    match settings.parsing {
         3 => {
-            parser_ref.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+            *settings.error_code = crate::expat_h::XML_ERROR_SUSPENDED;
             return None;
         }
         2 => {
-            parser_ref.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+            *settings.error_code = crate::expat_h::XML_ERROR_FINISHED;
             return None;
         }
         _ => {}
     }
-    let allocation_factory = parser_ref
-        .m_allocationBackingFactory
-        .as_ref()
-        .expect("parser allocation factory is installed during construction")
-        .clone();
     let result = input_buffer_get(
-        &mut parser_ref.m_buffer,
-        &mut parser_ref.m_bufferPtr,
-        &mut parser_ref.m_bufferEnd,
-        &mut parser_ref.m_bufferLim,
-        &mut parser_ref.m_lastBufferRequestSize,
-        &mut parser_ref.m_eventPtr,
-        &mut parser_ref.m_eventEndPtr,
-        &mut parser_ref.m_positionPtr,
+        settings.buffer,
+        settings.buffer_ptr,
+        settings.buffer_end,
+        settings.buffer_lim,
+        settings.last_buffer_request_size,
+        settings.event_ptr,
+        settings.event_end_ptr,
+        settings.position_ptr,
         len,
-        &allocation_factory,
+        &settings.allocation_factory,
     );
     if result.is_none() {
-        parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+        *settings.error_code = crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     result
 }
@@ -11189,7 +11225,10 @@ pub unsafe extern "C" fn XML_GetBuffer_ffi(
     let Some(parser) = parser.as_mut() else {
         return crate::__stddef_null_h::NULL;
     };
-    let Some(buffer_end) = xml_get_buffer_impl(parser, len) else {
+    let Some(buffer_end) = xml_get_buffer_impl(
+        XmlGetBufferSettings::from_parser(parser),
+        len,
+    ) else {
         return crate::__stddef_null_h::NULL;
     };
     parser
