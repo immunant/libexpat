@@ -318,6 +318,7 @@ fn read_c_uchar(ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_uchar {
 }
 
 type AsciiUnitReader = fn(*const ::core::ffi::c_char) -> ::core::ffi::c_int;
+type ByteTypeReader = fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int;
 
 fn read_normal_ascii_unit(ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     read_c_char(ptr) as ::core::ffi::c_int
@@ -778,6 +779,88 @@ fn set_next_token_ptr(
     value: *const ::core::ffi::c_char,
 ) {
     write_copy(next_tok_ptr, value)
+}
+
+fn scan_hex_char_ref_with(
+    enc: *const ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next_tok_ptr: *mut *const ::core::ffi::c_char,
+    unit_size: usize,
+    byte_type: ByteTypeReader,
+) -> ::core::ffi::c_int {
+    if remaining_const_c_chars(ptr, end) >= unit_size {
+        match byte_type(enc, ptr) {
+            25 | 24 => {}
+            _ => {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_INVALID;
+            }
+        }
+        ptr = add_const_c_char(ptr, unit_size as isize);
+        while remaining_const_c_chars(ptr, end) >= unit_size {
+            match byte_type(enc, ptr) {
+                25 | 24 => {}
+                18 => {
+                    set_next_token_ptr(next_tok_ptr, add_const_c_char(ptr, unit_size as isize));
+                    return XML_TOK_CHAR_REF;
+                }
+                _ => {
+                    set_next_token_ptr(next_tok_ptr, ptr);
+                    return XML_TOK_INVALID;
+                }
+            }
+            ptr = add_const_c_char(ptr, unit_size as isize);
+        }
+    }
+    XML_TOK_PARTIAL
+}
+
+fn scan_char_ref_with(
+    enc: *const ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next_tok_ptr: *mut *const ::core::ffi::c_char,
+    unit_size: usize,
+    read_unit: AsciiUnitReader,
+    byte_type: ByteTypeReader,
+) -> ::core::ffi::c_int {
+    if remaining_const_c_chars(ptr, end) < unit_size {
+        return XML_TOK_PARTIAL;
+    }
+    if read_unit(ptr) == ASCII_x {
+        return scan_hex_char_ref_with(
+            enc,
+            add_const_c_char(ptr, unit_size as isize),
+            end,
+            next_tok_ptr,
+            unit_size,
+            byte_type,
+        );
+    }
+    match byte_type(enc, ptr) {
+        25 => {}
+        _ => {
+            set_next_token_ptr(next_tok_ptr, ptr);
+            return XML_TOK_INVALID;
+        }
+    }
+    ptr = add_const_c_char(ptr, unit_size as isize);
+    while remaining_const_c_chars(ptr, end) >= unit_size {
+        match byte_type(enc, ptr) {
+            25 => {}
+            18 => {
+                set_next_token_ptr(next_tok_ptr, add_const_c_char(ptr, unit_size as isize));
+                return XML_TOK_CHAR_REF;
+            }
+            _ => {
+                set_next_token_ptr(next_tok_ptr, ptr);
+                return XML_TOK_INVALID;
+            }
+        }
+        ptr = add_const_c_char(ptr, unit_size as isize);
+    }
+    XML_TOK_PARTIAL
 }
 
 fn call_scanner(
@@ -1807,42 +1890,7 @@ extern "C" fn normal_scanHexCharRef(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                25 | 24 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-            }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-            {
-                match (*(enc as *const normal_encoding)).type_0
-                    [*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                {
-                    25 | 24 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CHAR_REF;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                }
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_hex_char_ref_with(enc, ptr, end, nextTokPtr, 1, normal_byte_type)
 }
 extern "C" fn normal_scanCharRef(
     mut enc: *const ENCODING,
@@ -1850,50 +1898,15 @@ extern "C" fn normal_scanCharRef(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            if *ptr as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int {
-                return normal_scanHexCharRef(
-                    enc,
-                    ptr.offset(1 as ::core::ffi::c_int as isize),
-                    end,
-                    nextTokPtr,
-                );
-            }
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                25 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-            }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-            {
-                match (*(enc as *const normal_encoding)).type_0
-                    [*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                {
-                    25 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CHAR_REF;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                }
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_char_ref_with(
+        enc,
+        ptr,
+        end,
+        nextTokPtr,
+        1,
+        read_normal_ascii_unit,
+        normal_byte_type,
+    )
 }
 extern "C" fn normal_scanRef(
     mut enc: *const ENCODING,
@@ -5925,57 +5938,7 @@ extern "C" fn little2_scanHexCharRef(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                25 | 24 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(
-                        *ptr.offset(1 as ::core::ffi::c_int as isize),
-                        *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    )
-                } {
-                    25 | 24 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CHAR_REF;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_hex_char_ref_with(enc, ptr, end, nextTokPtr, 2, little2_byte_type)
 }
 extern "C" fn little2_scanCharRef(
     mut enc: *const ENCODING,
@@ -5983,69 +5946,15 @@ extern "C" fn little2_scanCharRef(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x78 as ::core::ffi::c_int
-            {
-                return little2_scanHexCharRef(
-                    enc,
-                    ptr.offset(2 as ::core::ffi::c_int as isize),
-                    end,
-                    nextTokPtr,
-                );
-            }
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                25 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(
-                        *ptr.offset(1 as ::core::ffi::c_int as isize),
-                        *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    )
-                } {
-                    25 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CHAR_REF;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_char_ref_with(
+        enc,
+        ptr,
+        end,
+        nextTokPtr,
+        2,
+        read_little2_ascii_unit,
+        little2_byte_type,
+    )
 }
 extern "C" fn little2_scanRef(
     mut enc: *const ENCODING,
@@ -10195,60 +10104,7 @@ extern "C" fn big2_scanHexCharRef(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                25 | 24 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(
-                        *ptr.offset(0 as ::core::ffi::c_int as isize),
-                        *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    )
-                } {
-                    25 | 24 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CHAR_REF;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_hex_char_ref_with(enc, ptr, end, nextTokPtr, 2, big2_byte_type)
 }
 extern "C" fn big2_scanCharRef(
     mut enc: *const ENCODING,
@@ -10256,72 +10112,15 @@ extern "C" fn big2_scanCharRef(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x78 as ::core::ffi::c_int
-            {
-                return big2_scanHexCharRef(
-                    enc,
-                    ptr.offset(2 as ::core::ffi::c_int as isize),
-                    end,
-                    nextTokPtr,
-                );
-            }
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                25 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr) as ::core::ffi::c_long
-                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-            {
-                match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(
-                        *ptr.offset(0 as ::core::ffi::c_int as isize),
-                        *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    )
-                } {
-                    25 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return XML_TOK_CHAR_REF;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        return XML_TOK_PARTIAL;
-    }
+    scan_char_ref_with(
+        enc,
+        ptr,
+        end,
+        nextTokPtr,
+        2,
+        read_big2_ascii_unit,
+        big2_byte_type,
+    )
 }
 extern "C" fn big2_scanRef(
     mut enc: *const ENCODING,
