@@ -3913,6 +3913,13 @@ impl NamedRecord {
         }
         None
     }
+
+    fn attribute_mut(&mut self) -> Option<&mut ATTRIBUTE_ID> {
+        match self {
+            Self::Attribute(attribute) => Some(attribute),
+            _ => None,
+        }
+    }
 }
 
 impl NamedAllocation {
@@ -18800,31 +18807,60 @@ unsafe fn defineAttribute(
     if type_0.is_null() || parser.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    let parser = &mut *parser;
-    let dtd_ptr = parser_dtd_ptr!(parser);
-    if dtd_ptr.is_null() {
-        return 0 as ::core::ffi::c_int;
-    }
-    let dtd = &mut *dtd_ptr;
-    let att_name_pointer = dtd
-        .pool
-        .chars_from(att_name)
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-    if att_name_pointer.is_null() {
-        return 0 as ::core::ffi::c_int;
-    }
-    let attId = lookup(
-        parser as *mut XML_ParserStruct,
-        &raw mut dtd.attributeIds,
-        att_name_pointer as KEY,
-        0,
-    ) as *mut ATTRIBUTE_ID;
-    if attId.is_null() {
-        return 0 as ::core::ffi::c_int;
-    }
-    let attId = &mut *attId;
     let type_0 = &mut *type_0;
-    if value.is_some() || isId as ::core::ffi::c_int != 0 {
+    let parser = &mut *parser;
+    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+        return 0 as ::core::ffi::c_int;
+    };
+    let dtd = &mut *dtd_owner.value.get();
+    let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
+        default_attribute_storage_new(parser, capacity, 7182)
+    };
+    define_attribute_impl(
+        type_0,
+        att_name,
+        isCdata,
+        isId,
+        value,
+        parser,
+        dtd,
+        &mut new_storage,
+    )
+}
+
+/// Adds a default attribute using the DTD's typed table records.
+///
+/// `defineAttribute` has already checked the opaque parser and element
+/// handles and recovered the DTD owner, so this implementation can keep all
+/// table access as Rust references rather than recasting `NAMED` pointers.
+fn define_attribute_impl(
+    type_0: &mut ELEMENT_TYPE,
+    att_name: PoolStringRef,
+    is_cdata: crate::expat_h::XML_Bool,
+    is_id: crate::expat_h::XML_Bool,
+    value: Option<PoolStringRef>,
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
+    new_storage: &mut dyn FnMut(&mut XML_ParserStruct, usize) -> Option<Box<DefaultAttributeStorage>>,
+) -> ::core::ffi::c_int {
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let Some(att_id) = lookup_impl(
+        &mut dtd.pool,
+        &mut dtd.attributeIds,
+        LookupName::Retained(att_name),
+        0,
+        salt,
+    )
+    .and_then(NamedRecord::attribute_mut)
+    else {
+        return 0 as ::core::ffi::c_int;
+    };
+    let is_xmlns = att_id.xmlns != 0;
+    if value.is_some() || is_id as ::core::ffi::c_int != 0 {
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
         while i < type_0.nDefaultAtts {
@@ -18842,13 +18878,13 @@ unsafe fn defineAttribute(
             }
             i += 1;
         }
-        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_none() && attId.xmlns == 0 {
+        if is_id as ::core::ffi::c_int != 0 && type_0.idAtt.is_none() && !is_xmlns {
             type_0.idAtt = Some(att_name);
         }
     }
     if type_0.nDefaultAtts == type_0.allocDefaultAtts {
         if type_0.allocDefaultAtts == 0 as ::core::ffi::c_int {
-            let Some(storage) = default_attribute_storage_new(parser, 8, 7182) else {
+            let Some(storage) = new_storage(parser, 8) else {
                 return 0 as ::core::ffi::c_int;
             };
             type_0.defaultAtts = Some(storage);
@@ -18888,11 +18924,22 @@ unsafe fn defineAttribute(
         .values
         .push(DEFAULT_ATTRIBUTE {
             id: Some(att_name),
-            isCdata,
+            isCdata: is_cdata,
             value,
         });
-    if isCdata == 0 {
-        attId.maybeTokenized = crate::expat_h::XML_TRUE;
+    if is_cdata == 0 {
+        let Some(att_id) = lookup_impl(
+            &mut dtd.pool,
+            &mut dtd.attributeIds,
+            LookupName::Retained(att_name),
+            0,
+            salt,
+        )
+        .and_then(NamedRecord::attribute_mut)
+        else {
+            return 0 as ::core::ffi::c_int;
+        };
+        att_id.maybeTokenized = crate::expat_h::XML_TRUE;
     }
     type_0.nDefaultAtts += 1 as ::core::ffi::c_int;
     return 1 as ::core::ffi::c_int;
