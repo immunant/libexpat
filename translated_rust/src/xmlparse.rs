@@ -25897,17 +25897,6 @@ fn pool_string_ref_from_address(
     None
 }
 
-unsafe fn pool_string_ref(
-    pool: *const STRING_POOL,
-    string: *const crate::expat_external_h::XML_Char,
-    allow_block_end: bool,
-) -> Option<PoolStringRef> {
-    if string.is_null() {
-        return None;
-    }
-    pool_string_ref_from_address(&*pool, string.addr(), allow_block_end)
-}
-
 // An external-entity callback may re-enter the parser and grow either pool.
 // Snapshot every callback value before dispatch so the foreign call never
 // receives an address into mutable DTD or temporary-pool storage.
