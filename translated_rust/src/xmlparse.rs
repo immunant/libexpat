@@ -1975,7 +1975,10 @@ pub struct XML_ParserStruct {
     // used to be an interior pointer, which became stale whenever the
     // Rust-owned buffer moved during growth.
     pub m_bufferEnd: usize,
-    pub m_bufferLim: *const ::core::ffi::c_char,
+    // The allocated input-buffer limit, measured from the start of
+    // `m_buffer.bytes`.  Input cursors are offsets, so retaining this as an
+    // offset avoids an interior pointer that would be invalidated on growth.
+    pub m_bufferLim: usize,
     pub m_parseEndByteIndex: crate::expat_external_h::XML_Index,
     pub m_parseEndPtr: *const ::core::ffi::c_char,
     pub m_partialTokenBytesBefore: crate::__stddef_size_t_h::size_t,
@@ -3491,7 +3494,7 @@ fn initial_parser_struct(
         m_mem: memory_suite,
         m_bufferPtr: None,
         m_bufferEnd: 0,
-        m_bufferLim: ::core::ptr::null::<::core::ffi::c_char>(),
+        m_bufferLim: 0,
         m_parseEndByteIndex: 0,
         m_parseEndPtr: ::core::ptr::null::<::core::ffi::c_char>(),
         m_partialTokenBytesBefore: 0,
@@ -3723,7 +3726,7 @@ unsafe extern "C" fn parserCreate(
     }
     let parser = &mut *parser_ptr;
     parser.m_buffer = InputBuffer::empty();
-    parser.m_bufferLim = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_bufferLim = 0;
     parser.m_attsSize = INIT_ATTS_SIZE;
     let Some(atts) = attribute_storage_new(parser, INIT_ATTS_SIZE as usize, 1449) else {
         expat_free(
@@ -6168,13 +6171,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
                 parser_ref.m_bufferEnd = 0;
                 parser_ref.m_bufferPtr = Some(0);
             }
-            parser_ref.m_bufferLim = parser_ref
-                .m_buffer
-                .bytes
-                .as_ref()
-                .unwrap()
-                .as_ptr()
-                .wrapping_add(bufferSize as usize);
+            parser_ref.m_bufferLim = bufferSize as usize;
             let free_fcn = parser_ref
                 .m_mem
                 .free_fcn
