@@ -9198,7 +9198,7 @@ fn xml_external_entity_parser_create_impl(
         if !copied_and_restored {
             // This parser has not escaped its owning Box, so it is the sole
             // mutable owner while rollback releases its installed resources.
-            unsafe { parser_free_owned(parser_ref) };
+            parser_free_owned(parser_ref);
             return None;
         }
         parser_ref.m_processor = ProcessorState::ExternalEntityInit;
@@ -9246,7 +9246,7 @@ fn destroy_bindings(parser: &mut XML_ParserStruct, mut bindings: Option<BindingI
 }
 /// Releases parser-owned resources after the ABI boundary has converted the
 /// opaque parser handle into its exclusive Rust owner.
-unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
+fn parser_free_owned(parser: &mut XML_ParserStruct) {
     let parser_key = std::ptr::from_mut(parser).addr();
     clear_callback_context(parser_key);
     START_ELEMENT_HANDLERS
