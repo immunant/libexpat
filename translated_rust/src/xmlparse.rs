@@ -13742,8 +13742,33 @@ unsafe fn storeAtts(
             appAtts[attIndex as usize] = Some(StartElementAttributeValue::Temporary(start));
             (*parser).m_tempPool.commit();
         } else {
-            let stored_value = poolStoreString(&mut parser.m_tempPool, enc, value_start, value_end);
-            if stored_value.is_null() {
+            let Some(value_source) = event_raw_name_source(
+                &*parser,
+                dtd,
+                parser_events,
+                value_start.addr(),
+                value_end.addr(),
+            ) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(value) = raw_name_bytes(value_source) else {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            };
+            let unknown_encoding = match encoding.utf8Convert {
+                crate::src::xmltok::Utf8Converter::Unknown => parser
+                    .m_unknownEncodingMem
+                    .as_ref()
+                    .and_then(UnknownEncodingMemory::initialized_encoding),
+                _ => None,
+            };
+            if pool_store_name_source(
+                &mut parser.m_tempPool,
+                encoding,
+                unknown_encoding,
+                &value,
+            )
+            .is_none()
+            {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
             let Some(start) = (*parser).m_tempPool.start_ref(true) else {
@@ -21993,13 +22018,42 @@ unsafe fn storeEntityValue(
                         if parser.m_isParamEntity as ::core::ffi::c_int != 0
                             || enc_ptr != std::ptr::from_ref(current_parser_encoding(parser))
                         {
-                            if poolStoreString(
+                            let Ok(width) = usize::try_from(enc.enc.minBytesPerChar) else {
+                                result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                break '_endEntityValue;
+                            };
+                            let Some(name_start) = entityTextPtr.addr().checked_add(width) else {
+                                result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                break '_endEntityValue;
+                            };
+                            let Some(name_end) = next.addr().checked_sub(width) else {
+                                result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                break '_endEntityValue;
+                            };
+                            let Some(input_source) =
+                                entity_value_token_source(parser, dtd, name_start, name_end)
+                            else {
+                                result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                break '_endEntityValue;
+                            };
+                            let Some(input) = raw_name_bytes(input_source) else {
+                                result = crate::expat_h::XML_ERROR_NO_MEMORY;
+                                break '_endEntityValue;
+                            };
+                            let unknown_encoding = match enc.enc.utf8Convert {
+                                crate::src::xmltok::Utf8Converter::Unknown => parser
+                                    .m_unknownEncodingMem
+                                    .as_ref()
+                                    .and_then(UnknownEncodingMemory::initialized_encoding),
+                                _ => None,
+                            };
+                            if pool_store_name_source(
                                 &mut parser.m_tempPool,
-                                enc_ptr,
-                                entityTextPtr.wrapping_add(enc.enc.minBytesPerChar as usize),
-                                next.wrapping_sub(enc.enc.minBytesPerChar as usize),
+                                &enc.enc,
+                                unknown_encoding,
+                                &input,
                             )
-                            .is_null()
+                            .is_none()
                             {
                                 result = crate::expat_h::XML_ERROR_NO_MEMORY;
                                 break '_endEntityValue;
@@ -22134,13 +22188,39 @@ unsafe fn storeEntityValue(
                     }
                     crate::src::xmltok::XML_TOK_ENTITY_REF
                     | crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                        if poolAppend(
-                            &raw mut dtd.entityValuePool,
-                            enc_ptr,
-                            entityTextPtr,
-                            next,
+                        // The scanner cursors designate a checked parser- or
+                        // entity-owned token window.  Copy that window before
+                        // growing the entity-value pool: an active entity can
+                        // itself be backed by this pool, so retaining its
+                        // slice through conversion could be invalidated by a
+                        // growth allocation.
+                        let Some(input_source) = entity_value_token_source(
+                            parser,
+                            dtd,
+                            entityTextPtr.addr(),
+                            next.addr(),
+                        ) else {
+                            result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            break '_endEntityValue;
+                        };
+                        let Some(input) = raw_name_bytes(input_source) else {
+                            result = crate::expat_h::XML_ERROR_NO_MEMORY;
+                            break '_endEntityValue;
+                        };
+                        let unknown_encoding = match enc.enc.utf8Convert {
+                            crate::src::xmltok::Utf8Converter::Unknown => parser
+                                .m_unknownEncodingMem
+                                .as_ref()
+                                .and_then(UnknownEncodingMemory::initialized_encoding),
+                            _ => None,
+                        };
+                        if pool_append_source(
+                            &mut dtd.entityValuePool,
+                            &enc.enc,
+                            unknown_encoding,
+                            &input,
                         )
-                        .is_null()
+                        .is_none()
                         {
                             result = crate::expat_h::XML_ERROR_NO_MEMORY;
                             break '_endEntityValue;
@@ -23158,9 +23238,10 @@ fn pool_append_source(
         {
             return Some(());
         }
-        if consumed == 0 && written == 0 {
-            return None;
-        }
+        // An exhausted output window can make the converter report no
+        // progress.  That is not an error: `poolGrow` preserves the partial
+        // pool string and provides the next window, exactly as the legacy
+        // cursor adapter did.
         if poolGrow(pool) == 0 {
             return None;
         }
@@ -25008,103 +25089,6 @@ fn poolDestroy(pool: &mut STRING_POOL) {
     pool.storage.free = Vec::new();
 }
 
-unsafe extern "C" fn poolAppend(
-    mut pool: *mut STRING_POOL,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-) -> *mut crate::expat_external_h::XML_Char {
-    let pool = &mut *pool;
-    if pool.start.is_none() && poolGrow(pool) == 0 {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    }
-    let Some(input_len) = end.addr().checked_sub(ptr.addr()) else {
-        return pool
-            .start_ref(true)
-            .and_then(|start| pool.chars_from(start))
-            .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _);
-    };
-    // Preserve the C adapter's treatment of an empty null range, while
-    // validating non-empty input before creating its bounded slice.
-    let input = if input_len == 0 {
-        &[]
-    } else {
-        if ptr.is_null() {
-            return pool
-                .start_ref(true)
-                .and_then(|start| pool.chars_from(start))
-                .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _);
-        }
-        core::slice::from_raw_parts(ptr.cast::<u8>(), input_len)
-    };
-    let encoding = &*enc;
-    let unknown_encoding = if input_len == 0 {
-        None
-    } else {
-        match encoding.utf8Convert {
-            crate::src::xmltok::Utf8Converter::Unknown => {
-                crate::src::xmltok::registered_unknown_encoding(Some(enc.addr()))
-                    .expect("unknown encoding must have state")
-                    .into()
-            }
-            _ => None,
-        }
-    };
-    let mut input_offset = 0usize;
-    loop {
-        let Some(start) = pool.start_ref(true) else {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-        };
-        let Some(capacity) = pool.remaining_capacity() else {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-        };
-        let output_offset = pool.ptr_offset;
-        let Some(output_chars) = pool
-            .chars_from_mut(start)
-            .and_then(|chars| chars.get_mut(..capacity))
-        else {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-        };
-        let Some(output_tail) = output_chars.get_mut(output_offset..) else {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-        };
-        let (convert_res, input_used, written) = crate::src::xmltok::convert_to_utf8_slice(
-            encoding,
-            unknown_encoding.as_ref(),
-            &input[input_offset..],
-            bytemuck::cast_slice_mut(output_tail),
-        );
-        if input_used != 0 {
-            let Some(next_offset) = input_offset.checked_add(input_used) else {
-                return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-            };
-            input_offset = next_offset;
-            ptr = input[input_offset..].as_ptr().cast();
-        }
-        let Some(cursor) = output_offset.checked_add(written) else {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-        };
-        pool.ptr_offset = cursor;
-        if convert_res as ::core::ffi::c_uint
-            == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
-                as ::core::ffi::c_uint
-            || convert_res as ::core::ffi::c_uint
-                == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE as ::core::ffi::c_int
-                    as ::core::ffi::c_uint
-        {
-            break;
-        }
-        if poolGrow(pool) == 0 {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-        }
-    }
-    let Some(start) = pool.start_ref(true) else {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    };
-    pool.chars_from(start)
-        .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _)
-}
-
 fn poolCopyString(
     pool: &mut STRING_POOL,
     chars: &[crate::expat_external_h::XML_Char],
@@ -25155,28 +25139,6 @@ fn pool_copy_chars(
     let string = pool.start_ref(true);
     pool.commit();
     string
-}
-
-unsafe fn poolStoreString(
-    pool: &mut STRING_POOL,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-) -> *mut crate::expat_external_h::XML_Char {
-    if poolAppend(pool, enc, ptr, end).is_null() {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    }
-    if pool.is_full() && poolGrow(pool) == 0 {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    }
-    if !pool.write_cursor(0 as crate::expat_external_h::XML_Char) {
-        return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    }
-    let Some(start) = pool.start_ref(true) else {
-        return ::core::ptr::null_mut();
-    };
-    pool.chars_from(start)
-        .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _)
 }
 
 fn poolBytesToAllocateFor(mut blockSize: ::core::ffi::c_int) -> crate::__stddef_size_t_h::size_t {
