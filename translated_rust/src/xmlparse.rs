@@ -19291,7 +19291,7 @@ unsafe fn storeEntityValue(
         // Borrow the parser-owned source only for this tokenizer operation.
         // Pool growth and entity callbacks below may mutate parser/DTD state,
         // so no source slice may remain live after this block.
-        let (tok, char_ref, scan_next) = {
+        let (tok, char_ref, scan_next, accounting_tolerated) = {
             let Some(input) = entity_value_token_source(
                 parser,
                 dtd,
@@ -19326,20 +19326,28 @@ unsafe fn storeEntityValue(
                 },
                 None => entityTextPtr,
             };
-            (scan.token, char_ref, scan_next)
+            // The token range is already bounded by the parser buffer or the
+            // active entity's replacement text.  Keep it as a slice for
+            // accounting so diagnostics for local entity expansions retain
+            // their real token context rather than reconstructing it from C
+            // cursors.
+            let accounting_window = scan
+                .next
+                .and_then(|next_offset| input.get(..next_offset))
+                .unwrap_or(&[]);
+            let accounting_tolerated = attribute_accounting_diff_tolerated(
+                parser,
+                scan.token,
+                bytemuck::cast_slice(accounting_window),
+                6798 as ::core::ffi::c_int,
+                account,
+                Some(bytemuck::cast_slice(accounting_window)),
+            );
+            (scan.token, char_ref, scan_next, accounting_tolerated)
         };
         next = scan_next;
-        if accountingDiffTolerated(
-            parser,
-            tok,
-            entityTextPtr,
-            next,
-            6798 as ::core::ffi::c_int,
-            account,
-            None,
-        ) == 0
-        {
-            accountingOnAbort(parser);
+        if accounting_tolerated == 0 {
+            cdata_accounting_on_abort(parser);
             result = crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             break;
         } else {
