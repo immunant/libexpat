@@ -3003,7 +3003,7 @@ pub const UTF8_LEAD_3: [::core::ffi::c_char; 2] =
     unsafe { ::core::mem::transmute::<[u8; 2], [::core::ffi::c_char; 2]>(*b"\xEF\0") };
 pub const UTF8_LEAD_4: [::core::ffi::c_char; 2] =
     unsafe { ::core::mem::transmute::<[u8; 2], [::core::ffi::c_char; 2]>(*b"\xF7\0") };
-unsafe extern "C" fn test_utf8_auto_align() {
+extern "C" fn test_utf8_auto_align() {
     unsafe {
         _check_set_test_info(
             b"test_utf8_auto_align\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3606,7 +3606,7 @@ extern "C" fn test_helper_is_whitespace_normalized() {
         assert_test_condition(actual == expected, line, message);
     }
 }
-unsafe extern "C" fn check_attr_contains_normalized_whitespace(
+extern "C" fn check_attr_contains_normalized_whitespace(
     mut userData: *mut ::core::ffi::c_void,
     mut name: *const XML_Char,
     mut atts: *mut *const XML_Char,
@@ -4028,7 +4028,7 @@ extern "C" fn test_not_standalone_handler_accept() {
         1191 as ::core::ffi::c_int,
     );
 }
-unsafe extern "C" fn test_entity_start_tag_level_greater_than_one() {
+extern "C" fn test_entity_start_tag_level_greater_than_one() {
     unsafe {
         _check_set_test_info(
             b"test_entity_start_tag_level_greater_than_one\0".as_ptr()
@@ -4059,7 +4059,7 @@ unsafe extern "C" fn test_entity_start_tag_level_greater_than_one() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_wfc_no_recursive_entity_refs() {
+extern "C" fn test_wfc_no_recursive_entity_refs() {
     unsafe {
         _check_set_test_info(
             b"test_wfc_no_recursive_entity_refs\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4079,7 +4079,7 @@ unsafe extern "C" fn test_wfc_no_recursive_entity_refs() {
         );
     }
 }
-unsafe extern "C" fn test_no_indirectly_recursive_entity_refs() {
+extern "C" fn test_no_indirectly_recursive_entity_refs() {
     unsafe {
         _check_set_test_info(
             b"test_no_indirectly_recursive_entity_refs\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4189,7 +4189,7 @@ unsafe extern "C" fn test_no_indirectly_recursive_entity_refs() {
         }
     }
 }
-unsafe extern "C" fn test_recursive_external_parameter_entity_2() {
+extern "C" fn test_recursive_external_parameter_entity_2() {
     unsafe {
         _check_set_test_info(
             b"test_recursive_external_parameter_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4282,7 +4282,7 @@ unsafe extern "C" fn test_recursive_external_parameter_entity_2() {
         }
     }
 }
-unsafe extern "C" fn test_ext_entity_invalid_parse() {
+extern "C" fn test_ext_entity_invalid_parse() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_invalid_parse\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4354,7 +4354,7 @@ unsafe extern "C" fn test_ext_entity_invalid_parse() {
         }
     }
 }
-unsafe extern "C" fn test_dtd_default_handling() {
+extern "C" fn test_dtd_default_handling() {
     unsafe {
         _check_set_test_info(
             b"test_dtd_default_handling\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4480,7 +4480,7 @@ unsafe extern "C" fn test_dtd_default_handling() {
         );
     }
 }
-unsafe extern "C" fn test_dtd_attr_handling() {
+extern "C" fn test_dtd_attr_handling() {
     unsafe {
         _check_set_test_info(
             b"test_dtd_attr_handling\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4592,7 +4592,7 @@ unsafe extern "C" fn test_dtd_attr_handling() {
         }
     }
 }
-unsafe extern "C" fn test_empty_ns_without_namespaces() {
+extern "C" fn test_empty_ns_without_namespaces() {
     unsafe {
         _check_set_test_info(
             b"test_empty_ns_without_namespaces\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4618,7 +4618,7 @@ unsafe extern "C" fn test_empty_ns_without_namespaces() {
         }
     }
 }
-unsafe extern "C" fn test_ns_in_attribute_default_without_namespaces() {
+extern "C" fn test_ns_in_attribute_default_without_namespaces() {
     unsafe {
         _check_set_test_info(
             b"test_ns_in_attribute_default_without_namespaces\0".as_ptr()
@@ -4740,7 +4740,7 @@ extern "C" fn test_repeated_stop_parser_between_char_data_calls() {
         );
     }
 }
-unsafe extern "C" fn test_good_cdata_ascii() {
+extern "C" fn test_good_cdata_ascii() {
     set_test_info(b"test_good_cdata_ascii\0", 1571 as ::core::ffi::c_int);
     let text = b"<a><![CDATA[<greeting>Hello, world!</greeting>]]></a>\0";
     let expected = bytes_as_xml_char_ptr(b"<greeting>Hello, world!</greeting>\0");
@@ -4771,7 +4771,7 @@ unsafe extern "C" fn test_good_cdata_ascii() {
     );
     char_data_check_xml_chars(&mut storage, expected);
 }
-unsafe extern "C" fn test_good_cdata_utf16() {
+extern "C" fn test_good_cdata_utf16() {
     unsafe {
         _check_set_test_info(
             b"test_good_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4820,7 +4820,7 @@ unsafe extern "C" fn test_good_cdata_utf16() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_good_cdata_utf16_le() {
+extern "C" fn test_good_cdata_utf16_le() {
     set_test_info(b"test_good_cdata_utf16_le\0", 1629 as ::core::ffi::c_int);
     let text =
         b"<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0u\0t\0f\0-\x001\x006\0'\0?\0>\0\n\0<\0a\0>\0<\0!\0[\0C\0D\0A\0T\0A\0[\0h\0e\0l\0l\0o\0]\0]\0>\0<\0/\0a\0>\0\0";
@@ -4839,7 +4839,7 @@ unsafe extern "C" fn test_good_cdata_utf16_le() {
     );
     char_data_check_xml_chars(&mut storage, expected);
 }
-unsafe extern "C" fn test_long_cdata_utf16() {
+extern "C" fn test_long_cdata_utf16() {
     unsafe {
         _check_set_test_info(
             b"test_long_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4916,7 +4916,7 @@ unsafe extern "C" fn test_long_cdata_utf16() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_multichar_cdata_utf16() {
+extern "C" fn test_multichar_cdata_utf16() {
     unsafe {
         _check_set_test_info(
             b"test_multichar_cdata_utf16\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4966,7 +4966,7 @@ unsafe extern "C" fn test_multichar_cdata_utf16() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf16_bad_surrogate_pair() {
+extern "C" fn test_utf16_bad_surrogate_pair() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_bad_surrogate_pair\0".as_ptr() as *const ::core::ffi::c_char,
@@ -5006,7 +5006,7 @@ unsafe extern "C" fn test_utf16_bad_surrogate_pair() {
         }
     }
 }
-unsafe extern "C" fn test_bad_cdata() {
+extern "C" fn test_bad_cdata() {
     set_test_info(b"test_bad_cdata\0", 1799 as ::core::ffi::c_int);
     let cases = [
         CaseData_0 {
@@ -5117,7 +5117,7 @@ unsafe extern "C" fn test_bad_cdata() {
         parser_reset();
     }
 }
-unsafe extern "C" fn test_bad_cdata_utf16() {
+extern "C" fn test_bad_cdata_utf16() {
     set_test_info(b"test_bad_cdata_utf16\0", 1855 as ::core::ffi::c_int);
     let prolog =
         b"\0<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0u\0t\0f\0-\x001\x006\0'\0?\0>\0\n\0<\0a\0>\0";
@@ -5325,7 +5325,7 @@ extern "C" fn test_suspend_parser_between_cdata_calls() {
         xml_failure(1960 as ::core::ffi::c_int);
     }
 }
-unsafe extern "C" fn test_memory_allocation() {
+extern "C" fn test_memory_allocation() {
     unsafe {
         _check_set_test_info(
             b"test_memory_allocation\0".as_ptr() as *const ::core::ffi::c_char,
@@ -5387,7 +5387,7 @@ unsafe extern "C" fn test_memory_allocation() {
         };
     }
 }
-unsafe extern "C" fn test_default_current() {
+extern "C" fn test_default_current() {
     unsafe {
         _check_set_test_info(
             b"test_default_current\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8339,7 +8339,7 @@ extern "C" fn test_set_base() {
 
     parser_set_base(old_base);
 }
-unsafe extern "C" fn test_attributes() {
+extern "C" fn test_attributes() {
     unsafe {
         _check_set_test_info(
             b"test_attributes\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8442,7 +8442,7 @@ unsafe extern "C" fn test_attributes() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_reset_in_entity() {
+extern "C" fn test_reset_in_entity() {
     unsafe {
         _check_set_test_info(
             b"test_reset_in_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8508,7 +8508,7 @@ unsafe extern "C" fn test_reset_in_entity() {
         }
     }
 }
-unsafe extern "C" fn test_resume_invalid_parse() {
+extern "C" fn test_resume_invalid_parse() {
     unsafe {
         _check_set_test_info(
             b"test_resume_invalid_parse\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8563,7 +8563,7 @@ unsafe extern "C" fn test_resume_invalid_parse() {
         }
     }
 }
-unsafe extern "C" fn test_resume_resuspended() {
+extern "C" fn test_resume_resuspended() {
     unsafe {
         _check_set_test_info(
             b"test_resume_resuspended\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8630,7 +8630,7 @@ unsafe extern "C" fn test_resume_resuspended() {
         }
     }
 }
-unsafe extern "C" fn test_cdata_default() {
+extern "C" fn test_cdata_default() {
     unsafe {
         _check_set_test_info(
             b"test_cdata_default\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8675,7 +8675,7 @@ unsafe extern "C" fn test_cdata_default() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_subordinate_reset() {
+extern "C" fn test_subordinate_reset() {
     unsafe {
         _check_set_test_info(
             b"test_subordinate_reset\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8714,7 +8714,7 @@ unsafe extern "C" fn test_subordinate_reset() {
         }
     }
 }
-unsafe extern "C" fn test_subordinate_suspend() {
+extern "C" fn test_subordinate_suspend() {
     unsafe {
         _check_set_test_info(
             b"test_subordinate_suspend\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8753,7 +8753,7 @@ unsafe extern "C" fn test_subordinate_suspend() {
         }
     }
 }
-unsafe extern "C" fn test_subordinate_xdecl_suspend() {
+extern "C" fn test_subordinate_xdecl_suspend() {
     unsafe {
         _check_set_test_info(
             b"test_subordinate_xdecl_suspend\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8793,7 +8793,7 @@ unsafe extern "C" fn test_subordinate_xdecl_suspend() {
         }
     }
 }
-unsafe extern "C" fn test_subordinate_xdecl_abort() {
+extern "C" fn test_subordinate_xdecl_abort() {
     unsafe {
         _check_set_test_info(
             b"test_subordinate_xdecl_abort\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8833,7 +8833,7 @@ unsafe extern "C" fn test_subordinate_xdecl_abort() {
         }
     }
 }
-unsafe extern "C" fn test_ext_entity_invalid_suspended_parse() {
+extern "C" fn test_ext_entity_invalid_suspended_parse() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_invalid_suspended_parse\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8902,7 +8902,7 @@ unsafe extern "C" fn test_ext_entity_invalid_suspended_parse() {
         }
     }
 }
-unsafe extern "C" fn test_explicit_encoding() {
+extern "C" fn test_explicit_encoding() {
     unsafe {
         _check_set_test_info(
             b"test_explicit_encoding\0".as_ptr() as *const ::core::ffi::c_char,
@@ -8980,7 +8980,7 @@ unsafe extern "C" fn test_explicit_encoding() {
         }
     }
 }
-unsafe extern "C" fn test_trailing_cr() {
+extern "C" fn test_trailing_cr() {
     unsafe {
         _check_set_test_info(
             b"test_trailing_cr\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9061,7 +9061,7 @@ unsafe extern "C" fn test_trailing_cr() {
         }
     }
 }
-unsafe extern "C" fn test_ext_entity_trailing_cr() {
+extern "C" fn test_ext_entity_trailing_cr() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_trailing_cr\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9148,7 +9148,7 @@ unsafe extern "C" fn test_ext_entity_trailing_cr() {
         }
     }
 }
-unsafe extern "C" fn test_trailing_rsqb() {
+extern "C" fn test_trailing_rsqb() {
     unsafe {
         _check_set_test_info(
             b"test_trailing_rsqb\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9267,7 +9267,7 @@ unsafe extern "C" fn test_trailing_rsqb() {
         }
     }
 }
-unsafe extern "C" fn test_ext_entity_trailing_rsqb() {
+extern "C" fn test_ext_entity_trailing_rsqb() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_trailing_rsqb\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9316,7 +9316,7 @@ unsafe extern "C" fn test_ext_entity_trailing_rsqb() {
         }
     }
 }
-unsafe extern "C" fn test_ext_entity_good_cdata() {
+extern "C" fn test_ext_entity_good_cdata() {
     set_test_info(b"test_ext_entity_good_cdata\0", 2818 as ::core::ffi::c_int);
     let text = bytes_as_c_char_ptr(
         b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0",
@@ -9325,7 +9325,7 @@ unsafe extern "C" fn test_ext_entity_good_cdata() {
     parser_set_external_entity_ref_handler(external_entity_good_cdata_handler_for_tests());
     ensure_parser_success(parser_parse_c_string(text), 2828 as ::core::ffi::c_int);
 }
-unsafe extern "C" fn test_user_parameters() {
+extern "C" fn test_user_parameters() {
     unsafe {
         _check_set_test_info(
             b"test_user_parameters\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9449,7 +9449,7 @@ unsafe extern "C" fn test_user_parameters() {
         }
     }
 }
-unsafe extern "C" fn test_ext_entity_ref_parameter() {
+extern "C" fn test_ext_entity_ref_parameter() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_ref_parameter\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9521,7 +9521,7 @@ unsafe extern "C" fn test_ext_entity_ref_parameter() {
         }
     }
 }
-unsafe extern "C" fn test_empty_parse() {
+extern "C" fn test_empty_parse() {
     unsafe {
         _check_set_test_info(
             b"test_empty_parse\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9631,7 +9631,7 @@ unsafe extern "C" fn test_empty_parse() {
         }
     }
 }
-unsafe extern "C" fn test_negative_len_parse() {
+extern "C" fn test_negative_len_parse() {
     unsafe {
         _check_set_test_info(
             b"test_negative_len_parse\0".as_ptr() as *const ::core::ffi::c_char,
@@ -9686,7 +9686,7 @@ unsafe extern "C" fn test_negative_len_parse() {
         }
     }
 }
-unsafe extern "C" fn test_negative_len_parse_buffer() {
+extern "C" fn test_negative_len_parse_buffer() {
     unsafe {
         _check_set_test_info(
             b"test_negative_len_parse_buffer\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10042,7 +10042,7 @@ extern "C" fn test_byte_info_at_cdata() {
         3216 as ::core::ffi::c_int,
     );
 }
-unsafe extern "C" fn test_predefined_entities() {
+extern "C" fn test_predefined_entities() {
     unsafe {
         _check_set_test_info(
             b"test_predefined_entities\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10095,7 +10095,7 @@ unsafe extern "C" fn test_predefined_entities() {
         );
     }
 }
-unsafe extern "C" fn test_invalid_tag_in_dtd() {
+extern "C" fn test_invalid_tag_in_dtd() {
     unsafe {
         _check_set_test_info(
             b"test_invalid_tag_in_dtd\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10129,7 +10129,7 @@ unsafe extern "C" fn test_invalid_tag_in_dtd() {
         );
     }
 }
-unsafe extern "C" fn test_not_predefined_entities() {
+extern "C" fn test_not_predefined_entities() {
     unsafe {
         _check_set_test_info(
             b"test_not_predefined_entities\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10157,7 +10157,7 @@ unsafe extern "C" fn test_not_predefined_entities() {
         }
     }
 }
-unsafe extern "C" fn test_ignore_section() {
+extern "C" fn test_ignore_section() {
     unsafe {
         _check_set_test_info(
             b"test_ignore_section\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10263,7 +10263,7 @@ unsafe extern "C" fn test_ignore_section() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ignore_section_utf16() {
+extern "C" fn test_ignore_section_utf16() {
     unsafe {
         _check_set_test_info(
             b"test_ignore_section_utf16\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10373,7 +10373,7 @@ unsafe extern "C" fn test_ignore_section_utf16() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ignore_section_utf16_be() {
+extern "C" fn test_ignore_section_utf16_be() {
     unsafe {
         _check_set_test_info(
             b"test_ignore_section_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10483,7 +10483,7 @@ unsafe extern "C" fn test_ignore_section_utf16_be() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_bad_ignore_section() {
+extern "C" fn test_bad_ignore_section() {
     unsafe {
         _check_set_test_info(
             b"test_bad_ignore_section\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10557,7 +10557,7 @@ unsafe extern "C" fn test_bad_ignore_section() {
         }
     }
 }
-unsafe extern "C" fn external_bom_checker(
+extern "C" fn external_bom_checker(
     mut parser: XML_Parser,
     mut context: *const XML_Char,
     mut base: *const XML_Char,
@@ -10629,7 +10629,7 @@ unsafe extern "C" fn external_bom_checker(
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn test_external_bom_consumed() {
+extern "C" fn test_external_bom_consumed() {
     unsafe {
         _check_set_test_info(
             b"test_external_bom_consumed\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10707,7 +10707,7 @@ unsafe extern "C" fn test_external_bom_consumed() {
         }
     }
 }
-unsafe extern "C" fn test_external_entity_values() {
+extern "C" fn test_external_entity_values() {
     unsafe {
         _check_set_test_info(
             b"test_external_entity_values\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10851,7 +10851,7 @@ unsafe extern "C" fn test_external_entity_values() {
         }
     }
 }
-unsafe extern "C" fn test_ext_entity_not_standalone() {
+extern "C" fn test_ext_entity_not_standalone() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_not_standalone\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10883,7 +10883,7 @@ unsafe extern "C" fn test_ext_entity_not_standalone() {
         );
     }
 }
-unsafe extern "C" fn test_ext_entity_value_abort() {
+extern "C" fn test_ext_entity_value_abort() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_value_abort\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10924,7 +10924,7 @@ unsafe extern "C" fn test_ext_entity_value_abort() {
         }
     }
 }
-unsafe extern "C" fn test_bad_public_doctype() {
+extern "C" fn test_bad_public_doctype() {
     unsafe {
         _check_set_test_info(
             b"test_bad_public_doctype\0".as_ptr() as *const ::core::ffi::c_char,
@@ -10956,7 +10956,7 @@ unsafe extern "C" fn test_bad_public_doctype() {
         );
     }
 }
-unsafe extern "C" fn test_attribute_enum_value() {
+extern "C" fn test_attribute_enum_value() {
     unsafe {
         _check_set_test_info(
             b"test_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11011,7 +11011,7 @@ unsafe extern "C" fn test_attribute_enum_value() {
         );
     }
 }
-unsafe extern "C" fn test_predefined_entity_redefinition() {
+extern "C" fn test_predefined_entity_redefinition() {
     unsafe {
         _check_set_test_info(
             b"test_predefined_entity_redefinition\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11029,7 +11029,7 @@ unsafe extern "C" fn test_predefined_entity_redefinition() {
         );
     }
 }
-unsafe extern "C" fn test_dtd_stop_processing() {
+extern "C" fn test_dtd_stop_processing() {
     unsafe {
         _check_set_test_info(
             b"test_dtd_stop_processing\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11081,7 +11081,7 @@ unsafe extern "C" fn test_dtd_stop_processing() {
         }
     }
 }
-unsafe extern "C" fn test_public_notation_no_sysid() {
+extern "C" fn test_public_notation_no_sysid() {
     unsafe {
         _check_set_test_info(
             b"test_public_notation_no_sysid\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11128,7 +11128,7 @@ unsafe extern "C" fn test_public_notation_no_sysid() {
         }
     }
 }
-unsafe extern "C" fn test_nested_groups() {
+extern "C" fn test_nested_groups() {
     unsafe {
         _check_set_test_info(
             b"test_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11190,7 +11190,7 @@ unsafe extern "C" fn test_nested_groups() {
         }
     }
 }
-unsafe extern "C" fn test_group_choice() {
+extern "C" fn test_group_choice() {
     unsafe {
         _check_set_test_info(
             b"test_group_choice\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11234,7 +11234,7 @@ unsafe extern "C" fn test_group_choice() {
         }
     }
 }
-unsafe extern "C" fn test_standalone_parameter_entity() {
+extern "C" fn test_standalone_parameter_entity() {
     unsafe {
         _check_set_test_info(
             b"test_standalone_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11281,7 +11281,7 @@ unsafe extern "C" fn test_standalone_parameter_entity() {
         }
     }
 }
-unsafe extern "C" fn test_skipped_parameter_entity() {
+extern "C" fn test_skipped_parameter_entity() {
     unsafe {
         _check_set_test_info(
             b"test_skipped_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11345,7 +11345,7 @@ unsafe extern "C" fn test_skipped_parameter_entity() {
         }
     }
 }
-unsafe extern "C" fn test_recursive_external_parameter_entity() {
+extern "C" fn test_recursive_external_parameter_entity() {
     unsafe {
         _check_set_test_info(
             b"test_recursive_external_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11386,7 +11386,7 @@ unsafe extern "C" fn test_recursive_external_parameter_entity() {
         );
     }
 }
-unsafe extern "C" fn test_undefined_ext_entity_in_external_dtd() {
+extern "C" fn test_undefined_ext_entity_in_external_dtd() {
     unsafe {
         _check_set_test_info(
             b"test_undefined_ext_entity_in_external_dtd\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11456,7 +11456,7 @@ unsafe extern "C" fn test_undefined_ext_entity_in_external_dtd() {
         }
     }
 }
-unsafe extern "C" fn test_suspend_xdecl() {
+extern "C" fn test_suspend_xdecl() {
     unsafe {
         _check_set_test_info(
             b"test_suspend_xdecl\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11528,7 +11528,7 @@ unsafe extern "C" fn test_suspend_xdecl() {
         }
     }
 }
-unsafe extern "C" fn test_abort_epilog() {
+extern "C" fn test_abort_epilog() {
     unsafe {
         _check_set_test_info(
             b"test_abort_epilog\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11576,7 +11576,7 @@ unsafe extern "C" fn test_abort_epilog() {
         }
     }
 }
-unsafe extern "C" fn test_abort_epilog_2() {
+extern "C" fn test_abort_epilog_2() {
     unsafe {
         _check_set_test_info(
             b"test_abort_epilog_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11608,7 +11608,7 @@ unsafe extern "C" fn test_abort_epilog_2() {
         );
     }
 }
-unsafe extern "C" fn test_suspend_epilog() {
+extern "C" fn test_suspend_epilog() {
     unsafe {
         _check_set_test_info(
             b"test_suspend_epilog\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11647,7 +11647,7 @@ unsafe extern "C" fn test_suspend_epilog() {
         }
     }
 }
-unsafe extern "C" fn test_suspend_in_sole_empty_tag() {
+extern "C" fn test_suspend_in_sole_empty_tag() {
     unsafe {
         _check_set_test_info(
             b"test_suspend_in_sole_empty_tag\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11708,7 +11708,7 @@ unsafe extern "C" fn test_suspend_in_sole_empty_tag() {
         }
     }
 }
-unsafe extern "C" fn test_unfinished_epilog() {
+extern "C" fn test_unfinished_epilog() {
     unsafe {
         _check_set_test_info(
             b"test_unfinished_epilog\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11726,7 +11726,7 @@ unsafe extern "C" fn test_unfinished_epilog() {
         );
     }
 }
-unsafe extern "C" fn test_partial_char_in_epilog() {
+extern "C" fn test_partial_char_in_epilog() {
     unsafe {
         _check_set_test_info(
             b"test_partial_char_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11773,7 +11773,7 @@ unsafe extern "C" fn test_partial_char_in_epilog() {
         }
     }
 }
-unsafe extern "C" fn test_suspend_resume_internal_entity() {
+extern "C" fn test_suspend_resume_internal_entity() {
     unsafe {
         _check_set_test_info(
             b"test_suspend_resume_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11849,7 +11849,7 @@ unsafe extern "C" fn test_suspend_resume_internal_entity() {
         CharData_CheckXMLChars(&raw mut storage, expected2);
     }
 }
-unsafe extern "C" fn test_suspend_resume_internal_entity_issue_629() {
+extern "C" fn test_suspend_resume_internal_entity_issue_629() {
     unsafe {
         _check_set_test_info(
             b"test_suspend_resume_internal_entity_issue_629\0".as_ptr()
@@ -11909,7 +11909,7 @@ unsafe extern "C" fn test_suspend_resume_internal_entity_issue_629() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_resume_entity_with_syntax_error() {
+extern "C" fn test_resume_entity_with_syntax_error() {
     unsafe {
         _check_set_test_info(
             b"test_resume_entity_with_syntax_error\0".as_ptr() as *const ::core::ffi::c_char,
@@ -11967,7 +11967,7 @@ unsafe extern "C" fn test_resume_entity_with_syntax_error() {
         }
     }
 }
-unsafe extern "C" fn test_suspend_resume_parameter_entity() {
+extern "C" fn test_suspend_resume_parameter_entity() {
     unsafe {
         _check_set_test_info(
             b"test_suspend_resume_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12033,7 +12033,7 @@ unsafe extern "C" fn test_suspend_resume_parameter_entity() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_restart_on_error() {
+extern "C" fn test_restart_on_error() {
     unsafe {
         _check_set_test_info(
             b"test_restart_on_error\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12090,7 +12090,7 @@ unsafe extern "C" fn test_restart_on_error() {
         }
     }
 }
-unsafe extern "C" fn test_reject_lt_in_attribute_value() {
+extern "C" fn test_reject_lt_in_attribute_value() {
     unsafe {
         _check_set_test_info(
             b"test_reject_lt_in_attribute_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12109,7 +12109,7 @@ unsafe extern "C" fn test_reject_lt_in_attribute_value() {
         );
     }
 }
-unsafe extern "C" fn test_reject_unfinished_param_in_att_value() {
+extern "C" fn test_reject_unfinished_param_in_att_value() {
     unsafe {
         _check_set_test_info(
             b"test_reject_unfinished_param_in_att_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12128,7 +12128,7 @@ unsafe extern "C" fn test_reject_unfinished_param_in_att_value() {
         );
     }
 }
-unsafe extern "C" fn test_trailing_cr_in_att_value() {
+extern "C" fn test_trailing_cr_in_att_value() {
     unsafe {
         _check_set_test_info(
             b"test_trailing_cr_in_att_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12153,7 +12153,7 @@ unsafe extern "C" fn test_trailing_cr_in_att_value() {
         }
     }
 }
-unsafe extern "C" fn test_standalone_internal_entity() {
+extern "C" fn test_standalone_internal_entity() {
     unsafe {
         _check_set_test_info(
             b"test_standalone_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12179,7 +12179,7 @@ unsafe extern "C" fn test_standalone_internal_entity() {
         }
     }
 }
-unsafe extern "C" fn test_skipped_external_entity() {
+extern "C" fn test_skipped_external_entity() {
     unsafe {
         _check_set_test_info(
             b"test_skipped_external_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12226,7 +12226,7 @@ unsafe extern "C" fn test_skipped_external_entity() {
         }
     }
 }
-unsafe extern "C" fn test_skipped_null_loaded_ext_entity() {
+extern "C" fn test_skipped_null_loaded_ext_entity() {
     unsafe {
         _check_set_test_info(
             b"test_skipped_null_loaded_ext_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12282,7 +12282,7 @@ unsafe extern "C" fn test_skipped_null_loaded_ext_entity() {
         }
     }
 }
-unsafe extern "C" fn test_skipped_unloaded_ext_entity() {
+extern "C" fn test_skipped_unloaded_ext_entity() {
     unsafe {
         _check_set_test_info(
             b"test_skipped_unloaded_ext_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12329,7 +12329,7 @@ unsafe extern "C" fn test_skipped_unloaded_ext_entity() {
         }
     }
 }
-unsafe extern "C" fn test_param_entity_with_trailing_cr() {
+extern "C" fn test_param_entity_with_trailing_cr() {
     unsafe {
         _check_set_test_info(
             b"test_param_entity_with_trailing_cr\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12412,7 +12412,7 @@ unsafe extern "C" fn test_param_entity_with_trailing_cr() {
         }
     }
 }
-unsafe extern "C" fn test_invalid_character_entity() {
+extern "C" fn test_invalid_character_entity() {
     unsafe {
         _check_set_test_info(
             b"test_invalid_character_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12432,7 +12432,7 @@ unsafe extern "C" fn test_invalid_character_entity() {
         );
     }
 }
-unsafe extern "C" fn test_invalid_character_entity_2() {
+extern "C" fn test_invalid_character_entity_2() {
     unsafe {
         _check_set_test_info(
             b"test_invalid_character_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12452,7 +12452,7 @@ unsafe extern "C" fn test_invalid_character_entity_2() {
         );
     }
 }
-unsafe extern "C" fn test_invalid_character_entity_3() {
+extern "C" fn test_invalid_character_entity_3() {
     unsafe {
         _check_set_test_info(
             b"test_invalid_character_entity_3\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12492,7 +12492,7 @@ unsafe extern "C" fn test_invalid_character_entity_3() {
         }
     }
 }
-unsafe extern "C" fn test_invalid_character_entity_4() {
+extern "C" fn test_invalid_character_entity_4() {
     unsafe {
         _check_set_test_info(
             b"test_invalid_character_entity_4\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12512,7 +12512,7 @@ unsafe extern "C" fn test_invalid_character_entity_4() {
         );
     }
 }
-unsafe extern "C" fn test_pi_handled_in_default() {
+extern "C" fn test_pi_handled_in_default() {
     unsafe {
         _check_set_test_info(
             b"test_pi_handled_in_default\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12557,7 +12557,7 @@ unsafe extern "C" fn test_pi_handled_in_default() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_comment_handled_in_default() {
+extern "C" fn test_comment_handled_in_default() {
     unsafe {
         _check_set_test_info(
             b"test_comment_handled_in_default\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12602,7 +12602,7 @@ unsafe extern "C" fn test_comment_handled_in_default() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_pi_yml() {
+extern "C" fn test_pi_yml() {
     unsafe {
         _check_set_test_info(
             b"test_pi_yml\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12647,7 +12647,7 @@ unsafe extern "C" fn test_pi_yml() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_pi_xnl() {
+extern "C" fn test_pi_xnl() {
     unsafe {
         _check_set_test_info(
             b"test_pi_xnl\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12692,7 +12692,7 @@ unsafe extern "C" fn test_pi_xnl() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_pi_xmm() {
+extern "C" fn test_pi_xmm() {
     unsafe {
         _check_set_test_info(
             b"test_pi_xmm\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12737,7 +12737,7 @@ unsafe extern "C" fn test_pi_xmm() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf16_pi() {
+extern "C" fn test_utf16_pi() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_pi\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12785,7 +12785,7 @@ unsafe extern "C" fn test_utf16_pi() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf16_be_pi() {
+extern "C" fn test_utf16_be_pi() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_be_pi\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12833,7 +12833,7 @@ unsafe extern "C" fn test_utf16_be_pi() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf16_be_comment() {
+extern "C" fn test_utf16_be_comment() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_be_comment\0".as_ptr() as *const ::core::ffi::c_char,
@@ -12876,7 +12876,7 @@ unsafe extern "C" fn test_utf16_be_comment() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf16_le_comment() {
+extern "C" fn test_utf16_le_comment() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_le_comment\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13249,7 +13249,7 @@ extern "C" fn test_unknown_encoding_user_data_secondary() {
     );
     parser_free(parser);
 }
-unsafe extern "C" fn test_ext_entity_latin1_utf16le_bom() {
+extern "C" fn test_ext_entity_latin1_utf16le_bom() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_latin1_utf16le_bom\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13313,7 +13313,7 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16le_bom() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ext_entity_latin1_utf16be_bom() {
+extern "C" fn test_ext_entity_latin1_utf16be_bom() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_latin1_utf16be_bom\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13377,7 +13377,7 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16be_bom() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ext_entity_latin1_utf16le_bom2() {
+extern "C" fn test_ext_entity_latin1_utf16le_bom2() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_latin1_utf16le_bom2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13441,7 +13441,7 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16le_bom2() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ext_entity_latin1_utf16be_bom2() {
+extern "C" fn test_ext_entity_latin1_utf16be_bom2() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_latin1_utf16be_bom2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13505,7 +13505,7 @@ unsafe extern "C" fn test_ext_entity_latin1_utf16be_bom2() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ext_entity_utf16_be() {
+extern "C" fn test_ext_entity_utf16_be() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13570,7 +13570,7 @@ unsafe extern "C" fn test_ext_entity_utf16_be() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ext_entity_utf16_le() {
+extern "C" fn test_ext_entity_utf16_le() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13635,7 +13635,7 @@ unsafe extern "C" fn test_ext_entity_utf16_le() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_ext_entity_utf16_unknown() {
+extern "C" fn test_ext_entity_utf16_unknown() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_utf16_unknown\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13676,7 +13676,7 @@ unsafe extern "C" fn test_ext_entity_utf16_unknown() {
         );
     }
 }
-unsafe extern "C" fn test_ext_entity_utf8_non_bom() {
+extern "C" fn test_ext_entity_utf8_non_bom() {
     unsafe {
         _check_set_test_info(
             b"test_ext_entity_utf8_non_bom\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13740,7 +13740,7 @@ unsafe extern "C" fn test_ext_entity_utf8_non_bom() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf8_in_cdata_section() {
+extern "C" fn test_utf8_in_cdata_section() {
     unsafe {
         _check_set_test_info(
             b"test_utf8_in_cdata_section\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13758,7 +13758,7 @@ unsafe extern "C" fn test_utf8_in_cdata_section() {
         );
     }
 }
-unsafe extern "C" fn test_utf8_in_cdata_section_2() {
+extern "C" fn test_utf8_in_cdata_section_2() {
     unsafe {
         _check_set_test_info(
             b"test_utf8_in_cdata_section_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13776,7 +13776,7 @@ unsafe extern "C" fn test_utf8_in_cdata_section_2() {
         );
     }
 }
-unsafe extern "C" fn test_utf8_in_start_tags() {
+extern "C" fn test_utf8_in_start_tags() {
     unsafe {
         _check_set_test_info(
             b"test_utf8_in_start_tags\0".as_ptr() as *const ::core::ffi::c_char,
@@ -13989,7 +13989,7 @@ unsafe extern "C" fn test_utf8_in_start_tags() {
         }
     }
 }
-unsafe extern "C" fn test_trailing_spaces_in_elements() {
+extern "C" fn test_trailing_spaces_in_elements() {
     unsafe {
         _check_set_test_info(
             b"test_trailing_spaces_in_elements\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14037,7 +14037,7 @@ unsafe extern "C" fn test_trailing_spaces_in_elements() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf16_attribute() {
+extern "C" fn test_utf16_attribute() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_attribute\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14084,7 +14084,7 @@ unsafe extern "C" fn test_utf16_attribute() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_utf16_second_attr() {
+extern "C" fn test_utf16_second_attr() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_second_attr\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14131,7 +14131,7 @@ unsafe extern "C" fn test_utf16_second_attr() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_attr_after_solidus() {
+extern "C" fn test_attr_after_solidus() {
     unsafe {
         _check_set_test_info(
             b"test_attr_after_solidus\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14149,7 +14149,7 @@ unsafe extern "C" fn test_attr_after_solidus() {
         );
     }
 }
-unsafe extern "C" fn test_utf16_pe() {
+extern "C" fn test_utf16_pe() {
     unsafe {
         _check_set_test_info(
             b"test_utf16_pe\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14205,7 +14205,7 @@ unsafe extern "C" fn test_utf16_pe() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_bad_attr_desc_keyword() {
+extern "C" fn test_bad_attr_desc_keyword() {
     unsafe {
         _check_set_test_info(
             b"test_bad_attr_desc_keyword\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14224,7 +14224,7 @@ unsafe extern "C" fn test_bad_attr_desc_keyword() {
         );
     }
 }
-unsafe extern "C" fn test_bad_attr_desc_keyword_utf16() {
+extern "C" fn test_bad_attr_desc_keyword_utf16() {
     unsafe {
         _check_set_test_info(
             b"test_bad_attr_desc_keyword_utf16\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14264,7 +14264,7 @@ unsafe extern "C" fn test_bad_attr_desc_keyword_utf16() {
         }
     }
 }
-unsafe extern "C" fn test_bad_doctype() {
+extern "C" fn test_bad_doctype() {
     unsafe {
         _check_set_test_info(
             b"test_bad_doctype\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14295,7 +14295,7 @@ unsafe extern "C" fn test_bad_doctype() {
         );
     }
 }
-unsafe extern "C" fn test_bad_doctype_utf8() {
+extern "C" fn test_bad_doctype_utf8() {
     unsafe {
         _check_set_test_info(
             b"test_bad_doctype_utf8\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14313,7 +14313,7 @@ unsafe extern "C" fn test_bad_doctype_utf8() {
         );
     }
 }
-unsafe extern "C" fn test_bad_doctype_utf16() {
+extern "C" fn test_bad_doctype_utf16() {
     unsafe {
         _check_set_test_info(
             b"test_bad_doctype_utf16\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14352,7 +14352,7 @@ unsafe extern "C" fn test_bad_doctype_utf16() {
         }
     }
 }
-unsafe extern "C" fn test_bad_doctype_plus() {
+extern "C" fn test_bad_doctype_plus() {
     unsafe {
         _check_set_test_info(
             b"test_bad_doctype_plus\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14371,7 +14371,7 @@ unsafe extern "C" fn test_bad_doctype_plus() {
         );
     }
 }
-unsafe extern "C" fn test_bad_doctype_star() {
+extern "C" fn test_bad_doctype_star() {
     unsafe {
         _check_set_test_info(
             b"test_bad_doctype_star\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14390,7 +14390,7 @@ unsafe extern "C" fn test_bad_doctype_star() {
         );
     }
 }
-unsafe extern "C" fn test_bad_doctype_query() {
+extern "C" fn test_bad_doctype_query() {
     unsafe {
         _check_set_test_info(
             b"test_bad_doctype_query\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14435,7 +14435,7 @@ extern "C" fn test_unknown_encoding_bad_ignore() {
         5203 as ::core::ffi::c_int,
     );
 }
-unsafe extern "C" fn test_entity_in_utf16_be_attr() {
+extern "C" fn test_entity_in_utf16_be_attr() {
     unsafe {
         _check_set_test_info(
             b"test_entity_in_utf16_be_attr\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14484,7 +14484,7 @@ unsafe extern "C" fn test_entity_in_utf16_be_attr() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_entity_in_utf16_le_attr() {
+extern "C" fn test_entity_in_utf16_le_attr() {
     unsafe {
         _check_set_test_info(
             b"test_entity_in_utf16_le_attr\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14533,7 +14533,7 @@ unsafe extern "C" fn test_entity_in_utf16_le_attr() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_entity_public_utf16_be() {
+extern "C" fn test_entity_public_utf16_be() {
     unsafe {
         _check_set_test_info(
             b"test_entity_public_utf16_be\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14604,7 +14604,7 @@ unsafe extern "C" fn test_entity_public_utf16_be() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_entity_public_utf16_le() {
+extern "C" fn test_entity_public_utf16_le() {
     unsafe {
         _check_set_test_info(
             b"test_entity_public_utf16_le\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14675,7 +14675,7 @@ unsafe extern "C" fn test_entity_public_utf16_le() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_short_doctype() {
+extern "C" fn test_short_doctype() {
     unsafe {
         _check_set_test_info(
             b"test_short_doctype\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14693,7 +14693,7 @@ unsafe extern "C" fn test_short_doctype() {
         );
     }
 }
-unsafe extern "C" fn test_short_doctype_2() {
+extern "C" fn test_short_doctype_2() {
     unsafe {
         _check_set_test_info(
             b"test_short_doctype_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14711,7 +14711,7 @@ unsafe extern "C" fn test_short_doctype_2() {
         );
     }
 }
-unsafe extern "C" fn test_short_doctype_3() {
+extern "C" fn test_short_doctype_3() {
     unsafe {
         _check_set_test_info(
             b"test_short_doctype_3\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14729,7 +14729,7 @@ unsafe extern "C" fn test_short_doctype_3() {
         );
     }
 }
-unsafe extern "C" fn test_long_doctype() {
+extern "C" fn test_long_doctype() {
     unsafe {
         _check_set_test_info(
             b"test_long_doctype\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14748,7 +14748,7 @@ unsafe extern "C" fn test_long_doctype() {
         );
     }
 }
-unsafe extern "C" fn test_bad_entity() {
+extern "C" fn test_bad_entity() {
     unsafe {
         _check_set_test_info(
             b"test_bad_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14767,7 +14767,7 @@ unsafe extern "C" fn test_bad_entity() {
         );
     }
 }
-unsafe extern "C" fn test_bad_entity_2() {
+extern "C" fn test_bad_entity_2() {
     unsafe {
         _check_set_test_info(
             b"test_bad_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14786,7 +14786,7 @@ unsafe extern "C" fn test_bad_entity_2() {
         );
     }
 }
-unsafe extern "C" fn test_bad_entity_3() {
+extern "C" fn test_bad_entity_3() {
     unsafe {
         _check_set_test_info(
             b"test_bad_entity_3\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14806,7 +14806,7 @@ unsafe extern "C" fn test_bad_entity_3() {
         );
     }
 }
-unsafe extern "C" fn test_bad_entity_4() {
+extern "C" fn test_bad_entity_4() {
     unsafe {
         _check_set_test_info(
             b"test_bad_entity_4\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14826,7 +14826,7 @@ unsafe extern "C" fn test_bad_entity_4() {
         );
     }
 }
-unsafe extern "C" fn test_bad_notation() {
+extern "C" fn test_bad_notation() {
     unsafe {
         _check_set_test_info(
             b"test_bad_notation\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14845,7 +14845,7 @@ unsafe extern "C" fn test_bad_notation() {
         );
     }
 }
-unsafe extern "C" fn test_default_doctype_handler() {
+extern "C" fn test_default_doctype_handler() {
     unsafe {
         _check_set_test_info(
             b"test_default_doctype_handler\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14930,7 +14930,7 @@ unsafe extern "C" fn test_default_doctype_handler() {
         }
     }
 }
-unsafe extern "C" fn test_empty_element_abort() {
+extern "C" fn test_empty_element_abort() {
     unsafe {
         _check_set_test_info(
             b"test_empty_element_abort\0".as_ptr() as *const ::core::ffi::c_char,
@@ -14966,7 +14966,7 @@ unsafe extern "C" fn test_empty_element_abort() {
         }
     }
 }
-unsafe extern "C" fn test_pool_integrity_with_unfinished_attr() {
+extern "C" fn test_pool_integrity_with_unfinished_attr() {
     unsafe {
         _check_set_test_info(
             b"test_pool_integrity_with_unfinished_attr\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15034,7 +15034,7 @@ unsafe extern "C" fn test_pool_integrity_with_unfinished_attr() {
         CharData_CheckXMLChars(&raw mut storage, expected);
     }
 }
-unsafe extern "C" fn test_entity_ref_no_elements() {
+extern "C" fn test_entity_ref_no_elements() {
     unsafe {
         _check_set_test_info(
             b"test_entity_ref_no_elements\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15074,7 +15074,7 @@ unsafe extern "C" fn test_entity_ref_no_elements() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_deep_nested_entity() {
+extern "C" fn test_deep_nested_entity() {
     unsafe {
         _check_set_test_info(
             b"test_deep_nested_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15157,7 +15157,7 @@ unsafe extern "C" fn test_deep_nested_entity() {
         free(text as *mut ::core::ffi::c_void);
     }
 }
-unsafe extern "C" fn test_deep_nested_attribute_entity() {
+extern "C" fn test_deep_nested_attribute_entity() {
     unsafe {
         _check_set_test_info(
             b"test_deep_nested_attribute_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15265,7 +15265,7 @@ unsafe extern "C" fn test_deep_nested_attribute_entity() {
         free(text as *mut ::core::ffi::c_void);
     }
 }
-unsafe extern "C" fn test_deep_nested_entity_delayed_interpretation() {
+extern "C" fn test_deep_nested_entity_delayed_interpretation() {
     unsafe {
         _check_set_test_info(
             b"test_deep_nested_entity_delayed_interpretation\0".as_ptr()
@@ -15332,7 +15332,7 @@ unsafe extern "C" fn test_deep_nested_entity_delayed_interpretation() {
         free(text as *mut ::core::ffi::c_void);
     }
 }
-unsafe extern "C" fn test_nested_entity_suspend() {
+extern "C" fn test_nested_entity_suspend() {
     unsafe {
         _check_set_test_info(
             b"test_nested_entity_suspend\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15389,7 +15389,7 @@ unsafe extern "C" fn test_nested_entity_suspend() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_nested_entity_suspend_2() {
+extern "C" fn test_nested_entity_suspend_2() {
     unsafe {
         _check_set_test_info(
             b"test_nested_entity_suspend_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15449,7 +15449,7 @@ unsafe extern "C" fn test_nested_entity_suspend_2() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_big_tokens_scale_linearly() {
+extern "C" fn test_big_tokens_scale_linearly() {
     unsafe {
         _check_set_test_info(
             b"test_big_tokens_scale_linearly\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15627,7 +15627,7 @@ unsafe extern "C" fn test_big_tokens_scale_linearly() {
         }
     }
 }
-unsafe extern "C" fn test_set_reparse_deferral() {
+extern "C" fn test_set_reparse_deferral() {
     unsafe {
         _check_set_test_info(
             b"test_set_reparse_deferral\0".as_ptr() as *const ::core::ffi::c_char,
@@ -15797,7 +15797,7 @@ unsafe extern "C" fn test_set_reparse_deferral() {
         }
     }
 }
-unsafe extern "C" fn element_decl_counter(
+extern "C" fn element_decl_counter(
     mut userData: *mut ::core::ffi::c_void,
     mut name: *const XML_Char,
     mut model: *mut XML_Content,
@@ -15808,7 +15808,7 @@ unsafe extern "C" fn element_decl_counter(
         XML_FreeContentModel((*testdata).parser, model);
     }
 }
-unsafe extern "C" fn external_inherited_parser(
+extern "C" fn external_inherited_parser(
     mut p: XML_Parser,
     mut context: *const XML_Char,
     mut base: *const XML_Char,
@@ -16033,7 +16033,7 @@ unsafe extern "C" fn external_inherited_parser(
         return XML_STATUS_OK as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn test_reparse_deferral_is_inherited() {
+extern "C" fn test_reparse_deferral_is_inherited() {
     unsafe {
         _check_set_test_info(
             b"test_reparse_deferral_is_inherited\0".as_ptr() as *const ::core::ffi::c_char,
@@ -16102,7 +16102,7 @@ unsafe extern "C" fn test_reparse_deferral_is_inherited() {
         }
     }
 }
-unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
+extern "C" fn test_set_reparse_deferral_on_null_parser() {
     unsafe {
         _check_set_test_info(
             b"test_set_reparse_deferral_on_null_parser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -16191,7 +16191,7 @@ unsafe extern "C" fn test_set_reparse_deferral_on_null_parser() {
         }
     }
 }
-unsafe extern "C" fn test_set_reparse_deferral_on_the_fly() {
+extern "C" fn test_set_reparse_deferral_on_the_fly() {
     unsafe {
         _check_set_test_info(
             b"test_set_reparse_deferral_on_the_fly\0".as_ptr() as *const ::core::ffi::c_char,
@@ -16318,7 +16318,7 @@ unsafe extern "C" fn test_set_reparse_deferral_on_the_fly() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_set_bad_reparse_option() {
+extern "C" fn test_set_bad_reparse_option() {
     unsafe {
         _check_set_test_info(
             b"test_set_bad_reparse_option\0".as_ptr() as *const ::core::ffi::c_char,
@@ -16451,7 +16451,7 @@ extern "C" fn counting_realloc(
 extern "C" fn counting_malloc(size: size_t) -> *mut ::core::ffi::c_void {
     counting_realloc(NULL, size)
 }
-unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
+extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
     unsafe {
         _check_set_test_info(
             b"test_bypass_heuristic_when_close_to_bufsize\0".as_ptr() as *const ::core::ffi::c_char,
@@ -16735,7 +16735,7 @@ unsafe extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
         free(document as *mut ::core::ffi::c_void);
     }
 }
-unsafe extern "C" fn test_varying_buffer_fills() {
+extern "C" fn test_varying_buffer_fills() {
     unsafe {
         _check_set_test_info(
             b"test_varying_buffer_fills\0".as_ptr() as *const ::core::ffi::c_char,
