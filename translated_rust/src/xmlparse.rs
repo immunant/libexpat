@@ -3021,7 +3021,7 @@ fn dispatch_attlist_decl_callback(
 trait XmlDeclCallback: Send + Sync + std::any::Any {}
 
 impl XmlDeclCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
@@ -3057,7 +3057,7 @@ impl XmlDeclCallbackAdapter {
 
     fn invoke(&self, event: XmlDeclCallbackEvent<'_>) {
         let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any)
-            .downcast_ref::<unsafe extern "C" fn(
+            .downcast_ref::<extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *const crate::expat_external_h::XML_Char,
@@ -3066,14 +3066,15 @@ impl XmlDeclCallbackAdapter {
         else {
             return;
         };
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event.version.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event.encoding.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event.standalone,
-            );
-        }
+        // The registration boundary admits this exact C callback shape, and
+        // the event supplies parser-owned, NUL-terminated XML-character
+        // views for the complete synchronous call.
+        callback(
+            handler_arg_from_state!(event.parser),
+            event.version.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event.encoding.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event.standalone,
+        );
     }
 }
 

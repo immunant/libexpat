@@ -540,7 +540,7 @@ pub mod expat_h {
     >;
 
     pub type XML_XmlDeclHandler = Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *mut ::core::ffi::c_void,
             *const crate::expat_external_h::XML_Char,
             *const crate::expat_external_h::XML_Char,
