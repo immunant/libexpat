@@ -12,6 +12,7 @@ path = "lib.rs"
 crate-type = [ "cdylib",]
 
 [dependencies]
+bytemuck = "1.24.0"
 c2rust-bitfields = "0.22.1"
 
 [workspace]

@@ -357,9 +357,12 @@ impl<'a> ScannerContext<'a> {
         let Some(span) = end.addr().checked_sub(ptr.addr()) else {
             return Self(ScannerContextKind::InvalidRange);
         };
+        let chars = ::core::slice::from_raw_parts(ptr, span);
         let input = ScannerInput {
-            bytes: ::core::slice::from_raw_parts(ptr.cast::<u8>(), span),
-            chars: ::core::slice::from_raw_parts(ptr, span),
+            // `c_char` and `u8` have identical one-byte layouts.  The safe
+            // cast keeps the raw cursor conversion to this single slice.
+            bytes: bytemuck::cast_slice(chars),
+            chars,
         };
         match scanner {
             Scanner::InitProlog
