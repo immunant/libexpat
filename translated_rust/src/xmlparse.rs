@@ -12213,125 +12213,85 @@ unsafe extern "C" fn getAttributeId(
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut ATTRIBUTE_ID {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    let mut name: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-        && poolGrow(&raw mut (*dtd).pool) == 0
-    {
-        0 as ::core::ffi::c_int
-    } else {
-        let c2rust_fresh38 = (*dtd).pool.ptr;
-        (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-        *c2rust_fresh38 = '\0' as crate::expat_external_h::XML_Char;
-        1 as ::core::ffi::c_int
-    } == 0
-    {
+    let parser_ptr = parser;
+    let parser = &mut *parser;
+    let dtd = &mut *parser.m_dtd;
+    if !pool_append_char(
+        &raw mut dtd.pool,
+        '\0' as crate::expat_external_h::XML_Char,
+    ) {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
-    name = poolStoreString(&raw mut (*dtd).pool, enc, start, end);
+    let mut name = poolStoreString(&raw mut dtd.pool, enc, start, end);
     if name.is_null() {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
-    name = name.offset(1);
-    id = lookup(
-        parser,
-        &raw mut (*dtd).attributeIds,
+    name = name.wrapping_add(1);
+    let name_bytes = ::std::ffi::CStr::from_ptr(name).to_bytes();
+    let id = lookup(
+        parser_ptr,
+        &raw mut dtd.attributeIds,
         name as KEY,
         ::core::mem::size_of::<ATTRIBUTE_ID>(),
     ) as *mut ATTRIBUTE_ID;
     if id.is_null() {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
-    if (*id).name != name as *mut crate::expat_external_h::XML_Char {
-        (*dtd).pool.ptr = (*dtd).pool.start;
+    let id = &mut *id;
+    if id.name != name as *mut crate::expat_external_h::XML_Char {
+        dtd.pool.ptr = dtd.pool.start;
     } else {
-        (*dtd).pool.start = (*dtd).pool.ptr;
-        if (*parser).m_ns != 0 {
-            if *name.offset(0 as isize) as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int
-                && *name.offset(1 as isize) as ::core::ffi::c_int == 0x6d as ::core::ffi::c_int
-                && *name.offset(2 as isize) as ::core::ffi::c_int == 0x6c as ::core::ffi::c_int
-                && *name.offset(3 as isize) as ::core::ffi::c_int == 0x6e as ::core::ffi::c_int
-                && *name.offset(4 as isize) as ::core::ffi::c_int == 0x73 as ::core::ffi::c_int
-                && (*name.offset(5 as isize) as ::core::ffi::c_int == '\0' as ::core::ffi::c_int
-                    || *name.offset(5 as isize) as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int)
+        dtd.pool.start = dtd.pool.ptr;
+        if parser.m_ns != 0 {
+            if name_bytes.starts_with(b"xmlns")
+                && matches!(name_bytes.get(5), None | Some(b':'))
             {
-                if *name.offset(5 as isize) as ::core::ffi::c_int == '\0' as ::core::ffi::c_int {
-                    (*id).prefix = &raw mut (*dtd).defaultPrefix;
+                if name_bytes.len() == 5 {
+                    id.prefix = &raw mut dtd.defaultPrefix;
                 } else {
-                    (*id).prefix = lookup(
-                        parser,
-                        &raw mut (*dtd).prefixes,
-                        name.offset(6 as ::core::ffi::c_int as isize),
+                    id.prefix = lookup(
+                        parser_ptr,
+                        &raw mut dtd.prefixes,
+                        name.wrapping_add(6),
                         ::core::mem::size_of::<PREFIX>(),
                     ) as *mut PREFIX;
                 }
-                (*id).xmlns = crate::expat_h::XML_TRUE;
+                id.xmlns = crate::expat_h::XML_TRUE;
             } else {
-                let mut i: ::core::ffi::c_int = 0;
-                i = 0 as ::core::ffi::c_int;
-                while *name.offset(i as isize) != 0 {
-                    if *name.offset(i as isize) as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int
-                    {
-                        let mut j: ::core::ffi::c_int = 0;
-                        j = 0 as ::core::ffi::c_int;
-                        while j < i {
-                            if if (*dtd).pool.ptr
-                                == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(&raw mut (*dtd).pool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh39 = (*dtd).pool.ptr;
-                                (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                                *c2rust_fresh39 = *name.offset(j as isize);
-                                1 as ::core::ffi::c_int
-                            } == 0
-                            {
-                                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                            }
-                            j += 1;
-                        }
-                        if if (*dtd).pool.ptr
-                            == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                            && poolGrow(&raw mut (*dtd).pool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            let c2rust_fresh40 = (*dtd).pool.ptr;
-                            (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                            *c2rust_fresh40 = '\0' as crate::expat_external_h::XML_Char;
-                            1 as ::core::ffi::c_int
-                        } == 0
-                        {
+                if let Some(prefix_len) = name_bytes.iter().position(|&ch| ch == b':') {
+                    for &ch in &name_bytes[..prefix_len] {
+                        if !pool_append_char(
+                            &raw mut dtd.pool,
+                            ch as crate::expat_external_h::XML_Char,
+                        ) {
                             return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                         }
-                        (*id).prefix = lookup(
-                            parser,
-                            &raw mut (*dtd).prefixes,
-                            (*dtd).pool.start as KEY,
+                    }
+                    if !pool_append_char(
+                        &raw mut dtd.pool,
+                        '\0' as crate::expat_external_h::XML_Char,
+                    ) {
+                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    }
+                    id.prefix = lookup(
+                            parser_ptr,
+                            &raw mut dtd.prefixes,
+                            dtd.pool.start as KEY,
                             ::core::mem::size_of::<PREFIX>(),
                         ) as *mut PREFIX;
-                        if (*id).prefix.is_null() {
-                            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                        }
-                        if (*(*id).prefix).name
-                            == (*dtd).pool.start as *const crate::expat_external_h::XML_Char
-                        {
-                            (*dtd).pool.start = (*dtd).pool.ptr;
-                        } else {
-                            (*dtd).pool.ptr = (*dtd).pool.start;
-                        }
-                        break;
+                    if id.prefix.is_null() {
+                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    }
+                    if (*id.prefix).name == dtd.pool.start as *const crate::expat_external_h::XML_Char {
+                        dtd.pool.start = dtd.pool.ptr;
                     } else {
-                        i += 1;
+                        dtd.pool.ptr = dtd.pool.start;
                     }
                 }
             }
         }
     }
-    return id;
+    id
 }
 
 // The string pool owns the resulting context.  Keep the raw-pointer work for
