@@ -4088,32 +4088,6 @@ pub mod xmltok_impl_c {
         n_atts
     }
 
-    pub unsafe extern "C" fn normal_nameLength(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut start: *const ::core::ffi::c_char = ptr;
-        loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr.offset_from(start) as ::core::ffi::c_int,
-            }
-        }
-    }
-
     pub unsafe fn skip_s(
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,
@@ -7488,35 +7462,6 @@ pub mod xmltok_impl_c {
         checkCharRefNumber(result)
     }
 
-    pub unsafe extern "C" fn little2_nameLength(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut start: *const ::core::ffi::c_char = ptr;
-        loop {
-            match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr.offset_from(start) as ::core::ffi::c_int,
-            }
-        }
-    }
-
     pub(crate) fn little2_update_position(
         encoding: &normal_encoding,
         bytes: &[u8],
@@ -10807,36 +10752,6 @@ pub mod xmltok_impl_c {
         Normalized(::core::ffi::c_char),
     }
 
-    pub unsafe extern "C" fn big2_nameLength(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut start: *const ::core::ffi::c_char = ptr;
-        loop {
-            match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr.offset_from(start) as ::core::ffi::c_int,
-            }
-        }
-    }
-
     pub(crate) fn big2_update_position(
         encoding: &normal_encoding,
         bytes: &[u8],
@@ -12222,7 +12137,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_isPublicId;
-pub use crate::src::xmltok::xmltok_impl_c::big2_nameLength;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanCdataSection;
@@ -12244,7 +12158,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_isPublicId;
-pub use crate::src::xmltok::xmltok_impl_c::little2_nameLength;
 pub use crate::src::xmltok::xmltok_impl_c::little2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanCdataSection;
@@ -12267,7 +12180,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
-pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
