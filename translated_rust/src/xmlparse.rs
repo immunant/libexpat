@@ -9578,11 +9578,9 @@ unsafe extern "C" fn doContent(
                         let Some(tag_index) = (*parser).m_tagStack else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
-                        let Some(tag_storage) = (&mut (*parser).m_activeTags).get_mut(tag_index)
-                        else {
+                        if tag_index >= (*parser).m_activeTags.len() {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                        };
-                        let mut tag_0: *mut TAG = tag_storage.tag.as_mut_ptr();
+                        }
                         rawName_0 = s.wrapping_offset(
                             ((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
                         );
@@ -9592,7 +9590,13 @@ unsafe extern "C" fn doContent(
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
                         len = raw_name_len;
-                        let names_match = if len == (*tag_0).rawNameLength {
+                        let tag_0 = (&(*parser).m_activeTags)
+                            .get(tag_index)
+                            .expect("validated active tag index")
+                            .tag
+                            .first()
+                            .expect("tag storage has one tag");
+                        let names_match = if len == tag_0.rawNameLength {
                             let end = rawName_0.wrapping_offset(len as isize).addr();
                             match (
                                 event_raw_name_source(
@@ -9602,7 +9606,7 @@ unsafe extern "C" fn doContent(
                                     rawName_0.addr(),
                                     end,
                                 ),
-                                stored_raw_name_source(&*parser, &*dtd, &*tag_0),
+                                stored_raw_name_source(&*parser, &*dtd, tag_0),
                             ) {
                                 (Some(actual), Some(expected)) => actual.same_bytes(&expected),
                                 _ => false,
@@ -9615,37 +9619,46 @@ unsafe extern "C" fn doContent(
                             return crate::expat_h::XML_ERROR_TAG_MISMATCH;
                         }
                         (*parser).m_tagStack = tag_index.checked_sub(1);
-                        let tag_storage = (*parser).m_activeTags.remove(tag_index);
-                        (*parser).m_freeTagList.tags.push(tag_storage);
+                        let has_end_element_handler = (*parser).m_endElementHandler;
+                        let uses_namespaces = (*parser).m_ns != 0;
+                        let uses_ns_triplets = (*parser).m_ns_triplets != 0;
+                        let namespace_separator = (*parser).m_namespaceSeparator;
+                        let mut end_element_name = ::core::ptr::null();
                         (*parser).m_tagLevel -= 1;
-                        if (*parser).m_endElementHandler {
+                        let mut tag_storage = (*parser).m_activeTags.remove(tag_index);
+                        let tag_0 = tag_storage
+                            .tag
+                            .first_mut()
+                            .expect("tag storage has one tag");
+                        if has_end_element_handler {
                             let mut localPart: *const crate::expat_external_h::XML_Char =
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             let mut prefix: *const crate::expat_external_h::XML_Char =
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             let mut uri: *mut crate::expat_external_h::XML_Char =
                                 ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                            let name = match (*tag_0).name.str {
+                            let name = match tag_0.name.str {
                                 TagNameStorage::TagBuffer { offset } => {
-                                    ((*tag_0).buffer.bytes.as_ptr()
+                                    (tag_0.buffer.bytes.as_ptr()
                                         as *const crate::expat_external_h::XML_Char)
                                         .wrapping_offset(offset as isize)
                                 }
                                 TagNameStorage::NamespaceUri => namespace_name_pointer(
                                     parser,
-                                    (*tag_0).buffer.bytes.as_ptr()
+                                    tag_0.buffer.bytes.as_ptr()
                                         as *const crate::expat_external_h::XML_Char,
                                 ),
                                 _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
-                            if let Some(localPartOffset) = (*tag_0).name.localPart {
-                                localPart = ((*tag_0).buffer.bytes.as_ptr()
+                            end_element_name = name;
+                            if let Some(localPartOffset) = tag_0.name.localPart {
+                                localPart = (tag_0.buffer.bytes.as_ptr()
                                     as *const crate::expat_external_h::XML_Char)
                                     .wrapping_offset(localPartOffset as isize);
                             }
-                            if (*parser).m_ns as ::core::ffi::c_int != 0 && !localPart.is_null() {
+                            if uses_namespaces && !localPart.is_null() {
                                 uri = (name as *mut crate::expat_external_h::XML_Char)
-                                    .wrapping_offset((*tag_0).name.uriLen as isize);
+                                    .wrapping_offset(tag_0.name.uriLen as isize);
                                 while *localPart != 0 {
                                     let c2rust_fresh18 = localPart;
                                     localPart = localPart.wrapping_offset(1);
@@ -9653,22 +9666,21 @@ unsafe extern "C" fn doContent(
                                     uri = uri.offset(1);
                                     *c2rust_fresh19 = *c2rust_fresh18;
                                 }
-                                if (*parser).m_ns_triplets as ::core::ffi::c_int != 0
-                                    && (*tag_0).name.prefixLen != 0
+                                if uses_ns_triplets && tag_0.name.prefixLen != 0
                                 {
                                     // The tag buffer remains owned by the parser's configured
                                     // allocator for the tag's complete lifetime.  Its original
                                     // converted name supplies the prefix, so no interior pointer
                                     // has to be retained in TAG_NAME.
-                                    prefix = (*tag_0).buffer.bytes.as_ptr()
+                                    prefix = tag_0.buffer.bytes.as_ptr()
                                         as *const crate::expat_external_h::XML_Char;
                                     let c2rust_fresh20 = uri;
                                     uri = uri.offset(1);
-                                    *c2rust_fresh20 = (*parser).m_namespaceSeparator;
+                                    *c2rust_fresh20 = namespace_separator;
                                     // `prefixLen` includes the terminating NUL.  The source
                                     // buffer also holds the local part after the colon, so use
                                     // the recorded bound rather than searching for a NUL there.
-                                    let mut prefix_remaining = (*tag_0).name.prefixLen - 1;
+                                    let mut prefix_remaining = tag_0.name.prefixLen - 1;
                                     while prefix_remaining != 0 {
                                         let c2rust_fresh21 = prefix;
                                         prefix = prefix.offset(1);
@@ -9680,6 +9692,13 @@ unsafe extern "C" fn doContent(
                                 }
                                 *uri = '\0' as crate::expat_external_h::XML_Char;
                             }
+                        }
+                        // The original implementation makes this storage available for
+                        // reuse before it dispatches callbacks.  Keep that ordering so a
+                        // re-entrant callback observes the same allocator/free-list state.
+                        let tag_0 = tag_0 as *mut TAG;
+                        (*parser).m_freeTagList.tags.push(tag_storage);
+                        if has_end_element_handler {
                             let callback = END_ELEMENT_HANDLERS
                                 .get_or_init(|| {
                                     std::sync::Mutex::new(std::collections::HashMap::new())
@@ -9689,7 +9708,7 @@ unsafe extern "C" fn doContent(
                                 .get(&(parser as usize))
                                 .cloned();
                             if let Some(callback) = callback {
-                                callback.invoke(handler_arg!(parser), name);
+                                callback.invoke(handler_arg!(parser), end_element_name);
                             }
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
