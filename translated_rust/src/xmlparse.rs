@@ -17205,16 +17205,6 @@ fn initialize_encoding_impl(
     handle_unknown_encoding(parser_state, encoding_name.as_deref())
 }
 
-unsafe extern "C" fn initializeEncoding(
-    parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() || !parser.is_aligned() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let parser = &mut *parser;
-    initialize_encoding_impl(parser)
-}
-
 /// Copies a declaration token from the parser-owned input buffer.
 ///
 /// The copy ends the immutable buffer borrow before declaration processing can
