@@ -20623,51 +20623,67 @@ unsafe extern "C" fn callStoreEntityValue(
                     let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                    let Some(dtd_owner) = parser.m_dtd.clone() else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let dtd = &mut *dtd_owner.value.get();
-                    let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                    let updated = dtd_owner.inspect(|dtd| {
+                        let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                            return false;
+                        };
+                        entity.processed = entity.processed.saturating_add(processed);
+                        true
+                    });
+                    if !updated {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                    };
-                    entity.processed = entity.processed.saturating_add(processed);
+                    }
                     continue;
                 } else {
-                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                    let Some(dtd_owner) = parser.m_dtd.clone() else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let dtd = &mut *dtd_owner.value.get();
-                    let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                    let finished = dtd_owner.inspect(|dtd| {
+                        let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                            return false;
+                        };
+                        entity.hasMore = crate::expat_h::XML_FALSE;
+                        true
+                    });
+                    if !finished {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                    };
-                    entity.hasMore = crate::expat_h::XML_FALSE;
+                    }
                     continue;
                 }
             } else {
-                let entity = {
-                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
-                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                    };
-                    let dtd = &mut *dtd_owner.value.get();
-                    let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
-                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                    };
-                    std::ptr::from_mut(entity)
+                // This frame already identifies a live DTD record.  Keep the
+                // close diagnostic on that typed record instead of rebuilding
+                // raw parser/entity handles solely to call the legacy tracker.
+                let Some(dtd_owner) = parser.m_dtd.clone() else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                entityTrackingOnClose(
-                    parser_handle,
-                    entity,
-                    6998 as ::core::ffi::c_int,
-                );
-                {
-                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
-                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                    };
-                    let dtd = &mut *dtd_owner.value.get();
+                let closed = dtd_owner.inspect(|dtd| {
                     let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                        return false;
+                    };
+                    entity_tracking_on_close(parser, entity, 6998 as ::core::ffi::c_int);
+                    true
+                });
+                if !closed {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
+                {
+                    let Some(dtd_owner) = parser.m_dtd.clone() else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    entity.open = crate::expat_h::XML_FALSE;
+                    let marked_closed = dtd_owner.inspect(|dtd| {
+                        let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                            return false;
+                        };
+                        entity.open = crate::expat_h::XML_FALSE;
+                        true
+                    });
+                    if !marked_closed {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    }
                 }
                 if parser.m_openValueEntities != Some(open_entity_index) {
                     // This is an internal stack invariant.  The C assertion
