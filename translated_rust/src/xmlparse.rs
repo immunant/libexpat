@@ -3283,14 +3283,7 @@ fn external_entity_ref_handler_arg_registration(
     }
 }
 
-trait SkippedEntityCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        entity_name: *const crate::expat_external_h::XML_Char,
-        is_parameter_entity: ::core::ffi::c_int,
-    );
-}
+trait SkippedEntityCallback: Send + Sync + std::any::Any {}
 
 impl SkippedEntityCallback
     for unsafe extern "C" fn(
@@ -3299,13 +3292,51 @@ impl SkippedEntityCallback
         ::core::ffi::c_int,
     )
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        entity_name: *const crate::expat_external_h::XML_Char,
-        is_parameter_entity: ::core::ffi::c_int,
-    ) {
-        self(user_data, entity_name, is_parameter_entity);
+}
+
+/// A checked, transient skipped-entity callback event.  The name remains a
+/// bounded parser-owned slice until the boundary adapter invokes the C ABI.
+struct SkippedEntityCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    entity_name: &'a [crate::expat_external_h::XML_Char],
+    is_parameter_entity: ::core::ffi::c_int,
+}
+
+/// Owns the erased C callback while parser-side dispatch works exclusively
+/// with a typed skipped-entity event.
+struct SkippedEntityCallbackAdapter {
+    callback: std::sync::Arc<dyn SkippedEntityCallback>,
+}
+
+impl SkippedEntityCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: SkippedEntityCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
+
+    fn invoke(&self, event: SkippedEntityCallbackEvent<'_>) {
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+            ),
+        >() else {
+            return;
+        };
+        // The event keeps the parser context and terminated entity name live
+        // for this synchronous foreign callback.
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event.entity_name.as_ptr(),
+                event.is_parameter_entity,
+            );
+        }
     }
 }
 
@@ -3313,7 +3344,9 @@ impl SkippedEntityCallback
 // records whether a handler is installed, while this registry preserves the
 // C callback ABI and lets call sites clone the callback before re-entry.
 static SKIPPED_ENTITY_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn SkippedEntityCallback>>>,
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<SkippedEntityCallbackAdapter>>,
+    >,
 > = std::sync::OnceLock::new();
 
 /// A skipped-entity callback prepared from its ABI value.
@@ -3322,7 +3355,7 @@ static SKIPPED_ENTITY_HANDLERS: std::sync::OnceLock<
 /// callback itself stays in the boundary registry for dispatch after parser
 /// borrows have been released.
 struct SkippedEntityHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn SkippedEntityCallback>>,
+    callback: Option<std::sync::Arc<SkippedEntityCallbackAdapter>>,
 }
 
 fn skipped_entity_handler_registration<Callback>(
@@ -3332,7 +3365,9 @@ where
     Callback: SkippedEntityCallback + 'static,
 {
     SkippedEntityHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| {
+            std::sync::Arc::new(SkippedEntityCallbackAdapter::new(callback))
+        }),
     }
 }
 
@@ -3363,18 +3398,16 @@ fn set_skipped_entity_handler(
 /// boundary slice-based makes that lifetime explicit and confines the C ABI
 /// call to this adapter.
 fn dispatch_skipped_entity_callback(
-    callback: &dyn SkippedEntityCallback,
+    callback: &SkippedEntityCallbackAdapter,
     parser: &XML_ParserStruct,
     entity_name: &[crate::expat_external_h::XML_Char],
     is_parameter_entity: ::core::ffi::c_int,
 ) {
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            entity_name.as_ptr(),
-            is_parameter_entity,
-        );
-    }
+    callback.invoke(SkippedEntityCallbackEvent {
+        parser,
+        entity_name,
+        is_parameter_entity,
+    });
 }
 
 // The initial tokenizer chooses a built-in encoding after inspecting the
@@ -8767,7 +8800,8 @@ fn xml_external_entity_parser_create_impl(
     let mut oldNotStandaloneCallback: Option<std::sync::Arc<dyn NotStandaloneCallback>> = None;
     let mut oldExternalEntityRefHandler: Option<std::sync::Arc<dyn ExternalEntityRefCallback>> =
         None;
-    let mut oldSkippedEntityCallback: Option<std::sync::Arc<dyn SkippedEntityCallback>> = None;
+    let mut oldSkippedEntityCallback: Option<std::sync::Arc<SkippedEntityCallbackAdapter>> =
+        None;
     let mut oldUnknownEncodingHandler: Option<std::sync::Arc<UnknownEncodingCallbackAdapter>> =
         None;
     let mut oldUnknownEncodingHandlerArg: Option<UnknownEncodingHandlerRegistration> = None;
