@@ -1,292 +1,128 @@
 use ::c2rust_bitfields;
 
 pub mod siphash_h {
-
-    pub unsafe extern "C" fn sip_tokey(
-        mut key: *mut crate::siphash_h::sipkey,
-        mut src: *const ::core::ffi::c_void,
-    ) -> *mut crate::siphash_h::sipkey {
-        (*key).k[0 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as crate::stdlib::uint64_t)
-            << 0 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 8 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 16 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 24 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(4 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 32 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(5 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 40 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(6 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 48 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(7 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 56 as ::core::ffi::c_int;
-        (*key).k[1 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as crate::stdlib::uint64_t)
-            << 0 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(1 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 8 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(2 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 16 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(3 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 24 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(4 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 32 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(5 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 40 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(6 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 48 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(7 as ::core::ffi::c_int as isize)
-                as crate::stdlib::uint64_t)
-                << 56 as ::core::ffi::c_int;
-        return key;
+    fn read_le_u64(bytes: &[::core::ffi::c_uchar]) -> crate::stdlib::uint64_t {
+        let mut value = 0 as crate::stdlib::uint64_t;
+        for (shift, byte) in bytes.iter().take(8).enumerate() {
+            value |= (*byte as crate::stdlib::uint64_t) << (shift * 8);
+        }
+        value
     }
 
-    pub unsafe extern "C" fn sip_round(
-        mut H: *mut crate::siphash_h::siphash,
-        rounds: ::core::ffi::c_int,
-    ) {
+    fn cursor(h: &crate::siphash_h::siphash) -> usize {
+        let base = h.buf.as_ptr();
+        (0..=h.buf.len())
+            .find(|offset| h.p == base.wrapping_add(*offset) as *mut ::core::ffi::c_uchar)
+            .unwrap_or(0)
+    }
+
+    pub fn sip_tokey<'a>(
+        key: &'a mut crate::siphash_h::sipkey,
+        src: &[::core::ffi::c_uchar; 16],
+    ) -> &'a mut crate::siphash_h::sipkey {
+        key.k[0] = read_le_u64(&src[..8]);
+        key.k[1] = read_le_u64(&src[8..16]);
+        key
+    }
+
+    pub fn sip_round(H: &mut crate::siphash_h::siphash, rounds: ::core::ffi::c_int) {
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
         while i < rounds {
-            (*H).v0 = (*H).v0.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 13 as ::core::ffi::c_int
-                | (*H).v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
-            (*H).v1 ^= (*H).v0;
-            (*H).v0 = (*H).v0 << 32 as ::core::ffi::c_int
-                | (*H).v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-            (*H).v2 = (*H).v2.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 16 as ::core::ffi::c_int
-                | (*H).v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
-            (*H).v3 ^= (*H).v2;
-            (*H).v0 = (*H).v0.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 21 as ::core::ffi::c_int
-                | (*H).v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
-            (*H).v3 ^= (*H).v0;
-            (*H).v2 = (*H).v2.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 17 as ::core::ffi::c_int
-                | (*H).v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
-            (*H).v1 ^= (*H).v2;
-            (*H).v2 = (*H).v2 << 32 as ::core::ffi::c_int
-                | (*H).v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+            H.v0 = H.v0.wrapping_add(H.v1);
+            H.v1 = H.v1 << 13 as ::core::ffi::c_int
+                | H.v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
+            H.v1 ^= H.v0;
+            H.v0 = H.v0 << 32 as ::core::ffi::c_int
+                | H.v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+            H.v2 = H.v2.wrapping_add(H.v3);
+            H.v3 = H.v3 << 16 as ::core::ffi::c_int
+                | H.v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
+            H.v3 ^= H.v2;
+            H.v0 = H.v0.wrapping_add(H.v3);
+            H.v3 = H.v3 << 21 as ::core::ffi::c_int
+                | H.v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
+            H.v3 ^= H.v0;
+            H.v2 = H.v2.wrapping_add(H.v1);
+            H.v1 = H.v1 << 17 as ::core::ffi::c_int
+                | H.v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
+            H.v1 ^= H.v2;
+            H.v2 = H.v2 << 32 as ::core::ffi::c_int
+                | H.v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
             i += 1;
         }
     }
 
-    pub unsafe extern "C" fn sip24_init(
-        mut H: *mut crate::siphash_h::siphash,
-        mut key: *const crate::siphash_h::sipkey,
-    ) -> *mut crate::siphash_h::siphash {
-        (*H).v0 = ((0x736f6d65 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+    pub fn sip24_init<'a>(
+        H: &'a mut crate::siphash_h::siphash,
+        key: &crate::siphash_h::sipkey,
+    ) -> &'a mut crate::siphash_h::siphash {
+        H.v0 = ((0x736f6d65 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x70736575 as crate::stdlib::uint64_t)
-            ^ (*key).k[0 as ::core::ffi::c_int as usize];
-        (*H).v1 = ((0x646f7261 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+            ^ key.k[0 as ::core::ffi::c_int as usize];
+        H.v1 = ((0x646f7261 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x6e646f6d as crate::stdlib::uint64_t)
-            ^ (*key).k[1 as ::core::ffi::c_int as usize];
-        (*H).v2 = ((0x6c796765 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+            ^ key.k[1 as ::core::ffi::c_int as usize];
+        H.v2 = ((0x6c796765 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x6e657261 as crate::stdlib::uint64_t)
-            ^ (*key).k[0 as ::core::ffi::c_int as usize];
-        (*H).v3 = ((0x74656462 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+            ^ key.k[0 as ::core::ffi::c_int as usize];
+        H.v3 = ((0x74656462 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x79746573 as crate::stdlib::uint64_t)
-            ^ (*key).k[1 as ::core::ffi::c_int as usize];
-        (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-        (*H).c = 0 as crate::stdlib::uint64_t;
-        return H;
+            ^ key.k[1 as ::core::ffi::c_int as usize];
+        H.p = H.buf.as_mut_ptr();
+        H.c = 0 as crate::stdlib::uint64_t;
+        H
     }
 
-    pub unsafe extern "C" fn sip24_update(
-        mut H: *mut crate::siphash_h::siphash,
-        mut src: *const ::core::ffi::c_void,
-        mut len: crate::__stddef_size_t_h::size_t,
-    ) -> *mut crate::siphash_h::siphash {
-        let mut p: *const ::core::ffi::c_uchar = src as *const ::core::ffi::c_uchar;
-        let mut pe: *const ::core::ffi::c_uchar = p.offset(len as isize);
-        let mut m: crate::stdlib::uint64_t = 0;
+    pub fn sip24_update<'a>(
+        H: &'a mut crate::siphash_h::siphash,
+        mut src: &[::core::ffi::c_uchar],
+    ) -> &'a mut crate::siphash_h::siphash {
         loop {
-            while p < pe
-                && (*H).p
-                    < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                        (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
-                            .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
-                            as isize,
-                    ) as *mut ::core::ffi::c_uchar
-            {
-                let c2rust_fresh20 = p;
-                p = p.offset(1);
-                let c2rust_fresh21 = (*H).p;
-                (*H).p = (*H).p.offset(1);
-                *c2rust_fresh21 = *c2rust_fresh20;
-            }
-            if (*H).p
-                < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                    (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
-                        .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
-                        as isize,
-                ) as *mut ::core::ffi::c_uchar
-            {
+            let fill = cursor(H);
+            let take = ::core::cmp::min(H.buf.len().wrapping_sub(fill), src.len());
+            H.buf[fill..fill + take].copy_from_slice(&src[..take]);
+            H.p = H.buf.as_mut_ptr().wrapping_add(fill + take);
+            src = &src[take..];
+
+            if cursor(H) < H.buf.len() {
                 break;
             }
-            m = ((*H).buf[0 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                << 0 as ::core::ffi::c_int
-                | ((*H).buf[1 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 8 as ::core::ffi::c_int
-                | ((*H).buf[2 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 16 as ::core::ffi::c_int
-                | ((*H).buf[3 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 24 as ::core::ffi::c_int
-                | ((*H).buf[4 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 32 as ::core::ffi::c_int
-                | ((*H).buf[5 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 40 as ::core::ffi::c_int
-                | ((*H).buf[6 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 48 as ::core::ffi::c_int
-                | ((*H).buf[7 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 56 as ::core::ffi::c_int;
-            (*H).v3 ^= m;
+            let m = read_le_u64(&H.buf);
+            H.v3 ^= m;
             sip_round(H, 2 as ::core::ffi::c_int);
-            (*H).v0 ^= m;
-            (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-            (*H).c = (*H).c.wrapping_add(8 as crate::stdlib::uint64_t);
-            if !(p < pe) {
+            H.v0 ^= m;
+            H.p = H.buf.as_mut_ptr();
+            H.c = H.c.wrapping_add(8 as crate::stdlib::uint64_t);
+            if src.is_empty() {
                 break;
             }
         }
-        return H;
+        H
     }
 
-    pub unsafe extern "C" fn sip24_final(
-        mut H: *mut crate::siphash_h::siphash,
-    ) -> crate::stdlib::uint64_t {
-        let left: ::core::ffi::c_char = (*H)
-            .p
-            .offset_from(&raw mut (*H).buf as *mut ::core::ffi::c_uchar)
-            as ::core::ffi::c_long as ::core::ffi::c_char;
+    pub fn sip24_final(H: &mut crate::siphash_h::siphash) -> crate::stdlib::uint64_t {
+        let left = cursor(H);
         let mut b: crate::stdlib::uint64_t =
-            (*H).c.wrapping_add(left as crate::stdlib::uint64_t) << 56 as ::core::ffi::c_int;
-        let mut c2rust_current_block_6: u64;
-        match left as ::core::ffi::c_int {
-            7 => {
-                b |= ((*H).buf[6 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 48 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 16630619538223616138;
-            }
-            6 => {
-                c2rust_current_block_6 = 16630619538223616138;
-            }
-            5 => {
-                c2rust_current_block_6 = 16772222753376090154;
-            }
-            4 => {
-                c2rust_current_block_6 = 8523279155134024574;
-            }
-            3 => {
-                c2rust_current_block_6 = 16109157670640016477;
-            }
-            2 => {
-                c2rust_current_block_6 = 1945552802878553076;
-            }
-            1 => {
-                c2rust_current_block_6 = 3169655147670703772;
-            }
-            0 | _ => {
-                c2rust_current_block_6 = 5720623009719927633;
-            }
+            H.c.wrapping_add(left as crate::stdlib::uint64_t) << 56 as ::core::ffi::c_int;
+        for (shift, byte) in H.buf.iter().take(left).enumerate() {
+            b |= (*byte as crate::stdlib::uint64_t) << (shift * 8);
         }
-        match c2rust_current_block_6 {
-            16630619538223616138 => {
-                b |= ((*H).buf[5 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 40 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 16772222753376090154;
-            }
-            _ => {}
-        }
-        match c2rust_current_block_6 {
-            16772222753376090154 => {
-                b |= ((*H).buf[4 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 32 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 8523279155134024574;
-            }
-            _ => {}
-        }
-        match c2rust_current_block_6 {
-            8523279155134024574 => {
-                b |= ((*H).buf[3 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 24 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 16109157670640016477;
-            }
-            _ => {}
-        }
-        match c2rust_current_block_6 {
-            16109157670640016477 => {
-                b |= ((*H).buf[2 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 16 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 1945552802878553076;
-            }
-            _ => {}
-        }
-        match c2rust_current_block_6 {
-            1945552802878553076 => {
-                b |= ((*H).buf[1 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 8 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 3169655147670703772;
-            }
-            _ => {}
-        }
-        match c2rust_current_block_6 {
-            3169655147670703772 => {
-                b |= ((*H).buf[0 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 0 as ::core::ffi::c_int;
-            }
-            _ => {}
-        }
-        (*H).v3 ^= b;
+        H.v3 ^= b;
         sip_round(H, 2 as ::core::ffi::c_int);
-        (*H).v0 ^= b;
-        (*H).v2 ^= 0xff as crate::stdlib::uint64_t;
+        H.v0 ^= b;
+        H.v2 ^= 0xff as crate::stdlib::uint64_t;
         sip_round(H, 4 as ::core::ffi::c_int);
-        return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
+        H.v0 ^ H.v1 ^ H.v2 ^ H.v3
     }
 
-    pub unsafe extern "C" fn siphash24(
-        mut src: *const ::core::ffi::c_void,
-        mut len: crate::__stddef_size_t_h::size_t,
-        mut key: *const crate::siphash_h::sipkey,
+    pub fn siphash24(
+        src: &[::core::ffi::c_uchar],
+        key: &crate::siphash_h::sipkey,
     ) -> crate::stdlib::uint64_t {
         let mut state: crate::siphash_h::siphash = crate::siphash_h::siphash {
             v0: 0 as crate::stdlib::uint64_t,
@@ -306,10 +142,12 @@ pub mod siphash_h {
             p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
             c: 0 as crate::stdlib::uint64_t,
         };
-        return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
+        sip24_init(&mut state, key);
+        sip24_update(&mut state, src);
+        sip24_final(&mut state)
     }
 
-    pub unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
+    pub fn sip24_valid() -> ::core::ffi::c_int {
         pub static vectors: [[::core::ffi::c_uchar; 8]; 64] = [
             [
                 0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -955,35 +793,37 @@ pub mod siphash_h {
         let mut in_0: [::core::ffi::c_uchar; 64] = [0; 64];
         let mut k: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
         let mut i: crate::__stddef_size_t_h::size_t = 0;
-        sip_tokey(
-            &raw mut k,
-            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0".as_ptr()
-                as *const ::core::ffi::c_char as *const ::core::ffi::c_void,
-        );
+        let key_bytes: [::core::ffi::c_uchar; 16] =
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        sip_tokey(&mut k, &key_bytes);
         i = 0 as crate::__stddef_size_t_h::size_t;
         while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() as usize {
             in_0[i as usize] = i as ::core::ffi::c_uchar;
-            if siphash24(
-                &raw mut in_0 as *mut ::core::ffi::c_uchar as *const ::core::ffi::c_void,
-                i,
-                &raw mut k,
-            ) != (vectors[i as usize][0 as ::core::ffi::c_int as usize]
-                as crate::stdlib::uint64_t)
-                << 0 as ::core::ffi::c_int
-                | (vectors[i as usize][1 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 8 as ::core::ffi::c_int
-                | (vectors[i as usize][2 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 16 as ::core::ffi::c_int
-                | (vectors[i as usize][3 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 24 as ::core::ffi::c_int
-                | (vectors[i as usize][4 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 32 as ::core::ffi::c_int
-                | (vectors[i as usize][5 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 40 as ::core::ffi::c_int
-                | (vectors[i as usize][6 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 48 as ::core::ffi::c_int
-                | (vectors[i as usize][7 as ::core::ffi::c_int as usize] as crate::stdlib::uint64_t)
-                    << 56 as ::core::ffi::c_int
+            if siphash24(&in_0[..i], &k)
+                != (vectors[i as usize][0 as ::core::ffi::c_int as usize]
+                    as crate::stdlib::uint64_t)
+                    << 0 as ::core::ffi::c_int
+                    | (vectors[i as usize][1 as ::core::ffi::c_int as usize]
+                        as crate::stdlib::uint64_t)
+                        << 8 as ::core::ffi::c_int
+                    | (vectors[i as usize][2 as ::core::ffi::c_int as usize]
+                        as crate::stdlib::uint64_t)
+                        << 16 as ::core::ffi::c_int
+                    | (vectors[i as usize][3 as ::core::ffi::c_int as usize]
+                        as crate::stdlib::uint64_t)
+                        << 24 as ::core::ffi::c_int
+                    | (vectors[i as usize][4 as ::core::ffi::c_int as usize]
+                        as crate::stdlib::uint64_t)
+                        << 32 as ::core::ffi::c_int
+                    | (vectors[i as usize][5 as ::core::ffi::c_int as usize]
+                        as crate::stdlib::uint64_t)
+                        << 40 as ::core::ffi::c_int
+                    | (vectors[i as usize][6 as ::core::ffi::c_int as usize]
+                        as crate::stdlib::uint64_t)
+                        << 48 as ::core::ffi::c_int
+                    | (vectors[i as usize][7 as ::core::ffi::c_int as usize]
+                        as crate::stdlib::uint64_t)
+                        << 56 as ::core::ffi::c_int
             {
                 return 0 as ::core::ffi::c_int;
             }
@@ -991,8 +831,6 @@ pub mod siphash_h {
         }
         return 1 as ::core::ffi::c_int;
     }
-    use crate::__stddef_size_t_h::size_t;
-    use crate::stdlib::uint64_t;
 }
 
 pub use crate::__stddef_null_h::NULL;
@@ -6483,7 +6321,7 @@ unsafe extern "C" fn storeAtts(
                 };
                 let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
                 copy_salt_to_sipkey(parser, &raw mut sip_key);
-                sip24_init(&raw mut sip_state, &raw mut sip_key);
+                sip24_init(&mut sip_state, &sip_key);
                 *(s as *mut crate::expat_external_h::XML_Char)
                     .offset(-1 as ::core::ffi::c_int as isize) =
                     0 as crate::expat_external_h::XML_Char;
@@ -6519,13 +6357,13 @@ unsafe extern "C" fn storeAtts(
                     }
                     j_0 = j_0.wrapping_add(1);
                 }
-                sip24_update(
-                    &raw mut sip_state,
-                    (*b).uri as *const ::core::ffi::c_void,
+                let uri_bytes = ::core::slice::from_raw_parts(
+                    (*b).uri as *const ::core::ffi::c_uchar,
                     ((*b).uriLen as crate::__stddef_size_t_h::size_t)
                         .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                             as crate::__stddef_size_t_h::size_t),
                 );
+                sip24_update(&mut sip_state, uri_bytes);
                 loop {
                     let c2rust_fresh42 = s;
                     s = s.offset(1);
@@ -6533,13 +6371,13 @@ unsafe extern "C" fn storeAtts(
                         break;
                     }
                 }
-                sip24_update(
-                    &raw mut sip_state,
-                    s as *const ::core::ffi::c_void,
+                let name_bytes = ::core::slice::from_raw_parts(
+                    s as *const ::core::ffi::c_uchar,
                     keylen(s as KEY)
                         .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                             as crate::__stddef_size_t_h::size_t),
                 );
+                sip24_update(&mut sip_state, name_bytes);
                 loop {
                     if if (*parser).m_tempPool.ptr
                         == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
@@ -6561,7 +6399,7 @@ unsafe extern "C" fn storeAtts(
                         break;
                     }
                 }
-                uriHash = sip24_final(&raw mut sip_state) as ::core::ffi::c_ulong;
+                uriHash = sip24_final(&mut sip_state) as ::core::ffi::c_ulong;
                 let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
                 let mut mask: ::core::ffi::c_ulong =
                     nsAttsSize.wrapping_sub(1 as ::core::ffi::c_uint) as ::core::ffi::c_ulong;
@@ -11936,14 +11774,14 @@ unsafe extern "C" fn hash(
     };
     let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
     copy_salt_to_sipkey(parser, &raw mut key);
-    sip24_init(&raw mut state, &raw mut key);
-    sip24_update(
-        &raw mut state,
-        s as *const ::core::ffi::c_void,
+    sip24_init(&mut state, &key);
+    let key_bytes = ::core::slice::from_raw_parts(
+        s as *const ::core::ffi::c_uchar,
         keylen(s).wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
             as crate::__stddef_size_t_h::size_t),
     );
-    return sip24_final(&raw mut state) as ::core::ffi::c_ulong;
+    sip24_update(&mut state, key_bytes);
+    return sip24_final(&mut state) as ::core::ffi::c_ulong;
 }
 
 unsafe extern "C" fn lookup(
