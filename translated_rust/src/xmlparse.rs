@@ -1534,11 +1534,10 @@ pub type Processor = unsafe extern "C" fn(
 ) -> crate::expat_h::XML_Error;
 
 fn with_parser_mut<R>(
-    parser: crate::expat_h::XML_Parser,
+    parser: Option<&mut XML_ParserStruct>,
     f: impl FnOnce(&mut XML_ParserStruct) -> R,
 ) -> Option<R> {
-    let parser = unsafe { parser.as_mut() }?;
-    Some(f(parser))
+    parser.map(f)
 }
 
 pub struct HASH_TABLE_ITER<'a> {
@@ -3137,18 +3136,18 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
 pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Parser) {
     XML_ParserFree(parser)
 }
-pub extern "C" fn XML_UseParserAsHandlerArg(parser: crate::expat_h::XML_Parser) {
+pub fn XML_UseParserAsHandlerArg(parser: Option<&mut XML_ParserStruct>) {
     with_parser_mut(parser, |parser_ref| {
-        parser_ref.m_handlerArg = parser as *mut ::core::ffi::c_void;
+        parser_ref.m_handlerArg = parser_ref as *mut XML_ParserStruct as *mut ::core::ffi::c_void;
     });
 }
 #[export_name = "XML_UseParserAsHandlerArg"]
 
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg_ffi(mut parser: crate::expat_h::XML_Parser) {
-    XML_UseParserAsHandlerArg(parser)
+    XML_UseParserAsHandlerArg(unsafe { parser.as_mut() })
 }
-pub extern "C" fn XML_UseForeignDTD(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_UseForeignDTD(
+    parser: Option<&mut XML_ParserStruct>,
     useDTD: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
     with_parser_mut(parser, |parser| {
@@ -3166,12 +3165,9 @@ pub unsafe extern "C" fn XML_UseForeignDTD_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut useDTD: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
-    XML_UseForeignDTD(parser, useDTD)
+    XML_UseForeignDTD(unsafe { parser.as_mut() }, useDTD)
 }
-pub extern "C" fn XML_SetReturnNSTriplet(
-    parser: crate::expat_h::XML_Parser,
-    do_nst: ::core::ffi::c_int,
-) {
+pub fn XML_SetReturnNSTriplet(parser: Option<&mut XML_ParserStruct>, do_nst: ::core::ffi::c_int) {
     with_parser_mut(parser, |parser| {
         if parserBusy(parser) != 0 {
             return;
@@ -3189,9 +3185,9 @@ pub unsafe extern "C" fn XML_SetReturnNSTriplet_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut do_nst: ::core::ffi::c_int,
 ) {
-    XML_SetReturnNSTriplet(parser, do_nst)
+    XML_SetReturnNSTriplet(unsafe { parser.as_mut() }, do_nst)
 }
-pub extern "C" fn XML_SetUserData(parser: crate::expat_h::XML_Parser, p: *mut ::core::ffi::c_void) {
+pub fn XML_SetUserData(parser: Option<&mut XML_ParserStruct>, p: *mut ::core::ffi::c_void) {
     with_parser_mut(parser, |parser| {
         if parser.m_handlerArg == parser.m_userData {
             parser.m_userData = p;
@@ -3207,7 +3203,7 @@ pub unsafe extern "C" fn XML_SetUserData_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut p: *mut ::core::ffi::c_void,
 ) {
-    XML_SetUserData(parser, p)
+    XML_SetUserData(unsafe { parser.as_mut() }, p)
 }
 pub unsafe extern "C" fn XML_SetBase(
     mut parser: crate::expat_h::XML_Parser,
@@ -3235,8 +3231,8 @@ pub unsafe extern "C" fn XML_SetBase_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_SetBase(parser, p)
 }
-pub extern "C" fn XML_GetBase(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_GetBase(
+    parser: Option<&mut XML_ParserStruct>,
 ) -> *const crate::expat_external_h::XML_Char {
     with_parser_mut(parser, |parser| parser.m_curBase)
         .unwrap_or(::core::ptr::null::<crate::expat_external_h::XML_Char>())
@@ -3246,11 +3242,9 @@ pub extern "C" fn XML_GetBase(
 pub unsafe extern "C" fn XML_GetBase_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *const crate::expat_external_h::XML_Char {
-    XML_GetBase(parser)
+    XML_GetBase(unsafe { parser.as_mut() })
 }
-pub extern "C" fn XML_GetSpecifiedAttributeCount(
-    parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
+pub fn XML_GetSpecifiedAttributeCount(parser: Option<&mut XML_ParserStruct>) -> ::core::ffi::c_int {
     with_parser_mut(parser, |parser| parser.m_nSpecifiedAtts).unwrap_or(-1 as ::core::ffi::c_int)
 }
 #[export_name = "XML_GetSpecifiedAttributeCount"]
@@ -3258,11 +3252,9 @@ pub extern "C" fn XML_GetSpecifiedAttributeCount(
 pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    XML_GetSpecifiedAttributeCount(parser)
+    XML_GetSpecifiedAttributeCount(unsafe { parser.as_mut() })
 }
-pub extern "C" fn XML_GetIdAttributeIndex(
-    parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
+pub fn XML_GetIdAttributeIndex(parser: Option<&mut XML_ParserStruct>) -> ::core::ffi::c_int {
     with_parser_mut(parser, |parser| parser.m_idAttIndex).unwrap_or(-1 as ::core::ffi::c_int)
 }
 #[export_name = "XML_GetIdAttributeIndex"]
@@ -3270,12 +3262,12 @@ pub extern "C" fn XML_GetIdAttributeIndex(
 pub unsafe extern "C" fn XML_GetIdAttributeIndex_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    XML_GetIdAttributeIndex(parser)
+    XML_GetIdAttributeIndex(unsafe { parser.as_mut() })
 }
-pub extern "C" fn XML_SetElementHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartElementHandler,
-    mut end: crate::expat_h::XML_EndElementHandler,
+pub fn XML_SetElementHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartElementHandler,
+    end: crate::expat_h::XML_EndElementHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startElementHandler = start;
@@ -3289,11 +3281,11 @@ pub unsafe extern "C" fn XML_SetElementHandler_ffi(
     mut start: crate::expat_h::XML_StartElementHandler,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
-    XML_SetElementHandler(parser, start, end)
+    XML_SetElementHandler(unsafe { parser.as_mut() }, start, end)
 }
-pub extern "C" fn XML_SetStartElementHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartElementHandler,
+pub fn XML_SetStartElementHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartElementHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startElementHandler = start;
@@ -3305,11 +3297,11 @@ pub unsafe extern "C" fn XML_SetStartElementHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartElementHandler,
 ) {
-    XML_SetStartElementHandler(parser, start)
+    XML_SetStartElementHandler(unsafe { parser.as_mut() }, start)
 }
-pub extern "C" fn XML_SetEndElementHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndElementHandler,
+pub fn XML_SetEndElementHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    end: crate::expat_h::XML_EndElementHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_endElementHandler = end;
@@ -3321,11 +3313,11 @@ pub unsafe extern "C" fn XML_SetEndElementHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
-    XML_SetEndElementHandler(parser, end)
+    XML_SetEndElementHandler(unsafe { parser.as_mut() }, end)
 }
-pub extern "C" fn XML_SetCharacterDataHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_CharacterDataHandler,
+pub fn XML_SetCharacterDataHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_CharacterDataHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_characterDataHandler = handler;
@@ -3337,11 +3329,11 @@ pub unsafe extern "C" fn XML_SetCharacterDataHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_CharacterDataHandler,
 ) {
-    XML_SetCharacterDataHandler(parser, handler)
+    XML_SetCharacterDataHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetProcessingInstructionHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_ProcessingInstructionHandler,
+pub fn XML_SetProcessingInstructionHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_ProcessingInstructionHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_processingInstructionHandler = handler;
@@ -3353,11 +3345,11 @@ pub unsafe extern "C" fn XML_SetProcessingInstructionHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_ProcessingInstructionHandler,
 ) {
-    XML_SetProcessingInstructionHandler(parser, handler)
+    XML_SetProcessingInstructionHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetCommentHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_CommentHandler,
+pub fn XML_SetCommentHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_CommentHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_commentHandler = handler;
@@ -3369,12 +3361,12 @@ pub unsafe extern "C" fn XML_SetCommentHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_CommentHandler,
 ) {
-    XML_SetCommentHandler(parser, handler)
+    XML_SetCommentHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetCdataSectionHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartCdataSectionHandler,
-    mut end: crate::expat_h::XML_EndCdataSectionHandler,
+pub fn XML_SetCdataSectionHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartCdataSectionHandler,
+    end: crate::expat_h::XML_EndCdataSectionHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startCdataSectionHandler = start;
@@ -3388,11 +3380,11 @@ pub unsafe extern "C" fn XML_SetCdataSectionHandler_ffi(
     mut start: crate::expat_h::XML_StartCdataSectionHandler,
     mut end: crate::expat_h::XML_EndCdataSectionHandler,
 ) {
-    XML_SetCdataSectionHandler(parser, start, end)
+    XML_SetCdataSectionHandler(unsafe { parser.as_mut() }, start, end)
 }
-pub extern "C" fn XML_SetStartCdataSectionHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartCdataSectionHandler,
+pub fn XML_SetStartCdataSectionHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartCdataSectionHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startCdataSectionHandler = start;
@@ -3404,11 +3396,11 @@ pub unsafe extern "C" fn XML_SetStartCdataSectionHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartCdataSectionHandler,
 ) {
-    XML_SetStartCdataSectionHandler(parser, start)
+    XML_SetStartCdataSectionHandler(unsafe { parser.as_mut() }, start)
 }
-pub extern "C" fn XML_SetEndCdataSectionHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndCdataSectionHandler,
+pub fn XML_SetEndCdataSectionHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    end: crate::expat_h::XML_EndCdataSectionHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_endCdataSectionHandler = end;
@@ -3420,11 +3412,11 @@ pub unsafe extern "C" fn XML_SetEndCdataSectionHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndCdataSectionHandler,
 ) {
-    XML_SetEndCdataSectionHandler(parser, end)
+    XML_SetEndCdataSectionHandler(unsafe { parser.as_mut() }, end)
 }
-pub extern "C" fn XML_SetDefaultHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_DefaultHandler,
+pub fn XML_SetDefaultHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_DefaultHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_defaultHandler = handler;
@@ -3437,11 +3429,11 @@ pub unsafe extern "C" fn XML_SetDefaultHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_DefaultHandler,
 ) {
-    XML_SetDefaultHandler(parser, handler)
+    XML_SetDefaultHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetDefaultHandlerExpand(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_DefaultHandler,
+pub fn XML_SetDefaultHandlerExpand(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_DefaultHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_defaultHandler = handler;
@@ -3454,12 +3446,12 @@ pub unsafe extern "C" fn XML_SetDefaultHandlerExpand_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_DefaultHandler,
 ) {
-    XML_SetDefaultHandlerExpand(parser, handler)
+    XML_SetDefaultHandlerExpand(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetDoctypeDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
-    mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
+pub fn XML_SetDoctypeDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartDoctypeDeclHandler,
+    end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startDoctypeDeclHandler = start;
@@ -3473,11 +3465,11 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler_ffi(
     mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
     mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
-    XML_SetDoctypeDeclHandler(parser, start, end)
+    XML_SetDoctypeDeclHandler(unsafe { parser.as_mut() }, start, end)
 }
-pub extern "C" fn XML_SetStartDoctypeDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
+pub fn XML_SetStartDoctypeDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartDoctypeDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startDoctypeDeclHandler = start;
@@ -3489,11 +3481,11 @@ pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
 ) {
-    XML_SetStartDoctypeDeclHandler(parser, start)
+    XML_SetStartDoctypeDeclHandler(unsafe { parser.as_mut() }, start)
 }
-pub extern "C" fn XML_SetEndDoctypeDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
+pub fn XML_SetEndDoctypeDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_endDoctypeDeclHandler = end;
@@ -3505,11 +3497,11 @@ pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
-    XML_SetEndDoctypeDeclHandler(parser, end)
+    XML_SetEndDoctypeDeclHandler(unsafe { parser.as_mut() }, end)
 }
-pub extern "C" fn XML_SetUnparsedEntityDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
+pub fn XML_SetUnparsedEntityDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_unparsedEntityDeclHandler = handler;
@@ -3521,11 +3513,11 @@ pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
 ) {
-    XML_SetUnparsedEntityDeclHandler(parser, handler)
+    XML_SetUnparsedEntityDeclHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetNotationDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_NotationDeclHandler,
+pub fn XML_SetNotationDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_NotationDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_notationDeclHandler = handler;
@@ -3537,12 +3529,12 @@ pub unsafe extern "C" fn XML_SetNotationDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_NotationDeclHandler,
 ) {
-    XML_SetNotationDeclHandler(parser, handler)
+    XML_SetNotationDeclHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetNamespaceDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
-    mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
+pub fn XML_SetNamespaceDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartNamespaceDeclHandler,
+    end: crate::expat_h::XML_EndNamespaceDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startNamespaceDeclHandler = start;
@@ -3556,11 +3548,11 @@ pub unsafe extern "C" fn XML_SetNamespaceDeclHandler_ffi(
     mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
     mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
 ) {
-    XML_SetNamespaceDeclHandler(parser, start, end)
+    XML_SetNamespaceDeclHandler(unsafe { parser.as_mut() }, start, end)
 }
-pub extern "C" fn XML_SetStartNamespaceDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
+pub fn XML_SetStartNamespaceDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    start: crate::expat_h::XML_StartNamespaceDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_startNamespaceDeclHandler = start;
@@ -3572,11 +3564,11 @@ pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
 ) {
-    XML_SetStartNamespaceDeclHandler(parser, start)
+    XML_SetStartNamespaceDeclHandler(unsafe { parser.as_mut() }, start)
 }
-pub extern "C" fn XML_SetEndNamespaceDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
+pub fn XML_SetEndNamespaceDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    end: crate::expat_h::XML_EndNamespaceDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_endNamespaceDeclHandler = end;
@@ -3588,11 +3580,11 @@ pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
 ) {
-    XML_SetEndNamespaceDeclHandler(parser, end)
+    XML_SetEndNamespaceDeclHandler(unsafe { parser.as_mut() }, end)
 }
-pub extern "C" fn XML_SetNotStandaloneHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_NotStandaloneHandler,
+pub fn XML_SetNotStandaloneHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_NotStandaloneHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_notStandaloneHandler = handler;
@@ -3604,11 +3596,11 @@ pub unsafe extern "C" fn XML_SetNotStandaloneHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_NotStandaloneHandler,
 ) {
-    XML_SetNotStandaloneHandler(parser, handler)
+    XML_SetNotStandaloneHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetExternalEntityRefHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_ExternalEntityRefHandler,
+pub fn XML_SetExternalEntityRefHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_ExternalEntityRefHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_externalEntityRefHandler = handler;
@@ -3620,17 +3612,17 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_ExternalEntityRefHandler,
 ) {
-    XML_SetExternalEntityRefHandler(parser, handler)
+    XML_SetExternalEntityRefHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetExternalEntityRefHandlerArg(
-    mut parser: crate::expat_h::XML_Parser,
-    mut arg: *mut ::core::ffi::c_void,
+pub fn XML_SetExternalEntityRefHandlerArg(
+    parser: Option<&mut XML_ParserStruct>,
+    arg: *mut ::core::ffi::c_void,
 ) {
     with_parser_mut(parser, |parser_ref| {
         if !arg.is_null() {
             parser_ref.m_externalEntityRefHandlerArg = arg as crate::expat_h::XML_Parser;
         } else {
-            parser_ref.m_externalEntityRefHandlerArg = parser;
+            parser_ref.m_externalEntityRefHandlerArg = parser_ref as *mut XML_ParserStruct;
         }
     });
 }
@@ -3640,11 +3632,11 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut arg: *mut ::core::ffi::c_void,
 ) {
-    XML_SetExternalEntityRefHandlerArg(parser, arg)
+    XML_SetExternalEntityRefHandlerArg(unsafe { parser.as_mut() }, arg)
 }
-pub extern "C" fn XML_SetSkippedEntityHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_SkippedEntityHandler,
+pub fn XML_SetSkippedEntityHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_SkippedEntityHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_skippedEntityHandler = handler;
@@ -3656,12 +3648,12 @@ pub unsafe extern "C" fn XML_SetSkippedEntityHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_SkippedEntityHandler,
 ) {
-    XML_SetSkippedEntityHandler(parser, handler)
+    XML_SetSkippedEntityHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetUnknownEncodingHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_UnknownEncodingHandler,
-    mut data: *mut ::core::ffi::c_void,
+pub fn XML_SetUnknownEncodingHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_UnknownEncodingHandler,
+    data: *mut ::core::ffi::c_void,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_unknownEncodingHandler = handler;
@@ -3675,11 +3667,11 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler_ffi(
     mut handler: crate::expat_h::XML_UnknownEncodingHandler,
     mut data: *mut ::core::ffi::c_void,
 ) {
-    XML_SetUnknownEncodingHandler(parser, handler, data)
+    XML_SetUnknownEncodingHandler(unsafe { parser.as_mut() }, handler, data)
 }
-pub extern "C" fn XML_SetElementDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut eldecl: crate::expat_h::XML_ElementDeclHandler,
+pub fn XML_SetElementDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    eldecl: crate::expat_h::XML_ElementDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_elementDeclHandler = eldecl;
@@ -3691,11 +3683,11 @@ pub unsafe extern "C" fn XML_SetElementDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut eldecl: crate::expat_h::XML_ElementDeclHandler,
 ) {
-    XML_SetElementDeclHandler(parser, eldecl)
+    XML_SetElementDeclHandler(unsafe { parser.as_mut() }, eldecl)
 }
-pub extern "C" fn XML_SetAttlistDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut attdecl: crate::expat_h::XML_AttlistDeclHandler,
+pub fn XML_SetAttlistDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    attdecl: crate::expat_h::XML_AttlistDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_attlistDeclHandler = attdecl;
@@ -3707,11 +3699,11 @@ pub unsafe extern "C" fn XML_SetAttlistDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut attdecl: crate::expat_h::XML_AttlistDeclHandler,
 ) {
-    XML_SetAttlistDeclHandler(parser, attdecl)
+    XML_SetAttlistDeclHandler(unsafe { parser.as_mut() }, attdecl)
 }
-pub extern "C" fn XML_SetEntityDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_EntityDeclHandler,
+pub fn XML_SetEntityDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_EntityDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_entityDeclHandler = handler;
@@ -3723,11 +3715,11 @@ pub unsafe extern "C" fn XML_SetEntityDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_EntityDeclHandler,
 ) {
-    XML_SetEntityDeclHandler(parser, handler)
+    XML_SetEntityDeclHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetXmlDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_XmlDeclHandler,
+pub fn XML_SetXmlDeclHandler(
+    parser: Option<&mut XML_ParserStruct>,
+    handler: crate::expat_h::XML_XmlDeclHandler,
 ) {
     with_parser_mut(parser, |parser| {
         parser.m_xmlDeclHandler = handler;
@@ -3739,10 +3731,10 @@ pub unsafe extern "C" fn XML_SetXmlDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_XmlDeclHandler,
 ) {
-    XML_SetXmlDeclHandler(parser, handler)
+    XML_SetXmlDeclHandler(unsafe { parser.as_mut() }, handler)
 }
-pub extern "C" fn XML_SetParamEntityParsing(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_SetParamEntityParsing(
+    parser: Option<&mut XML_ParserStruct>,
     peParsing: crate::expat_h::XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
     with_parser_mut(parser, |parser| {
@@ -3760,7 +3752,7 @@ pub unsafe extern "C" fn XML_SetParamEntityParsing_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut peParsing: crate::expat_h::XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
-    XML_SetParamEntityParsing(parser, peParsing)
+    XML_SetParamEntityParsing(unsafe { parser.as_mut() }, peParsing)
 }
 pub unsafe extern "C" fn XML_SetHashSalt(
     mut parser: crate::expat_h::XML_Parser,
@@ -4291,9 +4283,7 @@ pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
     };
     XML_GetParsingStatus(&*parser, &mut *status)
 }
-pub extern "C" fn XML_GetErrorCode(
-    parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Error {
+pub fn XML_GetErrorCode(parser: Option<&mut XML_ParserStruct>) -> crate::expat_h::XML_Error {
     with_parser_mut(parser, |parser| parser.m_errorCode)
         .unwrap_or(crate::expat_h::XML_ERROR_INVALID_ARGUMENT)
 }
@@ -4302,10 +4292,10 @@ pub extern "C" fn XML_GetErrorCode(
 pub unsafe extern "C" fn XML_GetErrorCode_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
-    XML_GetErrorCode(parser)
+    XML_GetErrorCode(unsafe { parser.as_mut() })
 }
-pub extern "C" fn XML_GetCurrentByteIndex(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_GetCurrentByteIndex(
+    parser: Option<&mut XML_ParserStruct>,
 ) -> crate::expat_external_h::XML_Index {
     with_parser_mut(parser, |parser| {
         if !parser.m_eventPtr.is_null() {
@@ -4323,11 +4313,9 @@ pub extern "C" fn XML_GetCurrentByteIndex(
 pub unsafe extern "C" fn XML_GetCurrentByteIndex_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Index {
-    XML_GetCurrentByteIndex(parser)
+    XML_GetCurrentByteIndex(unsafe { parser.as_mut() })
 }
-pub extern "C" fn XML_GetCurrentByteCount(
-    parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
+pub fn XML_GetCurrentByteCount(parser: Option<&mut XML_ParserStruct>) -> ::core::ffi::c_int {
     with_parser_mut(parser, |parser| {
         if !parser.m_eventEndPtr.is_null() && !parser.m_eventPtr.is_null() {
             (parser.m_eventEndPtr as usize).wrapping_sub(parser.m_eventPtr as usize)
@@ -4343,10 +4331,10 @@ pub extern "C" fn XML_GetCurrentByteCount(
 pub unsafe extern "C" fn XML_GetCurrentByteCount_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    XML_GetCurrentByteCount(parser)
+    XML_GetCurrentByteCount(unsafe { parser.as_mut() })
 }
 pub fn XML_GetInputContext(
-    parser: crate::expat_h::XML_Parser,
+    parser: Option<&mut XML_ParserStruct>,
     offset: Option<&mut ::core::ffi::c_int>,
     size: Option<&mut ::core::ffi::c_int>,
 ) -> *const ::core::ffi::c_char {
@@ -4374,7 +4362,11 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
     mut offset: *mut ::core::ffi::c_int,
     mut size: *mut ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    XML_GetInputContext(parser, unsafe { offset.as_mut() }, unsafe { size.as_mut() })
+    XML_GetInputContext(
+        unsafe { parser.as_mut() },
+        unsafe { offset.as_mut() },
+        unsafe { size.as_mut() },
+    )
 }
 pub fn XML_GetCurrentLineNumber(parser: &XML_ParserStruct) -> crate::expat_external_h::XML_Size {
     return parser
@@ -4782,8 +4774,8 @@ pub extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
 pub unsafe extern "C" fn XML_GetFeatureList_ffi() -> *const crate::expat_h::XML_Feature {
     XML_GetFeatureList()
 }
-pub extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+    parser: Option<&mut XML_ParserStruct>,
     maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
     if maximumAmplificationFactor.is_nan() as i32 != 0 || maximumAmplificationFactor < 1.0f32 {
@@ -4804,10 +4796,13 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplificatio
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetBillionLaughsAttackProtectionMaximumAmplification(parser, maximumAmplificationFactor)
+    XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+        unsafe { parser.as_mut() },
+        maximumAmplificationFactor,
+    )
 }
-pub extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
+    parser: Option<&mut XML_ParserStruct>,
     activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
     with_parser_mut(parser, |parser| {
@@ -4825,10 +4820,13 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetBillionLaughsAttackProtectionActivationThreshold(parser, activationThresholdBytes)
+    XML_SetBillionLaughsAttackProtectionActivationThreshold(
+        unsafe { parser.as_mut() },
+        activationThresholdBytes,
+    )
 }
-pub extern "C" fn XML_SetAllocTrackerMaximumAmplification(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_SetAllocTrackerMaximumAmplification(
+    parser: Option<&mut XML_ParserStruct>,
     maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
     if maximumAmplificationFactor.is_nan() as i32 != 0 || maximumAmplificationFactor < 1.0f32 {
@@ -4849,10 +4847,10 @@ pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetAllocTrackerMaximumAmplification(parser, maximumAmplificationFactor)
+    XML_SetAllocTrackerMaximumAmplification(unsafe { parser.as_mut() }, maximumAmplificationFactor)
 }
-pub extern "C" fn XML_SetAllocTrackerActivationThreshold(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_SetAllocTrackerActivationThreshold(
+    parser: Option<&mut XML_ParserStruct>,
     activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
     with_parser_mut(parser, |parser| {
@@ -4870,10 +4868,10 @@ pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetAllocTrackerActivationThreshold(parser, activationThresholdBytes)
+    XML_SetAllocTrackerActivationThreshold(unsafe { parser.as_mut() }, activationThresholdBytes)
 }
-pub extern "C" fn XML_SetReparseDeferralEnabled(
-    parser: crate::expat_h::XML_Parser,
+pub fn XML_SetReparseDeferralEnabled(
+    parser: Option<&mut XML_ParserStruct>,
     enabled: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Bool {
     if enabled as ::core::ffi::c_int != crate::expat_h::XML_TRUE as ::core::ffi::c_int
@@ -4893,7 +4891,7 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut enabled: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetReparseDeferralEnabled(parser, enabled)
+    XML_SetReparseDeferralEnabled(unsafe { parser.as_mut() }, enabled)
 }
 unsafe extern "C" fn storeRawNames(
     mut parser: crate::expat_h::XML_Parser,
@@ -12800,8 +12798,8 @@ unsafe extern "C" fn accountingDiffTolerated(
     }
     return tolerated;
 }
-pub extern "C" fn testingAccountingGetCountBytesDirect(
-    parser: crate::expat_h::XML_Parser,
+pub fn testingAccountingGetCountBytesDirect(
+    parser: Option<&mut XML_ParserStruct>,
 ) -> ::core::ffi::c_ulonglong {
     with_parser_mut(parser, |parser| {
         parser.m_accounting.countBytesDirect as ::core::ffi::c_ulonglong
@@ -12813,10 +12811,10 @@ pub extern "C" fn testingAccountingGetCountBytesDirect(
 pub unsafe extern "C" fn testingAccountingGetCountBytesDirect_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    testingAccountingGetCountBytesDirect(parser)
+    testingAccountingGetCountBytesDirect(unsafe { parser.as_mut() })
 }
-pub extern "C" fn testingAccountingGetCountBytesIndirect(
-    parser: crate::expat_h::XML_Parser,
+pub fn testingAccountingGetCountBytesIndirect(
+    parser: Option<&mut XML_ParserStruct>,
 ) -> ::core::ffi::c_ulonglong {
     with_parser_mut(parser, |parser| {
         parser.m_accounting.countBytesIndirect as ::core::ffi::c_ulonglong
@@ -12828,7 +12826,7 @@ pub extern "C" fn testingAccountingGetCountBytesIndirect(
 pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    testingAccountingGetCountBytesIndirect(parser)
+    testingAccountingGetCountBytesIndirect(unsafe { parser.as_mut() })
 }
 unsafe extern "C" fn entityTrackingReportStats(
     mut rootParser: crate::expat_h::XML_Parser,
