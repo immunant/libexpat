@@ -2331,6 +2331,48 @@ static UNPARSED_ENTITY_DECL_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+/// An unparsed-entity declaration handler registration prepared from the ABI
+/// callback value.  The parser state records only whether a handler is
+/// installed; the callback itself remains in the boundary registry.
+struct UnparsedEntityDeclHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>>,
+}
+
+fn unparsed_entity_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> UnparsedEntityDeclHandlerRegistration
+where
+    Callback: UnparsedEntityDeclCallback + 'static,
+{
+    UnparsedEntityDeclHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
+fn set_unparsed_entity_decl_handler<Callback>(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    handler: Option<Callback>,
+)
+where
+    Callback: UnparsedEntityDeclCallback + 'static,
+{
+    let registration = unparsed_entity_decl_handler_registration(handler);
+    parser.m_unparsedEntityDeclHandler = registration.callback.is_some();
+    let mut handlers = UNPARSED_ENTITY_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
+        }
+    }
+}
+
 fn unparsed_entity_decl_handler(
     parser: &XML_ParserStruct,
 ) -> Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>> {
@@ -9658,33 +9700,18 @@ pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_end_doctype_decl_handler(parser, parser_address, registration)
 }
-pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
-) {
-    if !parser.is_null() {
-        (*parser).m_unparsedEntityDeclHandler = handler.is_some();
-        let mut handlers = UNPARSED_ENTITY_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
-        }
-    }
-}
 #[export_name = "XML_SetUnparsedEntityDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
+    handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
 ) {
-    XML_SetUnparsedEntityDeclHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_unparsed_entity_decl_handler(parser, parser_address, handler)
 }
 #[export_name = "XML_SetNotationDeclHandler"]
 
