@@ -13446,7 +13446,33 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let result = doParseXmlDecl(findEncoding, isGeneralTextEntity, &*enc, ptr, end);
+        let enc_ref = &*enc;
+        let to_ascii = |mut ptr: *const ::core::ffi::c_char,
+                        end: *const ::core::ffi::c_char|
+         -> ::core::ffi::c_int {
+            let mut buf: [::core::ffi::c_char; 1] = [0; 1];
+            let mut p: *mut ::core::ffi::c_char = buf.as_mut_ptr();
+            enc_ref.utf8Convert.expect("non-null function pointer")(
+                enc,
+                &raw mut ptr,
+                end,
+                &raw mut p,
+                p.wrapping_offset(1 as ::core::ffi::c_int as isize),
+            );
+            if p == buf.as_mut_ptr() {
+                -1 as ::core::ffi::c_int
+            } else {
+                buf[0 as ::core::ffi::c_int as usize] as ::core::ffi::c_int
+            }
+        };
+        let result = doParseXmlDecl(
+            findEncoding,
+            isGeneralTextEntity,
+            enc_ref,
+            ptr,
+            end,
+            &to_ascii,
+        );
         if !versionPtr.is_null() {
             if let Some(value) = result.version_ptr {
                 *versionPtr = value;
@@ -13675,7 +13701,33 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let result = doParseXmlDecl(findEncodingNS, isGeneralTextEntity, &*enc, ptr, end);
+        let enc_ref = &*enc;
+        let to_ascii = |mut ptr: *const ::core::ffi::c_char,
+                        end: *const ::core::ffi::c_char|
+         -> ::core::ffi::c_int {
+            let mut buf: [::core::ffi::c_char; 1] = [0; 1];
+            let mut p: *mut ::core::ffi::c_char = buf.as_mut_ptr();
+            enc_ref.utf8Convert.expect("non-null function pointer")(
+                enc,
+                &raw mut ptr,
+                end,
+                &raw mut p,
+                p.wrapping_offset(1 as ::core::ffi::c_int as isize),
+            );
+            if p == buf.as_mut_ptr() {
+                -1 as ::core::ffi::c_int
+            } else {
+                buf[0 as ::core::ffi::c_int as usize] as ::core::ffi::c_int
+            }
+        };
+        let result = doParseXmlDecl(
+            findEncodingNS,
+            isGeneralTextEntity,
+            enc_ref,
+            ptr,
+            end,
+            &to_ascii,
+        );
         if !versionPtr.is_null() {
             if let Some(value) = result.version_ptr {
                 *versionPtr = value;
@@ -21828,27 +21880,15 @@ extern "C" fn initUpdatePosition(
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }
 
+type ToAsciiFn<'a> =
+    dyn Fn(*const ::core::ffi::c_char, *const ::core::ffi::c_char) -> ::core::ffi::c_int + 'a;
+
 fn toAscii(
-    enc: &crate::src::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
+    to_ascii: &ToAsciiFn<'_>,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut buf: [::core::ffi::c_char; 1] = [0; 1];
-    let mut p: *mut ::core::ffi::c_char = buf.as_mut_ptr();
-    unsafe {
-        enc.utf8Convert.expect("non-null function pointer")(
-            enc as *const crate::src::xmltok::ENCODING,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.wrapping_offset(1 as ::core::ffi::c_int as isize),
-        );
-    }
-    if p == buf.as_mut_ptr() {
-        return -1 as ::core::ffi::c_int;
-    } else {
-        return buf[0 as ::core::ffi::c_int as usize] as ::core::ffi::c_int;
-    };
+    to_ascii(ptr, end)
 }
 
 fn isSpace(c: ::core::ffi::c_int) -> ::core::ffi::c_int {
@@ -21871,18 +21911,19 @@ fn parsePseudoAttribute(
     enc: &crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
+    to_ascii: &ToAsciiFn<'_>,
 ) -> Result<Option<PseudoAttribute>, *const ::core::ffi::c_char> {
     let mut c: ::core::ffi::c_int = 0;
     let mut open: ::core::ffi::c_char = 0;
     if ptr == end {
         return Ok(None);
     }
-    if isSpace(toAscii(enc, ptr, end)) == 0 {
+    if isSpace(toAscii(to_ascii, ptr, end)) == 0 {
         return Err(ptr);
     }
     loop {
         ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
-        if !(isSpace(toAscii(enc, ptr, end)) != 0) {
+        if !(isSpace(toAscii(to_ascii, ptr, end)) != 0) {
             break;
         }
     }
@@ -21892,7 +21933,7 @@ fn parsePseudoAttribute(
     let name = ptr;
     let name_end;
     loop {
-        c = toAscii(enc, ptr, end);
+        c = toAscii(to_ascii, ptr, end);
         if c == -1 as ::core::ffi::c_int {
             return Err(ptr);
         }
@@ -21903,7 +21944,7 @@ fn parsePseudoAttribute(
             name_end = ptr;
             loop {
                 ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
-                c = toAscii(enc, ptr, end);
+                c = toAscii(to_ascii, ptr, end);
                 if !(isSpace(c) != 0) {
                     break;
                 }
@@ -21920,10 +21961,10 @@ fn parsePseudoAttribute(
         return Err(ptr);
     }
     ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
-    c = toAscii(enc, ptr, end);
+    c = toAscii(to_ascii, ptr, end);
     while isSpace(c) != 0 {
         ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
-        c = toAscii(enc, ptr, end);
+        c = toAscii(to_ascii, ptr, end);
     }
     if c != crate::ascii_h::ASCII_QUOT && c != crate::ascii_h::ASCII_APOS {
         return Err(ptr);
@@ -21932,7 +21973,7 @@ fn parsePseudoAttribute(
     ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
     let value = ptr;
     loop {
-        c = toAscii(enc, ptr, end);
+        c = toAscii(to_ascii, ptr, end);
         if c == open as ::core::ffi::c_int {
             break;
         }
@@ -22046,12 +22087,13 @@ fn doParseXmlDecl(
     enc: &crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
+    to_ascii: &ToAsciiFn<'_>,
 ) -> XmlDeclParseResult {
     let mut result = XmlDeclParseResult::success();
     let enc_ptr = enc as *const crate::src::xmltok::ENCODING;
     ptr = ptr.wrapping_offset((5 as ::core::ffi::c_int * enc.minBytesPerChar) as isize);
     end = end.wrapping_offset(-((2 as ::core::ffi::c_int * enc.minBytesPerChar) as isize));
-    let mut attr = match parsePseudoAttribute(enc, ptr, end) {
+    let mut attr = match parsePseudoAttribute(enc, ptr, end, to_ascii) {
         Ok(Some(attr)) => attr,
         Ok(None) => return result.fail(ptr),
         Err(bad_ptr) => return result.fail(bad_ptr),
@@ -22070,7 +22112,7 @@ fn doParseXmlDecl(
     } else {
         result.version_ptr = Some(attr.value);
         result.version_end_ptr = Some(ptr);
-        attr = match parsePseudoAttribute(enc, ptr, end) {
+        attr = match parsePseudoAttribute(enc, ptr, end, to_ascii) {
             Ok(Some(attr)) => attr,
             Ok(None) => {
                 if isGeneralTextEntity != 0 {
@@ -22089,7 +22131,7 @@ fn doParseXmlDecl(
         KW_encoding.as_ptr(),
     ) != 0
     {
-        let mut c: ::core::ffi::c_int = toAscii(enc, attr.value, end);
+        let mut c: ::core::ffi::c_int = toAscii(to_ascii, attr.value, end);
         if !(crate::ascii_h::ASCII_a_1 <= c && c <= crate::ascii_h::ASCII_z)
             && !(crate::ascii_h::ASCII_A <= c && c <= crate::ascii_h::ASCII_Z)
         {
@@ -22101,7 +22143,7 @@ fn doParseXmlDecl(
             attr.value,
             ptr.wrapping_offset(-(enc.minBytesPerChar as isize)),
         ));
-        attr = match parsePseudoAttribute(enc, ptr, end) {
+        attr = match parsePseudoAttribute(enc, ptr, end, to_ascii) {
             Ok(Some(attr)) => attr,
             Ok(None) => return result,
             Err(bad_ptr) => return result.fail(bad_ptr),
@@ -22137,7 +22179,7 @@ fn doParseXmlDecl(
     } else {
         return result.fail(attr.value);
     }
-    while isSpace(toAscii(enc, ptr, end)) != 0 {
+    while isSpace(toAscii(to_ascii, ptr, end)) != 0 {
         ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
     }
     if ptr != end {
