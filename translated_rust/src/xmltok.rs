@@ -1002,11 +1002,15 @@ pub unsafe fn convert_to_utf8(
         core::slice::from_raw_parts_mut(output_start.cast::<u8>(), output_len)
     };
     let unknown_encoding = match converter {
-        Utf8Converter::Unknown => Some(&*(enc as *const unknown_encoding)),
+        // Unknown-encoding storage begins with `ENCODING`, so the C cursor's
+        // address is the stable registration key installed at initialization.
+        // Resolve a typed snapshot from that key rather than casting the
+        // prefix pointer to `unknown_encoding`.
+        Utf8Converter::Unknown => registered_unknown_encoding(enc.addr()),
         _ => None,
     };
     let (result, input_used, output_used) =
-        convert_to_utf8_window(converter, unknown_encoding, input, output);
+        convert_to_utf8_window(converter, unknown_encoding.as_ref(), input, output);
 
     if input_used != 0 {
         // `input_used` is produced from `input`, so this derives the next
@@ -1106,6 +1110,16 @@ pub(crate) struct UnknownEncodingConverterRegistration {
     invoke: std::sync::Arc<dyn UnknownEncodingConverter>,
 }
 
+#[derive(Clone)]
+struct UnknownEncodingRegistration {
+    converter: Option<UnknownEncodingConverterRegistration>,
+    /// A typed copy of the initialized conversion tables.  The storage address
+    /// remains the registry key, while callers that only retain its leading
+    /// `ENCODING` view can recover these tables without casting that view back
+    /// into a larger `unknown_encoding` object.
+    encoding: unknown_encoding,
+}
+
 pub(crate) fn unknown_encoding_callback<F>(
     callback: Option<F>,
 ) -> Option<UnknownEncodingConverterRegistration>
@@ -1122,19 +1136,26 @@ where
 // internal tokenizer object; the storage address is a stable key until the
 // parser resets or is freed.
 static UNKNOWN_ENCODING_CONVERTERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingConverterRegistration>>,
+    std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingRegistration>>,
 > = std::sync::OnceLock::new();
 
 fn register_unknown_encoding_converter(
     storage_id: usize,
     converter: Option<UnknownEncodingConverterRegistration>,
+    encoding: Option<unknown_encoding>,
 ) {
     let mut converters = UNKNOWN_ENCODING_CONVERTERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(converter) = converter {
-        converters.insert(storage_id, converter);
+    if let Some(encoding) = encoding {
+        converters.insert(
+            storage_id,
+            UnknownEncodingRegistration {
+                converter,
+                encoding,
+            },
+        );
     } else {
         converters.remove(&storage_id);
     }
@@ -1146,7 +1167,16 @@ fn unknown_encoding_converter(storage_id: usize) -> Option<UnknownEncodingConver
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .get(&storage_id)
-        .cloned()
+        .and_then(|registration| registration.converter.clone())
+}
+
+fn registered_unknown_encoding(storage_id: usize) -> Option<unknown_encoding> {
+    UNKNOWN_ENCODING_CONVERTERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&storage_id)
+        .map(|registration| registration.encoding)
 }
 
 pub fn unregister_unknown_encoding_converter(storage_id: usize) {
@@ -17677,7 +17707,7 @@ pub(crate) fn initialize_unknown_encoding_state(
     user_data_token: usize,
     namespace_aware: bool,
 ) -> Option<unknown_encoding> {
-    register_unknown_encoding_converter(storage_id, None);
+    register_unknown_encoding_converter(storage_id, None, None);
 
     let mut encoding = unknown_encoding {
         normal: latin1_encoding,
@@ -17701,7 +17731,7 @@ pub(crate) fn initialize_unknown_encoding_state(
     encoding.normal.unknown_converter_id = Some(storage_id);
     encoding.normal.enc.utf8Convert = Utf8Converter::Unknown;
     encoding.normal.enc.utf16Convert = Utf16Converter::Unknown;
-    register_unknown_encoding_converter(storage_id, converter);
+    register_unknown_encoding_converter(storage_id, converter, Some(encoding));
     Some(encoding)
 }
 
