@@ -16304,7 +16304,7 @@ unsafe fn doProlog(
                                                 .get(&parser_key)
                                                 .cloned()
                                                 .expect("installed end doctype handler");
-                                            callback.invoke(handler_arg_from_state!(parser));
+                                            invoke_cdata_section_callback(callback.as_ref(), parser);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -18062,7 +18062,7 @@ unsafe fn doProlog(
                                                 break 's_2375;
                                             } else if parser.m_externalEntityRefHandler {
                                                 dtd.paramEntityRead = crate::expat_h::XML_FALSE;
-                                                let entity_ptr = {
+                                                {
                                                     let entity = declared_entity_mut(
                                                         dtd,
                                                         DeclaredEntity::Parameter(entity_name),
@@ -18070,13 +18070,12 @@ unsafe fn doProlog(
                                                     )
                                                     .expect("parameter entity must remain in the DTD");
                                                     entity.open = crate::expat_h::XML_TRUE;
-                                                    std::ptr::from_mut(entity)
-                                                };
-                                                entityTrackingOnOpen(
-                                                    parser,
-                                                    entity_ptr,
-                                                    6057 as ::core::ffi::c_int,
-                                                );
+                                                    entity_tracking_on_open(
+                                                        parser,
+                                                        entity,
+                                                        6057 as ::core::ffi::c_int,
+                                                    );
+                                                }
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                                     .get_or_init(|| {
                                                         std::sync::Mutex::new(
@@ -18109,18 +18108,12 @@ unsafe fn doProlog(
                                                         hash_salt,
                                                     )
                                                     .expect("parameter entity must remain in the DTD");
-                                                    entityTrackingOnClose(
+                                                    entity_tracking_on_close(
                                                         parser,
-                                                        std::ptr::from_mut(entity),
+                                                        entity,
                                                         6061 as ::core::ffi::c_int,
                                                     );
-                                                    declared_entity_mut(
-                                                        dtd,
-                                                        DeclaredEntity::Parameter(entity_name),
-                                                        hash_salt,
-                                                    )
-                                                    .expect("parameter entity must remain in the DTD")
-                                                    .open = crate::expat_h::XML_FALSE;
+                                                    entity.open = crate::expat_h::XML_FALSE;
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                                 }
                                                 let entity = declared_entity_mut(
@@ -18129,18 +18122,12 @@ unsafe fn doProlog(
                                                     hash_salt,
                                                 )
                                                 .expect("parameter entity must remain in the DTD");
-                                                entityTrackingOnClose(
+                                                entity_tracking_on_close(
                                                     parser,
-                                                    std::ptr::from_mut(entity),
+                                                    entity,
                                                     6065 as ::core::ffi::c_int,
                                                 );
-                                                declared_entity_mut(
-                                                    dtd,
-                                                    DeclaredEntity::Parameter(entity_name),
-                                                    hash_salt,
-                                                )
-                                                .expect("parameter entity must remain in the DTD")
-                                                .open = crate::expat_h::XML_FALSE;
+                                                entity.open = crate::expat_h::XML_FALSE;
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                                 if dtd.paramEntityRead == 0 {
                                                     dtd.keepProcessing = dtd.standalone;
@@ -24741,6 +24728,89 @@ fn entityTrackingReportStats(report: EntityTrackingReport<'_>) {
         report.text_length,
         report.source_line,
     );
+}
+
+/// Reports entity tracking from parser- and DTD-owned state.  Callers retain
+/// typed references for the full report, so this does not need to reconstruct
+/// either object from a legacy handle merely to print a diagnostic.
+fn entity_tracking_report_stats(
+    parser: &XML_ParserStruct,
+    entity: &ENTITY,
+    action: EntityTrackingAction,
+    source_line: ::core::ffi::c_int,
+) {
+    let (count_ever_opened, current_depth, maximum_depth_seen) = {
+        let stats = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if stats.entity_stats.debugLevel == 0 {
+            return;
+        }
+        (
+            stats.entity_stats.countEverOpened,
+            stats.entity_stats.currentDepth,
+            stats.entity_stats.maximumDepthSeen,
+        )
+    };
+    let Some(dtd) = parser.m_dtd.as_deref() else {
+        return;
+    };
+    dtd.inspect(|dtd| {
+        let Some(entity_name) = pool_terminated_chars(&dtd.pool, entity.named.name) else {
+            return;
+        };
+        let Some(entity_name) = entity_name.strip_suffix(&[0]) else {
+            return;
+        };
+        entityTrackingReportStats(EntityTrackingReport {
+            root_parser_address: std::ptr::from_ref(parser).addr(),
+            count_ever_opened,
+            current_depth,
+            maximum_depth_seen,
+            is_parameter: entity.is_param != 0,
+            entity_name: bytemuck::cast_slice(entity_name),
+            action,
+            text_length: entity.textLen,
+            source_line,
+        });
+    });
+}
+
+/// Updates tracking after opening an entity that is already held in the DTD's
+/// typed table.  The only raw-handle form remains for legacy callers below.
+fn entity_tracking_on_open(
+    parser: &mut XML_ParserStruct,
+    entity: &ENTITY,
+    source_line: ::core::ffi::c_int,
+) {
+    {
+        let mut root = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        root.entity_stats.countEverOpened = root.entity_stats.countEverOpened.wrapping_add(1);
+        root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_add(1);
+        if root.entity_stats.currentDepth > root.entity_stats.maximumDepthSeen {
+            root.entity_stats.maximumDepthSeen = root.entity_stats.maximumDepthSeen.wrapping_add(1);
+        }
+    }
+    entity_tracking_report_stats(parser, entity, EntityTrackingAction::Open, source_line);
+}
+
+/// Reports and closes a typed entity-tracking scope without returning to raw
+/// parser or entity handles.
+fn entity_tracking_on_close(
+    parser: &mut XML_ParserStruct,
+    entity: &ENTITY,
+    source_line: ::core::ffi::c_int,
+) {
+    entity_tracking_report_stats(parser, entity, EntityTrackingAction::Close, source_line);
+    let mut root = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_sub(1);
 }
 
 /// Resolves the parser-owned DTD and entity record at the legacy raw-handle
