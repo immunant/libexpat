@@ -10553,8 +10553,15 @@ pub mod xmltok_ns_c {
     {
         XmlGetUtf16InternalEncoding()
     }
-    pub static mut encodings: [*const crate::src::xmltok::ENCODING; 7] =
-        [::core::ptr::null::<crate::src::xmltok::ENCODING>(); 7];
+    pub const encodings: [*const crate::src::xmltok::ENCODING; 7] = [
+        &raw const crate::src::xmltok::latin1_encoding.enc,
+        &raw const crate::src::xmltok::ascii_encoding.enc,
+        &raw const crate::src::xmltok::utf8_encoding.enc,
+        &raw const crate::src::xmltok::big2_encoding.enc,
+        &raw const crate::src::xmltok::big2_encoding.enc,
+        &raw const crate::src::xmltok::little2_encoding.enc,
+        &raw const crate::src::xmltok::utf8_encoding.enc,
+    ];
 
     pub unsafe extern "C" fn initScanProlog(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -10563,7 +10570,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::xmltok::ENCODING,
+            &encodings,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -10579,7 +10586,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::xmltok::ENCODING,
+            &encodings,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -10734,8 +10741,15 @@ pub mod xmltok_ns_c {
     ) -> *const crate::src::xmltok::ENCODING {
         XmlGetUtf16InternalEncodingNS()
     }
-    pub static mut encodingsNS: [*const crate::src::xmltok::ENCODING; 7] =
-        [::core::ptr::null::<crate::src::xmltok::ENCODING>(); 7];
+    pub const encodingsNS: [*const crate::src::xmltok::ENCODING; 7] = [
+        &raw const crate::src::xmltok::latin1_encoding_ns.enc,
+        &raw const crate::src::xmltok::ascii_encoding_ns.enc,
+        &raw const crate::src::xmltok::utf8_encoding_ns.enc,
+        &raw const crate::src::xmltok::big2_encoding_ns.enc,
+        &raw const crate::src::xmltok::big2_encoding_ns.enc,
+        &raw const crate::src::xmltok::little2_encoding_ns.enc,
+        &raw const crate::src::xmltok::utf8_encoding_ns.enc,
+    ];
 
     pub unsafe extern "C" fn initScanPrologNS(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -10744,7 +10758,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING,
+            &encodingsNS,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -10760,7 +10774,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING,
+            &encodingsNS,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -12406,7 +12420,7 @@ unsafe extern "C" fn utf8_toUtf16(
     result
 }
 
-static mut utf8_encoding_ns: normal_encoding = normal_encoding {
+static utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -12701,7 +12715,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Utf8,
 };
 
-static mut utf8_encoding: normal_encoding = normal_encoding {
+static utf8_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -12996,7 +13010,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Utf8,
 };
 
-static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
+static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -13291,7 +13305,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Utf8,
 };
 
-static mut internal_utf8_encoding: normal_encoding = normal_encoding {
+static internal_utf8_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -13647,7 +13661,7 @@ unsafe extern "C" fn latin1_toUtf16(
     };
 }
 
-static mut latin1_encoding_ns: normal_encoding = normal_encoding {
+static latin1_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -14258,7 +14272,7 @@ unsafe extern "C" fn ascii_toUtf8(
     };
 }
 
-static mut ascii_encoding_ns: normal_encoding = normal_encoding {
+static ascii_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -14553,7 +14567,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-static mut ascii_encoding: normal_encoding = normal_encoding {
+static ascii_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -15093,7 +15107,7 @@ fn big2_toUtf16(
     (result, input_used, output_len)
 }
 
-static mut little2_encoding_ns: normal_encoding = normal_encoding {
+static little2_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::Little2Prolog,
@@ -15388,7 +15402,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-static mut little2_encoding: normal_encoding = normal_encoding {
+static little2_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::Little2Prolog,
@@ -15683,7 +15697,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
+static internal_little2_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::Little2Prolog,
@@ -15978,7 +15992,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-static mut internal_little2_encoding: normal_encoding = normal_encoding {
+static internal_little2_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::Little2Prolog,
@@ -16273,7 +16287,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-static mut big2_encoding_ns: normal_encoding = normal_encoding {
+static big2_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::Big2Prolog,
@@ -16568,7 +16582,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-static mut big2_encoding: normal_encoding = normal_encoding {
+static big2_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::Big2Prolog,
@@ -17836,7 +17850,7 @@ fn init_scan_action(
 /// output slots in both `enc` and `nextTokPtr`.  This adapter confines those
 /// C ABI cursors to the final state update and scanner dispatch.
 unsafe extern "C" fn initScan(
-    mut encodingTable: *const *const crate::src::xmltok::ENCODING,
+    encoding_table: &[*const crate::src::xmltok::ENCODING; 7],
     mut enc: *const crate::src::xmltok::INIT_ENCODING,
     mut state: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
@@ -17866,7 +17880,7 @@ unsafe extern "C" fn initScan(
             crate::src::xmltok::XML_TOK_BOM_1
         }
         InitScanAction::Scan { encoding_index } => {
-            let selected_encoding = *encodingTable.add(encoding_index);
+            let selected_encoding = encoding_table[encoding_index];
             initial_encoding.selected_encoding = Some(encoding_index);
             (*selected_encoding).scanners[state.scanner_index()].scan(
                 selected_encoding,
@@ -17901,28 +17915,3 @@ pub unsafe extern "C" fn XmlInitUnknownEncodingNS_ffi(
 ) -> *mut crate::src::xmltok::ENCODING {
     XmlInitUnknownEncodingNS(mem, table, convert, userData)
 }
-unsafe extern "C" fn c2rust_run_static_initializers() {
-    encodings = [
-        &raw const latin1_encoding.enc,
-        &raw const ascii_encoding.enc,
-        &raw const utf8_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const little2_encoding.enc,
-        &raw const utf8_encoding.enc,
-    ];
-    encodingsNS = [
-        &raw const latin1_encoding_ns.enc,
-        &raw const ascii_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const little2_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-    ];
-}
-#[used]
-#[cfg_attr(target_os = "linux", link_section = ".init_array")]
-#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
-#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [c2rust_run_static_initializers];
