@@ -12168,9 +12168,7 @@ unsafe extern "C" fn poolStoreString(
     return (*pool).start;
 }
 
-unsafe extern "C" fn poolBytesToAllocateFor(
-    mut blockSize: ::core::ffi::c_int,
-) -> crate::__stddef_size_t_h::size_t {
+fn poolBytesToAllocateFor(mut blockSize: ::core::ffi::c_int) -> crate::__stddef_size_t_h::size_t {
     let stretch: crate::__stddef_size_t_h::size_t = ::core::mem::size_of::<
         crate::expat_external_h::XML_Char,
     >() as crate::__stddef_size_t_h::size_t;
