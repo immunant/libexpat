@@ -13180,12 +13180,15 @@ unsafe extern "C" fn storeEntityValue(
     mut account: XML_Account,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut pool: *mut STRING_POOL = &raw mut (*dtd).entityValuePool;
+    let parser = &mut *parser;
+    let enc_ptr = enc;
+    let enc = &*enc;
+    let dtd = &mut *parser.m_dtd;
+    let pool = &mut dtd.entityValuePool;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-    let mut oldInEntityValue: ::core::ffi::c_int = (*parser).m_prologState.inEntityValue;
-    (*parser).m_prologState.inEntityValue = 1 as ::core::ffi::c_int;
-    if (*pool).storage.active.is_empty() {
+    let oldInEntityValue = parser.m_prologState.inEntityValue;
+    parser.m_prologState.inEntityValue = 1 as ::core::ffi::c_int;
+    if pool.storage.active.is_empty() {
         if poolGrow(pool) == 0 {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -13193,7 +13196,7 @@ unsafe extern "C" fn storeEntityValue(
     let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     '_endEntityValue: loop {
         next = entityTextPtr;
-        let scanner = match (*enc).literalScanners[1] {
+        let scanner = match enc.literalScanners[1] {
             crate::src::xmltok::LiteralScanner::NormalEntityValue => {
                 crate::src::xmltok::xmltok_impl_c::normal_entityValueTok
             }
@@ -13205,7 +13208,8 @@ unsafe extern "C" fn storeEntityValue(
             }
             _ => unreachable!("entity literal scanner must match its table slot"),
         };
-        let mut tok: ::core::ffi::c_int = scanner(enc, entityTextPtr, entityTextEnd, &raw mut next);
+        let mut tok: ::core::ffi::c_int =
+            scanner(enc_ptr, entityTextPtr, entityTextEnd, &raw mut next);
         if accountingDiffTolerated(
             parser,
             tok,
@@ -13222,17 +13226,17 @@ unsafe extern "C" fn storeEntityValue(
             's_340: {
                 match tok {
                     crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF => {
-                        if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
-                            || enc != parser_encoding(parser)
+                        if parser.m_isParamEntity as ::core::ffi::c_int != 0
+                            || enc_ptr != parser_encoding(parser)
                         {
                             let mut name: *const crate::expat_external_h::XML_Char =
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                             name = poolStoreString(
                                 &raw mut (*parser).m_tempPool,
-                                enc,
-                                entityTextPtr.offset((*enc).minBytesPerChar as isize),
-                                next.offset(-((*enc).minBytesPerChar as isize)),
+                                enc_ptr,
+                                entityTextPtr.offset(enc.minBytesPerChar as isize),
+                                next.offset(-(enc.minBytesPerChar as isize)),
                             );
                             if name.is_null() {
                                 result = crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -13240,26 +13244,28 @@ unsafe extern "C" fn storeEntityValue(
                             } else {
                                 entity = lookup(
                                     parser,
-                                    &raw mut (*dtd).paramEntities,
+                                    &raw mut dtd.paramEntities,
                                     name as KEY,
                                     0 as crate::__stddef_size_t_h::size_t,
                                 ) as *mut ENTITY;
                                 (*parser).m_tempPool.rewind();
                                 if entity.is_null() {
-                                    (*dtd).keepProcessing = (*dtd).standalone;
+                                    dtd.keepProcessing = dtd.standalone;
                                     break '_endEntityValue;
-                                } else if (*entity).open as ::core::ffi::c_int != 0
-                                    || entity == (*parser).m_declEntity
+                                }
+                                let entity = &mut *entity;
+                                if entity.open as ::core::ffi::c_int != 0
+                                    || ::core::ptr::eq(entity, parser.m_declEntity)
                                 {
-                                    if enc == parser_encoding(parser) {
-                                        (*parser).m_eventPtr = entityTextPtr;
+                                    if enc_ptr == parser_encoding(parser) {
+                                        parser.m_eventPtr = entityTextPtr;
                                     }
                                     result = crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
                                     break '_endEntityValue;
-                                } else if (*entity).systemId.is_some() {
-                                    if (*parser).m_externalEntityRefHandler {
-                                        (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
-                                        (*entity).open = crate::expat_h::XML_TRUE;
+                                } else if entity.systemId.is_some() {
+                                    if parser.m_externalEntityRefHandler {
+                                        dtd.paramEntityRead = crate::expat_h::XML_FALSE;
+                                        entity.open = crate::expat_h::XML_TRUE;
                                         entityTrackingOnOpen(
                                             parser,
                                             entity,
@@ -13273,14 +13279,14 @@ unsafe extern "C" fn storeEntityValue(
                                             })
                                             .lock()
                                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                            .get(&(parser as usize))
+                                            .get(&(parser as *mut XML_ParserStruct as usize))
                                             .cloned()
                                             .expect("installed external entity handler");
                                         if invoke_external_entity_ref_handler(
                                             handler.as_ref(),
-                                            (*parser).m_externalEntityRefHandlerArg,
+                                            parser.m_externalEntityRefHandlerArg,
                                             ::core::ptr::null(),
-                                            &raw const (*dtd).pool,
+                                            &raw const dtd.pool,
                                             entity,
                                         ) == 0
                                         {
@@ -13289,7 +13295,7 @@ unsafe extern "C" fn storeEntityValue(
                                                 entity,
                                                 6844 as ::core::ffi::c_int,
                                             );
-                                            (*entity).open = crate::expat_h::XML_FALSE;
+                                            entity.open = crate::expat_h::XML_FALSE;
                                             result =
                                                 crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                             break '_endEntityValue;
@@ -13299,14 +13305,14 @@ unsafe extern "C" fn storeEntityValue(
                                                 entity,
                                                 6849 as ::core::ffi::c_int,
                                             );
-                                            (*entity).open = crate::expat_h::XML_FALSE;
-                                            if (*dtd).paramEntityRead == 0 {
-                                                (*dtd).keepProcessing = (*dtd).standalone;
+                                            entity.open = crate::expat_h::XML_FALSE;
+                                            if dtd.paramEntityRead == 0 {
+                                                dtd.keepProcessing = dtd.standalone;
                                             }
                                             break 's_340;
                                         }
                                     } else {
-                                        (*dtd).keepProcessing = (*dtd).standalone;
+                                        dtd.keepProcessing = dtd.standalone;
                                         break 's_340;
                                     }
                                 } else {
@@ -13320,7 +13326,7 @@ unsafe extern "C" fn storeEntityValue(
                                 }
                             }
                         } else {
-                            (*parser).m_eventPtr = entityTextPtr;
+                            parser.m_eventPtr = entityTextPtr;
                             result = crate::expat_h::XML_ERROR_PARAM_ENTITY_REF;
                             break '_endEntityValue;
                         }
@@ -13331,7 +13337,7 @@ unsafe extern "C" fn storeEntityValue(
                     }
                     crate::src::xmltok::XML_TOK_ENTITY_REF
                     | crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                        if poolAppend(pool, enc, entityTextPtr, next).is_null() {
+                        if poolAppend(pool, enc_ptr, entityTextPtr, next).is_null() {
                             result = crate::expat_h::XML_ERROR_NO_MEMORY;
                             break '_endEntityValue;
                         } else {
@@ -13339,70 +13345,54 @@ unsafe extern "C" fn storeEntityValue(
                         }
                     }
                     crate::src::xmltok::XML_TOK_TRAILING_CR => {
-                        next = entityTextPtr.offset((*enc).minBytesPerChar as isize);
+                        next = entityTextPtr.offset(enc.minBytesPerChar as isize);
                     }
                     crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
                     crate::src::xmltok::XML_TOK_CHAR_REF => {
-                        let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
-                        let mut i: ::core::ffi::c_int = 0;
-                        let mut n: ::core::ffi::c_int =
-                            (*enc).charRefNumber.decode(enc, entityTextPtr);
+                        let n = enc.charRefNumber.decode(enc_ptr, entityTextPtr);
                         if n < 0 as ::core::ffi::c_int {
-                            if enc == parser_encoding(parser) {
-                                (*parser).m_eventPtr = entityTextPtr;
+                            if enc_ptr == parser_encoding(parser) {
+                                parser.m_eventPtr = entityTextPtr;
                             }
                             result = crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                             break '_endEntityValue;
                         } else {
-                            n = crate::src::xmltok::XmlUtf8Encode(
-                                n,
-                                &raw mut buf as *mut crate::expat_external_h::XML_Char
-                                    as *mut ::core::ffi::c_char,
-                            );
-                            i = 0 as ::core::ffi::c_int;
-                            loop {
-                                if i >= n {
-                                    break 's_340;
-                                }
-                                if (*pool).is_full() && poolGrow(pool) == 0 {
-                                    result = crate::expat_h::XML_ERROR_NO_MEMORY;
-                                    break '_endEntityValue;
-                                } else {
-                                    if !(&mut *pool).write_cursor(buf[i as usize]) {
-                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                    }
-                                    i += 1;
+                            let (buf, n) = encode_xml_char_ref(n);
+                            for value in buf[..n as usize].iter().copied() {
+                                if !pool_append_char(pool, value) {
+                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 }
                             }
+                            break 's_340;
                         }
                     }
                     crate::src::xmltok::XML_TOK_PARTIAL => {
-                        if enc == parser_encoding(parser) {
-                            (*parser).m_eventPtr = entityTextPtr;
+                        if enc_ptr == parser_encoding(parser) {
+                            parser.m_eventPtr = entityTextPtr;
                         }
                         result = crate::expat_h::XML_ERROR_INVALID_TOKEN;
                         break '_endEntityValue;
                     }
                     crate::src::xmltok::XML_TOK_INVALID => {
-                        if enc == parser_encoding(parser) {
-                            (*parser).m_eventPtr = next;
+                        if enc_ptr == parser_encoding(parser) {
+                            parser.m_eventPtr = next;
                         }
                         result = crate::expat_h::XML_ERROR_INVALID_TOKEN;
                         break '_endEntityValue;
                     }
                     _ => {
-                        if enc == parser_encoding(parser) {
-                            (*parser).m_eventPtr = entityTextPtr;
+                        if enc_ptr == parser_encoding(parser) {
+                            parser.m_eventPtr = entityTextPtr;
                         }
                         result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         break '_endEntityValue;
                     }
                 }
-                if (*pool).is_full() && poolGrow(pool) == 0 {
+                if pool.is_full() && poolGrow(pool) == 0 {
                     result = crate::expat_h::XML_ERROR_NO_MEMORY;
                     break '_endEntityValue;
                 } else {
-                    if !(&mut *pool).write_cursor(0xa as crate::expat_external_h::XML_Char) {
+                    if !pool.write_cursor(0xa as crate::expat_external_h::XML_Char) {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
                 }
@@ -13410,7 +13400,7 @@ unsafe extern "C" fn storeEntityValue(
             entityTextPtr = next;
         }
     }
-    (*parser).m_prologState.inEntityValue = oldInEntityValue;
+    parser.m_prologState.inEntityValue = oldInEntityValue;
     if !nextPtr.is_null() {
         *nextPtr = next;
     }
