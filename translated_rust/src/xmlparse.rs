@@ -2881,6 +2881,18 @@ impl STRING_POOL {
             .get(string.offset..)
     }
 
+    fn chars_from_mut(
+        &mut self,
+        string: PoolStringRef,
+    ) -> Option<&mut [crate::expat_external_h::XML_Char]> {
+        let block_index = string.block_from_tail.get().checked_sub(1)?;
+        self.storage
+            .active
+            .get_mut(block_index)?
+            .chars
+            .get_mut(string.offset..)
+    }
+
     fn start_ref(&self, allow_block_end: bool) -> Option<PoolStringRef> {
         let start = self.start?;
         let block = self.storage.active.get(start.block_from_tail.get() - 1)?;
@@ -17234,40 +17246,32 @@ unsafe extern "C" fn callStoreEntityValue(
     return result;
 }
 
-unsafe extern "C" fn normalizeLines(mut s: *mut crate::expat_external_h::XML_Char) {
-    let mut p: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    loop {
-        if *s as ::core::ffi::c_int == '\0' as ::core::ffi::c_int {
-            return;
-        }
-        if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-            break;
-        }
-        s = s.offset(1);
-    }
-    p = s;
-    loop {
-        if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-            let c2rust_fresh6 = p;
-            p = p.offset(1);
-            *c2rust_fresh6 = 0xa as crate::expat_external_h::XML_Char;
-            s = s.offset(1);
-            if *s as ::core::ffi::c_int == 0xa as ::core::ffi::c_int {
-                s = s.offset(1);
+fn normalizeLines(s: &mut [crate::expat_external_h::XML_Char]) {
+    let Some(terminator) = s.iter().position(|&character| character == 0) else {
+        return;
+    };
+    let Some(mut read) = s[..terminator]
+        .iter()
+        .position(|&character| character == '\r' as crate::expat_external_h::XML_Char)
+    else {
+        return;
+    };
+    let mut write = read;
+    while read < terminator {
+        if s[read] == '\r' as crate::expat_external_h::XML_Char {
+            s[write] = '\n' as crate::expat_external_h::XML_Char;
+            write += 1;
+            read += 1;
+            if read < terminator && s[read] == '\n' as crate::expat_external_h::XML_Char {
+                read += 1;
             }
         } else {
-            let c2rust_fresh7 = s;
-            s = s.offset(1);
-            let c2rust_fresh8 = p;
-            p = p.offset(1);
-            *c2rust_fresh8 = *c2rust_fresh7;
-        }
-        if *s == 0 {
-            break;
+            s[write] = s[read];
+            write += 1;
+            read += 1;
         }
     }
-    *p = '\0' as crate::expat_external_h::XML_Char;
+    s[write] = 0;
 }
 
 unsafe extern "C" fn reportProcessingInstruction(
@@ -17317,7 +17321,13 @@ unsafe extern "C" fn reportProcessingInstruction(
         if data.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        normalizeLines(data);
+        let Some(data_start) = parser_state.m_tempPool.start_ref(false) else {
+            return 0 as ::core::ffi::c_int;
+        };
+        let Some(data_chars) = parser_state.m_tempPool.chars_from_mut(data_start) else {
+            return 0 as ::core::ffi::c_int;
+        };
+        normalizeLines(data_chars);
         (target, data, handler_arg_from_state!(parser_state))
     };
     let callback = PROCESSING_INSTRUCTION_HANDLERS
@@ -17354,7 +17364,7 @@ unsafe extern "C" fn reportComment(
         }
         return 1 as ::core::ffi::c_int;
     }
-    let temp_pool = &raw mut (*parser).m_tempPool;
+    let temp_pool = &mut (*parser).m_tempPool;
     data = poolStoreString(
         temp_pool,
         enc,
@@ -17364,7 +17374,13 @@ unsafe extern "C" fn reportComment(
     if data.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    normalizeLines(data);
+    let Some(data_start) = temp_pool.start_ref(false) else {
+        return 0 as ::core::ffi::c_int;
+    };
+    let Some(data_chars) = temp_pool.chars_from_mut(data_start) else {
+        return 0 as ::core::ffi::c_int;
+    };
+    normalizeLines(data_chars);
     let callback = COMMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
