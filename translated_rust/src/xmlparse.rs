@@ -2497,17 +2497,7 @@ where
     }
 }
 
-trait UnparsedEntityDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        entity_name: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-        notation_name: *const crate::expat_external_h::XML_Char,
-    );
-}
+trait UnparsedEntityDeclCallback: Send + Sync + std::any::Any {}
 
 impl UnparsedEntityDeclCallback
     for unsafe extern "C" fn(
@@ -2519,31 +2509,13 @@ impl UnparsedEntityDeclCallback
         *const crate::expat_external_h::XML_Char,
     ) -> ()
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        entity_name: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-        notation_name: *const crate::expat_external_h::XML_Char,
-    ) {
-        self(
-            user_data,
-            entity_name,
-            base,
-            system_id,
-            public_id,
-            notation_name,
-        );
-    }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an unparsed-entity callback is installed.
 static UNPARSED_ENTITY_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn UnparsedEntityDeclCallback>>,
+        std::collections::HashMap<usize, std::sync::Arc<UnparsedEntityDeclCallbackAdapter>>,
     >,
 > = std::sync::OnceLock::new();
 
@@ -2551,7 +2523,7 @@ static UNPARSED_ENTITY_DECL_HANDLERS: std::sync::OnceLock<
 /// callback value.  The parser state records only whether a handler is
 /// installed; the callback itself remains in the boundary registry.
 struct UnparsedEntityDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>>,
+    callback: Option<std::sync::Arc<UnparsedEntityDeclCallbackAdapter>>,
 }
 
 fn unparsed_entity_decl_handler_registration<Callback>(
@@ -2561,7 +2533,9 @@ where
     Callback: UnparsedEntityDeclCallback + 'static,
 {
     UnparsedEntityDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| {
+            std::sync::Arc::new(UnparsedEntityDeclCallbackAdapter::new(callback))
+        }),
     }
 }
 
@@ -2591,7 +2565,7 @@ where
 
 fn unparsed_entity_decl_handler(
     parser: &XML_ParserStruct,
-) -> Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>> {
+) -> Option<std::sync::Arc<UnparsedEntityDeclCallbackAdapter>> {
     UNPARSED_ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -2600,49 +2574,106 @@ fn unparsed_entity_decl_handler(
         .cloned()
 }
 
-/// Dispatches an unparsed declaration from pool-backed identifier handles.
-fn dispatch_unparsed_entity_decl_callback(
-    callback: &dyn UnparsedEntityDeclCallback,
-    parser: &XML_ParserStruct,
-    dtd: &DTD,
+/// An unparsed declaration staged for the foreign callback boundary.
+///
+/// The DTD and event remain borrowed only for the synchronous callback.  The
+/// adapter creates the C pointers from those checked, pool-backed values.
+struct UnparsedEntityDeclCallbackInvocation<'a> {
+    parser: &'a XML_ParserStruct,
+    dtd: &'a DTD,
     event: EntityDeclCallbackEvent,
-) {
-    let name = dtd
-        .pool
-        .chars_from(event.name)
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-    let base = event
-        .base
-        .map_or(::core::ptr::null(), |base| {
+}
+
+/// Converts the erased unparsed-entity declaration callback into the typed
+/// dispatch used by parser code.  This is the sole unsafe ABI call site for
+/// this handler family.
+fn unparsed_entity_decl_callback_adapter(
+    callback: std::sync::Arc<dyn UnparsedEntityDeclCallback>,
+) -> std::sync::Arc<dyn for<'a> Fn(UnparsedEntityDeclCallbackInvocation<'a>) + Send + Sync> {
+    std::sync::Arc::new(move |invocation: UnparsedEntityDeclCallbackInvocation<'_>| {
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return;
+        };
+        let UnparsedEntityDeclCallbackInvocation { parser, dtd, event } = invocation;
+        let name = dtd
+            .pool
+            .chars_from(event.name)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        let base = event.base.map_or(::core::ptr::null(), |base| {
             dtd.pool
                 .chars_from(base)
                 .map_or(::core::ptr::null(), |chars| chars.as_ptr())
         });
-    let system_id = event.system_id.map_or(::core::ptr::null(), |system_id| {
-        dtd.pool
-            .chars_from(system_id)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    let public_id = event.public_id.map_or(::core::ptr::null(), |public_id| {
-        dtd.pool
-            .chars_from(public_id)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    let notation = event.notation.map_or(::core::ptr::null(), |notation| {
-        dtd.pool
-            .chars_from(notation)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            name,
-            base,
-            system_id,
-            public_id,
-            notation,
-        );
+        let system_id = event.system_id.map_or(::core::ptr::null(), |system_id| {
+            dtd.pool
+                .chars_from(system_id)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+        let public_id = event.public_id.map_or(::core::ptr::null(), |public_id| {
+            dtd.pool
+                .chars_from(public_id)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+        let notation = event.notation.map_or(::core::ptr::null(), |notation| {
+            dtd.pool
+                .chars_from(notation)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
+        // The typed invocation keeps the parser context and all DTD strings
+        // live for this synchronous foreign callback.
+        unsafe {
+            callback(
+                handler_arg_from_state!(parser),
+                name,
+                base,
+                system_id,
+                public_id,
+                notation,
+            );
+        }
+    })
+}
+
+/// Owns the erased foreign callback while parser dispatch uses the typed
+/// invocation above.
+struct UnparsedEntityDeclCallbackAdapter {
+    callback: std::sync::Arc<
+        dyn for<'a> Fn(UnparsedEntityDeclCallbackInvocation<'a>) + Send + Sync,
+    >,
+}
+
+impl UnparsedEntityDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: UnparsedEntityDeclCallback + 'static,
+    {
+        Self {
+            callback: unparsed_entity_decl_callback_adapter(std::sync::Arc::new(callback)),
+        }
     }
+
+    fn invoke(&self, invocation: UnparsedEntityDeclCallbackInvocation<'_>) {
+        (self.callback)(invocation)
+    }
+}
+
+/// Dispatches an unparsed declaration from pool-backed identifier handles.
+fn dispatch_unparsed_entity_decl_callback(
+    callback: &UnparsedEntityDeclCallbackAdapter,
+    parser: &XML_ParserStruct,
+    dtd: &DTD,
+    event: EntityDeclCallbackEvent,
+) {
+    callback.invoke(UnparsedEntityDeclCallbackInvocation { parser, dtd, event });
 }
 
 trait NotationDeclCallback: Send + Sync + std::any::Any {}
@@ -8888,8 +8919,9 @@ fn xml_external_entity_parser_create_impl(
     let mut oldDefaultHandler = false;
     let mut oldDefaultCallback: Option<std::sync::Arc<DefaultCallbackAdapter>> = None;
     let mut oldUnparsedEntityDeclHandler = false;
-    let mut oldUnparsedEntityDeclCallback: Option<std::sync::Arc<dyn UnparsedEntityDeclCallback>> =
-        None;
+    let mut oldUnparsedEntityDeclCallback: Option<
+        std::sync::Arc<UnparsedEntityDeclCallbackAdapter>,
+    > = None;
     let mut oldNotationDeclHandler = false;
     let mut oldNotationDeclCallback: Option<std::sync::Arc<NotationDeclCallbackAdapter>> = None;
     let mut oldStartNamespaceDeclHandler = false;
