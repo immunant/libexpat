@@ -1,5 +1,8 @@
 use ::c2rust_bitfields;
-use std::io::{self, Write};
+use std::collections::hash_map::RandomState;
+use std::hash::{BuildHasher, Hasher};
+use std::io::{self, Read, Write};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 extern "C" {
     pub type _IO_wide_data;
@@ -1557,17 +1560,36 @@ fn ENTROPY_DEBUG(
     }
     entropy
 }
+
+fn read_hash_secret_salt() -> Option<::core::ffi::c_ulong> {
+    let mut bytes = [0_u8; ::core::mem::size_of::<::core::ffi::c_ulong>()];
+    std::fs::File::open("/dev/urandom")
+        .ok()?
+        .read_exact(&mut bytes)
+        .ok()?;
+    Some(::core::ffi::c_ulong::from_ne_bytes(bytes))
+}
+
+fn fallback_hash_secret_salt() -> ::core::ffi::c_ulong {
+    let mut hasher = RandomState::new().build_hasher();
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    hasher.write_u64(duration.as_secs());
+    hasher.write_u32(duration.subsec_nanos());
+    hasher.finish() as ::core::ffi::c_ulong
+}
+
 fn generate_hash_secret_salt() -> ::core::ffi::c_ulong {
-    unsafe {
-        let mut entropy: ::core::ffi::c_ulong = 0;
-        arc4random_buf(
-            &raw mut entropy as *mut ::core::ffi::c_void,
-            ::core::mem::size_of::<::core::ffi::c_ulong>() as size_t,
-        );
-        ENTROPY_DEBUG(
-            b"arc4random_buf\0".as_ptr() as *const ::core::ffi::c_char,
+    match read_hash_secret_salt() {
+        Some(entropy) => ENTROPY_DEBUG(
+            b"/dev/urandom\0".as_ptr() as *const ::core::ffi::c_char,
             entropy,
-        )
+        ),
+        None => ENTROPY_DEBUG(
+            b"RandomState fallback\0".as_ptr() as *const ::core::ffi::c_char,
+            fallback_hash_secret_salt(),
+        ),
     }
 }
 
