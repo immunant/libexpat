@@ -1,6 +1,7 @@
 use ::c2rust_bitfields;
 use std::cell::Cell;
 use std::ffi::{CStr, CString};
+use std::ptr::NonNull;
 
 extern "C" {
     pub type _IO_wide_data;
@@ -175,43 +176,89 @@ fn parse_verbosity(args: impl IntoIterator<Item = String>) -> Result<::core::ffi
 }
 
 fn run_test_matrix(verbosity: ::core::ffi::c_int) -> ::core::ffi::c_int {
-    unsafe {
-        let s: *mut Suite = suite_create(b"basic\0".as_ptr() as *const ::core::ffi::c_char);
-        make_basic_test_case(s);
-        make_namespace_test_case(s);
-        make_miscellaneous_test_case(s);
-        make_alloc_test_case(s);
-        make_nsalloc_test_case(s);
-        make_accounting_test_case(s);
+    let runner = SuiteRunner::new();
+    if verbosity != CK_SILENT {
+        println!("Expat version: {}", SuiteRunner::expat_version());
+    }
+    SuiteRunner::set_chunk_size(0 as ::core::ffi::c_int);
+    while SuiteRunner::chunk_size() <= 5 as ::core::ffi::c_int {
+        let mut enabled = 0 as ::core::ffi::c_int;
+        while enabled <= 1 as ::core::ffi::c_int {
+            SuiteRunner::set_reparse_deferral_enabled_default(enabled as XML_Bool);
+            let context = CString::new(format!(
+                "chunksize={} deferral={}",
+                SuiteRunner::chunk_size(),
+                enabled
+            ))
+            .expect("test context must not contain interior NUL bytes");
+            runner.run_all(&context, verbosity);
+            enabled += 1;
+        }
+        SuiteRunner::set_chunk_size(SuiteRunner::chunk_size() + 1);
+    }
+    runner.summarize(verbosity);
+    if runner.failed_count() == 0 as ::core::ffi::c_int {
+        EXIT_SUCCESS
+    } else {
+        EXIT_FAILURE
+    }
+}
 
-        let sr: *mut SRunner = srunner_create(s);
-        if verbosity != CK_SILENT {
-            println!(
-                "Expat version: {}",
-                CStr::from_ptr(XML_ExpatVersion()).to_string_lossy()
-            );
+struct SuiteRunner(NonNull<SRunner>);
+
+impl SuiteRunner {
+    fn new() -> Self {
+        let suite = NonNull::new(unsafe {
+            suite_create(b"basic\0".as_ptr() as *const ::core::ffi::c_char)
+        })
+        .expect("suite_create returned NULL");
+        unsafe {
+            make_basic_test_case(suite.as_ptr());
+            make_namespace_test_case(suite.as_ptr());
+            make_miscellaneous_test_case(suite.as_ptr());
+            make_alloc_test_case(suite.as_ptr());
+            make_nsalloc_test_case(suite.as_ptr());
+            make_accounting_test_case(suite.as_ptr());
         }
-        g_chunkSize = 0 as ::core::ffi::c_int;
-        while g_chunkSize <= 5 as ::core::ffi::c_int {
-            let mut enabled = 0 as ::core::ffi::c_int;
-            while enabled <= 1 as ::core::ffi::c_int {
-                g_reparseDeferralEnabledDefault = enabled as XML_Bool;
-                let context =
-                    CString::new(format!("chunksize={} deferral={}", g_chunkSize, enabled))
-                        .expect("test context must not contain interior NUL bytes");
-                srunner_run_all(sr, context.as_ptr(), verbosity);
-                enabled += 1;
-            }
-            g_chunkSize += 1;
-        }
-        srunner_summarize(sr, verbosity);
-        let nf = srunner_ntests_failed(sr);
-        srunner_free(sr);
-        if nf == 0 as ::core::ffi::c_int {
-            EXIT_SUCCESS
-        } else {
-            EXIT_FAILURE
-        }
+        let runner = NonNull::new(unsafe { srunner_create(suite.as_ptr()) })
+            .expect("srunner_create returned NULL");
+        Self(runner)
+    }
+
+    fn expat_version() -> String {
+        unsafe { CStr::from_ptr(XML_ExpatVersion()) }
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    fn set_chunk_size(chunk_size: ::core::ffi::c_int) {
+        unsafe { g_chunkSize = chunk_size }
+    }
+
+    fn chunk_size() -> ::core::ffi::c_int {
+        unsafe { g_chunkSize }
+    }
+
+    fn set_reparse_deferral_enabled_default(enabled: XML_Bool) {
+        unsafe { g_reparseDeferralEnabledDefault = enabled }
+    }
+
+    fn run_all(&self, context: &CStr, verbosity: ::core::ffi::c_int) {
+        unsafe { srunner_run_all(self.0.as_ptr(), context.as_ptr(), verbosity) }
+    }
+
+    fn summarize(&self, verbosity: ::core::ffi::c_int) {
+        unsafe { srunner_summarize(self.0.as_ptr(), verbosity) }
+    }
+
+    fn failed_count(&self) -> ::core::ffi::c_int {
+        unsafe { srunner_ntests_failed(self.0.as_ptr()) }
+    }
+}
+
+impl Drop for SuiteRunner {
+    fn drop(&mut self) {
+        unsafe { srunner_free(self.0.as_ptr()) }
     }
 }
 
