@@ -1163,7 +1163,6 @@ pub use crate::stdlib::_IO_wide_data;
 pub use crate::stdlib::__off64_t;
 pub use crate::stdlib::__off_t;
 pub use crate::stdlib::__uint64_t;
-use crate::stdlib::arc4random_buf;
 use crate::stdlib::fprintf;
 use crate::stdlib::free;
 use crate::stdlib::getenv;
@@ -2111,14 +2110,12 @@ fn ENTROPY_DEBUG(label: &str, entropy: ::core::ffi::c_ulong) -> ::core::ffi::c_u
     return entropy;
 }
 
-unsafe extern "C" fn generate_hash_secret_salt(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_ulong {
-    let mut entropy: ::core::ffi::c_ulong = 0;
-    crate::stdlib::arc4random_buf(
-        &raw mut entropy as *mut ::core::ffi::c_void,
-        ::core::mem::size_of::<::core::ffi::c_ulong>() as crate::__stddef_size_t_h::size_t,
-    );
+fn generate_hash_secret_salt() -> ::core::ffi::c_ulong {
+    let mut entropy_bytes = [0u8; ::core::mem::size_of::<::core::ffi::c_ulong>()];
+    if getrandom::getrandom(&mut entropy_bytes).is_err() {
+        ::std::process::abort();
+    }
+    let entropy = ::core::ffi::c_ulong::from_ne_bytes(entropy_bytes);
     return ENTROPY_DEBUG("arc4random_buf", entropy);
 }
 
@@ -2210,7 +2207,7 @@ unsafe extern "C" fn startParsing(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Bool {
     if (*parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
-        (*parser).m_hash_secret_salt = generate_hash_secret_salt(parser);
+        (*parser).m_hash_secret_salt = generate_hash_secret_salt();
     }
     if (*parser).m_ns != 0 {
         return setContext(parser, implicitContext.as_ptr());
