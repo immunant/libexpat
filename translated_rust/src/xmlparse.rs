@@ -1245,7 +1245,6 @@ pub use crate::stdlib::_IO_FILE;
 pub use crate::stdlib::FILE;
 #[derive(Copy, Clone)]
 #[repr(C)]
-
 pub struct XML_ParserStruct {
     pub m_userData: *mut ::core::ffi::c_void,
     pub m_handlerArg: *mut ::core::ffi::c_void,
@@ -4002,9 +4001,8 @@ pub unsafe extern "C" fn XML_ParseBuffer(
             _ => {}
         }
     }
-    (*(*parser).m_encoding)
-        .updatePosition
-        .expect("non-null function pointer")(
+    crate::src::xmltok::update_position(
+        (*(*parser).m_encoding).updatePosition,
         (*parser).m_encoding,
         (*parser).m_positionPtr,
         (*parser).m_bufferPtr,
@@ -4289,9 +4287,8 @@ pub unsafe extern "C" fn XML_ResumeParser(
             _ => {}
         }
     }
-    (*(*parser).m_encoding)
-        .updatePosition
-        .expect("non-null function pointer")(
+    crate::src::xmltok::update_position(
+        (*(*parser).m_encoding).updatePosition,
         (*parser).m_encoding,
         (*parser).m_positionPtr,
         (*parser).m_bufferPtr,
@@ -4424,9 +4421,8 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(
         return 0 as crate::expat_external_h::XML_Size;
     }
     if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
-        (*(*parser).m_encoding)
-            .updatePosition
-            .expect("non-null function pointer")(
+        crate::src::xmltok::update_position(
+            (*(*parser).m_encoding).updatePosition,
             (*parser).m_encoding,
             (*parser).m_positionPtr,
             (*parser).m_eventPtr,
@@ -4453,9 +4449,8 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
         return 0 as crate::expat_external_h::XML_Size;
     }
     if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
-        (*(*parser).m_encoding)
-            .updatePosition
-            .expect("non-null function pointer")(
+        crate::src::xmltok::update_position(
+            (*(*parser).m_encoding).updatePosition,
             (*parser).m_encoding,
             (*parser).m_positionPtr,
             (*parser).m_eventPtr,
