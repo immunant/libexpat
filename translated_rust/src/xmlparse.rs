@@ -5936,9 +5936,6 @@ unsafe fn allocate_parser_storage(
     if allocation.is_null() {
         return None;
     }
-    allocation
-        .cast::<crate::__stddef_size_t_h::size_t>()
-        .write(::core::mem::size_of::<XML_ParserStruct>());
     let parser_ptr = allocation
         .cast::<u8>()
         .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
@@ -6111,8 +6108,8 @@ unsafe fn allocate_parser_storage(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as *mut XML_ParserStruct as usize));
     let parser_handle = std::ptr::from_mut(parser);
-    poolInit(&raw mut parser.m_tempPool, parser_handle);
-    poolInit(&raw mut parser.m_temp2Pool, parser_handle);
+    pool_init(&mut parser.m_tempPool, parser_handle);
+    pool_init(&mut parser.m_temp2Pool, parser_handle);
     parserInit(
         parser_handle,
         encoding_name.map_or(std::ptr::null(), std::ffi::CStr::as_ptr),
@@ -22555,8 +22552,8 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
     // into each table instead of repeating unsafe setup for every table.
     let hash_table_allocator = unsafe { hash_table_allocator(parser) };
     unsafe {
-        poolInit(&raw mut dtd.pool, parser);
-        poolInit(&raw mut dtd.entityValuePool, parser);
+        pool_init(&mut dtd.pool, parser);
+        pool_init(&mut dtd.entityValuePool, parser);
     }
     hash_table_init(&mut dtd.generalEntities, hash_table_allocator.clone());
     hash_table_init(&mut dtd.elementTypes, hash_table_allocator.clone());
@@ -23897,8 +23894,10 @@ fn dispatch_external_entity_ref_event_handler(
 }
 
 
-unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
-    let pool = &mut *pool;
+/// Initialize a parser-owned string pool.  The caller supplies the pool as
+/// an exclusive borrow, so the allocator token factory is the only remaining
+/// raw-handle boundary.
+unsafe fn pool_init(pool: &mut STRING_POOL, parser: crate::expat_h::XML_Parser) {
     pool.storage = StringPoolStorage {
         active: Vec::new(),
         free: Vec::new(),
