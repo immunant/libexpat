@@ -2782,6 +2782,19 @@ struct AllocationBacking {
     actions: Box<dyn FnMut(ParserAllocationAction) -> bool>,
 }
 
+/// The allocation route captured while a parser handle is known live.  Its
+/// factory hands out only opaque allocation tokens, so parser-owned storage
+/// never needs to retain or pass a raw parser handle.
+#[derive(Clone)]
+struct AllocationBackingFactory {
+    allocate: std::sync::Arc<
+        dyn Fn(
+            crate::__stddef_size_t_h::size_t,
+            ::core::ffi::c_int,
+        ) -> Option<AllocationBacking>,
+    >,
+}
+
 impl AllocationBacking {
     fn apply(&mut self, action: ParserAllocationAction) -> bool {
         (self.actions)(action)
@@ -2791,6 +2804,16 @@ impl AllocationBacking {
         Box::new(move |source_line| {
             self.apply(ParserAllocationAction::Free(source_line));
         })
+    }
+}
+
+impl AllocationBackingFactory {
+    fn allocation_backing(
+        &self,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> Option<AllocationBacking> {
+        (self.allocate)(size, source_line)
     }
 }
 
@@ -2834,7 +2857,10 @@ fn scratch_allocation_backing(
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>> {
-    let mut backing = unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }?;
+    let mut backing = parser
+        .m_allocationBackingFactory
+        .as_ref()?
+        .allocation_backing(size, source_line)?;
     Some(Box::new(move |_parser, action| backing.apply(action)))
 }
 
@@ -3120,6 +3146,10 @@ pub struct XML_ParserStruct {
     pub m_handlerArg: HandlerArg,
     m_buffer: InputBuffer,
     pub m_mem: crate::expat_h::XML_Memory_Handling_Suite,
+    // Captured at construction while the raw parser handle is live.  The
+    // route creates opaque allocator tokens for Rust-owned storage without
+    // propagating that handle through parser implementation code.
+    m_allocationBackingFactory: Option<AllocationBackingFactory>,
     // The parser state itself is Rust-owned.  This opaque release token keeps
     // the allocation made through the configured Expat allocator observable
     // without ever treating that foreign memory as a Rust object.
@@ -6174,6 +6204,11 @@ unsafe fn parser_create_ownership_facade(
     let mut parser_owner = Box::new(initial_parser_struct(memory_suite));
     let parser_ptr = std::ptr::from_mut(parser_owner.as_mut());
     let parser = parser_owner.as_mut();
+    parser.m_allocationBackingFactory = Some(AllocationBackingFactory {
+        allocate: std::sync::Arc::new(move |size, source_line| unsafe {
+            allocation_backing_from_handle(parser_ptr, size, source_line)
+        }),
+    });
     let allocation_size = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
@@ -6278,13 +6313,12 @@ unsafe fn parser_create_ownership_facade(
             return Err(1451);
         };
         parser.m_atts = atts;
-        let mut data_buf_backing = match allocation_backing(
+        let mut data_buf_backing = match parser_allocation_backing(
             parser,
             (INIT_DATA_BUF_SIZE as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
             1462 as ::core::ffi::c_int,
-        )
-        .map(AllocationBacking::into_free_backing) {
+        ) {
             Some(backing) => backing,
             None => {
                 let mut backing = parser.m_atts.backing.take();
@@ -6346,8 +6380,13 @@ unsafe fn parser_create_ownership_facade(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as *mut XML_ParserStruct as usize));
-    let parser_handle = std::ptr::from_mut(parser);
-    let string_pool_allocator = string_pool_allocator(parser_handle);
+    let string_pool_allocator = string_pool_allocator(
+        parser
+            .m_allocationBackingFactory
+            .as_ref()
+            .expect("parser allocation factory is installed during construction")
+            .clone(),
+    );
     pool_init(&mut parser.m_tempPool, string_pool_allocator.clone());
     pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
     if !parser_initialize_from_cstr(parser, encoding_name) {
@@ -6424,6 +6463,7 @@ fn initial_parser_struct(
         m_handlerArg: HandlerArg::UserData,
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
+        m_allocationBackingFactory: None,
         m_parserStorageBacking: None,
         m_bufferPtr: None,
         m_bufferEnd: 0,
@@ -6847,8 +6887,7 @@ unsafe fn parser_initialize_from_cstr(
             .to_bytes_with_nul()
             .len()
             .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
-        let backing = allocation_backing(parser_handle, allocation_size, 8456)
-            .map(AllocationBacking::into_free_backing)?;
+        let backing = parser_allocation_backing(parser, allocation_size, 8456)?;
         protocol_encoding_name_from_cstr(encoding_name, backing)
     });
     parser_init(
@@ -16014,7 +16053,10 @@ fn parser_allocation_backing(
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
-    unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }
+    parser
+        .m_allocationBackingFactory
+        .as_ref()?
+        .allocation_backing(size, source_line)
         .map(AllocationBacking::into_free_backing)
 }
 
@@ -23035,19 +23077,15 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
     // storing the actual Rust value in its shared Rust owner.  The token is
     // released by `dtdDestroy` after all nested DTD allocations have been
     // released.
-    let Some(allocation) = (unsafe {
-        allocation_backing(
-            parser,
-            // `allocation` is an ownership token added by the Rust port, not
-            // part of Expat's DTD allocation contract.  Its offset is the
-            // size of the prior DTD layout, which keeps custom allocator
-            // size observations unchanged.
-            ::core::mem::offset_of!(DTD, allocation),
-            7500 as ::core::ffi::c_int,
-        )
-    })
-    .map(AllocationBacking::into_free_backing)
-    else {
+    let Some(allocation) = parser_allocation_backing(
+        parser,
+        // `allocation` is an ownership token added by the Rust port, not
+        // part of Expat's DTD allocation contract.  Its offset is the
+        // size of the prior DTD layout, which keeps custom allocator
+        // size observations unchanged.
+        ::core::mem::offset_of!(DTD, allocation),
+        7500 as ::core::ffi::c_int,
+    ) else {
         return None;
     };
     let mut dtd = DTD {
@@ -23074,11 +23112,11 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
         scaffIndex: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         allocation: Some(allocation),
     };
-    // All hash tables in one DTD use the same parser allocation route.  Build
-    // that route once at the raw-handle boundary, then clone its safe factory
-    // into each table instead of repeating unsafe setup for every table.
-    let hash_table_allocator = unsafe { hash_table_allocator(parser) };
-    let string_pool_allocator = unsafe { string_pool_allocator(parser) };
+    // All hash tables and pools in one DTD clone the already-captured typed
+    // allocation route, rather than retaining a raw parser handle.
+    let allocation_factory = parser.m_allocationBackingFactory.as_ref()?.clone();
+    let hash_table_allocator = hash_table_allocator(allocation_factory.clone());
+    let string_pool_allocator = string_pool_allocator(allocation_factory);
     pool_init(&mut dtd.pool, string_pool_allocator.clone());
     pool_init(&mut dtd.entityValuePool, string_pool_allocator);
     hash_table_init(&mut dtd.generalEntities, hash_table_allocator.clone());
@@ -23657,7 +23695,21 @@ unsafe fn copyEntityTable(
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 
-unsafe fn allocation_backing(
+/// Constructs an opaque allocation token from a captured allocator route.
+/// The parser handle was validated when this route was installed, and no raw
+/// handle crosses this implementation boundary.
+fn allocation_backing(
+    factory: &AllocationBackingFactory,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<AllocationBacking> {
+    factory.allocation_backing(size, source_line)
+}
+
+/// Performs the legacy raw-handle allocator work behind the typed factory.
+/// Every caller reaches this only through `AllocationBackingFactory`, which
+/// is installed while the parser handle is live during construction.
+unsafe fn allocation_backing_from_handle(
     parser: crate::expat_h::XML_Parser,
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
@@ -24159,13 +24211,12 @@ unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
     }
 }
 
-/// Captures the parser's existing allocator route once for all hash tables in
-/// one DTD.  The returned factory only creates opaque allocation tokens; it
-/// never dereferences the parser handle retained by those tokens.
-unsafe fn hash_table_allocator(parser: crate::expat_h::XML_Parser) -> HashTableAllocator {
+/// Clones the parser's typed allocation route once for all hash tables in one
+/// DTD.  The returned factory only creates opaque allocation tokens.
+fn hash_table_allocator(factory: AllocationBackingFactory) -> HashTableAllocator {
     HashTableAllocator {
-        allocate: std::sync::Arc::new(move |size, source_line| unsafe {
-            allocation_backing(parser, size, source_line)
+        allocate: std::sync::Arc::new(move |size, source_line| {
+            allocation_backing(&factory, size, source_line)
                 .map(AllocationBacking::into_free_backing)
         }),
     }
@@ -24345,30 +24396,21 @@ fn dispatch_external_entity_ref_event_handler(
 }
 
 
-/// Capture a parser-owned pool allocation route while the raw parser handle
-/// is confined to the allocator boundary.  The returned factory can be
-/// cloned for multiple pools without giving their state parser access.
-unsafe fn string_pool_allocator(parser: crate::expat_h::XML_Parser) -> StringPoolAllocator {
+/// Adapts the parser's typed allocation route for string-pool blocks.  The
+/// returned factory can be cloned for multiple pools without parser access.
+fn string_pool_allocator(factory: AllocationBackingFactory) -> StringPoolAllocator {
     StringPoolAllocator {
         allocate: std::sync::Arc::new(move |size| {
-            let allocation = expat_malloc(parser, size, 8201 as ::core::ffi::c_int);
-            if allocation.is_null() {
-                return None;
-            }
-            let mut allocation = allocation;
+            let mut backing = allocation_backing(&factory, size, 8201)?;
             Some(Box::new(move |action| match action {
                 StringPoolAllocationAction::Grow(size) => {
-                    let reallocated = expat_realloc(parser, allocation, size, 8161);
-                    if reallocated.is_null() {
-                        false
-                    } else {
-                        allocation = reallocated;
-                        true
-                    }
+                    backing.apply(ParserAllocationAction::Grow {
+                        size,
+                        source_line: 8161,
+                    })
                 }
                 StringPoolAllocationAction::Free(source_line) => {
-                    expat_free(parser, allocation, source_line);
-                    true
+                    backing.apply(ParserAllocationAction::Free(source_line))
                 }
             }))
         }),
