@@ -10243,29 +10243,36 @@ unsafe fn doContent(
             (scan, next, source)
         };
         let mut tok: ::core::ffi::c_int = scan.token;
-        let mut accountAfter: *const ::core::ffi::c_char = if tok
+        let account_after = if tok
             == crate::src::xmltok::XML_TOK_TRAILING_RSQB
             || tok == crate::src::xmltok::XML_TOK_TRAILING_CR
         {
             if haveMore as ::core::ffi::c_int != 0 {
-                s
+                0
             } else {
-                end
+                source.bytes().len()
             }
         } else {
-            next
+            let next_address = next.addr();
+            let Some(offset) = next_address
+                .checked_sub(source.chars().as_ptr().addr())
+                .filter(|offset| *offset <= source.bytes().len())
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            offset
         };
-        if accountingDiffTolerated(
+        if !accounting_raw_slice_diff_tolerated(
             parser,
             tok,
-            s,
-            accountAfter,
+            source.bytes(),
+            0,
+            account_after,
             3337 as ::core::ffi::c_int,
             account,
-            None,
-        ) == 0
+            true,
+        )
         {
-            accountingOnAbort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         content_update_event_end(
@@ -10383,17 +10390,16 @@ unsafe fn doContent(
                     let mut ch: crate::expat_external_h::XML_Char =
                         predefined as crate::expat_external_h::XML_Char;
                     if ch != 0 {
-                        accountingDiffTolerated(
+                        let entity_bytes = bytemuck::bytes_of(&ch);
+                        let _ = accounting_raw_slice_diff_tolerated(
                             parser,
                             tok,
-                            &raw mut ch as *mut ::core::ffi::c_char,
-                            (&raw mut ch as *mut ::core::ffi::c_char)
-                                .wrapping_offset(::core::mem::size_of::<
-                                    crate::expat_external_h::XML_Char,
-                                >() as isize),
+                            entity_bytes,
+                            0,
+                            entity_bytes.len(),
                             3403 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
-                            Some(bytemuck::bytes_of(&ch)),
+                            false,
                         );
                         let handlers = content_token_handlers(parser);
                         if handlers.character_data {
@@ -13517,6 +13523,67 @@ fn accounting_slice_diff_tolerated(
     tolerated
 }
 
+/// Legacy processors still carry the opaque parser handle.  Their callers
+/// already establish that it is non-null and exclusively borrowed; confine
+/// that conversion here so the accounting implementation receives only a
+/// checked parser reference and bounded token slice.
+unsafe fn accounting_raw_slice_diff_tolerated(
+    parser: crate::expat_h::XML_Parser,
+    token: ::core::ffi::c_int,
+    input: &[u8],
+    before: usize,
+    after: usize,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+    report_abort: bool,
+) -> bool {
+    let parser = &*parser;
+    let tolerated = accounting_slice_diff_tolerated(
+        parser,
+        token,
+        input,
+        before,
+        after,
+        source_line,
+        account,
+    );
+    if !tolerated && report_abort {
+        cdata_accounting_on_abort(parser);
+    }
+    tolerated
+}
+
+/// Resolves a raw tokenizer cursor pair through the parser's owned input
+/// buffer before accounting.  This is deliberately narrower than a general
+/// raw-slice adapter: cursors outside that buffer are rejected immediately.
+unsafe fn accounting_parser_window_diff_tolerated(
+    parser: crate::expat_h::XML_Parser,
+    token: ::core::ffi::c_int,
+    before: *const ::core::ffi::c_char,
+    after: *const ::core::ffi::c_char,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+    report_abort: bool,
+) -> Option<bool> {
+    let parser = &*parser;
+    let input = parser
+        .m_buffer
+        .window_from_addresses(before.addr(), after.addr())?;
+    let tolerated = accounting_slice_diff_tolerated(
+        parser,
+        token,
+        input,
+        0,
+        input.len(),
+        source_line,
+        account,
+    );
+    if !tolerated && report_abort {
+        cdata_accounting_on_abort(parser);
+    }
+    Some(tolerated)
+}
+
 fn cdata_accounting_on_abort(parser: &XML_ParserStruct) {
     cdata_accounting_report_stats(parser, " ABORTING\n");
 }
@@ -14891,17 +14958,21 @@ unsafe fn entity_value_init_processor_impl(
             parser.m_processor = ProcessorState::EntityValue;
             return entityValueProcessor(std::ptr::from_mut(parser), next, end, next_ptr);
         } else if tok == crate::src::xmltok::XML_TOK_BOM {
-            if accountingDiffTolerated(
-                std::ptr::from_mut(parser),
+            let Some(token_bytes) = parser.m_buffer.window_from_addresses(s.addr(), next.addr())
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            if !accounting_slice_diff_tolerated(
+                parser,
                 tok,
-                s,
-                next,
+                token_bytes,
+                0,
+                token_bytes.len(),
                 5077 as ::core::ffi::c_int,
                 XML_ACCOUNT_DIRECT,
-                None,
-            ) == 0
+            )
             {
-                accountingOnAbort(std::ptr::from_mut(parser));
+                cdata_accounting_on_abort(parser);
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
             *next_ptr = next;
@@ -14950,17 +15021,19 @@ unsafe extern "C" fn externalParEntProcessor(
             crate::src::xmltok::XML_TOK_NONE | _ => {}
         }
     } else if tok == crate::src::xmltok::XML_TOK_BOM {
-        if accountingDiffTolerated(
+        let Some(tolerated) = accounting_parser_window_diff_tolerated(
             parser,
             tok,
             s,
             next,
             5130 as ::core::ffi::c_int,
             XML_ACCOUNT_DIRECT,
-            None,
-        ) == 0
-        {
-            accountingOnAbort(parser);
+            true,
+        )
+        else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        if !tolerated {
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
@@ -15380,17 +15453,17 @@ unsafe extern "C" fn doProlog(
         match role {
             2 | 1 | 57 => {}
             _ => {
-                if accountingDiffTolerated(
+                if !accounting_raw_slice_diff_tolerated(
                     parser,
                     tok,
-                    s,
-                    next,
+                    &token_bytes,
+                    0,
+                    token_bytes.len(),
                     5301 as ::core::ffi::c_int,
                     account,
-                    None,
-                ) == 0
+                    true,
+                )
                 {
-                    accountingOnAbort(parser);
                     return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
                 }
             }
@@ -18261,20 +18334,20 @@ unsafe extern "C" fn epilogProcessor(
         let Some(end) = input_for_account.input_start.checked_add(end) else {
             return false;
         };
-        let (Some(start), Some(end)) = (bytes.get(start..), bytes.get(end..)) else {
+        let Some(window) = bytes.get(start..end) else {
             return false;
         };
-        if accountingDiffTolerated(
+        if !accounting_raw_slice_diff_tolerated(
             parser_for_account,
             token,
-            start.as_ptr().cast(),
-            end.as_ptr().cast(),
+            window,
+            0,
+            window.len(),
             6279,
             XML_ACCOUNT_DIRECT,
-            None,
-        ) == 0
+            true,
+        )
         {
-            accountingOnAbort(parser_for_account);
             false
         } else {
             true
@@ -23851,46 +23924,6 @@ unsafe extern "C" fn accountingGetCurrentAmplification(
     return amplificationFactor;
 }
 
-unsafe extern "C" fn accountingReportStats(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut epilog: *const ::core::ffi::c_char,
-) {
-    let root = (*originParser)
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if root.accounting.debugLevel == 0 as ::core::ffi::c_ulong {
-        return;
-    }
-    let output = root
-        .accounting
-        .countBytesDirect
-        .wrapping_add(root.accounting.countBytesIndirect);
-    let amplificationFactor = if root.accounting.countBytesDirect != 0 {
-        output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
-    } else {
-        (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect) as ::core::ffi::c_float
-            / 23.0
-    };
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"expat: Accounting(%p): Direct %10llu, indirect %10llu, amplification %8.2f%s\0".as_ptr()
-            as *const ::core::ffi::c_char,
-        originParser as *mut ::core::ffi::c_void,
-        root.accounting.countBytesDirect,
-        root.accounting.countBytesIndirect,
-        amplificationFactor as ::core::ffi::c_double,
-        epilog,
-    );
-}
-
-unsafe extern "C" fn accountingOnAbort(mut originParser: crate::expat_h::XML_Parser) {
-    accountingReportStats(
-        originParser,
-        b" ABORTING\n\0".as_ptr() as *const ::core::ffi::c_char,
-    );
-}
-
 fn append_printable_byte(output: &mut Vec<u8>, byte: u8) {
     match byte {
         0 => output.extend_from_slice(b"\\0"),
@@ -23958,141 +23991,6 @@ fn accounting_report_diff(
     let _ = stderr.write_all(b"\"\n");
 }
 
-/// Resolves a legacy tokenizer cursor pair only long enough to render its
-/// accounting context.  The slice stays within this helper and is never
-/// handed out from raw pointers; its owner is verified as parser or active
-/// entity storage before the safe formatter consumes it.
-unsafe fn accounting_report_token_context(
-    origin_parser: crate::expat_h::XML_Parser,
-    levels_away_from_root_parser: ::core::ffi::c_uint,
-    before: *const ::core::ffi::c_char,
-    after: *const ::core::ffi::c_char,
-    bytes_more: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
-    source_line: ::core::ffi::c_int,
-    account: XML_Account,
-    debug_level: ::core::ffi::c_ulong,
-) {
-    let Some(shared_dtd) = (*origin_parser).m_dtd.as_deref() else {
-        return;
-    };
-    // All non-local accounting callers provide tokenizer cursors.  A cursor
-    // must resolve through its parser/entity owner before it can be rendered;
-    // do not synthesize a slice from its addresses.
-    let dtd = &*shared_dtd.value.get();
-    let Some(source) = entity_value_token_source(&*origin_parser, dtd, before.addr(), after.addr())
-    else {
-        return;
-    };
-    let bytes: &[u8] = match source {
-        RawNameSource::Bytes(bytes) => bytes,
-        RawNameSource::Chars(chars) => bytemuck::cast_slice(chars),
-    };
-    accounting_report_diff(
-        debug_level,
-        levels_away_from_root_parser,
-        bytes,
-        bytes_more,
-        source_line,
-        account,
-    );
-}
-
-unsafe fn accountingDiffTolerated(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut tok: ::core::ffi::c_int,
-    mut before: *const ::core::ffi::c_char,
-    mut after: *const ::core::ffi::c_char,
-    mut source_line: ::core::ffi::c_int,
-    mut account: XML_Account,
-    diagnostic_bytes: Option<&[u8]>,
-) -> crate::expat_h::XML_Bool {
-    match tok {
-        crate::src::xmltok::XML_TOK_INVALID
-        | crate::src::xmltok::XML_TOK_PARTIAL
-        | crate::src::xmltok::XML_TOK_PARTIAL_CHAR
-        | crate::src::xmltok::XML_TOK_NONE => {
-            return crate::expat_h::XML_TRUE;
-        }
-        _ => {}
-    }
-    if account as ::core::ffi::c_uint
-        == XML_ACCOUNT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return crate::expat_h::XML_TRUE;
-    }
-    let levelsAwayFromRootParser = (*originParser)
-        .m_parentParser
-        .map_or(0, ::core::num::NonZeroU32::get);
-    let isDirect: ::core::ffi::c_int = (account as ::core::ffi::c_uint
-        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
-        && (*originParser).m_parentParser.is_none())
-        as ::core::ffi::c_int;
-    let bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t = after.offset_from(before);
-    let (countBytesOutput, amplificationFactor, threshold, maximum, debug_level) = {
-        let mut root = (*originParser)
-            .m_root
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let addition_target = if isDirect != 0 {
-            &mut root.accounting.countBytesDirect
-        } else {
-            &mut root.accounting.countBytesIndirect
-        };
-        if *addition_target
-            > (-1 as ::core::ffi::c_int as XmlBigCount).wrapping_sub(bytesMore as XmlBigCount)
-        {
-            return crate::expat_h::XML_FALSE;
-        }
-        *addition_target = addition_target.wrapping_add(bytesMore as XmlBigCount);
-        let output = root
-            .accounting
-            .countBytesDirect
-            .wrapping_add(root.accounting.countBytesIndirect);
-        let amplification = if root.accounting.countBytesDirect != 0 {
-            output as ::core::ffi::c_float
-                / root.accounting.countBytesDirect as ::core::ffi::c_float
-        } else {
-            (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
-                as ::core::ffi::c_float
-                / 23.0
-        };
-        (
-            output,
-            amplification,
-            root.accounting.activationThresholdBytes,
-            root.accounting.maximumAmplificationFactor,
-            root.accounting.debugLevel,
-        )
-    };
-    let tolerated: crate::expat_h::XML_Bool =
-        (countBytesOutput < threshold || amplificationFactor <= maximum) as ::core::ffi::c_int
-            as crate::expat_h::XML_Bool;
-    if debug_level >= 2 as ::core::ffi::c_ulong {
-        accountingReportStats(originParser, b"\0".as_ptr() as *const ::core::ffi::c_char);
-        if let Some(bytes) = diagnostic_bytes {
-            accounting_report_diff(
-                debug_level,
-                levelsAwayFromRootParser,
-                bytes,
-                bytesMore,
-                source_line,
-                account,
-            );
-        } else {
-            accounting_report_token_context(
-                originParser,
-                levelsAwayFromRootParser,
-                before,
-                after,
-                bytesMore,
-                source_line,
-                account,
-                debug_level,
-            );
-        }
-    }
-    return tolerated;
-}
 pub unsafe extern "C" fn testingAccountingGetCountBytesDirect(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
