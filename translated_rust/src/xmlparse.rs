@@ -6508,6 +6508,71 @@ unsafe fn call_processor_impl(
                 checked_next_offset = Some(offset);
             }
             result.error
+        } else if matches!(parser.m_processor, ProcessorState::IgnoreSection) {
+            // Ignore-section scanning is already expressed in terms of the
+            // parser-owned input window.  Keep its cursor as an offset here,
+            // rather than reconstructing the legacy C processor arguments.
+            let Some(start_address) = parser.m_buffer.address_at_offset(next) else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
+            let Some(end_address) = parser.m_buffer.address_at_offset(input.end) else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
+            let result = ignore_section_processor_impl(parser, start_address, end_address);
+            let ignore_next = result.next_offset.map(|offset| {
+                next.checked_add(offset)
+                    .filter(|offset| *offset <= input.end)
+            });
+            if ignore_next.is_some_and(|offset| offset.is_none()) {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            }
+            // A default handler may re-enter and relocate the input buffer.
+            // Validate the returned logical cursor against that live buffer
+            // before either returning it or passing it into prolog handling.
+            if ignore_next.flatten().is_some_and(|offset| {
+                parser.m_buffer.window_from_offsets(offset, offset).is_none()
+            })
+            {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            }
+            if result.error as ::core::ffi::c_uint
+                != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                checked_next_offset = Some(ignore_next.flatten().unwrap_or(next));
+                result.error
+            } else if let Some(prolog_relative_start) = result.prolog_start_offset {
+                let Some(prolog_start) = next
+                    .checked_add(prolog_relative_start)
+                    .filter(|offset| *offset <= input.end)
+                    .filter(|offset| {
+                        parser
+                            .m_buffer
+                            .window_from_offsets(*offset, input.end)
+                            .is_some()
+                    })
+                else {
+                    return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                };
+                let prolog = prolog_processor_from_offsets(parser, prolog_start, input.end);
+                match prolog.cursor {
+                    PrologCursorUpdate::Unchanged => {
+                        checked_next_offset = Some(prolog_start);
+                    }
+                    PrologCursorUpdate::Cursor(Some(offset)) => {
+                        if parser.m_buffer.window_from_offsets(offset, offset).is_none() {
+                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                        }
+                        checked_next_offset = Some(offset);
+                    }
+                    PrologCursorUpdate::Cursor(None) => {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                    }
+                }
+                prolog.error
+            } else {
+                checked_next_offset = Some(ignore_next.flatten().unwrap_or(next));
+                result.error
+            }
         } else if matches!(parser.m_processor, ProcessorState::ExternalEntityInit2) {
             // Keep both initialization scans on a stable snapshot, while
             // passing the corresponding live-buffer address to the state
@@ -6690,7 +6755,9 @@ unsafe fn call_processor_impl(
                 ProcessorState::EntityValueInit => entityValueInitProcessor,
                 ProcessorState::EntityValue => entityValueProcessor,
                 ProcessorState::CdataSection => unreachable!("CDATA dispatch is handled above"),
-                ProcessorState::IgnoreSection => ignoreSectionProcessor,
+                ProcessorState::IgnoreSection => {
+                    unreachable!("ignore-section dispatch is handled with checked offsets")
+                }
                 ProcessorState::Prolog => prologProcessor,
                 ProcessorState::Epilog => {
                     unreachable!("epilog dispatch is handled with checked offsets")
@@ -15923,42 +15990,8 @@ fn do_cdata_section_impl(
     }
 }
 
-unsafe extern "C" fn ignoreSectionProcessor(
-    parser: crate::expat_h::XML_Parser,
-    start: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() || endPtr.is_null() || start.is_null() || end.is_null() {
-        crate::expat_h::XML_ERROR_UNEXPECTED_STATE
-    } else {
-        // The processor ABI is internal, but it still uses C cursors.  Recover
-        // those two references once, then keep the parser work in the safe
-        // address-and-offset implementation below.
-        let parser_state = &mut *parser;
-        let result = {
-            let end_ptr = &mut *endPtr;
-            let result = ignore_section_processor_impl(parser_state, start.addr(), end.addr());
-            if let Some(offset) = result.next_offset {
-                *end_ptr = start.wrapping_add(offset);
-            }
-            result
-        };
-        if result.error as ::core::ffi::c_uint
-            != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result.error;
-        }
-        if let Some(offset) = result.prolog_start_offset {
-            return prologProcessor(parser, start.wrapping_add(offset), end, endPtr);
-        }
-        result.error
-    }
-}
-
 /// Result of processing an ignore section after the raw cursors have been
-/// converted to checked addresses.  The legacy adapter owns the conversion of
-/// these offsets back to its C out-cursor and the final processor call.
+/// converted to checked addresses.
 struct IgnoreSectionProcessorResult {
     error: crate::expat_h::XML_Error,
     next_offset: Option<usize>,
@@ -17402,26 +17435,36 @@ fn entity_value_processor_safe(state: EntityValueProcessorState<'_>) -> EntityVa
     }
 }
 
-unsafe extern "C" fn prologProcessor(
-    parser: crate::expat_h::XML_Parser,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let Some(parser) = parser.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+struct PrologProcessorResult {
+    error: crate::expat_h::XML_Error,
+    cursor: PrologCursorUpdate,
+}
+
+/// Runs a parser-buffer prolog token from checked offsets.  The scanner and
+/// state machine receive only ranges derived from the live input buffer; the
+/// raw processor wrapper below is left solely to translate its ABI cursors.
+fn prolog_processor_from_offsets(
+    parser: &mut XML_ParserStruct,
+    start_offset: usize,
+    end_offset: usize,
+) -> PrologProcessorResult {
+    let Some(start_address) = parser.m_buffer.address_at_offset(start_offset) else {
+        return PrologProcessorResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            cursor: PrologCursorUpdate::Unchanged,
+        };
     };
-    let Some(next_ptr) = nextPtr.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    let Some(end_address) = parser.m_buffer.address_at_offset(end_offset) else {
+        return PrologProcessorResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            cursor: PrologCursorUpdate::Unchanged,
+        };
     };
-    let Some(start_offset) = parser.m_buffer.offset_from_address(s.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(end_offset) = parser.m_buffer.offset_from_address(end.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(scan) = scan_prolog_processor_input(parser, s.addr(), end.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    let Some(scan) = scan_prolog_processor_input(parser, start_address, end_address) else {
+        return PrologProcessorResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            cursor: PrologCursorUpdate::Unchanged,
+        };
     };
     let next_offset = match scan.next {
         Some(offset) => {
@@ -17430,7 +17473,10 @@ unsafe extern "C" fn prologProcessor(
                 .filter(|next| *next <= end_offset)
                 .filter(|next| parser.m_buffer.window_from_offsets(start_offset, *next).is_some())
             else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                return PrologProcessorResult {
+                    error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                    cursor: PrologCursorUpdate::Unchanged,
+                };
             };
             next_offset
         }
@@ -17450,7 +17496,32 @@ unsafe extern "C" fn prologProcessor(
         crate::expat_h::XML_TRUE,
         XML_ACCOUNT_DIRECT,
     );
-    if let PrologCursorUpdate::Cursor(cursor) = prolog_cursor {
+    PrologProcessorResult {
+        error,
+        cursor: prolog_cursor,
+    }
+}
+
+unsafe extern "C" fn prologProcessor(
+    parser: crate::expat_h::XML_Parser,
+    s: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    nextPtr: *mut *const ::core::ffi::c_char,
+) -> crate::expat_h::XML_Error {
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(next_ptr) = nextPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(start_offset) = parser.m_buffer.offset_from_address(s.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(end_offset) = parser.m_buffer.offset_from_address(end.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let result = prolog_processor_from_offsets(parser, start_offset, end_offset);
+    if let PrologCursorUpdate::Cursor(cursor) = result.cursor {
         *next_ptr = match cursor {
             Some(offset) => {
                 let Some(window) = parser.m_buffer.window_from_offsets(offset, offset)
@@ -17462,7 +17533,7 @@ unsafe extern "C" fn prologProcessor(
             None => ::core::ptr::null(),
         };
     }
-    return error;
+    result.error
 }
 
 fn prolog_quoted_token_contents(
