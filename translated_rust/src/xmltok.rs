@@ -7822,51 +7822,28 @@ pub mod xmltok_impl_c {
     }
 
     pub unsafe extern "C" fn big2_scanHexCharRef(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-            } {
-                25 | 24 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                }
+        let input_len = unsafe { end.offset_from(ptr) };
+        if input_len < 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
+        let normal = unsafe { &*(enc as *const normal_encoding) };
+        match big2_scan_hex_char_ref_impl(normal, input) {
+            Big2ScanOutcome::Token(token, next) => {
+                unsafe { *nextTokPtr = ptr.add(next) };
+                token
             }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr)
-                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize
-            {
-                match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                } {
-                    25 | 24 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+            Big2ScanOutcome::Partial(token) => token,
+            Big2ScanOutcome::Invalid(at) => {
+                unsafe { *nextTokPtr = ptr.add(at) };
+                crate::src::xmltok::XML_TOK_INVALID_1
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
     pub unsafe extern "C" fn big2_scanRef(
@@ -8442,6 +8419,31 @@ pub mod xmltok_impl_c {
         while pos + 2 <= input.len() {
             match big2_byte_type(enc, input, pos) {
                 25 => pos += 2,
+                18 => {
+                    return Big2ScanOutcome::Token(crate::src::xmltok::XML_TOK_CHAR_REF_1, pos + 2)
+                }
+                _ => return Big2ScanOutcome::Invalid(pos),
+            }
+        }
+        Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
+    }
+
+    fn big2_scan_hex_char_ref_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> Big2ScanOutcome {
+        if input.len() < 2 {
+            return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+        }
+        match big2_byte_type(enc, input, 0) {
+            24 | 25 => {}
+            _ => return Big2ScanOutcome::Invalid(0),
+        }
+
+        let mut pos = 2;
+        while pos + 2 <= input.len() {
+            match big2_byte_type(enc, input, pos) {
+                24 | 25 => pos += 2,
                 18 => {
                     return Big2ScanOutcome::Token(crate::src::xmltok::XML_TOK_CHAR_REF_1, pos + 2)
                 }
