@@ -1666,6 +1666,17 @@ macro_rules! handler_arg_from_state {
     }};
 }
 
+/// Invokes a registered CDATA boundary callback with the parser's current
+/// handler context.  The callback registry is populated only through the C
+/// handler setters, so parser logic can retain a typed parser reference until
+/// this narrow ABI dispatch point.
+fn invoke_cdata_section_callback(
+    callback: &dyn EndCdataSectionCallback,
+    parser: &XML_ParserStruct,
+) {
+    unsafe { callback.invoke(handler_arg_from_state!(parser)) }
+}
+
 trait NotStandaloneCallback: Send + Sync {
     unsafe fn invoke(&self, parser: &XML_ParserStruct) -> ::core::ffi::c_int;
 }
@@ -10528,7 +10539,7 @@ unsafe fn doContent(
                                     .cloned();
                                 if let Some(callback) = callback {
                                     callback.invoke(
-                                        handler_arg!(parser),
+                                        handler_arg_from_state!(parser),
                                         name,
                                         0 as ::core::ffi::c_int,
                                     );
@@ -10572,7 +10583,7 @@ unsafe fn doContent(
                                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                         }
                                         callback.invoke(
-                                            handler_arg!(parser),
+                                            handler_arg_from_state!(parser),
                                             entity_name,
                                             0 as ::core::ffi::c_int,
                                         );
@@ -10854,7 +10865,7 @@ unsafe fn doContent(
                                 _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             callback.invoke(
-                                handler_arg!(parser),
+                                handler_arg_from_state!(parser),
                                 name,
                                 app_atts.as_mut_ptr(),
                             );
@@ -10953,7 +10964,7 @@ unsafe fn doContent(
                             .cloned();
                         if let Some(callback) = callback {
                             callback.invoke(
-                                handler_arg!(parser),
+                                handler_arg_from_state!(parser),
                                 name_pointer,
                                 app_atts.as_mut_ptr(),
                             );
@@ -10986,7 +10997,7 @@ unsafe fn doContent(
                             >() else {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             };
-                            callback(handler_arg!(parser), name_pointer);
+                            callback(handler_arg_from_state!(parser), name_pointer);
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
@@ -11175,7 +11186,7 @@ unsafe fn doContent(
                                 >() else {
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 };
-                                callback(handler_arg!(parser), end_element_name);
+                                callback(handler_arg_from_state!(parser), end_element_name);
                             }
                         } else if parser.m_defaultHandler {
                             reportDefault(parser, enc, s, next);
@@ -11245,13 +11256,7 @@ unsafe fn doContent(
                             .get(&(parser_ptr as usize))
                             .cloned()
                             .expect("installed start CDATA handler");
-                        callback.invoke(handler_arg!(parser));
-                    } else if false && handlers.character_data {
-                        callCharacterDataHandler(
-                            parser,
-                            parser.m_dataBuf.chars.as_ptr(),
-                            0 as ::core::ffi::c_int,
-                        );
+                        invoke_cdata_section_callback(callback.as_ref(), parser);
                     } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
@@ -11429,7 +11434,11 @@ unsafe fn doContent(
                                     Some(len) => len,
                                     None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                                 };
-                                charDataHandler.invoke(handler_arg!(parser), data_start, data_len);
+                                charDataHandler.invoke(
+                                    handler_arg_from_state!(parser),
+                                    data_start,
+                                    data_len,
+                                );
                                 if convert_res_0 as ::core::ffi::c_uint
                                     == crate::src::xmltok::XML_CONVERT_COMPLETED
                                         as ::core::ffi::c_int
@@ -11460,7 +11469,7 @@ unsafe fn doContent(
                                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             charDataHandler.invoke(
-                                handler_arg!(parser),
+                                handler_arg_from_state!(parser),
                                 s as *const crate::expat_external_h::XML_Char,
                                 data_len,
                             );
@@ -13660,7 +13669,7 @@ fn dispatch_cdata_callback(
                 .expect("installed end CDATA handler");
             // The parser state has no outstanding borrow when the callback
             // runs, and its only argument is materialized for this call.
-            unsafe { callback.invoke(handler_arg_from_state!(parser_state)) };
+            invoke_cdata_section_callback(callback.as_ref(), parser_state);
         }
         CdataCallbackEvent::Newline => {
             let callback = CHARACTER_DATA_HANDLERS
