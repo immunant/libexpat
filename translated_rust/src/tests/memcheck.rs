@@ -1,3 +1,5 @@
+use std::sync::{Mutex, MutexGuard};
+
 extern "C" {
     fn printf(__format: *const ::core::ffi::c_char, ...) -> ::core::ffi::c_int;
     fn malloc(__size: size_t) -> *mut ::core::ffi::c_void;
@@ -14,153 +16,193 @@ pub struct allocation_entry {
     pub allocation: *mut ::core::ffi::c_void,
     pub num_bytes: size_t,
 }
+
+#[derive(Copy, Clone)]
+struct AllocationRecord {
+    allocation: usize,
+    num_bytes: size_t,
+}
+
 pub const NULL: *mut ::core::ffi::c_void =
     ::core::ptr::null::<::core::ffi::c_void>() as *mut ::core::ffi::c_void;
-static mut alloc_head: *mut AllocationEntry =
-    ::core::ptr::null::<AllocationEntry>() as *mut AllocationEntry;
-static mut alloc_tail: *mut AllocationEntry =
-    ::core::ptr::null::<AllocationEntry>() as *mut AllocationEntry;
-#[no_mangle]
-pub unsafe extern "C" fn tracking_malloc(mut size: size_t) -> *mut ::core::ffi::c_void {
+static ALLOCATIONS: Mutex<Vec<AllocationRecord>> = Mutex::new(Vec::new());
+
+fn allocations() -> MutexGuard<'static, Vec<AllocationRecord>> {
+    ALLOCATIONS
+        .lock()
+        .expect("allocation tracker mutex should not be poisoned")
+}
+
+fn c_malloc(size: size_t) -> *mut ::core::ffi::c_void {
+    unsafe { malloc(size) }
+}
+
+fn c_realloc(ptr: *mut ::core::ffi::c_void, size: size_t) -> *mut ::core::ffi::c_void {
+    unsafe { realloc(ptr, size) }
+}
+
+fn c_free(ptr: *mut ::core::ffi::c_void) {
+    unsafe { free(ptr) }
+}
+
+fn print_allocator_failure() {
     unsafe {
-        let entry: *mut AllocationEntry =
-            malloc(::core::mem::size_of::<AllocationEntry>() as size_t) as *mut AllocationEntry;
-        if entry.is_null() {
-            printf(b"Allocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
+        printf(b"Allocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
+    }
+}
+
+fn print_reallocator_failure() {
+    unsafe {
+        printf(b"Reallocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
+    }
+}
+
+fn print_untracked_free(ptr: *mut ::core::ffi::c_void) {
+    unsafe {
+        printf(
+            b"Attempting to free unallocated memory at %p\n\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            ptr,
+        );
+    }
+}
+
+fn print_untracked_realloc(ptr: *mut ::core::ffi::c_void) {
+    unsafe {
+        printf(
+            b"Attempting to realloc unallocated memory at %p\n\0".as_ptr()
+                as *const ::core::ffi::c_char,
+            ptr,
+        );
+    }
+}
+
+fn print_allocation(entry: AllocationRecord) {
+    unsafe {
+        printf(
+            b"Allocated %lu bytes at %p\n\0".as_ptr() as *const ::core::ffi::c_char,
+            entry.num_bytes as ::core::ffi::c_ulong,
+            entry.allocation as *mut ::core::ffi::c_void,
+        );
+    }
+}
+
+fn find_allocation_index(
+    allocations: &[AllocationRecord],
+    ptr: *const ::core::ffi::c_void,
+) -> Option<usize> {
+    allocations
+        .iter()
+        .position(|entry| entry.allocation == ptr as usize)
+}
+
+fn tracking_malloc_impl(size: size_t) -> *mut ::core::ffi::c_void {
+    let mut allocations = allocations();
+    if allocations.try_reserve(1).is_err() {
+        print_allocator_failure();
+        return NULL;
+    }
+
+    let allocation = c_malloc(size);
+    if allocation.is_null() {
+        return NULL;
+    }
+
+    allocations.push(AllocationRecord {
+        allocation: allocation as usize,
+        num_bytes: size,
+    });
+    allocation
+}
+
+fn tracking_free_impl(ptr: *mut ::core::ffi::c_void) {
+    if ptr.is_null() {
+        return;
+    }
+
+    let mut allocations = allocations();
+    if let Some(index) = find_allocation_index(&allocations, ptr) {
+        allocations.remove(index);
+    } else {
+        print_untracked_free(ptr);
+    }
+    drop(allocations);
+
+    c_free(ptr);
+}
+
+fn tracking_realloc_impl(ptr: *mut ::core::ffi::c_void, size: size_t) -> *mut ::core::ffi::c_void {
+    if ptr.is_null() {
+        return tracking_malloc_impl(size);
+    }
+    if size == 0 as size_t {
+        tracking_free_impl(ptr);
+        return NULL;
+    }
+
+    let mut allocations = allocations();
+    if let Some(index) = find_allocation_index(&allocations, ptr) {
+        let reallocated = c_realloc(ptr, size);
+        if reallocated.is_null() {
             return NULL;
         }
-        (*entry).num_bytes = size;
-        (*entry).allocation = malloc(size);
-        if (*entry).allocation.is_null() {
-            free(entry as *mut ::core::ffi::c_void);
+
+        allocations[index] = AllocationRecord {
+            allocation: reallocated as usize,
+            num_bytes: size,
+        };
+        reallocated
+    } else {
+        print_untracked_realloc(ptr);
+        if allocations.try_reserve(1).is_err() {
+            print_reallocator_failure();
             return NULL;
         }
-        (*entry).next = ::core::ptr::null_mut::<allocation_entry>();
-        if alloc_head.is_null() {
-            (*entry).prev = ::core::ptr::null_mut::<allocation_entry>();
-            alloc_tail = entry;
-            alloc_head = alloc_tail;
-        } else {
-            (*entry).prev = alloc_tail as *mut allocation_entry;
-            (*alloc_tail).next = entry as *mut allocation_entry;
-            alloc_tail = entry;
+
+        let reallocated = c_realloc(ptr, size);
+        if reallocated.is_null() {
+            return NULL;
         }
-        return (*entry).allocation;
+
+        allocations.push(AllocationRecord {
+            allocation: reallocated as usize,
+            num_bytes: size,
+        });
+        reallocated
     }
 }
-unsafe extern "C" fn find_allocation(mut ptr: *const ::core::ffi::c_void) -> *mut AllocationEntry {
-    unsafe {
-        let mut entry: *mut AllocationEntry = ::core::ptr::null_mut::<AllocationEntry>();
-        entry = alloc_head;
-        while !entry.is_null() {
-            if (*entry).allocation == ptr as *mut ::core::ffi::c_void {
-                return entry;
-            }
-            entry = (*entry).next as *mut AllocationEntry;
-        }
-        return ::core::ptr::null_mut::<AllocationEntry>();
+
+fn tracking_report_impl() -> ::core::ffi::c_int {
+    let allocations = allocations();
+    if allocations.is_empty() {
+        return 1 as ::core::ffi::c_int;
     }
+
+    for &entry in allocations.iter() {
+        print_allocation(entry);
+    }
+    0 as ::core::ffi::c_int
 }
+
 #[no_mangle]
-pub unsafe extern "C" fn tracking_free(mut ptr: *mut ::core::ffi::c_void) {
-    unsafe {
-        let mut entry: *mut AllocationEntry = ::core::ptr::null_mut::<AllocationEntry>();
-        if ptr.is_null() {
-            return;
-        }
-        entry = find_allocation(ptr);
-        if !entry.is_null() {
-            if !(*entry).prev.is_null() {
-                (*(*entry).prev).next = (*entry).next;
-            } else {
-                alloc_head = (*entry).next as *mut AllocationEntry;
-            }
-            if !(*entry).next.is_null() {
-                (*(*entry).next).prev = (*entry).prev;
-            } else {
-                alloc_tail = (*entry).next as *mut AllocationEntry;
-            }
-            free(entry as *mut ::core::ffi::c_void);
-        } else {
-            printf(
-                b"Attempting to free unallocated memory at %p\n\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                ptr,
-            );
-        }
-        free(ptr);
-    }
+pub unsafe extern "C" fn tracking_malloc(size: size_t) -> *mut ::core::ffi::c_void {
+    tracking_malloc_impl(size)
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn tracking_free(ptr: *mut ::core::ffi::c_void) {
+    tracking_free_impl(ptr)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn tracking_realloc(
-    mut ptr: *mut ::core::ffi::c_void,
-    mut size: size_t,
+    ptr: *mut ::core::ffi::c_void,
+    size: size_t,
 ) -> *mut ::core::ffi::c_void {
-    unsafe {
-        let mut entry: *mut AllocationEntry = ::core::ptr::null_mut::<AllocationEntry>();
-        if ptr.is_null() {
-            return tracking_malloc(size);
-        }
-        if size == 0 as size_t {
-            tracking_free(ptr);
-            return NULL;
-        }
-        entry = find_allocation(ptr);
-        if entry.is_null() {
-            printf(
-                b"Attempting to realloc unallocated memory at %p\n\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                ptr,
-            );
-            entry =
-                malloc(::core::mem::size_of::<AllocationEntry>() as size_t) as *mut AllocationEntry;
-            if entry.is_null() {
-                printf(b"Reallocator failure\n\0".as_ptr() as *const ::core::ffi::c_char);
-                return NULL;
-            }
-            (*entry).allocation = realloc(ptr, size);
-            if (*entry).allocation.is_null() {
-                free(entry as *mut ::core::ffi::c_void);
-                return NULL;
-            }
-            (*entry).next = ::core::ptr::null_mut::<allocation_entry>();
-            if alloc_head.is_null() {
-                (*entry).prev = ::core::ptr::null_mut::<allocation_entry>();
-                alloc_tail = entry;
-                alloc_head = alloc_tail;
-            } else {
-                (*entry).prev = alloc_tail as *mut allocation_entry;
-                (*alloc_tail).next = entry as *mut allocation_entry;
-                alloc_tail = entry;
-            }
-        } else {
-            let reallocated: *mut ::core::ffi::c_void =
-                realloc(ptr, size) as *mut ::core::ffi::c_void;
-            if reallocated.is_null() {
-                return NULL;
-            }
-            (*entry).allocation = reallocated;
-        }
-        (*entry).num_bytes = size;
-        return (*entry).allocation;
-    }
+    tracking_realloc_impl(ptr, size)
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn tracking_report() -> ::core::ffi::c_int {
-    unsafe {
-        let mut entry: *mut AllocationEntry = ::core::ptr::null_mut::<AllocationEntry>();
-        if alloc_head.is_null() {
-            return 1 as ::core::ffi::c_int;
-        }
-        entry = alloc_head;
-        while !entry.is_null() {
-            printf(
-                b"Allocated %lu bytes at %p\n\0".as_ptr() as *const ::core::ffi::c_char,
-                (*entry).num_bytes as ::core::ffi::c_ulong,
-                (*entry).allocation,
-            );
-            entry = (*entry).next as *mut AllocationEntry;
-        }
-        return 0 as ::core::ffi::c_int;
-    }
+    tracking_report_impl()
 }
