@@ -515,10 +515,20 @@ pub mod expat_h {
     pub struct XML_cp {
         pub type_0: crate::expat_h::XML_Content_Type,
         pub quant: crate::expat_h::XML_Content_Quant,
-        pub name: *mut crate::expat_external_h::XML_Char,
+        // XML_Content is opaque at the Rust boundary and is only passed to C
+        // behind a pointer. Store its ABI pointer links as layout-compatible
+        // addresses, leaving the ownership registry free of model-link raw
+        // pointers.
+        pub name: usize,
         pub numchildren: ::core::ffi::c_uint,
-        pub children: *mut crate::expat_h::XML_Content,
+        pub children: usize,
     }
+
+    const XML_CONTENT_LINK_LAYOUT: () = assert!(
+        ::core::mem::size_of::<usize>() == ::core::mem::size_of::<*mut ::core::ffi::c_void>()
+            && ::core::mem::align_of::<usize>()
+                == ::core::mem::align_of::<*mut ::core::ffi::c_void>()
+    );
 
     pub type XML_ElementDeclHandler = Option<
         unsafe extern "C" fn(

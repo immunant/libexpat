@@ -27412,9 +27412,9 @@ struct ContentModelBuild {
     backing: Option<Box<dyn FnMut()>>,
 }
 
-// `contents` points only into the allocations owned by this value. Moving the
-// registry entry does not move those allocations; the allocator callback has
-// the same cross-thread contract as the former C-owned model allocation.
+// The allocator callback token is opaque and never dereferenced by Rust.
+// Its C allocator contract is the same cross-thread contract required by the
+// former C-owned content-model allocation.
 unsafe impl Send for ContentModelStorage {}
 
 static CONTENT_MODEL_STORAGE: std::sync::OnceLock<
@@ -27455,21 +27455,36 @@ fn register_abi_content_model(mut build: ContentModelBuild) -> Option<usize> {
     contents.extend(build.contents.iter().map(|entry| crate::expat_h::XML_Content {
         type_0: entry.type_0,
         quant: entry.quant,
-        name: ::core::ptr::null_mut(),
+        name: 0,
         numchildren: entry.numchildren,
-        children: ::core::ptr::null_mut(),
+        children: 0,
     }));
-    let string_start = build.strings.as_mut_ptr();
-    let content_start = contents.as_mut_ptr();
-    for (index, content) in contents.iter_mut().enumerate() {
-        if let Some(name_offset) = build.name_offsets[index] {
-            content.name = string_start.wrapping_add(name_offset);
+    for index in 0..contents.len() {
+        let name = build.name_offsets[index].and_then(|offset| {
+            build
+                .strings
+                .get_mut(offset)
+                .map(|character| character as *mut crate::expat_external_h::XML_Char as usize)
+        });
+        let children = build.child_starts[index].and_then(|offset| {
+            contents
+                .get_mut(offset)
+                .map(|child| child as *mut crate::expat_h::XML_Content as usize)
+        });
+        let content = contents
+            .get_mut(index)
+            .expect("content-model indices were checked during construction");
+        if let Some(name) = name {
+            content.name = name;
         }
-        if let Some(child_start) = build.child_starts[index] {
-            content.children = content_start.wrapping_add(child_start);
+        if let Some(children) = children {
+            content.children = children;
         }
     }
-    let model_key = content_start.addr();
+    let model_key = contents
+        .first_mut()
+        .map(|content| content as *mut crate::expat_h::XML_Content as usize)
+        .expect("content-model construction rejects empty models");
     let mut model = ContentModelStorage {
         contents,
         _strings: build.strings,
