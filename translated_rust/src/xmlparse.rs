@@ -2904,166 +2904,182 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_SetEncoding(parser, encodingName)
 }
-pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut context: *const crate::expat_external_h::XML_Char,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
+#[derive(Clone, Copy)]
+struct ExternalEntityParserSnapshot {
+    dtd: *mut DTD,
+    mem: crate::expat_h::XML_Memory_Handling_Suite,
+    start_element_handler: crate::expat_h::XML_StartElementHandler,
+    end_element_handler: crate::expat_h::XML_EndElementHandler,
+    character_data_handler: crate::expat_h::XML_CharacterDataHandler,
+    processing_instruction_handler: crate::expat_h::XML_ProcessingInstructionHandler,
+    comment_handler: crate::expat_h::XML_CommentHandler,
+    start_cdata_section_handler: crate::expat_h::XML_StartCdataSectionHandler,
+    end_cdata_section_handler: crate::expat_h::XML_EndCdataSectionHandler,
+    default_handler: crate::expat_h::XML_DefaultHandler,
+    unparsed_entity_decl_handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
+    notation_decl_handler: crate::expat_h::XML_NotationDeclHandler,
+    start_namespace_decl_handler: crate::expat_h::XML_StartNamespaceDeclHandler,
+    end_namespace_decl_handler: crate::expat_h::XML_EndNamespaceDeclHandler,
+    not_standalone_handler: crate::expat_h::XML_NotStandaloneHandler,
+    external_entity_ref_handler: crate::expat_h::XML_ExternalEntityRefHandler,
+    skipped_entity_handler: crate::expat_h::XML_SkippedEntityHandler,
+    unknown_encoding_handler: crate::expat_h::XML_UnknownEncodingHandler,
+    unknown_encoding_handler_data: *mut ::core::ffi::c_void,
+    element_decl_handler: crate::expat_h::XML_ElementDeclHandler,
+    attlist_decl_handler: crate::expat_h::XML_AttlistDeclHandler,
+    entity_decl_handler: crate::expat_h::XML_EntityDeclHandler,
+    xml_decl_handler: crate::expat_h::XML_XmlDeclHandler,
+    decl_element_type: *mut ELEMENT_TYPE,
+    user_data: *mut ::core::ffi::c_void,
+    handler_arg: *mut ::core::ffi::c_void,
+    default_expand_internal_entities: crate::expat_h::XML_Bool,
+    external_entity_ref_handler_arg: crate::expat_h::XML_Parser,
+    param_entity_parsing: crate::expat_h::XML_ParamEntityParsing,
+    in_entity_value: ::core::ffi::c_int,
+    ns: crate::expat_h::XML_Bool,
+    namespace_separator: crate::expat_external_h::XML_Char,
+    ns_triplets: crate::expat_h::XML_Bool,
+    hash_secret_salt: ::core::ffi::c_ulong,
+    reparse_deferral_enabled: crate::expat_h::XML_Bool,
+}
+
+#[inline]
+fn snapshot_external_entity_parser(parser: &XML_ParserStruct) -> ExternalEntityParserSnapshot {
+    ExternalEntityParserSnapshot {
+        dtd: parser.m_dtd,
+        mem: parser.m_mem,
+        start_element_handler: parser.m_startElementHandler,
+        end_element_handler: parser.m_endElementHandler,
+        character_data_handler: parser.m_characterDataHandler,
+        processing_instruction_handler: parser.m_processingInstructionHandler,
+        comment_handler: parser.m_commentHandler,
+        start_cdata_section_handler: parser.m_startCdataSectionHandler,
+        end_cdata_section_handler: parser.m_endCdataSectionHandler,
+        default_handler: parser.m_defaultHandler,
+        unparsed_entity_decl_handler: parser.m_unparsedEntityDeclHandler,
+        notation_decl_handler: parser.m_notationDeclHandler,
+        start_namespace_decl_handler: parser.m_startNamespaceDeclHandler,
+        end_namespace_decl_handler: parser.m_endNamespaceDeclHandler,
+        not_standalone_handler: parser.m_notStandaloneHandler,
+        external_entity_ref_handler: parser.m_externalEntityRefHandler,
+        skipped_entity_handler: parser.m_skippedEntityHandler,
+        unknown_encoding_handler: parser.m_unknownEncodingHandler,
+        unknown_encoding_handler_data: parser.m_unknownEncodingHandlerData,
+        element_decl_handler: parser.m_elementDeclHandler,
+        attlist_decl_handler: parser.m_attlistDeclHandler,
+        entity_decl_handler: parser.m_entityDeclHandler,
+        xml_decl_handler: parser.m_xmlDeclHandler,
+        decl_element_type: parser.m_declElementType,
+        user_data: parser.m_userData,
+        handler_arg: parser.m_handlerArg,
+        default_expand_internal_entities: parser.m_defaultExpandInternalEntities,
+        external_entity_ref_handler_arg: parser.m_externalEntityRefHandlerArg,
+        param_entity_parsing: parser.m_paramEntityParsing,
+        in_entity_value: parser.m_prologState.inEntityValue,
+        ns: parser.m_ns,
+        namespace_separator: parser.m_namespaceSeparator,
+        ns_triplets: parser.m_ns_triplets,
+        hash_secret_salt: parser.m_hash_secret_salt,
+        reparse_deferral_enabled: parser.m_reparseDeferralEnabled,
+    }
+}
+
+pub fn XML_ExternalEntityParserCreate(
+    oldParser: crate::expat_h::XML_Parser,
+    context: *const crate::expat_external_h::XML_Char,
+    encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    let mut parser: crate::expat_h::XML_Parser = oldParser;
-    let mut newDtd: *mut DTD = ::core::ptr::null_mut::<DTD>();
-    let mut oldDtd: *mut DTD = ::core::ptr::null_mut::<DTD>();
-    let mut oldStartElementHandler: crate::expat_h::XML_StartElementHandler = None;
-    let mut oldEndElementHandler: crate::expat_h::XML_EndElementHandler = None;
-    let mut oldCharacterDataHandler: crate::expat_h::XML_CharacterDataHandler = None;
-    let mut oldProcessingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler =
-        None;
-    let mut oldCommentHandler: crate::expat_h::XML_CommentHandler = None;
-    let mut oldStartCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler = None;
-    let mut oldEndCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler = None;
-    let mut oldDefaultHandler: crate::expat_h::XML_DefaultHandler = None;
-    let mut oldUnparsedEntityDeclHandler: crate::expat_h::XML_UnparsedEntityDeclHandler = None;
-    let mut oldNotationDeclHandler: crate::expat_h::XML_NotationDeclHandler = None;
-    let mut oldStartNamespaceDeclHandler: crate::expat_h::XML_StartNamespaceDeclHandler = None;
-    let mut oldEndNamespaceDeclHandler: crate::expat_h::XML_EndNamespaceDeclHandler = None;
-    let mut oldNotStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler = None;
-    let mut oldExternalEntityRefHandler: crate::expat_h::XML_ExternalEntityRefHandler = None;
-    let mut oldSkippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler = None;
-    let mut oldUnknownEncodingHandler: crate::expat_h::XML_UnknownEncodingHandler = None;
-    let mut oldUnknownEncodingHandlerData: *mut ::core::ffi::c_void =
-        ::core::ptr::null_mut::<::core::ffi::c_void>();
-    let mut oldElementDeclHandler: crate::expat_h::XML_ElementDeclHandler = None;
-    let mut oldAttlistDeclHandler: crate::expat_h::XML_AttlistDeclHandler = None;
-    let mut oldEntityDeclHandler: crate::expat_h::XML_EntityDeclHandler = None;
-    let mut oldXmlDeclHandler: crate::expat_h::XML_XmlDeclHandler = None;
-    let mut oldDeclElementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    let mut oldUserData: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-    let mut oldHandlerArg: *mut ::core::ffi::c_void =
-        ::core::ptr::null_mut::<::core::ffi::c_void>();
-    let mut oldDefaultExpandInternalEntities: crate::expat_h::XML_Bool = 0;
-    let mut oldExternalEntityRefHandlerArg: crate::expat_h::XML_Parser =
-        ::core::ptr::null_mut::<XML_ParserStruct>();
-    let mut oldParamEntityParsing: crate::expat_h::XML_ParamEntityParsing =
-        crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
-    let mut oldInEntityValue: ::core::ffi::c_int = 0;
-    let mut oldns_triplets: crate::expat_h::XML_Bool = 0;
-    let mut oldhash_secret_salt: ::core::ffi::c_ulong = 0;
-    let mut oldReparseDeferralEnabled: crate::expat_h::XML_Bool = 0;
     if oldParser.is_null() {
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
-    oldDtd = (*parser).m_dtd;
-    oldStartElementHandler = (*parser).m_startElementHandler;
-    oldEndElementHandler = (*parser).m_endElementHandler;
-    oldCharacterDataHandler = (*parser).m_characterDataHandler;
-    oldProcessingInstructionHandler = (*parser).m_processingInstructionHandler;
-    oldCommentHandler = (*parser).m_commentHandler;
-    oldStartCdataSectionHandler = (*parser).m_startCdataSectionHandler;
-    oldEndCdataSectionHandler = (*parser).m_endCdataSectionHandler;
-    oldDefaultHandler = (*parser).m_defaultHandler;
-    oldUnparsedEntityDeclHandler = (*parser).m_unparsedEntityDeclHandler;
-    oldNotationDeclHandler = (*parser).m_notationDeclHandler;
-    oldStartNamespaceDeclHandler = (*parser).m_startNamespaceDeclHandler;
-    oldEndNamespaceDeclHandler = (*parser).m_endNamespaceDeclHandler;
-    oldNotStandaloneHandler = (*parser).m_notStandaloneHandler;
-    oldExternalEntityRefHandler = (*parser).m_externalEntityRefHandler;
-    oldSkippedEntityHandler = (*parser).m_skippedEntityHandler;
-    oldUnknownEncodingHandler = (*parser).m_unknownEncodingHandler;
-    oldUnknownEncodingHandlerData = (*parser).m_unknownEncodingHandlerData;
-    oldElementDeclHandler = (*parser).m_elementDeclHandler;
-    oldAttlistDeclHandler = (*parser).m_attlistDeclHandler;
-    oldEntityDeclHandler = (*parser).m_entityDeclHandler;
-    oldXmlDeclHandler = (*parser).m_xmlDeclHandler;
-    oldDeclElementType = (*parser).m_declElementType;
-    oldUserData = (*parser).m_userData;
-    oldHandlerArg = (*parser).m_handlerArg;
-    oldDefaultExpandInternalEntities = (*parser).m_defaultExpandInternalEntities;
-    oldExternalEntityRefHandlerArg = (*parser).m_externalEntityRefHandlerArg;
-    oldParamEntityParsing = (*parser).m_paramEntityParsing;
-    oldInEntityValue = (*parser).m_prologState.inEntityValue;
-    oldns_triplets = (*parser).m_ns_triplets;
-    oldhash_secret_salt = (*parser).m_hash_secret_salt;
-    oldReparseDeferralEnabled = (*parser).m_reparseDeferralEnabled;
-    if context.is_null() {
-        newDtd = oldDtd;
-    }
-    if (*parser).m_ns != 0 {
-        let mut tmp: [crate::expat_external_h::XML_Char; 2] = [
-            (*parser).m_namespaceSeparator,
-            0 as ::core::ffi::c_int as crate::expat_external_h::XML_Char,
-        ];
-        parser = parserCreate(
+    let snapshot = snapshot_external_entity_parser(expect_parser_ref(oldParser));
+    let newDtd = if context.is_null() {
+        snapshot.dtd
+    } else {
+        ::core::ptr::null_mut::<DTD>()
+    };
+    let parser = if snapshot.ns != 0 {
+        let tmp = [snapshot.namespace_separator, 0];
+        parserCreate(
             encodingName,
-            &raw const (*parser).m_mem,
-            &raw mut tmp as *mut crate::expat_external_h::XML_Char,
+            &raw const snapshot.mem,
+            tmp.as_ptr(),
             newDtd,
             oldParser,
-        );
+        )
     } else {
-        parser = parserCreate(
+        parserCreate(
             encodingName,
-            &raw const (*parser).m_mem,
+            &raw const snapshot.mem,
             ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
             newDtd,
             oldParser,
-        );
-    }
+        )
+    };
     if parser.is_null() {
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
-    (*parser).m_startElementHandler = oldStartElementHandler;
-    (*parser).m_endElementHandler = oldEndElementHandler;
-    (*parser).m_characterDataHandler = oldCharacterDataHandler;
-    (*parser).m_processingInstructionHandler = oldProcessingInstructionHandler;
-    (*parser).m_commentHandler = oldCommentHandler;
-    (*parser).m_startCdataSectionHandler = oldStartCdataSectionHandler;
-    (*parser).m_endCdataSectionHandler = oldEndCdataSectionHandler;
-    (*parser).m_defaultHandler = oldDefaultHandler;
-    (*parser).m_unparsedEntityDeclHandler = oldUnparsedEntityDeclHandler;
-    (*parser).m_notationDeclHandler = oldNotationDeclHandler;
-    (*parser).m_startNamespaceDeclHandler = oldStartNamespaceDeclHandler;
-    (*parser).m_endNamespaceDeclHandler = oldEndNamespaceDeclHandler;
-    (*parser).m_notStandaloneHandler = oldNotStandaloneHandler;
-    (*parser).m_externalEntityRefHandler = oldExternalEntityRefHandler;
-    (*parser).m_skippedEntityHandler = oldSkippedEntityHandler;
-    (*parser).m_unknownEncodingHandler = oldUnknownEncodingHandler;
-    (*parser).m_unknownEncodingHandlerData = oldUnknownEncodingHandlerData;
-    (*parser).m_elementDeclHandler = oldElementDeclHandler;
-    (*parser).m_attlistDeclHandler = oldAttlistDeclHandler;
-    (*parser).m_entityDeclHandler = oldEntityDeclHandler;
-    (*parser).m_xmlDeclHandler = oldXmlDeclHandler;
-    (*parser).m_declElementType = oldDeclElementType;
-    (*parser).m_userData = oldUserData;
-    if oldUserData == oldHandlerArg {
-        (*parser).m_handlerArg = (*parser).m_userData;
+    let parser_state = expect_parser_mut(parser);
+    parser_state.m_startElementHandler = snapshot.start_element_handler;
+    parser_state.m_endElementHandler = snapshot.end_element_handler;
+    parser_state.m_characterDataHandler = snapshot.character_data_handler;
+    parser_state.m_processingInstructionHandler = snapshot.processing_instruction_handler;
+    parser_state.m_commentHandler = snapshot.comment_handler;
+    parser_state.m_startCdataSectionHandler = snapshot.start_cdata_section_handler;
+    parser_state.m_endCdataSectionHandler = snapshot.end_cdata_section_handler;
+    parser_state.m_defaultHandler = snapshot.default_handler;
+    parser_state.m_unparsedEntityDeclHandler = snapshot.unparsed_entity_decl_handler;
+    parser_state.m_notationDeclHandler = snapshot.notation_decl_handler;
+    parser_state.m_startNamespaceDeclHandler = snapshot.start_namespace_decl_handler;
+    parser_state.m_endNamespaceDeclHandler = snapshot.end_namespace_decl_handler;
+    parser_state.m_notStandaloneHandler = snapshot.not_standalone_handler;
+    parser_state.m_externalEntityRefHandler = snapshot.external_entity_ref_handler;
+    parser_state.m_skippedEntityHandler = snapshot.skipped_entity_handler;
+    parser_state.m_unknownEncodingHandler = snapshot.unknown_encoding_handler;
+    parser_state.m_unknownEncodingHandlerData = snapshot.unknown_encoding_handler_data;
+    parser_state.m_elementDeclHandler = snapshot.element_decl_handler;
+    parser_state.m_attlistDeclHandler = snapshot.attlist_decl_handler;
+    parser_state.m_entityDeclHandler = snapshot.entity_decl_handler;
+    parser_state.m_xmlDeclHandler = snapshot.xml_decl_handler;
+    parser_state.m_declElementType = snapshot.decl_element_type;
+    parser_state.m_userData = snapshot.user_data;
+    if snapshot.user_data == snapshot.handler_arg {
+        parser_state.m_handlerArg = parser_state.m_userData;
     } else {
-        (*parser).m_handlerArg = parser as *mut ::core::ffi::c_void;
+        parser_state.m_handlerArg = parser as *mut ::core::ffi::c_void;
     }
-    if oldExternalEntityRefHandlerArg != oldParser {
-        (*parser).m_externalEntityRefHandlerArg = oldExternalEntityRefHandlerArg;
+    if snapshot.external_entity_ref_handler_arg != oldParser {
+        parser_state.m_externalEntityRefHandlerArg = snapshot.external_entity_ref_handler_arg;
     }
-    (*parser).m_defaultExpandInternalEntities = oldDefaultExpandInternalEntities;
-    (*parser).m_ns_triplets = oldns_triplets;
-    (*parser).m_hash_secret_salt = oldhash_secret_salt;
-    (*parser).m_reparseDeferralEnabled = oldReparseDeferralEnabled;
-    (*parser).m_parentParser = oldParser;
-    (*parser).m_paramEntityParsing = oldParamEntityParsing;
-    (*parser).m_prologState.inEntityValue = oldInEntityValue;
-    if !context.is_null() {
-        if dtdCopy(oldParser, (*parser).m_dtd, oldDtd, parser) == 0
+    parser_state.m_defaultExpandInternalEntities = snapshot.default_expand_internal_entities;
+    parser_state.m_ns_triplets = snapshot.ns_triplets;
+    parser_state.m_hash_secret_salt = snapshot.hash_secret_salt;
+    parser_state.m_reparseDeferralEnabled = snapshot.reparse_deferral_enabled;
+    parser_state.m_parentParser = oldParser;
+    parser_state.m_paramEntityParsing = snapshot.param_entity_parsing;
+    parser_state.m_prologState.inEntityValue = snapshot.in_entity_value;
+    if context.is_null() {
+        let parser_state = expect_parser_mut(parser);
+        parser_state.m_isParamEntity = crate::expat_h::XML_TRUE;
+        crate::src::xmlrole::XmlPrologStateInitExternalEntity(
+            &raw mut parser_state.m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
+        );
+        parser_state.m_processor = Some(externalParEntInitProcessor);
+    } else {
+        if dtdCopy(
+            oldParser,
+            expect_parser_ref(parser).m_dtd,
+            snapshot.dtd,
+            parser,
+        ) == 0
             || setContext(parser, context) == 0
         {
             XML_ParserFree(parser);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
-        (*parser).m_processor = Some(externalEntityInitProcessor);
-    } else {
-        (*parser).m_isParamEntity = crate::expat_h::XML_TRUE;
-        crate::src::xmlrole::XmlPrologStateInitExternalEntity(
-            &raw mut (*parser).m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
-        );
-        (*parser).m_processor = Some(externalParEntInitProcessor);
+        set_processor(parser, externalEntityInitProcessor);
     }
-    return parser;
+    parser
 }
 #[export_name = "XML_ExternalEntityParserCreate"]
 
