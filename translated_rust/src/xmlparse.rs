@@ -10472,6 +10472,59 @@ unsafe extern "C" fn storeAttributeValue(
     return crate::expat_h::XML_ERROR_NONE;
 }
 
+/// Encodes a validated XML character reference without exposing the temporary
+/// output buffer as a raw pointer.
+fn encode_xml_char_ref(
+    c: ::core::ffi::c_int,
+) -> ([crate::expat_external_h::XML_Char; 4], ::core::ffi::c_int) {
+    let mut buf = [0; 4];
+    if c < 0 {
+        return (buf, 0);
+    }
+    if c < 0x80 {
+        buf[0] = c as crate::expat_external_h::XML_Char;
+        return (buf, 1);
+    }
+    if c < 0x800 {
+        buf[0] = (c >> 6 | 0xc0) as crate::expat_external_h::XML_Char;
+        buf[1] = (c & 0x3f | 0x80) as crate::expat_external_h::XML_Char;
+        return (buf, 2);
+    }
+    if c < 0x10000 {
+        buf[0] = (c >> 12 | 0xe0) as crate::expat_external_h::XML_Char;
+        buf[1] = (c >> 6 & 0x3f | 0x80) as crate::expat_external_h::XML_Char;
+        buf[2] = (c & 0x3f | 0x80) as crate::expat_external_h::XML_Char;
+        return (buf, 3);
+    }
+    if c < 0x110000 {
+        buf[0] = (c >> 18 | 0xf0) as crate::expat_external_h::XML_Char;
+        buf[1] = (c >> 12 & 0x3f | 0x80) as crate::expat_external_h::XML_Char;
+        buf[2] = (c >> 6 & 0x3f | 0x80) as crate::expat_external_h::XML_Char;
+        buf[3] = (c & 0x3f | 0x80) as crate::expat_external_h::XML_Char;
+        return (buf, 4);
+    }
+    (buf, 0)
+}
+
+/// Appends one character to a valid string pool.  Growth happens before the
+/// temporary mutable borrow, so no borrow is held across an allocator callback.
+unsafe fn pool_append_char(
+    pool: *mut STRING_POOL,
+    value: crate::expat_external_h::XML_Char,
+) -> bool {
+    if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
+        && poolGrow(pool) == 0
+    {
+        return false;
+    }
+
+    let pool = &mut *pool;
+    let slot = pool.ptr;
+    pool.ptr = pool.ptr.wrapping_add(1);
+    *slot = value;
+    true
+}
+
 unsafe extern "C" fn appendAttributeValue(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -10542,25 +10595,10 @@ unsafe extern "C" fn appendAttributeValue(
                     {
                         break 's_350;
                     } else {
-                        n = crate::src::xmltok::XmlUtf8Encode(
-                            n,
-                            &raw mut buf as *mut crate::expat_external_h::XML_Char
-                                as *mut ::core::ffi::c_char,
-                        );
+                        (buf, n) = encode_xml_char_ref(n);
                         i = 0 as ::core::ffi::c_int;
                         while i < n {
-                            if if (*pool).ptr
-                                == (*pool).end as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(pool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh42 = (*pool).ptr;
-                                (*pool).ptr = (*pool).ptr.offset(1);
-                                *c2rust_fresh42 = buf[i as usize];
-                                1 as ::core::ffi::c_int
-                            } == 0
-                            {
+                            if !pool_append_char(pool, buf[i as usize]) {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
                             i += 1;
@@ -10602,17 +10640,7 @@ unsafe extern "C" fn appendAttributeValue(
                             6663 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
-                        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-                            && poolGrow(pool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            let c2rust_fresh44 = (*pool).ptr;
-                            (*pool).ptr = (*pool).ptr.offset(1);
-                            *c2rust_fresh44 = ch;
-                            1 as ::core::ffi::c_int
-                        } == 0
-                        {
+                        if !pool_append_char(pool, ch) {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
                         break 's_350;
@@ -10702,17 +10730,7 @@ unsafe extern "C" fn appendAttributeValue(
                     || *(*pool).ptr.offset(-1 as isize) as ::core::ffi::c_int
                         == 0x20 as ::core::ffi::c_int))
             {
-                if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(pool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh43 = (*pool).ptr;
-                    (*pool).ptr = (*pool).ptr.offset(1);
-                    *c2rust_fresh43 = 0x20 as crate::expat_external_h::XML_Char;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
+                if !pool_append_char(pool, 0x20 as crate::expat_external_h::XML_Char) {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
             }
