@@ -3041,6 +3041,10 @@ pub struct XML_ParserStruct {
     pub m_handlerArg: HandlerArg,
     m_buffer: InputBuffer,
     pub m_mem: crate::expat_h::XML_Memory_Handling_Suite,
+    // The parser state itself is Rust-owned.  This opaque release token keeps
+    // the allocation made through the configured Expat allocator observable
+    // without ever treating that foreign memory as a Rust object.
+    m_parserStorageBacking: Option<Box<dyn FnMut()>>,
     // The current input cursor is an offset into `m_buffer.bytes`.  `None`
     // denotes that no input buffer has been allocated yet.
     pub m_bufferPtr: Option<usize>,
@@ -5282,6 +5286,26 @@ fn expat_free_account(
     }
 }
 
+/// Release the foreign allocation token paired with a Rust-owned parser.
+/// The allocation registry continues to use the public parser handle as its
+/// key, but no parser field ever points into the allocator's storage.
+fn release_parser_storage(parser: &mut XML_ParserStruct, source_line: ::core::ffi::c_int) {
+    let payload_size = std::sync::Arc::clone(&parser.m_root)
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .allocations
+        .remove(&std::ptr::from_ref(parser).addr())
+        .expect("parser allocation must be tracked")
+        .payload_size;
+    let bytes_allocated = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+        .wrapping_add(payload_size);
+    expat_free_account(parser, bytes_allocated, source_line);
+    if let Some(mut release) = parser.m_parserStorageBacking.take() {
+        release();
+    }
+}
+
 pub unsafe fn expat_free(
     parser: crate::expat_h::XML_Parser,
     ptr: *mut ::core::ffi::c_void,
@@ -5923,6 +5947,9 @@ unsafe fn allocate_parser_storage(
     if share_parent_dtd && parent_state.is_none() {
         return None;
     }
+    let mut parser_owner = Box::new(initial_parser_struct(memory_suite));
+    let parser_ptr = std::ptr::from_mut(parser_owner.as_mut());
+    let parser = parser_owner.as_mut();
     let allocation_size = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
@@ -5930,13 +5957,10 @@ unsafe fn allocate_parser_storage(
     if allocation.is_null() {
         return None;
     }
-    let parser_ptr = allocation
-        .cast::<u8>()
-        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
-        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-        .cast::<XML_ParserStruct>();
-    ::core::ptr::write(parser_ptr, initial_parser_struct(memory_suite));
-    let parser = &mut *parser_ptr;
+    let free = memory_suite.free_fcn.expect("non-null function pointer");
+    parser.m_parserStorageBacking = Some(Box::new(move || unsafe {
+        free(allocation);
+    }));
     let root_owner = {
         let alloc_tracker = MALLOC_TRACKER {
             bytesAllocated: 0 as XmlBigCount,
@@ -6081,12 +6105,8 @@ unsafe fn allocate_parser_storage(
         }
         Ok(())
     })();
-    if let Err(source_line) = storage_result {
-        expat_free(
-            parser,
-            parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-            source_line,
-        );
+    if storage_result.is_err() {
+        parser_free_owned(parser);
         return None;
     }
     initialize_parser_collections(parser);
@@ -6116,7 +6136,7 @@ unsafe fn allocate_parser_storage(
     } else {
         parser.m_internalEncoding = InternalEncoding::Utf8;
     }
-    Some(parser_ptr)
+    Some(Box::into_raw(parser_owner))
 }
 
 fn empty_string_pool() -> STRING_POOL {
@@ -6179,6 +6199,7 @@ fn initial_parser_struct(
         m_handlerArg: HandlerArg::UserData,
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
+        m_parserStorageBacking: None,
         m_bufferPtr: None,
         m_bufferEnd: 0,
         m_bufferLim: 0,
@@ -7243,6 +7264,7 @@ unsafe fn XML_ExternalEntityParserCreate(
         let new_dtd_owner = parser_ref.m_dtd.clone();
         let (Some(old_dtd_owner), Some(new_dtd_owner)) = (old_dtd_owner, new_dtd_owner) else {
             parser_free_owned(parser_ref);
+            drop(Box::from_raw(parser));
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         };
         let copied_and_restored = old_dtd_owner.inspect(|old_dtd| {
@@ -7253,6 +7275,7 @@ unsafe fn XML_ExternalEntityParserCreate(
         });
         if !copied_and_restored {
             parser_free_owned(parser_ref);
+            drop(Box::from_raw(parser));
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
         parser_ref.m_processor = ProcessorState::ExternalEntityInit;
@@ -7508,19 +7531,16 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
             release_unknown_encoding_info(&info);
         }
     }
-    expat_free(
-        parser as *mut XML_ParserStruct,
-        parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-        2016 as ::core::ffi::c_int,
-    );
+    release_parser_storage(parser, 2016 as ::core::ffi::c_int);
 }
 #[export_name = "XML_ParserFree"]
 
 pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Parser) {
-    let Some(parser) = parser.as_mut() else {
+    if parser.is_null() {
         return;
-    };
-    parser_free_owned(parser)
+    }
+    let mut parser = Box::from_raw(parser);
+    parser_free_owned(&mut parser)
 }
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
     if !parser.is_null() {
