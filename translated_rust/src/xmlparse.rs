@@ -10573,9 +10573,29 @@ unsafe extern "C" fn doProlog(
         crate::ascii_h::ASCII_LPAREN as crate::expat_external_h::XML_Char,
         '\0' as crate::expat_external_h::XML_Char,
     ];
-    let dtd: *mut DTD = (*parser).m_dtd;
+    // `doProlog` is reached only through the parser's internal processor
+    // dispatch, which keeps this parser allocation alive for the duration of
+    // the call.  Keep that invariant at this boundary and use the checked
+    // borrow throughout the prolog state machine instead of repeatedly
+    // dereferencing its raw handle.
+    let parser = &mut *parser;
+    let parser_key = parser as *mut XML_ParserStruct as usize;
+    let dtd: *mut DTD = parser.m_dtd;
     let dtd_pool: *mut STRING_POOL = &raw mut (*dtd).pool;
-    let parser_events = enc == parser_encoding(parser);
+    let mut active_parser_encoding = match parser.m_encoding {
+        EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
+            Some(index) if index < 7 => {
+                if parser.m_ns != 0 {
+                    crate::src::xmltok::encodingsNS[index]
+                } else {
+                    crate::src::xmltok::encodings[index]
+                }
+            }
+            _ => &raw const parser.m_initEncoding.initEnc,
+        },
+        EncodingState::Unknown => parser.m_unknownEncodingMem.cast(),
+    };
+    let parser_events = enc == active_parser_encoding;
     let mut eventPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
@@ -10588,10 +10608,6 @@ unsafe extern "C" fn doProlog(
         eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
         eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
     }
-    let event_parser = parser;
-    let mut update_parser_event = |cursor: *const ::core::ffi::c_char| {
-        set_parser_event_start!(&mut *event_parser, cursor);
-    };
     loop {
         let mut role: ::core::ffi::c_int = 0;
         let mut handleDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
@@ -10617,14 +10633,14 @@ unsafe extern "C" fn doProlog(
                     tok = -tok;
                 }
                 crate::src::xmltok::XML_TOK_NONE => {
-                    if enc != parser_encoding(parser)
+                    if enc != active_parser_encoding
                         && (*(*parser).m_openInternalEntities).betweenDecl == 0
                     {
                         *nextPtr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
-                        || enc != parser_encoding(parser)
+                        || enc != active_parser_encoding
                     {
                         let prolog_state = &mut (*parser).m_prologState;
                         let token: &[::core::ffi::c_char] = &[];
@@ -10701,7 +10717,20 @@ unsafe extern "C" fn doProlog(
                                         {
                                             return result;
                                         }
-                                        enc = parser_encoding(parser);
+                                        active_parser_encoding = match parser.m_encoding {
+                                            EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
+                                                Some(index) if index < 7 => {
+                                                    if parser.m_ns != 0 {
+                                                        crate::src::xmltok::encodingsNS[index]
+                                                    } else {
+                                                        crate::src::xmltok::encodings[index]
+                                                    }
+                                                }
+                                                _ => &raw const parser.m_initEncoding.initEnc,
+                                            },
+                                            EncodingState::Unknown => parser.m_unknownEncodingMem.cast(),
+                                        };
+                                        enc = active_parser_encoding;
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
@@ -10739,7 +10768,7 @@ unsafe extern "C" fn doProlog(
                                                 })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&(parser as usize))
+                                                .get(&parser_key)
                                                 .cloned();
                                             if let Some(callback) = callback {
                                                 let (
@@ -10814,7 +10843,20 @@ unsafe extern "C" fn doProlog(
                                         {
                                             return result_0;
                                         }
-                                        enc = parser_encoding(parser);
+                                        active_parser_encoding = match parser.m_encoding {
+                                            EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
+                                                Some(index) if index < 7 => {
+                                                    if parser.m_ns != 0 {
+                                                        crate::src::xmltok::encodingsNS[index]
+                                                    } else {
+                                                        crate::src::xmltok::encodings[index]
+                                                    }
+                                                }
+                                                _ => &raw const parser.m_initEncoding.initEnc,
+                                            },
+                                            EncodingState::Unknown => parser.m_unknownEncodingMem.cast(),
+                                        };
+                                        enc = active_parser_encoding;
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
@@ -10841,7 +10883,7 @@ unsafe extern "C" fn doProlog(
                                             ) == 0
                                             {
                                                 if parser_events {
-                                                    update_parser_event(parser_event_ptr);
+                                                    set_parser_event_start!(parser, parser_event_ptr);
                                                 }
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             }
@@ -10881,7 +10923,7 @@ unsafe extern "C" fn doProlog(
                                                 })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&(parser as usize))
+                                                .get(&parser_key)
                                                 .cloned();
                                             if let Some(callback) = callback {
                                                 let (
@@ -10973,7 +11015,7 @@ unsafe extern "C" fn doProlog(
                                                     .unwrap_or_else(|poisoned| {
                                                         poisoned.into_inner()
                                                     })
-                                                    .get(&(parser as usize))
+                                                    .get(&parser_key)
                                                     .cloned()
                                                     .expect("installed external entity handler");
                                                 if invoke_external_entity_ref_handler(
@@ -11014,7 +11056,7 @@ unsafe extern "C" fn doProlog(
                                                 })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&(parser as usize))
+                                                .get(&parser_key)
                                                 .cloned()
                                                 .expect("installed end doctype handler");
                                             callback.invoke((*parser).m_handlerArg);
@@ -11053,7 +11095,7 @@ unsafe extern "C" fn doProlog(
                                                     .unwrap_or_else(|poisoned| {
                                                         poisoned.into_inner()
                                                     })
-                                                    .get(&(parser as usize))
+                                                    .get(&parser_key)
                                                     .cloned()
                                                     .expect("installed external entity handler");
                                                 if invoke_external_entity_ref_handler(
@@ -11294,7 +11336,7 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 set_event_end!(parser, parser_events, eventEndPP, s);
                                                 if let Some(callback) =
-                                                    attlist_decl_handler(parser as usize)
+                                                    attlist_decl_handler(parser_key)
                                                 {
                                                     let attribute_name = (*dtd)
                                                         .pool
@@ -11493,7 +11535,7 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 set_event_end!(parser, parser_events, eventEndPP, s);
                                                 if let Some(callback) =
-                                                    attlist_decl_handler(parser as usize)
+                                                    attlist_decl_handler(parser_key)
                                                 {
                                                     let attribute_name = (*dtd)
                                                         .pool
@@ -11622,7 +11664,7 @@ unsafe extern "C" fn doProlog(
                                                         .unwrap_or_else(|poisoned| {
                                                             poisoned.into_inner()
                                                         })
-                                                        .get(&(parser as usize))
+                                                        .get(&parser_key)
                                                         .cloned();
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
@@ -11741,7 +11783,7 @@ unsafe extern "C" fn doProlog(
                                                 })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&(parser as usize))
+                                                .get(&parser_key)
                                                 .cloned();
                                             if let Some(callback) = callback {
                                                 let (
@@ -11831,7 +11873,7 @@ unsafe extern "C" fn doProlog(
                                                 })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&(parser as usize))
+                                                .get(&parser_key)
                                                 .cloned();
                                             let (
                                                 handler_arg,
@@ -11899,7 +11941,7 @@ unsafe extern "C" fn doProlog(
                                                     .unwrap_or_else(|poisoned| {
                                                         poisoned.into_inner()
                                                     })
-                                                    .get(&(parser as usize))
+                                                    .get(&parser_key)
                                                     .cloned();
                                                 if let Some(callback) = callback {
                                                     callback.invoke(
@@ -12055,7 +12097,7 @@ unsafe extern "C" fn doProlog(
                                         ) == 0
                                         {
                                             if parser_events {
-                                                update_parser_event(parser_event_ptr);
+                                                set_parser_event_start!(parser, parser_event_ptr);
                                             }
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
@@ -12103,7 +12145,7 @@ unsafe extern "C" fn doProlog(
                                             })
                                             .lock()
                                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                            .get(&(parser as usize))
+                                            .get(&parser_key)
                                             .cloned();
                                             if let Some(callback) = callback {
                                                 let (
@@ -12172,7 +12214,7 @@ unsafe extern "C" fn doProlog(
                                             })
                                             .lock()
                                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                            .get(&(parser as usize))
+                                            .get(&parser_key)
                                             .cloned();
                                             if let Some(callback) = callback {
                                                 let (
@@ -12568,7 +12610,7 @@ unsafe extern "C" fn doProlog(
                                                         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                                                         .lock()
                                                         .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                        .get(&(parser as usize))
+                                                        .get(&parser_key)
                                                         .cloned();
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
@@ -12629,7 +12671,7 @@ unsafe extern "C" fn doProlog(
                                                     .unwrap_or_else(|poisoned| {
                                                         poisoned.into_inner()
                                                     })
-                                                    .get(&(parser as usize))
+                                                    .get(&parser_key)
                                                     .cloned()
                                                     .expect("installed external entity handler");
                                                 if invoke_external_entity_ref_handler(
@@ -12890,7 +12932,7 @@ unsafe extern "C" fn doProlog(
                                 ) == 0
                                 {
                                     if parser_events {
-                                        update_parser_event(parser_event_ptr);
+                                        set_parser_event_start!(parser, parser_event_ptr);
                                     }
                                     return crate::expat_h::XML_ERROR_PUBLICID;
                                 }
