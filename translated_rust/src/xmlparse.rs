@@ -1219,7 +1219,7 @@ enum StartElementAttributeValue {
 }
 
 impl StartElementCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *mut *const crate::expat_external_h::XML_Char,
@@ -1933,7 +1933,7 @@ impl StartElementCallbackAdapter {
 
     fn invoke(&self, event: StartElementCallbackEvent<'_>) -> bool {
         let Some(callback) = self.callback.downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *mut *const crate::expat_external_h::XML_Char,
@@ -1950,13 +1950,15 @@ impl StartElementCallbackAdapter {
         }
         attribute_pointers.extend(event.attributes.iter().map(|value| value.as_ptr()));
         attribute_pointers.push(::core::ptr::null());
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event.name.as_ptr(),
-                attribute_pointers.as_mut_ptr(),
-            );
-        }
+        // The registration boundary accepts only this ABI callback shape.
+        // `dispatch_start_element_callback` owns the XML-character buffers,
+        // and the vector above owns the writable, null-terminated attribute
+        // pointer array for the full duration of this call.
+        callback(
+            handler_arg_from_state!(event.parser),
+            event.name.as_ptr(),
+            attribute_pointers.as_mut_ptr(),
+        );
         true
     }
 }
