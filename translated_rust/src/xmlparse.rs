@@ -17591,6 +17591,22 @@ unsafe extern "C" fn doProlog(
                                             )
                                                 as *mut ENTITY;
                                             (*dtd).pool.rewind();
+                                            // `lookup` returns stable boxed entity storage.  Read the
+                                            // fields needed to select this branch once, before any
+                                            // entity processing or callback can re-enter the parser.
+                                            // Do not retain the reference: an external-entity callback
+                                            // is allowed to mutate the DTD and must continue to see the
+                                            // entity through its stable handle.
+                                            let entity_state = if entity_1.is_null() {
+                                                None
+                                            } else {
+                                                let entity = &*entity_1;
+                                                Some((
+                                                    entity.is_internal != 0,
+                                                    entity.open != 0,
+                                                    entity.textPtr.is_some(),
+                                                ))
+                                            };
                                             if (*parser).m_prologState.documentEntity != 0
                                                 && (if (*dtd).standalone as ::core::ffi::c_int != 0
                                                 {
@@ -17601,12 +17617,15 @@ unsafe extern "C" fn doProlog(
                                                         as ::core::ffi::c_int
                                                 }) != 0
                                             {
-                                                if entity_1.is_null() {
+                                                if entity_state.is_none() {
                                                     return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
-                                                } else if (*entity_1).is_internal == 0 {
+                                                } else if !entity_state
+                                                    .expect("checked parameter entity state")
+                                                    .0
+                                                {
                                                     return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                                                 }
-                                            } else if entity_1.is_null() {
+                                            } else if entity_state.is_none() {
                                                 (*dtd).keepProcessing = (*dtd).standalone;
                                                 if role
                                                     == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF
@@ -17630,10 +17649,12 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 break 's_2375;
                                             }
-                                            if (*entity_1).open != 0 {
+                                            let (_, entity_is_open, entity_has_text) = entity_state
+                                                .expect("parameter entity state must be present");
+                                            if entity_is_open {
                                                 return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
                                             }
-                                            if (*entity_1).textPtr.is_some() {
+                                            if entity_has_text {
                                                 let mut result_4: crate::expat_h::XML_Error =
                                                     crate::expat_h::XML_ERROR_NONE;
                                                 let mut betweenDecl: crate::expat_h::XML_Bool = (if role
@@ -17765,17 +17786,18 @@ unsafe extern "C" fn doProlog(
                                                 if content.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                (*content).quant = crate::expat_h::XML_CQUANT_NONE;
-                                                (*content).name = ::core::ptr::null_mut::<
+                                                let content_ref = &mut *content;
+                                                content_ref.quant = crate::expat_h::XML_CQUANT_NONE;
+                                                content_ref.name = ::core::ptr::null_mut::<
                                                     crate::expat_external_h::XML_Char,
                                                 >(
                                                 );
-                                                (*content).numchildren = 0 as ::core::ffi::c_uint;
-                                                (*content).children = ::core::ptr::null_mut::<
+                                                content_ref.numchildren = 0 as ::core::ffi::c_uint;
+                                                content_ref.children = ::core::ptr::null_mut::<
                                                     crate::expat_h::XML_Content,
                                                 >(
                                                 );
-                                                (*content).type_0 = (if role
+                                                content_ref.type_0 = (if role
                                                     == crate::src::xmlrole::XML_ROLE_CONTENT_ANY
                                                         as ::core::ffi::c_int
                                                 {
@@ -17786,6 +17808,9 @@ unsafe extern "C" fn doProlog(
                                                         as ::core::ffi::c_int
                                                 })
                                                     as crate::expat_h::XML_Content_Type;
+                                                // The handler receives ownership of this ABI allocation;
+                                                // end the checked mutable borrow before it can re-enter.
+                                                content = std::ptr::from_mut(content_ref);
                                                 event_target.set_end(
                                                     parser,
                                                     internal_event_start,
