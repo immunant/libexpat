@@ -6271,6 +6271,19 @@ unsafe fn call_processor_impl(
     let mut next = input.start;
     let mut ret = crate::expat_h::XML_ERROR_NONE;
     loop {
+        // `PrologInit` only selects the tokenizer encoding before running the
+        // ordinary prolog processor over this same checked input window.
+        // Keep that state transition in the checked dispatcher instead of
+        // reconstructing raw cursors in a separate processor adapter.
+        if matches!(parser.m_processor, ProcessorState::PrologInit) {
+            let result = initialize_encoding_impl(parser);
+            if result as ::core::ffi::c_uint
+                != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                return (result, next);
+            }
+            parser.m_processor = ProcessorState::Prolog;
+        }
         let Some(bytes) = parser.m_buffer.bytes.as_ref() else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
         };
@@ -6405,7 +6418,9 @@ unsafe fn call_processor_impl(
             }
         } else {
             let processor: Processor = match parser.m_processor {
-                ProcessorState::PrologInit => prologInitProcessor,
+                ProcessorState::PrologInit => {
+                    unreachable!("prolog initialization is dispatched before cursor setup")
+                }
                 ProcessorState::Content => unreachable!("content dispatch is handled above"),
                 ProcessorState::ExternalEntityInit => externalEntityInitProcessor,
                 ProcessorState::ExternalEntityInit2 => externalEntityInitProcessor2,
@@ -16655,22 +16670,6 @@ fn handle_unknown_encoding(
         release_unknown_encoding_info(&info);
     }
     return crate::expat_h::XML_ERROR_UNKNOWN_ENCODING;
-}
-
-unsafe extern "C" fn prologInitProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initializeEncoding(parser);
-    if result as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return result;
-    }
-    (*parser).m_processor = ProcessorState::Prolog;
-    return prologProcessor(parser, s, end, nextPtr);
 }
 
 enum ExternalParEntInitAction {
