@@ -3501,6 +3501,135 @@ impl InputBuffer {
     }
 }
 
+/// Acquires the opaque allocation token for a parser input buffer.  The token
+/// deliberately retains only the configured allocator's malloc/free pairing;
+/// input bytes themselves stay in the owned `Vec` below.
+fn input_buffer_allocation_backing(
+    factory: &AllocationBackingFactory,
+    size: crate::__stddef_size_t_h::size_t,
+) -> Option<Box<dyn FnMut()>> {
+    let malloc = factory
+        .policy
+        .memory_suite
+        .malloc_fcn
+        .expect("non-null function pointer");
+    let allocation = malloc(size);
+    if allocation.is_null() {
+        return None;
+    }
+    let free = factory
+        .policy
+        .memory_suite
+        .free_fcn
+        .expect("non-null function pointer");
+    Some(Box::new(move || free(allocation)))
+}
+
+/// Grows the Rust-owned input buffer while an allocator adapter retains the
+/// corresponding opaque C allocation token.  The adapter never exposes that
+/// token to the buffer, so all readable storage and cursors remain checked
+/// Rust values.
+fn input_buffer_get(
+    buffer: &mut InputBuffer,
+    buffer_ptr: &mut Option<usize>,
+    buffer_end: &mut usize,
+    buffer_lim: &mut usize,
+    last_buffer_request_size: &mut ::core::ffi::c_int,
+    event_ptr: &mut Option<usize>,
+    event_end_ptr: &mut Option<usize>,
+    position_ptr: &mut Option<usize>,
+    len: ::core::ffi::c_int,
+    allocation_factory: &AllocationBackingFactory,
+) -> Option<usize> {
+    *last_buffer_request_size = len;
+    if len as usize
+        > buffer
+            .bytes
+            .as_ref()
+            .map_or(0, |bytes| bytes.len().saturating_sub(*buffer_end))
+        || buffer.bytes.is_none()
+    {
+        let cursor = buffer_ptr.unwrap_or(0);
+        let mut keep = cursor as ::core::ffi::c_int;
+        let mut needed_size: ::core::ffi::c_int = (len as ::core::ffi::c_uint)
+            .wrapping_add(buffer_end.saturating_sub(cursor) as ::core::ffi::c_uint)
+            as ::core::ffi::c_int;
+        if needed_size < 0 {
+            return None;
+        }
+        if keep > crate::stdlib::XML_CONTEXT_BYTES {
+            keep = crate::stdlib::XML_CONTEXT_BYTES;
+        }
+        if keep > crate::limits_h::INT_MAX - needed_size {
+            return None;
+        }
+        needed_size += keep;
+        if buffer.bytes.is_some()
+            && buffer_ptr.is_some()
+            && needed_size as usize <= buffer.bytes.as_ref().unwrap().len()
+        {
+            if (keep as usize) < cursor {
+                let offset = cursor - keep as usize;
+                let bytes = buffer.bytes.as_mut().unwrap();
+                bytes.copy_within(offset..*buffer_end, 0);
+                *buffer_end -= offset;
+                *buffer_ptr = Some(keep as usize);
+            }
+        } else {
+            let mut buffer_size: ::core::ffi::c_int = buffer
+                .bytes
+                .as_ref()
+                .map_or(0, |bytes| bytes.len() as ::core::ffi::c_int);
+            if buffer_size == 0 {
+                buffer_size = INIT_BUFFER_SIZE;
+            }
+            loop {
+                buffer_size = (2 as ::core::ffi::c_uint)
+                    .wrapping_mul(buffer_size as ::core::ffi::c_uint)
+                    as ::core::ffi::c_int;
+                if !(buffer_size < needed_size && buffer_size > 0) {
+                    break;
+                }
+            }
+            if buffer_size <= 0 {
+                return None;
+            }
+            let mut allocation = input_buffer_allocation_backing(
+                allocation_factory,
+                buffer_size as crate::__stddef_size_t_h::size_t,
+            )?;
+            let mut new_bytes = Vec::new();
+            if new_bytes.try_reserve_exact(buffer_size as usize).is_err() {
+                allocation();
+                return None;
+            }
+            new_bytes.resize(buffer_size as usize, 0);
+            if let Some(cursor) = *buffer_ptr {
+                let buffered = *buffer_end - cursor;
+                let copy_start = cursor - keep as usize;
+                new_bytes[..buffered + keep as usize]
+                    .copy_from_slice(&buffer.bytes.as_ref().unwrap()[copy_start..*buffer_end]);
+                if let Some(mut release) = buffer.release.take() {
+                    release();
+                }
+                buffer.bytes = Some(new_bytes);
+                *buffer_end = buffered + keep as usize;
+                *buffer_ptr = Some(keep as usize);
+            } else {
+                buffer.bytes = Some(new_bytes);
+                *buffer_end = 0;
+                *buffer_ptr = Some(0);
+            }
+            *buffer_lim = buffer_size as usize;
+            buffer.release = Some(allocation);
+        }
+        *event_end_ptr = None;
+        *event_ptr = None;
+        *position_ptr = None;
+    }
+    Some(*buffer_end)
+}
+
 #[derive(Copy, Clone)]
 enum DeclaredEntity {
     General(PoolStringRef),
@@ -9456,7 +9585,26 @@ unsafe fn XML_Parse(
 
     if let Some(input) = input {
         parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-        if xml_get_buffer_impl(parser, len).is_none() {
+        let allocation_factory = parser
+            .m_allocationBackingFactory
+            .as_ref()
+            .expect("parser allocation factory is installed during construction")
+            .clone();
+        if input_buffer_get(
+            &mut parser.m_buffer,
+            &mut parser.m_bufferPtr,
+            &mut parser.m_bufferEnd,
+            &mut parser.m_bufferLim,
+            &mut parser.m_lastBufferRequestSize,
+            &mut parser.m_eventPtr,
+            &mut parser.m_eventEndPtr,
+            &mut parser.m_positionPtr,
+            len,
+            &allocation_factory,
+        )
+        .is_none()
+        {
+            parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         let Some(end) = parser.m_bufferEnd.checked_add(input.len()) else {
@@ -9647,112 +9795,27 @@ unsafe fn xml_get_buffer_impl(
         }
         _ => {}
     }
-    parser_ref.m_lastBufferRequestSize = len;
-    if len as usize
-        > parser_ref.m_buffer.bytes.as_ref().map_or(0, |bytes| {
-            bytes.len().saturating_sub(parser_ref.m_bufferEnd)
-        })
-        || parser_ref.m_buffer.bytes.is_none()
-    {
-        let cursor = parser_ref.m_bufferPtr.unwrap_or(0);
-        let mut keep = cursor as ::core::ffi::c_int;
-        let mut neededSize: ::core::ffi::c_int = (len as ::core::ffi::c_uint)
-            .wrapping_add(parser_ref.m_bufferEnd.saturating_sub(cursor) as ::core::ffi::c_uint)
-            as ::core::ffi::c_int;
-        if neededSize < 0 as ::core::ffi::c_int {
-            parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-            return None;
-        }
-        if keep > crate::stdlib::XML_CONTEXT_BYTES {
-            keep = crate::stdlib::XML_CONTEXT_BYTES;
-        }
-        if keep > crate::limits_h::INT_MAX - neededSize {
-            parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-            return None;
-        }
-        neededSize += keep;
-        if parser_ref.m_buffer.bytes.is_some()
-            && parser_ref.m_bufferPtr.is_some()
-            && neededSize as usize <= parser_ref.m_buffer.bytes.as_ref().unwrap().len()
-        {
-            if (keep as usize) < cursor {
-                let offset = cursor - keep as usize;
-                let buffer = parser_ref.m_buffer.bytes.as_mut().unwrap();
-                buffer.copy_within(offset..parser_ref.m_bufferEnd, 0);
-                parser_ref.m_bufferEnd -= offset;
-                parser_ref.m_bufferPtr = Some(keep as usize);
-            }
-        } else {
-            let mut bufferSize: ::core::ffi::c_int = parser_ref
-                .m_buffer
-                .bytes
-                .as_ref()
-                .map_or(0, |bytes| bytes.len() as ::core::ffi::c_int);
-            if bufferSize == 0 as ::core::ffi::c_int {
-                bufferSize = INIT_BUFFER_SIZE;
-            }
-            loop {
-                bufferSize = (2 as ::core::ffi::c_uint)
-                    .wrapping_mul(bufferSize as ::core::ffi::c_uint)
-                    as ::core::ffi::c_int;
-                if !(bufferSize < neededSize && bufferSize > 0 as ::core::ffi::c_int) {
-                    break;
-                }
-            }
-            if bufferSize <= 0 as ::core::ffi::c_int {
-                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return None;
-            }
-            let allocation = parser_ref
-                .m_mem
-                .malloc_fcn
-                .expect("non-null function pointer")(
-                bufferSize as crate::__stddef_size_t_h::size_t,
-            );
-            if allocation.is_null() {
-                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return None;
-            }
-            let mut new_bytes = Vec::new();
-            if new_bytes.try_reserve_exact(bufferSize as usize).is_err() {
-                parser_ref
-                    .m_mem
-                    .free_fcn
-                    .expect("non-null function pointer")(allocation);
-                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return None;
-            }
-            new_bytes.resize(bufferSize as usize, 0);
-            if let Some(cursor) = parser_ref.m_bufferPtr {
-                let buffered = parser_ref.m_bufferEnd - cursor;
-                let copy_start = cursor - keep as usize;
-                new_bytes[..buffered + keep as usize].copy_from_slice(
-                    &parser_ref.m_buffer.bytes.as_ref().unwrap()
-                        [copy_start..parser_ref.m_bufferEnd],
-                );
-                if let Some(mut release) = parser_ref.m_buffer.release.take() {
-                    release();
-                }
-                parser_ref.m_buffer.bytes = Some(new_bytes);
-                parser_ref.m_bufferEnd = buffered + keep as usize;
-                parser_ref.m_bufferPtr = Some(keep as usize);
-            } else {
-                parser_ref.m_buffer.bytes = Some(new_bytes);
-                parser_ref.m_bufferEnd = 0;
-                parser_ref.m_bufferPtr = Some(0);
-            }
-            parser_ref.m_bufferLim = bufferSize as usize;
-            let free_fcn = parser_ref
-                .m_mem
-                .free_fcn
-                .expect("non-null function pointer");
-            parser_ref.m_buffer.release = Some(Box::new(move || free_fcn(allocation)));
-        }
-        parser_ref.m_eventEndPtr = None;
-        parser_ref.m_eventPtr = None;
-        parser_ref.m_positionPtr = None;
+    let allocation_factory = parser_ref
+        .m_allocationBackingFactory
+        .as_ref()
+        .expect("parser allocation factory is installed during construction")
+        .clone();
+    let result = input_buffer_get(
+        &mut parser_ref.m_buffer,
+        &mut parser_ref.m_bufferPtr,
+        &mut parser_ref.m_bufferEnd,
+        &mut parser_ref.m_bufferLim,
+        &mut parser_ref.m_lastBufferRequestSize,
+        &mut parser_ref.m_eventPtr,
+        &mut parser_ref.m_eventEndPtr,
+        &mut parser_ref.m_positionPtr,
+        len,
+        &allocation_factory,
+    );
+    if result.is_none() {
+        parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
     }
-    Some(parser_ref.m_bufferEnd)
+    result
 }
 #[export_name = "XML_GetBuffer"]
 
