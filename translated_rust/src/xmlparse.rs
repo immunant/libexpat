@@ -6601,6 +6601,18 @@ unsafe fn call_processor_impl(
                     continue;
                 }
             }
+        } else if matches!(
+            parser.m_processor,
+            ProcessorState::Content | ProcessorState::ExternalEntityContent
+        ) {
+            // Content processing is offset-based at this dispatcher boundary.
+            // Keep its legacy cursor loop inside the implementation and
+            // immediately re-check the returned cursor against the live
+            // parser buffer after callbacks have had a chance to re-enter.
+            let (error, content_next) =
+                external_entity_content_processor_impl(parser, next, input.end);
+            checked_next_offset = Some(content_next);
+            error
         } else if matches!(parser.m_processor, ProcessorState::InternalEntity) {
             // Internal-entity expansion has no caller-buffer cursor: it
             // operates on the DTD-owned replacement text selected by the
@@ -6623,11 +6635,9 @@ unsafe fn call_processor_impl(
                 ProcessorState::PrologInit => {
                     unreachable!("prolog initialization is dispatched before cursor setup")
                 }
-                // Direct document content and external-entity content use the
-                // same cursor adapter.  It selects the root-versus-child
-                // accounting and tag depth from parser state after the
-                // dispatcher has validated this live-buffer range.
-                ProcessorState::Content => externalEntityContentProcessor,
+                ProcessorState::Content => {
+                    unreachable!("content dispatch is handled with checked offsets")
+                }
                 ProcessorState::ExternalEntityInit => {
                     unreachable!("external entity initialization is dispatched before cursor setup")
                 }
@@ -6637,7 +6647,9 @@ unsafe fn call_processor_impl(
                 ProcessorState::ExternalEntityInit3 => {
                     unreachable!("external entity init processor 3 is dispatched directly")
                 }
-                ProcessorState::ExternalEntityContent => externalEntityContentProcessor,
+                ProcessorState::ExternalEntityContent => {
+                    unreachable!("external content dispatch is handled with checked offsets")
+                }
                 ProcessorState::ExternalParEntInit => externalParEntInitProcessor,
                 ProcessorState::ExternalParEnt => externalParEntProcessor,
                 ProcessorState::EntityValueInit => entityValueInitProcessor,
@@ -11394,52 +11406,74 @@ fn external_entity_init_processor3_transition(
     ExternalEntityInit3Action::ContinueContent(continuation_offset)
 }
 
-unsafe extern "C" fn externalEntityContentProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let parser_state = &mut *parser;
-    let Some(next_ptr) = endPtr.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+/// Process ordinary or external-entity content over a checked live-buffer
+/// range.  The token loop still has a legacy cursor boundary, but this
+/// adapter keeps that boundary private and returns a validated buffer offset
+/// to the dispatcher.
+fn external_entity_content_processor_impl(
+    parser: &mut XML_ParserStruct,
+    start_offset: usize,
+    end_offset: usize,
+) -> (crate::expat_h::XML_Error, usize) {
+    let Some(bytes) = parser.m_buffer.bytes.as_deref() else {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, start_offset);
     };
-    let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    if start_offset > end_offset || end_offset > parser.m_bufferEnd || end_offset > bytes.len() {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, start_offset);
+    }
+    let start = bytes.as_ptr().wrapping_add(start_offset).cast();
+    let end = bytes.as_ptr().wrapping_add(end_offset).cast();
+    let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, start_offset);
     };
     // A child parser is processing an external entity, while the root parser
     // is processing the document entity.  Both use the same content loop;
     // only its initial tag level and accounting class differ.
-    let is_external_entity = parser_state.m_parentParser.is_some();
+    let is_external_entity = parser.m_parentParser.is_some();
     let start_tag_level = if is_external_entity { 1 } else { 0 };
     let account = if is_external_entity {
         XML_ACCOUNT_ENTITY_EXPANSION
     } else {
         XML_ACCOUNT_DIRECT
     };
-    let have_more = (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+    let have_more = (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
-    let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
-    let mut result: crate::expat_h::XML_Error = doContent(
-        parser_state,
+    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
+    let mut next = start;
+    let mut result = unsafe { doContent(
+        parser,
         start_tag_level,
         normal_encoding,
         encoding,
         true,
         start,
         end,
-        next_ptr,
+        &mut next,
         have_more,
         account,
-    );
+    ) };
     if result as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        if storeRawNames(parser) == 0 {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        let Some(dtd_owner) = parser.m_dtd.clone() else {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, start_offset);
+        };
+        if dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd)) == 0 {
+            result = crate::expat_h::XML_ERROR_NO_MEMORY;
         }
     }
-    return result;
+    // A callback can re-enter and relocate the parser input while `doContent`
+    // is running.  Never return its stale cursor to the caller: resolve it
+    // through the current live buffer and retain only a cursor in this exact
+    // dispatch range.
+    let Some(next_offset) = parser
+        .m_buffer
+        .offset_from_address(next.addr())
+        .filter(|offset| *offset >= start_offset && *offset <= end_offset)
+    else {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, start_offset);
+    };
+    (result, next_offset)
 }
 
 /// The content loop checks parser status only after each token has completed
