@@ -728,13 +728,13 @@ pub type CONVERTER = Option<
     ) -> ::core::ffi::c_int,
 >;
 
-trait UnknownEncodingConverter {
+trait UnknownEncodingConverter: Send + Sync {
     fn invoke(&self, input: &[u8]) -> ::core::ffi::c_int;
 }
 
 impl<F> UnknownEncodingConverter for F
 where
-    F: Fn(&[u8]) -> ::core::ffi::c_int,
+    F: Fn(&[u8]) -> ::core::ffi::c_int + Send + Sync,
 {
     fn invoke(&self, input: &[u8]) -> ::core::ffi::c_int {
         self(input)
@@ -745,13 +745,6 @@ where
 struct UnknownEncodingConverterRegistration {
     invoke: std::sync::Arc<dyn UnknownEncodingConverter>,
 }
-
-// The captured callback and context are opaque C values.  Rust never
-// dereferences the context and invokes the callback only with a slice-backed,
-// non-empty character buffer; callers retain responsibility for the C
-// callback's lifetime and thread-safety, as required by Expat's callback ABI.
-unsafe impl Send for UnknownEncodingConverterRegistration {}
-unsafe impl Sync for UnknownEncodingConverterRegistration {}
 
 // Unknown encodings are initialized in caller-provided storage.  Keep the
 // foreign callback in this boundary adapter instead of retaining it in that
@@ -18075,10 +18068,17 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     register_unknown_encoding_converter(
         encoding.converter_id,
         convert.map(|callback| {
-            let foreign_context = userData;
+            // The callback argument is an opaque C token.  AtomicPtr carries
+            // it across the synchronized registry without Rust ever
+            // dereferencing it; the foreign callback remains responsible for
+            // the token's lifetime and thread-safety.
+            let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(userData));
             UnknownEncodingConverterRegistration {
                 invoke: std::sync::Arc::new(move |input: &[u8]| unsafe {
-                    callback(foreign_context, input.as_ptr().cast::<::core::ffi::c_char>())
+                    callback(
+                        callback_arg.load(std::sync::atomic::Ordering::Relaxed),
+                        input.as_ptr().cast::<::core::ffi::c_char>(),
+                    )
                 }),
             }
         }),
