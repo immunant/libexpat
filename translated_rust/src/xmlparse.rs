@@ -2465,10 +2465,13 @@ pub struct XML_ParserStruct {
     // entry always names an allocated binding node, so keep nullability in
     // the option rather than in a raw pointer field.
     pub m_inheritedBindings: Option<::core::ptr::NonNull<BINDING>>,
-    // Binding nodes are returned to this parser-owned LIFO reuse list.  A
-    // present head always names an allocated node, so express nullability
-    // separately from the non-null node address.
-    pub m_freeBindingList: Option<::core::ptr::NonNull<BINDING>>,
+    // Binding nodes use stable Rust storage paired with opaque configured-
+    // allocator tokens.  The free stack preserves Expat's LIFO reuse without
+    // retaining an intrusive raw-list head in parser state.
+    m_freeBindingList: FreeBindingList,
+    // Bindings remain here while they are reachable from a tag or inherited
+    // namespace chain.  Moving a node to the free stack transfers this owner.
+    m_activeBindings: Vec<BindingStorage>,
     pub m_attsSize: ::core::ffi::c_int,
     pub m_nSpecifiedAtts: ::core::ffi::c_int,
     pub m_idAttIndex: ::core::ffi::c_int,
@@ -3220,6 +3223,197 @@ struct FreeTagList {
 impl FreeTagList {
     const fn empty() -> Self {
         Self { tags: Vec::new() }
+    }
+}
+
+struct BindingStorage {
+    // A one-element vector supplies a stable address to the legacy binding
+    // chains without placing that address in parser state.
+    binding: Vec<BINDING>,
+    // URI contents are Rust-owned.  The opaque callback below preserves the
+    // configured allocator's allocation/reallocation/free sequence.
+    uri: Vec<crate::expat_external_h::XML_Char>,
+    binding_backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
+    uri_backing: Option<Box<dyn FnMut(BindingUriAllocationAction) -> bool>>,
+}
+
+enum BindingUriAllocationAction {
+    Grow {
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    },
+    Replace {
+        size: crate::__stddef_size_t_h::size_t,
+        allocation_source_line: ::core::ffi::c_int,
+        free_source_line: ::core::ffi::c_int,
+    },
+    Free(::core::ffi::c_int),
+}
+
+struct FreeBindingList {
+    bindings: Vec<BindingStorage>,
+}
+
+impl FreeBindingList {
+    const fn empty() -> Self {
+        Self { bindings: Vec::new() }
+    }
+}
+
+impl BindingStorage {
+    unsafe fn new(
+        parser: crate::expat_h::XML_Parser,
+        uri_capacity: usize,
+    ) -> Option<Self> {
+        let mut binding_backing = allocation_backing(
+            parser,
+            ::core::mem::size_of::<BINDING>(),
+            4525 as ::core::ffi::c_int,
+        )?;
+        let uri_size = uri_capacity.checked_mul(::core::mem::size_of::<
+            crate::expat_external_h::XML_Char,
+        >())?;
+        let uri_allocation = expat_malloc(parser, uri_size, 4543 as ::core::ffi::c_int);
+        if uri_allocation.is_null() {
+            binding_backing(4545 as ::core::ffi::c_int);
+            return None;
+        }
+        let mut uri_allocation = uri_allocation;
+        let mut uri_backing: Box<dyn FnMut(BindingUriAllocationAction) -> bool> =
+            Box::new(move |action| match action {
+                BindingUriAllocationAction::Grow { size, source_line } => {
+                    let reallocated = expat_realloc(parser, uri_allocation, size, source_line);
+                    if reallocated.is_null() {
+                        false
+                    } else {
+                        uri_allocation = reallocated;
+                        true
+                    }
+                }
+                BindingUriAllocationAction::Replace {
+                    size,
+                    allocation_source_line,
+                    free_source_line,
+                } => {
+                    let replacement = expat_malloc(parser, size, allocation_source_line);
+                    if replacement.is_null() {
+                        false
+                    } else {
+                        expat_free(parser, uri_allocation, free_source_line);
+                        uri_allocation = replacement;
+                        true
+                    }
+                }
+                BindingUriAllocationAction::Free(source_line) => {
+                    expat_free(parser, uri_allocation, source_line);
+                    true
+                }
+            });
+        let mut binding = Vec::new();
+        let mut uri = Vec::new();
+        if binding.try_reserve_exact(1).is_err() || uri.try_reserve_exact(uri_capacity).is_err() {
+            uri_backing(BindingUriAllocationAction::Free(4545 as ::core::ffi::c_int));
+            binding_backing(4545 as ::core::ffi::c_int);
+            return None;
+        }
+        uri.resize(uri_capacity, 0);
+        binding.push(BINDING {
+            prefix: ::core::ptr::null_mut(),
+            nextTagBinding: ::core::ptr::null_mut(),
+            prevPrefixBinding: ::core::ptr::null_mut(),
+            attId: None,
+            uri: uri.as_mut_ptr(),
+            uriLen: 0,
+            uriAlloc: uri_capacity as ::core::ffi::c_int,
+        });
+        Some(Self {
+            binding,
+            uri,
+            binding_backing: Some(binding_backing),
+            uri_backing: Some(uri_backing),
+        })
+    }
+
+    fn binding_mut(&mut self) -> &mut BINDING {
+        self.binding
+            .first_mut()
+            .expect("binding storage has one binding")
+    }
+
+    fn grow_uri(
+        &mut self,
+        capacity: usize,
+        source_line: ::core::ffi::c_int,
+    ) -> bool {
+        if capacity <= self.uri.len() {
+            return true;
+        }
+        if self.uri.try_reserve_exact(capacity - self.uri.len()).is_err() {
+            return false;
+        }
+        let Some(uri_backing) = self.uri_backing.as_mut() else {
+            return false;
+        };
+        let Some(size) = capacity.checked_mul(::core::mem::size_of::<
+            crate::expat_external_h::XML_Char,
+        >()) else {
+            return false;
+        };
+        if !uri_backing(BindingUriAllocationAction::Grow { size, source_line }) {
+            return false;
+        }
+        self.uri.resize(capacity, 0);
+        let uri = self.uri.as_mut_ptr();
+        let binding = self.binding_mut();
+        binding.uri = uri;
+        binding.uriAlloc = capacity as ::core::ffi::c_int;
+        true
+    }
+
+    fn release(mut self) {
+        if let Some(uri_backing) = self.uri_backing.as_mut() {
+            uri_backing(BindingUriAllocationAction::Free(1919 as ::core::ffi::c_int));
+        }
+        self.uri_backing = None;
+        if let Some(binding_backing) = self.binding_backing.as_mut() {
+            binding_backing(1920 as ::core::ffi::c_int);
+        }
+        self.binding_backing = None;
+    }
+
+    fn replace_uri(
+        &mut self,
+        capacity: usize,
+        allocation_source_line: ::core::ffi::c_int,
+        free_source_line: ::core::ffi::c_int,
+    ) -> bool {
+        if capacity <= self.uri.len() {
+            return true;
+        }
+        if self.uri.try_reserve_exact(capacity - self.uri.len()).is_err() {
+            return false;
+        }
+        let Some(uri_backing) = self.uri_backing.as_mut() else {
+            return false;
+        };
+        let Some(size) = capacity.checked_mul(::core::mem::size_of::<
+            crate::expat_external_h::XML_Char,
+        >()) else {
+            return false;
+        };
+        if !uri_backing(BindingUriAllocationAction::Replace {
+            size,
+            allocation_source_line,
+            free_source_line,
+        }) {
+            return false;
+        }
+        self.uri.resize(capacity, 0);
+        let uri = self.uri.as_mut_ptr();
+        let binding = self.binding_mut();
+        binding.uri = uri;
+        binding.uriAlloc = capacity as ::core::ffi::c_int;
+        true
     }
 }
 
@@ -4558,7 +4752,8 @@ fn initial_parser_struct(
         m_freeTagList: FreeTagList::empty(),
         m_activeTags: Vec::new(),
         m_inheritedBindings: None,
-        m_freeBindingList: None,
+        m_freeBindingList: FreeBindingList::empty(),
+        m_activeBindings: Vec::new(),
         m_attsSize: 0,
         m_nSpecifiedAtts: 0,
         m_idAttIndex: 0,
@@ -4787,7 +4982,8 @@ unsafe extern "C" fn parserCreate(
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
     }
-    parser.m_freeBindingList = None;
+    parser.m_freeBindingList = FreeBindingList::empty();
+    parser.m_activeBindings = Vec::new();
     parser.m_freeTagList = FreeTagList::empty();
     parser.m_freeInternalEntities = Vec::new();
     parser.m_activeInternalEntities = Vec::new();
@@ -5087,11 +5283,15 @@ unsafe extern "C" fn moveToFreeBindingList(
     while !bindings.is_null() {
         let mut b: *mut BINDING = bindings;
         bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = parser
-            .m_freeBindingList
-            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-            as *mut binding;
-        parser.m_freeBindingList = ::core::ptr::NonNull::new(b);
+        let Some(index) = parser
+            .m_activeBindings
+            .iter()
+            .position(|storage| storage.binding.as_ptr() == b)
+        else {
+            std::process::abort();
+        };
+        let storage = parser.m_activeBindings.swap_remove(index);
+        parser.m_freeBindingList.bindings.push(storage);
     }
 }
 pub unsafe extern "C" fn XML_ParserReset(
@@ -5688,22 +5888,18 @@ unsafe extern "C" fn destroyBindings(
     mut bindings: *mut BINDING,
     mut parser: crate::expat_h::XML_Parser,
 ) {
-    loop {
-        let mut b: *mut BINDING = bindings;
-        if b.is_null() {
-            break;
-        }
+    while !bindings.is_null() {
+        let b = bindings;
         bindings = (*b).nextTagBinding as *mut BINDING;
-        expat_free(
-            parser,
-            (*b).uri as *mut ::core::ffi::c_void,
-            1919 as ::core::ffi::c_int,
-        );
-        expat_free(
-            parser,
-            b as *mut ::core::ffi::c_void,
-            1920 as ::core::ffi::c_int,
-        );
+        let parser_state = &mut *parser;
+        let Some(index) = parser_state
+            .m_activeBindings
+            .iter()
+            .position(|storage| storage.binding.as_ptr() == b)
+        else {
+            std::process::abort();
+        };
+        parser_state.m_activeBindings.swap_remove(index).release();
     }
 }
 pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) {
@@ -5859,12 +6055,10 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     for storage in free_value_entities.into_iter().rev() {
         storage.release(1986 as ::core::ffi::c_int);
     }
-    destroyBindings(
-        parser
-            .m_freeBindingList
-            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr),
-        parser as *mut XML_ParserStruct,
-    );
+    let free_bindings = std::mem::take(&mut parser.m_freeBindingList.bindings);
+    for binding in free_bindings.into_iter().rev() {
+        binding.release();
+    }
     destroyBindings(
         parser
             .m_inheritedBindings
@@ -9347,12 +9541,17 @@ unsafe extern "C" fn doContent(
                                 }
                             }
                             (*tag_0).bindings = (*(*tag_0).bindings).nextTagBinding as *mut BINDING;
-                            (*b).nextTagBinding = (*parser)
-                                .m_freeBindingList
-                                .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-                                as *mut binding;
-                            (*parser).m_freeBindingList = ::core::ptr::NonNull::new(b);
                             (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+                            let parser_state = &mut *parser;
+                            let Some(index) = parser_state
+                                .m_activeBindings
+                                .iter()
+                                .position(|storage| storage.binding.as_ptr() == b)
+                            else {
+                                std::process::abort();
+                            };
+                            let storage = parser_state.m_activeBindings.swap_remove(index);
+                            parser_state.m_freeBindingList.bindings.push(storage);
                         }
                         if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
                             && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
@@ -9651,12 +9850,17 @@ unsafe extern "C" fn freeBindings(
             }
         }
         bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = (*parser)
-            .m_freeBindingList
-            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
-            as *mut binding;
-        (*parser).m_freeBindingList = ::core::ptr::NonNull::new(b);
         (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+        let parser_state = &mut *parser;
+        let Some(index) = parser_state
+            .m_activeBindings
+            .iter()
+            .position(|storage| storage.binding.as_ptr() == b)
+        else {
+            std::process::abort();
+        };
+        let storage = parser_state.m_activeBindings.swap_remove(index);
+        parser_state.m_freeBindingList.bindings.push(storage);
     }
 }
 
@@ -10596,7 +10800,16 @@ unsafe extern "C" fn storeAtts(
     } else {
         return crate::expat_h::XML_ERROR_NONE;
     }
-    let binding_ref = &mut *binding;
+    let parser_state = &mut *parser;
+    let Some(binding_index) = parser_state
+        .m_activeBindings
+        .iter()
+        .position(|storage| storage.binding.as_ptr() == binding)
+    else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let binding_storage = &mut parser_state.m_activeBindings[binding_index];
+    let binding_ref = binding_storage.binding_mut();
     prefixLen = 0 as ::core::ffi::c_int;
     let prefix_name = (*binding_ref.prefix).name.map_or(::core::ptr::null(), |name| {
         pool_string_pointer!(&dtd.pool, name)
@@ -10631,29 +10844,15 @@ unsafe extern "C" fn storeAtts(
         if n > crate::limits_h::INT_MAX - EXPAND_SPARE {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        uri = expat_malloc(
-            parser,
-            ((n + 24 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t)
-                .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
+        if !binding_storage.replace_uri(
+            (n + EXPAND_SPARE) as usize,
             4270 as ::core::ffi::c_int,
-        ) as *mut crate::expat_external_h::XML_Char;
-        if uri.is_null() {
+            4278 as ::core::ffi::c_int,
+        ) {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        binding_ref.uriAlloc = n + EXPAND_SPARE;
-        crate::stdlib::memcpy(
-            uri as *mut ::core::ffi::c_void,
-            binding_ref.uri as *const ::core::ffi::c_void,
-            (binding_ref.uriLen as crate::__stddef_size_t_h::size_t)
-                .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-        );
-        expat_free(
-            parser,
-            binding_ref.uri as *mut ::core::ffi::c_void,
-            4278 as ::core::ffi::c_int,
-        );
-        binding_ref.uri = uri;
     }
+    let binding_ref = binding_storage.binding_mut();
     uri = binding_ref.uri.offset(binding_ref.uriLen as isize);
     crate::stdlib::memcpy(
         uri as *mut ::core::ffi::c_void,
@@ -10772,68 +10971,35 @@ unsafe extern "C" fn addBinding(
             None => return crate::expat_h::XML_ERROR_NO_MEMORY,
         };
     }
-    let b: &mut BINDING = if let Some(free_binding) = parser.m_freeBindingList {
-        let b_ptr = free_binding.as_ptr();
-        let b = &mut *b_ptr;
-        if len > b.uriAlloc {
-            if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
-            }
-            let temp = expat_realloc(
-                parser_ptr,
-                b.uri as *mut ::core::ffi::c_void,
-                ::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-                    .wrapping_mul((len + EXPAND_SPARE) as crate::__stddef_size_t_h::size_t),
-                4517 as ::core::ffi::c_int,
-            ) as *mut crate::expat_external_h::XML_Char;
-            if temp.is_null() {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
-            }
-            b.uri = temp;
-            b.uriAlloc = len + EXPAND_SPARE;
-        }
-        parser.m_freeBindingList = ::core::ptr::NonNull::new(b.nextTagBinding);
-        b
-    } else {
-        let b_ptr = expat_malloc(
-            parser_ptr,
-            ::core::mem::size_of::<BINDING>(),
-            4525 as ::core::ffi::c_int,
-        ) as *mut BINDING;
-        if b_ptr.is_null() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        let binding_uri = expat_malloc(
-            parser_ptr,
-            ::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-                .wrapping_mul((len + EXPAND_SPARE) as crate::__stddef_size_t_h::size_t),
-            4543 as ::core::ffi::c_int,
-        ) as *mut crate::expat_external_h::XML_Char;
-        if binding_uri.is_null() {
-            expat_free(
-                parser_ptr,
-                b_ptr as *mut ::core::ffi::c_void,
-                4545 as ::core::ffi::c_int,
-            );
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        ::core::ptr::write(
-            b_ptr,
-            BINDING {
-                prefix: ::core::ptr::null_mut(),
-                nextTagBinding: ::core::ptr::null_mut(),
-                prevPrefixBinding: ::core::ptr::null_mut(),
-                attId: None,
-                uri: binding_uri,
-                uriLen: 0,
-                uriAlloc: len + EXPAND_SPARE,
-            },
-        );
-        &mut *b_ptr
+    if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    }
+    let uri_capacity = (len + EXPAND_SPARE) as usize;
+    if parser.m_activeBindings.try_reserve(1).is_err()
+        || parser.m_freeBindingList.bindings.try_reserve(1).is_err()
+    {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    }
+    let mut storage = match parser.m_freeBindingList.bindings.pop() {
+        Some(storage) => storage,
+        None => match BindingStorage::new(parser_ptr, uri_capacity) {
+            Some(storage) => storage,
+            None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+        },
     };
+    if uri_capacity > storage.uri.len()
+        && !storage.grow_uri(uri_capacity, 4517 as ::core::ffi::c_int)
+    {
+        parser.m_freeBindingList.bindings.push(storage);
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    }
+    parser.m_activeBindings.push(storage);
+    let b = &mut *parser
+        .m_activeBindings
+        .last_mut()
+        .expect("reserved binding storage")
+        .binding
+        .as_mut_ptr();
 
     b.uriLen = len;
     ::core::ptr::copy_nonoverlapping(uri.as_ptr().cast(), b.uri, uri.len());
