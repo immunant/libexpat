@@ -818,6 +818,120 @@ fn set_notation_decl_handler(handler: XML_NotationDeclHandler) {
     ffi_call!(XML_SetNotationDeclHandler, current_parser(), handler);
 }
 
+fn set_element_decl_handler(handler: XML_ElementDeclHandler) {
+    ffi_call!(XML_SetElementDeclHandler, current_parser(), handler);
+}
+
+fn set_attlist_decl_handler(handler: XML_AttlistDeclHandler) {
+    ffi_call!(XML_SetAttlistDeclHandler, current_parser(), handler);
+}
+
+fn set_start_element_handler(handler: XML_StartElementHandler) {
+    ffi_call!(XML_SetStartElementHandler, current_parser(), handler);
+}
+
+fn set_character_data_handler(handler: XML_CharacterDataHandler) {
+    ffi_call!(XML_SetCharacterDataHandler, current_parser(), handler);
+}
+
+fn set_cdata_section_handler(start: XML_StartCdataSectionHandler, end: XML_EndCdataSectionHandler) {
+    ffi_call!(XML_SetCdataSectionHandler, current_parser(), start, end);
+}
+
+fn set_default_handler(handler: XML_DefaultHandler) {
+    ffi_call!(XML_SetDefaultHandler, current_parser(), handler);
+}
+
+fn set_unparsed_entity_decl_handler(handler: XML_UnparsedEntityDeclHandler) {
+    ffi_call!(XML_SetUnparsedEntityDeclHandler, current_parser(), handler);
+}
+
+fn char_data_init(storage: &mut CharData) {
+    ffi_call!(CharData_Init, storage);
+}
+
+fn char_data_check_xml_chars(storage: &mut CharData, text: &CStr) {
+    ffi_call!(CharData_CheckXMLChars, storage, text.as_ptr());
+}
+
+fn current_parser_get_buffer(len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
+    ffi_call!(XML_GetBuffer, current_parser(), len)
+}
+
+fn current_parser_parse_buffer(
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
+) -> XML_Status {
+    ffi_call!(XML_ParseBuffer, current_parser(), len, is_final)
+}
+
+fn copy_c_str_to_buffer(dest: *mut ::core::ffi::c_void, text: &CStr) {
+    ffi_call!(
+        memcpy,
+        dest,
+        text.as_ptr() as *const ::core::ffi::c_void,
+        text.to_bytes().len(),
+    );
+}
+
+fn current_parser_error_code() -> XML_Error {
+    ffi_call!(XML_GetErrorCode, current_parser())
+}
+
+fn buffer_test_text() -> &'static CStr {
+    unsafe { CStr::from_ptr(get_buffer_test_text) }
+}
+
+fn expect_failure(text: &CStr, error: XML_Error, message: &'static CStr, line: ::core::ffi::c_int) {
+    ffi_call!(
+        _expect_failure,
+        text.as_ptr(),
+        error,
+        message.as_ptr(),
+        alloc_tests_file().as_ptr(),
+        line,
+    );
+}
+
+fn run_retry_loop_with_counter(
+    text: &CStr,
+    max_count: ::core::ffi::c_int,
+    mut set_counter: impl FnMut(::core::ffi::c_int),
+    mut configure_parser: impl FnMut(),
+) -> ::core::ffi::c_int {
+    let mut i = 0;
+    while i < max_count {
+        set_counter(i);
+        configure_parser();
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+
+    i
+}
+
+fn assert_retry_succeeds_after_failures(
+    i: ::core::ffi::c_int,
+    max_count: ::core::ffi::c_int,
+    fail_on_zero_line: ::core::ffi::c_int,
+    fail_on_zero_message: &'static CStr,
+    fail_on_max_line: ::core::ffi::c_int,
+    fail_on_max_message: &'static CStr,
+) {
+    if i == 0 {
+        fail_alloc_test(fail_on_zero_line, fail_on_zero_message);
+    }
+    if i == max_count {
+        fail_alloc_test(fail_on_max_line, fail_on_max_message);
+    }
+}
+
 fn run_alloc_failure_retry_loop(
     text: &CStr,
     max_alloc_count: ::core::ffi::c_int,
@@ -1214,214 +1328,87 @@ extern "C" fn test_alloc_parameter_entity() {
     }
 }
 extern "C" fn test_alloc_dtd_default_handling() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_dtd_default_handling\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            488 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_dtd_default_handling\0"),
+        488 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ENTITY e SYSTEM 'http://example.org/e'>
+<!NOTATION n SYSTEM 'http://example.org/n'>
+<!ENTITY e1 SYSTEM 'http://example.org/e' NDATA n>
+<!ELEMENT doc (#PCDATA)>
+<!ATTLIST doc a CDATA #IMPLIED>
+<?pi in dtd?>
+<!--comment in dtd-->
+]>
+<doc><![CDATA[text in doc]]></doc>\0",
+    );
+    let expected = c_str(
+        b"
+
+
+
+
+
+
+
+
+<doc>text in doc</doc>\0",
+    );
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    let max_alloc_count = 25 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {
+        init_dummy_handler_flags();
+        set_default_handler(Some(accumulate_characters));
+        set_doctype_decl_handler(
+            Some(dummy_start_doctype_handler),
+            Some(dummy_end_doctype_handler),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ENTITY e SYSTEM 'http://example.org/e'>\n<!NOTATION n SYSTEM 'http://example.org/n'>\n<!ENTITY e1 SYSTEM 'http://example.org/e' NDATA n>\n<!ELEMENT doc (#PCDATA)>\n<!ATTLIST doc a CDATA #IMPLIED>\n<?pi in dtd?>\n<!--comment in dtd-->\n]>\n<doc><![CDATA[text in doc]]></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"\n\n\n\n\n\n\n\n\n<doc>text in doc</doc>\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            init_dummy_handlers();
-            XML_SetDefaultHandler(
-                g_parser,
-                Some(
-                    accumulate_characters
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-            );
-            XML_SetDoctypeDeclHandler(
-                g_parser,
-                Some(
-                    dummy_start_doctype_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-                Some(
-                    dummy_end_doctype_handler
-                        as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-                ),
-            );
-            XML_SetEntityDeclHandler(
-                g_parser,
-                Some(
-                    dummy_entity_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            XML_SetNotationDeclHandler(
-                g_parser,
-                Some(
-                    dummy_notation_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            XML_SetElementDeclHandler(
-                g_parser,
-                Some(
-                    dummy_element_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut XML_Content,
-                        ) -> (),
-                ),
-            );
-            XML_SetAttlistDeclHandler(
-                g_parser,
-                Some(
-                    dummy_attlist_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-            );
-            XML_SetProcessingInstructionHandler(
-                g_parser,
-                Some(
-                    dummy_pi_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            XML_SetCommentHandler(
-                g_parser,
-                Some(
-                    dummy_comment_handler
-                        as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-                ),
-            );
-            XML_SetCdataSectionHandler(
-                g_parser,
-                Some(
-                    dummy_start_cdata_handler
-                        as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-                ),
-                Some(
-                    dummy_end_cdata_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-                ),
-            );
-            XML_SetUnparsedEntityDeclHandler(
-                g_parser,
-                Some(
-                    dummy_unparsed_entity_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            CharData_Init(&raw mut storage);
-            XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-            XML_SetCharacterDataHandler(
-                g_parser,
-                Some(
-                    accumulate_characters
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                531 as ::core::ffi::c_int,
-                b"Default DTD parsed despite allocation failures\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                533 as ::core::ffi::c_int,
-                b"Default DTD not parsed with maximum alloc count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-        if get_dummy_handler_flags()
-            != DUMMY_START_DOCTYPE_HANDLER_FLAG
-                | DUMMY_END_DOCTYPE_HANDLER_FLAG
-                | DUMMY_ENTITY_DECL_HANDLER_FLAG
-                | DUMMY_NOTATION_DECL_HANDLER_FLAG
-                | DUMMY_ELEMENT_DECL_HANDLER_FLAG
-                | DUMMY_ATTLIST_DECL_HANDLER_FLAG
-                | DUMMY_COMMENT_HANDLER_FLAG
-                | DUMMY_PI_HANDLER_FLAG
-                | DUMMY_START_CDATA_HANDLER_FLAG
-                | DUMMY_END_CDATA_HANDLER_FLAG
-                | DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                542 as ::core::ffi::c_int,
-                b"Not all handlers were called\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+        set_entity_decl_handler(Some(dummy_entity_decl_handler));
+        set_notation_decl_handler(Some(dummy_notation_decl_handler));
+        set_element_decl_handler(Some(dummy_element_decl_handler));
+        set_attlist_decl_handler(Some(dummy_attlist_decl_handler));
+        set_processing_instruction_handler(Some(dummy_pi_handler));
+        set_comment_handler(Some(dummy_comment_handler));
+        set_cdata_section_handler(
+            Some(dummy_start_cdata_handler),
+            Some(dummy_end_cdata_handler),
+        );
+        set_unparsed_entity_decl_handler(Some(dummy_unparsed_entity_decl_handler));
+        char_data_init(&mut storage);
+        set_user_data((&raw mut storage).cast());
+        set_character_data_handler(Some(accumulate_characters));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        531 as ::core::ffi::c_int,
+        c_str(b"Default DTD parsed despite allocation failures\0"),
+        533 as ::core::ffi::c_int,
+        c_str(b"Default DTD not parsed with maximum alloc count\0"),
+    );
+    char_data_check_xml_chars(&mut storage, expected);
+    if dummy_handler_flags()
+        != DUMMY_START_DOCTYPE_HANDLER_FLAG
+            | DUMMY_END_DOCTYPE_HANDLER_FLAG
+            | DUMMY_ENTITY_DECL_HANDLER_FLAG
+            | DUMMY_NOTATION_DECL_HANDLER_FLAG
+            | DUMMY_ELEMENT_DECL_HANDLER_FLAG
+            | DUMMY_ATTLIST_DECL_HANDLER_FLAG
+            | DUMMY_COMMENT_HANDLER_FLAG
+            | DUMMY_PI_HANDLER_FLAG
+            | DUMMY_START_CDATA_HANDLER_FLAG
+            | DUMMY_END_CDATA_HANDLER_FLAG
+            | DUMMY_UNPARSED_ENTITY_DECL_HANDLER_FLAG
+    {
+        fail_alloc_test(
+            542 as ::core::ffi::c_int,
+            c_str(b"Not all handlers were called\0"),
+        );
     }
 }
 extern "C" fn test_alloc_explicit_encoding() {
@@ -1483,170 +1470,101 @@ extern "C" fn test_alloc_set_base() {
     }
 }
 extern "C" fn test_alloc_realloc_buffer() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_buffer\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            582 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = get_buffer_test_text;
-        let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            buffer = XML_GetBuffer(g_parser, 1536 as ::core::ffi::c_int);
-            if buffer.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    593 as ::core::ffi::c_int,
-                    b"1.5K buffer reallocation failed\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if !buffer.is_null() {
-            } else {
-                __assert_fail(
-                    b"buffer != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    594 as ::core::ffi::c_uint,
-                    __ASSERT_FUNCTION.as_ptr(),
-                );
-            };
-            memcpy(buffer, text as *const ::core::ffi::c_void, strlen(text));
-            if XML_ParseBuffer(
-                g_parser,
-                strlen(text) as ::core::ffi::c_int,
-                XML_FALSE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        g_reallocation_count = -(1 as ::core::ffi::c_int);
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                605 as ::core::ffi::c_int,
-                b"Parse succeeded with no reallocation\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        } else if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                607 as ::core::ffi::c_int,
-                b"Parse failed with max reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_buffer\0"),
+        582 as ::core::ffi::c_int,
+    );
+    let text = buffer_test_text();
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let mut i = 0;
+    while i < max_realloc_count {
+        set_reallocation_count(i);
+        let buffer = current_parser_get_buffer(1536 as ::core::ffi::c_int);
+        if buffer.is_null() {
+            fail_alloc_test(
+                593 as ::core::ffi::c_int,
+                c_str(b"1.5K buffer reallocation failed\0"),
             );
         }
+        copy_c_str_to_buffer(buffer, text);
+        if current_parser_parse_buffer(parser_text_len(text), XML_FALSE as ::core::ffi::c_int)
+            as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
     }
+    set_reallocation_count(-(1 as ::core::ffi::c_int));
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        605 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded with no reallocation\0"),
+        607 as ::core::ffi::c_int,
+        c_str(b"Parse failed with max reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_ext_entity_realloc_buffer() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_ext_entity_realloc_buffer\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            612 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_reallocator
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            XML_SetUserData(g_parser, &raw mut i as *mut ::core::ffi::c_void);
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
+    set_alloc_test_info(
+        c_str(b"test_alloc_ext_entity_realloc_buffer\0"),
+        612 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>
+]>
+<doc>&en;</doc>\0",
+    );
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let mut i = 0;
+    while i < max_realloc_count {
+        set_reallocation_count(i);
+        set_external_entity_ref_handler(Some(external_entity_reallocator));
+        set_user_data((&raw mut i).cast());
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
         }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                631 as ::core::ffi::c_int,
-                b"Succeeded with no reallocations\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                633 as ::core::ffi::c_int,
-                b"Failed with max reallocations\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
     }
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        631 as ::core::ffi::c_int,
+        c_str(b"Succeeded with no reallocations\0"),
+        633 as ::core::ffi::c_int,
+        c_str(b"Failed with max reallocations\0"),
+    );
 }
 extern "C" fn test_alloc_realloc_many_attributes() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_many_attributes\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            638 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ATTLIST doc za CDATA 'default'>\n<!ATTLIST doc zb CDATA 'def2'>\n<!ATTLIST doc zc CDATA 'def3'>\n]>\n<doc a='1'     b='2'     c='3'     d='4'     e='5'     f='6'     g='7'     h='8'     i='9'     j='10'     k='11'     l='12'     m='13'     n='14'     p='15'     q='16'     r='17'     s='18'></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                676 as ::core::ffi::c_int,
-                b"Parse succeeded despite no reallocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                678 as ::core::ffi::c_int,
-                b"Parse failed at max reallocations\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_many_attributes\0"),
+        638 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ATTLIST doc za CDATA 'default'>
+<!ATTLIST doc zb CDATA 'def2'>
+<!ATTLIST doc zc CDATA 'def3'>
+]>
+<doc a='1'     b='2'     c='3'     d='4'     e='5'     f='6'     g='7'     h='8'     i='9'     j='10'     k='11'     l='12'     m='13'     n='14'     p='15'     q='16'     r='17'     s='18'></doc>\0",
+    );
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {});
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        676 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite no reallocations\0"),
+        678 as ::core::ffi::c_int,
+        c_str(b"Parse failed at max reallocations\0"),
+    );
 }
 extern "C" fn test_alloc_public_entity_value() {
     set_alloc_test_info(
@@ -1683,76 +1601,32 @@ extern "C" fn test_alloc_public_entity_value() {
     }
 }
 extern "C" fn test_alloc_realloc_subst_public_entity_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_subst_public_entity_value\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            736 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc></doc>\n\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut dtd_text: [::core::ffi::c_char; 2108] = ::core::mem::transmute::<
-            [u8; 2108],
-            [::core::ffi::c_char; 2108],
-        >(
-            *b"<!ELEMENT doc EMPTY>\n<!ENTITY % ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP PUBLIC 'foo' 'bar.ent'>\n%ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP;\0",
-        );
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_public
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                792 as ::core::ffi::c_int,
-                b"Parsing worked despite failing reallocation\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                794 as ::core::ffi::c_int,
-                b"Parsing failed at max reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_subst_public_entity_value\0"),
+        736 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>
+<doc></doc>
+\0",
+    );
+    let mut dtd_text = c_char_array(*b"<!ELEMENT doc EMPTY>
+<!ENTITY % ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP PUBLIC 'foo' 'bar.ent'>
+%ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP;\0");
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        set_user_data(dtd_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_public));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        792 as ::core::ffi::c_int,
+        c_str(b"Parsing worked despite failing reallocation\0"),
+        794 as ::core::ffi::c_int,
+        c_str(b"Parsing failed at max reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_parse_public_doctype() {
     set_alloc_test_info(
@@ -1862,292 +1736,116 @@ extern "C" fn test_alloc_set_foreign_dtd() {
     }
 }
 extern "C" fn test_alloc_attribute_enum_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            921 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='no'?>\n<!DOCTYPE animal SYSTEM 'test.dtd'>\n<animal>This is a \n    <a/>  \n\nyellow tiger</animal>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut dtd_text: [::core::ffi::c_char; 108] = ::core::mem::transmute::<
-            [u8; 108],
-            [::core::ffi::c_char; 108],
-        >(
-            *b"<!ELEMENT animal (#PCDATA|a)*>\n<!ELEMENT a EMPTY>\n<!ATTLIST animal xml:space (default|preserve) 'preserve'>\0",
-        );
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 30 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            XML_SetUserData(
-                g_parser,
-                &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetAttlistDeclHandler(
-                g_parser,
-                Some(
-                    dummy_attlist_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                946 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                948 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_attribute_enum_value\0"),
+        921 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<?xml version='1.0' standalone='no'?>
+<!DOCTYPE animal SYSTEM 'test.dtd'>
+<animal>This is a 
+    <a/>  
+
+yellow tiger</animal>\0",
+    );
+    let mut dtd_text = c_char_array(
+        *b"<!ELEMENT animal (#PCDATA|a)*>
+<!ELEMENT a EMPTY>
+<!ATTLIST animal xml:space (default|preserve) 'preserve'>\0",
+    );
+    let max_alloc_count = 30 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+        set_user_data(dtd_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_attlist_decl_handler(Some(dummy_attlist_decl_handler));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        946 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing allocator\0"),
+        948 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
 }
 extern "C" fn test_alloc_realloc_attribute_enum_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            953 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='no'?>\n<!DOCTYPE animal SYSTEM 'test.dtd'>\n<animal>This is a yellow tiger</animal>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut dtd_text: [::core::ffi::c_char; 1097] = ::core::mem::transmute::<
-            [u8; 1097],
-            [::core::ffi::c_char; 1097],
-        >(
-            *b"<!ELEMENT animal (#PCDATA)*>\n<!ATTLIST animal thing (default|ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO) 'default'>\0",
-        );
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            XML_SetUserData(
-                g_parser,
-                &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetAttlistDeclHandler(
-                g_parser,
-                Some(
-                    dummy_attlist_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1002 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1004 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_attribute_enum_value\0"),
+        953 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<?xml version='1.0' standalone='no'?>
+<!DOCTYPE animal SYSTEM 'test.dtd'>
+<animal>This is a yellow tiger</animal>\0",
+    );
+    let mut dtd_text = c_char_array(
+        *b"<!ELEMENT animal (#PCDATA)*>
+<!ATTLIST animal thing (default|ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO) 'default'>\0",
+    );
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+        set_user_data(dtd_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_attlist_decl_handler(Some(dummy_attlist_decl_handler));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1002 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1004 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_realloc_implied_attribute() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_implied_attribute\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1009 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc EMPTY>\n<!ATTLIST doc a (ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMN) #IMPLIED>\n]><doc/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetAttlistDeclHandler(
-                g_parser,
-                Some(
-                    dummy_attlist_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1052 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1054 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_implied_attribute\0"),
+        1009 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ELEMENT doc EMPTY>
+<!ATTLIST doc a (ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMN) #IMPLIED>
+]><doc/>\0",
+    );
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        set_attlist_decl_handler(Some(dummy_attlist_decl_handler));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1052 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1054 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_realloc_default_attribute() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_default_attribute\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1059 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc EMPTY>\n<!ATTLIST doc a (ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMN) 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO'>\n]><doc/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetAttlistDeclHandler(
-                g_parser,
-                Some(
-                    dummy_attlist_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1102 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1104 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_default_attribute\0"),
+        1059 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ELEMENT doc EMPTY>
+<!ATTLIST doc a (ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|BBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|CBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|DBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|EBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|FBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|GBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|HBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|IBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|JBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|KBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|LBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|MBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|NBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|OBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO|PBCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMN) 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO'>
+]><doc/>\0",
+    );
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        set_attlist_decl_handler(Some(dummy_attlist_decl_handler));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1102 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1104 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_notation() {
     set_alloc_test_info(c_str(b"test_alloc_notation\0"), 1109 as ::core::ffi::c_int);
@@ -2238,933 +1936,445 @@ extern "C" fn test_alloc_system_notation() {
     }
 }
 extern "C" fn test_alloc_nested_groups() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1274 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_nested_groups\0"),
+        1274 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>
+<!ELEMENT e EMPTY>]>
+<doc><e/></doc>\0",
+    );
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    let max_alloc_count = 20 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {
+        char_data_init(&mut storage);
+        set_element_decl_handler(Some(dummy_element_decl_handler));
+        set_start_element_handler(Some(record_element_start_handler));
+        set_user_data((&raw mut storage).cast());
+        init_dummy_handler_flags();
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1305 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1307 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
+    char_data_check_xml_chars(&mut storage, c_str(b"doce\0"));
+    if dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            1310 as ::core::ffi::c_int,
+            c_str(b"Element handler not fired\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>\n<!ELEMENT e EMPTY>]>\n<doc><e/></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            CharData_Init(&raw mut storage);
-            XML_SetElementDeclHandler(
-                g_parser,
-                Some(
-                    dummy_element_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut XML_Content,
-                        ) -> (),
-                ),
-            );
-            XML_SetStartElementHandler(
-                g_parser,
-                Some(
-                    record_element_start_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-            init_dummy_handlers();
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1305 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1307 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, b"doce\0".as_ptr() as *const XML_Char);
-        if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1310 as ::core::ffi::c_int,
-                b"Element handler not fired\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_alloc_realloc_nested_groups() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1314 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_nested_groups\0"),
+        1314 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>
+<!ELEMENT e EMPTY>]>
+<doc><e/></doc>\0",
+    );
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        char_data_init(&mut storage);
+        set_element_decl_handler(Some(dummy_element_decl_handler));
+        set_start_element_handler(Some(record_element_start_handler));
+        set_user_data((&raw mut storage).cast());
+        init_dummy_handler_flags();
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1345 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1347 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
+    char_data_check_xml_chars(&mut storage, c_str(b"doce\0"));
+    if dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            1350 as ::core::ffi::c_int,
+            c_str(b"Element handler not fired\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (e,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?,(e?))))))))))))))))))))))))))))))))>\n<!ELEMENT e EMPTY>]>\n<doc><e/></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            CharData_Init(&raw mut storage);
-            XML_SetElementDeclHandler(
-                g_parser,
-                Some(
-                    dummy_element_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut XML_Content,
-                        ) -> (),
-                ),
-            );
-            XML_SetStartElementHandler(
-                g_parser,
-                Some(
-                    record_element_start_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-            init_dummy_handlers();
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1345 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1347 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, b"doce\0".as_ptr() as *const XML_Char);
-        if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1350 as ::core::ffi::c_int,
-                b"Element handler not fired\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_alloc_large_group() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_large_group\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1354 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_large_group\0"),
+        1354 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ELEMENT doc (a1|a2|a3|a4|a5|a6|a7|a8|b1|b2|b3|b4|b5|b6|b7|b8|c1|c2|c3|c4|c5|c6|c7|c8|d1|d2|d3|d4|d5|d6|d7|d8|e1)+>
+]>
+<doc>
+<a1/>
+</doc>
+\0",
+    );
+    let max_alloc_count = 50 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {
+        set_element_decl_handler(Some(dummy_element_decl_handler));
+        init_dummy_handler_flags();
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1382 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing allocator\0"),
+        1384 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
+    if dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            1386 as ::core::ffi::c_int,
+            c_str(b"Element handler flag not raised\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (a1|a2|a3|a4|a5|a6|a7|a8|b1|b2|b3|b4|b5|b6|b7|b8|c1|c2|c3|c4|c5|c6|c7|c8|d1|d2|d3|d4|d5|d6|d7|d8|e1)+>\n]>\n<doc>\n<a1/>\n</doc>\n\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetElementDeclHandler(
-                g_parser,
-                Some(
-                    dummy_element_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut XML_Content,
-                        ) -> (),
-                ),
-            );
-            init_dummy_handlers();
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1382 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1384 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1386 as ::core::ffi::c_int,
-                b"Element handler flag not raised\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_alloc_realloc_group_choice() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_group_choice\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1390 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_group_choice\0"),
+        1390 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+<!ELEMENT doc (a1|a2|a3|a4|a5|a6|a7|a8|b1|b2|b3|b4|b5|b6|b7|b8|c1|c2|c3|c4|c5|c6|c7|c8|d1|d2|d3|d4|d5|d6|d7|d8|e1)+>
+]>
+<doc>
+<a1/>
+<b2 attr='foo'>This is a foo</b2>
+<c3></c3>
+</doc>
+\0",
+    );
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        set_element_decl_handler(Some(dummy_element_decl_handler));
+        init_dummy_handler_flags();
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1420 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1422 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
+    if dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            1424 as ::core::ffi::c_int,
+            c_str(b"Element handler flag not raised\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (a1|a2|a3|a4|a5|a6|a7|a8|b1|b2|b3|b4|b5|b6|b7|b8|c1|c2|c3|c4|c5|c6|c7|c8|d1|d2|d3|d4|d5|d6|d7|d8|e1)+>\n]>\n<doc>\n<a1/>\n<b2 attr='foo'>This is a foo</b2>\n<c3></c3>\n</doc>\n\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetElementDeclHandler(
-                g_parser,
-                Some(
-                    dummy_element_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut XML_Content,
-                        ) -> (),
-                ),
-            );
-            init_dummy_handlers();
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1420 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1422 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags() != DUMMY_ELEMENT_DECL_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1424 as ::core::ffi::c_int,
-                b"Element handler flag not raised\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_alloc_pi_in_epilog() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_pi_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1428 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_pi_in_epilog\0"),
+        1428 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<doc></doc>
+<?pi in epilog?>\0",
+    );
+    let max_alloc_count = 15 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {
+        set_processing_instruction_handler(Some(dummy_pi_handler));
+        init_dummy_handler_flags();
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1446 as ::core::ffi::c_int,
+        c_str(b"Parse completed despite failing allocator\0"),
+        1448 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
+    if dummy_handler_flags() != DUMMY_PI_HANDLER_FLAG {
+        fail_alloc_test(
+            1450 as ::core::ffi::c_int,
+            c_str(b"Processing instruction handler not invoked\0"),
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc></doc>\n<?pi in epilog?>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetProcessingInstructionHandler(
-                g_parser,
-                Some(
-                    dummy_pi_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            init_dummy_handlers();
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1446 as ::core::ffi::c_int,
-                b"Parse completed despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1448 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags() != DUMMY_PI_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1450 as ::core::ffi::c_int,
-                b"Processing instruction handler not invoked\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_alloc_comment_in_epilog() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_comment_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1454 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_comment_in_epilog\0"),
+        1454 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<doc></doc>
+<!-- comment in epilog -->\0",
+    );
+    let max_alloc_count = 15 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {
+        set_comment_handler(Some(dummy_comment_handler));
+        init_dummy_handler_flags();
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1472 as ::core::ffi::c_int,
+        c_str(b"Parse completed despite failing allocator\0"),
+        1474 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
+    if dummy_handler_flags() != DUMMY_COMMENT_HANDLER_FLAG {
+        fail_alloc_test(
+            1476 as ::core::ffi::c_int,
+            c_str(b"Processing instruction handler not invoked\0"),
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc></doc>\n<!-- comment in epilog -->\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetCommentHandler(
-                g_parser,
-                Some(
-                    dummy_comment_handler
-                        as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-                ),
-            );
-            init_dummy_handlers();
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1472 as ::core::ffi::c_int,
-                b"Parse completed despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1474 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags() != DUMMY_COMMENT_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1476 as ::core::ffi::c_int,
-                b"Processing instruction handler not invoked\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 extern "C" fn test_alloc_realloc_long_attribute_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_long_attribute_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1480 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [<!ENTITY foo 'This entity will be substituted as an attribute value, and is   calculated to be exactly long enough that the terminating NUL   that the library adds internally will trigger the string pool togrow. GHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>]>\n<doc a='&foo;'></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 10 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1515 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1517 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_long_attribute_value\0"),
+        1480 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [<!ENTITY foo 'This entity will be substituted as an attribute value, and is   calculated to be exactly long enough that the terminating NUL   that the library adds internally will trigger the string pool togrow. GHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>]>
+<doc a='&foo;'></doc>\0",
+    );
+    let max_realloc_count = 10 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {});
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1515 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1517 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_attribute_whitespace() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_attribute_whitespace\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1521 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc a=' '></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1536 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1538 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_attribute_whitespace\0"),
+        1521 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<doc a=' '></doc>\0");
+    let max_alloc_count = 15 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {});
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1536 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing allocator\0"),
+        1538 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
 }
 extern "C" fn test_alloc_attribute_predefined_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_attribute_predefined_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1542 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc a='&amp;'></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 15 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1557 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1559 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_attribute_predefined_entity\0"),
+        1542 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<doc a='&amp;'></doc>\0");
+    let max_alloc_count = 15 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {});
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1557 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing allocator\0"),
+        1559 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
 }
 extern "C" fn test_alloc_long_attr_default_with_char_ref() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_long_attr_default_with_char_ref\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1567 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [<!ATTLIST doc a CDATA 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHI&#x31;'>]>\n<doc/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1602 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1604 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_long_attr_default_with_char_ref\0"),
+        1567 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [<!ATTLIST doc a CDATA 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHI&#x31;'>]>
+<doc/>\0",
+    );
+    let max_alloc_count = 20 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {});
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1602 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing allocator\0"),
+        1604 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
 }
 extern "C" fn test_alloc_long_attr_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_long_attr_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1611 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE test [<!ENTITY foo '\nABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>]>\n<test a='&foo;'/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1646 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1648 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_long_attr_value\0"),
+        1611 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE test [<!ENTITY foo '
+ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>]>
+<test a='&foo;'/>\0",
+    );
+    let max_alloc_count = 25 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {});
+    assert_retry_succeeds_after_failures(
+        i,
+        max_alloc_count,
+        1646 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing allocator\0"),
+        1648 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum allocation count\0"),
+    );
 }
 extern "C" fn test_alloc_nested_entities() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_nested_entities\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1657 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>\n<doc />\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtFaults = ext_faults {
-            parse_text: b"<!ENTITY % pe1 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>\n<!ENTITY % pe2 '%pe1;'>\n<!ENTITY % pe3 '%pe2;'>\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            fail_text: b"Memory Fail not faulted\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            error: XML_ERROR_NO_MEMORY,
-        };
-        g_allocation_count = 12 as ::core::ffi::c_int;
-        XML_SetUserData(g_parser, &raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_faulter
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-            b"Entity allocation failure not noted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1690 as ::core::ffi::c_int,
-        );
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_nested_entities\0"),
+        1657 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>
+<doc />\0",
+    );
+    let mut test_data = ext_faults {
+        parse_text: c_str(b"<!ENTITY % pe1 'ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP'>
+<!ENTITY % pe2 '%pe1;'>
+<!ENTITY % pe3 '%pe2;'>\0").as_ptr(),
+        fail_text: c_str(b"Memory Fail not faulted\0").as_ptr(),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        error: XML_ERROR_NO_MEMORY,
+    };
+    set_allocation_count(12 as ::core::ffi::c_int);
+    set_user_data((&raw mut test_data).cast());
+    set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    set_external_entity_ref_handler(Some(external_entity_faulter));
+    expect_failure(
+        text,
+        XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+        c_str(b"Entity allocation failure not noted\0"),
+        1690 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_alloc_realloc_param_entity_newline() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_param_entity_newline\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1694 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut dtd_text: [::core::ffi::c_char; 1048] = ::core::mem::transmute::<
-            [u8; 1048],
-            [::core::ffi::c_char; 1048],
-        >(
-            *b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"This default value is carefully crafted so that the carriage    return right at the end of the entity string causes an internal string pool to have to grow.  This allows us to test the alloc  failure path from that point. OPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDE\">\n'>%pe;\n\0",
-        );
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1734 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1736 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_param_entity_newline\0"),
+        1694 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>
+<doc/>\0",
+    );
+    let mut dtd_text = c_char_array(
+        *b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"This default value is carefully crafted so that the carriage    return right at the end of the entity string causes an internal string pool to have to grow.  This allows us to test the alloc  failure path from that point. OPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDE\">
+'>%pe;
+\0",
+    );
+    let max_realloc_count = 5 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        set_user_data(dtd_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1734 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1736 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_realloc_ce_extends_pe() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_ce_extends_pe\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1740 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut dtd_text: [::core::ffi::c_char; 1056] = ::core::mem::transmute::<
-            [u8; 1056],
-            [::core::ffi::c_char; 1056],
-        >(
-            *b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"This default value is carefully crafted so that the character   entity at the end causes an internal string pool to have to     grow.  This allows us to test the allocation failure path from  that point onwards. EFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFG&#x51;\">\n'>%pe;\n\0",
-        );
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1780 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1782 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_ce_extends_pe\0"),
+        1740 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>
+<doc/>\0",
+    );
+    let mut dtd_text = c_char_array(
+        *b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"This default value is carefully crafted so that the character   entity at the end causes an internal string pool to have to     grow.  This allows us to test the allocation failure path from  that point onwards. EFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFG&#x51;\">
+'>%pe;
+\0",
+    );
+    let max_realloc_count = 5 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {
+        set_user_data(dtd_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+    });
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1780 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1782 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_realloc_attributes() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_realloc_attributes\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1786 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ATTLIST doc\n    a1  (a|b|c)   'a'\n    a2  (foo|bar) #IMPLIED\n    a3  NMTOKEN   #IMPLIED\n    a4  NMTOKENS  #IMPLIED\n    a5  ID        #IMPLIED\n    a6  IDREF     #IMPLIED\n    a7  IDREFS    #IMPLIED\n    a8  ENTITY    #IMPLIED\n    a9  ENTITIES  #IMPLIED\n    a10 CDATA     #IMPLIED\n  >]>\n<doc>wombat</doc>\n\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1815 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing reallocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1817 as ::core::ffi::c_int,
-                b"Parse failed at maximum reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    }
+    set_alloc_test_info(
+        c_str(b"test_alloc_realloc_attributes\0"),
+        1786 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+  <!ATTLIST doc
+    a1  (a|b|c)   'a'
+    a2  (foo|bar) #IMPLIED
+    a3  NMTOKEN   #IMPLIED
+    a4  NMTOKENS  #IMPLIED
+    a5  ID        #IMPLIED
+    a6  IDREF     #IMPLIED
+    a7  IDREFS    #IMPLIED
+    a8  ENTITY    #IMPLIED
+    a9  ENTITIES  #IMPLIED
+    a10 CDATA     #IMPLIED
+  >]>
+<doc>wombat</doc>
+\0",
+    );
+    let max_realloc_count = 5 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_realloc_count, set_reallocation_count, || {});
+    assert_retry_succeeds_after_failures(
+        i,
+        max_realloc_count,
+        1815 as ::core::ffi::c_int,
+        c_str(b"Parse succeeded despite failing reallocator\0"),
+        1817 as ::core::ffi::c_int,
+        c_str(b"Parse failed at maximum reallocation count\0"),
+    );
 }
 extern "C" fn test_alloc_long_doc_name() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_long_doc_name\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1821 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_long_doc_name\0"),
+        1821 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<LongRootElementNameThatWillCauseTheNextAllocationToExpandTheStringPoolForTheDTDQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ a='1'/>\0",
+    );
+    let max_alloc_count = 20 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {});
+    if i == 0 {
+        fail_alloc_test(
+            1854 as ::core::ffi::c_int,
+            c_str(b"Parsing worked despite failing reallocations\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<LongRootElementNameThatWillCauseTheNextAllocationToExpandTheStringPoolForTheDTDQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AZ a='1'/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1854 as ::core::ffi::c_int,
-                b"Parsing worked despite failing reallocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1856 as ::core::ffi::c_int,
-                b"Parsing failed even at max reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            1856 as ::core::ffi::c_int,
+            c_str(b"Parsing failed even at max reallocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_long_base() {
@@ -3236,68 +2446,34 @@ extern "C" fn test_alloc_long_public_id() {
     }
 }
 extern "C" fn test_alloc_long_entity_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_long_entity_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1959 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_long_entity_value\0"),
+        1959 as ::core::ffi::c_int,
+    );
+    let text = c_str(
+        b"<!DOCTYPE doc [
+  <!ENTITY e1 'Long entity value that should provoke a string pool to grow while setting up to parse the external entity below. xyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB'>
+  <!ENTITY e2 SYSTEM 'bar'>
+]>
+<doc>&e2;</doc>\0",
+    );
+    let mut entity_text = c_char_array(*b"Hello world\0");
+    let max_alloc_count = 40 as ::core::ffi::c_int;
+    let i = run_retry_loop_with_counter(text, max_alloc_count, set_allocation_count, || {
+        set_user_data(entity_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+    });
+    if i == 0 {
+        fail_alloc_test(
+            2001 as ::core::ffi::c_int,
+            c_str(b"Parsing worked despite failing allocations\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY e1 'Long entity value that should provoke a string pool to grow while setting up to parse the external entity below. xyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB'>\n  <!ENTITY e2 SYSTEM 'bar'>\n]>\n<doc>&e2;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut entity_text: [::core::ffi::c_char; 12] =
-            ::core::mem::transmute::<[u8; 12], [::core::ffi::c_char; 12]>(*b"Hello world\0");
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut entity_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2001 as ::core::ffi::c_int,
-                b"Parsing worked despite failing allocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2003 as ::core::ffi::c_int,
-                b"Parsing failed even at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            2003 as ::core::ffi::c_int,
+            c_str(b"Parsing failed even at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_long_notation() {
@@ -3339,55 +2515,30 @@ extern "C" fn test_alloc_long_notation() {
     }
 }
 extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_reset_after_external_entity_parser_create_fail\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2076 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_reset_after_external_entity_parser_create_fail\0"),
+        2076 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<!DOCTYPE doc SYSTEM 'foo'><doc/>\0");
+    set_external_entity_ref_handler(Some(external_entity_parser_create_alloc_fail_handler));
+    set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+        != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_alloc_test(
+            2085 as ::core::ffi::c_int,
+            c_str(b"Call to parse was expected to fail\0"),
         );
-        let text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'foo'><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_parser_create_alloc_fail_handler
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2085 as ::core::ffi::c_int,
-                b"Call to parse was expected to fail\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetErrorCode(g_parser) as ::core::ffi::c_uint
-            != XML_ERROR_EXTERNAL_ENTITY_HANDLING as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2088 as ::core::ffi::c_int,
-                b"Call to parse was expected to fail from the external entity handler\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
     }
+    if current_parser_error_code() as ::core::ffi::c_uint
+        != XML_ERROR_EXTERNAL_ENTITY_HANDLING as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_alloc_test(
+            2088 as ::core::ffi::c_int,
+            c_str(b"Call to parse was expected to fail from the external entity handler\0"),
+        );
+    }
+    parser_reset();
 }
 extern "C" fn sizeRecordedFor(mut ptr: *mut ::core::ffi::c_void) -> size_t {
     OwnedParser::allocation_size_recorded_for(ptr)
