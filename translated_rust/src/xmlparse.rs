@@ -10737,19 +10737,22 @@ pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification_ffi(
 ) -> crate::expat_h::XML_Bool {
     XML_SetAllocTrackerMaximumAmplification(parser, maximumAmplificationFactor)
 }
-pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold(
-    mut parser: crate::expat_h::XML_Parser,
-    mut activationThresholdBytes: ::core::ffi::c_ulonglong,
+/// Sets the allocation tracker activation threshold for a validated root
+/// parser.  Child parsers share their root accounting state and must not
+/// independently change this setting.
+fn set_alloc_tracker_activation_threshold_impl(
+    parser: &mut XML_ParserStruct,
+    activation_threshold_bytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || (*parser).m_parentParser.is_some() {
+    if parser.m_parentParser.is_some() {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser)
+    parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .alloc_tracker
-        .activationThresholdBytes = activationThresholdBytes as XmlBigCount;
+        .activationThresholdBytes = activation_threshold_bytes as XmlBigCount;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetAllocTrackerActivationThreshold"]
@@ -10758,7 +10761,11 @@ pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetAllocTrackerActivationThreshold(parser, activationThresholdBytes)
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_FALSE;
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_alloc_tracker_activation_threshold_impl(parser, activationThresholdBytes)
 }
 pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
     mut parser: crate::expat_h::XML_Parser,
