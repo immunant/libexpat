@@ -1312,6 +1312,16 @@ fn fail_test_with_buffer(line: ::core::ffi::c_int, message: *mut ::core::ffi::c_
     ffi_call3(_fail, bytes_as_c_char_ptr(BASIC_TESTS_FILE), line, message)
 }
 
+fn fail_test_message(line: ::core::ffi::c_int, message: String) -> ! {
+    let message = std::ffi::CString::new(message).expect("failure message must not contain NUL");
+    ffi_call3(
+        _fail,
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+        message.as_ptr(),
+    )
+}
+
 fn xml_failure(line: ::core::ffi::c_int) {
     ffi_call3(
         _xml_failure,
@@ -1343,6 +1353,30 @@ fn parser_error_code() -> XML_Error {
     ffi_call1(XML_GetErrorCode, current_parser())
 }
 
+fn parser_status_is_error(status: XML_Status) -> bool {
+    status as ::core::ffi::c_uint == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+}
+
+fn ensure_parser_success(status: XML_Status, line: ::core::ffi::c_int) {
+    if parser_status_is_error(status) {
+        xml_failure(line);
+    }
+}
+
+fn ensure_parser_error(status: XML_Status, line: ::core::ffi::c_int) {
+    if !parser_status_is_error(status) {
+        fail_test(line, b"Expected a parse error\0");
+    }
+}
+
+fn parser_current_line_number() -> XML_Size {
+    ffi_call1(XML_GetCurrentLineNumber, current_parser())
+}
+
+fn parser_current_column_number() -> XML_Size {
+    ffi_call1(XML_GetCurrentColumnNumber, current_parser())
+}
+
 fn parser_reset() {
     ffi_call2(
         XML_ParserReset,
@@ -1369,6 +1403,14 @@ fn parser_parse_c_string(text: *const ::core::ffi::c_char) -> XML_Status {
 
 fn parser_set_character_data_handler(handler: XML_CharacterDataHandler) {
     ffi_call2(XML_SetCharacterDataHandler, current_parser(), handler);
+}
+
+fn parser_set_start_element_handler(handler: XML_StartElementHandler) {
+    ffi_call2(XML_SetStartElementHandler, current_parser(), handler);
+}
+
+fn parser_set_end_element_handler(handler: XML_EndElementHandler) {
+    ffi_call2(XML_SetEndElementHandler, current_parser(), handler);
 }
 
 fn parser_set_default_handler(handler: XML_DefaultHandler) {
@@ -1413,6 +1455,25 @@ fn char_data_init(storage: &mut CharData) {
 
 fn char_data_check_xml_chars(storage: &mut CharData, expected: *const XML_Char) {
     ffi_call2(CharData_CheckXMLChars, storage as *mut CharData, expected);
+}
+
+fn struct_data_init(storage: &mut StructData) {
+    ffi_call1(StructData_Init, storage as *mut StructData);
+}
+
+fn struct_data_check_items(storage: &mut StructData, expected: &[StructDataEntry]) {
+    let count = ::core::ffi::c_int::try_from(expected.len())
+        .expect("expected entry count should fit into c_int");
+    ffi_call3(
+        StructData_CheckItems,
+        storage as *mut StructData,
+        expected.as_ptr(),
+        count,
+    );
+}
+
+fn struct_data_dispose(storage: &mut StructData) {
+    ffi_call1(StructData_Dispose, storage as *mut StructData);
 }
 
 fn run_attribute_check(
@@ -1485,8 +1546,92 @@ fn parser_stop_character_data_handler() -> XML_CharacterDataHandler {
     )
 }
 
+fn start_element_event_handler2_for_tests() -> XML_StartElementHandler {
+    Some(
+        start_element_event_handler2
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *mut *const XML_Char,
+            ) -> (),
+    )
+}
+
+fn end_element_event_handler2_for_tests() -> XML_EndElementHandler {
+    Some(
+        end_element_event_handler2
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
+    )
+}
+
+fn end_element_event_handler_for_tests() -> XML_EndElementHandler {
+    Some(
+        end_element_event_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
+    )
+}
+
+fn dummy_cdata_handler_for_tests() -> XML_CharacterDataHandler {
+    Some(
+        dummy_cdata_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    )
+}
+
+fn attr_whitespace_handler_for_tests() -> XML_StartElementHandler {
+    Some(
+        check_attr_contains_normalized_whitespace
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *mut *const XML_Char,
+            ) -> (),
+    )
+}
+
 fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     ffi_call1(strlen, text) as ::core::ffi::c_int
+}
+
+fn parser_get_buffer(len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
+    ffi_call2(XML_GetBuffer, current_parser(), len)
+}
+
+fn parser_parse_buffer(len: ::core::ffi::c_int, is_final: ::core::ffi::c_int) -> XML_Status {
+    ffi_call3(XML_ParseBuffer, current_parser(), len, is_final)
+}
+
+fn copy_buffer_from_c_string(
+    dest: *mut ::core::ffi::c_void,
+    src: *const ::core::ffi::c_char,
+    len: ::core::ffi::c_int,
+) {
+    ffi_call3(
+        memcpy,
+        dest,
+        src.cast::<::core::ffi::c_void>(),
+        len as size_t,
+    );
+}
+
+fn cstr(bytes: &'static [u8]) -> &'static std::ffi::CStr {
+    std::ffi::CStr::from_bytes_with_nul(bytes).expect("test literal must be NUL terminated")
+}
+
+fn assert_test_condition(condition: bool, line: ::core::ffi::c_int, message: &[u8]) {
+    if !condition {
+        fail_test(line, message);
+    }
+}
+
+fn assert_xml_size_eq(actual: XML_Size, expected: XML_Size, unit: &str, line: ::core::ffi::c_int) {
+    if actual != expected {
+        fail_test_message(line, format!("expected {expected} {unit}, saw {actual}"));
+    }
 }
 
 fn expect_failure(
@@ -2758,415 +2903,196 @@ extern "C" fn test_long_ascii_attribute() {
 
     run_attribute_check(text, expected, 596 as ::core::ffi::c_int);
 }
-unsafe extern "C" fn test_line_number_after_parse() {
-    unsafe {
-        _check_set_test_info(
-            b"test_line_number_after_parse\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            601 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<tag>\n\n\n</tag>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut lineno: XML_Size = 0;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                609 as ::core::ffi::c_int,
-            );
-        }
-        lineno = XML_GetCurrentLineNumber(g_parser);
-        if lineno != 4 as XML_Size {
-            let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
-            snprintf(
-                &raw mut buffer as *mut ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as size_t,
-                b"expected 4 lines, saw %lu\0".as_ptr() as *const ::core::ffi::c_char,
-                lineno,
-            );
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                615 as ::core::ffi::c_int,
-                &raw mut buffer as *mut ::core::ffi::c_char,
-            );
-        }
-    }
+extern "C" fn test_line_number_after_parse() {
+    set_test_info(b"test_line_number_after_parse\0", 601 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<tag>\n\n\n</tag>\0");
+
+    ensure_parser_success(parse_single_bytes_c_string(text), 609 as ::core::ffi::c_int);
+    assert_xml_size_eq(
+        parser_current_line_number(),
+        4 as XML_Size,
+        "lines",
+        615 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_column_number_after_parse() {
-    unsafe {
-        _check_set_test_info(
-            b"test_column_number_after_parse\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            621 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<tag></tag>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut colno: XML_Size = 0;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                627 as ::core::ffi::c_int,
-            );
-        }
-        colno = XML_GetCurrentColumnNumber(g_parser);
-        if colno != 11 as XML_Size {
-            let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
-            snprintf(
-                &raw mut buffer as *mut ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as size_t,
-                b"expected 11 columns, saw %lu\0".as_ptr() as *const ::core::ffi::c_char,
-                colno,
-            );
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                633 as ::core::ffi::c_int,
-                &raw mut buffer as *mut ::core::ffi::c_char,
-            );
-        }
-    }
+
+extern "C" fn test_column_number_after_parse() {
+    set_test_info(
+        b"test_column_number_after_parse\0",
+        621 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(b"<tag></tag>\0");
+
+    ensure_parser_success(parse_single_bytes_c_string(text), 627 as ::core::ffi::c_int);
+    assert_xml_size_eq(
+        parser_current_column_number(),
+        11 as XML_Size,
+        "columns",
+        633 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_line_and_column_numbers_inside_handlers() {
-    unsafe {
-        _check_set_test_info(
-            b"test_line_and_column_numbers_inside_handlers\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            639 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<a>\n  <b>\r\n    <c/>\r  </b>\n  <d>\n    <f/>\n  </d>\n</a>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let expected: [StructDataEntry; 10] = [
-            StructDataEntry {
-                str: b"a\0".as_ptr() as *const XML_Char,
-                data0: 0 as ::core::ffi::c_int,
-                data1: 1 as ::core::ffi::c_int,
-                data2: STRUCT_START_TAG,
-            },
-            StructDataEntry {
-                str: b"b\0".as_ptr() as *const XML_Char,
-                data0: 2 as ::core::ffi::c_int,
-                data1: 2 as ::core::ffi::c_int,
-                data2: STRUCT_START_TAG,
-            },
-            StructDataEntry {
-                str: b"c\0".as_ptr() as *const XML_Char,
-                data0: 4 as ::core::ffi::c_int,
-                data1: 3 as ::core::ffi::c_int,
-                data2: STRUCT_START_TAG,
-            },
-            StructDataEntry {
-                str: b"c\0".as_ptr() as *const XML_Char,
-                data0: 8 as ::core::ffi::c_int,
-                data1: 3 as ::core::ffi::c_int,
-                data2: STRUCT_END_TAG,
-            },
-            StructDataEntry {
-                str: b"b\0".as_ptr() as *const XML_Char,
-                data0: 2 as ::core::ffi::c_int,
-                data1: 4 as ::core::ffi::c_int,
-                data2: STRUCT_END_TAG,
-            },
-            StructDataEntry {
-                str: b"d\0".as_ptr() as *const XML_Char,
-                data0: 2 as ::core::ffi::c_int,
-                data1: 5 as ::core::ffi::c_int,
-                data2: STRUCT_START_TAG,
-            },
-            StructDataEntry {
-                str: b"f\0".as_ptr() as *const XML_Char,
-                data0: 4 as ::core::ffi::c_int,
-                data1: 6 as ::core::ffi::c_int,
-                data2: STRUCT_START_TAG,
-            },
-            StructDataEntry {
-                str: b"f\0".as_ptr() as *const XML_Char,
-                data0: 8 as ::core::ffi::c_int,
-                data1: 6 as ::core::ffi::c_int,
-                data2: STRUCT_END_TAG,
-            },
-            StructDataEntry {
-                str: b"d\0".as_ptr() as *const XML_Char,
-                data0: 2 as ::core::ffi::c_int,
-                data1: 7 as ::core::ffi::c_int,
-                data2: STRUCT_END_TAG,
-            },
-            StructDataEntry {
-                str: b"a\0".as_ptr() as *const XML_Char,
-                data0: 0 as ::core::ffi::c_int,
-                data1: 8 as ::core::ffi::c_int,
-                data2: STRUCT_END_TAG,
-            },
-        ];
-        let expected_count: ::core::ffi::c_int = (::core::mem::size_of::<[StructDataEntry; 10]>()
-            as usize)
-            .wrapping_div(::core::mem::size_of::<StructDataEntry>() as usize)
-            as ::core::ffi::c_int;
-        let mut storage: StructData = StructData {
-            count: 0,
-            max_count: 0,
-            entries: ::core::ptr::null_mut::<StructDataEntry>(),
-        };
-        StructData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetStartElementHandler(
-            g_parser,
-            Some(
-                start_element_event_handler2
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetEndElementHandler(
-            g_parser,
-            Some(
-                end_element_event_handler2
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                663 as ::core::ffi::c_int,
-            );
-        }
-        StructData_CheckItems(
-            &raw mut storage,
-            &raw const expected as *const StructDataEntry,
-            expected_count,
-        );
-        StructData_Dispose(&raw mut storage);
-    }
+
+extern "C" fn test_line_and_column_numbers_inside_handlers() {
+    set_test_info(
+        b"test_line_and_column_numbers_inside_handlers\0",
+        639 as ::core::ffi::c_int,
+    );
+    let text =
+        bytes_as_c_char_ptr(b"<a>\n  <b>\r\n    <c/>\r  </b>\n  <d>\n    <f/>\n  </d>\n</a>\0");
+    let expected = [
+        StructDataEntry {
+            str: b"a\0".as_ptr() as *const XML_Char,
+            data0: 0 as ::core::ffi::c_int,
+            data1: 1 as ::core::ffi::c_int,
+            data2: STRUCT_START_TAG,
+        },
+        StructDataEntry {
+            str: b"b\0".as_ptr() as *const XML_Char,
+            data0: 2 as ::core::ffi::c_int,
+            data1: 2 as ::core::ffi::c_int,
+            data2: STRUCT_START_TAG,
+        },
+        StructDataEntry {
+            str: b"c\0".as_ptr() as *const XML_Char,
+            data0: 4 as ::core::ffi::c_int,
+            data1: 3 as ::core::ffi::c_int,
+            data2: STRUCT_START_TAG,
+        },
+        StructDataEntry {
+            str: b"c\0".as_ptr() as *const XML_Char,
+            data0: 8 as ::core::ffi::c_int,
+            data1: 3 as ::core::ffi::c_int,
+            data2: STRUCT_END_TAG,
+        },
+        StructDataEntry {
+            str: b"b\0".as_ptr() as *const XML_Char,
+            data0: 2 as ::core::ffi::c_int,
+            data1: 4 as ::core::ffi::c_int,
+            data2: STRUCT_END_TAG,
+        },
+        StructDataEntry {
+            str: b"d\0".as_ptr() as *const XML_Char,
+            data0: 2 as ::core::ffi::c_int,
+            data1: 5 as ::core::ffi::c_int,
+            data2: STRUCT_START_TAG,
+        },
+        StructDataEntry {
+            str: b"f\0".as_ptr() as *const XML_Char,
+            data0: 4 as ::core::ffi::c_int,
+            data1: 6 as ::core::ffi::c_int,
+            data2: STRUCT_START_TAG,
+        },
+        StructDataEntry {
+            str: b"f\0".as_ptr() as *const XML_Char,
+            data0: 8 as ::core::ffi::c_int,
+            data1: 6 as ::core::ffi::c_int,
+            data2: STRUCT_END_TAG,
+        },
+        StructDataEntry {
+            str: b"d\0".as_ptr() as *const XML_Char,
+            data0: 2 as ::core::ffi::c_int,
+            data1: 7 as ::core::ffi::c_int,
+            data2: STRUCT_END_TAG,
+        },
+        StructDataEntry {
+            str: b"a\0".as_ptr() as *const XML_Char,
+            data0: 0 as ::core::ffi::c_int,
+            data1: 8 as ::core::ffi::c_int,
+            data2: STRUCT_END_TAG,
+        },
+    ];
+    let mut storage = StructData {
+        count: 0,
+        max_count: 0,
+        entries: ::core::ptr::null_mut::<StructDataEntry>(),
+    };
+
+    struct_data_init(&mut storage);
+    parser_set_user_data((&mut storage as *mut StructData).cast());
+    parser_set_start_element_handler(start_element_event_handler2_for_tests());
+    parser_set_end_element_handler(end_element_event_handler2_for_tests());
+    ensure_parser_success(parse_single_bytes_c_string(text), 663 as ::core::ffi::c_int);
+    struct_data_check_items(&mut storage, &expected);
+    struct_data_dispose(&mut storage);
 }
-unsafe extern "C" fn test_line_number_after_error() {
-    unsafe {
-        _check_set_test_info(
-            b"test_line_number_after_error\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            671 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<a>\n  <b>\n  </a>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut lineno: XML_Size = 0;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                678 as ::core::ffi::c_int,
-                b"Expected a parse error\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        lineno = XML_GetCurrentLineNumber(g_parser);
-        if lineno != 3 as XML_Size {
-            let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
-            snprintf(
-                &raw mut buffer as *mut ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as size_t,
-                b"expected 3 lines, saw %lu\0".as_ptr() as *const ::core::ffi::c_char,
-                lineno,
-            );
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                685 as ::core::ffi::c_int,
-                &raw mut buffer as *mut ::core::ffi::c_char,
-            );
-        }
-    }
+
+extern "C" fn test_line_number_after_error() {
+    set_test_info(b"test_line_number_after_error\0", 671 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<a>\n  <b>\n  </a>\0");
+
+    ensure_parser_error(parse_single_bytes_c_string(text), 678 as ::core::ffi::c_int);
+    assert_xml_size_eq(
+        parser_current_line_number(),
+        3 as XML_Size,
+        "lines",
+        685 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_column_number_after_error() {
-    unsafe {
-        _check_set_test_info(
-            b"test_column_number_after_error\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            691 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<a>\n  <b>\n  </a>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut colno: XML_Size = 0;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                698 as ::core::ffi::c_int,
-                b"Expected a parse error\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        colno = XML_GetCurrentColumnNumber(g_parser);
-        if colno != 4 as XML_Size {
-            let mut buffer: [::core::ffi::c_char; 100] = [0; 100];
-            snprintf(
-                &raw mut buffer as *mut ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 100]>() as size_t,
-                b"expected 4 columns, saw %lu\0".as_ptr() as *const ::core::ffi::c_char,
-                colno,
-            );
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                705 as ::core::ffi::c_int,
-                &raw mut buffer as *mut ::core::ffi::c_char,
-            );
-        }
-    }
+
+extern "C" fn test_column_number_after_error() {
+    set_test_info(
+        b"test_column_number_after_error\0",
+        691 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(b"<a>\n  <b>\n  </a>\0");
+
+    ensure_parser_error(parse_single_bytes_c_string(text), 698 as ::core::ffi::c_int);
+    assert_xml_size_eq(
+        parser_current_column_number(),
+        4 as XML_Size,
+        "columns",
+        705 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_really_long_lines() {
-    unsafe {
-        _check_set_test_info(
-            b"test_really_long_lines\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            711 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<e>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+</e>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                741 as ::core::ffi::c_int,
-            );
-        }
-    }
+
+extern "C" fn test_really_long_lines() {
+    set_test_info(b"test_really_long_lines\0", 711 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<e>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+</e>\0",
+    );
+
+    ensure_parser_success(parse_single_bytes_c_string(text), 741 as ::core::ffi::c_int);
 }
-unsafe extern "C" fn test_really_long_encoded_lines() {
-    unsafe {
-        _check_set_test_info(
-            b"test_really_long_encoded_lines\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            746 as ::core::ffi::c_int,
+
+extern "C" fn test_really_long_encoded_lines() {
+    set_test_info(
+        b"test_really_long_encoded_lines\0",
+        746 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='iso-8859-1'?><e>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+</e>\0",
+    );
+    let parse_len = c_string_len(text);
+
+    parser_set_character_data_handler(dummy_cdata_handler_for_tests());
+    let buffer = parser_get_buffer(parse_len);
+    if buffer.is_null() {
+        fail_test(
+            781 as ::core::ffi::c_int,
+            b"Could not allocate parse buffer\0",
         );
-        let mut buffer: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?><e>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+</e>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut parse_len: ::core::ffi::c_int = strlen(text) as ::core::ffi::c_int;
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                dummy_cdata_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        buffer = XML_GetBuffer(g_parser, parse_len);
-        if buffer.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                781 as ::core::ffi::c_int,
-                b"Could not allocate parse buffer\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !buffer.is_null() {
-        } else {
-            __assert_fail(
-                b"buffer != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                782 as ::core::ffi::c_uint,
-                b"void test_really_long_encoded_lines(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        memcpy(
-            buffer,
-            text as *const ::core::ffi::c_void,
-            parse_len as size_t,
-        );
-        if XML_ParseBuffer(g_parser, parse_len, XML_TRUE as ::core::ffi::c_int)
-            as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                785 as ::core::ffi::c_int,
-            );
-        }
     }
+    copy_buffer_from_c_string(buffer, text, parse_len);
+    ensure_parser_success(
+        parser_parse_buffer(parse_len, XML_TRUE as ::core::ffi::c_int),
+        785 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_end_element_events() {
-    unsafe {
-        _check_set_test_info(
-            b"test_end_element_events\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            793 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<a><b><c/></b><d><f/></d></a>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char = b"/c/b/f/d/a\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetEndElementHandler(
-            g_parser,
-            Some(
-                end_element_event_handler
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                803 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+
+extern "C" fn test_end_element_events() {
+    set_test_info(b"test_end_element_events\0", 793 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<a><b><c/></b><d><f/></d></a>\0");
+    let expected = bytes_as_xml_char_ptr(b"/c/b/f/d/a\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_user_data((&mut storage as *mut CharData).cast());
+    parser_set_end_element_handler(end_element_event_handler_for_tests());
+    ensure_parser_success(parse_single_bytes_c_string(text), 803 as ::core::ffi::c_int);
+    char_data_check_xml_chars(&mut storage, expected);
 }
 fn is_whitespace_normalized(
     s: &std::ffi::CStr,
@@ -3199,316 +3125,151 @@ fn is_whitespace_normalized(
         1
     }
 }
-unsafe extern "C" fn test_helper_is_whitespace_normalized() {
-    unsafe {
-        _check_set_test_info(
-            b"test_helper_is_whitespace_normalized\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            848 as ::core::ffi::c_int,
-        );
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc\0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\"abc\"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                849 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\"abc\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                850 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi\0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\"abc def ghi\"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                851 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\"abc def ghi\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                852 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b" abc def ghi\0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\" abc def ghi\"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                853 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b" abc def ghi\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\" abc def ghi\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                854 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc  def ghi\0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"abc  def ghi\"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                855 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc  def ghi\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\"abc  def ghi\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                856 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi \0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"abc def ghi \"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                857 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc def ghi \0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\"abc def ghi \"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                858 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b" \0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\" \"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                859 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b" \0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) != 0
-        {
-        } else {
-            __assert_fail(
-                b"is_whitespace_normalized(XCS(\" \"), 1)\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                860 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"\t\0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"\\t\"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                861 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"\t\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"\\t\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                862 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"\n\0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"\\n\"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                863 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"\n\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"\\n\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                864 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"\r\0")
-                .expect("test literal must be NUL terminated"),
-            0 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"\\r\"), 0)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                865 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"\r\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"\\r\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                866 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if is_whitespace_normalized(
-            std::ffi::CStr::from_bytes_with_nul(b"abc\t def\0")
-                .expect("test literal must be NUL terminated"),
-            1 as ::core::ffi::c_int,
-        ) == 0
-        {
-        } else {
-            __assert_fail(
-                b"! is_whitespace_normalized(XCS(\"abc\\t def\"), 1)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                867 as ::core::ffi::c_uint,
-                b"void test_helper_is_whitespace_normalized(void)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
+extern "C" fn test_helper_is_whitespace_normalized() {
+    set_test_info(
+        b"test_helper_is_whitespace_normalized\0",
+        848 as ::core::ffi::c_int,
+    );
+
+    let cases: [(&[u8], ::core::ffi::c_int, bool, ::core::ffi::c_int, &[u8]); 19] = [
+        (
+            b"abc\0",
+            0,
+            true,
+            849,
+            b"is_whitespace_normalized(XCS(\"abc\"), 0)\0",
+        ),
+        (
+            b"abc\0",
+            1,
+            true,
+            850,
+            b"is_whitespace_normalized(XCS(\"abc\"), 1)\0",
+        ),
+        (
+            b"abc def ghi\0",
+            0,
+            true,
+            851,
+            b"is_whitespace_normalized(XCS(\"abc def ghi\"), 0)\0",
+        ),
+        (
+            b"abc def ghi\0",
+            1,
+            true,
+            852,
+            b"is_whitespace_normalized(XCS(\"abc def ghi\"), 1)\0",
+        ),
+        (
+            b" abc def ghi\0",
+            0,
+            false,
+            853,
+            b"! is_whitespace_normalized(XCS(\" abc def ghi\"), 0)\0",
+        ),
+        (
+            b" abc def ghi\0",
+            1,
+            true,
+            854,
+            b"is_whitespace_normalized(XCS(\" abc def ghi\"), 1)\0",
+        ),
+        (
+            b"abc  def ghi\0",
+            0,
+            false,
+            855,
+            b"! is_whitespace_normalized(XCS(\"abc  def ghi\"), 0)\0",
+        ),
+        (
+            b"abc  def ghi\0",
+            1,
+            true,
+            856,
+            b"is_whitespace_normalized(XCS(\"abc  def ghi\"), 1)\0",
+        ),
+        (
+            b"abc def ghi \0",
+            0,
+            false,
+            857,
+            b"! is_whitespace_normalized(XCS(\"abc def ghi \"), 0)\0",
+        ),
+        (
+            b"abc def ghi \0",
+            1,
+            true,
+            858,
+            b"is_whitespace_normalized(XCS(\"abc def ghi \"), 1)\0",
+        ),
+        (
+            b" \0",
+            0,
+            false,
+            859,
+            b"! is_whitespace_normalized(XCS(\" \"), 0)\0",
+        ),
+        (
+            b" \0",
+            1,
+            true,
+            860,
+            b"is_whitespace_normalized(XCS(\" \"), 1)\0",
+        ),
+        (
+            b"\t\0",
+            0,
+            false,
+            861,
+            b"! is_whitespace_normalized(XCS(\"\\t\"), 0)\0",
+        ),
+        (
+            b"\t\0",
+            1,
+            false,
+            862,
+            b"! is_whitespace_normalized(XCS(\"\\t\"), 1)\0",
+        ),
+        (
+            b"\n\0",
+            0,
+            false,
+            863,
+            b"! is_whitespace_normalized(XCS(\"\\n\"), 0)\0",
+        ),
+        (
+            b"\n\0",
+            1,
+            false,
+            864,
+            b"! is_whitespace_normalized(XCS(\"\\n\"), 1)\0",
+        ),
+        (
+            b"\r\0",
+            0,
+            false,
+            865,
+            b"! is_whitespace_normalized(XCS(\"\\r\"), 0)\0",
+        ),
+        (
+            b"\r\0",
+            1,
+            false,
+            866,
+            b"! is_whitespace_normalized(XCS(\"\\r\"), 1)\0",
+        ),
+        (
+            b"abc\t def\0",
+            1,
+            false,
+            867,
+            b"! is_whitespace_normalized(XCS(\"abc\\t def\"), 1)\0",
+        ),
+    ];
+
+    for (text, is_cdata, expected, line, message) in cases {
+        let actual = is_whitespace_normalized(cstr(text), is_cdata) != 0;
+        assert_test_condition(actual == expected, line, message);
     }
 }
 unsafe extern "C" fn check_attr_contains_normalized_whitespace(
@@ -3561,41 +3322,17 @@ unsafe extern "C" fn check_attr_contains_normalized_whitespace(
         }
     }
 }
-unsafe extern "C" fn test_attr_whitespace_normalization() {
-    unsafe {
-        _check_set_test_info(
-            b"test_attr_whitespace_normalization\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            895 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ATTLIST doc\n            attr NMTOKENS #REQUIRED\n            ents ENTITIES #REQUIRED\n            refs IDREFS   #REQUIRED>\n]>\n<doc attr='    a  b c\t\td\te\t' refs=' id-1   \t  id-2\t\t'  \n     ents=' ent-1   \t\r\n            ent-2  ' >\n  <e id='id-1'/>\n  <e id='id-2'/>\n</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetStartElementHandler(
-            g_parser,
-            Some(
-                check_attr_contains_normalized_whitespace
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                914 as ::core::ffi::c_int,
-            );
-        }
-    }
+extern "C" fn test_attr_whitespace_normalization() {
+    set_test_info(
+        b"test_attr_whitespace_normalization\0",
+        895 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ATTLIST doc\n            attr NMTOKENS #REQUIRED\n            ents ENTITIES #REQUIRED\n            refs IDREFS   #REQUIRED>\n]>\n<doc attr='    a  b c\t\td\te\t' refs=' id-1   \t  id-2\t\t'  \n     ents=' ent-1   \t\r\n            ent-2  ' >\n  <e id='id-1'/>\n  <e id='id-2'/>\n</doc>\0",
+    );
+
+    parser_set_start_element_handler(attr_whitespace_handler_for_tests());
+    ensure_parser_success(parse_single_bytes_c_string(text), 914 as ::core::ffi::c_int);
 }
 unsafe extern "C" fn test_xmldecl_misplaced() {
     unsafe {
