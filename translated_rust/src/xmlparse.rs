@@ -3215,7 +3215,7 @@ impl UnknownEncodingMemory {
     fn initialized_encoding(&self) -> Option<&crate::src::xmltok::unknown_encoding> {
         self.info.as_ref()?;
         let storage = self.storage.first()?;
-        // `handleUnknownEncoding` writes this one reserved slot before it
+        // `handle_unknown_encoding` writes this one reserved slot before it
         // stores `info`.  The vector is never reallocated after that point.
         Some(unsafe { storage.assume_init_ref() })
     }
@@ -15254,27 +15254,35 @@ unsafe extern "C" fn initializeEncoding(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
     let parser_state = &mut *parser;
-    let protocol_name = parser_state.m_protocolEncodingName.as_ref().map(|name| {
-        let bytes: &[u8] = bytemuck::cast_slice(name.chars.as_slice());
-        &bytes[..bytes.len().saturating_sub(1)]
-    });
-    let s = protocol_name.map_or(::core::ptr::null(), |name| name.as_ptr().cast());
-    let initialized = if parser_state.m_ns as ::core::ffi::c_int != 0 {
-        crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS(
-            &mut parser_state.m_initEncoding,
-            protocol_name,
-        )
-    } else {
-        crate::src::xmltok::xmltok_ns_c::init_encoding(
-            &mut parser_state.m_initEncoding,
-            protocol_name,
-        )
+    let initialized = {
+        let protocol_name = parser_state.m_protocolEncodingName.as_ref().map(|name| {
+            let bytes: &[u8] = bytemuck::cast_slice(name.chars.as_slice());
+            &bytes[..bytes.len().saturating_sub(1)]
+        });
+        if parser_state.m_ns as ::core::ffi::c_int != 0 {
+            crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS(
+                &mut parser_state.m_initEncoding,
+                protocol_name,
+            )
+        } else {
+            crate::src::xmltok::xmltok_ns_c::init_encoding(
+                &mut parser_state.m_initEncoding,
+                protocol_name,
+            )
+        }
     };
     if initialized {
         parser_state.m_encoding = EncodingState::Initial;
         return crate::expat_h::XML_ERROR_NONE;
     }
-    return handleUnknownEncoding(parser, s);
+    let encoding_name = match parser_state.m_protocolEncodingName.as_ref() {
+        Some(name) => match copy_unknown_encoding_name(name.chars.as_slice()) {
+            Some(name) => Some(name),
+            None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+        },
+        None => None,
+    };
+    handle_unknown_encoding(parser_state, encoding_name.as_deref())
 }
 
 /// Copies a declaration token from the parser-owned input buffer.
@@ -15549,15 +15557,88 @@ fn handle_unknown_encoding_from_pool(
     let Some(chars) = parser.m_temp2Pool.chars_from(encoding_name) else {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     };
-    let encoding_name = chars.as_ptr();
-    unsafe { handleUnknownEncoding(std::ptr::from_mut(parser), encoding_name) }
+    let Some(encoding_name) = copy_unknown_encoding_name(chars) else {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    };
+    handle_unknown_encoding(parser, Some(encoding_name.as_slice()))
 }
 
-unsafe extern "C" fn handleUnknownEncoding(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
+/// Copies a callback name before a potentially re-entrant unknown-encoding
+/// callback.  Names come from parser-owned terminated storage, so the copied
+/// slice retains the public ABI's terminating NUL without any raw scan.
+fn copy_unknown_encoding_name(
+    chars: &[crate::expat_external_h::XML_Char],
+) -> Option<Vec<crate::expat_external_h::XML_Char>> {
+    let mut copy = Vec::new();
+    copy.try_reserve_exact(chars.len()).ok()?;
+    copy.extend_from_slice(chars);
+    Some(copy)
+}
+
+/// Calls the foreign unknown-encoding callback after resolving its name from
+/// parser-owned, NUL-terminated XML characters.  The callback may re-enter,
+/// so callers must not retain a pool borrow across this boundary.
+fn call_unknown_encoding_handler(
+    callback: &dyn UnknownEncodingCallback,
+    callback_arg: &UnknownEncodingHandlerRegistration,
+    encoding_name: Option<&[crate::expat_external_h::XML_Char]>,
+    info: &mut crate::expat_h::XML_Encoding,
+) -> bool {
+    let encoding_name = encoding_name.map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    unsafe {
+        callback_arg
+            .invoke
+            .invoke(callback, encoding_name, std::ptr::from_mut(info))
+            != 0
+    }
+}
+
+/// Releases foreign data returned by an unknown-encoding callback.  The data
+/// token stays opaque to Rust and is only passed back to its paired release
+/// callback.
+fn release_unknown_encoding_info(info: &crate::expat_h::XML_Encoding) {
+    if let Some(release) = info.release {
+        unsafe { release(info.data) };
+    }
+}
+
+/// Acquires the observable Expat allocation paired with the typed Rust owner
+/// that is installed for an unknown encoding.
+fn unknown_encoding_allocation_backing(
+    parser: &mut XML_ParserStruct,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
+    unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }
+}
+
+/// Builds the tokenizer callback adapter from the callback result.  Its raw
+/// data token is captured only for forwarding to the foreign converter.
+fn unknown_encoding_converter(
+    info: &crate::expat_h::XML_Encoding,
+) -> Option<crate::src::xmltok::UnknownEncodingConverterRegistration> {
+    let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
+    crate::src::xmltok::unknown_encoding_callback(info.convert.map(|callback| {
+        let callback_arg = callback_arg.clone();
+        move |input: &[u8]| unsafe {
+            callback(
+                callback_arg.load(std::sync::atomic::Ordering::Relaxed),
+                input.as_ptr().cast::<::core::ffi::c_char>(),
+            )
+        }
+    }))
+}
+
+/// Installs a callback-provided encoding from parser-owned data.
+///
+/// `encoding_name`, when present, includes the terminating NUL required by
+/// the public callback ABI.  Unlike the old raw adapter, this function never
+/// scans or dereferences an unbounded caller-provided pointer.
+fn handle_unknown_encoding(
+    parser: &mut XML_ParserStruct,
+    encoding_name: Option<&[crate::expat_external_h::XML_Char]>,
 ) -> crate::expat_h::XML_Error {
-    if (*parser).m_unknownEncodingHandler {
+    if parser.m_unknownEncodingHandler {
         let mut info: crate::expat_h::XML_Encoding = crate::expat_h::XML_Encoding {
             map: [0; 256],
             data: ::core::ptr::null_mut::<::core::ffi::c_void>(),
@@ -15577,62 +15658,47 @@ unsafe extern "C" fn handleUnknownEncoding(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .get(&(parser as usize))
+            .get(&(std::ptr::from_ref(parser).addr()))
             .cloned();
         let callback_arg = UNKNOWN_ENCODING_HANDLER_ARGS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .get(&(parser as usize))
+            .get(&(std::ptr::from_ref(parser).addr()))
             .cloned();
-        if callback
-            .zip(callback_arg)
-            .is_some_and(|(callback, callback_arg)| {
-                callback_arg
-                    .invoke
-                    .invoke(callback.as_ref(), encodingName, &raw mut info)
-                    != 0
-            })
+        if callback.zip(callback_arg).is_some_and(|(callback, callback_arg)| {
+            call_unknown_encoding_handler(
+                callback.as_ref(),
+                &callback_arg,
+                encoding_name,
+                &mut info,
+            )
+        })
         {
-            let Some(mut backing) = allocation_backing(
+            let Some(mut backing) = unknown_encoding_allocation_backing(
                 parser,
                 crate::src::xmltok::XmlSizeOfUnknownEncoding() as crate::__stddef_size_t_h::size_t,
                 4963 as ::core::ffi::c_int,
             ) else {
-                if info.release.is_some() {
-                    info.release.expect("non-null function pointer")(info.data);
-                }
+                release_unknown_encoding_info(&info);
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             };
             let mut storage = Vec::new();
             if storage.try_reserve_exact(1).is_err() {
                 backing(4963 as ::core::ffi::c_int);
-                if let Some(release) = info.release {
-                    release(info.data);
-                }
+                release_unknown_encoding_info(&info);
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
             // Keep the caller-observable allocation, but also materialize the
             // one safe slot that will receive the initialized tokenizer state.
             storage.push(::core::mem::MaybeUninit::uninit());
-            (*parser).m_unknownEncodingMem = Some(UnknownEncodingMemory {
+            parser.m_unknownEncodingMem = Some(UnknownEncodingMemory {
                 storage,
                 backing: Some(backing),
                 info: None,
             });
-            let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
-            let converter = crate::src::xmltok::unknown_encoding_callback(info.convert.map(
-                |callback| {
-                    let callback_arg = callback_arg.clone();
-                    move |input: &[u8]| unsafe {
-                        callback(
-                            callback_arg.load(std::sync::atomic::Ordering::Relaxed),
-                            input.as_ptr().cast::<::core::ffi::c_char>(),
-                        )
-                    }
-                },
-            ));
-            let storage = (*parser)
+            let converter = unknown_encoding_converter(&info);
+            let storage = parser
                 .m_unknownEncodingMem
                 .as_mut()
                 .expect("unknown encoding storage is installed")
@@ -15644,22 +15710,20 @@ unsafe extern "C" fn handleUnknownEncoding(
                 converter,
                 storage.as_mut_ptr().addr(),
                 info.data.addr(),
-                (*parser).m_ns != 0,
+                parser.m_ns != 0,
             );
             if let Some(encoding) = encoding {
                 storage.write(encoding);
-                (*parser)
+                parser
                     .m_unknownEncodingMem
                     .as_mut()
                     .expect("unknown encoding storage is installed")
                     .info = Some(info);
-                (*parser).m_encoding = EncodingState::Unknown;
+                parser.m_encoding = EncodingState::Unknown;
                 return crate::expat_h::XML_ERROR_NONE;
             }
         }
-        if info.release.is_some() {
-            info.release.expect("non-null function pointer")(info.data);
-        }
+        release_unknown_encoding_info(&info);
     }
     return crate::expat_h::XML_ERROR_UNKNOWN_ENCODING;
 }
