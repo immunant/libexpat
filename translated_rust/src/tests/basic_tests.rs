@@ -1201,6 +1201,10 @@ fn bytes_as_c_char_ptr(bytes: &[u8]) -> *const ::core::ffi::c_char {
     bytes.as_ptr().cast()
 }
 
+fn bytes_as_xml_char_ptr(bytes: &[u8]) -> *const XML_Char {
+    bytes.as_ptr().cast()
+}
+
 fn current_parser() -> XML_Parser {
     unsafe { g_parser }
 }
@@ -1351,6 +1355,98 @@ fn parser_parse_c_string(text: *const ::core::ffi::c_char) -> XML_Status {
 
 fn parser_set_character_data_handler(handler: XML_CharacterDataHandler) {
     ffi_call2(XML_SetCharacterDataHandler, current_parser(), handler);
+}
+
+fn parser_set_default_handler(handler: XML_DefaultHandler) {
+    ffi_call2(XML_SetDefaultHandler, current_parser(), handler);
+}
+
+fn parser_set_xml_decl_handler(handler: XML_XmlDeclHandler) {
+    ffi_call2(XML_SetXmlDeclHandler, current_parser(), handler);
+}
+
+fn parser_set_user_data(user_data: *mut ::core::ffi::c_void) {
+    ffi_call2(XML_SetUserData, current_parser(), user_data);
+}
+
+fn parser_set_encoding(encoding: *const XML_Char) -> XML_Status {
+    ffi_call2(XML_SetEncoding, current_parser(), encoding)
+}
+
+fn parse_single_bytes_with_final(
+    text: *const ::core::ffi::c_char,
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
+) -> XML_Status {
+    ffi_call4(
+        _XML_Parse_SINGLE_BYTES,
+        current_parser(),
+        text,
+        len,
+        is_final,
+    )
+}
+
+fn parse_single_bytes_buffer(text: &[u8], is_final: ::core::ffi::c_int) -> XML_Status {
+    let len = ::core::ffi::c_int::try_from(text.len().saturating_sub(1))
+        .expect("buffer length should fit into c_int");
+    parse_single_bytes_with_final(text.as_ptr().cast(), len, is_final)
+}
+
+fn char_data_init(storage: &mut CharData) {
+    ffi_call1(CharData_Init, storage as *mut CharData);
+}
+
+fn char_data_check_xml_chars(storage: &mut CharData, expected: *const XML_Char) {
+    ffi_call2(CharData_CheckXMLChars, storage as *mut CharData, expected);
+}
+
+fn run_attribute_check(
+    text: *const ::core::ffi::c_char,
+    expected: *const XML_Char,
+    line: ::core::ffi::c_int,
+) {
+    ffi_call4(
+        _run_attribute_check,
+        text,
+        expected,
+        bytes_as_c_char_ptr(BASIC_TESTS_FILE),
+        line,
+    );
+}
+
+fn accumulating_character_handler() -> XML_CharacterDataHandler {
+    Some(
+        accumulate_characters
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    )
+}
+
+fn default_handler() -> XML_DefaultHandler {
+    Some(
+        dummy_default_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    )
+}
+
+fn xml_decl_handler_for_tests() -> XML_XmlDeclHandler {
+    Some(
+        dummy_xdecl_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    )
 }
 
 fn clearing_aborting_character_data_handler() -> XML_CharacterDataHandler {
@@ -2515,290 +2611,140 @@ unsafe extern "C" fn test_utf8_auto_align() {
         }
     }
 }
-unsafe extern "C" fn test_utf16() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf16\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            376 as ::core::ffi::c_int,
+extern "C" fn test_utf16() {
+    set_test_info(b"test_utf16\0", 376 as ::core::ffi::c_int);
+    let text = *b"\0<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0U\0T\0F\0-\x001\x006\0'\0?\0>\0\n\0<\0d\0o\0c\0 \0a\0=\0'\x001\x002\x003\0'\0>\0s\0o\0m\0e\0 \xFF!\0 \0t\0e\0x\0t\0<\0/\0d\0o\0c\0>\0";
+    let expected = bytes_as_xml_char_ptr(b"some \xEF\xBC\xA1 text\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_user_data((&mut storage as *mut CharData).cast());
+    parser_set_character_data_handler(accumulating_character_handler());
+
+    if parse_single_bytes_buffer(&text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(402 as ::core::ffi::c_int);
+    }
+
+    char_data_check_xml_chars(&mut storage, expected);
+}
+extern "C" fn test_utf16_le_epilog_newline() {
+    set_test_info(b"test_utf16_le_epilog_newline\0", 407 as ::core::ffi::c_int);
+    let first_chunk_bytes: usize = 17;
+    let text = *b"\xFF\xFE<\0e\0/\0>\0\r\0\n\0\r\0\n\0\0";
+
+    if first_chunk_bytes >= text.len().saturating_sub(1) {
+        fail_test(
+            414 as ::core::ffi::c_int,
+            b"bad value of first_chunk_bytes\0",
         );
-        let mut text: [::core::ffi::c_char; 141] = ::core::mem::transmute::<
-            [u8; 141],
-            [::core::ffi::c_char; 141],
-        >(
-            *b"\0<\0?\0x\0m\0l\0 \0v\0e\0r\0s\0i\0o\0n\0=\0'\x001\0.\x000\0'\0 \0e\0n\0c\0o\0d\0i\0n\0g\0=\0'\0U\0T\0F\0-\x001\x006\0'\0?\0>\0\n\0<\0d\0o\0c\0 \0a\0=\0'\x001\x002\x003\0'\0>\0s\0o\0m\0e\0 \xFF!\0 \0t\0e\0x\0t\0<\0/\0d\0o\0c\0>\0",
-        );
-        let mut expected: *const XML_Char = b"some \xEF\xBC\xA1 text\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetUserData(g_parser, &raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                accumulate_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw mut text as *mut ::core::ffi::c_char,
-            (::core::mem::size_of::<[::core::ffi::c_char; 141]>() as usize).wrapping_sub(1 as usize)
-                as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                402 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
+    }
+
+    if parse_single_bytes_with_final(
+        text.as_ptr().cast(),
+        first_chunk_bytes as ::core::ffi::c_int,
+        XML_FALSE as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(417 as ::core::ffi::c_int);
+        return;
+    }
+
+    let remaining = &text[first_chunk_bytes..text.len() - 1];
+    if parse_single_bytes_with_final(
+        remaining.as_ptr().cast(),
+        remaining.len() as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(424 as ::core::ffi::c_int);
     }
 }
-unsafe extern "C" fn test_utf16_le_epilog_newline() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf16_le_epilog_newline\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            407 as ::core::ffi::c_int,
-        );
-        let mut first_chunk_bytes: ::core::ffi::c_uint = 17 as ::core::ffi::c_uint;
-        let mut text: [::core::ffi::c_char; 19] =
-            ::core::mem::transmute::<[u8; 19], [::core::ffi::c_char; 19]>(
-                *b"\xFF\xFE<\0e\0/\0>\0\r\0\n\0\r\0\n\0\0",
-            );
-        if first_chunk_bytes as usize
-            >= (::core::mem::size_of::<[::core::ffi::c_char; 19]>() as usize)
-                .wrapping_sub(1 as usize)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                414 as ::core::ffi::c_int,
-                b"bad value of first_chunk_bytes\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw mut text as *mut ::core::ffi::c_char,
-            first_chunk_bytes as ::core::ffi::c_int,
-            XML_FALSE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                417 as ::core::ffi::c_int,
-            );
-        } else {
-            let mut rc: XML_Status = XML_STATUS_ERROR;
-            rc = _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                (&raw mut text as *mut ::core::ffi::c_char).offset(first_chunk_bytes as isize),
-                (::core::mem::size_of::<[::core::ffi::c_char; 19]>() as usize)
-                    .wrapping_sub(first_chunk_bytes as usize)
-                    .wrapping_sub(1 as usize) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            );
-            if rc as ::core::ffi::c_uint
-                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    g_parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    424 as ::core::ffi::c_int,
-                );
-            }
-        };
-    }
+extern "C" fn test_not_utf16() {
+    set_test_info(b"test_not_utf16\0", 430 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-16'?><doc>Hi</doc>\0");
+
+    parser_set_xml_decl_handler(xml_decl_handler_for_tests());
+    expect_failure(
+        text,
+        XML_ERROR_INCORRECT_ENCODING,
+        b"UTF-16 declared in UTF-8 not faulted\0",
+        437 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_not_utf16() {
-    unsafe {
-        _check_set_test_info(
-            b"test_not_utf16\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            430 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='utf-16'?><doc>Hi</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetXmlDeclHandler(
-            g_parser,
-            Some(
-                dummy_xdecl_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_INCORRECT_ENCODING,
-            b"UTF-16 declared in UTF-8 not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            437 as ::core::ffi::c_int,
-        );
+extern "C" fn test_bad_encoding() {
+    set_test_info(b"test_bad_encoding\0", 442 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<doc>Hi</doc>\0");
+
+    if parser_set_encoding(bytes_as_xml_char_ptr(b"unknown-encoding\0")) as u64 == 0 {
+        fail_test(446 as ::core::ffi::c_int, b"XML_SetEncoding failed\0");
     }
+
+    expect_failure(
+        text,
+        XML_ERROR_UNKNOWN_ENCODING,
+        b"Unknown encoding not faulted\0",
+        448 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_bad_encoding() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_encoding\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            442 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc>Hi</doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        if XML_SetEncoding(g_parser, b"unknown-encoding\0".as_ptr() as *const XML_Char) as u64 == 0
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                446 as ::core::ffi::c_int,
-                b"XML_SetEncoding failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        _expect_failure(
-            text,
-            XML_ERROR_UNKNOWN_ENCODING,
-            b"Unknown encoding not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            448 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_latin1_umlauts() {
+    set_test_info(b"test_latin1_umlauts\0", 453 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='iso-8859-1'?>\n<e a='\xE4 \xF6 \xFC &#228; &#246; &#252; &#x00E4; &#x0F6; &#xFC; >'\n  >\xE4 \xF6 \xFC &#228; &#246; &#252; &#x00E4; &#x0F6; &#xFC; ></e>\0",
+    );
+    let expected = bytes_as_xml_char_ptr(
+        b"\xC3\xA4 \xC3\xB6 \xC3\xBC \xC3\xA4 \xC3\xB6 \xC3\xBC \xC3\xA4 \xC3\xB6 \xC3\xBC >\0",
+    );
+
+    run_character_check(text, expected, 468 as ::core::ffi::c_int);
+    parser_reset();
+    run_attribute_check(text, expected, 470 as ::core::ffi::c_int);
+    parser_reset();
+    parser_set_default_handler(default_handler());
+    run_character_check(text, expected, 474 as ::core::ffi::c_int);
+    parser_reset();
+    parser_set_default_handler(default_handler());
+    run_attribute_check(text, expected, 477 as ::core::ffi::c_int);
 }
-unsafe extern "C" fn test_latin1_umlauts() {
-    unsafe {
-        _check_set_test_info(
-            b"test_latin1_umlauts\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            453 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<e a='\xE4 \xF6 \xFC &#228; &#246; &#252; &#x00E4; &#x0F6; &#xFC; >'\n  >\xE4 \xF6 \xFC &#228; &#246; &#252; &#x00E4; &#x0F6; &#xFC; ></e>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"\xC3\xA4 \xC3\xB6 \xC3\xBC \xC3\xA4 \xC3\xB6 \xC3\xBC \xC3\xA4 \xC3\xB6 \xC3\xBC >\0"
-                .as_ptr() as *const XML_Char;
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            468 as ::core::ffi::c_int,
-        );
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        _run_attribute_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            470 as ::core::ffi::c_int,
-        );
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                dummy_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        _run_character_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            474 as ::core::ffi::c_int,
-        );
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                dummy_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        _run_attribute_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            477 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_long_utf8_character() {
+    set_test_info(b"test_long_utf8_character\0", 482 as ::core::ffi::c_int);
+    let text =
+        bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-8'?>\n<do\xF0\x90\x80\x80/>\0");
+
+    expect_failure(
+        text,
+        XML_ERROR_INVALID_TOKEN,
+        b"4-byte UTF-8 character in element name not faulted\0",
+        488 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn test_long_utf8_character() {
-    unsafe {
-        _check_set_test_info(
-            b"test_long_utf8_character\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            482 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='utf-8'?>\n<do\xF0\x90\x80\x80/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"4-byte UTF-8 character in element name not faulted\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            488 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_long_latin1_attribute() {
+    set_test_info(b"test_long_latin1_attribute\0", 495 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc att='ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO\xE4'>\n</doc>\0",
+    );
+    let expected = bytes_as_xml_char_ptr(
+        b"ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO\xC3\xA4\0",
+    );
+
+    run_attribute_check(text, expected, 545 as ::core::ffi::c_int);
 }
-unsafe extern "C" fn test_long_latin1_attribute() {
-    unsafe {
-        _check_set_test_info(
-            b"test_long_latin1_attribute\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            495 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='iso-8859-1'?>\n<doc att='ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO\xE4'>\n</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char = b"ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNO\xC3\xA4\0"
-            .as_ptr() as *const XML_Char;
-        _run_attribute_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            545 as ::core::ffi::c_int,
-        );
-    }
-}
-unsafe extern "C" fn test_long_ascii_attribute() {
-    unsafe {
-        _check_set_test_info(
-            b"test_long_ascii_attribute\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            552 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='us-ascii'?>\n<doc att='ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP01234'>\n</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char = b"ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP01234\0"
-            .as_ptr() as *const XML_Char;
-        _run_attribute_check(
-            text,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            596 as ::core::ffi::c_int,
-        );
-    }
+extern "C" fn test_long_ascii_attribute() {
+    set_test_info(b"test_long_ascii_attribute\0", 552 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' encoding='us-ascii'?>\n<doc att='ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP01234'>\n</doc>\0",
+    );
+    let expected = bytes_as_xml_char_ptr(
+        b"ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP01234\0",
+    );
+
+    run_attribute_check(text, expected, 596 as ::core::ffi::c_int);
 }
 unsafe extern "C" fn test_line_number_after_parse() {
     unsafe {
