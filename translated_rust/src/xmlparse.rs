@@ -27176,25 +27176,25 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesDirect_ffi(
     let parser = unsafe { parser.as_ref() }.expect("non-null parser was checked");
     testingAccountingGetCountBytesDirect(&parser.m_root)
 }
-pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect(
-    mut parser: crate::expat_h::XML_Parser,
+fn testingAccountingGetCountBytesIndirect(
+    root: &std::sync::Arc<std::sync::Mutex<RootParserState>>,
 ) -> ::core::ffi::c_ulonglong {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_ulonglong;
-    }
-    return (*parser)
-        .m_root
+    root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .accounting
-        .countBytesIndirect as ::core::ffi::c_ulonglong;
+        .countBytesIndirect as ::core::ffi::c_ulonglong
 }
 #[export_name = "testingAccountingGetCountBytesIndirect"]
 
 pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    testingAccountingGetCountBytesIndirect(parser)
+    if parser.is_null() || !parser.is_aligned() {
+        return 0;
+    }
+    let parser = unsafe { parser.as_ref() }.expect("non-null parser was checked");
+    testingAccountingGetCountBytesIndirect(&parser.m_root)
 }
 #[derive(Copy, Clone)]
 enum EntityTrackingAction {
