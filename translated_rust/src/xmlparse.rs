@@ -4129,8 +4129,8 @@ pub unsafe extern "C" fn XML_GetBuffer_ffi(
 ) -> *mut ::core::ffi::c_void {
     XML_GetBuffer(parser, len)
 }
-unsafe extern "C" fn triggerReenter(mut parser: crate::expat_h::XML_Parser) {
-    (*parser).m_reenter = crate::expat_h::XML_TRUE;
+fn triggerReenter(parser: &mut XML_ParserStruct) {
+    parser.m_reenter = crate::expat_h::XML_TRUE;
 }
 pub unsafe extern "C" fn XML_StopParser(
     mut parser: crate::expat_h::XML_Parser,
@@ -9662,7 +9662,7 @@ unsafe extern "C" fn processEntity(
     (*openEntity).internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
     if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        triggerReenter(parser);
+        triggerReenter(&mut *parser);
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
@@ -9742,7 +9742,7 @@ unsafe extern "C" fn internalEntityProcessor(
         if (*entity).is_param == 0 && (*openEntity).startTagLevel != (*parser).m_tagLevel {
             return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
         }
-        triggerReenter(parser);
+        triggerReenter(&mut *parser);
         return result;
     }
     entityTrackingOnClose(parser, entity, 6470 as ::core::ffi::c_int);
@@ -9787,7 +9787,7 @@ unsafe extern "C" fn internalEntityProcessor(
             )
         };
     }
-    triggerReenter(parser);
+    triggerReenter(&mut *parser);
     return crate::expat_h::XML_ERROR_NONE;
 }
 
