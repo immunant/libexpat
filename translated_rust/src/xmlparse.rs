@@ -16315,13 +16315,13 @@ unsafe extern "C" fn dtdCopy(
                     .iter()
                     .position(|&character| character == 0)
                     .and_then(|length| length.checked_add(1))
-                    .and_then(|length| ::core::ffi::c_int::try_from(length).ok())
                 else {
                     return 0 as ::core::ffi::c_int;
                 };
-                let Some(copied_value) =
-                    poolCopyStringN(&raw mut new_dtd.pool, old_value.as_ptr(), old_value_len)
-                else {
+                let Some(copied_value) = pool_copy_chars(
+                    &mut new_dtd.pool,
+                    &old_value[..old_value_len],
+                ) else {
                     return 0 as ::core::ffi::c_int;
                 };
                 Some(copied_value)
@@ -17230,6 +17230,31 @@ unsafe fn poolCopyStringN(
         s = s.offset(1);
     }
     let pool = &mut *pool;
+    let string = pool.start_ref(true);
+    pool.commit();
+    string
+}
+
+// Copying retained DTD text is an ownership operation: callers already hold
+// a checked view into the source pool, and this helper commits a new checked
+// location in the destination pool.  In particular, an empty slice still
+// receives a real pool boundary, matching Expat's representable empty entity
+// values and avoiding a fabricated pointer at the boundary.
+fn pool_copy_chars(
+    pool: &mut STRING_POOL,
+    chars: &[crate::expat_external_h::XML_Char],
+) -> Option<PoolStringRef> {
+    if pool.start.is_none() && poolGrow(pool) == 0 {
+        return None;
+    }
+    for &character in chars {
+        if pool.is_full() && poolGrow(pool) == 0 {
+            return None;
+        }
+        if !pool.write_cursor(character) {
+            return None;
+        }
+    }
     let string = pool.start_ref(true);
     pool.commit();
     string
