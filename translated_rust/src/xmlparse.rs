@@ -165,8 +165,56 @@ pub mod siphash_h {
         return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
     }
 
-    pub unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
-        pub static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
+    fn sip_round_values(state: &mut [crate::stdlib::uint64_t; 4], rounds: usize) {
+        for _ in 0..rounds {
+            state[0] = state[0].wrapping_add(state[1]);
+            state[1] = state[1].rotate_left(13);
+            state[1] ^= state[0];
+            state[0] = state[0].rotate_left(32);
+            state[2] = state[2].wrapping_add(state[3]);
+            state[3] = state[3].rotate_left(16);
+            state[3] ^= state[2];
+            state[0] = state[0].wrapping_add(state[3]);
+            state[3] = state[3].rotate_left(21);
+            state[3] ^= state[0];
+            state[2] = state[2].wrapping_add(state[1]);
+            state[1] = state[1].rotate_left(17);
+            state[1] ^= state[2];
+            state[2] = state[2].rotate_left(32);
+        }
+    }
+
+    fn siphash24_bytes(input: &[u8], key: [crate::stdlib::uint64_t; 2]) -> crate::stdlib::uint64_t {
+        let mut state = [
+            0x736f6d6570736575_u64 ^ key[0],
+            0x646f72616e646f6d_u64 ^ key[1],
+            0x6c7967656e657261_u64 ^ key[0],
+            0x7465646279746573_u64 ^ key[1],
+        ];
+
+        let mut chunks = input.chunks_exact(8);
+        for chunk in &mut chunks {
+            let message = crate::stdlib::uint64_t::from_le_bytes(chunk.try_into().unwrap());
+            state[3] ^= message;
+            sip_round_values(&mut state, 2);
+            state[0] ^= message;
+        }
+
+        let remainder = chunks.remainder();
+        let mut final_block = (input.len() as crate::stdlib::uint64_t) << 56;
+        for (index, byte) in remainder.iter().copied().enumerate() {
+            final_block |= (byte as crate::stdlib::uint64_t) << (index * 8);
+        }
+        state[3] ^= final_block;
+        sip_round_values(&mut state, 2);
+        state[0] ^= final_block;
+        state[2] ^= 0xff;
+        sip_round_values(&mut state, 4);
+        state[0] ^ state[1] ^ state[2] ^ state[3]
+    }
+
+    pub fn sip24_valid() -> ::core::ffi::c_int {
+        const VECTORS: [[::core::ffi::c_uchar; 8]; 64] = [
             [
                 0x31 as ::core::ffi::c_uchar,
                 0xe as ::core::ffi::c_uchar,
@@ -808,34 +856,20 @@ pub mod siphash_h {
                 0x95 as ::core::ffi::c_uchar,
             ],
         ];
-        let mut in_0: [::core::ffi::c_uchar; 64] = [0; 64];
-        let mut k: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-        let mut i: crate::__stddef_size_t_h::size_t = 0;
-        sip_tokey(
-            &mut k,
-            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F",
-        );
-        i = 0 as crate::__stddef_size_t_h::size_t;
-        while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() {
-            in_0[i] = i as ::core::ffi::c_uchar;
-            if siphash24(
-                &raw mut in_0 as *mut ::core::ffi::c_uchar as *const ::core::ffi::c_void,
-                i,
-                &raw mut k,
-            ) != (vectors[i][0 as usize] as crate::stdlib::uint64_t) << 0 as ::core::ffi::c_int
-                | (vectors[i][1 as usize] as crate::stdlib::uint64_t) << 8 as ::core::ffi::c_int
-                | (vectors[i][2 as usize] as crate::stdlib::uint64_t) << 16 as ::core::ffi::c_int
-                | (vectors[i][3 as usize] as crate::stdlib::uint64_t) << 24 as ::core::ffi::c_int
-                | (vectors[i][4 as usize] as crate::stdlib::uint64_t) << 32 as ::core::ffi::c_int
-                | (vectors[i][5 as usize] as crate::stdlib::uint64_t) << 40 as ::core::ffi::c_int
-                | (vectors[i][6 as usize] as crate::stdlib::uint64_t) << 48 as ::core::ffi::c_int
-                | (vectors[i][7 as usize] as crate::stdlib::uint64_t) << 56 as ::core::ffi::c_int
+        let mut input = [0_u8; 64];
+        let key = [
+            crate::stdlib::uint64_t::from_le_bytes([0, 1, 2, 3, 4, 5, 6, 7]),
+            crate::stdlib::uint64_t::from_le_bytes([8, 9, 10, 11, 12, 13, 14, 15]),
+        ];
+        for length in 0..input.len() {
+            input[length] = length as u8;
+            if siphash24_bytes(&input[..length], key)
+                != crate::stdlib::uint64_t::from_le_bytes(VECTORS[length])
             {
-                return 0 as ::core::ffi::c_int;
+                return 0;
             }
-            i = i.wrapping_add(1);
         }
-        return 1 as ::core::ffi::c_int;
+        1
     }
 }
 
