@@ -1332,6 +1332,40 @@ static ENTITY_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EntityDeclCallback>>>,
 > = std::sync::OnceLock::new();
 
+trait UnknownEncodingCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        data: *mut ::core::ffi::c_void,
+        encoding_name: *const crate::expat_external_h::XML_Char,
+        info: *mut crate::expat_h::XML_Encoding,
+    ) -> ::core::ffi::c_int;
+}
+
+impl UnknownEncodingCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+        *mut crate::expat_h::XML_Encoding,
+    ) -> ::core::ffi::c_int
+{
+    unsafe fn invoke(
+        &self,
+        data: *mut ::core::ffi::c_void,
+        encoding_name: *const crate::expat_external_h::XML_Char,
+        info: *mut crate::expat_h::XML_Encoding,
+    ) -> ::core::ffi::c_int {
+        self(data, encoding_name, info)
+    }
+}
+
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether an unknown-encoding callback is installed.
+static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingCallback>>,
+    >,
+> = std::sync::OnceLock::new();
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct XML_ParserStruct {
@@ -1367,7 +1401,7 @@ pub struct XML_ParserStruct {
     pub m_externalEntityRefHandler: crate::expat_h::XML_ExternalEntityRefHandler,
     pub m_externalEntityRefHandlerArg: crate::expat_h::XML_Parser,
     pub m_skippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler,
-    pub m_unknownEncodingHandler: crate::expat_h::XML_UnknownEncodingHandler,
+    pub m_unknownEncodingHandler: bool,
     pub m_elementDeclHandler: crate::expat_h::XML_ElementDeclHandler,
     pub m_attlistDeclHandler: crate::expat_h::XML_AttlistDeclHandler,
     pub m_entityDeclHandler: bool,
@@ -2674,8 +2708,13 @@ unsafe extern "C" fn parserCreate(
     (*parser).m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     (*parser).m_groupSize = 0 as ::core::ffi::c_uint;
     (*parser).m_groupConnector = ::core::ptr::null_mut::<::core::ffi::c_char>();
-    (*parser).m_unknownEncodingHandler = None;
+    (*parser).m_unknownEncodingHandler = false;
     (*parser).m_unknownEncodingHandlerData = crate::__stddef_null_h::NULL;
+    UNKNOWN_ENCODING_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_namespaceSeparator =
         crate::ascii_h::ASCII_EXCL as crate::expat_external_h::XML_Char;
     (*parser).m_ns = crate::expat_h::XML_FALSE;
@@ -2976,7 +3015,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldNotStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler = None;
     let mut oldExternalEntityRefHandler: crate::expat_h::XML_ExternalEntityRefHandler = None;
     let mut oldSkippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler = None;
-    let mut oldUnknownEncodingHandler: crate::expat_h::XML_UnknownEncodingHandler = None;
+    let mut oldUnknownEncodingHandler: Option<std::sync::Arc<dyn UnknownEncodingCallback>> =
+        None;
     let mut oldUnknownEncodingHandlerData: *mut ::core::ffi::c_void =
         ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut oldElementDeclHandler: crate::expat_h::XML_ElementDeclHandler = None;
@@ -3021,7 +3061,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     oldNotStandaloneHandler = (*parser).m_notStandaloneHandler;
     oldExternalEntityRefHandler = (*parser).m_externalEntityRefHandler;
     oldSkippedEntityHandler = (*parser).m_skippedEntityHandler;
-    oldUnknownEncodingHandler = (*parser).m_unknownEncodingHandler;
+    oldUnknownEncodingHandler = UNKNOWN_ENCODING_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldUnknownEncodingHandlerData = (*parser).m_unknownEncodingHandlerData;
     oldElementDeclHandler = (*parser).m_elementDeclHandler;
     oldAttlistDeclHandler = (*parser).m_attlistDeclHandler;
@@ -3091,7 +3136,14 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     (*parser).m_notStandaloneHandler = oldNotStandaloneHandler;
     (*parser).m_externalEntityRefHandler = oldExternalEntityRefHandler;
     (*parser).m_skippedEntityHandler = oldSkippedEntityHandler;
-    (*parser).m_unknownEncodingHandler = oldUnknownEncodingHandler;
+    (*parser).m_unknownEncodingHandler = oldUnknownEncodingHandler.is_some();
+    if let Some(callback) = oldUnknownEncodingHandler {
+        UNKNOWN_ENCODING_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_unknownEncodingHandlerData = oldUnknownEncodingHandlerData;
     (*parser).m_elementDeclHandler = oldElementDeclHandler;
     (*parser).m_attlistDeclHandler = oldAttlistDeclHandler;
@@ -3179,6 +3231,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     ENTITY_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
+    UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -3903,8 +3960,17 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
     if parser.is_null() {
         return;
     }
-    (*parser).m_unknownEncodingHandler = handler;
+    (*parser).m_unknownEncodingHandler = handler.is_some();
     (*parser).m_unknownEncodingHandlerData = data;
+    let mut handlers = UNKNOWN_ENCODING_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(callback) = handler {
+        handlers.insert(parser as usize, std::sync::Arc::new(callback));
+    } else {
+        handlers.remove(&(parser as usize));
+    }
 }
 #[export_name = "XML_SetUnknownEncodingHandler"]
 
@@ -7498,7 +7564,7 @@ unsafe extern "C" fn handleUnknownEncoding(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Error {
-    if (*parser).m_unknownEncodingHandler.is_some() {
+    if (*parser).m_unknownEncodingHandler {
         let mut info: crate::expat_h::XML_Encoding = crate::expat_h::XML_Encoding {
             map: [0; 256],
             data: ::core::ptr::null_mut::<::core::ffi::c_void>(),
@@ -7514,13 +7580,17 @@ unsafe extern "C" fn handleUnknownEncoding(
         info.convert = None;
         info.data = crate::__stddef_null_h::NULL;
         info.release = None;
-        if (*parser)
-            .m_unknownEncodingHandler
-            .expect("non-null function pointer")(
+        let callback = UNKNOWN_ENCODING_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&(parser as usize))
+            .cloned();
+        if callback.is_some_and(|callback| callback.invoke(
             (*parser).m_unknownEncodingHandlerData,
             encodingName,
             &raw mut info,
-        ) != 0
+        ) != 0)
         {
             let mut enc: *mut crate::src::xmltok::ENCODING =
                 ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
