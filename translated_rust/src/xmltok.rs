@@ -10880,23 +10880,23 @@ pub mod xmltok_impl_c {
 }
 
 pub mod xmltok_ns_c {
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncoding() -> *const crate::src::xmltok::ENCODING {
-        return &raw const internal_utf8_encoding.enc;
+    pub fn XmlGetUtf8InternalEncoding() -> &'static crate::src::xmltok::ENCODING {
+        &internal_utf8_encoding.enc
     }
     #[export_name = "XmlGetUtf8InternalEncoding"]
 
     pub unsafe extern "C" fn XmlGetUtf8InternalEncoding_ffi() -> *const crate::src::xmltok::ENCODING
     {
-        XmlGetUtf8InternalEncoding()
+        XmlGetUtf8InternalEncoding() as *const crate::src::xmltok::ENCODING
     }
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncoding() -> *const crate::src::xmltok::ENCODING {
-        return &raw const internal_little2_encoding.enc;
+    pub fn XmlGetUtf16InternalEncoding() -> &'static crate::src::xmltok::ENCODING {
+        &internal_little2_encoding.enc
     }
     #[export_name = "XmlGetUtf16InternalEncoding"]
 
     pub unsafe extern "C" fn XmlGetUtf16InternalEncoding_ffi() -> *const crate::src::xmltok::ENCODING
     {
-        XmlGetUtf16InternalEncoding()
+        XmlGetUtf16InternalEncoding() as *const crate::src::xmltok::ENCODING
     }
     pub const encodings: [*const crate::src::xmltok::ENCODING; 7] = [
         &raw const crate::src::xmltok::latin1_encoding.enc,
@@ -11064,24 +11064,24 @@ pub mod xmltok_ns_c {
             standalone,
         )
     }
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
-        return &raw const internal_utf8_encoding_ns.enc;
+    pub fn XmlGetUtf8InternalEncodingNS() -> &'static crate::src::xmltok::ENCODING {
+        &internal_utf8_encoding_ns.enc
     }
     #[export_name = "XmlGetUtf8InternalEncodingNS"]
 
     pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS_ffi(
     ) -> *const crate::src::xmltok::ENCODING {
-        XmlGetUtf8InternalEncodingNS()
+        XmlGetUtf8InternalEncodingNS() as *const crate::src::xmltok::ENCODING
     }
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const crate::src::xmltok::ENCODING
+    pub fn XmlGetUtf16InternalEncodingNS() -> &'static crate::src::xmltok::ENCODING
     {
-        return &raw const internal_little2_encoding_ns.enc;
+        &internal_little2_encoding_ns.enc
     }
     #[export_name = "XmlGetUtf16InternalEncodingNS"]
 
     pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS_ffi(
     ) -> *const crate::src::xmltok::ENCODING {
-        XmlGetUtf16InternalEncodingNS()
+        XmlGetUtf16InternalEncodingNS() as *const crate::src::xmltok::ENCODING
     }
     pub const encodingsNS: [*const crate::src::xmltok::ENCODING; 7] = [
         &raw const crate::src::xmltok::latin1_encoding_ns.enc,
@@ -12557,13 +12557,13 @@ fn trim_to_complete_utf8_characters(input: &[u8]) -> usize {
 /// range from one allocation.  `from_lim_ref` must be writable.
 unsafe fn trim_to_complete_utf8_cursor(
     from: Option<core::ptr::NonNull<::core::ffi::c_char>>,
-    from_lim_out: &mut Option<core::ptr::NonNull<::core::ffi::c_char>>,
+    from_lim_out: &mut *const ::core::ffi::c_char,
 ) {
     // A zero-length range does not need a dereferenceable data pointer.
     let Some(from) = from else {
         return;
     };
-    let Some(from_lim) = *from_lim_out else {
+    let Some(from_lim) = core::ptr::NonNull::new((*from_lim_out).cast_mut()) else {
         return;
     };
     if from == from_lim {
@@ -12575,12 +12575,7 @@ unsafe fn trim_to_complete_utf8_cursor(
     }
     let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>().as_ptr(), length as usize) };
     let trimmed = trim_to_complete_utf8_characters(input);
-    *from_lim_out = core::ptr::NonNull::new(
-        input[trimmed..]
-            .as_ptr()
-            .cast_mut()
-            .cast::<::core::ffi::c_char>(),
-    );
+    *from_lim_out = input[trimmed..].as_ptr().cast::<::core::ffi::c_char>();
 }
 
 #[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
@@ -12595,9 +12590,7 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
     // The wrapper only converts the C out-slot.  Validation and cursor
     // updates are performed by the named implementation.
     let from_lim_ref = unsafe { from_lim_ref.as_mut() };
-    let mut from_lim = core::ptr::NonNull::new((*from_lim_ref).cast_mut());
-    unsafe { trim_to_complete_utf8_cursor(core::ptr::NonNull::new(from.cast_mut()), &mut from_lim) };
-    *from_lim_ref = from_lim.map_or(core::ptr::null(), |pointer| pointer.as_ptr().cast_const());
+    unsafe { trim_to_complete_utf8_cursor(core::ptr::NonNull::new(from.cast_mut()), from_lim_ref) };
 }
 /// Copies the largest UTF-8 prefix that fits in `output` without splitting a
 /// complete character.  This intentionally mirrors Expat's byte-oriented
