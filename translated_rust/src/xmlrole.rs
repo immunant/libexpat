@@ -488,6 +488,18 @@ static KW_SYSTEM: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
+// All role transitions compare token spans through the tokenizer's encoding
+// callback.  Keep the raw encoding-table access in one adapter: callers only
+// select their state transition and keyword.
+unsafe fn name_matches_ascii(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    keyword: &[::core::ffi::c_char],
+) -> bool {
+    (*enc).nameMatchesAscii.expect("non-null function pointer")(enc, ptr, end, keyword.as_ptr()) != 0
+}
+
 fn prolog0(
     state: &mut crate::src::xmlrole::PROLOG_STATE,
     tok: ::core::ffi::c_int,
@@ -621,23 +633,11 @@ unsafe fn doctype1(
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_CLOSE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_SYSTEM) {
                 state.handler = Some(PrologHandler::Doctype3);
                 return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_PUBLIC) {
                 state.handler = Some(PrologHandler::Doctype2);
                 return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int;
             }
@@ -731,43 +731,21 @@ unsafe fn internalSubset(
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_DECL_OPEN => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize),
-                end,
-                &raw const KW_ENTITY as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            let declaration_name =
+                ptr.offset((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize);
+            if name_matches_ascii(enc, declaration_name, end, &KW_ENTITY) {
                 state.handler = Some(PrologHandler::Entity0);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize),
-                end,
-                &raw const KW_ATTLIST as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, declaration_name, end, &KW_ATTLIST) {
                 state.handler = Some(PrologHandler::Attlist0);
                 return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize),
-                end,
-                &raw const KW_ELEMENT as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, declaration_name, end, &KW_ELEMENT) {
                 state.handler = Some(PrologHandler::Element0);
                 return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize),
-                end,
-                &raw const KW_NOTATION as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, declaration_name, end, &KW_NOTATION) {
                 state.handler = Some(PrologHandler::Notation0);
                 return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             }
@@ -890,23 +868,11 @@ unsafe fn entity2(
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_SYSTEM) {
                 state.handler = Some(PrologHandler::Entity4);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_PUBLIC) {
                 state.handler = Some(PrologHandler::Entity3);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
@@ -975,13 +941,7 @@ unsafe fn entity5(
             return crate::src::xmlrole::XML_ROLE_ENTITY_COMPLETE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_NDATA as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_NDATA) {
                 state.handler = Some(PrologHandler::Entity6);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
@@ -1021,23 +981,11 @@ unsafe fn entity7(
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_SYSTEM) {
                 state.handler = Some(PrologHandler::Entity9);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_PUBLIC) {
                 state.handler = Some(PrologHandler::Entity8);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
@@ -1136,23 +1084,11 @@ unsafe fn notation1(
             return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_SYSTEM as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_SYSTEM) {
                 state.handler = Some(PrologHandler::Notation3);
                 return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_PUBLIC as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_PUBLIC) {
                 state.handler = Some(PrologHandler::Notation2);
                 return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             }
@@ -1277,29 +1213,20 @@ unsafe fn attlist2(
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            let types: [*const ::core::ffi::c_char; 8] = [
-                &raw const KW_CDATA as *const ::core::ffi::c_char,
-                &raw const KW_ID as *const ::core::ffi::c_char,
-                &raw const KW_IDREF as *const ::core::ffi::c_char,
-                &raw const KW_IDREFS as *const ::core::ffi::c_char,
-                &raw const KW_ENTITY as *const ::core::ffi::c_char,
-                &raw const KW_ENTITIES as *const ::core::ffi::c_char,
-                &raw const KW_NMTOKEN as *const ::core::ffi::c_char,
-                &raw const KW_NMTOKENS as *const ::core::ffi::c_char,
+            let types: [&[::core::ffi::c_char]; 8] = [
+                &KW_CDATA,
+                &KW_ID,
+                &KW_IDREF,
+                &KW_IDREFS,
+                &KW_ENTITY,
+                &KW_ENTITIES,
+                &KW_NMTOKEN,
+                &KW_NMTOKENS,
             ];
             let mut i: ::core::ffi::c_int = 0;
             i = 0 as ::core::ffi::c_int;
-            while i < ::core::mem::size_of::<[*const ::core::ffi::c_char; 8]>()
-                .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>())
-                as ::core::ffi::c_int
-            {
-                if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                    enc,
-                    ptr,
-                    end,
-                    types[i as usize],
-                ) != 0
-                {
+            while i < types.len() as ::core::ffi::c_int {
+                if name_matches_ascii(enc, ptr, end, types[i as usize]) {
                     state.handler = Some(PrologHandler::Attlist8);
                     return crate::src::xmlrole::XML_ROLE_ATTRIBUTE_TYPE_CDATA
                         as ::core::ffi::c_int
@@ -1307,13 +1234,7 @@ unsafe fn attlist2(
                 }
                 i += 1;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_NOTATION as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_NOTATION) {
                 state.handler = Some(PrologHandler::Attlist5);
                 return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
@@ -1434,34 +1355,17 @@ unsafe fn attlist8(
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_POUND_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((*enc).minBytesPerChar as isize),
-                end,
-                &raw const KW_IMPLIED as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            let pound_name = ptr.offset((*enc).minBytesPerChar as isize);
+            if name_matches_ascii(enc, pound_name, end, &KW_IMPLIED) {
                 state.handler = Some(PrologHandler::Attlist1);
                 return crate::src::xmlrole::XML_ROLE_IMPLIED_ATTRIBUTE_VALUE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((*enc).minBytesPerChar as isize),
-                end,
-                &raw const KW_REQUIRED as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, pound_name, end, &KW_REQUIRED) {
                 state.handler = Some(PrologHandler::Attlist1);
                 return crate::src::xmlrole::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE
                     as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((*enc).minBytesPerChar as isize),
-                end,
-                &raw const KW_FIXED as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, pound_name, end, &KW_FIXED) {
                 state.handler = Some(PrologHandler::Attlist9);
                 return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
@@ -1521,25 +1425,13 @@ unsafe fn element1(
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_EMPTY as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_EMPTY) {
                 state.handler = Some(PrologHandler::DeclClose);
                 state.role_none =
                     crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
                 return crate::src::xmlrole::XML_ROLE_CONTENT_EMPTY as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_ANY as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_ANY) {
                 state.handler = Some(PrologHandler::DeclClose);
                 state.role_none =
                     crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
@@ -1568,13 +1460,8 @@ unsafe fn element2(
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_POUND_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr.offset((*enc).minBytesPerChar as isize),
-                end,
-                &raw const KW_PCDATA as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            let pound_name = ptr.offset((*enc).minBytesPerChar as isize);
+            if name_matches_ascii(enc, pound_name, end, &KW_PCDATA) {
                 state.handler = Some(PrologHandler::Element3);
                 return crate::src::xmlrole::XML_ROLE_CONTENT_PCDATA as ::core::ffi::c_int;
             }
@@ -1769,23 +1656,11 @@ unsafe fn condSect0(
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_INCLUDE as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_INCLUDE) {
                 state.handler = Some(PrologHandler::CondSect1);
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
-            if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-                enc,
-                ptr,
-                end,
-                &raw const KW_IGNORE as *const ::core::ffi::c_char,
-            ) != 0
-            {
+            if name_matches_ascii(enc, ptr, end, &KW_IGNORE) {
                 state.handler = Some(PrologHandler::CondSect2);
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
@@ -1863,12 +1738,12 @@ pub unsafe fn prolog_handler_dispatch(
 ) -> ::core::ffi::c_int {
     if let PrologHandler::Prolog0 | PrologHandler::Prolog1 = handler {
         let is_doctype = tok == crate::src::xmltok::XML_TOK_DECL_OPEN
-            && (*enc).nameMatchesAscii.expect("non-null function pointer")(
+            && name_matches_ascii(
                 enc,
                 ptr.offset((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize),
                 end,
-                &raw const KW_DOCTYPE as *const ::core::ffi::c_char,
-            ) != 0;
+                &KW_DOCTYPE,
+            );
         return match handler {
             PrologHandler::Prolog0 => prolog0(state, tok, is_doctype),
             PrologHandler::Prolog1 => prolog1(state, tok, is_doctype),
