@@ -10034,7 +10034,7 @@ unsafe extern "C" fn doContent(
                     } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
-                    poolClear(&raw mut (*parser).m_tempPool);
+                    poolClear(&mut (*parser).m_tempPool);
                 }
                 crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
                 | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
@@ -10156,7 +10156,7 @@ unsafe extern "C" fn doContent(
                     if noElmHandlers as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
-                    poolClear(&raw mut (*parser).m_tempPool);
+                    poolClear(&mut (*parser).m_tempPool);
                     freeBindings(parser, bindings);
                     if close_element_epilog_action(&mut *parser) {
                         return epilogProcessor(parser, next, end, nextPtr);
@@ -14144,7 +14144,7 @@ unsafe extern "C" fn doProlog(
                                                 );
                                             }
                                             (*parser).m_doctypeName = None;
-                                            poolClear(&raw mut (*parser).m_tempPool);
+                                            poolClear(&mut (*parser).m_tempPool);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -14360,7 +14360,7 @@ unsafe extern "C" fn doProlog(
                                                     0 as ::core::ffi::c_int,
                                                 );
                                             }
-                                            poolClear(&raw mut (*parser).m_tempPool);
+                                            poolClear(&mut (*parser).m_tempPool);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         if (*parser).m_doctypeSysid.is_present()
@@ -14831,7 +14831,7 @@ unsafe extern "C" fn doProlog(
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
-                                        poolClear(&raw mut (*parser).m_tempPool);
+                                        poolClear(&mut (*parser).m_tempPool);
                                         break 's_2375;
                                     }
                                     37 | 38 => {
@@ -15032,7 +15032,7 @@ unsafe extern "C" fn doProlog(
                                                             as ::core::ffi::c_int,
                                                     );
                                                 }
-                                                poolClear(&raw mut (*parser).m_tempPool);
+                                                poolClear(&mut (*parser).m_tempPool);
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
@@ -15737,7 +15737,7 @@ unsafe extern "C" fn doProlog(
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
-                                        poolClear(&raw mut (*parser).m_tempPool);
+                                        poolClear(&mut (*parser).m_tempPool);
                                         break 's_2375;
                                     }
                                     20 => {
@@ -15821,7 +15821,7 @@ unsafe extern "C" fn doProlog(
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
-                                        poolClear(&raw mut (*parser).m_tempPool);
+                                        poolClear(&mut (*parser).m_tempPool);
                                         break 's_2375;
                                     }
                                     -1 => match tok {
@@ -16582,7 +16582,6 @@ unsafe extern "C" fn doProlog(
                     }
                     if (*dtd).in_eldecl != 0 {
                         let mut el: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-                        let mut nameLen: crate::__stddef_size_t_h::size_t = 0;
                         let mut nxt: *const ::core::ffi::c_char = if quant as ::core::ffi::c_uint
                             == crate::expat_h::XML_CQUANT_NONE as ::core::ffi::c_int
                                 as ::core::ffi::c_uint
@@ -16611,10 +16610,18 @@ unsafe extern "C" fn doProlog(
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
                         let name_ref = (*el).named.name;
-                        let name_2 = pool_string_pointer!(&(*dtd).pool, name_ref);
-                        if name_2.is_null() {
+                        // Element names are retained as NUL-terminated XML_Char
+                        // sequences in the DTD pool.  Count the terminator from
+                        // the pool's checked slice rather than walking an
+                        // unbounded raw pointer as the C implementation did.
+                        let Some(nameLen) = (*dtd)
+                            .pool
+                            .chars_from(name_ref)
+                            .and_then(|chars| chars.iter().position(|&ch| ch == 0))
+                            .and_then(|length| length.checked_add(1))
+                        else {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
+                        };
                         {
                             let mut scaffold = (*dtd)
                                 .scaffold
@@ -16624,14 +16631,6 @@ unsafe extern "C" fn doProlog(
                                 return crate::expat_h::XML_ERROR_SYNTAX;
                             };
                             node.name = Some(name_ref);
-                        }
-                        nameLen = 0 as crate::__stddef_size_t_h::size_t;
-                        loop {
-                            let c2rust_fresh5 = nameLen;
-                            nameLen = nameLen.wrapping_add(1);
-                            if *name_2.offset(c2rust_fresh5 as isize) == 0 {
-                                break;
-                            }
                         }
                         if nameLen
                             > crate::limits_h::UINT_MAX.wrapping_sub((*dtd).contentStringLen)
@@ -18660,7 +18659,7 @@ unsafe extern "C" fn reportProcessingInstruction(
     }
     {
         let parser_state = &mut *parser;
-        poolClear(&raw mut parser_state.m_tempPool);
+        poolClear(&mut parser_state.m_tempPool);
     }
     return 1 as ::core::ffi::c_int;
 }
@@ -20891,8 +20890,8 @@ unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::exp
     pool.blockCount = 0;
 }
 
-unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
-    (&mut *pool).clear();
+fn poolClear(pool: &mut STRING_POOL) {
+    pool.clear();
 }
 
 fn poolDestroy(pool: &mut STRING_POOL) {
