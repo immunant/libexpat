@@ -1338,6 +1338,17 @@ pub struct block {
     pub size: ::core::ffi::c_int,
     pub s: [crate::expat_external_h::XML_Char; 0],
 }
+
+impl STRING_POOL {
+    fn push_into_writable_slot(&mut self, c: crate::expat_external_h::XML_Char) {
+        let dest = self.ptr;
+        self.ptr = self.ptr.wrapping_add(1);
+        unsafe {
+            // `pool_ensure_writable` guarantees `dest` points to initialized pool storage.
+            *dest = c;
+        }
+    }
+}
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -12380,11 +12391,7 @@ fn pool_push_char(pool: &mut STRING_POOL, c: crate::expat_external_h::XML_Char) 
     if !pool_ensure_writable(pool) {
         return false;
     }
-    unsafe {
-        let dest = pool.ptr;
-        pool.ptr = pool.ptr.offset(1);
-        *dest = c;
-    }
+    pool.push_into_writable_slot(c);
     true
 }
 
