@@ -9526,7 +9526,7 @@ unsafe extern "C" fn contentProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let parser_state = &*parser;
+    let parser_state = &mut *parser;
     let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
@@ -9537,11 +9537,12 @@ unsafe extern "C" fn contentProcessor(
     };
     let have_more = (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
+    let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
     let mut result: crate::expat_h::XML_Error = doContent(
-        parser,
+        parser_state,
         start_tag_level,
         normal_encoding,
-        parser_encoding(parser),
+        encoding,
         true,
         start,
         end,
@@ -9921,17 +9922,18 @@ unsafe extern "C" fn externalEntityContentProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let parser_state = &*parser;
+    let parser_state = &mut *parser;
     let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
     let have_more = (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
+    let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
     let mut result: crate::expat_h::XML_Error = doContent(
-        parser,
+        parser_state,
         1 as ::core::ffi::c_int,
         normal_encoding,
-        parser_encoding(parser),
+        encoding,
         true,
         start,
         end,
@@ -10139,7 +10141,7 @@ fn close_content_tag(parser: &mut XML_ParserStruct, tag_index: usize) -> ClosedC
 }
 
 unsafe fn doContent(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
     mut startTagLevel: ::core::ffi::c_int,
     normal_encoding: crate::src::xmltok::normal_encoding,
     enc: *const crate::src::xmltok::ENCODING,
@@ -10150,7 +10152,14 @@ unsafe fn doContent(
     mut haveMore: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let dtd = parser_dtd_ptr!(parser);
+    // Keep the parser state borrowed for ordinary bookkeeping.  The raw
+    // handle is only recovered at the legacy callback/token API boundary;
+    // no parser-owned field access below needs to dereference it.
+    let parser_ptr = std::ptr::from_mut(parser);
+    let dtd = parser
+        .m_dtd
+        .as_ref()
+        .map_or(::core::ptr::null_mut(), |dtd| dtd.value.get());
     // `doContent` is entered with C cursors, but both possible sources are
     // parser-owned: the parser input buffer or the current entity's retained
     // replacement text.  Resolve that ownership afresh for every scan below.
@@ -10196,7 +10205,7 @@ unsafe fn doContent(
             // Recover the C cursor from the slice only after the offset has
             // been checked, rather than advancing the incoming raw cursor.
             let source = match event_raw_name_source(
-                &*parser,
+                &*parser_ptr,
                 &*dtd,
                 parser_events,
                 s.addr(),
@@ -10270,7 +10279,7 @@ unsafe fn doContent(
                     );
                     // Take the handler state before invoking either callback,
                     // but release the parser borrow before re-entry.
-                    let handlers = content_token_handlers(&*parser);
+                    let handlers = content_token_handlers(&*parser_ptr);
                     if handlers.character_data {
                         let mut c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
@@ -10281,7 +10290,7 @@ unsafe fn doContent(
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                     }
-                    if (&*parser).m_tagLevel != startTagLevel {
+                    if (&*parser_ptr).m_tagLevel != startTagLevel {
                         return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
                     }
                     *nextPtr = end;
@@ -10338,7 +10347,7 @@ unsafe fn doContent(
                     // and UTF-16 without manufacturing a slice from a raw
                     // cursor.
                     let predefined = match event_raw_name_source(
-                        &*parser,
+                        &*parser_ptr,
                         &*dtd,
                         parser_events,
                         entity_start.addr(),
@@ -10374,7 +10383,7 @@ unsafe fn doContent(
                             XML_ACCOUNT_ENTITY_EXPANSION,
                             Some(bytemuck::bytes_of(&ch)),
                         );
-                        let handlers = content_token_handlers(&*parser);
+                        let handlers = content_token_handlers(&*parser_ptr);
                         if handlers.character_data {
                             callCharacterDataHandler(
                                 parser,
@@ -10394,7 +10403,7 @@ unsafe fn doContent(
                         if name.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        let salt = (&*parser)
+                        let salt = (&*parser_ptr)
                             .m_root
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -10437,7 +10446,7 @@ unsafe fn doContent(
                                 return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
                         } else if entity.is_none() {
-                            let handlers = content_entity_handlers(&*parser);
+                            let handlers = content_entity_handlers(&*parser_ptr);
                             if handlers.skipped_entity {
                                 let callback = SKIPPED_ENTITY_HANDLERS
                                     .get_or_init(|| {
@@ -10445,7 +10454,7 @@ unsafe fn doContent(
                                     })
                                     .lock()
                                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                    .get(&(parser as usize))
+                                    .get(&(parser_ptr as usize))
                                     .cloned();
                                 if let Some(callback) = callback {
                                     callback.invoke(
@@ -10470,7 +10479,7 @@ unsafe fn doContent(
                         if has_notation {
                             return crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
                         }
-                        let handlers = content_entity_handlers(&*parser);
+                        let handlers = content_entity_handlers(&*parser_ptr);
                         if has_text {
                             let mut result: crate::expat_h::XML_Error =
                                 crate::expat_h::XML_ERROR_NONE;
@@ -10482,7 +10491,7 @@ unsafe fn doContent(
                                         })
                                         .lock()
                                         .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                        .get(&(parser as usize))
+                                        .get(&(parser_ptr as usize))
                                         .cloned();
                                     if let Some(callback) = callback {
                                         let entity_name = (&*dtd)
@@ -10530,7 +10539,7 @@ unsafe fn doContent(
                                 })
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                .get(&(parser as usize))
+                                .get(&(parser_ptr as usize))
                                 .cloned()
                                 .expect("installed external entity handler");
                             if invoke_external_entity_ref_handler(
@@ -10597,7 +10606,7 @@ unsafe fn doContent(
                             Box::new(move |action| match action {
                                 TagBufferAllocationAction::Grow { size, source_line } => {
                                     let reallocated =
-                                        expat_realloc(parser, allocation, size, source_line);
+                                        expat_realloc(parser_ptr, allocation, size, source_line);
                                     if reallocated.is_null() {
                                         false
                                     } else {
@@ -10606,7 +10615,7 @@ unsafe fn doContent(
                                     }
                                 }
                                 TagBufferAllocationAction::Free(source_line) => {
-                                    expat_free(parser, allocation, source_line);
+                                    expat_free(parser_ptr, allocation, source_line);
                                     true
                                 }
                             });
@@ -10635,7 +10644,7 @@ unsafe fn doContent(
                     (*tag).name.localPart = None;
                     let raw_name = s.wrapping_offset(encoding.minBytesPerChar as isize);
                     (*tag).rawName = match event_raw_name_storage(
-                        &*parser,
+                        &*parser_ptr,
                         &*dtd,
                         parser_events,
                         raw_name.addr(),
@@ -10669,7 +10678,7 @@ unsafe fn doContent(
                     // cursors from reaching either the converter or the tag
                     // buffer as an invented slice.
                     let Some(raw_name_source) = event_raw_name_source(
-                        &*parser,
+                        &*parser_ptr,
                         &*dtd,
                         parser_events,
                         raw_name.addr(),
@@ -10677,9 +10686,9 @@ unsafe fn doContent(
                     ) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let unknown_encoding = match (&*parser).m_encoding {
+                    let unknown_encoding = match (&*parser_ptr).m_encoding {
                         EncodingState::Initial => None,
-                        EncodingState::Unknown => (&*parser)
+                        EncodingState::Unknown => (&*parser_ptr)
                             .m_unknownEncodingMem
                             .as_ref()
                             .and_then(UnknownEncodingMemory::initialized_encoding),
@@ -10726,13 +10735,13 @@ unsafe fn doContent(
                     if result_0 as u64 != 0 {
                         return result_0;
                     }
-                    let handlers = content_token_handlers(&*parser);
+                    let handlers = content_token_handlers(&*parser_ptr);
                     if handlers.start_element {
                         let callback = START_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser as usize))
+                            .get(&(parser_ptr as usize))
                             .cloned();
                         if let Some(callback) = callback {
                             let name = match (*tag).name.str {
@@ -10834,13 +10843,13 @@ unsafe fn doContent(
                         _ => ::core::ptr::null(),
                     };
                     (*parser).m_tempPool.commit();
-                    let start_handlers = content_token_handlers(&*parser);
+                    let start_handlers = content_token_handlers(&*parser_ptr);
                     if start_handlers.start_element {
                         let callback = START_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser as usize))
+                            .get(&(parser_ptr as usize))
                             .cloned();
                         if let Some(callback) = callback {
                             callback.invoke(
@@ -10853,7 +10862,7 @@ unsafe fn doContent(
                     }
                     // Re-snapshot after the start callback: it may install or
                     // remove the end-element handler before Expat dispatches it.
-                    let end_handlers = content_token_handlers(&*parser);
+                    let end_handlers = content_token_handlers(&*parser_ptr);
                     if end_handlers.end_element {
                         if end_handlers.start_element {
                             content_advance_event_start_to_end(
@@ -10866,7 +10875,7 @@ unsafe fn doContent(
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser as usize))
+                            .get(&(parser_ptr as usize))
                             .cloned();
                         if let Some(callback) = callback {
                             let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
@@ -10912,7 +10921,7 @@ unsafe fn doContent(
                         };
                         len = raw_name_len.length;
                         let (tag_index, names_match) = match content_end_tag_match(
-                            &*parser,
+                            &*parser_ptr,
                             &*dtd,
                             startTagLevel,
                             parser_events,
@@ -11055,7 +11064,7 @@ unsafe fn doContent(
                                 })
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                .get(&(parser as usize))
+                                .get(&(parser_ptr as usize))
                                 .cloned();
                             if let Some(callback) = callback {
                                 let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
@@ -11083,7 +11092,7 @@ unsafe fn doContent(
                     // or active entity that owns it before decoding.  This
                     // avoids manufacturing a byte slice from raw cursors.
                     let Some(token) = event_raw_name_source(
-                        &*parser,
+                        &*parser_ptr,
                         &*dtd,
                         parser_events,
                         s.addr(),
@@ -11097,7 +11106,7 @@ unsafe fn doContent(
                     }
                     // Handler selection is a pre-callback snapshot, so the
                     // borrow does not remain live during callback re-entry.
-                    let handlers = content_token_handlers(&*parser);
+                    let handlers = content_token_handlers(&*parser_ptr);
                     if handlers.character_data {
                         let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                         callCharacterDataHandler(
@@ -11113,7 +11122,7 @@ unsafe fn doContent(
                     return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
                 }
                 crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                    let handlers = content_token_handlers(&*parser);
+                    let handlers = content_token_handlers(&*parser_ptr);
                     if handlers.character_data {
                         let mut c_0: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
@@ -11124,13 +11133,13 @@ unsafe fn doContent(
                 }
                 crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN => {
                     let mut result_2: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                    let handlers = content_token_handlers(&*parser);
+                    let handlers = content_token_handlers(&*parser_ptr);
                     if handlers.start_cdata_section {
                         let callback = START_CDATA_SECTION_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser as usize))
+                            .get(&(parser_ptr as usize))
                             .cloned()
                             .expect("installed start CDATA handler");
                         callback.invoke(handler_arg!(parser));
@@ -11160,7 +11169,7 @@ unsafe fn doContent(
                         *nextPtr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
-                    let handlers = content_token_handlers(&*parser);
+                    let handlers = content_token_handlers(&*parser_ptr);
                     if handlers.character_data {
                         if encoding.isUtf8 == 0 {
                             let unknown_encoding = match encoding.utf8Convert {
@@ -11249,7 +11258,7 @@ unsafe fn doContent(
                         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                         .lock()
                         .unwrap_or_else(|poisoned| poisoned.into_inner())
-                        .get(&(parser as usize))
+                        .get(&(parser_ptr as usize))
                         .cloned();
                     if let Some(charDataHandler) = charDataHandler {
                         if encoding.isUtf8 == 0 {
@@ -11260,7 +11269,7 @@ unsafe fn doContent(
                             drop(source);
                             loop {
                                 let source = match event_raw_name_source(
-                                    &*parser,
+                                    &*parser_ptr,
                                     &*dtd,
                                     parser_events,
                                     s.addr(),
@@ -11375,7 +11384,7 @@ unsafe fn doContent(
             }
         }
         let loop_status = {
-            let parser_state = &*parser;
+            let parser_state = &*parser_ptr;
             content_loop_status(
                 parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint,
                 parser_state.m_reenter,
@@ -18490,9 +18499,10 @@ struct ActiveInternalEntityState {
 }
 
 unsafe fn active_internal_entity_state(
-    parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
 ) -> Option<ActiveInternalEntityState> {
-    let parser_state = &mut *parser;
+    let parser_ptr = std::ptr::from_mut(parser);
+    let parser_state = parser;
     let open_entity_index = parser_state.m_openInternalEntities?;
     let open_entity = parser_state
         .m_activeInternalEntities
@@ -18506,7 +18516,7 @@ unsafe fn active_internal_entity_state(
         OpenEntityTable::General => &mut dtd.generalEntities,
         OpenEntityTable::Parameter => &mut dtd.paramEntities,
     };
-    let entity = lookup(parser, std::ptr::from_mut(table), name, 0).cast::<ENTITY>();
+    let entity = lookup(parser_ptr, std::ptr::from_mut(table), name, 0).cast::<ENTITY>();
     let entity = entity.as_mut()?;
     Some(ActiveInternalEntityState {
         index: open_entity_index,
@@ -18596,11 +18606,15 @@ unsafe extern "C" fn internalEntityProcessor(
     _end: *const ::core::ffi::c_char,
     _nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let Some(entity_state) = active_internal_entity_state(parser) else {
+    let parser_state = &mut *parser;
+    let Some(entity_state) = active_internal_entity_state(parser_state) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
     if entity_state.has_more {
-        let dtd = parser_dtd_ptr!(parser);
+        let dtd = parser_state
+            .m_dtd
+            .as_ref()
+            .map_or(::core::ptr::null_mut(), |dtd| dtd.value.get());
         if dtd.is_null() {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
@@ -18653,7 +18667,7 @@ unsafe extern "C" fn internalEntityProcessor(
             );
         } else {
             result = doContent(
-                parser,
+                parser_state,
                 entity_state.start_tag_level,
                 *crate::src::xmltok::internal_utf8_normal_encoding(matches!(
                     entity_state.internal_encoding,
