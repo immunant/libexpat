@@ -8184,14 +8184,6 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
         .then(|| ::std::ffi::CStr::from_ptr(encodingName));
     parser_reset_impl(parser, parser_key, encoding_name)
 }
-unsafe extern "C" fn parserBusy(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Bool {
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-        1 | 3 => return crate::expat_h::XML_TRUE,
-        0 | 2 | _ => return crate::expat_h::XML_FALSE,
-    };
-}
 fn parser_is_busy(parser: &XML_ParserStruct) -> bool {
     matches!(parser.m_parsingStatus.parsing as ::core::ffi::c_uint, 1 | 3)
 }
