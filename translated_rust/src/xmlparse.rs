@@ -2824,15 +2824,7 @@ fn dispatch_attlist_decl_callback(
     true
 }
 
-trait XmlDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        version: *const crate::expat_external_h::XML_Char,
-        encoding: *const crate::expat_external_h::XML_Char,
-        standalone: ::core::ffi::c_int,
-    );
-}
+trait XmlDeclCallback: Send + Sync + std::any::Any {}
 
 impl XmlDeclCallback
     for unsafe extern "C" fn(
@@ -2842,21 +2834,59 @@ impl XmlDeclCallback
         ::core::ffi::c_int,
     )
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        version: *const crate::expat_external_h::XML_Char,
-        encoding: *const crate::expat_external_h::XML_Char,
-        standalone: ::core::ffi::c_int,
-    ) {
-        self(user_data, version, encoding, standalone);
+}
+
+/// A pool-backed XML declaration staged for one callback.  The optional
+/// strings remain borrowed from parser-owned storage for the full callback.
+struct XmlDeclCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    version: Option<&'a [crate::expat_external_h::XML_Char]>,
+    encoding: Option<&'a [crate::expat_external_h::XML_Char]>,
+    standalone: ::core::ffi::c_int,
+}
+
+/// Owns the erased C callback representation while parser-side dispatch uses
+/// the typed XML-declaration event above.
+struct XmlDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn XmlDeclCallback>,
+}
+
+impl XmlDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: XmlDeclCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
+
+    fn invoke(&self, event: XmlDeclCallbackEvent<'_>) {
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any)
+            .downcast_ref::<unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+            )>()
+        else {
+            return;
+        };
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event.version.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event.encoding.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event.standalone,
+            );
+        }
     }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an XML-declaration callback is installed.
 static XML_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn XmlDeclCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<XmlDeclCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 /// An XML-declaration callback prepared from the ABI callback value.
@@ -2864,7 +2894,7 @@ static XML_DECL_HANDLERS: std::sync::OnceLock<
 /// The parser only observes whether a callback is installed; the callable
 /// value remains in the boundary registry.
 struct XmlDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn XmlDeclCallback>>,
+    callback: Option<std::sync::Arc<XmlDeclCallbackAdapter>>,
 }
 
 fn xml_decl_handler_registration<Callback>(
@@ -2874,7 +2904,8 @@ where
     Callback: XmlDeclCallback + 'static,
 {
     XmlDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler
+            .map(|callback| std::sync::Arc::new(XmlDeclCallbackAdapter::new(callback))),
     }
 }
 
@@ -2884,21 +2915,20 @@ where
 /// are resolved immediately before the foreign call, so declaration handling
 /// itself only carries checked pool handles rather than raw callback pointers.
 fn dispatch_xml_decl_callback(
-    callback: &dyn XmlDeclCallback,
+    callback: &XmlDeclCallbackAdapter,
     parser: &XML_ParserStruct,
     version: Option<PoolStringRef>,
     encoding: Option<PoolStringRef>,
     standalone: ::core::ffi::c_int,
 ) {
-    let version = version
-        .and_then(|value| parser.m_temp2Pool.chars_from(value))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-    let encoding = encoding
-        .and_then(|value| parser.m_temp2Pool.chars_from(value))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-    unsafe {
-        callback.invoke(handler_arg_from_state!(parser), version, encoding, standalone);
-    }
+    let version = version.and_then(|value| parser.m_temp2Pool.chars_from(value));
+    let encoding = encoding.and_then(|value| parser.m_temp2Pool.chars_from(value));
+    callback.invoke(XmlDeclCallbackEvent {
+        parser,
+        version,
+        encoding,
+        standalone,
+    });
 }
 
 trait UnknownEncodingCallback: Send + Sync {
@@ -8585,7 +8615,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldAttlistDeclHandler = false;
     let mut oldAttlistDeclCallback: Option<std::sync::Arc<AttlistDeclCallbackAdapter>> = None;
     let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
-    let mut oldXmlDeclHandler: Option<std::sync::Arc<dyn XmlDeclCallback>> = None;
+    let mut oldXmlDeclHandler: Option<std::sync::Arc<XmlDeclCallbackAdapter>> = None;
     let mut oldDeclElementType: Option<PoolStringRef> = None;
     let mut oldUserData = CallbackContextToken::EMPTY;
     let mut oldHandlerArg = HandlerArg::UserData;
@@ -10481,8 +10511,8 @@ pub unsafe extern "C" fn XML_SetXmlDeclHandler_ffi(
         return;
     }
     let parser_key = parser.addr();
-    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     let registration = xml_decl_handler_registration(handler);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_xml_decl_handler(parser, parser_key, registration)
 }
 /// The parser state needed to update parameter-entity parsing mode.
