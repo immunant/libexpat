@@ -5544,6 +5544,10 @@ struct NamedAllocation {
     // through the record's variant-specific owned allocation.
     key: PoolStringRef,
     record: NamedRecord,
+    // Attribute identifiers are copied by all table clients.  Keep this
+    // compact descriptor in the allocation itself instead of borrowing
+    // through a separately boxed record.
+    attribute_record: Option<ATTRIBUTE_ID>,
     backing: Box<dyn FnMut(::core::ffi::c_int)>,
 }
 
@@ -5554,18 +5558,18 @@ enum NamedRecord {
     // Hash-table entries already own each `NamedAllocation` in a `Box`, so
     // a prefix record has a stable address without a second allocation.
     Prefix(PREFIX),
-    Attribute(Box<ATTRIBUTE_ID>),
+    Attribute,
     Element(Box<ELEMENT_TYPE>),
     Entity(Box<ENTITY>),
 }
 
 impl NamedRecord {
-    fn new(create_size: usize, name: PoolStringRef) -> Option<Self> {
+    fn new(create_size: usize, name: PoolStringRef) -> Option<(Self, Option<ATTRIBUTE_ID>)> {
         if create_size == ::core::mem::size_of::<PREFIX>() {
-            return Some(Self::Prefix(PREFIX { name: Some(name) }));
+            return Some((Self::Prefix(PREFIX { name: Some(name) }), None));
         }
         if create_size == ::core::mem::size_of::<ATTRIBUTE_ID>() {
-            return Some(Self::Attribute(Box::new(ATTRIBUTE_ID {
+            return Some((Self::Attribute, Some(ATTRIBUTE_ID {
                 named: NAMED { name },
                 prefix: AttributePrefix::None,
                 maybeTokenized: crate::expat_h::XML_FALSE,
@@ -5573,7 +5577,7 @@ impl NamedRecord {
             })));
         }
         if create_size == ::core::mem::size_of::<ELEMENT_TYPE>() {
-            return Some(Self::Element(Box::new(ELEMENT_TYPE {
+            return Some((Self::Element(Box::new(ELEMENT_TYPE {
                 named: NAMED { name },
                 // This value is ignored until `hasPrefix` is set.  Use the
                 // element's own valid pool handle rather than a zeroed,
@@ -5584,10 +5588,10 @@ impl NamedRecord {
                 nDefaultAtts: 0,
                 allocDefaultAtts: 0,
                 defaultAtts: None,
-            })));
+            })), None));
         }
         if create_size == ::core::mem::size_of::<ENTITY>() {
-            return Some(Self::Entity(Box::new(ENTITY {
+            return Some((Self::Entity(Box::new(ENTITY {
                 named: NAMED { name },
                 textPtr: EntityTextRef {
                     pool: EntityTextPool::Dtd,
@@ -5603,18 +5607,10 @@ impl NamedRecord {
                 hasMore: crate::expat_h::XML_FALSE,
                 is_param: crate::expat_h::XML_FALSE,
                 is_internal: crate::expat_h::XML_FALSE,
-            })));
+            })), None));
         }
         None
     }
-
-    fn attribute_mut(&mut self) -> Option<&mut ATTRIBUTE_ID> {
-        match self {
-            Self::Attribute(attribute) => Some(attribute),
-            _ => None,
-        }
-    }
-
 }
 
 impl NamedAllocation {
@@ -5625,11 +5621,16 @@ impl NamedAllocation {
         }
     }
 
-    fn attribute(&self) -> Option<&ATTRIBUTE_ID> {
-        match &self.record {
-            NamedRecord::Attribute(attribute) => Some(attribute),
-            _ => None,
-        }
+    fn attribute_snapshot(&self) -> Option<ATTRIBUTE_ID> {
+        matches!(&self.record, NamedRecord::Attribute)
+            .then_some(self.attribute_record)
+            .flatten()
+    }
+
+    fn attribute_mut(&mut self) -> Option<&mut ATTRIBUTE_ID> {
+        matches!(&self.record, NamedRecord::Attribute)
+            .then_some(self.attribute_record.as_mut())
+            .flatten()
     }
 
     fn element(&self) -> Option<&ELEMENT_TYPE> {
@@ -19836,7 +19837,8 @@ fn do_prolog_impl(
                                                         ::core::mem::size_of::<ENTITY>(),
                                                         hash_salt,
                                                     ),
-                                                    Some(NamedRecord::Entity(_)),
+                                                    Some(entry)
+                                                        if matches!(entry.record, NamedRecord::Entity(_)),
                                                 ) {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
@@ -19896,7 +19898,8 @@ fn do_prolog_impl(
                                                     ::core::mem::size_of::<ENTITY>(),
                                                     hash_salt,
                                                 ),
-                                                Some(NamedRecord::Entity(_)),
+                                                Some(entry)
+                                                    if matches!(entry.record, NamedRecord::Entity(_)),
                                             ) {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
@@ -22740,7 +22743,10 @@ fn append_attribute_value_impl(
                                 0,
                                 salt,
                             ) {
-                                Some(NamedRecord::Entity(entity)) => Some(entity.as_mut()),
+                                Some(entry) => match &mut entry.record {
+                                    NamedRecord::Entity(entity) => Some(entity.as_mut()),
+                                    _ => None,
+                                },
                                 _ => None,
                             }
                         };
@@ -23110,7 +23116,7 @@ fn store_entity_value_impl(
                                             hash_salt,
                                         )
                                     })
-                                    .and_then(|record| match record {
+                                    .and_then(|entry| match &mut entry.record {
                                         NamedRecord::Entity(entity) => Some(entity.as_mut()),
                                         _ => None,
                                     });
@@ -24026,7 +24032,7 @@ fn define_attribute_impl(
         0,
         salt,
     )
-    .and_then(NamedRecord::attribute_mut)
+    .and_then(NamedAllocation::attribute_mut)
     else {
         return 0 as ::core::ffi::c_int;
     };
@@ -24109,7 +24115,7 @@ fn define_attribute_impl(
             0,
             salt,
         )
-        .and_then(NamedRecord::attribute_mut)
+        .and_then(NamedAllocation::attribute_mut)
         else {
             return 0 as ::core::ffi::c_int;
         };
@@ -24176,11 +24182,11 @@ fn define_declared_attribute(
 /// Resolves an attribute identifier through the typed hash-table storage.
 /// Pool handles remain valid across table growth, unlike the legacy `NAMED *`
 /// returned by `lookup`.
-fn attribute_id_by_name<'a>(
-    dtd: &'a DTD,
+fn attribute_id_by_name(
+    dtd: &DTD,
     name: PoolStringRef,
     salt: ::core::ffi::c_ulong,
-) -> Option<&'a ATTRIBUTE_ID> {
+) -> Option<ATTRIBUTE_ID> {
     let index = lookup_existing(
         &dtd.pool,
         &dtd.attributeIds,
@@ -24193,7 +24199,7 @@ fn attribute_id_by_name<'a>(
         .entries
         .get(index)?
         .as_ref()?
-        .attribute()
+        .attribute_snapshot()
 }
 
 /// Copies a tokenizer-owned name into a bounded byte buffer before mutating
@@ -24363,7 +24369,7 @@ fn get_attribute_id_impl<'a>(
                         ::core::mem::size_of::<PREFIX>(),
                         salt,
                     )?;
-                    let NamedRecord::Prefix(prefix) = prefix else {
+                    let NamedRecord::Prefix(prefix) = &mut prefix.record else {
                         return None;
                     };
                     let prefix_name = prefix.name?;
@@ -24390,7 +24396,7 @@ fn get_attribute_id_impl<'a>(
                         ::core::mem::size_of::<PREFIX>(),
                         salt,
                     )?;
-                    let NamedRecord::Prefix(prefix) = prefix else {
+                    let NamedRecord::Prefix(prefix) = &mut prefix.record else {
                         return None;
                     };
                     let prefix_name = prefix.name?;
@@ -24594,14 +24600,16 @@ fn set_context_impl(
                     let Some(name) = pool_terminated_chars(&parser.m_tempPool, pool_start) else {
                         return crate::expat_h::XML_FALSE;
                     };
-                    if let Some(NamedRecord::Entity(entity)) = lookup_impl(
+                    if let Some(entry) = lookup_impl(
                         &mut dtd.pool,
                         &mut dtd.generalEntities,
                         LookupName::Borrowed(name),
                         0,
                         salt,
                     ) {
-                        entity.as_mut().open = crate::expat_h::XML_TRUE;
+                        if let NamedRecord::Entity(entity) = &mut entry.record {
+                            entity.as_mut().open = crate::expat_h::XML_TRUE;
+                        }
                     }
                 }
                 parser.m_tempPool.rewind();
@@ -24625,13 +24633,16 @@ fn set_context_impl(
                         else {
                             return crate::expat_h::XML_FALSE;
                         };
-                        let Some(NamedRecord::Prefix(prefix)) = lookup_impl(
+                        let Some(prefix) = lookup_impl(
                             &mut dtd.pool,
                             &mut dtd.prefixes,
                             LookupName::Borrowed(name),
                             ::core::mem::size_of::<PREFIX>(),
                             salt,
                         ) else {
+                            return crate::expat_h::XML_FALSE;
+                        };
+                        let NamedRecord::Prefix(prefix) = &prefix.record else {
                             return crate::expat_h::XML_FALSE;
                         };
                         *prefix
@@ -24738,14 +24749,16 @@ fn set_context_impl(
             let Some(name) = pool_terminated_chars(&parser.m_tempPool, pool_start) else {
                 return crate::expat_h::XML_FALSE;
             };
-            if let Some(NamedRecord::Entity(entity)) = lookup_impl(
+            if let Some(entry) = lookup_impl(
                 &mut dtd.pool,
                 &mut dtd.generalEntities,
                 LookupName::Borrowed(name),
                 0,
                 salt,
             ) {
-                entity.as_mut().open = crate::expat_h::XML_TRUE;
+                if let NamedRecord::Entity(entity) = &mut entry.record {
+                    entity.as_mut().open = crate::expat_h::XML_TRUE;
+                }
             }
         }
         parser.m_tempPool.rewind();
@@ -25054,7 +25067,7 @@ fn dtd_copy_impl(
             let Some(entry) = entry.as_ref() else {
                 continue;
             };
-            let Some(old_a) = entry.attribute() else {
+            let Some(old_a) = entry.attribute_snapshot() else {
                 return 0 as ::core::ffi::c_int;
             };
             if if new_dtd.pool.is_full() && poolGrow(&mut new_dtd.pool) == 0 {
@@ -25098,7 +25111,7 @@ fn dtd_copy_impl(
                 .as_mut()
                 .and_then(|slots| slots.entries.get_mut(index))
                 .and_then(Option::as_mut)
-                .and_then(|entry| entry.record.attribute_mut())
+                .and_then(NamedAllocation::attribute_mut)
             else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -25630,7 +25643,7 @@ fn lookup_impl<'a>(
     name: LookupName<'_>,
     create_size: usize,
     salt: ::core::ffi::c_ulong,
-) -> Option<&'a mut NamedRecord> {
+) -> Option<&'a mut NamedAllocation> {
     let hash = hash_lookup_name(pool, name, salt)?;
     if table.size == 0 {
         if create_size == 0 {
@@ -25656,8 +25669,7 @@ fn lookup_impl<'a>(
             .as_mut()?
             .entries
             .get_mut(index)?
-            .as_mut()
-            .map(|entry| &mut entry.record);
+            .as_mut();
     }
 
     let mut mask = (table.size as ::core::ffi::c_ulong).wrapping_sub(1);
@@ -25731,7 +25743,7 @@ fn lookup_impl<'a>(
             }
         },
     };
-    let Some(record) = NamedRecord::new(create_size, name) else {
+    let Some((record, attribute_record)) = NamedRecord::new(create_size, name) else {
         backing(7915);
         return None;
     };
@@ -25740,9 +25752,10 @@ fn lookup_impl<'a>(
     *entry = Some(NamedAllocation {
         key: name,
         record,
+        attribute_record,
         backing,
     });
-    entry.as_mut().map(|entry| &mut entry.record)
+    entry.as_mut()
 }
 
 // Entity declarations are retained by a pool key, so resolving one through
@@ -25762,7 +25775,8 @@ fn declared_entity_mut(
             LookupName::Borrowed(&EXTERNAL_SUBSET_NAME),
         ),
     };
-    let NamedRecord::Entity(entity) = lookup_impl(&mut dtd.pool, table, name, 0, salt)? else {
+    let entry = lookup_impl(&mut dtd.pool, table, name, 0, salt)?;
+    let NamedRecord::Entity(entity) = &mut entry.record else {
         return None;
     };
     Some(entity.as_mut())
@@ -25777,14 +25791,14 @@ fn external_subset_entity_mut(
     create_size: crate::__stddef_size_t_h::size_t,
     salt: ::core::ffi::c_ulong,
 ) -> Option<&mut ENTITY> {
-    let NamedRecord::Entity(entity) = lookup_impl(
+    let entry = lookup_impl(
         &mut dtd.pool,
         &mut dtd.paramEntities,
         LookupName::Borrowed(&EXTERNAL_SUBSET_NAME),
         create_size,
         salt,
-    )?
-    else {
+    )?;
+    let NamedRecord::Entity(entity) = &mut entry.record else {
         return None;
     };
     Some(entity.as_mut())
@@ -25801,14 +25815,14 @@ fn general_entity_mut(
     name: PoolStringRef,
     salt: ::core::ffi::c_ulong,
 ) -> Option<&mut ENTITY> {
-    let NamedRecord::Entity(entity) = lookup_impl(
+    let entry = lookup_impl(
         &mut dtd.pool,
         &mut dtd.generalEntities,
         LookupName::Retained(name),
         0,
         salt,
-    )?
-    else {
+    )?;
+    let NamedRecord::Entity(entity) = &mut entry.record else {
         return None;
     };
     Some(entity.as_mut())
@@ -26809,7 +26823,7 @@ fn get_element_type_impl(
             ::core::mem::size_of::<ELEMENT_TYPE>(),
             salt,
         )?;
-        if !matches!(element, NamedRecord::Element(_)) {
+        if !matches!(element.record, NamedRecord::Element(_)) {
             return None;
         }
     }
@@ -26873,7 +26887,7 @@ fn set_element_type_prefix_impl(
             ::core::mem::size_of::<PREFIX>(),
             salt,
         )?;
-        if !matches!(prefix, NamedRecord::Prefix(_)) {
+        if !matches!(prefix.record, NamedRecord::Prefix(_)) {
             return None;
         }
     }
