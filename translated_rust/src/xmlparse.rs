@@ -3127,6 +3127,16 @@ impl RawNameSource<'_> {
         }
         true
     }
+
+    fn decode_char_ref(
+        &self,
+        decoder: crate::src::xmltok::CharRefNumberDecoder,
+    ) -> ::core::ffi::c_int {
+        match self {
+            Self::Bytes(bytes) => decoder.decode(bytes),
+            Self::Chars(chars) => decoder.decode_chars(chars),
+        }
+    }
 }
 
 struct TagBufferStorage {
@@ -9597,11 +9607,19 @@ unsafe extern "C" fn doContent(
                 }
                 crate::src::xmltok::XML_TOK_CHAR_REF => {
                     // The scanner returned a complete character-reference
-                    // token, so this is one validated range in its input
-                    // allocation (including the terminating semicolon).
-                    let token =
-                        ::core::slice::from_raw_parts(s.cast::<u8>(), next.offset_from(s) as usize);
-                    let mut n: ::core::ffi::c_int = (*enc).charRefNumber.decode(token);
+                    // token, so resolve the cursor range through the parser
+                    // or active entity that owns it before decoding.  This
+                    // avoids manufacturing a byte slice from raw cursors.
+                    let Some(token) = event_raw_name_source(
+                        &*parser,
+                        &*dtd,
+                        parser_events,
+                        s.addr(),
+                        next.addr(),
+                    ) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let mut n: ::core::ffi::c_int = token.decode_char_ref((*enc).charRefNumber);
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }

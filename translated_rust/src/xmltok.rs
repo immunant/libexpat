@@ -745,31 +745,51 @@ impl CharRefNumberDecoder {
     /// `input` includes the leading `&#` and trailing semicolon.  Keeping the
     /// token bounded here avoids the old callback's unbounded raw reads.
     pub fn decode(self, input: &[u8]) -> ::core::ffi::c_int {
+        self.decode_units(input.len(), |offset| input.get(offset).copied())
+    }
+
+    /// Decodes a complete character-reference token retained as XML character
+    /// storage.  Internal entity text is represented this way by the parser;
+    /// reading its units directly avoids creating a byte slice from a raw
+    /// event cursor.
+    pub(crate) fn decode_chars(self, input: &[::core::ffi::c_char]) -> ::core::ffi::c_int {
+        self.decode_units(input.len(), |offset| {
+            input.get(offset).map(|&byte| byte as u8)
+        })
+    }
+
+    fn decode_units(
+        self,
+        input_len: usize,
+        byte_at: impl Fn(usize) -> Option<u8>,
+    ) -> ::core::ffi::c_int {
         match self {
             Self::Normal => decode_char_ref_number_units(
-                input
-                    .get(2..)
-                    .unwrap_or(&[])
-                    .iter()
-                    .map(|&byte| byte as ::core::ffi::c_int),
+                (2..input_len).filter_map(|offset| byte_at(offset).map(|byte| byte as _)),
             ),
             Self::Little2 => decode_char_ref_number_units(
-                input.get(4..).unwrap_or(&[]).chunks_exact(2).map(|unit| {
-                    if unit[1] == 0 {
-                        unit[0] as ::core::ffi::c_int
-                    } else {
-                        -1
-                    }
-                }),
+                (4..input_len)
+                    .step_by(2)
+                    .filter_map(|offset| Some((byte_at(offset)?, byte_at(offset.checked_add(1)?)?)))
+                    .map(|(first, second)| {
+                        if second == 0 {
+                            first as ::core::ffi::c_int
+                        } else {
+                            -1
+                        }
+                    }),
             ),
             Self::Big2 => decode_char_ref_number_units(
-                input.get(4..).unwrap_or(&[]).chunks_exact(2).map(|unit| {
-                    if unit[0] == 0 {
-                        unit[1] as ::core::ffi::c_int
-                    } else {
-                        -1
-                    }
-                }),
+                (4..input_len)
+                    .step_by(2)
+                    .filter_map(|offset| Some((byte_at(offset)?, byte_at(offset.checked_add(1)?)?)))
+                    .map(|(first, second)| {
+                        if first == 0 {
+                            second as ::core::ffi::c_int
+                        } else {
+                            -1
+                        }
+                    }),
             ),
         }
     }
