@@ -3046,7 +3046,10 @@ struct BindingId(usize);
 #[repr(C)]
 
 pub struct binding {
-    pub prefix: *mut prefix,
+    // A namespace binding identifies its prefix by the stable DTD-pool name,
+    // rather than retaining an address into the prefix hash table.  The
+    // default namespace has no name and is represented explicitly.
+    prefix: BindingPrefix,
     nextTagBinding: Option<BindingId>,
     // Namespace shadowing is an index into the active binding arena.  The
     // prior binding may move when that arena grows, so retain its stable ID
@@ -3060,6 +3063,24 @@ pub struct binding {
     pub uriLen: ::core::ffi::c_int,
     pub uriAlloc: ::core::ffi::c_int,
 }
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum BindingPrefix {
+    Default,
+    Named(PoolStringRef),
+}
+
+fn active_binding_id_for_prefix(
+    bindings: &[BindingStorage],
+    prefix: BindingPrefix,
+) -> Option<BindingId> {
+    bindings
+        .iter()
+        .filter(|storage| storage.binding.first().is_some_and(|binding| binding.prefix == prefix))
+        .max_by_key(|storage| storage.id.0)
+        .map(|storage| storage.id)
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -3094,7 +3115,6 @@ pub struct prefix {
     // Prefix records share the hash table's leading name header.  The default
     // namespace has no name; all other prefixes retain a DTD-pool location.
     pub name: Option<PoolStringRef>,
-    pub binding: *mut BINDING,
 }
 
 pub type TAG = tag;
@@ -3364,7 +3384,7 @@ impl BindingStorage {
         }
         uri.resize(uri_capacity, 0);
         binding.push(BINDING {
-            prefix: ::core::ptr::null_mut(),
+            prefix: BindingPrefix::Default,
             nextTagBinding: None,
             prevPrefixBinding: None,
             attId: None,
@@ -9692,25 +9712,18 @@ unsafe extern "C" fn doContent(
                                     .get(&(parser as usize))
                                     .cloned();
                                 if let Some(callback) = callback {
-                                    let prefix_name =
-                                        (*(*b).prefix).name.map_or(::core::ptr::null(), |name| {
+                                    let prefix_name = match (*b).prefix {
+                                        BindingPrefix::Default => ::core::ptr::null(),
+                                        BindingPrefix::Named(name) => {
                                             pool_string_pointer!(&(*dtd).pool, name)
-                                        });
+                                        }
+                                    };
                                     callback.invoke(handler_arg!(parser), prefix_name);
                                 }
                             }
                             let parser_state = &mut *parser;
                             (*tag_0).bindings = (*b)
                                 .nextTagBinding
-                                .and_then(|id| parser_state.binding_index(id))
-                                .map_or(::core::ptr::null_mut(), |index| {
-                                    parser_state.m_activeBindings[index]
-                                        .binding
-                                        .as_ptr()
-                                        .cast_mut()
-                                });
-                            (*(*b).prefix).binding = (*b)
-                                .prevPrefixBinding
                                 .and_then(|id| parser_state.binding_index(id))
                                 .map_or(::core::ptr::null_mut(), |index| {
                                     parser_state.m_activeBindings[index]
@@ -10017,24 +10030,16 @@ unsafe extern "C" fn freeBindings(
                 .cloned();
             if let Some(callback) = callback {
                 let dtd = parser_dtd_ptr!(parser);
-                let prefix_name = (*(*b).prefix).name.map_or(::core::ptr::null(), |name| {
-                    pool_string_pointer!(&(*dtd).pool, name)
-                });
+                let prefix_name = match (*b).prefix {
+                    BindingPrefix::Default => ::core::ptr::null(),
+                    BindingPrefix::Named(name) => pool_string_pointer!(&(*dtd).pool, name),
+                };
                 callback.invoke(handler_arg!(parser), prefix_name);
             }
         }
         let parser_state = &mut *parser;
         bindings = (*b)
             .nextTagBinding
-            .and_then(|id| parser_state.binding_index(id))
-            .map_or(::core::ptr::null_mut(), |index| {
-                parser_state.m_activeBindings[index]
-                    .binding
-                    .as_ptr()
-                    .cast_mut()
-            });
-        (*(*b).prefix).binding = (*b)
-            .prevPrefixBinding
             .and_then(|id| parser_state.binding_index(id))
             .map_or(::core::ptr::null_mut(), |index| {
                 parser_state.m_activeBindings[index]
@@ -10069,25 +10074,21 @@ unsafe fn namespace_name_pointer(
         return ::core::ptr::null();
     }
     let element_ref = &*element;
-    let binding = if element_ref.hasPrefix != 0 {
-        let prefix_name = pool_string_pointer!(&dtd_ref.pool, element_ref.prefix);
-        if prefix_name.is_null() {
-            return ::core::ptr::null();
-        }
-        let prefix =
-            lookup(parser, &raw mut dtd_ref.prefixes, prefix_name as KEY, 0) as *mut PREFIX;
-        if prefix.is_null() {
-            return ::core::ptr::null();
-        }
-        (*prefix).binding
+    let binding_prefix = if element_ref.hasPrefix != 0 {
+        BindingPrefix::Named(element_ref.prefix)
     } else {
-        dtd_ref.defaultPrefix.binding
+        BindingPrefix::Default
     };
-    if binding.is_null() {
-        ::core::ptr::null()
-    } else {
-        (*binding).uri
-    }
+    let parser_state = &*parser;
+    let Some(binding_id) =
+        active_binding_id_for_prefix(&parser_state.m_activeBindings, binding_prefix)
+    else {
+        return ::core::ptr::null();
+    };
+    let Some(binding_index) = parser_state.binding_index(binding_id) else {
+        return ::core::ptr::null();
+    };
+    parser_state.m_activeBindings[binding_index].uri.as_ptr()
 }
 
 unsafe extern "C" fn storeAtts(
@@ -10650,30 +10651,20 @@ unsafe extern "C" fn storeAtts(
                 if matches!(attribute_prefix, AttributePrefix::None) {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                let prefix = match attribute_prefix {
+                let binding_prefix = match attribute_prefix {
                     AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
-                    AttributePrefix::Default => &raw mut dtd.defaultPrefix,
-                    AttributePrefix::Named(name) => {
-                        let name = pool_string_pointer!(&dtd.pool, name);
-                        if name.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        let prefix = lookup(
-                            parser,
-                            &raw mut dtd.prefixes,
-                            name as KEY,
-                            0 as crate::__stddef_size_t_h::size_t,
-                        ) as *mut PREFIX;
-                        if prefix.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        prefix
-                    }
+                    AttributePrefix::Default => BindingPrefix::Default,
+                    AttributePrefix::Named(name) => BindingPrefix::Named(name),
                 };
-                b = (*prefix).binding;
-                if b.is_null() {
+                let Some(binding_id) =
+                    active_binding_id_for_prefix(&parser_ref.m_activeBindings, binding_prefix)
+                else {
                     return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
-                }
+                };
+                let Some(binding_index) = parser_ref.binding_index(binding_id) else {
+                    return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
+                };
+                b = parser_ref.m_activeBindings[binding_index].binding.as_ptr();
                 j_0 = 0 as ::core::ffi::c_uint;
                 while j_0 < (*b).uriLen as ::core::ffi::c_uint {
                     let c: crate::expat_external_h::XML_Char = *(*b).uri.offset(j_0 as isize);
@@ -10798,7 +10789,7 @@ unsafe extern "C" fn storeAtts(
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    let Some(prefix_name) = (*(*b).prefix).name else {
+                    let BindingPrefix::Named(prefix_name) = (*b).prefix else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
                     s = pool_string_pointer!(&dtd.pool, prefix_name);
@@ -10902,19 +10893,15 @@ unsafe extern "C" fn storeAtts(
         return crate::expat_h::XML_ERROR_NONE;
     }
     let (binding, local_part_offset) = if (*elementType).hasPrefix != 0 {
-        let prefix_name = pool_string_pointer!(&dtd.pool, (*elementType).prefix);
-        if prefix_name.is_null() {
+        let Some(binding_id) = active_binding_id_for_prefix(
+            &(*parser).m_activeBindings,
+            BindingPrefix::Named((*elementType).prefix),
+        ) else {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
-        }
-        let prefix = lookup(
-            parser,
-            &raw mut dtd.prefixes,
-            prefix_name as KEY,
-            0 as crate::__stddef_size_t_h::size_t,
-        ) as *mut PREFIX;
-        if prefix.is_null() || (*prefix).binding.is_null() {
+        };
+        let Some(binding_index) = (*parser).binding_index(binding_id) else {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
-        }
+        };
         let tag_name = {
             let parser_ref = &*parser;
             let tag = tagPtr.as_ref();
@@ -10927,11 +10914,29 @@ unsafe extern "C" fn storeAtts(
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        ((*prefix).binding, colon + 1)
-    } else if !dtd.defaultPrefix.binding.is_null() {
-        (dtd.defaultPrefix.binding, 0)
+        (
+            (&(*parser).m_activeBindings)[binding_index]
+                .binding
+                .as_ptr()
+                .cast_mut(),
+            colon + 1,
+        )
     } else {
-        return crate::expat_h::XML_ERROR_NONE;
+        let Some(binding_id) =
+            active_binding_id_for_prefix(&(*parser).m_activeBindings, BindingPrefix::Default)
+        else {
+            return crate::expat_h::XML_ERROR_NONE;
+        };
+        let Some(binding_index) = (*parser).binding_index(binding_id) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        (
+            (&(*parser).m_activeBindings)[binding_index]
+                .binding
+                .as_ptr()
+                .cast_mut(),
+            0,
+        )
     };
 
     let (binding_index, uri_len, uri_alloc, binding_prefix) = {
@@ -10951,10 +10956,10 @@ unsafe extern "C" fn storeAtts(
             binding_ref.prefix,
         )
     };
-    if binding_prefix.is_null() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let prefix_name = (*binding_prefix).name.and_then(|name| dtd.pool.chars_from(name));
+    let prefix_name = match binding_prefix {
+        BindingPrefix::Default => None,
+        BindingPrefix::Named(name) => dtd.pool.chars_from(name),
+    };
     let prefix_name = if (*parser).m_ns_triplets != 0 {
         match prefix_name.and_then(terminated_xml_chars) {
             Some(name) => name,
@@ -11151,18 +11156,20 @@ unsafe extern "C" fn addBinding(
         };
         Some(storage.id)
     };
-    let previous_prefix_binding = if prefix.binding.is_null() {
-        None
+    let is_default_prefix = ::core::ptr::eq(
+        prefix as *const PREFIX,
+        &raw const (*parser_dtd_ptr!(parser_ptr)).defaultPrefix,
+    );
+    let binding_prefix = if is_default_prefix {
+        BindingPrefix::Default
     } else {
-        let Some(storage) = parser
-            .m_activeBindings
-            .iter()
-            .find(|storage| storage.binding.as_ptr() == prefix.binding)
-        else {
+        let Some(name) = prefix.name else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        Some(storage.id)
+        BindingPrefix::Named(name)
     };
+    let previous_prefix_binding =
+        active_binding_id_for_prefix(&parser.m_activeBindings, binding_prefix);
     let binding_id = BindingId(parser.m_nextBindingId);
     let Some(next_binding_id) = parser.m_nextBindingId.checked_add(1) else {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -11200,18 +11207,9 @@ unsafe extern "C" fn addBinding(
     if parser.m_namespaceSeparator != 0 {
         b.uri.add(uri.len()).write(parser.m_namespaceSeparator);
     }
-    b.prefix = prefix;
+    b.prefix = binding_prefix;
     b.attId = attribute_name;
     b.prevPrefixBinding = previous_prefix_binding;
-    let is_default_prefix = ::core::ptr::eq(
-        prefix as *const PREFIX,
-        &raw const (*parser_dtd_ptr!(parser_ptr)).defaultPrefix,
-    );
-    if uri.is_empty() && is_default_prefix {
-        prefix.binding = ::core::ptr::null_mut();
-    } else {
-        prefix.binding = b;
-    }
     b.nextTagBinding = nextTagBinding;
     *bindingsPtr = b;
     if attribute_name.is_some() && parser.m_startNamespaceDeclHandler {
@@ -11225,7 +11223,7 @@ unsafe extern "C" fn addBinding(
             callback.invoke(
                 handler_arg_from_state!(parser),
                 prefix_name_pointer,
-                if !prefix.binding.is_null() {
+                if !(uri.is_empty() && is_default_prefix) {
                     uri.as_ptr().cast()
                 } else {
                     ::core::ptr::null::<crate::expat_external_h::XML_Char>()
@@ -17505,14 +17503,22 @@ unsafe extern "C" fn getContext(
     let parser = &mut *parser;
     let dtd = &mut *parser_dtd_ptr!(parser);
     let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
-    if !dtd.defaultPrefix.binding.is_null() {
+    if let Some(binding_id) =
+        active_binding_id_for_prefix(&parser.m_activeBindings, BindingPrefix::Default)
+    {
+        let Some(binding_index) = parser.binding_index(binding_id) else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
         if !pool_append_context_char(
             &mut parser.m_tempPool,
             0x3d as crate::expat_external_h::XML_Char,
         ) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        let binding = &*dtd.defaultPrefix.binding;
+        let binding = parser.m_activeBindings[binding_index]
+            .binding
+            .first()
+            .expect("binding storage has one binding");
         let mut len = binding.uriLen;
         if (*parser).m_namespaceSeparator != 0 {
             len -= 1;
@@ -17524,9 +17530,18 @@ unsafe extern "C" fn getContext(
     }
     for entry in hash_table_entries(&dtd.prefixes) {
         let prefix = &*(entry.bytes.as_ptr() as *const PREFIX);
-        if prefix.binding.is_null() {
+        let Some(prefix_name) = prefix.name else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
+        let Some(binding_id) = active_binding_id_for_prefix(
+            &parser.m_activeBindings,
+            BindingPrefix::Named(prefix_name),
+        ) else {
             continue;
-        }
+        };
+        let Some(binding_index) = parser.binding_index(binding_id) else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
         if needSep as ::core::ffi::c_int != 0
             && !pool_append_context_char(
                 &mut parser.m_tempPool,
@@ -17535,9 +17550,6 @@ unsafe extern "C" fn getContext(
         {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        let Some(prefix_name) = prefix.name else {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        };
         let prefix_name = pool_string_pointer!(&dtd.pool, prefix_name);
         if prefix_name.is_null()
             || !pool_append_context_c_string(&mut parser.m_tempPool, prefix_name)
@@ -17550,7 +17562,10 @@ unsafe extern "C" fn getContext(
         ) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        let binding = &*prefix.binding;
+        let binding = parser.m_activeBindings[binding_index]
+            .binding
+            .first()
+            .expect("binding storage has one binding");
         let mut len = binding.uriLen;
         if parser.m_namespaceSeparator != 0 {
             len -= 1;
@@ -17836,7 +17851,6 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
         paramEntities: empty_hash_table(),
         defaultPrefix: PREFIX {
             name: None,
-            binding: ::core::ptr::null_mut(),
         },
         in_eldecl: crate::expat_h::XML_FALSE,
         scaffold: empty_scaffold(),
@@ -17886,7 +17900,6 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_
     poolClear(&raw mut p.pool);
     poolClear(&raw mut p.entityValuePool);
     p.defaultPrefix.name = None;
-    p.defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     p.in_eldecl = crate::expat_h::XML_FALSE;
     p.scaffIndex = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let backing = {
