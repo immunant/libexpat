@@ -1010,8 +1010,56 @@ pub mod xmltok_impl_c {
         namingBitmap[bitmap_index] & (1 << ((input[offset + width - 1] as u8) & 0x1f)) != 0
     }
 
+    fn normal_pi_utf8_invalid(input: &[u8], offset: usize, width: usize) -> bool {
+        let bytes = &input[offset..offset + width];
+        let b0 = bytes[0];
+        let b1 = bytes[1];
+        match width {
+            2 => b0 < 0xc2 || b1 & 0xc0 != 0x80,
+            3 => {
+                let b2 = bytes[2];
+                b2 & 0xc0 != 0x80
+                    || (b0 == 0xef && b1 == 0xbf && b2 > 0xbd)
+                    || (b0 == 0xe0 && (b1 < 0xa0 || b1 & 0xc0 == 0xc0))
+                    || (b0 != 0xe0 && (b1 & 0xc0 != 0x80 || (b0 == 0xed && b1 > 0x9f)))
+            }
+            4 => {
+                let b2 = bytes[2];
+                let b3 = bytes[3];
+                b2 & 0xc0 != 0x80
+                    || b3 & 0xc0 != 0x80
+                    || (b0 == 0xf0 && (b1 < 0x90 || b1 & 0xc0 == 0xc0))
+                    || (b0 != 0xf0 && (b1 & 0xc0 != 0x80 || (b0 == 0xf4 && b1 > 0x8f)))
+            }
+            _ => true,
+        }
+    }
+
+    fn normal_pi_utf8_name_char(
+        input: &[u8],
+        offset: usize,
+        width: usize,
+        pages: &[::core::ffi::c_uchar; 256],
+    ) -> bool {
+        if width == 4 {
+            return false;
+        }
+        let b0 = input[offset];
+        let b1 = input[offset + 1];
+        let bitmap_index = if width == 2 {
+            pages[((b0 >> 2) & 7) as usize] as usize * 8
+                + ((b0 & 3) as usize) * 2
+                + ((b1 >> 5) & 1) as usize
+        } else {
+            pages[(((b0 & 0x0f) << 4) + (b1 >> 2 & 0x0f)) as usize] as usize * 8
+                + ((b1 & 3) as usize) * 2
+                + ((input[offset + 2] >> 5) & 1) as usize
+        };
+        namingBitmap[bitmap_index] & (1 << (input[offset + width - 1] & 0x1f)) != 0
+    }
+
     fn normal_pi_target_token(
-        input: &[::core::ffi::c_char],
+        input: &[u8],
         target: usize,
         terminator: usize,
     ) -> Option<::core::ffi::c_int> {
@@ -1036,7 +1084,7 @@ pub mod xmltok_impl_c {
                 crate::ascii_h::ASCII_L_1 as u8,
             ),
         ] {
-            match input[target + offset] as u8 {
+            match input[target + offset] {
                 value if value == lower => {}
                 value if value == upper_case => upper = true,
                 _ => return Some(crate::src::xmltok::XML_TOK_PI_1),
@@ -1051,14 +1099,14 @@ pub mod xmltok_impl_c {
 
     fn normal_scan_pi_impl(
         enc: &normal_encoding,
-        input: &[::core::ffi::c_char],
+        input: &[u8],
     ) -> (::core::ffi::c_int, Option<usize>) {
         if input.is_empty() {
             return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
         }
         let target = 0;
         let mut offset = 0;
-        match normal_byte_type(enc, input, offset) {
+        match enc.type_0[input[offset] as usize] as ::core::ffi::c_int {
             22 | 24 => offset += 1,
             29 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
             kind @ (5 | 6 | 7) => {
@@ -1067,8 +1115,8 @@ pub mod xmltok_impl_c {
                     return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                 }
                 if enc.enc.isUtf8 == 0
-                    || normal_utf8_invalid(input, offset, width)
-                    || !normal_utf8_name_char(input, offset, width, &nmstrtPages)
+                    || normal_pi_utf8_invalid(input, offset, width)
+                    || !normal_pi_utf8_name_char(input, offset, width, &nmstrtPages)
                 {
                     return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                 }
@@ -1078,7 +1126,7 @@ pub mod xmltok_impl_c {
         }
 
         while offset < input.len() {
-            match normal_byte_type(enc, input, offset) {
+            match enc.type_0[input[offset] as usize] as ::core::ffi::c_int {
                 22 | 24 | 25 | 26 | 27 => offset += 1,
                 29 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
                 kind @ (5 | 6 | 7) => {
@@ -1087,8 +1135,8 @@ pub mod xmltok_impl_c {
                         return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                     }
                     if enc.enc.isUtf8 == 0
-                        || normal_utf8_invalid(input, offset, width)
-                        || !normal_utf8_name_char(input, offset, width, &namePages)
+                        || normal_pi_utf8_invalid(input, offset, width)
+                        || !normal_pi_utf8_name_char(input, offset, width, &namePages)
                     {
                         return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                     }
@@ -1100,13 +1148,14 @@ pub mod xmltok_impl_c {
                     };
                     offset += 1;
                     while offset < input.len() {
-                        match normal_byte_type(enc, input, offset) {
+                        match enc.type_0[input[offset] as usize] as ::core::ffi::c_int {
                             kind @ (5 | 6 | 7) => {
                                 let width = kind as usize - 3;
                                 if input.len() - offset < width {
                                     return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                                 }
-                                if enc.enc.isUtf8 != 0 && normal_utf8_invalid(input, offset, width)
+                                if enc.enc.isUtf8 != 0
+                                    && normal_pi_utf8_invalid(input, offset, width)
                                 {
                                     return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                                 }
@@ -1120,7 +1169,7 @@ pub mod xmltok_impl_c {
                                 if offset == input.len() {
                                     return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                                 }
-                                if input[offset] as u8 == 0x3e {
+                                if input[offset] == 0x3e {
                                     return (token, Some(offset + 1));
                                 }
                             }
@@ -1137,7 +1186,7 @@ pub mod xmltok_impl_c {
                     if offset == input.len() {
                         return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                     }
-                    return if input[offset] as u8 == 0x3e {
+                    return if input[offset] == 0x3e {
                         (token, Some(offset + 1))
                     } else {
                         (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset))
@@ -1147,25 +1196,6 @@ pub mod xmltok_impl_c {
             }
         }
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
-    }
-
-    pub unsafe extern "C" fn normal_scanPi(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
-        let enc = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = normal_scan_pi_impl(enc, input);
-        if let Some(offset) = next {
-            unsafe { *nextTokPtr = ptr.add(offset) };
-        }
-        token
     }
 
     pub unsafe extern "C" fn normal_scanCdataSection(
@@ -2204,7 +2234,11 @@ pub mod xmltok_impl_c {
                 normal_scanCdataSection(enc, ptr.add(start), end, nextTokPtr)
             }
             NormalScanLtAction::ProcessingInstruction(start) => {
-                normal_scanPi(enc, ptr.add(start), end, nextTokPtr)
+                let (token, next) = normal_scan_pi_impl(normal, &input[start..]);
+                if let Some(next) = next {
+                    *nextTokPtr = ptr.add(start + next);
+                }
+                token
             }
             NormalScanLtAction::EndTag(start) => {
                 let end_tag_input = &input[start..];
@@ -3051,7 +3085,11 @@ pub mod xmltok_impl_c {
                 normal_scanDecl(enc, ptr.add(start), end, nextTokPtr)
             }
             NormalPrologAction::ProcessingInstruction(start) => {
-                normal_scanPi(enc, ptr.add(start), end, nextTokPtr)
+                let (token, next) = normal_scan_pi_impl(normal, &input[start..]);
+                if let Some(next) = next {
+                    *nextTokPtr = ptr.add(start + next);
+                }
+                token
             }
             NormalPrologAction::Percent(start) => {
                 normal_scanPercent(enc, ptr.add(start), end, nextTokPtr)
@@ -11943,7 +11981,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPercent;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_updatePosition;
