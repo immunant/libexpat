@@ -5196,15 +5196,12 @@ pub unsafe extern "C" fn expat_malloc(
     if mallocedPtr.is_null() {
         return crate::__stddef_null_h::NULL;
     }
-    // The payload-size header is observable through Expat's allocation-test
-    // interface and remains part of this allocation layout.  Reallocation
-    // uses the root-owned metadata above instead of reading it back.
+    // The allocation-test interface observes this prefix value.  The owned
+    // registry below remains the source for internal resize/free accounting.
     *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t) = size;
-    let payload_ptr = mallocedPtr
-        .cast::<u8>()
-        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
-        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-        .cast::<::core::ffi::c_void>();
+    let payload_offset = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING);
+    let payload_ptr = mallocedPtr.wrapping_byte_add(payload_offset);
     let allocation_totals = {
         let mut root = root
             .lock()
