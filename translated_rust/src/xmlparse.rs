@@ -3703,21 +3703,21 @@ pub unsafe extern "C" fn XML_SetUserData_ffi(
 ) {
     XML_SetUserData(parser, p)
 }
-pub unsafe extern "C" fn XML_SetBase(
+pub extern "C" fn XML_SetBase(
     mut parser: crate::expat_h::XML_Parser,
     mut p: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Status {
-    if parser.is_null() {
+    let Some(parser_state) = parser_mut(parser) else {
         return crate::expat_h::XML_STATUS_ERROR;
-    }
+    };
     if !p.is_null() {
-        p = poolCopyString(&mut (*(*parser).m_dtd).pool, p);
+        p = poolCopyString(&mut expect_dtd_mut(parser_state.m_dtd).pool, p);
         if p.is_null() {
             return crate::expat_h::XML_STATUS_ERROR;
         }
-        (*parser).m_curBase = p;
+        parser_state.m_curBase = p;
     } else {
-        (*parser).m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        parser_state.m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     }
     return crate::expat_h::XML_STATUS_OK;
 }
