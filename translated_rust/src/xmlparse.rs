@@ -1969,7 +1969,10 @@ pub struct XML_ParserStruct {
     m_buffer: InputBuffer,
     pub m_mem: crate::expat_h::XML_Memory_Handling_Suite,
     pub m_bufferPtr: *const ::core::ffi::c_char,
-    pub m_bufferEnd: *mut ::core::ffi::c_char,
+    // The end of initialized input is an offset into `m_buffer.bytes`.  It
+    // used to be an interior pointer, which became stale whenever the
+    // Rust-owned buffer moved during growth.
+    pub m_bufferEnd: usize,
     pub m_bufferLim: *const ::core::ffi::c_char,
     pub m_parseEndByteIndex: crate::expat_external_h::XML_Index,
     pub m_parseEndPtr: *const ::core::ffi::c_char,
@@ -3308,11 +3311,12 @@ unsafe extern "C" fn callProcessor(
             },
         );
         available_buffer = available_buffer.wrapping_add(
-            (if !(*parser).m_bufferLim.is_null() && !(*parser).m_bufferEnd.is_null() {
-                (*parser).m_bufferLim.offset_from((*parser).m_bufferEnd)
-            } else {
-                0 as isize
-            }) as crate::__stddef_size_t_h::size_t,
+            (*parser)
+                .m_buffer
+                .bytes
+                .as_ref()
+                .map_or(0, |bytes| bytes.len().saturating_sub((*parser).m_bufferEnd))
+                as crate::__stddef_size_t_h::size_t,
         );
         let enough: bool = have_now
             >= (2 as crate::__stddef_size_t_h::size_t).wrapping_mul(had_before)
@@ -3487,7 +3491,7 @@ fn initial_parser_struct(
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
         m_bufferPtr: ::core::ptr::null::<::core::ffi::c_char>(),
-        m_bufferEnd: ::core::ptr::null_mut::<::core::ffi::c_char>(),
+        m_bufferEnd: 0,
         m_bufferLim: ::core::ptr::null::<::core::ffi::c_char>(),
         m_parseEndByteIndex: 0,
         m_parseEndPtr: ::core::ptr::null::<::core::ffi::c_char>(),
@@ -3964,11 +3968,10 @@ fn parser_init(
         .remove(&parser_key);
     if let Some(bytes) = parser.m_buffer.bytes.as_mut() {
         parser.m_bufferPtr = bytes.as_ptr();
-        parser.m_bufferEnd = bytes.as_mut_ptr();
     } else {
         parser.m_bufferPtr = ::core::ptr::null::<::core::ffi::c_char>();
-        parser.m_bufferEnd = ::core::ptr::null_mut::<::core::ffi::c_char>();
     }
+    parser.m_bufferEnd = 0;
     parser.m_parseEndByteIndex = 0 as crate::expat_external_h::XML_Index;
     parser.m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
     parser.m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
@@ -5951,7 +5954,13 @@ unsafe fn parse_buffer_impl(
         let start = parser_ref.m_bufferPtr;
         parser_ref.m_positionPtr = start;
         parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_add(len as usize);
-        parser_ref.m_parseEndPtr = parser_ref.m_bufferEnd;
+        parser_ref.m_parseEndPtr = parser_ref
+            .m_buffer
+            .bytes
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr()
+            .wrapping_add(parser_ref.m_bufferEnd);
         parser_ref.m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
         parser_ref.m_parsingStatus.finalBuffer = is_final as crate::expat_h::XML_Bool;
         (start, parser_ref.m_parseEndPtr)
@@ -6041,18 +6050,21 @@ pub unsafe extern "C" fn XML_GetBuffer(
         _ => {}
     }
     parser_ref.m_lastBufferRequestSize = len;
-    if len as isize
-        > (if !parser_ref.m_bufferLim.is_null() && !parser_ref.m_bufferEnd.is_null() {
-            parser_ref.m_bufferLim.offset_from(parser_ref.m_bufferEnd)
-        } else {
-            0 as isize
-        })
+    if len as usize
+        > parser_ref
+            .m_buffer
+            .bytes
+            .as_ref()
+            .map_or(0, |bytes| bytes.len().saturating_sub(parser_ref.m_bufferEnd))
         || parser_ref.m_buffer.bytes.is_none()
     {
         let mut keep: ::core::ffi::c_int = 0;
         let mut neededSize: ::core::ffi::c_int = (len as ::core::ffi::c_uint).wrapping_add(
-            (if !parser_ref.m_bufferEnd.is_null() && !parser_ref.m_bufferPtr.is_null() {
-                parser_ref.m_bufferEnd.offset_from(parser_ref.m_bufferPtr)
+            (if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
+                parser_ref.m_bufferEnd as isize
+                    - parser_ref
+                        .m_bufferPtr
+                        .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
             } else {
                 0 as isize
             }) as ::core::ffi::c_uint,
@@ -6109,10 +6121,11 @@ pub unsafe extern "C" fn XML_GetBuffer(
                 crate::stdlib::memmove(
                     base as *mut ::core::ffi::c_void,
                     base.offset(offset as isize) as *const ::core::ffi::c_void,
-                    (parser_ref.m_bufferEnd.offset_from(parser_ref.m_bufferPtr) + keep as isize)
-                        as crate::__stddef_size_t_h::size_t,
+                    (parser_ref.m_bufferEnd as isize
+                        - parser_ref.m_bufferPtr.offset_from(base)
+                        + keep as isize) as crate::__stddef_size_t_h::size_t,
                 );
-                parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.offset(-(offset as isize));
+                parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_sub(offset as usize);
                 parser_ref.m_bufferPtr = parser_ref.m_bufferPtr.offset(-(offset as isize));
             }
         } else {
@@ -6165,15 +6178,21 @@ pub unsafe extern "C" fn XML_GetBuffer(
                 crate::stdlib::memcpy(
                     new_buf as *mut ::core::ffi::c_void,
                     parser_ref.m_bufferPtr.offset(-keep as isize) as *const ::core::ffi::c_void,
-                    ((if !parser_ref.m_bufferEnd.is_null() && !parser_ref.m_bufferPtr.is_null() {
-                        parser_ref.m_bufferEnd.offset_from(parser_ref.m_bufferPtr)
+                    ((if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
+                        parser_ref.m_bufferEnd as isize
+                            - parser_ref
+                                .m_bufferPtr
+                                .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
                     } else {
                         0 as isize
                     }) + keep as isize) as crate::__stddef_size_t_h::size_t,
                 );
                 let buffered =
-                    (if !parser_ref.m_bufferEnd.is_null() && !parser_ref.m_bufferPtr.is_null() {
-                        parser_ref.m_bufferEnd.offset_from(parser_ref.m_bufferPtr)
+                    (if !parser_ref.m_bufferPtr.is_null() && parser_ref.m_buffer.bytes.is_some() {
+                        parser_ref.m_bufferEnd as isize
+                            - parser_ref
+                                .m_bufferPtr
+                                .offset_from(parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr())
                     } else {
                         0 as isize
                     }) as usize;
@@ -6182,12 +6201,12 @@ pub unsafe extern "C" fn XML_GetBuffer(
                 }
                 parser_ref.m_buffer.bytes = Some(new_bytes);
                 let base = parser_ref.m_buffer.bytes.as_mut().unwrap().as_mut_ptr();
-                parser_ref.m_bufferEnd = base.add(buffered + keep as usize);
+                parser_ref.m_bufferEnd = buffered + keep as usize;
                 parser_ref.m_bufferPtr = base.add(keep as usize);
             } else {
                 parser_ref.m_buffer.bytes = Some(new_bytes);
                 let base = parser_ref.m_buffer.bytes.as_mut().unwrap().as_mut_ptr();
-                parser_ref.m_bufferEnd = base;
+                parser_ref.m_bufferEnd = 0;
                 parser_ref.m_bufferPtr = base;
             }
             let free_fcn = parser_ref
@@ -6200,7 +6219,14 @@ pub unsafe extern "C" fn XML_GetBuffer(
         parser_ref.m_eventPtr = parser_ref.m_eventEndPtr;
         parser_ref.m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
     }
-    return parser_ref.m_bufferEnd as *mut ::core::ffi::c_void;
+    return parser_ref
+        .m_buffer
+        .bytes
+        .as_mut()
+        .unwrap()
+        .as_mut_ptr()
+        .wrapping_add(parser_ref.m_bufferEnd)
+        .cast();
 }
 #[export_name = "XML_GetBuffer"]
 
@@ -6424,10 +6450,7 @@ pub unsafe extern "C" fn XML_GetInputContext(
                 as ::core::ffi::c_int;
         }
         if !size.is_null() {
-            *size = (*parser)
-                .m_bufferEnd
-                .offset_from((*parser).m_buffer.bytes.as_ref().unwrap().as_ptr())
-                as ::core::ffi::c_int;
+            *size = (*parser).m_bufferEnd as ::core::ffi::c_int;
         }
         return (*parser).m_buffer.bytes.as_ref().unwrap().as_ptr();
     }
