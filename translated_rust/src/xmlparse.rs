@@ -5460,7 +5460,21 @@ unsafe extern "C" fn doContent(
                 if result_1 as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
-                    freeBindings(parser, bindings);
+                    while !bindings.is_null() {
+                        let b: *mut BINDING = bindings;
+                        if (*parser).m_endNamespaceDeclHandler.is_some() {
+                            (*parser)
+                                .m_endNamespaceDeclHandler
+                                .expect("non-null function pointer")(
+                                (*parser).m_handlerArg,
+                                (*(*b).prefix).name,
+                            );
+                        }
+                        bindings = (*bindings).nextTagBinding as *mut BINDING;
+                        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
+                        (*parser).m_freeBindingList = b;
+                        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+                    }
                     return result_1;
                 }
                 (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
@@ -5490,7 +5504,21 @@ unsafe extern "C" fn doContent(
                     reportDefault(parser, enc, s, next);
                 }
                 poolClear(&raw mut (*parser).m_tempPool);
-                freeBindings(parser, bindings);
+                while !bindings.is_null() {
+                    let b: *mut BINDING = bindings;
+                    if (*parser).m_endNamespaceDeclHandler.is_some() {
+                        (*parser)
+                            .m_endNamespaceDeclHandler
+                            .expect("non-null function pointer")(
+                            (*parser).m_handlerArg,
+                            (*(*b).prefix).name,
+                        );
+                    }
+                    bindings = (*bindings).nextTagBinding as *mut BINDING;
+                    (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
+                    (*parser).m_freeBindingList = b;
+                    (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+                }
                 if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
                     && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
                         != crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -5843,26 +5871,6 @@ unsafe extern "C" fn doContent(
         }
         s = next;
         *eventPP = s;
-    }
-}
-
-unsafe extern "C" fn freeBindings(
-    mut parser: crate::expat_h::XML_Parser,
-    mut bindings: *mut BINDING,
-) {
-    while !bindings.is_null() {
-        let mut b: *mut BINDING = bindings;
-        if (*parser).m_endNamespaceDeclHandler.is_some() {
-            (*parser)
-                .m_endNamespaceDeclHandler
-                .expect("non-null function pointer")(
-                (*parser).m_handlerArg, (*(*b).prefix).name
-            );
-        }
-        bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-        (*parser).m_freeBindingList = b;
-        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
     }
 }
 
