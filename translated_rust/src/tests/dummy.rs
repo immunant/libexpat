@@ -1,9 +1,10 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use super::runtests::current_test_parser;
+
 extern "C" {
     pub type XML_ParserStruct;
     fn XML_FreeContentModel(parser: XML_Parser, model: *mut XML_Content);
-    static mut g_parser: XML_Parser;
 }
 pub type XML_Char = ::core::ffi::c_char;
 pub type XML_Parser = *mut XML_ParserStruct;
@@ -145,8 +146,9 @@ pub unsafe extern "C" fn dummy_element_decl_handler(
     _name: *const XML_Char,
     model: *mut XML_Content,
 ) {
+    let parser = current_test_parser() as XML_Parser;
     unsafe {
-        XML_FreeContentModel(g_parser, model);
+        XML_FreeContentModel(parser, model);
     }
     set_dummy_handler_flag(DUMMY_ELEMENT_DECL_HANDLER_FLAG);
 }
