@@ -217,14 +217,14 @@ pub type PROLOG_HANDLER = unsafe extern "C" fn(
     *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int;
 
-static mut KW_ANY: [::core::ffi::c_char; 4] = [
+static KW_ANY: [::core::ffi::c_char; 4] = [
     crate::ascii_h::ASCII_A as ::core::ffi::c_char,
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_Y as ::core::ffi::c_char,
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_ATTLIST: [::core::ffi::c_char; 8] = [
+static KW_ATTLIST: [::core::ffi::c_char; 8] = [
     crate::ascii_h::ASCII_A as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
@@ -235,7 +235,7 @@ static mut KW_ATTLIST: [::core::ffi::c_char; 8] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_CDATA: [::core::ffi::c_char; 6] = [
+static KW_CDATA: [::core::ffi::c_char; 6] = [
     crate::ascii_h::ASCII_C as ::core::ffi::c_char,
     crate::ascii_h::ASCII_D as ::core::ffi::c_char,
     crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -244,7 +244,7 @@ static mut KW_CDATA: [::core::ffi::c_char; 6] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_DOCTYPE: [::core::ffi::c_char; 8] = [
+static KW_DOCTYPE: [::core::ffi::c_char; 8] = [
     crate::ascii_h::ASCII_D as ::core::ffi::c_char,
     crate::ascii_h::ASCII_O as ::core::ffi::c_char,
     crate::ascii_h::ASCII_C as ::core::ffi::c_char,
@@ -255,7 +255,7 @@ static mut KW_DOCTYPE: [::core::ffi::c_char; 8] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_ELEMENT: [::core::ffi::c_char; 8] = [
+static KW_ELEMENT: [::core::ffi::c_char; 8] = [
     crate::ascii_h::ASCII_E as ::core::ffi::c_char,
     crate::ascii_h::ASCII_L as ::core::ffi::c_char,
     crate::ascii_h::ASCII_E as ::core::ffi::c_char,
@@ -266,7 +266,7 @@ static mut KW_ELEMENT: [::core::ffi::c_char; 8] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_EMPTY: [::core::ffi::c_char; 6] = [
+static KW_EMPTY: [::core::ffi::c_char; 6] = [
     crate::ascii_h::ASCII_E as ::core::ffi::c_char,
     crate::ascii_h::ASCII_M as ::core::ffi::c_char,
     crate::ascii_h::ASCII_P as ::core::ffi::c_char,
@@ -275,7 +275,7 @@ static mut KW_EMPTY: [::core::ffi::c_char; 6] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_ENTITIES: [::core::ffi::c_char; 9] = [
+static KW_ENTITIES: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_E as ::core::ffi::c_char,
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
@@ -287,7 +287,7 @@ static mut KW_ENTITIES: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_ENTITY: [::core::ffi::c_char; 7] = [
+static KW_ENTITY: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_E as ::core::ffi::c_char,
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
@@ -297,7 +297,7 @@ static mut KW_ENTITY: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_FIXED: [::core::ffi::c_char; 6] = [
+static KW_FIXED: [::core::ffi::c_char; 6] = [
     crate::ascii_h::ASCII_F as ::core::ffi::c_char,
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_X as ::core::ffi::c_char,
@@ -306,13 +306,13 @@ static mut KW_FIXED: [::core::ffi::c_char; 6] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_ID: [::core::ffi::c_char; 3] = [
+static KW_ID: [::core::ffi::c_char; 3] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_D as ::core::ffi::c_char,
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_IDREF: [::core::ffi::c_char; 6] = [
+static KW_IDREF: [::core::ffi::c_char; 6] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_D as ::core::ffi::c_char,
     crate::ascii_h::ASCII_R as ::core::ffi::c_char,
@@ -321,7 +321,7 @@ static mut KW_IDREF: [::core::ffi::c_char; 6] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_IDREFS: [::core::ffi::c_char; 7] = [
+static KW_IDREFS: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_D as ::core::ffi::c_char,
     crate::ascii_h::ASCII_R as ::core::ffi::c_char,
@@ -331,7 +331,7 @@ static mut KW_IDREFS: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_IGNORE: [::core::ffi::c_char; 7] = [
+static KW_IGNORE: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_G as ::core::ffi::c_char,
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
@@ -341,7 +341,7 @@ static mut KW_IGNORE: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_IMPLIED: [::core::ffi::c_char; 8] = [
+static KW_IMPLIED: [::core::ffi::c_char; 8] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_M as ::core::ffi::c_char,
     crate::ascii_h::ASCII_P as ::core::ffi::c_char,
@@ -352,7 +352,7 @@ static mut KW_IMPLIED: [::core::ffi::c_char; 8] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_INCLUDE: [::core::ffi::c_char; 8] = [
+static KW_INCLUDE: [::core::ffi::c_char; 8] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_C as ::core::ffi::c_char,
@@ -363,7 +363,7 @@ static mut KW_INCLUDE: [::core::ffi::c_char; 8] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_NDATA: [::core::ffi::c_char; 6] = [
+static KW_NDATA: [::core::ffi::c_char; 6] = [
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_D as ::core::ffi::c_char,
     crate::ascii_h::ASCII_A as ::core::ffi::c_char,
@@ -372,7 +372,7 @@ static mut KW_NDATA: [::core::ffi::c_char; 6] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_NMTOKEN: [::core::ffi::c_char; 8] = [
+static KW_NMTOKEN: [::core::ffi::c_char; 8] = [
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_M as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
@@ -383,7 +383,7 @@ static mut KW_NMTOKEN: [::core::ffi::c_char; 8] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_NMTOKENS: [::core::ffi::c_char; 9] = [
+static KW_NMTOKENS: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_M as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
@@ -395,7 +395,7 @@ static mut KW_NMTOKENS: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_NOTATION: [::core::ffi::c_char; 9] = [
+static KW_NOTATION: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_N as ::core::ffi::c_char,
     crate::ascii_h::ASCII_O as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
@@ -407,7 +407,7 @@ static mut KW_NOTATION: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_PCDATA: [::core::ffi::c_char; 7] = [
+static KW_PCDATA: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_P as ::core::ffi::c_char,
     crate::ascii_h::ASCII_C as ::core::ffi::c_char,
     crate::ascii_h::ASCII_D as ::core::ffi::c_char,
@@ -417,7 +417,7 @@ static mut KW_PCDATA: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_PUBLIC: [::core::ffi::c_char; 7] = [
+static KW_PUBLIC: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_P as ::core::ffi::c_char,
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_B as ::core::ffi::c_char,
@@ -427,7 +427,7 @@ static mut KW_PUBLIC: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_REQUIRED: [::core::ffi::c_char; 9] = [
+static KW_REQUIRED: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_R as ::core::ffi::c_char,
     crate::ascii_h::ASCII_E as ::core::ffi::c_char,
     crate::ascii_h::ASCII_Q as ::core::ffi::c_char,
@@ -439,7 +439,7 @@ static mut KW_REQUIRED: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_SYSTEM: [::core::ffi::c_char; 7] = [
+static KW_SYSTEM: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_S as ::core::ffi::c_char,
     crate::ascii_h::ASCII_Y as ::core::ffi::c_char,
     crate::ascii_h::ASCII_S as ::core::ffi::c_char,
@@ -2304,8 +2304,7 @@ unsafe extern "C" fn attlist2(
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            static mut types: [*const ::core::ffi::c_char; 8] = unsafe {
-                [
+            let types: [*const ::core::ffi::c_char; 8] = [
                     &raw const KW_CDATA as *const ::core::ffi::c_char,
                     &raw const KW_ID as *const ::core::ffi::c_char,
                     &raw const KW_IDREF as *const ::core::ffi::c_char,
@@ -2314,8 +2313,7 @@ unsafe extern "C" fn attlist2(
                     &raw const KW_ENTITIES as *const ::core::ffi::c_char,
                     &raw const KW_NMTOKEN as *const ::core::ffi::c_char,
                     &raw const KW_NMTOKENS as *const ::core::ffi::c_char,
-                ]
-            };
+            ];
             let mut i: ::core::ffi::c_int = 0;
             i = 0 as ::core::ffi::c_int;
             while i < ::core::mem::size_of::<[*const ::core::ffi::c_char; 8]>()
