@@ -2159,7 +2159,11 @@ pub struct C2Rust_Unnamed_1 {
 
 pub struct TAG_NAME {
     pub str: *const crate::expat_external_h::XML_Char,
-    pub localPart: *const crate::expat_external_h::XML_Char,
+    // When namespace processing is active, this is the character offset of
+    // the local part within the tag's allocator-backed name buffer.  Keeping
+    // an offset rather than a pointer lets that buffer move during
+    // `storeRawNames` without leaving a stale interior pointer behind.
+    pub localPart: Option<usize>,
     pub prefix: *const crate::expat_external_h::XML_Char,
     pub strLen: ::core::ffi::c_int,
     pub uriLen: ::core::ffi::c_int,
@@ -6672,10 +6676,6 @@ unsafe extern "C" fn storeRawNames(
             if (*tag).name.str == tag_buf as *const crate::expat_external_h::XML_Char {
                 (*tag).name.str = temp as *mut crate::expat_external_h::XML_Char;
             }
-            if !(*tag).name.localPart.is_null() {
-                (*tag).name.localPart = (temp as *mut crate::expat_external_h::XML_Char)
-                    .offset((*tag).name.localPart.offset_from(tag_buf) as isize);
-            }
             (*tag).bufEnd = temp;
             (*tag).bufSize = bufSize;
             rawNameBuf = temp.offset(nameLen as isize);
@@ -7216,8 +7216,7 @@ unsafe extern "C" fn doContent(
                     (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
                     (*tag).parent = (*parser).m_tagStack as *mut tag;
                     (*parser).m_tagStack = tag;
-                    (*tag).name.localPart =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    (*tag).name.localPart = None;
                     (*tag).name.prefix = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     (*tag).rawName = s.offset((*enc).minBytesPerChar as isize);
                     (*tag).rawNameLength = crate::src::xmltok::name_length(enc, (*tag).rawName);
@@ -7316,7 +7315,7 @@ unsafe extern "C" fn doContent(
                     let mut noElmHandlers: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
                     let mut name_0: TAG_NAME = TAG_NAME {
                         str: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-                        localPart: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+                        localPart: None,
                         prefix: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
                         strLen: 0,
                         uriLen: 0,
@@ -7435,7 +7434,11 @@ unsafe extern "C" fn doContent(
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             let mut uri: *mut crate::expat_external_h::XML_Char =
                                 ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                            localPart = (*tag_0).name.localPart;
+                            if let Some(localPartOffset) = (*tag_0).name.localPart {
+                                localPart = ((*tag_0).bufEnd
+                                    as *const crate::expat_external_h::XML_Char)
+                                    .offset(localPartOffset as isize);
+                            }
                             if (*parser).m_ns as ::core::ffi::c_int != 0 && !localPart.is_null() {
                                 uri = ((*tag_0).name.str as *mut crate::expat_external_h::XML_Char)
                                     .offset((*tag_0).name.uriLen as isize);
@@ -7759,6 +7762,7 @@ unsafe extern "C" fn storeAtts(
     let mut binding: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
     let mut localPart: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    let mut localPartOffset: usize = 0;
     elementType = lookup(
         parser,
         &raw mut (*dtd).elementTypes,
@@ -8321,6 +8325,7 @@ unsafe extern "C" fn storeAtts(
         loop {
             let c2rust_fresh35 = localPart;
             localPart = localPart.offset(1);
+            localPartOffset += 1;
             if *c2rust_fresh35 as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
                 break;
             }
@@ -8341,7 +8346,7 @@ unsafe extern "C" fn storeAtts(
             }
         }
     }
-    (*tagNamePtr).localPart = localPart;
+    (*tagNamePtr).localPart = Some(localPartOffset);
     (*tagNamePtr).uriLen = (*binding).uriLen;
     (*tagNamePtr).prefix = (*(*binding).prefix).name;
     (*tagNamePtr).prefixLen = prefixLen;
