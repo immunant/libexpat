@@ -9306,25 +9306,50 @@ pub unsafe extern "C" fn XML_GetCurrentByteIndex_ffi(
 ) -> crate::expat_external_h::XML_Index {
     XML_GetCurrentByteIndex(parser.as_ref())
 }
-pub unsafe extern "C" fn XML_GetCurrentByteCount(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_int;
+/// The copied, value-only state used by `XML_GetCurrentByteCount`.
+///
+/// This keeps the query independent of the ABI-shaped parser, whose callback
+/// fields carry raw pointers unrelated to the current event range.
+struct CurrentByteCountState {
+    event_start: Option<usize>,
+    event_end: Option<usize>,
+    buffer_end: usize,
+}
+
+fn current_byte_count_state(
+    event_start: Option<usize>,
+    event_end: Option<usize>,
+    buffer_end: usize,
+) -> CurrentByteCountState {
+    CurrentByteCountState {
+        event_start,
+        event_end,
+        buffer_end,
     }
-    if let (Some(event_start), Some(event_end)) = ((*parser).m_eventPtr, (*parser).m_eventEndPtr) {
-        if event_end >= event_start && event_end <= (*parser).m_bufferEnd {
+}
+
+fn XML_GetCurrentByteCount(
+    state: Option<CurrentByteCountState>,
+) -> ::core::ffi::c_int {
+    let Some(state) = state else {
+        return 0;
+    };
+    if let (Some(event_start), Some(event_end)) = (state.event_start, state.event_end) {
+        if event_end >= event_start && event_end <= state.buffer_end {
             return (event_end - event_start) as ::core::ffi::c_int;
         }
     }
-    return 0 as ::core::ffi::c_int;
+    0
 }
 #[export_name = "XML_GetCurrentByteCount"]
 
 pub unsafe extern "C" fn XML_GetCurrentByteCount_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    XML_GetCurrentByteCount(parser)
+    let state = parser.as_ref().map(|parser| {
+        current_byte_count_state(parser.m_eventPtr, parser.m_eventEndPtr, parser.m_bufferEnd)
+    });
+    XML_GetCurrentByteCount(state)
 }
 /// The bounded input context exposed by `XML_GetInputContext`.
 ///
