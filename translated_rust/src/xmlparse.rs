@@ -5090,26 +5090,36 @@ unsafe extern "C" fn parserCreate(
     } else {
         *memsuite
     };
-    // A parameter-entity parser shares declaration state with its parent.
-    // Clone that owner before allocating the child, so the child never has to
-    // chase a raw parent pointer to find the DTD later.
-    let inherited_dtd = if share_parent_dtd {
-        if parentParser.is_null() {
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-        match (*parentParser).m_dtd.as_ref() {
-            Some(dtd) => Some(std::sync::Arc::clone(dtd)),
-            None => return ::core::ptr::null_mut::<XML_ParserStruct>(),
-        }
-    } else {
+    // Snapshot the parent state before allocating the child.  The snapshot
+    // owns the shared handles, so no Rust borrow of the opaque parent parser
+    // can survive an allocator callback during child construction.
+    let parent_state = if parentParser.is_null() {
         None
+    } else {
+        let parent = &*parentParser;
+        let inherited_dtd = if share_parent_dtd {
+            match parent.m_dtd.as_ref() {
+                Some(dtd) => Some(std::sync::Arc::clone(dtd)),
+                None => return ::core::ptr::null_mut::<XML_ParserStruct>(),
+            }
+        } else {
+            None
+        };
+        Some((
+            std::sync::Arc::clone(&parent.m_root),
+            parent.m_parentParser,
+            inherited_dtd,
+        ))
     };
+    if share_parent_dtd && parent_state.is_none() {
+        return ::core::ptr::null_mut::<XML_ParserStruct>();
+    }
     let parser_ptr = match allocate_parser_storage(memory_suite) {
         Some(parser) => parser,
         None => return ::core::ptr::null_mut::<XML_ParserStruct>(),
     };
     ::core::ptr::write(parser_ptr, initial_parser_struct(memory_suite));
-    {
+    let root_owner = {
         let parser = &mut *parser_ptr;
         let alloc_tracker = MALLOC_TRACKER {
             bytesAllocated: 0 as XmlBigCount,
@@ -5133,12 +5143,11 @@ unsafe extern "C" fn parserCreate(
                 0 as XmlBigCount
             },
         };
-        if let Some(parent) = parentParser.as_ref() {
-            parser.m_root = std::sync::Arc::clone(&parent.m_root);
+        if let Some((parent_root, parent_depth, _)) = parent_state.as_ref() {
+            parser.m_root = std::sync::Arc::clone(parent_root);
             parser.m_parentParser = Some(
                 ::core::num::NonZeroU32::new(
-                    parent
-                        .m_parentParser
+                    parent_depth
                         .map_or(0, ::core::num::NonZeroU32::get)
                         .saturating_add(1),
                 )
@@ -5151,13 +5160,9 @@ unsafe extern "C" fn parserCreate(
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .alloc_tracker = alloc_tracker;
         }
-    }
+        std::sync::Arc::clone(&parser.m_root)
+    };
     {
-        let root_owner = if parentParser.is_null() {
-            std::sync::Arc::clone(&(*parser_ptr).m_root)
-        } else {
-            std::sync::Arc::clone(&(*parentParser).m_root)
-        };
         let mut root = root_owner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -5250,7 +5255,10 @@ unsafe extern "C" fn parserCreate(
     };
     parser.m_dataBufEnd = INIT_DATA_BUF_SIZE as usize;
     if share_parent_dtd {
-        parser.m_dtd = inherited_dtd;
+        parser.m_dtd = parent_state
+            .as_ref()
+            .and_then(|(_, _, inherited_dtd)| inherited_dtd.as_ref())
+            .cloned();
     } else {
         parser.m_dtd = dtd_create(parser);
         if parser.m_dtd.is_none() {
@@ -5303,11 +5311,11 @@ unsafe extern "C" fn parserCreate(
         return ::core::ptr::null_mut::<XML_ParserStruct>();
     }
     if !nameSep.is_null() {
-        (*parser).m_ns = crate::expat_h::XML_TRUE;
-        (*parser).m_internalEncoding = InternalEncoding::Utf8Ns;
-        (*parser).m_namespaceSeparator = *nameSep;
+        parser.m_ns = crate::expat_h::XML_TRUE;
+        parser.m_internalEncoding = InternalEncoding::Utf8Ns;
+        parser.m_namespaceSeparator = *nameSep;
     } else {
-        (*parser).m_internalEncoding = InternalEncoding::Utf8;
+        parser.m_internalEncoding = InternalEncoding::Utf8;
     }
     return parser;
 }
