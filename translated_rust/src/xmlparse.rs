@@ -10170,17 +10170,14 @@ pub unsafe extern "C" fn XML_FreeContentModel_ffi(
     let _parser = parser.as_ref().expect("non-null parser was checked");
     XML_FreeContentModel(model.addr())
 }
-pub unsafe extern "C" fn XML_MemMalloc(
-    mut parser: crate::expat_h::XML_Parser,
+unsafe fn XML_MemMalloc(
+    parser: &mut XML_ParserStruct,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    if parser.is_null() {
-        return crate::__stddef_null_h::NULL;
-    }
-    return (*parser)
+    parser
         .m_mem
         .malloc_fcn
-        .expect("non-null function pointer")(size);
+        .expect("non-null function pointer")(size)
 }
 #[export_name = "XML_MemMalloc"]
 
@@ -10188,20 +10185,20 @@ pub unsafe extern "C" fn XML_MemMalloc_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
+    let Some(parser) = parser.as_mut() else {
+        return crate::__stddef_null_h::NULL;
+    };
     XML_MemMalloc(parser, size)
 }
-pub unsafe extern "C" fn XML_MemRealloc(
-    mut parser: crate::expat_h::XML_Parser,
+unsafe fn XML_MemRealloc(
+    parser: &mut XML_ParserStruct,
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    if parser.is_null() {
-        return crate::__stddef_null_h::NULL;
-    }
-    return (*parser)
+    parser
         .m_mem
         .realloc_fcn
-        .expect("non-null function pointer")(ptr, size);
+        .expect("non-null function pointer")(ptr, size)
 }
 #[export_name = "XML_MemRealloc"]
 
@@ -10210,16 +10207,16 @@ pub unsafe extern "C" fn XML_MemRealloc_ffi(
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
+    let Some(parser) = parser.as_mut() else {
+        return crate::__stddef_null_h::NULL;
+    };
     XML_MemRealloc(parser, ptr, size)
 }
-pub unsafe extern "C" fn XML_MemFree(
-    mut parser: crate::expat_h::XML_Parser,
+unsafe fn XML_MemFree(
+    parser: &mut XML_ParserStruct,
     mut ptr: *mut ::core::ffi::c_void,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_mem.free_fcn.expect("non-null function pointer")(ptr);
+    parser.m_mem.free_fcn.expect("non-null function pointer")(ptr);
 }
 #[export_name = "XML_MemFree"]
 
@@ -10227,6 +10224,9 @@ pub unsafe extern "C" fn XML_MemFree_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
 ) {
+    let Some(parser) = parser.as_mut() else {
+        return;
+    };
     XML_MemFree(parser, ptr)
 }
 enum DefaultCurrentEvent {
