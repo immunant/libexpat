@@ -1484,6 +1484,12 @@ static START_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+// End-doctype has the same callback signature as end-CDATA, but keeps a
+// separate registration namespace because the two handlers are independent.
+static END_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
+> = std::sync::OnceLock::new();
+
 unsafe fn callCharacterDataHandler(
     parser: crate::expat_h::XML_Parser,
     data: *const crate::expat_external_h::XML_Char,
@@ -2041,7 +2047,7 @@ pub struct XML_ParserStruct {
     pub m_endCdataSectionHandler: bool,
     pub m_defaultHandler: bool,
     pub m_startDoctypeDeclHandler: bool,
-    pub m_endDoctypeDeclHandler: crate::expat_h::XML_EndDoctypeDeclHandler,
+    pub m_endDoctypeDeclHandler: bool,
     pub m_unparsedEntityDeclHandler: bool,
     pub m_notationDeclHandler: bool,
     pub m_startNamespaceDeclHandler: bool,
@@ -3695,7 +3701,7 @@ fn initial_parser_struct(
         m_endCdataSectionHandler: false,
         m_defaultHandler: false,
         m_startDoctypeDeclHandler: false,
-        m_endDoctypeDeclHandler: None,
+        m_endDoctypeDeclHandler: false,
         m_unparsedEntityDeclHandler: false,
         m_notationDeclHandler: false,
         m_startNamespaceDeclHandler: false,
@@ -4098,7 +4104,12 @@ fn parser_init(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
-    parser.m_endDoctypeDeclHandler = None;
+    parser.m_endDoctypeDeclHandler = false;
+    END_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
     parser.m_unparsedEntityDeclHandler = false;
     UNPARSED_ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -4889,6 +4900,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
+    END_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
     ELEMENT_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -5568,7 +5584,19 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler(
             handlers.remove(&(parser as usize));
         }
     }
-    (*parser).m_endDoctypeDeclHandler = end;
+    (*parser).m_endDoctypeDeclHandler = end.is_some();
+    let mut handlers = END_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match end {
+        Some(callback) => {
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        }
+        None => {
+            handlers.remove(&(parser as usize));
+        }
+    }
 }
 #[export_name = "XML_SetDoctypeDeclHandler"]
 
@@ -5612,7 +5640,19 @@ pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler(
     mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_endDoctypeDeclHandler = end;
+        (*parser).m_endDoctypeDeclHandler = end.is_some();
+        let mut handlers = END_DOCTYPE_DECL_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match end {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetEndDoctypeDeclHandler"]
@@ -10927,12 +10967,19 @@ unsafe extern "C" fn doProlog(
                                             }
                                             (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
                                         }
-                                        if (*parser).m_endDoctypeDeclHandler.is_some() {
-                                            (*parser)
-                                                .m_endDoctypeDeclHandler
-                                                .expect("non-null function pointer")(
-                                                (*parser).m_handlerArg,
-                                            );
+                                        if (*parser).m_endDoctypeDeclHandler {
+                                            let callback = END_DOCTYPE_DECL_HANDLERS
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                .get(&(parser as usize))
+                                                .cloned()
+                                                .expect("installed end doctype handler");
+                                            callback.invoke((*parser).m_handlerArg);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
