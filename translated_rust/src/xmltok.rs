@@ -342,61 +342,52 @@ enum ScannerContextKind<'a> {
 }
 
 impl<'a> ScannerContext<'a> {
-    /// # Safety
-    ///
-    /// `ptr..end` must describe a readable range from one allocation, and
-    /// `enc` must identify the matching tokenizer encoding.  This is the
-    /// sole raw-cursor adapter for internal scanner dispatch; its result holds
-    /// only bounded slices and typed encoding references.
-    pub(crate) unsafe fn from_raw(
+    /// Builds an initial-encoding request from a caller-validated character
+    /// slice.  Raw cursor validation belongs to the parser boundary; scanner
+    /// dispatch itself only retains bounded input and a typed encoding state.
+    pub(crate) fn initial(
         scanner: Scanner,
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
+        initial: &'a mut INIT_ENCODING,
+        chars: &'a [::core::ffi::c_char],
     ) -> Self {
-        // `from_raw_parts` requires a non-null, aligned base even for an
-        // empty range, and its length must stay within the addressable slice
-        // limit.  C callers normally retain an input-buffer cursor for an
-        // empty token, but reject a malformed cursor pair here rather than
-        // turning it into a Rust slice first.
-        if enc.is_null()
-            || !enc.is_aligned()
-            || ptr.is_null()
-            || end.is_null()
-            || !ptr.is_aligned()
-            || !end.is_aligned()
-        {
-            return Self(ScannerContextKind::InvalidRange);
-        }
-        let Some(span) = end.addr().checked_sub(ptr.addr()) else {
-            return Self(ScannerContextKind::InvalidRange);
-        };
-        if span > isize::MAX as usize {
-            return Self(ScannerContextKind::InvalidRange);
-        }
-        let chars = ::core::slice::from_raw_parts(ptr, span);
         let input = ScannerInput {
-            // `c_char` and `u8` have identical one-byte layouts.  The safe
-            // cast keeps the raw cursor conversion to this single slice.
+            // `c_char` and `u8` have identical one-byte layouts.
             bytes: bytemuck::cast_slice(chars),
             chars,
         };
-        match scanner {
-            Scanner::InitProlog
-            | Scanner::InitContent
-            | Scanner::InitPrologNS
-            | Scanner::InitContentNS => Self(ScannerContextKind::Initial {
-                scanner,
-                initial: &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING),
-                input,
-            }),
-            _ => Self(ScannerContextKind::Normal {
-                scanner,
-                encoding: &*(enc as *const normal_encoding),
-                input,
-                encoding_id: enc.addr(),
-            }),
-        }
+        Self(ScannerContextKind::Initial {
+            scanner,
+            initial,
+            input,
+        })
+    }
+
+    /// Builds a normal-encoding request from a caller-validated character
+    /// slice.  `encoding_id` preserves the table identity needed by scanner
+    /// state without retaining a raw pointer in this API.
+    pub(crate) fn normal(
+        scanner: Scanner,
+        encoding: &'a normal_encoding,
+        chars: &'a [::core::ffi::c_char],
+    ) -> Self {
+        let input = ScannerInput {
+            bytes: bytemuck::cast_slice(chars),
+            chars,
+        };
+        Self(ScannerContextKind::Normal {
+            scanner,
+            encoding,
+            input,
+            // Keep the identity of the exposed encoding prefix: unknown
+            // encoding registrations are keyed by that stable table address.
+            encoding_id: ::core::ptr::from_ref(&encoding.enc).addr(),
+        })
+    }
+
+    /// Represents a rejected parser cursor without ever constructing a slice
+    /// from it.
+    pub(crate) fn invalid() -> Self {
+        Self(ScannerContextKind::InvalidRange)
     }
 
     /// Returns the checked character view retained by this dispatch request.
@@ -13306,10 +13297,18 @@ static utf8_encoding: normal_encoding = normal_encoding {
 };
 
 pub(crate) fn internal_utf8_encoding_table(namespace_aware: bool) -> &'static ENCODING {
+    &internal_utf8_normal_encoding(namespace_aware).enc
+}
+
+/// Returns the full internal UTF-8 table for tokenizer-only slice dispatch.
+/// The public table accessor above intentionally exposes just the ABI prefix.
+pub(crate) fn internal_utf8_normal_encoding(
+    namespace_aware: bool,
+) -> &'static normal_encoding {
     if namespace_aware {
-        &internal_utf8_encoding_ns.enc
+        &internal_utf8_encoding_ns
     } else {
-        &internal_utf8_encoding.enc
+        &internal_utf8_encoding
     }
 }
 
