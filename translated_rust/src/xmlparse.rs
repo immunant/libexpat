@@ -11080,9 +11080,6 @@ unsafe extern "C" fn externalEntityInitProcessor2(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let Some(input_len) = end.addr().checked_sub(start.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
     if parser.is_null()
         || start.is_null()
         || end.is_null()
@@ -11091,14 +11088,31 @@ unsafe extern "C" fn externalEntityInitProcessor2(
         || !start.is_aligned()
         || !end.is_aligned()
         || !endPtr.is_aligned()
-        || input_len > isize::MAX as usize
     {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
     let parser_state = &mut *parser;
+    // The legacy processor ABI supplies cursors, but they must designate the
+    // parser's current live buffer.  Resolve that pair through the buffer
+    // owner before constructing the tokenizer input slice; subtraction of
+    // arbitrary pointer addresses alone does not establish a valid slice.
+    let Some(input_len) = parser_state
+        .m_buffer
+        .window_from_addresses(start.addr(), end.addr())
+        .map(|input| input.len())
+    else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    // Processing may update parser state (and, during declaration handling,
+    // invoke callbacks), so the input borrow cannot remain tied to the
+    // parser for the duration.  The validated length above establishes the
+    // slice precondition before this cursor-only adapter rebuilds it.
     let input = ::core::slice::from_raw_parts(start, input_len);
     match external_entity_init_processor2_impl(parser_state, input) {
         ExternalEntityInit2Action::Return(result, offset) => {
+            if offset > input.len() {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
             *endPtr = start.wrapping_add(offset);
             result
         }
