@@ -3771,59 +3771,59 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled(
     }
 }
 extern "C" fn storeRawNames(mut parser: XML_Parser) -> XML_Bool {
-    unsafe {
-        let mut tag: *mut TAG = (*parser).m_tagStack;
-        while !tag.is_null() {
-            let mut bufSize: size_t = 0;
-            let mut nameLen: size_t = (::core::mem::size_of::<XML_Char>() as size_t)
-                .wrapping_mul(((*tag).name.strLen + 1 as ::core::ffi::c_int) as size_t);
-            let mut rawNameLen: size_t = 0;
-            let mut rawNameBuf: *mut ::core::ffi::c_char = (*tag).buf.raw.offset(nameLen as isize);
-            if (*tag).rawName == rawNameBuf as *const ::core::ffi::c_char {
-                break;
-            }
-            rawNameLen = (((*tag).rawNameLength as usize).wrapping_add(
-                (::core::mem::size_of::<XML_Char>() as usize).wrapping_sub(1 as usize),
-            ) & !(::core::mem::size_of::<XML_Char>() as usize)
-                .wrapping_sub(1 as usize)) as size_t;
-            if rawNameLen > (INT_MAX as size_t).wrapping_sub(nameLen) {
+    let mut tag: *mut TAG = ptr_ref(parser).m_tagStack;
+    while !tag.is_null() {
+        let tag_ref = ptr_ref(tag);
+        let nameLen = (::core::mem::size_of::<XML_Char>() as size_t)
+            .wrapping_mul((tag_ref.name.strLen + 1 as ::core::ffi::c_int) as size_t);
+        let mut rawNameBuf = add_mut_c_char(tag_buf_raw(tag_ref), nameLen as isize);
+        if tag_ref.rawName == rawNameBuf as *const ::core::ffi::c_char {
+            break;
+        }
+
+        let rawNameLen = (((tag_ref.rawNameLength as usize)
+            .wrapping_add((::core::mem::size_of::<XML_Char>() as usize).wrapping_sub(1 as usize)))
+            & !(::core::mem::size_of::<XML_Char>() as usize).wrapping_sub(1 as usize))
+            as size_t;
+        if rawNameLen > (INT_MAX as size_t).wrapping_sub(nameLen) {
+            return XML_FALSE;
+        }
+
+        let bufSize = nameLen.wrapping_add(rawNameLen);
+        let current_capacity =
+            (tag_ref.bufEnd as usize).wrapping_sub(tag_buf_raw(tag_ref) as usize);
+        if bufSize > current_capacity {
+            let temp = expat_realloc_ptr::<::core::ffi::c_char>(
+                parser,
+                tag_buf_raw(tag_ref) as *mut ::core::ffi::c_void,
+                bufSize,
+                3151 as ::core::ffi::c_int,
+            );
+            if temp.is_null() {
                 return XML_FALSE;
             }
-            bufSize = nameLen.wrapping_add(rawNameLen);
-            if bufSize > (*tag).bufEnd.offset_from((*tag).buf.raw) as ::core::ffi::c_long as size_t
-            {
-                let mut temp: *mut ::core::ffi::c_char = expat_realloc(
-                    parser,
-                    (*tag).buf.raw as *mut ::core::ffi::c_void,
-                    bufSize,
-                    3151 as ::core::ffi::c_int,
-                )
-                    as *mut ::core::ffi::c_char;
-                if temp.is_null() {
-                    return XML_FALSE;
-                }
-                if (*tag).name.str == (*tag).buf.str as *const XML_Char {
-                    (*tag).name.str = temp as *mut XML_Char;
-                }
-                if !(*tag).name.localPart.is_null() {
-                    (*tag).name.localPart = (temp as *mut XML_Char)
-                        .offset((*tag).name.localPart.offset_from((*tag).buf.str)
-                            as ::core::ffi::c_long as isize);
-                }
-                (*tag).buf.raw = temp;
-                (*tag).bufEnd = temp.offset(bufSize as isize);
-                rawNameBuf = temp.offset(nameLen as isize);
+
+            let tag_mut = ptr_mut(tag);
+            let old_buf_str = tag_buf_str(tag_mut);
+            if tag_mut.name.str == old_buf_str as *const XML_Char {
+                tag_mut.name.str = temp as *mut XML_Char;
             }
-            memcpy(
-                rawNameBuf as *mut ::core::ffi::c_void,
-                (*tag).rawName as *const ::core::ffi::c_void,
-                (*tag).rawNameLength as size_t,
-            );
-            (*tag).rawName = rawNameBuf;
-            tag = (*tag).parent as *mut TAG;
+            if !tag_mut.name.localPart.is_null() {
+                let local_part_offset =
+                    (tag_mut.name.localPart as usize).wrapping_sub(old_buf_str as usize);
+                tag_mut.name.localPart = add_const_c_char(temp, local_part_offset as isize);
+            }
+            set_tag_buf_raw(tag_mut, temp);
+            tag_mut.bufEnd = add_mut_c_char(temp, bufSize as isize);
+            rawNameBuf = add_mut_c_char(temp, nameLen as isize);
         }
-        return XML_TRUE;
+
+        copy_c_chars(rawNameBuf, tag_ref.rawName, tag_ref.rawNameLength as size_t);
+        let tag_mut = ptr_mut(tag);
+        tag_mut.rawName = rawNameBuf;
+        tag = tag_mut.parent;
     }
+    XML_TRUE
 }
 extern "C" fn contentProcessor(
     mut parser: XML_Parser,
@@ -3831,30 +3831,28 @@ extern "C" fn contentProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut result: XML_Error = doContent(
-            parser,
-            if !(*parser).m_parentParser.is_null() {
-                1 as ::core::ffi::c_int
-            } else {
-                0 as ::core::ffi::c_int
-            },
-            (*parser).m_encoding,
-            start,
-            end,
-            endPtr,
-            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
-            XML_ACCOUNT_DIRECT,
-        );
-        if result as ::core::ffi::c_uint
-            == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            if storeRawNames(parser) == 0 {
-                return XML_ERROR_NO_MEMORY;
-            }
+    let parser_ref = ptr_ref(parser);
+    let result = doContent(
+        parser,
+        if !parser_ref.m_parentParser.is_null() {
+            1 as ::core::ffi::c_int
+        } else {
+            0 as ::core::ffi::c_int
+        },
+        parser_ref.m_encoding,
+        start,
+        end,
+        endPtr,
+        (parser_ref.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
+        XML_ACCOUNT_DIRECT,
+    );
+    if result as ::core::ffi::c_uint == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        if storeRawNames(parser) == 0 {
+            return XML_ERROR_NO_MEMORY;
         }
-        return result;
     }
+    result
 }
 extern "C" fn externalEntityInitProcessor(
     mut parser: XML_Parser,
@@ -3862,24 +3860,21 @@ extern "C" fn externalEntityInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut result: XML_Error = initializeEncoding(parser);
-        if result as ::core::ffi::c_uint
-            != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            return result;
-        }
-        (*parser).m_processor = Some(
-            externalEntityInitProcessor2
-                as extern "C" fn(
-                    XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> XML_Error,
-        );
-        return externalEntityInitProcessor2(parser, start, end, endPtr);
+    let result = initializeEncoding(parser);
+    if result as ::core::ffi::c_uint != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return result;
     }
+    ptr_mut(parser).m_processor = Some(
+        externalEntityInitProcessor2
+            as extern "C" fn(
+                XML_Parser,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> XML_Error,
+    );
+    externalEntityInitProcessor2(parser, start, end, endPtr)
 }
 extern "C" fn externalEntityInitProcessor2(
     mut parser: XML_Parser,
@@ -3887,62 +3882,63 @@ extern "C" fn externalEntityInitProcessor2(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut next: *const ::core::ffi::c_char = start;
-        let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners
-            [1 as ::core::ffi::c_int as usize]
-            .expect("non-null function pointer")(
-            (*parser).m_encoding, start, end, &raw mut next
-        );
-        match tok {
-            XML_TOK_BOM => {
-                if accountingDiffTolerated(
-                    &mut *parser,
-                    tok,
-                    start,
-                    next,
-                    3208 as ::core::ffi::c_int,
-                    XML_ACCOUNT_DIRECT,
-                ) == 0
-                {
-                    accountingOnAbort(&mut *parser);
-                    return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-                }
-                if next == end && (*parser).m_parsingStatus.finalBuffer == 0 {
-                    *endPtr = next;
-                    return XML_ERROR_NONE;
-                }
-                start = next;
+    let mut next: *const ::core::ffi::c_char = start;
+    let parser_ref = ptr_ref(parser);
+    let tok: ::core::ffi::c_int = call_scanner(
+        ptr_ref(parser_ref.m_encoding).scanners[1 as usize],
+        parser_ref.m_encoding,
+        start,
+        end,
+        &mut next,
+    );
+    match tok {
+        XML_TOK_BOM => {
+            if accountingDiffTolerated(
+                ptr_mut(parser),
+                tok,
+                start,
+                next,
+                3208 as ::core::ffi::c_int,
+                XML_ACCOUNT_DIRECT,
+            ) == 0
+            {
+                accountingOnAbort(ptr_mut(parser));
+                return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
-            XML_TOK_PARTIAL => {
-                if (*parser).m_parsingStatus.finalBuffer == 0 {
-                    *endPtr = start;
-                    return XML_ERROR_NONE;
-                }
-                (*parser).m_eventPtr = start;
-                return XML_ERROR_UNCLOSED_TOKEN;
+            if next == end && ptr_ref(parser).m_parsingStatus.finalBuffer == 0 {
+                write_copy(endPtr, next);
+                return XML_ERROR_NONE;
             }
-            XML_TOK_PARTIAL_CHAR => {
-                if (*parser).m_parsingStatus.finalBuffer == 0 {
-                    *endPtr = start;
-                    return XML_ERROR_NONE;
-                }
-                (*parser).m_eventPtr = start;
-                return XML_ERROR_PARTIAL_CHAR;
-            }
-            _ => {}
+            start = next;
         }
-        (*parser).m_processor = Some(
-            externalEntityInitProcessor3
-                as extern "C" fn(
-                    XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> XML_Error,
-        );
-        return externalEntityInitProcessor3(parser, start, end, endPtr);
+        XML_TOK_PARTIAL => {
+            if ptr_ref(parser).m_parsingStatus.finalBuffer == 0 {
+                write_copy(endPtr, start);
+                return XML_ERROR_NONE;
+            }
+            ptr_mut(parser).m_eventPtr = start;
+            return XML_ERROR_UNCLOSED_TOKEN;
+        }
+        XML_TOK_PARTIAL_CHAR => {
+            if ptr_ref(parser).m_parsingStatus.finalBuffer == 0 {
+                write_copy(endPtr, start);
+                return XML_ERROR_NONE;
+            }
+            ptr_mut(parser).m_eventPtr = start;
+            return XML_ERROR_PARTIAL_CHAR;
+        }
+        _ => {}
     }
+    ptr_mut(parser).m_processor = Some(
+        externalEntityInitProcessor3
+            as extern "C" fn(
+                XML_Parser,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> XML_Error,
+    );
+    externalEntityInitProcessor3(parser, start, end, endPtr)
 }
 extern "C" fn externalEntityInitProcessor3(
     mut parser: XML_Parser,
@@ -3950,67 +3946,67 @@ extern "C" fn externalEntityInitProcessor3(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut tok: ::core::ffi::c_int = 0;
-        let mut next: *const ::core::ffi::c_char = start;
-        (*parser).m_eventPtr = start;
-        tok = (*(*parser).m_encoding).scanners[1 as ::core::ffi::c_int as usize]
-            .expect("non-null function pointer")(
-            (*parser).m_encoding, start, end, &raw mut next
-        );
-        (*parser).m_eventEndPtr = next;
-        match tok {
-            XML_TOK_XML_DECL => {
-                let mut result: XML_Error = XML_ERROR_NONE;
-                result = processXmlDecl(parser, 1 as ::core::ffi::c_int, start, next);
-                if result as ::core::ffi::c_uint
-                    != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return result;
-                }
-                match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-                    3 => {
-                        *endPtr = next;
-                        return XML_ERROR_NONE;
-                    }
-                    2 => return XML_ERROR_ABORTED,
-                    1 => {
-                        if (*parser).m_reenter != 0 {
-                            return XML_ERROR_UNEXPECTED_STATE;
-                        }
-                    }
-                    _ => {}
-                }
-                start = next;
+    let mut next: *const ::core::ffi::c_char = start;
+    ptr_mut(parser).m_eventPtr = start;
+    let parser_ref = ptr_ref(parser);
+    let tok = call_scanner(
+        ptr_ref(parser_ref.m_encoding).scanners[1 as usize],
+        parser_ref.m_encoding,
+        start,
+        end,
+        &mut next,
+    );
+    ptr_mut(parser).m_eventEndPtr = next;
+    match tok {
+        XML_TOK_XML_DECL => {
+            let result = processXmlDecl(parser, 1 as ::core::ffi::c_int, start, next);
+            if result as ::core::ffi::c_uint
+                != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                return result;
             }
-            XML_TOK_PARTIAL => {
-                if (*parser).m_parsingStatus.finalBuffer == 0 {
-                    *endPtr = start;
+            match ptr_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+                3 => {
+                    write_copy(endPtr, next);
                     return XML_ERROR_NONE;
                 }
-                return XML_ERROR_UNCLOSED_TOKEN;
-            }
-            XML_TOK_PARTIAL_CHAR => {
-                if (*parser).m_parsingStatus.finalBuffer == 0 {
-                    *endPtr = start;
-                    return XML_ERROR_NONE;
+                2 => return XML_ERROR_ABORTED,
+                1 => {
+                    if ptr_ref(parser).m_reenter != 0 {
+                        return XML_ERROR_UNEXPECTED_STATE;
+                    }
                 }
-                return XML_ERROR_PARTIAL_CHAR;
+                _ => {}
             }
-            _ => {}
+            start = next;
         }
-        (*parser).m_processor = Some(
-            externalEntityContentProcessor
-                as extern "C" fn(
-                    XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> XML_Error,
-        );
-        (*parser).m_tagLevel = 1 as ::core::ffi::c_int;
-        return externalEntityContentProcessor(parser, start, end, endPtr);
+        XML_TOK_PARTIAL => {
+            if ptr_ref(parser).m_parsingStatus.finalBuffer == 0 {
+                write_copy(endPtr, start);
+                return XML_ERROR_NONE;
+            }
+            return XML_ERROR_UNCLOSED_TOKEN;
+        }
+        XML_TOK_PARTIAL_CHAR => {
+            if ptr_ref(parser).m_parsingStatus.finalBuffer == 0 {
+                write_copy(endPtr, start);
+                return XML_ERROR_NONE;
+            }
+            return XML_ERROR_PARTIAL_CHAR;
+        }
+        _ => {}
     }
+    ptr_mut(parser).m_processor = Some(
+        externalEntityContentProcessor
+            as extern "C" fn(
+                XML_Parser,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> XML_Error,
+    );
+    ptr_mut(parser).m_tagLevel = 1 as ::core::ffi::c_int;
+    externalEntityContentProcessor(parser, start, end, endPtr)
 }
 extern "C" fn externalEntityContentProcessor(
     mut parser: XML_Parser,
@@ -4018,26 +4014,24 @@ extern "C" fn externalEntityContentProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut result: XML_Error = doContent(
-            parser,
-            1 as ::core::ffi::c_int,
-            (*parser).m_encoding,
-            start,
-            end,
-            endPtr,
-            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
-            XML_ACCOUNT_ENTITY_EXPANSION,
-        );
-        if result as ::core::ffi::c_uint
-            == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            if storeRawNames(parser) == 0 {
-                return XML_ERROR_NO_MEMORY;
-            }
+    let parser_ref = ptr_ref(parser);
+    let result = doContent(
+        parser,
+        1 as ::core::ffi::c_int,
+        parser_ref.m_encoding,
+        start,
+        end,
+        endPtr,
+        (parser_ref.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
+        XML_ACCOUNT_ENTITY_EXPANSION,
+    );
+    if result as ::core::ffi::c_uint == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        if storeRawNames(parser) == 0 {
+            return XML_ERROR_NO_MEMORY;
         }
-        return result;
     }
+    result
 }
 extern "C" fn doContent(
     mut parser: XML_Parser,
@@ -10412,6 +10406,44 @@ fn ptr_ref<'a, T>(ptr: *const T) -> &'a T {
 
 fn ptr_mut<'a, T>(ptr: *mut T) -> &'a mut T {
     unsafe { &mut *ptr }
+}
+
+fn write_copy<T>(ptr: *mut T, value: T) {
+    *ptr_mut(ptr) = value;
+}
+
+fn add_const_c_char(ptr: *const ::core::ffi::c_char, offset: isize) -> *const ::core::ffi::c_char {
+    ptr.wrapping_offset(offset)
+}
+
+fn add_mut_c_char(ptr: *mut ::core::ffi::c_char, offset: isize) -> *mut ::core::ffi::c_char {
+    ptr.wrapping_offset(offset)
+}
+
+fn tag_buf_raw(tag: &TAG) -> *mut ::core::ffi::c_char {
+    unsafe { tag.buf.raw }
+}
+
+fn tag_buf_str(tag: &TAG) -> *mut XML_Char {
+    unsafe { tag.buf.str }
+}
+
+fn set_tag_buf_raw(tag: &mut TAG, raw: *mut ::core::ffi::c_char) {
+    tag.buf = C2Rust_Unnamed { raw };
+}
+
+fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char, count: usize) {
+    ptr_slice_mut(dest, count).copy_from_slice(ptr_slice(src, count));
+}
+
+fn call_scanner(
+    scanner: SCANNER,
+    enc: *const ENCODING,
+    start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    next: *mut *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    unsafe { scanner.expect("non-null function pointer")(enc, start, end, next) }
 }
 
 fn ptr_slice<'a, T>(ptr: *const T, len: usize) -> &'a [T] {
