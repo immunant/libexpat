@@ -3158,21 +3158,6 @@ pub mod xmltok_impl_c {
         if ptr >= end {
             return crate::src::xmltok::XML_TOK_NONE_1;
         }
-        if 1 as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
-            let mut n: crate::__stddef_size_t_h::size_t =
-                end.offset_from(ptr) as crate::__stddef_size_t_h::size_t;
-            if n & (1 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                as crate::__stddef_size_t_h::size_t
-                != 0
-            {
-                n &= !(1 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                    as crate::__stddef_size_t_h::size_t;
-                if n == 0 as crate::__stddef_size_t_h::size_t {
-                    return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
-            }
-        }
         's_584: {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
