@@ -11074,7 +11074,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &encodings,
+            false,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -11090,7 +11090,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &encodings,
+            false,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -11238,7 +11238,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &encodingsNS,
+            true,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -11254,7 +11254,7 @@ pub mod xmltok_ns_c {
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &encodingsNS,
+            true,
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -18272,11 +18272,12 @@ fn initial_scan_result(
 /// # Safety
 ///
 /// The tokenizer dispatch contract supplies a valid, readable `ptr..end`
-/// range from one allocation, a seven-entry encoding table, and writable
-/// output slots in both `enc` and `nextTokPtr`.  This adapter confines those
-/// C ABI cursors to the final state update and scanner dispatch.
+/// range from one allocation and writable output slots in both `enc` and
+/// `nextTokPtr`.  This adapter confines those C ABI cursors to the final
+/// state update; known-encoding selection and scanner dispatch are slice
+/// based.
 unsafe extern "C" fn initScan(
-    encoding_table: &[*const crate::src::xmltok::ENCODING; 7],
+    namespace_aware: bool,
     mut enc: *const crate::src::xmltok::INIT_ENCODING,
     mut state: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
@@ -18292,35 +18293,17 @@ unsafe extern "C" fn initScan(
     } else {
         InitScanState::Prolog
     };
-    let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
+    let bytes = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
+    let input = ScannerInput {
+        bytes,
+        chars: bytemuck::cast_slice(bytes),
+    };
     let initial_encoding = &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING);
-    match init_scan_action(initial_encoding.initEnc.isUtf16, state, input) {
-        InitScanAction::None => crate::src::xmltok::XML_TOK_NONE_1,
-        InitScanAction::Partial => crate::src::xmltok::XML_TOK_PARTIAL_1,
-        InitScanAction::Bom {
-            encoding_index,
-            consumed,
-        } => {
-            *nextTokPtr = ptr.add(consumed);
-            initial_encoding.selected_encoding = Some(encoding_index);
-            crate::src::xmltok::XML_TOK_BOM_1
-        }
-        InitScanAction::Scan { encoding_index } => {
-            let selected_encoding = encoding_table[encoding_index];
-            initial_encoding.selected_encoding = Some(encoding_index);
-            let result = ScannerContext::from_raw(
-                (*selected_encoding).scanners[state.scanner_index()],
-                selected_encoding,
-                ptr,
-                end,
-            )
-            .scan();
-            if let Some(offset) = result.next {
-                *nextTokPtr = ptr.wrapping_add(offset);
-            }
-            result.token
-        }
+    let result = initial_scan_result(initial_encoding, namespace_aware, state, input);
+    if let Some(offset) = result.next {
+        *nextTokPtr = ptr.wrapping_add(offset);
     }
+    result.token
 }
 #[export_name = "XmlInitUnknownEncodingNS"]
 pub unsafe extern "C" fn XmlInitUnknownEncodingNS_ffi(
