@@ -6957,12 +6957,26 @@ pub mod xmltok_impl_c {
     }
 
     enum Little2PrologAction {
-        Return { token: ::core::ffi::c_int, next: Option<usize> },
-        ScanLit { open: ::core::ffi::c_int, start: usize },
-        ScanDecl { start: usize },
-        ScanPi { start: usize },
-        ScanPercent { start: usize },
-        ScanPoundName { start: usize },
+        Return {
+            token: ::core::ffi::c_int,
+            next: Option<usize>,
+        },
+        ScanLit {
+            open: ::core::ffi::c_int,
+            start: usize,
+        },
+        ScanDecl {
+            start: usize,
+        },
+        ScanPi {
+            start: usize,
+        },
+        ScanPercent {
+            start: usize,
+        },
+        ScanPoundName {
+            start: usize,
+        },
     }
 
     fn little2_type(enc: &normal_encoding, input: &[u8], offset: usize) -> ::core::ffi::c_int {
@@ -6980,25 +6994,36 @@ pub mod xmltok_impl_c {
         namingBitmap[bit] & (1 << (lo & 0x1f)) != 0
     }
 
-    fn little2_prolog_tok_impl(
-        enc: &normal_encoding,
-        input: &[u8],
-    ) -> Little2PrologAction {
+    fn little2_prolog_tok_impl(enc: &normal_encoding, input: &[u8]) -> Little2PrologAction {
         let len = input.len();
         let result = |token, next| Little2PrologAction::Return { token, next };
         let mut ptr = 0usize;
         let mut tok: ::core::ffi::c_int;
         let first = little2_type(enc, input, ptr);
         match first {
-            12 => return Little2PrologAction::ScanLit { open: crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int, start: 2 },
-            13 => return Little2PrologAction::ScanLit { open: crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int, start: 2 },
+            12 => {
+                return Little2PrologAction::ScanLit {
+                    open: crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int,
+                    start: 2,
+                }
+            }
+            13 => {
+                return Little2PrologAction::ScanLit {
+                    open: crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int,
+                    start: 2,
+                }
+            }
             2 => {
                 ptr = 2;
-                if len - ptr < 2 { return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None); }
+                if len - ptr < 2 {
+                    return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                }
                 return match little2_type(enc, input, ptr) {
                     16 => Little2PrologAction::ScanDecl { start: ptr + 2 },
                     15 => Little2PrologAction::ScanPi { start: ptr + 2 },
-                    22 | 24 | 29 | 5 | 6 | 7 => result(crate::src::xmltok::XML_TOK_INSTANCE_START, Some(0)),
+                    22 | 24 | 29 | 5 | 6 | 7 => {
+                        result(crate::src::xmltok::XML_TOK_INSTANCE_START, Some(0))
+                    }
                     _ => result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr)),
                 };
             }
@@ -7008,7 +7033,9 @@ pub mod xmltok_impl_c {
                 }
                 loop {
                     ptr += 2;
-                    if len - ptr < 2 { break; }
+                    if len - ptr < 2 {
+                        break;
+                    }
                     match little2_type(enc, input, ptr) {
                         21 | 10 => continue,
                         9 if ptr + 2 != len => continue,
@@ -7022,11 +7049,18 @@ pub mod xmltok_impl_c {
             20 => return result(crate::src::xmltok::XML_TOK_OPEN_BRACKET_1, Some(2)),
             4 => {
                 ptr = 2;
-                if len - ptr < 2 { return result(-crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1, None); }
+                if len - ptr < 2 {
+                    return result(-crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1, None);
+                }
                 if input[ptr + 1] == 0 && input[ptr] == b']' {
-                    if len - ptr < 4 { return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None); }
+                    if len - ptr < 4 {
+                        return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                    }
                     if input[ptr + 3] == 0 && input[ptr + 2] == b'>' {
-                        return result(crate::src::xmltok::XML_TOK_COND_SECT_CLOSE_1, Some(ptr + 4));
+                        return result(
+                            crate::src::xmltok::XML_TOK_COND_SECT_CLOSE_1,
+                            Some(ptr + 4),
+                        );
                     }
                 }
                 return result(crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1, Some(ptr));
@@ -7034,23 +7068,69 @@ pub mod xmltok_impl_c {
             31 => return result(crate::src::xmltok::XML_TOK_OPEN_PAREN_1, Some(2)),
             32 => {
                 ptr = 2;
-                if len - ptr < 2 { return result(-crate::src::xmltok::XML_TOK_CLOSE_PAREN_1, None); }
+                if len - ptr < 2 {
+                    return result(-crate::src::xmltok::XML_TOK_CLOSE_PAREN_1, None);
+                }
                 return match little2_type(enc, input, ptr) {
-                    33 => result(crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK_1, Some(ptr + 2)),
-                    15 => result(crate::src::xmltok::XML_TOK_CLOSE_PAREN_QUESTION_1, Some(ptr + 2)),
-                    34 => result(crate::src::xmltok::XML_TOK_CLOSE_PAREN_PLUS_1, Some(ptr + 2)),
-                    9 | 10 | 21 | 11 | 35 | 36 | 32 => result(crate::src::xmltok::XML_TOK_CLOSE_PAREN_1, Some(ptr)),
+                    33 => result(
+                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK_1,
+                        Some(ptr + 2),
+                    ),
+                    15 => result(
+                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_QUESTION_1,
+                        Some(ptr + 2),
+                    ),
+                    34 => result(
+                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_PLUS_1,
+                        Some(ptr + 2),
+                    ),
+                    9 | 10 | 21 | 11 | 35 | 36 | 32 => {
+                        result(crate::src::xmltok::XML_TOK_CLOSE_PAREN_1, Some(ptr))
+                    }
                     _ => result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr)),
                 };
             }
             36 => return result(crate::src::xmltok::XML_TOK_OR_1, Some(2)),
             11 => return result(crate::src::xmltok::XML_TOK_DECL_CLOSE_1, Some(2)),
             19 => return Little2PrologAction::ScanPoundName { start: 2 },
-            5 => return result(if len < 2 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(0)),
-            6 => return result(if len < 3 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(0)),
-            7 => return result(if len < 4 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(0)),
-            22 | 24 => { tok = crate::src::xmltok::XML_TOK_NAME; ptr = 2; }
-            25 | 26 | 27 | 23 => { tok = crate::src::xmltok::XML_TOK_NMTOKEN_1; ptr = 2; }
+            5 => {
+                return result(
+                    if len < 2 {
+                        crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                    } else {
+                        crate::src::xmltok::XML_TOK_INVALID_1
+                    },
+                    Some(0),
+                )
+            }
+            6 => {
+                return result(
+                    if len < 3 {
+                        crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                    } else {
+                        crate::src::xmltok::XML_TOK_INVALID_1
+                    },
+                    Some(0),
+                )
+            }
+            7 => {
+                return result(
+                    if len < 4 {
+                        crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                    } else {
+                        crate::src::xmltok::XML_TOK_INVALID_1
+                    },
+                    Some(0),
+                )
+            }
+            22 | 24 => {
+                tok = crate::src::xmltok::XML_TOK_NAME;
+                ptr = 2;
+            }
+            25 | 26 | 27 | 23 => {
+                tok = crate::src::xmltok::XML_TOK_NMTOKEN_1;
+                ptr = 2;
+            }
             29 => {
                 if little2_bitmap_contains(&nmstrtPages, input[0], input[1]) {
                     tok = crate::src::xmltok::XML_TOK_NAME;
@@ -7071,32 +7151,136 @@ pub mod xmltok_impl_c {
                     return result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr));
                 }
                 29 | 22 | 24 | 25 | 26 | 27 => {}
-                5 => return result(if len - ptr < 2 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(ptr)),
-                6 => return result(if len - ptr < 3 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(ptr)),
-                7 => return result(if len - ptr < 4 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(ptr)),
+                5 => {
+                    return result(
+                        if len - ptr < 2 {
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                        } else {
+                            crate::src::xmltok::XML_TOK_INVALID_1
+                        },
+                        Some(ptr),
+                    )
+                }
+                6 => {
+                    return result(
+                        if len - ptr < 3 {
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                        } else {
+                            crate::src::xmltok::XML_TOK_INVALID_1
+                        },
+                        Some(ptr),
+                    )
+                }
+                7 => {
+                    return result(
+                        if len - ptr < 4 {
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                        } else {
+                            crate::src::xmltok::XML_TOK_INVALID_1
+                        },
+                        Some(ptr),
+                    )
+                }
                 11 | 32 | 35 | 36 | 20 | 30 | 21 | 9 | 10 => return result(tok, Some(ptr)),
                 23 => {
                     ptr += 2;
                     match tok {
                         crate::src::xmltok::XML_TOK_NAME => {
-                            if len - ptr < 2 { return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None); }
+                            if len - ptr < 2 {
+                                return result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                            }
                             tok = crate::src::xmltok::XML_TOK_PREFIXED_NAME;
                             match little2_type(enc, input, ptr) {
-                                29 if !little2_bitmap_contains(&namePages, input[ptr], input[ptr + 1]) => return result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr)),
+                                29 if !little2_bitmap_contains(
+                                    &namePages,
+                                    input[ptr],
+                                    input[ptr + 1],
+                                ) =>
+                                {
+                                    return result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr))
+                                }
                                 29 | 22 | 24 | 25 | 26 | 27 => ptr += 2,
-                                5 => return result(if len - ptr < 2 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(ptr)),
-                                6 => return result(if len - ptr < 3 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(ptr)),
-                                7 => return result(if len - ptr < 4 { crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1 } else { crate::src::xmltok::XML_TOK_INVALID_1 }, Some(ptr)),
+                                5 => {
+                                    return result(
+                                        if len - ptr < 2 {
+                                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                                        } else {
+                                            crate::src::xmltok::XML_TOK_INVALID_1
+                                        },
+                                        Some(ptr),
+                                    )
+                                }
+                                6 => {
+                                    return result(
+                                        if len - ptr < 3 {
+                                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                                        } else {
+                                            crate::src::xmltok::XML_TOK_INVALID_1
+                                        },
+                                        Some(ptr),
+                                    )
+                                }
+                                7 => {
+                                    return result(
+                                        if len - ptr < 4 {
+                                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1
+                                        } else {
+                                            crate::src::xmltok::XML_TOK_INVALID_1
+                                        },
+                                        Some(ptr),
+                                    )
+                                }
                                 _ => tok = crate::src::xmltok::XML_TOK_NMTOKEN_1,
                             }
                         }
-                        crate::src::xmltok::XML_TOK_PREFIXED_NAME => tok = crate::src::xmltok::XML_TOK_NMTOKEN_1,
+                        crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
+                            tok = crate::src::xmltok::XML_TOK_NMTOKEN_1
+                        }
                         _ => {}
                     }
                 }
-                34 => return result(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 { crate::src::xmltok::XML_TOK_INVALID_1 } else { crate::src::xmltok::XML_TOK_NAME_PLUS_1 }, Some(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 { ptr } else { ptr + 2 })),
-                33 => return result(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 { crate::src::xmltok::XML_TOK_INVALID_1 } else { crate::src::xmltok::XML_TOK_NAME_ASTERISK_1 }, Some(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 { ptr } else { ptr + 2 })),
-                15 => return result(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 { crate::src::xmltok::XML_TOK_INVALID_1 } else { crate::src::xmltok::XML_TOK_NAME_QUESTION_1 }, Some(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 { ptr } else { ptr + 2 })),
+                34 => {
+                    return result(
+                        if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                            crate::src::xmltok::XML_TOK_INVALID_1
+                        } else {
+                            crate::src::xmltok::XML_TOK_NAME_PLUS_1
+                        },
+                        Some(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                            ptr
+                        } else {
+                            ptr + 2
+                        }),
+                    )
+                }
+                33 => {
+                    return result(
+                        if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                            crate::src::xmltok::XML_TOK_INVALID_1
+                        } else {
+                            crate::src::xmltok::XML_TOK_NAME_ASTERISK_1
+                        },
+                        Some(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                            ptr
+                        } else {
+                            ptr + 2
+                        }),
+                    )
+                }
+                15 => {
+                    return result(
+                        if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                            crate::src::xmltok::XML_TOK_INVALID_1
+                        } else {
+                            crate::src::xmltok::XML_TOK_NAME_QUESTION_1
+                        },
+                        Some(if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                            ptr
+                        } else {
+                            ptr + 2
+                        }),
+                    )
+                }
                 _ => return result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr)),
             }
             ptr += 2;
@@ -7111,23 +7295,39 @@ pub mod xmltok_impl_c {
         nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let span = unsafe { end.offset_from(ptr) };
-        if span <= 0 { return crate::src::xmltok::XML_TOK_NONE_1; }
+        if span <= 0 {
+            return crate::src::xmltok::XML_TOK_NONE_1;
+        }
         let len = (span as usize) & !1;
-        if len == 0 { return crate::src::xmltok::XML_TOK_PARTIAL_1; }
+        if len == 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
         let input = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), len) };
         let normal = unsafe { &*(enc as *const normal_encoding) };
         let action = little2_prolog_tok_impl(normal, input);
         unsafe {
             match action {
                 Little2PrologAction::Return { token, next } => {
-                    if let Some(offset) = next { *nextTokPtr = ptr.add(offset); }
+                    if let Some(offset) = next {
+                        *nextTokPtr = ptr.add(offset);
+                    }
                     token
                 }
-                Little2PrologAction::ScanLit { open, start } => little2_scanLit(open, enc, ptr.add(start), ptr.add(len), nextTokPtr),
-                Little2PrologAction::ScanDecl { start } => little2_scanDecl(enc, ptr.add(start), ptr.add(len), nextTokPtr),
-                Little2PrologAction::ScanPi { start } => little2_scanPi(enc, ptr.add(start), ptr.add(len), nextTokPtr),
-                Little2PrologAction::ScanPercent { start } => little2_scanPercent(enc, ptr.add(start), ptr.add(len), nextTokPtr),
-                Little2PrologAction::ScanPoundName { start } => little2_scanPoundName(enc, ptr.add(start), ptr.add(len), nextTokPtr),
+                Little2PrologAction::ScanLit { open, start } => {
+                    little2_scanLit(open, enc, ptr.add(start), ptr.add(len), nextTokPtr)
+                }
+                Little2PrologAction::ScanDecl { start } => {
+                    little2_scanDecl(enc, ptr.add(start), ptr.add(len), nextTokPtr)
+                }
+                Little2PrologAction::ScanPi { start } => {
+                    little2_scanPi(enc, ptr.add(start), ptr.add(len), nextTokPtr)
+                }
+                Little2PrologAction::ScanPercent { start } => {
+                    little2_scanPercent(enc, ptr.add(start), ptr.add(len), nextTokPtr)
+                }
+                Little2PrologAction::ScanPoundName { start } => {
+                    little2_scanPoundName(enc, ptr.add(start), ptr.add(len), nextTokPtr)
+                }
             }
         }
     }
@@ -9034,7 +9234,10 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_scanAtts(
+    // Kept as a disabled translation reference while the slice implementation below
+    // replaces it.  The callable scanner is `big2_scanAtts` after this block.
+    #[cfg(any())]
+    pub unsafe extern "C" fn big2_scanAtts_legacy(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
@@ -9484,6 +9687,362 @@ pub mod xmltok_impl_c {
             }
         }
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
+    }
+
+    enum Big2ScanOutcome {
+        Token(::core::ffi::c_int, usize),
+        Partial(::core::ffi::c_int),
+        Invalid(usize),
+    }
+
+    enum Big2NameCheck {
+        Advance(usize),
+        PartialChar,
+        Invalid,
+    }
+
+    fn big2_check_name(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+        pos: usize,
+        start: bool,
+    ) -> Big2NameCheck {
+        match big2_byte_type(enc, input, pos) {
+            29 => {
+                let pages = if start { &nmstrtPages } else { &namePages };
+                if big2_name_char_is_valid(input, pos, pages) {
+                    Big2NameCheck::Advance(pos + 2)
+                } else {
+                    Big2NameCheck::Invalid
+                }
+            }
+            22 | 24 if start => Big2NameCheck::Advance(pos + 2),
+            22 | 24 | 25 | 26 | 27 if !start => Big2NameCheck::Advance(pos + 2),
+            5 => {
+                if input.len() - pos < 2 {
+                    Big2NameCheck::PartialChar
+                } else {
+                    Big2NameCheck::Invalid
+                }
+            }
+            6 => {
+                if input.len() - pos < 3 {
+                    Big2NameCheck::PartialChar
+                } else {
+                    Big2NameCheck::Invalid
+                }
+            }
+            7 => {
+                if input.len() - pos < 4 {
+                    Big2NameCheck::PartialChar
+                } else {
+                    Big2NameCheck::Invalid
+                }
+            }
+            _ => Big2NameCheck::Invalid,
+        }
+    }
+
+    fn big2_scan_char_ref(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+        mut pos: usize,
+    ) -> Big2ScanOutcome {
+        if pos + 2 > input.len() {
+            return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+        }
+        if input[pos] == 0 && input[pos + 1] == b'x' as ::core::ffi::c_char {
+            pos += 2;
+            if pos + 2 > input.len() {
+                return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+            }
+            match big2_byte_type(enc, input, pos) {
+                24 | 25 => {}
+                _ => return Big2ScanOutcome::Invalid(pos),
+            }
+            pos += 2;
+            while pos + 2 <= input.len() {
+                match big2_byte_type(enc, input, pos) {
+                    24 | 25 => pos += 2,
+                    18 => {
+                        return Big2ScanOutcome::Token(
+                            crate::src::xmltok::XML_TOK_CHAR_REF_1,
+                            pos + 2,
+                        )
+                    }
+                    _ => return Big2ScanOutcome::Invalid(pos),
+                }
+            }
+            return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+        }
+        if big2_byte_type(enc, input, pos) != 25 {
+            return Big2ScanOutcome::Invalid(pos);
+        }
+        pos += 2;
+        while pos + 2 <= input.len() {
+            match big2_byte_type(enc, input, pos) {
+                25 => pos += 2,
+                18 => {
+                    return Big2ScanOutcome::Token(crate::src::xmltok::XML_TOK_CHAR_REF_1, pos + 2)
+                }
+                _ => return Big2ScanOutcome::Invalid(pos),
+            }
+        }
+        Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
+    }
+
+    fn big2_scan_ref(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+        mut pos: usize,
+    ) -> Big2ScanOutcome {
+        if pos + 2 > input.len() {
+            return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+        }
+        match big2_check_name(enc, input, pos, true) {
+            Big2NameCheck::Advance(next) => pos = next,
+            Big2NameCheck::PartialChar => {
+                return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1)
+            }
+            Big2NameCheck::Invalid => {
+                if big2_byte_type(enc, input, pos) == 19 {
+                    return big2_scan_char_ref(enc, input, pos + 2);
+                }
+                return Big2ScanOutcome::Invalid(pos);
+            }
+        }
+        while pos + 2 <= input.len() {
+            match big2_check_name(enc, input, pos, false) {
+                Big2NameCheck::Advance(next) => pos = next,
+                Big2NameCheck::PartialChar => {
+                    return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1)
+                }
+                Big2NameCheck::Invalid => {
+                    if big2_byte_type(enc, input, pos) == 18 {
+                        return Big2ScanOutcome::Token(
+                            crate::src::xmltok::XML_TOK_ENTITY_REF_1,
+                            pos + 2,
+                        );
+                    }
+                    return Big2ScanOutcome::Invalid(pos);
+                }
+            }
+        }
+        Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
+    }
+
+    fn big2_scan_atts_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> Big2ScanOutcome {
+        let mut had_colon = false;
+        let mut pos = 0;
+        'attributes: while pos + 2 <= input.len() {
+            match big2_check_name(enc, input, pos, false) {
+                Big2NameCheck::Advance(next) => {
+                    pos = next;
+                    continue;
+                }
+                Big2NameCheck::PartialChar => {
+                    return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1)
+                }
+                Big2NameCheck::Invalid => {}
+            }
+            match big2_byte_type(enc, input, pos) {
+                23 => {
+                    if had_colon {
+                        return Big2ScanOutcome::Invalid(pos);
+                    }
+                    had_colon = true;
+                    pos += 2;
+                    if pos + 2 > input.len() {
+                        return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                    }
+                    match big2_check_name(enc, input, pos, true) {
+                        Big2NameCheck::Advance(next) => pos = next,
+                        Big2NameCheck::PartialChar => {
+                            return Big2ScanOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                            )
+                        }
+                        Big2NameCheck::Invalid => return Big2ScanOutcome::Invalid(pos),
+                    }
+                    continue;
+                }
+                21 | 9 | 10 => loop {
+                    pos += 2;
+                    if pos + 2 > input.len() {
+                        return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                    }
+                    let ty = big2_byte_type(enc, input, pos);
+                    if ty == crate::xmltok_impl_h::BT_EQUALS as ::core::ffi::c_int {
+                        break;
+                    }
+                    if !matches!(ty, 21 | 9 | 10) {
+                        return Big2ScanOutcome::Invalid(pos);
+                    }
+                },
+                14 => {}
+                _ => return Big2ScanOutcome::Invalid(pos),
+            }
+
+            had_colon = false;
+            let open = loop {
+                pos += 2;
+                if pos + 2 > input.len() {
+                    return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                }
+                let ty = big2_byte_type(enc, input, pos);
+                if ty == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int
+                    || ty == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int
+                {
+                    break ty;
+                }
+                if !matches!(ty, 21 | 9 | 10) {
+                    return Big2ScanOutcome::Invalid(pos);
+                }
+            };
+            pos += 2;
+            loop {
+                if pos + 2 > input.len() {
+                    return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                }
+                let ty = big2_byte_type(enc, input, pos);
+                if ty == open {
+                    break;
+                }
+                match ty {
+                    5 => {
+                        if input.len() - pos < 2 {
+                            return Big2ScanOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                            );
+                        } else {
+                            return Big2ScanOutcome::Invalid(pos);
+                        }
+                    }
+                    6 => {
+                        if input.len() - pos < 3 {
+                            return Big2ScanOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                            );
+                        } else {
+                            return Big2ScanOutcome::Invalid(pos);
+                        }
+                    }
+                    7 => {
+                        if input.len() - pos < 4 {
+                            return Big2ScanOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                            );
+                        } else {
+                            return Big2ScanOutcome::Invalid(pos);
+                        }
+                    }
+                    0 | 1 | 8 | 2 => return Big2ScanOutcome::Invalid(pos),
+                    3 => match big2_scan_ref(enc, input, pos + 2) {
+                        Big2ScanOutcome::Token(_, next) => pos = next,
+                        outcome => return outcome,
+                    },
+                    _ => pos += 2,
+                }
+            }
+            pos += 2;
+            if pos + 2 > input.len() {
+                return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+            }
+            match big2_byte_type(enc, input, pos) {
+                21 | 9 | 10 => loop {
+                    pos += 2;
+                    if pos + 2 > input.len() {
+                        return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                    }
+                    match big2_byte_type(enc, input, pos) {
+                        21 | 9 | 10 => {}
+                        11 => {
+                            return Big2ScanOutcome::Token(
+                                crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS_1,
+                                pos + 2,
+                            )
+                        }
+                        17 => {
+                            pos += 2;
+                            if pos + 2 > input.len() {
+                                return Big2ScanOutcome::Partial(
+                                    crate::src::xmltok::XML_TOK_PARTIAL_1,
+                                );
+                            }
+                            return if input[pos] == 0
+                                && input[pos + 1] == b'>' as ::core::ffi::c_char
+                            {
+                                Big2ScanOutcome::Token(
+                                    crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1,
+                                    pos + 2,
+                                )
+                            } else {
+                                Big2ScanOutcome::Invalid(pos)
+                            };
+                        }
+                        _ => match big2_check_name(enc, input, pos, true) {
+                            Big2NameCheck::Advance(next) => {
+                                pos = next;
+                                continue 'attributes;
+                            }
+                            Big2NameCheck::PartialChar => {
+                                return Big2ScanOutcome::Partial(
+                                    crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                                )
+                            }
+                            Big2NameCheck::Invalid => return Big2ScanOutcome::Invalid(pos),
+                        },
+                    }
+                },
+                11 => {
+                    return Big2ScanOutcome::Token(
+                        crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS_1,
+                        pos + 2,
+                    )
+                }
+                17 => {
+                    pos += 2;
+                    if pos + 2 > input.len() {
+                        return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
+                    }
+                    return if input[pos] == 0 && input[pos + 1] == b'>' as ::core::ffi::c_char {
+                        Big2ScanOutcome::Token(
+                            crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1,
+                            pos + 2,
+                        )
+                    } else {
+                        Big2ScanOutcome::Invalid(pos)
+                    };
+                }
+                _ => return Big2ScanOutcome::Invalid(pos),
+            }
+        }
+        Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
+    }
+
+    pub unsafe extern "C" fn big2_scanAtts(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let len = end.offset_from(ptr) as usize;
+        let input = ::core::slice::from_raw_parts(ptr, len);
+        let encoding = &*(enc as *const normal_encoding);
+        match big2_scan_atts_impl(encoding, input) {
+            Big2ScanOutcome::Token(token, next) => {
+                *nextTokPtr = ptr.add(next);
+                token
+            }
+            Big2ScanOutcome::Partial(token) => token,
+            Big2ScanOutcome::Invalid(at) => {
+                *nextTokPtr = ptr.add(at);
+                crate::src::xmltok::XML_TOK_INVALID_1
+            }
+        }
     }
 
     pub unsafe extern "C" fn big2_scanLt(
