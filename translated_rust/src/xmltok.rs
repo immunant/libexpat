@@ -9995,6 +9995,33 @@ pub mod xmltok_impl_c {
         result.token
     }
 
+    /// Scans one attribute-value token from an input window that the caller
+    /// has already bounded.  This is the parser-facing counterpart to the
+    /// three C-cursor adapters above: it retains the selected normal-encoding
+    /// table, but exposes the next position as an offset into `input`.
+    pub(crate) fn attribute_value_token(
+        enc: &normal_encoding,
+        scanner: crate::src::xmltok::LiteralScanner,
+        input: &[::core::ffi::c_char],
+    ) -> crate::src::xmltok::ScannerResult {
+        let (token, next) = match scanner {
+            crate::src::xmltok::LiteralScanner::NormalAttributeValue => {
+                let result = normal_attribute_value_tok_impl(enc, input);
+                (result.token, result.next)
+            }
+            crate::src::xmltok::LiteralScanner::Little2AttributeValue => {
+                let result = little2_attribute_value_tok_impl(enc, input);
+                (result.token, result.next)
+            }
+            crate::src::xmltok::LiteralScanner::Big2AttributeValue => {
+                let result = big2_attribute_value_tok_impl(enc, input);
+                (result.token, result.next)
+            }
+            _ => unreachable!("attribute literal scanner must match its table slot"),
+        };
+        crate::src::xmltok::ScannerResult { token, next }
+    }
+
     struct Big2EntityValueToken {
         token: ::core::ffi::c_int,
         next: Option<usize>,

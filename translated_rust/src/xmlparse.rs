@@ -17334,7 +17334,10 @@ unsafe extern "C" fn storeAttributeValue(
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
     let parser = &mut *parser;
-    let enc = &*enc;
+    // All callers provide the leading `ENCODING` field of a normal encoding
+    // table.  Preserve that boundary conversion here so attribute scanning
+    // itself receives the complete internal byte-class table.
+    let enc = &*(enc as *const crate::src::xmltok::normal_encoding);
     let pool = &mut *pool;
     let mut next: *const ::core::ffi::c_char = ptr;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
@@ -17403,7 +17406,9 @@ unsafe extern "C" fn storeAttributeValue(
             if entity_has_more != 0 {
                 let (append_result, append_next) = appendAttributeValue(
                     parser,
-                    internal_encoding(parser.m_internalEncoding),
+                    &*(internal_encoding(parser.m_internalEncoding)
+                        as *const crate::src::xmltok::ENCODING
+                        as *const crate::src::xmltok::normal_encoding),
                     isCdata,
                     textStart,
                     textEnd,
@@ -17558,14 +17563,14 @@ fn pool_store_xml_decl_ascii(
 
 unsafe fn appendAttributeValue(
     parser: &mut XML_ParserStruct,
-    enc: &crate::src::xmltok::ENCODING,
+    enc: &crate::src::xmltok::normal_encoding,
     mut isCdata: crate::expat_h::XML_Bool,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     pool: &mut STRING_POOL,
     mut account: XML_Account,
 ) -> (crate::expat_h::XML_Error, *const ::core::ffi::c_char) {
-    let enc_ptr: *const crate::src::xmltok::ENCODING = enc;
+    let enc_ptr: *const crate::src::xmltok::ENCODING = &enc.enc;
     // Literal scanners retain the C cursor ABI, but all token inspection below
     // is performed through this one checked view.  In particular, a scanner
     // result must remain within this window before it can select a token or an
@@ -17588,32 +17593,35 @@ unsafe fn appendAttributeValue(
     let dtd = &mut *parser_dtd_ptr!(parser);
     let pool_is_dtd_pool = ::core::ptr::eq(pool, &mut dtd.pool);
     loop {
-        let Ok(char_width) = usize::try_from(enc.minBytesPerChar) else {
+        let Ok(char_width) = usize::try_from(enc.enc.minBytesPerChar) else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
         };
-        let mut next: *const ::core::ffi::c_char = ptr;
-        let scanner = match enc.literalScanners[0] {
-            crate::src::xmltok::LiteralScanner::NormalAttributeValue => {
-                crate::src::xmltok::xmltok_impl_c::normal_attributeValueTok
-            }
-            crate::src::xmltok::LiteralScanner::Little2AttributeValue => {
-                crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok
-            }
-            crate::src::xmltok::LiteralScanner::Big2AttributeValue => {
-                crate::src::xmltok::xmltok_impl_c::big2_attributeValueTok
-            }
-            _ => unreachable!("attribute literal scanner must match its table slot"),
-        };
-        let mut tok: ::core::ffi::c_int = scanner(enc_ptr, ptr, end, &raw mut next);
         let Some(cursor) = ptr.addr().checked_sub(input_start.addr()) else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
         };
-        let Some(next_offset) = next.addr().checked_sub(input_start.addr()) else {
-            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
-        };
-        if cursor > next_offset || next_offset > input.len() {
+        if cursor > input.len() {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
         }
+        let scan = crate::src::xmltok::xmltok_impl_c::attribute_value_token(
+            enc,
+            enc.enc.literalScanners[0],
+            &input[cursor..],
+        );
+        let scanned_next_offset = match scan.next {
+            Some(offset) => match cursor.checked_add(offset) {
+                Some(offset) if offset <= input.len() => offset,
+                _ => return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr),
+            },
+            None => cursor,
+        };
+        let mut next = input
+            .as_ptr()
+            .wrapping_add(scanned_next_offset)
+            .cast::<::core::ffi::c_char>();
+        if next.is_null() {
+            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+        }
+        let mut tok: ::core::ffi::c_int = scan.token;
         if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
         {
             accountingOnAbort(parser);
@@ -17644,13 +17652,14 @@ unsafe fn appendAttributeValue(
                     let Some(token_len) = next.addr().checked_sub(ptr.addr()) else {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                     };
-                    if token_len != next_offset - cursor {
+                    if token_len != scanned_next_offset - cursor {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                     }
-                    let Some(token) = input.get(cursor..next_offset) else {
+                    let Some(token) = input.get(cursor..scanned_next_offset) else {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                     };
                     let mut n: ::core::ffi::c_int = enc
+                        .enc
                         .charRefNumber
                         .decode(bytemuck::cast_slice(token));
                     if n < 0 as ::core::ffi::c_int {
@@ -17702,7 +17711,7 @@ unsafe fn appendAttributeValue(
                         .addr()
                         .checked_sub(entity_start.addr())
                         .unwrap_or(0);
-                    let max_entity_name_len = match enc.predefinedEntityName {
+                    let max_entity_name_len = match enc.enc.predefinedEntityName {
                         crate::src::xmltok::PredefinedEntityNameMatcher::Normal => 4,
                         crate::src::xmltok::PredefinedEntityNameMatcher::Little2
                         | crate::src::xmltok::PredefinedEntityNameMatcher::Big2 => 9,
@@ -17711,7 +17720,7 @@ unsafe fn appendAttributeValue(
                         let Some(entity_start_offset) = cursor.checked_add(char_width) else {
                             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                         };
-                        let Some(entity_end_offset) = next_offset.checked_sub(char_width) else {
+                        let Some(entity_end_offset) = scanned_next_offset.checked_sub(char_width) else {
                             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                         };
                         let Some(entity_name) = input.get(entity_start_offset..entity_end_offset)
@@ -17724,7 +17733,7 @@ unsafe fn appendAttributeValue(
                     };
                     let mut ch: crate::expat_external_h::XML_Char =
                         crate::src::xmltok::predefined_entity_name(
-                            enc.predefinedEntityName,
+                            enc.enc.predefinedEntityName,
                             entity_name,
                         ) as crate::expat_external_h::XML_Char;
                     if ch != 0 {
