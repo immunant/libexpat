@@ -17279,7 +17279,9 @@ unsafe fn doProlog(
                                                 .m_declElementType
                                                 .expect("element declaration must be set before its attributes");
                                             let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
-                                                default_attribute_storage_new(parser, capacity, 7182)
+                                                default_attribute_storage_from_live_parser(
+                                                    parser, capacity, 7182,
+                                                )
                                             };
                                             if !define_declared_attribute(
                                                 parser,
@@ -17427,7 +17429,9 @@ unsafe fn doProlog(
                                                 .m_declElementType
                                                 .expect("element declaration must be set before its attributes");
                                             let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
-                                                default_attribute_storage_new(parser, capacity, 7182)
+                                                default_attribute_storage_from_live_parser(
+                                                    parser, capacity, 7182,
+                                                )
                                             };
                                             if !define_declared_attribute(
                                                 parser,
@@ -23124,8 +23128,11 @@ unsafe fn dtdCopy(
                 return 0 as ::core::ffi::c_int;
             };
             if old_e.nDefaultAtts != 0 {
-                let Some(storage) =
-                    default_attribute_storage_new(parser, old_e.nDefaultAtts as usize, 7683)
+                let Some(storage) = default_attribute_storage_from_live_parser(
+                    parser,
+                    old_e.nDefaultAtts as usize,
+                    7683,
+                )
                 else {
                     return 0 as ::core::ffi::c_int;
                 };
@@ -23547,6 +23554,22 @@ unsafe fn namespace_attribute_storage_new(
         entries,
         backing: Some(backing),
     })
+}
+
+/// Allocates the Rust-owned default-attribute records while retaining the
+/// configured allocator's opaque backing token.  A live exclusive parser
+/// borrow proves the legacy allocator entry points receive a non-null parser
+/// for both creation and the backing token's eventual resize/free actions.
+fn default_attribute_storage_from_live_parser(
+    parser: &mut XML_ParserStruct,
+    capacity: usize,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<DefaultAttributeStorage>> {
+    // `default_attribute_storage_new` is the narrow legacy allocator
+    // boundary.  Its only caller obligation is the live parser borrow held
+    // above; capacity arithmetic and allocation failure remain checked by
+    // the implementation.
+    unsafe { default_attribute_storage_new(parser, capacity, source_line) }
 }
 
 unsafe fn default_attribute_storage_new(
