@@ -9240,26 +9240,10 @@ pub unsafe extern "C" fn XML_ResumeParser_ffi(
     };
     XML_ResumeParser(parser)
 }
-pub unsafe extern "C" fn XML_GetParsingStatus(
-    mut parser: crate::expat_h::XML_Parser,
-    mut status: *mut crate::expat_h::XML_ParsingStatus,
-) {
-    if parser.is_null() {
-        return;
-    }
-    '_c2rust_label: {
-        if !status.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"status != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2741 as ::core::ffi::c_uint,
-                b"void XML_GetParsingStatus(XML_Parser, XML_ParsingStatus *)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    *status = (*parser).m_parsingStatus;
+pub fn XML_GetParsingStatus(
+    parsing_status: crate::expat_h::XML_ParsingStatus,
+) -> crate::expat_h::XML_ParsingStatus {
+    parsing_status
 }
 #[export_name = "XML_GetParsingStatus"]
 
@@ -9267,7 +9251,19 @@ pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut status: *mut crate::expat_h::XML_ParsingStatus,
 ) {
-    XML_GetParsingStatus(parser, status)
+    let Some(parser) = parser.as_ref() else {
+        return;
+    };
+    let Some(status) = status.as_mut() else {
+        crate::stdlib::__assert_fail(
+            b"status != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+            b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
+            2741 as ::core::ffi::c_uint,
+            b"void XML_GetParsingStatus(XML_Parser, XML_ParsingStatus *)\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+    };
+    *status = XML_GetParsingStatus(parser.m_parsingStatus);
 }
 pub unsafe extern "C" fn XML_GetErrorCode(
     mut parser: crate::expat_h::XML_Parser,
