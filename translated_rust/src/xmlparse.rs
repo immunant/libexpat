@@ -1560,6 +1560,46 @@ static UNPARSED_ENTITY_DECL_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+trait NotationDeclCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        notation_name: *const crate::expat_external_h::XML_Char,
+        base: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+    );
+}
+
+impl NotationDeclCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+    ) -> ()
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        notation_name: *const crate::expat_external_h::XML_Char,
+        base: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+    ) {
+        self(user_data, notation_name, base, system_id, public_id);
+    }
+}
+
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether a notation-declaration callback is installed.
+static NOTATION_DECL_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<dyn NotationDeclCallback>>,
+    >,
+> = std::sync::OnceLock::new();
+
 trait ElementDeclCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -1795,7 +1835,7 @@ pub struct XML_ParserStruct {
     pub m_startDoctypeDeclHandler: crate::expat_h::XML_StartDoctypeDeclHandler,
     pub m_endDoctypeDeclHandler: crate::expat_h::XML_EndDoctypeDeclHandler,
     pub m_unparsedEntityDeclHandler: bool,
-    pub m_notationDeclHandler: crate::expat_h::XML_NotationDeclHandler,
+    pub m_notationDeclHandler: bool,
     pub m_startNamespaceDeclHandler: crate::expat_h::XML_StartNamespaceDeclHandler,
     pub m_endNamespaceDeclHandler: bool,
     pub m_notStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler,
@@ -3207,7 +3247,12 @@ unsafe extern "C" fn parserInit(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
-    (*parser).m_notationDeclHandler = None;
+    (*parser).m_notationDeclHandler = false;
+    NOTATION_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_startNamespaceDeclHandler = None;
     (*parser).m_endNamespaceDeclHandler = false;
     END_NAMESPACE_DECL_HANDLERS
@@ -3470,7 +3515,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldUnparsedEntityDeclCallback: Option<
         std::sync::Arc<dyn UnparsedEntityDeclCallback>,
     > = None;
-    let mut oldNotationDeclHandler: crate::expat_h::XML_NotationDeclHandler = None;
+    let mut oldNotationDeclHandler = false;
+    let mut oldNotationDeclCallback: Option<std::sync::Arc<dyn NotationDeclCallback>> = None;
     let mut oldStartNamespaceDeclHandler: crate::expat_h::XML_StartNamespaceDeclHandler = None;
     let mut oldEndNamespaceDeclHandler = false;
     let mut oldEndNamespaceDeclCallback: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>> =
@@ -3550,6 +3596,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .get(&(parser as usize))
         .cloned();
     oldNotationDeclHandler = (*parser).m_notationDeclHandler;
+    oldNotationDeclCallback = NOTATION_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldStartNamespaceDeclHandler = (*parser).m_startNamespaceDeclHandler;
     oldEndNamespaceDeclHandler = (*parser).m_endNamespaceDeclHandler;
     oldEndNamespaceDeclCallback = END_NAMESPACE_DECL_HANDLERS
@@ -3688,6 +3740,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .insert(parser as usize, callback);
     }
     (*parser).m_notationDeclHandler = oldNotationDeclHandler;
+    if let Some(callback) = oldNotationDeclCallback {
+        NOTATION_DECL_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_startNamespaceDeclHandler = oldStartNamespaceDeclHandler;
     (*parser).m_endNamespaceDeclHandler = oldEndNamespaceDeclHandler;
     if let Some(callback) = oldEndNamespaceDeclCallback {
@@ -3865,6 +3924,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
     UNPARSED_ENTITY_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
+    NOTATION_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -4543,7 +4607,19 @@ pub unsafe extern "C" fn XML_SetNotationDeclHandler(
     mut handler: crate::expat_h::XML_NotationDeclHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_notationDeclHandler = handler;
+        (*parser).m_notationDeclHandler = handler.is_some();
+        let mut handlers = NOTATION_DECL_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match handler {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetNotationDeclHandler"]
@@ -9922,7 +9998,7 @@ unsafe extern "C" fn doProlog(
                                         (*parser).m_declNotationName =
                                             ::core::ptr::null::<crate::expat_external_h::XML_Char>(
                                             );
-                                        if (*parser).m_notationDeclHandler.is_some() {
+                                        if (*parser).m_notationDeclHandler {
                                             (*parser).m_declNotationName = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
@@ -9968,7 +10044,7 @@ unsafe extern "C" fn doProlog(
                                     }
                                     19 => {
                                         if !(*parser).m_declNotationName.is_null()
-                                            && (*parser).m_notationDeclHandler.is_some()
+                                            && (*parser).m_notationDeclHandler
                                         {
                                             let mut systemId: *const crate::expat_external_h::XML_Char = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
@@ -9980,37 +10056,61 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             *eventEndPP = s;
-                                            (*parser)
-                                                .m_notationDeclHandler
-                                                .expect("non-null function pointer")(
-                                                (*parser).m_handlerArg,
-                                                (*parser).m_declNotationName,
-                                                (*parser).m_curBase,
-                                                systemId,
-                                                (*parser).m_declNotationPublicId,
-                                            );
-                                            handleDefault = crate::expat_h::XML_FALSE;
+                                            let callback = NOTATION_DECL_HANDLERS
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| {
+                                                    poisoned.into_inner()
+                                                })
+                                                .get(&(parser as usize))
+                                                .cloned();
+                                            if let Some(callback) = callback {
+                                                callback.invoke(
+                                                    (*parser).m_handlerArg,
+                                                    (*parser).m_declNotationName,
+                                                    (*parser).m_curBase,
+                                                    systemId,
+                                                    (*parser).m_declNotationPublicId,
+                                                );
+                                                handleDefault = crate::expat_h::XML_FALSE;
+                                            }
                                         }
                                         poolClear(&raw mut (*parser).m_tempPool);
                                         break 's_2375;
                                     }
                                     20 => {
                                         if !(*parser).m_declNotationPublicId.is_null()
-                                            && (*parser).m_notationDeclHandler.is_some()
+                                            && (*parser).m_notationDeclHandler
                                         {
                                             *eventEndPP = s;
-                                            (*parser)
-                                                .m_notationDeclHandler
-                                                .expect("non-null function pointer")(
-                                                (*parser).m_handlerArg,
-                                                (*parser).m_declNotationName,
-                                                (*parser).m_curBase,
-                                                ::core::ptr::null::<
-                                                    crate::expat_external_h::XML_Char,
-                                                >(),
-                                                (*parser).m_declNotationPublicId,
-                                            );
-                                            handleDefault = crate::expat_h::XML_FALSE;
+                                            let callback = NOTATION_DECL_HANDLERS
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| {
+                                                    poisoned.into_inner()
+                                                })
+                                                .get(&(parser as usize))
+                                                .cloned();
+                                            if let Some(callback) = callback {
+                                                callback.invoke(
+                                                    (*parser).m_handlerArg,
+                                                    (*parser).m_declNotationName,
+                                                    (*parser).m_curBase,
+                                                    ::core::ptr::null::<
+                                                        crate::expat_external_h::XML_Char,
+                                                    >(),
+                                                    (*parser).m_declNotationPublicId,
+                                                );
+                                                handleDefault = crate::expat_h::XML_FALSE;
+                                            }
                                         }
                                         poolClear(&raw mut (*parser).m_tempPool);
                                         break 's_2375;
@@ -10516,7 +10616,7 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     17 => {
-                                        if (*parser).m_notationDeclHandler.is_some() {
+                                        if (*parser).m_notationDeclHandler {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
