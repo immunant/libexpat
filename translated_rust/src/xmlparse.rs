@@ -9123,17 +9123,26 @@ unsafe extern "C" fn doContent(
                         eventEndPP,
                         end
                     );
-                    if (*parser).m_characterDataHandler {
+                    // Take the handler state before invoking either callback,
+                    // but release the parser borrow before re-entry.
+                    let (has_character_data_handler, has_default_handler) = {
+                        let parser_state = &*parser;
+                        (
+                            parser_state.m_characterDataHandler,
+                            parser_state.m_defaultHandler,
+                        )
+                    };
+                    if has_character_data_handler {
                         let mut c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
                         callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
-                    } else if (*parser).m_defaultHandler {
+                    } else if has_default_handler {
                         reportDefault(parser, enc, s, end);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                     }
-                    if (*parser).m_tagLevel != startTagLevel {
+                    if (&*parser).m_tagLevel != startTagLevel {
                         return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
                     }
                     *nextPtr = end;
@@ -9935,14 +9944,23 @@ unsafe extern "C" fn doContent(
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }
-                    if (*parser).m_characterDataHandler {
+                    // Handler selection is a pre-callback snapshot, so the
+                    // borrow does not remain live during callback re-entry.
+                    let (has_character_data_handler, has_default_handler) = {
+                        let parser_state = &*parser;
+                        (
+                            parser_state.m_characterDataHandler,
+                            parser_state.m_defaultHandler,
+                        )
+                    };
+                    if has_character_data_handler {
                         let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                         callCharacterDataHandler(
                             parser,
                             buf.as_ptr(),
                             crate::src::xmltok::XmlUtf8Encode(n, &mut buf),
                         );
-                    } else if (*parser).m_defaultHandler {
+                    } else if has_default_handler {
                         reportDefault(parser, enc, s, next);
                     }
                 }
