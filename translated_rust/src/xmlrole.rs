@@ -733,24 +733,21 @@ unsafe extern "C" fn doctype4(
     return common(state, tok);
 }
 
-unsafe extern "C" fn doctype5(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
-    mut tok: ::core::ffi::c_int,
-    _ptr: *const ::core::ffi::c_char,
-    _end: *const ::core::ffi::c_char,
-    _enc: *const crate::src::xmltok::ENCODING,
+fn doctype5(
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
+    tok: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
-            (*state).handler = Some(PrologHandler::Prolog2);
+            state.handler = Some(PrologHandler::Prolog2);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_CLOSE as ::core::ffi::c_int;
         }
         _ => {}
     }
-    return common(state, tok);
+    return common_state(state, tok);
 }
 
 unsafe extern "C" fn internalSubset(
@@ -1981,7 +1978,7 @@ pub unsafe fn prolog_handler_dispatch(
         PrologHandler::Doctype2 => doctype2,
         PrologHandler::Doctype3 => doctype3,
         PrologHandler::Doctype4 => doctype4,
-        PrologHandler::Doctype5 => doctype5,
+        PrologHandler::Doctype5 => return doctype5(&mut *state, tok),
         PrologHandler::InternalSubset => internalSubset,
         PrologHandler::ExternalSubset0 => externalSubset0,
         PrologHandler::ExternalSubset1 => externalSubset1,
@@ -2032,10 +2029,17 @@ unsafe extern "C" fn common(
     mut state: *mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    if (*state).documentEntity == 0 && tok == crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF_1 {
+    return common_state(&mut *state, tok);
+}
+
+fn common_state(
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
+    tok: ::core::ffi::c_int,
+) -> ::core::ffi::c_int {
+    if state.documentEntity == 0 && tok == crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF_1 {
         return crate::src::xmlrole::XML_ROLE_INNER_PARAM_ENTITY_REF as ::core::ffi::c_int;
     }
-    (*state).handler = Some(PrologHandler::Error);
+    state.handler = Some(PrologHandler::Error);
     return crate::src::xmlrole::XML_ROLE_ERROR as ::core::ffi::c_int;
 }
 pub fn prolog_state_init(state: &mut crate::src::xmlrole::PROLOG_STATE) {
