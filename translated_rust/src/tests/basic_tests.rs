@@ -2953,6 +2953,42 @@ fn create_parser_or_fail(line: ::core::ffi::c_int) -> XML_Parser {
     parser
 }
 
+fn parser_create_with_memory_suite(memsuite: &XML_Memory_Handling_Suite) -> XML_Parser {
+    ffi_call3(
+        XML_ParserCreate_MM,
+        ::core::ptr::null::<XML_Char>(),
+        memsuite as *const XML_Memory_Handling_Suite,
+        ::core::ptr::null::<XML_Char>(),
+    )
+}
+
+fn create_parser_with_memory_suite_or_fail(
+    memsuite: &XML_Memory_Handling_Suite,
+    line: ::core::ffi::c_int,
+) -> XML_Parser {
+    let parser = parser_create_with_memory_suite(memsuite);
+    if parser.is_null() {
+        fail_test(line, b"check failed: parser != NULL\0");
+    }
+    parser
+}
+
+fn parser_parse_document_chunk(
+    parser: XML_Parser,
+    document: &[::core::ffi::c_char],
+    offset: ::core::ffi::c_int,
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
+) -> XML_Status {
+    let offset = usize::try_from(offset).expect("offset should fit into usize");
+    parser_parse_for(
+        parser,
+        document.as_ptr().wrapping_add(offset),
+        len,
+        is_final,
+    )
+}
+
 fn create_external_entity_parser_or_fail(
     parent: XML_Parser,
     line: ::core::ffi::c_int,
@@ -13664,287 +13700,179 @@ extern "C" fn counting_malloc(size: size_t) -> *mut ::core::ffi::c_void {
     counting_realloc(NULL, size)
 }
 extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bypass_heuristic_when_close_to_bufsize\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            6032 as ::core::ffi::c_int,
-        );
-        if g_chunkSize != 0 as ::core::ffi::c_int {
-            return;
-        }
-        if g_reparseDeferralEnabledDefault == 0 {
-            return;
-        }
-        let document_length: ::core::ffi::c_int = 65536 as ::core::ffi::c_int;
-        let document: *mut ::core::ffi::c_char =
-            malloc(document_length as size_t) as *mut ::core::ffi::c_char;
-        let memfuncs: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
-            malloc_fcn: Some(
-                counting_malloc as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void,
-            ),
-            realloc_fcn: Some(
-                counting_realloc
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-            free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
-        };
-        let leading_list: [::core::ffi::c_int; 10] = [
-            0 as ::core::ffi::c_int,
-            3 as ::core::ffi::c_int,
-            61 as ::core::ffi::c_int,
-            96 as ::core::ffi::c_int,
-            400 as ::core::ffi::c_int,
-            401 as ::core::ffi::c_int,
-            4000 as ::core::ffi::c_int,
-            4010 as ::core::ffi::c_int,
-            4099 as ::core::ffi::c_int,
-            -(1 as ::core::ffi::c_int),
-        ];
-        let bigtoken_list: [::core::ffi::c_int; 8] = [
-            3000 as ::core::ffi::c_int,
-            4000 as ::core::ffi::c_int,
-            4001 as ::core::ffi::c_int,
-            4096 as ::core::ffi::c_int,
-            4099 as ::core::ffi::c_int,
-            5000 as ::core::ffi::c_int,
-            20000 as ::core::ffi::c_int,
-            -(1 as ::core::ffi::c_int),
-        ];
-        let fillsize_list: [::core::ffi::c_int; 9] = [
-            131 as ::core::ffi::c_int,
-            256 as ::core::ffi::c_int,
-            399 as ::core::ffi::c_int,
-            400 as ::core::ffi::c_int,
-            401 as ::core::ffi::c_int,
-            1025 as ::core::ffi::c_int,
-            4099 as ::core::ffi::c_int,
-            4321 as ::core::ffi::c_int,
-            -(1 as ::core::ffi::c_int),
-        ];
-        let mut leading: *const ::core::ffi::c_int =
-            &raw const leading_list as *const ::core::ffi::c_int;
-        while *leading >= 0 as ::core::ffi::c_int {
-            let mut bigtoken: *const ::core::ffi::c_int =
-                &raw const bigtoken_list as *const ::core::ffi::c_int;
-            while *bigtoken >= 0 as ::core::ffi::c_int {
-                let mut fillsize: *const ::core::ffi::c_int =
-                    &raw const fillsize_list as *const ::core::ffi::c_int;
-                while *fillsize >= 0 as ::core::ffi::c_int {
-                    set_subtest(
-                        b"leading=%d bigtoken=%d fillsize=%d\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        *leading,
-                        *bigtoken,
-                        *fillsize,
+    set_test_info(
+        b"test_bypass_heuristic_when_close_to_bufsize\0",
+        6032 as ::core::ffi::c_int,
+    );
+    if current_chunk_size() != 0 as ::core::ffi::c_int {
+        return;
+    }
+    if !reparse_deferral_enabled_default() {
+        return;
+    }
+
+    let document_length: ::core::ffi::c_int = 65536 as ::core::ffi::c_int;
+    let memfuncs = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(
+            counting_malloc as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void,
+        ),
+        realloc_fcn: Some(
+            counting_realloc
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    size_t,
+                ) -> *mut ::core::ffi::c_void,
+        ),
+        free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
+    };
+    let leading_list = [0, 3, 61, 96, 400, 401, 4000, 4010, 4099, -1];
+    let bigtoken_list = [3000, 4000, 4001, 4096, 4099, 5000, 20000, -1];
+    let fillsize_list = [131, 256, 399, 400, 401, 1025, 4099, 4321, -1];
+
+    for &leading in leading_list.iter().take_while(|&&value| value >= 0) {
+        for &bigtoken in bigtoken_list.iter().take_while(|&&value| value >= 0) {
+            for &fillsize in fillsize_list.iter().take_while(|&&value| value >= 0) {
+                set_subtest_message(&format!(
+                    "leading={leading} bigtoken={bigtoken} fillsize={fillsize}"
+                ));
+
+                if leading + bigtoken > document_length {
+                    fail_test(
+                        6061 as ::core::ffi::c_int,
+                        b"check failed: *leading + *bigtoken <= document_length\0",
                     );
-                    if !(*leading + *bigtoken <= document_length) {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            6061 as ::core::ffi::c_int,
-                            b"check failed: *leading + *bigtoken <= document_length\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    memset(
-                        document as *mut ::core::ffi::c_void,
-                        'x' as i32,
-                        document_length as size_t,
-                    );
-                    if *leading != 0 {
-                        if !(*leading >= 3 as ::core::ffi::c_int) {
-                            _fail(
-                                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                                6067 as ::core::ffi::c_int,
-                                b"check failed: *leading >= 3\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                            );
-                        }
-                        memcpy(
-                            document as *mut ::core::ffi::c_void,
-                            b"<a>\0".as_ptr() as *const ::core::ffi::c_char
-                                as *const ::core::ffi::c_void,
-                            3 as size_t,
-                        );
-                    }
-                    *document.offset((*leading + 0 as ::core::ffi::c_int) as isize) =
-                        '<' as i32 as ::core::ffi::c_char;
-                    *document.offset((*leading + 1 as ::core::ffi::c_int) as isize) =
-                        'b' as i32 as ::core::ffi::c_char;
-                    memset(
-                        document.offset((*leading + 2 as ::core::ffi::c_int) as isize)
-                            as *mut ::core::ffi::c_char
-                            as *mut ::core::ffi::c_void,
-                        ' ' as i32,
-                        (*bigtoken - 2 as ::core::ffi::c_int) as size_t,
-                    );
-                    *document.offset((*leading + *bigtoken - 1 as ::core::ffi::c_int) as isize) =
-                        '>' as i32 as ::core::ffi::c_char;
-                    let expected_elem_total: ::core::ffi::c_int = 1 as ::core::ffi::c_int
-                        + (if *leading != 0 {
-                            1 as ::core::ffi::c_int
-                        } else {
-                            0 as ::core::ffi::c_int
-                        });
-                    let mut parser: XML_Parser = XML_ParserCreate_MM(
-                        ::core::ptr::null::<XML_Char>(),
-                        &raw const memfuncs,
-                        ::core::ptr::null::<XML_Char>(),
-                    );
-                    if parser.is_null() {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            6080 as ::core::ffi::c_int,
-                            b"check failed: parser != NULL\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    let mut storage: CharData = CharData {
-                        count: 0,
-                        data: [0; 2048],
-                    };
-                    CharData_Init(&raw mut storage);
-                    parser_set_user_data_for(parser, &raw mut storage as *mut ::core::ffi::c_void);
-                    XML_SetStartElementHandler(
-                        parser,
-                        Some(
-                            start_element_event_handler
-                                as unsafe extern "C" fn(
-                                    *mut ::core::ffi::c_void,
-                                    *const XML_Char,
-                                    *mut *const XML_Char,
-                                ) -> (),
-                        ),
-                    );
-                    reset_alloc_counters();
-                    let mut offset: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-                    while offset < *leading + *bigtoken {
-                        if !(offset + *fillsize <= document_length) {
-                            _fail(
-                                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                                6092 as ::core::ffi::c_int,
-                                b"check failed: offset + *fillsize <= document_length\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                            );
-                        }
-                        let status: XML_Status = XML_Parse(
-                            parser,
-                            document.offset(offset as isize) as *mut ::core::ffi::c_char,
-                            *fillsize,
-                            XML_FALSE as ::core::ffi::c_int,
-                        ) as XML_Status;
-                        if status as ::core::ffi::c_uint
-                            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-                        {
-                            _xml_failure(
-                                parser,
-                                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                                6096 as ::core::ffi::c_int,
-                            );
-                        }
-                        offset += *fillsize;
-                    }
-                    let bigtok_first_chunk_bytes: ::core::ffi::c_int =
-                        *fillsize - *leading % *fillsize;
-                    if !(bigtok_first_chunk_bytes >= *bigtoken
-                        && XML_CONTEXT_BYTES == 0 as ::core::ffi::c_int)
-                    {
-                        if *leading < XML_CONTEXT_BYTES {
-                            if !(biggest_alloc()
-                                >= (*leading as size_t).wrapping_add(*bigtoken as size_t))
-                            {
-                                _fail(
-                                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                        as *const ::core::ffi::c_char,
-                                    6110 as ::core::ffi::c_int,
-                                    b"check failed: g_biggestAlloc >= *leading + (size_t)*bigtoken\0"
-                                        .as_ptr() as *const ::core::ffi::c_char,
-                                );
-                            }
-                        } else if !(biggest_alloc()
-                            >= (1024 as size_t).wrapping_add(*bigtoken as size_t))
-                        {
-                            _fail(
-                                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                                6112 as ::core::ffi::c_int,
-                                b"check failed: g_biggestAlloc >= XML_CONTEXT_BYTES + (size_t)*bigtoken\0"
-                                    .as_ptr() as *const ::core::ffi::c_char,
-                            );
-                        }
-                    }
-                    while storage.count < expected_elem_total {
-                        let alloc_before: size_t = total_alloc();
-                        if !(offset + *fillsize <= document_length) {
-                            _fail(
-                                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                                6117 as ::core::ffi::c_int,
-                                b"check failed: offset + *fillsize <= document_length\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                            );
-                        }
-                        let status_0: XML_Status = XML_Parse(
-                            parser,
-                            document.offset(offset as isize) as *mut ::core::ffi::c_char,
-                            *fillsize,
-                            XML_FALSE as ::core::ffi::c_int,
-                        ) as XML_Status;
-                        if status_0 as ::core::ffi::c_uint
-                            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-                        {
-                            _xml_failure(
-                                parser,
-                                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                                6121 as ::core::ffi::c_int,
-                            );
-                        }
-                        offset += *fillsize;
-                        if !(total_alloc().wrapping_sub(alloc_before) < 4096 as size_t) {
-                            _fail(
-                                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                                6128 as ::core::ffi::c_int,
-                                b"check failed: g_totalAlloc - alloc_before < 4096\0".as_ptr()
-                                    as *const ::core::ffi::c_char,
-                            );
-                        }
-                    }
-                    if !(total_alloc() > 0 as size_t) {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            6131 as ::core::ffi::c_int,
-                            b"check failed: g_totalAlloc > 0\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    if !(storage.count == expected_elem_total) {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            6133 as ::core::ffi::c_int,
-                            b"check failed: storage.count == expected_elem_total\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    parser_free(parser);
-                    fillsize = fillsize.offset(1);
                 }
-                bigtoken = bigtoken.offset(1);
+
+                let mut document = vec![b'x' as ::core::ffi::c_char; document_length as usize];
+                if leading != 0 {
+                    if leading < 3 as ::core::ffi::c_int {
+                        fail_test(6067 as ::core::ffi::c_int, b"check failed: *leading >= 3\0");
+                    }
+                    document[..3].copy_from_slice(&[
+                        b'<' as ::core::ffi::c_char,
+                        b'a' as ::core::ffi::c_char,
+                        b'>' as ::core::ffi::c_char,
+                    ]);
+                }
+
+                let leading = usize::try_from(leading).expect("leading should fit into usize");
+                let bigtoken = usize::try_from(bigtoken).expect("bigtoken should fit into usize");
+                let fillsize =
+                    ::core::ffi::c_int::try_from(fillsize).expect("fillsize should fit into c_int");
+                document[leading] = b'<' as ::core::ffi::c_char;
+                document[leading + 1] = b'b' as ::core::ffi::c_char;
+                document[(leading + 2)..(leading + bigtoken - 1)].fill(b' ' as ::core::ffi::c_char);
+                document[leading + bigtoken - 1] = b'>' as ::core::ffi::c_char;
+
+                let expected_elem_total = 1 as ::core::ffi::c_int
+                    + if leading != 0 {
+                        1 as ::core::ffi::c_int
+                    } else {
+                        0 as ::core::ffi::c_int
+                    };
+                let parser =
+                    create_parser_with_memory_suite_or_fail(&memfuncs, 6080 as ::core::ffi::c_int);
+                let mut storage = CharData {
+                    count: 0,
+                    data: [0; 2048],
+                };
+                ffi_call1(CharData_Init, &raw mut storage);
+                parser_set_user_data_for(parser, (&raw mut storage).cast::<::core::ffi::c_void>());
+                parser_set_start_element_handler_for(
+                    parser,
+                    start_element_event_handler_for_tests(),
+                );
+                reset_alloc_counters();
+
+                let bigtoken_end = ::core::ffi::c_int::try_from(leading + bigtoken)
+                    .expect("bigtoken end should fit into c_int");
+                let leading_bytes =
+                    ::core::ffi::c_int::try_from(leading).expect("leading should fit into c_int");
+                let bigtoken_bytes =
+                    ::core::ffi::c_int::try_from(bigtoken).expect("bigtoken should fit into c_int");
+
+                let mut offset = 0 as ::core::ffi::c_int;
+                while offset < bigtoken_end {
+                    if offset + fillsize > document_length {
+                        fail_test(
+                            6092 as ::core::ffi::c_int,
+                            b"check failed: offset + *fillsize <= document_length\0",
+                        );
+                    }
+                    let status = parser_parse_document_chunk(
+                        parser,
+                        &document,
+                        offset,
+                        fillsize,
+                        XML_FALSE as ::core::ffi::c_int,
+                    );
+                    ensure_parser_success_for(parser, status, 6096 as ::core::ffi::c_int);
+                    offset += fillsize;
+                }
+
+                let bigtok_first_chunk_bytes = fillsize - leading_bytes % fillsize;
+                if !(bigtok_first_chunk_bytes >= bigtoken_bytes
+                    && XML_CONTEXT_BYTES == 0 as ::core::ffi::c_int)
+                {
+                    if leading_bytes < XML_CONTEXT_BYTES {
+                        if biggest_alloc()
+                            < (leading_bytes as size_t).wrapping_add(bigtoken_bytes as size_t)
+                        {
+                            fail_test(
+                                6110 as ::core::ffi::c_int,
+                                b"check failed: g_biggestAlloc >= *leading + (size_t)*bigtoken\0",
+                            );
+                        }
+                    } else if biggest_alloc()
+                        < (XML_CONTEXT_BYTES as size_t).wrapping_add(bigtoken_bytes as size_t)
+                    {
+                        fail_test(
+                            6112 as ::core::ffi::c_int,
+                            b"check failed: g_biggestAlloc >= XML_CONTEXT_BYTES + (size_t)*bigtoken\0",
+                        );
+                    }
+                }
+
+                while storage.count < expected_elem_total {
+                    let alloc_before = total_alloc();
+                    if offset + fillsize > document_length {
+                        fail_test(
+                            6117 as ::core::ffi::c_int,
+                            b"check failed: offset + *fillsize <= document_length\0",
+                        );
+                    }
+                    let status = parser_parse_document_chunk(
+                        parser,
+                        &document,
+                        offset,
+                        fillsize,
+                        XML_FALSE as ::core::ffi::c_int,
+                    );
+                    ensure_parser_success_for(parser, status, 6121 as ::core::ffi::c_int);
+                    offset += fillsize;
+                    if total_alloc().wrapping_sub(alloc_before) >= 4096 as size_t {
+                        fail_test(
+                            6128 as ::core::ffi::c_int,
+                            b"check failed: g_totalAlloc - alloc_before < 4096\0",
+                        );
+                    }
+                }
+
+                if total_alloc() == 0 as size_t {
+                    fail_test(
+                        6131 as ::core::ffi::c_int,
+                        b"check failed: g_totalAlloc > 0\0",
+                    );
+                }
+                if storage.count != expected_elem_total {
+                    fail_test(
+                        6133 as ::core::ffi::c_int,
+                        b"check failed: storage.count == expected_elem_total\0",
+                    );
+                }
+                parser_free(parser);
             }
-            leading = leading.offset(1);
         }
-        free(document as *mut ::core::ffi::c_void);
     }
 }
 extern "C" fn test_varying_buffer_fills() {
