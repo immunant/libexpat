@@ -4228,11 +4228,10 @@ impl BindingStorage {
     }
 }
 
-unsafe fn tag_storage_new(
-    parser: crate::expat_h::XML_Parser,
+fn tag_storage_new(
+    mut backing: Box<dyn FnMut(::core::ffi::c_int)>,
     source_line: ::core::ffi::c_int,
 ) -> Option<TagStorage> {
-    let mut backing = allocation_backing(parser, ::core::mem::size_of::<TAG>(), source_line)?;
     let mut tag = Vec::new();
     if tag.try_reserve_exact(1).is_err() {
         backing(source_line);
@@ -11196,7 +11195,14 @@ unsafe fn doContent(
                         parser.m_freeTagList.tags.pop()
                     };
                     if tag_storage.is_none() {
-                        tag_storage = tag_storage_new(parser, 3477 as ::core::ffi::c_int);
+                        let Some(backing) = allocation_backing(
+                            parser_ptr,
+                            ::core::mem::size_of::<TAG>(),
+                            3477 as ::core::ffi::c_int,
+                        ) else {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        };
+                        tag_storage = tag_storage_new(backing, 3477 as ::core::ffi::c_int);
                     }
                     let Some(mut tag_storage) = tag_storage else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
