@@ -12269,8 +12269,35 @@ unsafe fn doContent(
                     }
                 }
                 crate::src::xmltok::XML_TOK_COMMENT => {
-                    if reportComment(parser, enc, s, next) == 0 {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    // The scanner bounds this complete token in the owned
+                    // iteration snapshot.  Keep comment conversion and its
+                    // callback on that slice-based path rather than
+                    // reconstructing raw cursor arguments for `reportComment`.
+                    let Some(token_len) = next
+                        .addr()
+                        .checked_sub(s.addr())
+                        .filter(|length| *length <= source.len())
+                    else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let Some(token) = source.get(..token_len) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    match report_comment_token(parser, encoding, token) {
+                        Some(true) => {}
+                        Some(false) if parser.m_defaultHandler => {
+                            report_default_token(
+                                parser_ptr.addr(),
+                                parser,
+                                encoding,
+                                enc.addr(),
+                                s.addr(),
+                                next.addr(),
+                                &source,
+                            );
+                        }
+                        Some(false) => {}
+                        None => return crate::expat_h::XML_ERROR_NO_MEMORY,
                     }
                 }
                 _ => {
