@@ -12569,11 +12569,13 @@ unsafe fn trim_to_complete_utf8_cursor(
     if from == from_lim {
         return;
     }
-    let length = unsafe { from_lim.offset_from(from) };
-    if length <= 0 {
+    // The FFI contract guarantees a single allocation.  Address subtraction
+    // preserves the C cursor ordering check without requiring unsafe pointer
+    // arithmetic; a reversed range remains a no-op.
+    let Some(length) = from_lim.addr().get().checked_sub(from.addr().get()) else {
         return;
-    }
-    let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>().as_ptr(), length as usize) };
+    };
+    let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>().as_ptr(), length) };
     let trimmed = trim_to_complete_utf8_characters(input);
     *from_lim_out = input[trimmed..].as_ptr().cast::<::core::ffi::c_char>();
 }
