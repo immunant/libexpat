@@ -2351,6 +2351,16 @@ fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char,
     }
 }
 
+fn copy_c_ushorts(
+    dest: *mut ::core::ffi::c_ushort,
+    src: *const ::core::ffi::c_ushort,
+    len: size_t,
+) {
+    for index in 0..len {
+        write_copy(dest.wrapping_add(index), read_copy(src.wrapping_add(index)));
+    }
+}
+
 fn unknown_sequence_length(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> isize {
     let byte = read_c_char(ptr) as ::core::ffi::c_uchar as usize;
     with_ref!(enc.cast::<normal_encoding>(), |normal| {
@@ -12887,33 +12897,45 @@ pub unsafe extern "C" fn XmlUtf8Encode(
     mut c: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    encode_utf8_bytes(c, unsafe { &mut *(buf as *mut [::core::ffi::c_char; 4]) })
+    let mut encoded = [0 as ::core::ffi::c_char; 4];
+    let len = encode_utf8_bytes(c, &mut encoded);
+    copy_c_chars(
+        buf,
+        encoded.as_ptr(),
+        usize::try_from(len).expect("UTF-8 length should be non-negative"),
+    );
+    len
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlUtf16Encode(
     mut charNum: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_ushort,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if charNum < 0 as ::core::ffi::c_int {
-            return 0 as ::core::ffi::c_int;
-        }
-        if charNum < 0x10000 as ::core::ffi::c_int {
-            *buf.offset(0 as ::core::ffi::c_int as isize) = charNum as ::core::ffi::c_ushort;
-            return 1 as ::core::ffi::c_int;
-        }
-        if charNum < 0x110000 as ::core::ffi::c_int {
-            charNum -= 0x10000 as ::core::ffi::c_int;
-            *buf.offset(0 as ::core::ffi::c_int as isize) = ((charNum >> 10 as ::core::ffi::c_int)
-                + 0xd800 as ::core::ffi::c_int)
-                as ::core::ffi::c_ushort;
-            *buf.offset(1 as ::core::ffi::c_int as isize) =
-                ((charNum & 0x3ff as ::core::ffi::c_int) + 0xdc00 as ::core::ffi::c_int)
-                    as ::core::ffi::c_ushort;
-            return 2 as ::core::ffi::c_int;
-        }
+    if charNum < 0 as ::core::ffi::c_int {
         return 0 as ::core::ffi::c_int;
     }
+
+    let mut encoded = [0 as ::core::ffi::c_ushort; 2];
+    let len = if charNum < 0x10000 as ::core::ffi::c_int {
+        encoded[0] = charNum as ::core::ffi::c_ushort;
+        1
+    } else if charNum < 0x110000 as ::core::ffi::c_int {
+        charNum -= 0x10000 as ::core::ffi::c_int;
+        encoded[0] = ((charNum >> 10 as ::core::ffi::c_int) + 0xd800 as ::core::ffi::c_int)
+            as ::core::ffi::c_ushort;
+        encoded[1] = ((charNum & 0x3ff as ::core::ffi::c_int) + 0xdc00 as ::core::ffi::c_int)
+            as ::core::ffi::c_ushort;
+        2
+    } else {
+        0
+    };
+
+    copy_c_ushorts(
+        buf,
+        encoded.as_ptr(),
+        usize::try_from(len).expect("UTF-16 length should be non-negative"),
+    );
+    len
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
