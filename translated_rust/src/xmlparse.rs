@@ -1715,6 +1715,47 @@ static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingCallback>>>,
 > = std::sync::OnceLock::new();
 
+trait ExternalEntityRefCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        parser: crate::expat_h::XML_Parser,
+        context: *const crate::expat_external_h::XML_Char,
+        base: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+    ) -> ::core::ffi::c_int;
+}
+
+impl ExternalEntityRefCallback
+    for unsafe extern "C" fn(
+        crate::expat_h::XML_Parser,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+    ) -> ::core::ffi::c_int
+{
+    unsafe fn invoke(
+        &self,
+        parser: crate::expat_h::XML_Parser,
+        context: *const crate::expat_external_h::XML_Char,
+        base: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+    ) -> ::core::ffi::c_int {
+        self(parser, context, base, system_id, public_id)
+    }
+}
+
+// Foreign callback values live outside parser state.  The parser itself only
+// records whether a handler is installed, while this registry preserves the
+// C callback ABI and lets call sites clone the callback before re-entry.
+static EXTERNAL_ENTITY_REF_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<dyn ExternalEntityRefCallback>>,
+    >,
+> = std::sync::OnceLock::new();
+
 // The initial tokenizer chooses a built-in encoding after inspecting the
 // first bytes.  Keep that choice as an index in INIT_ENCODING rather than
 // copying a pointer to a static encoding table into parser state.  An unknown
@@ -1757,7 +1798,7 @@ pub struct XML_ParserStruct {
     pub m_startNamespaceDeclHandler: crate::expat_h::XML_StartNamespaceDeclHandler,
     pub m_endNamespaceDeclHandler: bool,
     pub m_notStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler,
-    pub m_externalEntityRefHandler: crate::expat_h::XML_ExternalEntityRefHandler,
+    pub m_externalEntityRefHandler: bool,
     pub m_externalEntityRefHandlerArg: crate::expat_h::XML_Parser,
     pub m_skippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler,
     pub m_unknownEncodingHandler: bool,
@@ -3174,7 +3215,12 @@ unsafe extern "C" fn parserInit(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     (*parser).m_notStandaloneHandler = None;
-    (*parser).m_externalEntityRefHandler = None;
+    (*parser).m_externalEntityRefHandler = false;
+    EXTERNAL_ENTITY_REF_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_externalEntityRefHandlerArg = parser;
     (*parser).m_skippedEntityHandler = None;
     (*parser).m_elementDeclHandler = false;
@@ -3427,7 +3473,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldEndNamespaceDeclCallback: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>> =
         None;
     let mut oldNotStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler = None;
-    let mut oldExternalEntityRefHandler: crate::expat_h::XML_ExternalEntityRefHandler = None;
+    let mut oldExternalEntityRefHandler: Option<std::sync::Arc<dyn ExternalEntityRefCallback>> =
+        None;
     let mut oldSkippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler = None;
     let mut oldUnknownEncodingHandler: Option<std::sync::Arc<dyn UnknownEncodingCallback>> = None;
     let mut oldUnknownEncodingHandlerData: *mut ::core::ffi::c_void =
@@ -3509,7 +3556,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .get(&(parser as usize))
         .cloned();
     oldNotStandaloneHandler = (*parser).m_notStandaloneHandler;
-    oldExternalEntityRefHandler = (*parser).m_externalEntityRefHandler;
+    oldExternalEntityRefHandler = EXTERNAL_ENTITY_REF_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldSkippedEntityHandler = (*parser).m_skippedEntityHandler;
     oldUnknownEncodingHandler = UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -3643,7 +3695,14 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .insert(parser as usize, callback);
     }
     (*parser).m_notStandaloneHandler = oldNotStandaloneHandler;
-    (*parser).m_externalEntityRefHandler = oldExternalEntityRefHandler;
+    (*parser).m_externalEntityRefHandler = oldExternalEntityRefHandler.is_some();
+    if let Some(callback) = oldExternalEntityRefHandler {
+        EXTERNAL_ENTITY_REF_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_skippedEntityHandler = oldSkippedEntityHandler;
     (*parser).m_unknownEncodingHandler = oldUnknownEncodingHandler.is_some();
     if let Some(callback) = oldUnknownEncodingHandler {
@@ -3811,6 +3870,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     UNKNOWN_ENCODING_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
+    EXTERNAL_ENTITY_REF_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -4581,7 +4645,19 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandler(
     mut handler: crate::expat_h::XML_ExternalEntityRefHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_externalEntityRefHandler = handler;
+        (*parser).m_externalEntityRefHandler = handler.is_some();
+        let mut handlers = EXTERNAL_ENTITY_REF_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match handler {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetExternalEntityRefHandler"]
@@ -6381,7 +6457,7 @@ unsafe extern "C" fn doContent(
                                     return result;
                                 }
                             }
-                        } else if (*parser).m_externalEntityRefHandler.is_some() {
+                        } else if (*parser).m_externalEntityRefHandler {
                             let mut context: *const crate::expat_external_h::XML_Char =
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             (*entity).open = crate::expat_h::XML_TRUE;
@@ -6390,9 +6466,14 @@ unsafe extern "C" fn doContent(
                             if context.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
-                            if (*parser)
-                                .m_externalEntityRefHandler
-                                .expect("non-null function pointer")(
+                            let handler = EXTERNAL_ENTITY_REF_HANDLERS
+                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                .lock()
+                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                .get(&(parser as usize))
+                                .cloned()
+                                .expect("installed external entity handler");
+                            if handler.invoke(
                                 (*parser).m_externalEntityRefHandlerArg,
                                 context,
                                 (*entity).base,
@@ -9062,7 +9143,7 @@ unsafe extern "C" fn doProlog(
                                             (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                             if (*parser).m_paramEntityParsing as ::core::ffi::c_uint
                                                 != 0
-                                                && (*parser).m_externalEntityRefHandler.is_some()
+                                                && (*parser).m_externalEntityRefHandler
                                             {
                                                 let mut entity: *mut ENTITY = lookup(
                                                     parser,
@@ -9078,9 +9159,14 @@ unsafe extern "C" fn doProlog(
                                                     (*entity).base = (*parser).m_curBase;
                                                 }
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
-                                                if (*parser)
-                                                    .m_externalEntityRefHandler
-                                                    .expect("non-null function pointer")(
+                                                let handler = EXTERNAL_ENTITY_REF_HANDLERS
+                                                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                    .lock()
+                                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                    .get(&(parser as usize))
+                                                    .cloned()
+                                                    .expect("installed external entity handler");
+                                                if handler.invoke(
                                                     (*parser).m_externalEntityRefHandlerArg,
                                                     ::core::ptr::null::<
                                                         crate::expat_external_h::XML_Char,
@@ -9129,7 +9215,7 @@ unsafe extern "C" fn doProlog(
                                             (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                             if (*parser).m_paramEntityParsing as ::core::ffi::c_uint
                                                 != 0
-                                                && (*parser).m_externalEntityRefHandler.is_some()
+                                                && (*parser).m_externalEntityRefHandler
                                             {
                                                 let mut entity_0: *mut ENTITY = lookup(
                                                     parser,
@@ -9143,9 +9229,14 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 (*entity_0).base = (*parser).m_curBase;
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
-                                                if (*parser)
-                                                    .m_externalEntityRefHandler
-                                                    .expect("non-null function pointer")(
+                                                let handler = EXTERNAL_ENTITY_REF_HANDLERS
+                                                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                    .lock()
+                                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                    .get(&(parser as usize))
+                                                    .cloned()
+                                                    .expect("installed external entity handler");
+                                                if handler.invoke(
                                                     (*parser).m_externalEntityRefHandlerArg,
                                                     ::core::ptr::null::<
                                                         crate::expat_external_h::XML_Char,
@@ -10207,7 +10298,7 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                                 break 's_2375;
-                                            } else if (*parser).m_externalEntityRefHandler.is_some()
+                                            } else if (*parser).m_externalEntityRefHandler
                                             {
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                                 (*entity_1).open = crate::expat_h::XML_TRUE;
@@ -10216,9 +10307,14 @@ unsafe extern "C" fn doProlog(
                                                     entity_1,
                                                     6057 as ::core::ffi::c_int,
                                                 );
-                                                if (*parser)
-                                                    .m_externalEntityRefHandler
-                                                    .expect("non-null function pointer")(
+                                                let handler = EXTERNAL_ENTITY_REF_HANDLERS
+                                                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                    .lock()
+                                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                    .get(&(parser as usize))
+                                                    .cloned()
+                                                    .expect("installed external entity handler");
+                                                if handler.invoke(
                                                     (*parser).m_externalEntityRefHandlerArg,
                                                     ::core::ptr::null::<
                                                         crate::expat_external_h::XML_Char,
@@ -11351,7 +11447,7 @@ unsafe extern "C" fn storeEntityValue(
                                     result = crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
                                     break '_endEntityValue;
                                 } else if !(*entity).systemId.is_null() {
-                                    if (*parser).m_externalEntityRefHandler.is_some() {
+                                    if (*parser).m_externalEntityRefHandler {
                                         (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                         (*entity).open = crate::expat_h::XML_TRUE;
                                         entityTrackingOnOpen(
@@ -11359,9 +11455,14 @@ unsafe extern "C" fn storeEntityValue(
                                             entity,
                                             6840 as ::core::ffi::c_int,
                                         );
-                                        if (*parser)
-                                            .m_externalEntityRefHandler
-                                            .expect("non-null function pointer")(
+                                        let handler = EXTERNAL_ENTITY_REF_HANDLERS
+                                            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                            .lock()
+                                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                            .get(&(parser as usize))
+                                            .cloned()
+                                            .expect("installed external entity handler");
+                                        if handler.invoke(
                                             (*parser).m_externalEntityRefHandlerArg,
                                             ::core::ptr::null::<crate::expat_external_h::XML_Char>(
                                             ),
