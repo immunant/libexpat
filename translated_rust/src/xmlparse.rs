@@ -17727,8 +17727,6 @@ unsafe fn doProlog(
                                         } else {
                                             let mut name_1: *const crate::expat_external_h::XML_Char =
                                                 ::core::ptr::null:: <crate::expat_external_h::XML_Char>();
-                                            let mut entity_1: *mut ENTITY =
-                                                ::core::ptr::null_mut::<ENTITY>();
                                             name_1 = poolStoreString(
                                                 std::ptr::from_mut(&mut dtd.pool),
                                                 enc,
@@ -17738,33 +17736,35 @@ unsafe fn doProlog(
                                             if name_1.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            entity_1 = lookup(
-                                                parser,
-                                                &raw mut (*dtd).paramEntities,
-                                                name_1 as KEY,
-                                                0 as crate::__stddef_size_t_h::size_t,
+                                            let Some(temporary_name) = pool_string_ref_from_address(
+                                                &dtd.pool,
+                                                name_1.addr(),
+                                                false,
+                                            ) else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            // Resolve the temporary pool spelling through the typed
+                                            // parameter-entity table before rewinding that temporary
+                                            // storage.  Keep only the entity's retained key across
+                                            // callbacks; each later mutation reacquires it from the
+                                            // DTD so no reference survives re-entry.
+                                            let entity_state = declared_entity_mut(
+                                                dtd,
+                                                DeclaredEntity::Parameter(temporary_name),
+                                                hash_salt,
                                             )
-                                                as *mut ENTITY;
-                                            (*dtd).pool.rewind();
-                                            // `lookup` returns stable boxed entity storage.  Read the
-                                            // fields needed to select this branch once, before any
-                                            // entity processing or callback can re-enter the parser.
-                                            // Do not retain the reference: an external-entity callback
-                                            // is allowed to mutate the DTD and must continue to see the
-                                            // entity through its stable handle.
-                                            let entity_state = if entity_1.is_null() {
-                                                None
-                                            } else {
-                                                let entity = &*entity_1;
-                                                Some((
+                                            .map(|entity| {
+                                                (
+                                                    entity.named.name,
                                                     entity.is_internal != 0,
                                                     entity.open != 0,
                                                     entity.textPtr.is_some(),
                                                     entity.base,
                                                     entity.systemId,
                                                     entity.publicId,
-                                                ))
-                                            };
+                                                )
+                                            });
+                                            (*dtd).pool.rewind();
                                             if (*parser).m_prologState.documentEntity != 0
                                                 && (if (*dtd).standalone as ::core::ffi::c_int != 0
                                                 {
@@ -17779,7 +17779,7 @@ unsafe fn doProlog(
                                                     return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
                                                 } else if !entity_state
                                                     .expect("checked parameter entity state")
-                                                    .0
+                                                    .1
                                                 {
                                                     return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                                                 }
@@ -17808,6 +17808,7 @@ unsafe fn doProlog(
                                                 break 's_2375;
                                             }
                                             let (
+                                                entity_name,
                                                 _,
                                                 entity_is_open,
                                                 entity_has_text,
@@ -17833,7 +17834,14 @@ unsafe fn doProlog(
                                                     as crate::expat_h::XML_Bool;
                                                 result_4 = processEntity(
                                                     parser,
-                                                    entity_1,
+                                                    std::ptr::from_mut(
+                                                        declared_entity_mut(
+                                                            dtd,
+                                                            DeclaredEntity::Parameter(entity_name),
+                                                            hash_salt,
+                                                        )
+                                                        .expect("parameter entity must remain in the DTD"),
+                                                    ),
                                                     betweenDecl,
                                                     ENTITY_INTERNAL,
                                                 );
@@ -17848,10 +17856,19 @@ unsafe fn doProlog(
                                                 break 's_2375;
                                             } else if (*parser).m_externalEntityRefHandler {
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
-                                                (*entity_1).open = crate::expat_h::XML_TRUE;
+                                                let entity_ptr = {
+                                                    let entity = declared_entity_mut(
+                                                        dtd,
+                                                        DeclaredEntity::Parameter(entity_name),
+                                                        hash_salt,
+                                                    )
+                                                    .expect("parameter entity must remain in the DTD");
+                                                    entity.open = crate::expat_h::XML_TRUE;
+                                                    std::ptr::from_mut(entity)
+                                                };
                                                 entityTrackingOnOpen(
                                                     parser,
-                                                    entity_1,
+                                                    entity_ptr,
                                                     6057 as ::core::ffi::c_int,
                                                 );
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
@@ -17880,20 +17897,44 @@ unsafe fn doProlog(
                                                     event,
                                                 ) == 0
                                                 {
+                                                    let entity = declared_entity_mut(
+                                                        dtd,
+                                                        DeclaredEntity::Parameter(entity_name),
+                                                        hash_salt,
+                                                    )
+                                                    .expect("parameter entity must remain in the DTD");
                                                     entityTrackingOnClose(
                                                         parser,
-                                                        entity_1,
+                                                        std::ptr::from_mut(entity),
                                                         6061 as ::core::ffi::c_int,
                                                     );
-                                                    (*entity_1).open = crate::expat_h::XML_FALSE;
+                                                    declared_entity_mut(
+                                                        dtd,
+                                                        DeclaredEntity::Parameter(entity_name),
+                                                        hash_salt,
+                                                    )
+                                                    .expect("parameter entity must remain in the DTD")
+                                                    .open = crate::expat_h::XML_FALSE;
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                                 }
+                                                let entity = declared_entity_mut(
+                                                    dtd,
+                                                    DeclaredEntity::Parameter(entity_name),
+                                                    hash_salt,
+                                                )
+                                                .expect("parameter entity must remain in the DTD");
                                                 entityTrackingOnClose(
                                                     parser,
-                                                    entity_1,
+                                                    std::ptr::from_mut(entity),
                                                     6065 as ::core::ffi::c_int,
                                                 );
-                                                (*entity_1).open = crate::expat_h::XML_FALSE;
+                                                declared_entity_mut(
+                                                    dtd,
+                                                    DeclaredEntity::Parameter(entity_name),
+                                                    hash_salt,
+                                                )
+                                                .expect("parameter entity must remain in the DTD")
+                                                .open = crate::expat_h::XML_FALSE;
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                                 if (*dtd).paramEntityRead == 0 {
                                                     (*dtd).keepProcessing = (*dtd).standalone;
