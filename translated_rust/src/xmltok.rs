@@ -6001,27 +6001,26 @@ pub mod xmltok_impl_c {
         Little2ContentToken::Result(crate::src::xmltok::XML_TOK_DATA_CHARS_1, Some(ptr))
     }
 
-    pub unsafe extern "C" fn little2_contentTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let byte_len = end.offset_from(ptr) as usize;
-        let input = ::core::slice::from_raw_parts(ptr, byte_len);
-        let end = ptr.add(byte_len & !1);
-        let encoding = &*(enc as *const normal_encoding);
+    /// Scans UTF-16LE content over a validated character slice.  The returned
+    /// cursor remains an offset into `input`, including for the `<` and `&`
+    /// follow-up scanners, so callers never need to re-enter a raw scanner.
+    pub fn little2_contentTok(
+        encoding: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
         match little2_content_tok_impl(encoding, input) {
-            Little2ContentToken::ScanLt => little2_scanLt(enc, ptr.add(2), end, nextTokPtr),
-            Little2ContentToken::ScanRef => little2_scanRef(enc, ptr.add(2), end, nextTokPtr),
-            Little2ContentToken::Result(token, Some(next)) => {
-                *nextTokPtr = ptr.add(next);
-                token
+            Little2ContentToken::Result(token, next) => (token, next),
+            Little2ContentToken::ScanLt => {
+                let end = input.len() & !1;
+                let input = &input[2..end];
+                let result = little2_scan_lt_result(encoding, bytemuck::cast_slice(input), input);
+                (result.token, result.next.map(|next| 2 + next))
             }
-            Little2ContentToken::Result(token, None) => token,
+            Little2ContentToken::ScanRef => {
+                let end = input.len() & !1;
+                let result = little2_scan_ref_impl(encoding, &input[2..end]);
+                (result.token, result.next.map(|next| 2 + next))
+            }
         }
     }
 
@@ -10626,16 +10625,9 @@ pub mod xmltok_impl_c {
             normal_content_result(encoding, input.bytes)
         };
 
-        let little2_content = || match little2_content_tok_impl(encoding, input.chars) {
-            Little2ContentToken::Result(token, next) => ScannerResult::new(token, next),
-            Little2ContentToken::ScanLt => {
-                let result = little2_scan_lt_result(encoding, &input.bytes[2..], &input.chars[2..]);
-                ScannerResult::new(result.token, result.next.map(|next| 2 + next))
-            }
-            Little2ContentToken::ScanRef => {
-                let result = little2_scan_ref_impl(encoding, &input.chars[2..]);
-                ScannerResult::new(result.token, result.next.map(|next| 2 + next))
-            }
+        let little2_content = || {
+            let (token, next) = little2_contentTok(encoding, input.chars);
+            ScannerResult::new(token, next)
         };
 
         let big2_result = |result: Big2ScanOutcome| match result {
