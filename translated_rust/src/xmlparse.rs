@@ -10475,15 +10475,6 @@ unsafe fn doContent(
                             reportDefault(parser, enc, s, next);
                         }
                     } else {
-                        let name = poolStoreString(
-                            &raw mut (*dtd).pool,
-                            enc,
-                            s.wrapping_offset(min_bytes_per_char as isize),
-                            next.wrapping_offset(-(min_bytes_per_char as isize)),
-                        );
-                        if name.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
                         let salt = (&*parser)
                             .m_root
                             .lock()
@@ -10494,13 +10485,42 @@ unsafe fn doContent(
                         // is rewound.  The table owns entity declarations in
                         // boxed typed records, so all declaration inspection
                         // below can stay in ordinary Rust references.
-                        let (restricted_entity_declarations, entity, dtd_pool) = {
+                        let (restricted_entity_declarations, entity, dtd_pool, name) = {
                             let dtd_state = &mut *dtd;
-                            let Some(name_ref) =
-                                pool_string_ref_from_address(&dtd_state.pool, name.addr(), false)
+                            let Some(entity_name) = source
+                                .chars_between(entity_start.addr(), entity_end.addr())
+                                .map(bytemuck::cast_slice)
                             else {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             };
+                            let unknown_encoding = match (entity_name.is_empty(), encoding.utf8Convert) {
+                                (false, crate::src::xmltok::Utf8Converter::Unknown) => {
+                                    crate::src::xmltok::registered_unknown_encoding(Some(enc.addr()))
+                                }
+                                _ => None,
+                            };
+                            if matches!(
+                                encoding.utf8Convert,
+                                crate::src::xmltok::Utf8Converter::Unknown
+                            ) && unknown_encoding.is_none()
+                            {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            }
+                            let Some(name_ref) = pool_store_name_source(
+                                &mut dtd_state.pool,
+                                encoding,
+                                unknown_encoding.as_ref(),
+                                entity_name,
+                            ) else {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            };
+                            let name = dtd_state
+                                .pool
+                                .chars_from(name_ref)
+                                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+                            if name.is_null() {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            }
                             let entity = general_entity_mut(dtd_state, name_ref, salt).map(
                                 |entity| {
                                     (
@@ -10517,7 +10537,7 @@ unsafe fn doContent(
                                 || dtd_state.standalone as ::core::ffi::c_int != 0;
                             let dtd_pool = std::ptr::from_ref(&dtd_state.pool);
                             dtd_state.pool.rewind();
-                            (restricted, entity, dtd_pool)
+                            (restricted, entity, dtd_pool, name)
                         };
                         if restricted_entity_declarations {
                             let Some((_, _, is_internal, _, _, _)) = entity else {
