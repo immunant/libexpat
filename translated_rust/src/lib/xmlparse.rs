@@ -1046,6 +1046,46 @@ macro_rules! parser_malloc {
     }};
 }
 
+macro_rules! call_malloc_fcn {
+    ($malloc_fcn:expr, $size:expr $(,)?) => {{
+        unsafe { $malloc_fcn.expect("non-null function pointer")($size) }
+    }};
+}
+
+macro_rules! libc_malloc {
+    ($size:expr $(,)?) => {{
+        unsafe { malloc($size) }
+    }};
+}
+
+macro_rules! memset_ptr {
+    ($ptr:expr, $byte:expr, $size:expr $(,)?) => {{
+        unsafe {
+            memset(($ptr).cast::<::core::ffi::c_void>(), $byte, $size);
+        }
+    }};
+}
+
+macro_rules! free_parser {
+    ($parser:expr $(,)?) => {{
+        unsafe {
+            XML_ParserFree($parser);
+        }
+    }};
+}
+
+macro_rules! xml_get_utf8_internal_encoding {
+    () => {{
+        unsafe { XmlGetUtf8InternalEncoding() }
+    }};
+}
+
+macro_rules! xml_get_utf8_internal_encoding_ns {
+    () => {{
+        unsafe { XmlGetUtf8InternalEncodingNS() }
+    }};
+}
+
 macro_rules! call_end_namespace_decl_handler {
     ($handler:expr, $user_data:expr, $prefix_name:expr $(,)?) => {{
         unsafe { $handler($user_data, $prefix_name) }
@@ -1986,241 +2026,199 @@ extern "C" fn parserCreate(
     mut dtd: *mut DTD,
     mut parentParser: XML_Parser,
 ) -> XML_Parser {
-    unsafe {
-        let mut parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
-        let increase: size_t = (::core::mem::size_of::<size_t>() as size_t)
-            .wrapping_add(EXPAT_MALLOC_PADDING)
-            .wrapping_add(::core::mem::size_of::<XML_ParserStruct>() as size_t);
-        if !parentParser.is_null() {
-            let rootParser: XML_Parser = getRootParserOf(&mut *parentParser, None) as XML_Parser;
-            if !expat_heap_increase_tolerable(
-                &*rootParser,
-                increase as XmlBigCount,
-                1354 as ::core::ffi::c_int,
-            ) {
-                return ::core::ptr::null_mut::<XML_ParserStruct>();
-            }
+    let mut parser: XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
+    let parser_size = ::core::mem::size_of::<XML_ParserStruct>() as size_t;
+    let increase: size_t = (::core::mem::size_of::<size_t>() as size_t)
+        .wrapping_add(EXPAT_MALLOC_PADDING)
+        .wrapping_add(parser_size);
+    if !parentParser.is_null() {
+        let root_parser = getRootParserOf(ptr_mut(parentParser), None);
+        if !expat_heap_increase_tolerable(
+            root_parser,
+            increase as XmlBigCount,
+            1354 as ::core::ffi::c_int,
+        ) {
+            return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
-        if !memsuite.is_null() {
-            let mut mtemp: *mut XML_Memory_Handling_Suite =
-                ::core::ptr::null_mut::<XML_Memory_Handling_Suite>();
-            let sizeAndParser: *mut ::core::ffi::c_void =
-                (*memsuite).malloc_fcn.expect("non-null function pointer")(
-                    (::core::mem::size_of::<size_t>() as size_t)
-                        .wrapping_add(EXPAT_MALLOC_PADDING)
-                        .wrapping_add(::core::mem::size_of::<XML_ParserStruct>() as size_t),
-                ) as *mut ::core::ffi::c_void;
-            if !sizeAndParser.is_null() {
-                *(sizeAndParser as *mut size_t) =
-                    ::core::mem::size_of::<XML_ParserStruct>() as usize as size_t;
-                parser = (sizeAndParser as *mut ::core::ffi::c_char)
-                    .offset(::core::mem::size_of::<size_t>() as usize as isize)
-                    .offset(EXPAT_MALLOC_PADDING as isize) as XML_Parser;
-                mtemp = &raw const (*parser).m_mem as *mut XML_Memory_Handling_Suite;
-                (*mtemp).malloc_fcn = (*memsuite).malloc_fcn;
-                (*mtemp).realloc_fcn = (*memsuite).realloc_fcn;
-                (*mtemp).free_fcn = (*memsuite).free_fcn;
-            }
-        } else {
-            let mut mtemp_0: *mut XML_Memory_Handling_Suite =
-                ::core::ptr::null_mut::<XML_Memory_Handling_Suite>();
-            let sizeAndParser_0: *mut ::core::ffi::c_void = malloc(
-                (::core::mem::size_of::<size_t>() as size_t)
-                    .wrapping_add(EXPAT_MALLOC_PADDING)
-                    .wrapping_add(::core::mem::size_of::<XML_ParserStruct>() as size_t),
-            )
-                as *mut ::core::ffi::c_void;
-            if !sizeAndParser_0.is_null() {
-                *(sizeAndParser_0 as *mut size_t) =
-                    ::core::mem::size_of::<XML_ParserStruct>() as usize as size_t;
-                parser = (sizeAndParser_0 as *mut ::core::ffi::c_char)
-                    .offset(::core::mem::size_of::<size_t>() as usize as isize)
-                    .offset(EXPAT_MALLOC_PADDING as isize) as XML_Parser;
-                mtemp_0 = &raw const (*parser).m_mem as *mut XML_Memory_Handling_Suite;
-                (*mtemp_0).malloc_fcn =
-                    Some(malloc as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void)
-                        as Option<unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void>;
-                (*mtemp_0).realloc_fcn = Some(
-                    realloc
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            size_t,
-                        )
-                            -> *mut ::core::ffi::c_void,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            size_t,
-                        ) -> *mut ::core::ffi::c_void,
-                    >;
-                (*mtemp_0).free_fcn =
-                    Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ())
-                        as Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
-            }
+    }
+
+    let size_and_parser = if !memsuite.is_null() {
+        call_malloc_fcn!(ptr_ref(memsuite).malloc_fcn, increase)
+    } else {
+        libc_malloc!(increase)
+    };
+    if size_and_parser.is_null() {
+        return parser;
+    }
+
+    write_copy(size_and_parser.cast::<size_t>(), parser_size);
+    parser = size_and_parser
+        .cast::<u8>()
+        .wrapping_add(::core::mem::size_of::<size_t>())
+        .wrapping_add(EXPAT_MALLOC_PADDING as usize)
+        .cast::<XML_ParserStruct>();
+    memset_ptr!(parser, 0 as ::core::ffi::c_int, parser_size);
+
+    ptr_mut(parser).m_mem = if !memsuite.is_null() {
+        *ptr_ref(memsuite)
+    } else {
+        XML_Memory_Handling_Suite {
+            malloc_fcn: Some(malloc),
+            realloc_fcn: Some(realloc),
+            free_fcn: Some(free),
         }
-        if parser.is_null() {
-            return parser;
-        }
-        memset(
-            &raw mut (*parser).m_alloc_tracker as *mut ::core::ffi::c_void,
-            0 as ::core::ffi::c_int,
-            ::core::mem::size_of::<MALLOC_TRACKER>() as size_t,
-        );
-        if parentParser.is_null() {
-            (*parser).m_alloc_tracker.debugLevel =
-                getDebugLevel(b"EXPAT_MALLOC_DEBUG\0", 0 as ::core::ffi::c_ulong);
-            (*parser).m_alloc_tracker.maximumAmplificationFactor =
-                EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
-            (*parser).m_alloc_tracker.activationThresholdBytes =
-                EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as XmlBigCount;
-            (*parser).m_parentParser = ::core::ptr::null_mut::<XML_ParserStruct>();
-            (*parser).m_accounting.countBytesDirect = 0 as XmlBigCount;
-        } else {
-            (*parser).m_parentParser = parentParser;
-        }
-        let rootParser_0: XML_Parser = getRootParserOf(&mut *parser, None) as XML_Parser;
-        if (*rootParser_0).m_parentParser.is_null() {
-        } else {
-            __assert_fail(
-                b"rootParser->m_parentParser == NULL\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/lib/xmlparse.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
+    };
+
+    if parentParser.is_null() {
+        let parser_ref = ptr_mut(parser);
+        parser_ref.m_alloc_tracker.debugLevel =
+            getDebugLevel(b"EXPAT_MALLOC_DEBUG\0", 0 as ::core::ffi::c_ulong);
+        parser_ref.m_alloc_tracker.maximumAmplificationFactor =
+            EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+        parser_ref.m_alloc_tracker.activationThresholdBytes =
+            EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as XmlBigCount;
+        parser_ref.m_parentParser = ::core::ptr::null_mut::<XML_ParserStruct>();
+        parser_ref.m_accounting.countBytesDirect = 0 as XmlBigCount;
+    } else {
+        ptr_mut(parser).m_parentParser = parentParser;
+    }
+
+    {
+        let root_parser = getRootParserOf(ptr_mut(parser), None);
+        if !root_parser.m_parentParser.is_null() {
+            xmlparse_assert_fail!(
+                b"rootParser->m_parentParser == NULL\0",
                 1425 as ::core::ffi::c_uint,
-                b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
+                b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0",
             );
-        };
+        }
         if (18446744073709551615 as XmlBigCount)
-            .wrapping_sub((*rootParser_0).m_alloc_tracker.bytesAllocated)
-            >= increase as XmlBigCount
+            .wrapping_sub(root_parser.m_alloc_tracker.bytesAllocated)
+            < increase as XmlBigCount
         {
-        } else {
-            __assert_fail(
-                b"SIZE_MAX - rootParser->m_alloc_tracker.bytesAllocated >= increase\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/lib/xmlparse.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
+            xmlparse_assert_fail!(
+                b"SIZE_MAX - rootParser->m_alloc_tracker.bytesAllocated >= increase\0",
                 1426 as ::core::ffi::c_uint,
-                b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
+                b"XML_Parser parserCreate(const XML_Char *, const XML_Memory_Handling_Suite *, const XML_Char *, DTD *, XML_Parser)\0",
             );
-        };
-        (*rootParser_0).m_alloc_tracker.bytesAllocated = (*rootParser_0)
+        }
+        root_parser.m_alloc_tracker.bytesAllocated = root_parser
             .m_alloc_tracker
             .bytesAllocated
             .wrapping_add(increase as XmlBigCount);
-        if (*rootParser_0).m_alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
-            if (*rootParser_0).m_alloc_tracker.bytesAllocated
-                > (*rootParser_0).m_alloc_tracker.peakBytesAllocated
+        if root_parser.m_alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong {
+            if root_parser.m_alloc_tracker.bytesAllocated
+                > root_parser.m_alloc_tracker.peakBytesAllocated
             {
-                (*rootParser_0).m_alloc_tracker.peakBytesAllocated =
-                    (*rootParser_0).m_alloc_tracker.bytesAllocated;
+                root_parser.m_alloc_tracker.peakBytesAllocated =
+                    root_parser.m_alloc_tracker.bytesAllocated;
             }
             expat_heap_stat(
-                &*rootParser_0,
+                root_parser,
                 '+' as i32 as ::core::ffi::c_char,
                 increase as XmlBigCount,
-                (*rootParser_0).m_alloc_tracker.bytesAllocated,
-                (*rootParser_0).m_alloc_tracker.peakBytesAllocated,
+                root_parser.m_alloc_tracker.bytesAllocated,
+                root_parser.m_alloc_tracker.peakBytesAllocated,
                 1439 as ::core::ffi::c_int,
             );
         }
-        (*parser).m_buffer = ::core::ptr::null_mut::<::core::ffi::c_char>();
-        (*parser).m_bufferLim = ::core::ptr::null::<::core::ffi::c_char>();
-        (*parser).m_attsSize = INIT_ATTS_SIZE;
-        (*parser).m_atts = expat_malloc(
-            parser,
-            ((*parser).m_attsSize as size_t)
-                .wrapping_mul(::core::mem::size_of::<ATTRIBUTE>() as size_t),
-            1449 as ::core::ffi::c_int,
-        ) as *mut ATTRIBUTE;
-        if (*parser).m_atts.is_null() {
-            expat_free(
-                parser,
-                parser as *mut ::core::ffi::c_void,
-                1451 as ::core::ffi::c_int,
-            );
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-        (*parser).m_dataBuf = expat_malloc(
-            parser,
-            (1024 as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-            1462 as ::core::ffi::c_int,
-        ) as *mut XML_Char;
-        if (*parser).m_dataBuf.is_null() {
-            expat_free(
-                parser,
-                (*parser).m_atts as *mut ::core::ffi::c_void,
-                1464 as ::core::ffi::c_int,
-            );
-            expat_free(
-                parser,
-                parser as *mut ::core::ffi::c_void,
-                1468 as ::core::ffi::c_int,
-            );
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-        (*parser).m_dataBufEnd = (*parser).m_dataBuf.offset(INIT_DATA_BUF_SIZE as isize);
-        if !dtd.is_null() {
-            (*parser).m_dtd = dtd;
-        } else {
-            (*parser).m_dtd = dtdCreate(parser);
-            if (*parser).m_dtd.is_null() {
-                expat_free(
-                    parser,
-                    (*parser).m_dataBuf as *mut ::core::ffi::c_void,
-                    1478 as ::core::ffi::c_int,
-                );
-                expat_free(
-                    parser,
-                    (*parser).m_atts as *mut ::core::ffi::c_void,
-                    1479 as ::core::ffi::c_int,
-                );
-                expat_free(
-                    parser,
-                    parser as *mut ::core::ffi::c_void,
-                    1483 as ::core::ffi::c_int,
-                );
-                return ::core::ptr::null_mut::<XML_ParserStruct>();
-            }
-        }
-        (*parser).m_freeBindingList = ::core::ptr::null_mut::<BINDING>();
-        (*parser).m_freeTagList = ::core::ptr::null_mut::<TAG>();
-        (*parser).m_freeInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        (*parser).m_freeAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        (*parser).m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
-        (*parser).m_groupSize = 0 as ::core::ffi::c_uint;
-        (*parser).m_groupConnector = ::core::ptr::null_mut::<::core::ffi::c_char>();
-        (*parser).m_unknownEncodingHandler = None;
-        (*parser).m_unknownEncodingHandlerData = NULL;
-        (*parser).m_namespaceSeparator = ASCII_EXCL as XML_Char;
-        (*parser).m_ns = XML_FALSE;
-        (*parser).m_ns_triplets = XML_FALSE;
-        (*parser).m_nsAtts = ::core::ptr::null_mut::<NS_ATT>();
-        (*parser).m_nsAttsVersion = 0 as ::core::ffi::c_ulong;
-        (*parser).m_nsAttsPower = 0 as ::core::ffi::c_uchar;
-        (*parser).m_protocolEncodingName = ::core::ptr::null::<XML_Char>();
-        poolInit(&mut (*parser).m_tempPool, parser);
-        poolInit(&mut (*parser).m_temp2Pool, parser);
-        parserInit(parser, encodingName);
-        if !encodingName.is_null() && (*parser).m_protocolEncodingName.is_null() {
-            if !dtd.is_null() {
-                (*parser).m_dtd = ::core::ptr::null_mut::<DTD>();
-            }
-            XML_ParserFree(parser);
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-        if !nameSep.is_null() {
-            (*parser).m_ns = XML_TRUE;
-            (*parser).m_internalEncoding = XmlGetUtf8InternalEncodingNS();
-            (*parser).m_namespaceSeparator = *nameSep;
-        } else {
-            (*parser).m_internalEncoding = XmlGetUtf8InternalEncoding();
-        }
-        return parser;
     }
+
+    {
+        let parser_ref = ptr_mut(parser);
+        parser_ref.m_buffer = ::core::ptr::null_mut::<::core::ffi::c_char>();
+        parser_ref.m_bufferLim = ::core::ptr::null::<::core::ffi::c_char>();
+        parser_ref.m_attsSize = INIT_ATTS_SIZE;
+        parser_ref.m_atts = expat_malloc_ptr!(
+            parser,
+            (parser_ref.m_attsSize as size_t)
+                .wrapping_mul(::core::mem::size_of::<ATTRIBUTE>() as size_t),
+            1449,
+            ATTRIBUTE,
+        );
+    }
+    if ptr_ref(parser).m_atts.is_null() {
+        expat_free_ptr!(parser, parser.cast::<::core::ffi::c_void>(), 1451);
+        return ::core::ptr::null_mut::<XML_ParserStruct>();
+    }
+
+    ptr_mut(parser).m_dataBuf = expat_malloc_ptr!(
+        parser,
+        (1024 as size_t).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+        1462,
+        XML_Char,
+    );
+    if ptr_ref(parser).m_dataBuf.is_null() {
+        expat_free_ptr!(
+            parser,
+            ptr_ref(parser).m_atts.cast::<::core::ffi::c_void>(),
+            1464
+        );
+        expat_free_ptr!(parser, parser.cast::<::core::ffi::c_void>(), 1468);
+        return ::core::ptr::null_mut::<XML_ParserStruct>();
+    }
+    ptr_mut(parser).m_dataBufEnd = ptr_ref(parser)
+        .m_dataBuf
+        .wrapping_add(INIT_DATA_BUF_SIZE as usize);
+
+    if !dtd.is_null() {
+        ptr_mut(parser).m_dtd = dtd;
+    } else {
+        ptr_mut(parser).m_dtd = dtdCreate(parser);
+        if ptr_ref(parser).m_dtd.is_null() {
+            expat_free_ptr!(
+                parser,
+                ptr_ref(parser).m_dataBuf.cast::<::core::ffi::c_void>(),
+                1478
+            );
+            expat_free_ptr!(
+                parser,
+                ptr_ref(parser).m_atts.cast::<::core::ffi::c_void>(),
+                1479
+            );
+            expat_free_ptr!(parser, parser.cast::<::core::ffi::c_void>(), 1483);
+            return ::core::ptr::null_mut::<XML_ParserStruct>();
+        }
+    }
+
+    {
+        let parser_ref = ptr_mut(parser);
+        parser_ref.m_freeBindingList = ::core::ptr::null_mut::<BINDING>();
+        parser_ref.m_freeTagList = ::core::ptr::null_mut::<TAG>();
+        parser_ref.m_freeInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+        parser_ref.m_freeAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+        parser_ref.m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
+        parser_ref.m_groupSize = 0 as ::core::ffi::c_uint;
+        parser_ref.m_groupConnector = ::core::ptr::null_mut::<::core::ffi::c_char>();
+        parser_ref.m_unknownEncodingHandler = None;
+        parser_ref.m_unknownEncodingHandlerData = NULL;
+        parser_ref.m_namespaceSeparator = ASCII_EXCL as XML_Char;
+        parser_ref.m_ns = XML_FALSE;
+        parser_ref.m_ns_triplets = XML_FALSE;
+        parser_ref.m_nsAtts = ::core::ptr::null_mut::<NS_ATT>();
+        parser_ref.m_nsAttsVersion = 0 as ::core::ffi::c_ulong;
+        parser_ref.m_nsAttsPower = 0 as ::core::ffi::c_uchar;
+        parser_ref.m_protocolEncodingName = ::core::ptr::null::<XML_Char>();
+        poolInit(&mut parser_ref.m_tempPool, parser);
+        poolInit(&mut parser_ref.m_temp2Pool, parser);
+    }
+    parserInit(parser, encodingName);
+    if !encodingName.is_null() && ptr_ref(parser).m_protocolEncodingName.is_null() {
+        if !dtd.is_null() {
+            ptr_mut(parser).m_dtd = ::core::ptr::null_mut::<DTD>();
+        }
+        free_parser!(parser);
+        return ::core::ptr::null_mut::<XML_ParserStruct>();
+    }
+    if !nameSep.is_null() {
+        let parser_ref = ptr_mut(parser);
+        parser_ref.m_ns = XML_TRUE;
+        parser_ref.m_internalEncoding = xml_get_utf8_internal_encoding_ns!();
+        parser_ref.m_namespaceSeparator = *ptr_ref(nameSep);
+    } else {
+        ptr_mut(parser).m_internalEncoding = xml_get_utf8_internal_encoding!();
+    }
+    parser
 }
 extern "C" fn parserInit(mut parser: XML_Parser, mut encodingName: *const XML_Char) {
     let parser = ptr_mut(parser);
