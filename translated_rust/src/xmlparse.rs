@@ -1875,16 +1875,11 @@ fn invoke_cdata_section_callback(
     unsafe { callback.invoke(handler_arg_from_state!(parser)) }
 }
 
-trait NotStandaloneCallback: Send + Sync {
-    unsafe fn invoke(&self, parser: &XML_ParserStruct) -> ::core::ffi::c_int;
-}
+trait NotStandaloneCallback: Send + Sync + std::any::Any {}
 
 impl NotStandaloneCallback
     for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int
 {
-    unsafe fn invoke(&self, parser: &XML_ParserStruct) -> ::core::ffi::c_int {
-        self(handler_arg_from_state!(parser))
-    }
 }
 
 /// Invokes the not-standalone callback after the parser has captured the
@@ -1895,7 +1890,12 @@ fn dispatch_not_standalone_callback(
     callback: &dyn NotStandaloneCallback,
     parser: &XML_ParserStruct,
 ) -> ::core::ffi::c_int {
-    unsafe { callback.invoke(parser) }
+    let Some(callback) = (callback as &dyn std::any::Any).downcast_ref::<
+        unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int,
+    >() else {
+        return 0;
+    };
+    unsafe { callback(handler_arg_from_state!(parser)) }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
