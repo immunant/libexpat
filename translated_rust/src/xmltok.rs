@@ -322,7 +322,7 @@ pub(crate) struct ScannerInput<'a> {
 }
 
 impl Scanner {
-    fn scan_result(
+    pub(crate) fn scan_result(
         self,
         encoding: &normal_encoding,
         input: ScannerInput<'_>,
