@@ -3435,7 +3435,7 @@ macro_rules! unsafe_expr {
 
 macro_rules! initialize_encoding {
     ($parser:expr $(,)?) => {
-        unsafe { initializeEncoding($parser) }
+        initializeEncoding($parser)
     };
 }
 
@@ -7543,39 +7543,38 @@ unsafe extern "C" fn doIgnoreSection(
     };
 }
 
-unsafe extern "C" fn initializeEncoding(
+extern "C" fn initializeEncoding(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
-    let mut s: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    s = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
-    if if (*parser).m_ns as ::core::ffi::c_int != 0 {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS
-                as unsafe extern "C" fn(
-                    *mut crate::src::xmltok::INIT_ENCODING,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
+    let parser_state = expect_parser_mut(parser);
+    let s = parser_state.m_protocolEncodingName as *const ::core::ffi::c_char;
+    let init_encoding = if parser_state.m_ns as ::core::ffi::c_int != 0 {
+        crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS
+            as extern "C" fn(
+                *mut crate::src::xmltok::INIT_ENCODING,
+                *mut *const crate::src::xmltok::ENCODING,
+                *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int
     } else {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlInitEncoding
-                as unsafe extern "C" fn(
-                    *mut crate::src::xmltok::INIT_ENCODING,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        )
-    }
-    .expect("non-null function pointer")(
-        &raw mut (*parser).m_initEncoding,
-        &raw mut (*parser).m_encoding,
+        crate::src::xmltok::xmltok_ns_c::XmlInitEncoding
+            as extern "C" fn(
+                *mut crate::src::xmltok::INIT_ENCODING,
+                *mut *const crate::src::xmltok::ENCODING,
+                *const ::core::ffi::c_char,
+            ) -> ::core::ffi::c_int
+    };
+    if init_encoding(
+        &raw mut parser_state.m_initEncoding,
+        &raw mut parser_state.m_encoding,
         s,
     ) != 0
     {
         return crate::expat_h::XML_ERROR_NONE;
     }
-    return handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+    return unsafe_expr!(handleUnknownEncoding(
+        parser,
+        parser_state.m_protocolEncodingName
+    ));
 }
 
 unsafe extern "C" fn processXmlDecl(
