@@ -1567,6 +1567,25 @@ static END_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// An end-doctype handler registration prepared from the ABI callback value.
+///
+/// The parser-side setter retains only this typed registry entry and its
+/// opaque address key; it never retains the C callback representation itself.
+struct EndDoctypeDeclHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn EndCdataSectionCallback>>,
+}
+
+fn end_doctype_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> EndDoctypeDeclHandlerRegistration
+where
+    Callback: EndCdataSectionCallback + 'static,
+{
+    EndDoctypeDeclHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 /// Typed doctype callback registrations prepared at the ABI boundary.  The
 /// parser-side setter only needs these owned adapters and an opaque parser
 /// address key.
@@ -9284,23 +9303,22 @@ pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler_ffi(
 ) {
     XML_SetStartDoctypeDeclHandler(parser, start)
 }
-pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
+fn set_end_doctype_decl_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: EndDoctypeDeclHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_endDoctypeDeclHandler = end.is_some();
-        let mut handlers = END_DOCTYPE_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match end {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_endDoctypeDeclHandler = registration.callback.is_some();
+    let mut handlers = END_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
@@ -9310,7 +9328,13 @@ pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
-    XML_SetEndDoctypeDeclHandler(parser, end)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = end_doctype_decl_handler_registration(end);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_end_doctype_decl_handler(parser, parser_address, registration)
 }
 pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
