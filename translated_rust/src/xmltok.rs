@@ -13915,15 +13915,17 @@ pub mod xmltok_ns_c {
     {
         XmlGetUtf16InternalEncoding()
     }
-    pub static mut encodings: [*const crate::src::xmltok::ENCODING; 7] = [
-        &raw const latin1_encoding.enc,
-        &raw const ascii_encoding.enc,
-        &raw const utf8_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const little2_encoding.enc,
-        &raw const utf8_encoding.enc,
-    ];
+    pub fn encodings() -> [*const crate::src::xmltok::ENCODING; 7] {
+        [
+            &raw const latin1_encoding.enc,
+            &raw const ascii_encoding.enc,
+            &raw const utf8_encoding.enc,
+            &raw const big2_encoding.enc,
+            &raw const big2_encoding.enc,
+            &raw const little2_encoding.enc,
+            &raw const utf8_encoding.enc,
+        ]
+    }
 
     pub unsafe extern "C" fn initScanProlog(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -13931,8 +13933,9 @@ pub mod xmltok_ns_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        let encoding_table = encodings();
         return initScan(
-            &raw const encodings as *const *const crate::src::xmltok::ENCODING,
+            encoding_table.as_ptr(),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -13947,8 +13950,9 @@ pub mod xmltok_ns_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        let encoding_table = encodings();
         return initScan(
-            &raw const encodings as *const *const crate::src::xmltok::ENCODING,
+            encoding_table.as_ptr(),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -14048,7 +14052,8 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
-        return encodings[i as usize];
+        let encoding_table = encodings();
+        return encoding_table[i as usize];
     }
     pub unsafe extern "C" fn XmlParseXmlDecl(
         mut isGeneralTextEntity: ::core::ffi::c_int,
@@ -14129,15 +14134,17 @@ pub mod xmltok_ns_c {
     ) -> *const crate::src::xmltok::ENCODING {
         XmlGetUtf16InternalEncodingNS()
     }
-    pub static mut encodingsNS: [*const crate::src::xmltok::ENCODING; 7] = [
-        &raw const latin1_encoding_ns.enc,
-        &raw const ascii_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const little2_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-    ];
+    pub fn encodingsNS() -> [*const crate::src::xmltok::ENCODING; 7] {
+        [
+            &raw const latin1_encoding_ns.enc,
+            &raw const ascii_encoding_ns.enc,
+            &raw const utf8_encoding_ns.enc,
+            &raw const big2_encoding_ns.enc,
+            &raw const big2_encoding_ns.enc,
+            &raw const little2_encoding_ns.enc,
+            &raw const utf8_encoding_ns.enc,
+        ]
+    }
 
     pub unsafe extern "C" fn initScanPrologNS(
         mut enc: *const crate::src::xmltok::ENCODING,
@@ -14145,8 +14152,9 @@ pub mod xmltok_ns_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        let encoding_table = encodingsNS();
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING,
+            encoding_table.as_ptr(),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -14161,8 +14169,9 @@ pub mod xmltok_ns_c {
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        let encoding_table = encodingsNS();
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING,
+            encoding_table.as_ptr(),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -14262,7 +14271,8 @@ pub mod xmltok_ns_c {
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
-        return encodingsNS[i as usize];
+        let encoding_table = encodingsNS();
+        return encoding_table[i as usize];
     }
     pub unsafe extern "C" fn XmlParseXmlDeclNS(
         mut isGeneralTextEntity: ::core::ffi::c_int,
