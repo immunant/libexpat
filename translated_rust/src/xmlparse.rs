@@ -12574,117 +12574,122 @@ unsafe extern "C" fn poolBytesToAllocateFor(
 }
 
 unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML_Bool {
-    if !(*pool).freeBlocks.is_null() {
-        if (*pool).start.is_null() {
-            (*pool).blocks = (*pool).freeBlocks;
-            (*pool).freeBlocks = (*(*pool).freeBlocks).next as *mut BLOCK;
-            (*(*pool).blocks).next = ::core::ptr::null_mut::<block>();
-            (*pool).start = &raw mut (*(*pool).blocks).s as *mut crate::expat_external_h::XML_Char;
-            (*pool).end = (*pool).start.offset((*(*pool).blocks).size as isize);
-            (*pool).ptr = (*pool).start;
+    // The callers maintain a live, ordered range from `start` through `end`, with
+    // `ptr` inside it.  Keep those offsets address-derived while changing the
+    // backing block so that the only raw dereferences here establish the short-lived
+    // ownership of the pool and of an allocated block.
+    let pool = &mut *pool;
+    let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
+
+    if !pool.freeBlocks.is_null() {
+        let free_block = &mut *pool.freeBlocks;
+        if pool.start.is_null() {
+            let start = &raw mut free_block.s as *mut crate::expat_external_h::XML_Char;
+            pool.blocks = pool.freeBlocks;
+            pool.freeBlocks = free_block.next;
+            free_block.next = ::core::ptr::null_mut::<block>();
+            pool.start = start;
+            pool.end = start.wrapping_add(free_block.size as usize);
+            pool.ptr = start;
             return crate::expat_h::XML_TRUE;
         }
-        if (*pool).end.offset_from((*pool).start) < (*(*pool).freeBlocks).size as isize {
-            let mut tem: *mut BLOCK = (*(*pool).freeBlocks).next as *mut BLOCK;
-            (*(*pool).freeBlocks).next = (*pool).blocks as *mut block;
-            (*pool).blocks = (*pool).freeBlocks;
-            (*pool).freeBlocks = tem;
+
+        let active_capacity = pool.end.addr().wrapping_sub(pool.start.addr()) / char_size;
+        if free_block.size > 0 && active_capacity < free_block.size as usize {
+            let source = pool.start;
+            let pointer_offset = pool.ptr.addr().wrapping_sub(source.addr()) / char_size;
+            let next_free = free_block.next;
+            let start = &raw mut free_block.s as *mut crate::expat_external_h::XML_Char;
+            free_block.next = pool.blocks;
+            pool.blocks = pool.freeBlocks;
+            pool.freeBlocks = next_free;
             crate::stdlib::memcpy(
-                &raw mut (*(*pool).blocks).s as *mut crate::expat_external_h::XML_Char
-                    as *mut ::core::ffi::c_void,
-                (*pool).start as *const ::core::ffi::c_void,
-                ((*pool).end.offset_from((*pool).start) as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
+                start as *mut ::core::ffi::c_void,
+                source as *const ::core::ffi::c_void,
+                active_capacity.wrapping_mul(char_size),
             );
-            (*pool).ptr = (&raw mut (*(*pool).blocks).s as *mut crate::expat_external_h::XML_Char)
-                .offset((*pool).ptr.offset_from((*pool).start) as isize);
-            (*pool).start = &raw mut (*(*pool).blocks).s as *mut crate::expat_external_h::XML_Char;
-            (*pool).end = (*pool).start.offset((*(*pool).blocks).size as isize);
+            pool.ptr = start.wrapping_add(pointer_offset);
+            pool.start = start;
+            pool.end = start.wrapping_add(free_block.size as usize);
             return crate::expat_h::XML_TRUE;
         }
     }
-    if !(*pool).blocks.is_null()
-        && (*pool).start == &raw mut (*(*pool).blocks).s as *mut crate::expat_external_h::XML_Char
-    {
-        let mut temp: *mut BLOCK = ::core::ptr::null_mut::<BLOCK>();
-        let mut blockSize: ::core::ffi::c_int =
-            ((*pool).end.offset_from((*pool).start) as ::core::ffi::c_uint)
-                .wrapping_mul(2 as ::core::ffi::c_uint) as ::core::ffi::c_int;
-        let mut bytesToAllocate: crate::__stddef_size_t_h::size_t = 0;
-        let offsetInsideBlock: crate::__stddef_ptrdiff_t_h::ptrdiff_t =
-            (*pool).ptr.offset_from((*pool).start);
-        if blockSize < 0 as ::core::ffi::c_int {
-            return crate::expat_h::XML_FALSE;
-        }
-        bytesToAllocate = poolBytesToAllocateFor(blockSize);
-        if bytesToAllocate == 0 as crate::__stddef_size_t_h::size_t {
-            return crate::expat_h::XML_FALSE;
-        }
-        temp = expat_realloc(
-            (*pool).parser,
-            (*pool).blocks as *mut ::core::ffi::c_void,
-            bytesToAllocate,
-            8161 as ::core::ffi::c_int,
-        ) as *mut BLOCK;
-        if temp.is_null() {
-            return crate::expat_h::XML_FALSE;
-        }
-        (*pool).blocks = temp;
-        (*(*pool).blocks).size = blockSize;
-        (*pool).ptr = (&raw mut (*(*pool).blocks).s as *mut crate::expat_external_h::XML_Char)
-            .offset(offsetInsideBlock as isize);
-        (*pool).start = &raw mut (*(*pool).blocks).s as *mut crate::expat_external_h::XML_Char;
-        (*pool).end = (*pool).start.offset(blockSize as isize);
-    } else {
-        let mut tem_0: *mut BLOCK = ::core::ptr::null_mut::<BLOCK>();
-        let mut blockSize_0: ::core::ffi::c_int =
-            (*pool).end.offset_from((*pool).start) as ::core::ffi::c_int;
-        let mut bytesToAllocate_0: crate::__stddef_size_t_h::size_t = 0;
-        if blockSize_0 < 0 as ::core::ffi::c_int {
-            return crate::expat_h::XML_FALSE;
-        }
-        if blockSize_0 < INIT_BLOCK_SIZE {
-            blockSize_0 = INIT_BLOCK_SIZE;
-        } else {
-            if ((blockSize_0 as ::core::ffi::c_uint).wrapping_mul(2 as ::core::ffi::c_uint)
-                as ::core::ffi::c_int)
-                < 0 as ::core::ffi::c_int
-            {
+
+    if !pool.blocks.is_null() {
+        let block = &mut *pool.blocks;
+        let block_start = &raw mut block.s as *mut crate::expat_external_h::XML_Char;
+        if pool.start == block_start {
+            let pointer_offset = pool.ptr.addr().wrapping_sub(pool.start.addr()) / char_size;
+            let Some(block_size) = block.size.checked_mul(2) else {
+                return crate::expat_h::XML_FALSE;
+            };
+            let bytes_to_allocate = poolBytesToAllocateFor(block_size);
+            if bytes_to_allocate == 0 as crate::__stddef_size_t_h::size_t {
                 return crate::expat_h::XML_FALSE;
             }
-            blockSize_0 *= 2 as ::core::ffi::c_int;
+            let temp = expat_realloc(
+                pool.parser,
+                pool.blocks as *mut ::core::ffi::c_void,
+                bytes_to_allocate,
+                8161 as ::core::ffi::c_int,
+            ) as *mut BLOCK;
+            if temp.is_null() {
+                return crate::expat_h::XML_FALSE;
+            }
+            pool.blocks = temp;
+            let block = &mut *temp;
+            block.size = block_size;
+            let start = &raw mut block.s as *mut crate::expat_external_h::XML_Char;
+            pool.ptr = start.wrapping_add(pointer_offset);
+            pool.start = start;
+            pool.end = start.wrapping_add(block_size as usize);
+            return crate::expat_h::XML_TRUE;
         }
-        bytesToAllocate_0 = poolBytesToAllocateFor(blockSize_0);
-        if bytesToAllocate_0 == 0 as crate::__stddef_size_t_h::size_t {
-            return crate::expat_h::XML_FALSE;
-        }
-        tem_0 = expat_malloc(
-            (*pool).parser,
-            bytesToAllocate_0,
-            8201 as ::core::ffi::c_int,
-        ) as *mut BLOCK;
-        if tem_0.is_null() {
-            return crate::expat_h::XML_FALSE;
-        }
-        (*tem_0).size = blockSize_0;
-        (*tem_0).next = (*pool).blocks as *mut block;
-        (*pool).blocks = tem_0;
-        if (*pool).ptr != (*pool).start {
-            crate::stdlib::memcpy(
-                &raw mut (*tem_0).s as *mut crate::expat_external_h::XML_Char
-                    as *mut ::core::ffi::c_void,
-                (*pool).start as *const ::core::ffi::c_void,
-                ((*pool).ptr.offset_from((*pool).start) as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-            );
-        }
-        (*pool).ptr = (&raw mut (*tem_0).s as *mut crate::expat_external_h::XML_Char)
-            .offset((*pool).ptr.offset_from((*pool).start) as isize);
-        (*pool).start = &raw mut (*tem_0).s as *mut crate::expat_external_h::XML_Char;
-        (*pool).end = (&raw mut (*tem_0).s as *mut crate::expat_external_h::XML_Char)
-            .offset(blockSize_0 as isize);
     }
-    return crate::expat_h::XML_TRUE;
+
+    let capacity = pool.end.addr().wrapping_sub(pool.start.addr()) / char_size;
+    let pointer_offset = pool.ptr.addr().wrapping_sub(pool.start.addr()) / char_size;
+    let mut block_size = match ::core::ffi::c_int::try_from(capacity) {
+        Ok(capacity) => capacity,
+        Err(_) => return crate::expat_h::XML_FALSE,
+    };
+    if block_size < INIT_BLOCK_SIZE {
+        block_size = INIT_BLOCK_SIZE;
+    } else {
+        let Some(doubled) = block_size.checked_mul(2) else {
+            return crate::expat_h::XML_FALSE;
+        };
+        block_size = doubled;
+    }
+    let bytes_to_allocate = poolBytesToAllocateFor(block_size);
+    if bytes_to_allocate == 0 as crate::__stddef_size_t_h::size_t {
+        return crate::expat_h::XML_FALSE;
+    }
+    let temp = expat_malloc(
+        pool.parser,
+        bytes_to_allocate,
+        8201 as ::core::ffi::c_int,
+    ) as *mut BLOCK;
+    if temp.is_null() {
+        return crate::expat_h::XML_FALSE;
+    }
+    let source = pool.start;
+    let block = &mut *temp;
+    block.size = block_size;
+    block.next = pool.blocks;
+    pool.blocks = temp;
+    let start = &raw mut block.s as *mut crate::expat_external_h::XML_Char;
+    if pool.ptr != source {
+        crate::stdlib::memcpy(
+            start as *mut ::core::ffi::c_void,
+            source as *const ::core::ffi::c_void,
+            pointer_offset.wrapping_mul(char_size),
+        );
+    }
+    pool.ptr = start.wrapping_add(pointer_offset);
+    pool.start = start;
+    pool.end = start.wrapping_add(block_size as usize);
+    crate::expat_h::XML_TRUE
 }
 
 unsafe extern "C" fn nextScaffoldPart(
