@@ -7155,7 +7155,7 @@ macro_rules! store_attribute_value_from_unsafe_context {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             loop {
                 if (*parser).m_openAttributeEntities.is_null() {
-                    result = appendAttributeValue(
+                    result = crate::append_attribute_value_from_unsafe_context!(
                         parser,
                         enc,
                         isCdata,
@@ -7179,7 +7179,7 @@ macro_rules! store_attribute_value_from_unsafe_context {
                             as *const ::core::ffi::c_char;
                     let mut nextInEntity: *const ::core::ffi::c_char = textStart;
                     if (*entity).hasMore != 0 {
-                        result = appendAttributeValue(
+                        result = crate::append_attribute_value_from_unsafe_context!(
                             parser,
                             (*parser).m_internalEncoding,
                             isCdata,
@@ -12231,18 +12231,22 @@ extern "C" fn errorProcessor(
     parser_processor_impl(ParserProcessorKind::Error, parser, s, end, nextPtr)
 }
 
-unsafe extern "C" fn appendAttributeValue(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut isCdata: crate::expat_h::XML_Bool,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pool: *mut STRING_POOL,
-    mut account: XML_Account,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    loop {
+#[doc(hidden)]
+#[macro_export]
+macro_rules! append_attribute_value_from_unsafe_context {
+    ($parser:expr, $enc:expr, $isCdata:expr, $ptr:expr, $end:expr, $pool:expr, $account:expr, $nextPtr:expr $(,)?) => {{
+        let parser: crate::expat_h::XML_Parser = $parser;
+        let enc: *const crate::src::xmltok::ENCODING = $enc;
+        let isCdata: crate::expat_h::XML_Bool = $isCdata;
+        let mut ptr: *const ::core::ffi::c_char = $ptr;
+        let end: *const ::core::ffi::c_char = $end;
+        let pool: *mut STRING_POOL = $pool;
+        let account: XML_Account = $account;
+        let nextPtr: *mut *const ::core::ffi::c_char = $nextPtr;
+
+        let mut append_attribute_value = || -> crate::expat_h::XML_Error {
+            let dtd: *mut DTD = (*parser).m_dtd;
+            loop {
         let mut next: *const ::core::ffi::c_char = ptr;
         let mut tok: ::core::ffi::c_int =
             (*enc).literalScanners[0 as ::core::ffi::c_int as usize]
@@ -12508,8 +12512,11 @@ unsafe extern "C" fn appendAttributeValue(
             }
             _ => {}
         }
-        ptr = next;
-    }
+                ptr = next;
+            }
+        };
+        append_attribute_value()
+    }};
 }
 
 fn normalizeLines(s: &mut [crate::expat_external_h::XML_Char]) {
