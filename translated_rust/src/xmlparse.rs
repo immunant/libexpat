@@ -20733,80 +20733,6 @@ struct ActiveInternalEntityState {
     internal_encoding: InternalEncoding,
 }
 
-#[derive(Copy, Clone)]
-enum ActiveInternalEntityUpdate {
-    Advance(::core::ffi::c_int),
-    Finish,
-    Close(usize),
-}
-
-unsafe fn update_active_internal_entity(
-    parser_state: &mut XML_ParserStruct,
-    open_entity_index: usize,
-    update: ActiveInternalEntityUpdate,
-) -> Option<Option<::core::ffi::c_int>> {
-    let entity_ref = parser_state
-        .m_activeInternalEntities
-        .get(open_entity_index)?
-        .entity_ref?;
-    let declaration = match entity_ref.table {
-        OpenEntityTable::General => DeclaredEntity::General(entity_ref.name),
-        OpenEntityTable::Parameter => DeclaredEntity::Parameter(entity_ref.name),
-    };
-    let hash_salt = parser_state
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .hash_secret_salt;
-    let dtd_owner = parser_state.m_dtd.clone()?;
-    let (result, closed_parameter_entity) = dtd_owner.inspect(|dtd| {
-        let entity = declared_entity_mut(dtd, declaration, hash_salt)?;
-        match update {
-            ActiveInternalEntityUpdate::Advance(processed) => {
-                entity.processed = entity.processed.saturating_add(processed);
-                Some((None, None))
-            }
-            ActiveInternalEntityUpdate::Finish => {
-                entity.hasMore = crate::expat_h::XML_FALSE;
-                Some((Some(parser_state.m_tagLevel), None))
-            }
-            ActiveInternalEntityUpdate::Close(_) => {
-                entity_tracking_on_close(parser_state, entity, 6470 as ::core::ffi::c_int);
-                let is_parameter_entity = entity.is_param != 0;
-                entity.open = crate::expat_h::XML_FALSE;
-                Some((None, Some(is_parameter_entity)))
-            }
-        }
-    })?;
-    if let ActiveInternalEntityUpdate::Close(expected_index) = update {
-        let is_parameter_entity = closed_parameter_entity?;
-        if open_entity_index != expected_index
-            || parser_state.m_activeInternalEntities.len().checked_sub(1)
-                != Some(open_entity_index)
-        {
-            std::process::abort();
-        }
-        let storage = parser_state
-            .m_activeInternalEntities
-            .pop()
-            .expect("active internal-entity index was validated");
-        parser_state.m_freeInternalEntities.push(storage);
-        parser_state.m_openInternalEntities = parser_state
-            .m_activeInternalEntities
-            .len()
-            .checked_sub(1);
-        if parser_state.m_openInternalEntities.is_none() {
-            parser_state.m_processor = if is_parameter_entity {
-                ProcessorState::Prolog
-            } else {
-                ProcessorState::Content
-            };
-        }
-        trigger_reenter(parser_state);
-    }
-    Some(result)
-}
-
 /// Processes the active DTD-owned internal-entity replacement text.
 ///
 /// `call_processor_impl` has already selected `ProcessorState::InternalEntity`
@@ -20985,24 +20911,23 @@ unsafe fn internalEntityProcessor(
             let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            if update_active_internal_entity(
-                parser_state,
-                entity_state.index,
-                ActiveInternalEntityUpdate::Advance(processed),
-            )
-            .is_none()
+            if dtd_owner
+                .inspect(|dtd| {
+                    let entity = declared_entity_mut(dtd, declaration, hash_salt)?;
+                    entity.processed = entity.processed.saturating_add(processed);
+                    Some(())
+                })
+                .is_none()
             {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
             return result;
         }
-        let Some(Some(tag_level)) =
-            update_active_internal_entity(
-                parser_state,
-                entity_state.index,
-                ActiveInternalEntityUpdate::Finish,
-            )
-        else {
+        let Some(tag_level) = dtd_owner.inspect(|dtd| {
+            let entity = declared_entity_mut(dtd, declaration, hash_salt)?;
+            entity.hasMore = crate::expat_h::XML_FALSE;
+            Some(parser_state.m_tagLevel)
+        }) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         if !entity_state.is_parameter && entity_state.start_tag_level != tag_level {
@@ -21011,15 +20936,35 @@ unsafe fn internalEntityProcessor(
         trigger_reenter(parser_state);
         return result;
     }
-    if update_active_internal_entity(
-        parser_state,
-        entity_state.index,
-        ActiveInternalEntityUpdate::Close(entity_state.index),
-    )
-    .is_none()
-    {
+    let Some(is_parameter_entity) = dtd_owner.inspect(|dtd| {
+        let entity = declared_entity_mut(dtd, declaration, hash_salt)?;
+        entity_tracking_on_close(parser_state, entity, 6470 as ::core::ffi::c_int);
+        let is_parameter_entity = entity.is_param != 0;
+        entity.open = crate::expat_h::XML_FALSE;
+        Some(is_parameter_entity)
+    }) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    if parser_state.m_activeInternalEntities.len().checked_sub(1) != Some(entity_state.index) {
+        std::process::abort();
     }
+    let storage = parser_state
+        .m_activeInternalEntities
+        .pop()
+        .expect("active internal-entity index was validated");
+    parser_state.m_freeInternalEntities.push(storage);
+    parser_state.m_openInternalEntities = parser_state
+        .m_activeInternalEntities
+        .len()
+        .checked_sub(1);
+    if parser_state.m_openInternalEntities.is_none() {
+        parser_state.m_processor = if is_parameter_entity {
+            ProcessorState::Prolog
+        } else {
+            ProcessorState::Content
+        };
+    }
+    trigger_reenter(parser_state);
     crate::expat_h::XML_ERROR_NONE
 }
 
