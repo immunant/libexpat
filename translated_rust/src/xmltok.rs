@@ -537,32 +537,51 @@ pub unsafe fn name_length(
 }
 
 impl NameMatcher {
-    pub unsafe fn matches_ascii(
-        self,
-        mut ptr1: *const ::core::ffi::c_char,
-        end1: *const ::core::ffi::c_char,
-        mut ptr2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+    fn matches_ascii_bytes(self, input: &[u8], expected: &[u8]) -> ::core::ffi::c_int {
         let width = match self {
             Self::Normal => 1,
             Self::Little2 | Self::Big2 => 2,
         };
-        while *ptr2 != 0 {
-            if end1.offset_from(ptr1) < width {
-                return 0;
-            }
-            let matches = match self {
-                Self::Normal => *ptr1 == *ptr2,
-                Self::Little2 => *ptr1.offset(1) == 0 && *ptr1 == *ptr2,
-                Self::Big2 => *ptr1 == 0 && *ptr1.offset(1) == *ptr2,
-            };
-            if !matches {
-                return 0;
-            }
-            ptr1 = ptr1.offset(width);
-            ptr2 = ptr2.offset(1);
+        let Some(expected_len) = expected.len().checked_mul(width) else {
+            return 0;
+        };
+        if input.len() != expected_len {
+            return 0;
         }
-        (ptr1 == end1) as ::core::ffi::c_int
+        let matches = match self {
+            Self::Normal => input == expected,
+            Self::Little2 => expected
+                .iter()
+                .zip(input.chunks_exact(2))
+                .all(|(&byte, code_unit)| code_unit == [byte, 0]),
+            Self::Big2 => expected
+                .iter()
+                .zip(input.chunks_exact(2))
+                .all(|(&byte, code_unit)| code_unit == [0, byte]),
+        };
+        matches as ::core::ffi::c_int
+    }
+
+    pub unsafe fn matches_ascii(
+        self,
+        ptr1: *const ::core::ffi::c_char,
+        end1: *const ::core::ffi::c_char,
+        ptr2: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let expected = ::core::ffi::CStr::from_ptr(ptr2).to_bytes();
+        if expected.is_empty() {
+            return (ptr1 == end1) as ::core::ffi::c_int;
+        }
+        let input_len = end1.offset_from(ptr1);
+        if input_len < 0 {
+            return 0;
+        }
+        let input = if input_len == 0 {
+            &[]
+        } else {
+            ::core::slice::from_raw_parts(ptr1.cast::<u8>(), input_len as usize)
+        };
+        self.matches_ascii_bytes(input, expected)
     }
 }
 
