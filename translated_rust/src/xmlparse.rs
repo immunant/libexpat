@@ -5486,7 +5486,7 @@ unsafe extern "C" fn doContent(
                     loop {
                         let mut convLen: ::core::ffi::c_int = 0;
                         let convert_res: crate::src::xmltok::XML_Convert_Result =
-                            (*enc).utf8Convert.expect("non-null function pointer")(
+                            crate::src::xmltok::convert_to_utf8(
                                 enc,
                                 &raw mut fromPtr,
                                 rawNameEnd,
@@ -5859,7 +5859,7 @@ unsafe extern "C" fn doContent(
                     if (*parser).m_characterDataHandler.is_some() {
                         if (*enc).isUtf8 == 0 {
                             let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
-                            (*enc).utf8Convert.expect("non-null function pointer")(
+                            crate::src::xmltok::convert_to_utf8(
                                 enc,
                                 &raw mut s,
                                 end,
@@ -5907,7 +5907,7 @@ unsafe extern "C" fn doContent(
                             loop {
                                 let mut dataPtr_0: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
                                 let convert_res_0: crate::src::xmltok::XML_Convert_Result =
-                                    (*enc).utf8Convert.expect("non-null function pointer")(
+                                    crate::src::xmltok::convert_to_utf8(
                                         enc,
                                         &raw mut s,
                                         next,
@@ -6978,7 +6978,7 @@ unsafe extern "C" fn doCdataSection(
                         loop {
                             let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
                             let convert_res: crate::src::xmltok::XML_Convert_Result =
-                                (*enc).utf8Convert.expect("non-null function pointer")(
+                                crate::src::xmltok::convert_to_utf8(
                                     enc,
                                     &raw mut s,
                                     next,
@@ -10764,7 +10764,7 @@ unsafe extern "C" fn reportDefault(
         }
         loop {
             let mut dataPtr: *mut ICHAR = (*parser).m_dataBuf as *mut ICHAR;
-            convert_res = (*enc).utf8Convert.expect("non-null function pointer")(
+            convert_res = crate::src::xmltok::convert_to_utf8(
                 enc,
                 &raw mut s,
                 end,
@@ -12203,7 +12203,7 @@ unsafe extern "C" fn poolAppend(
     }
     loop {
         let convert_res: crate::src::xmltok::XML_Convert_Result =
-            (*enc).utf8Convert.expect("non-null function pointer")(
+            crate::src::xmltok::convert_to_utf8(
                 enc,
                 &raw mut ptr,
                 end,
