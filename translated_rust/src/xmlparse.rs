@@ -19182,34 +19182,160 @@ unsafe fn getAttributeId(
     mut end: *const ::core::ffi::c_char,
     retained_name: Option<&mut Option<PoolStringRef>>,
 ) -> *mut ATTRIBUTE_ID {
-    let parser_ptr = parser;
-    let parser = &mut *parser;
-    let dtd = &mut *parser_dtd_ptr!(parser);
-    if !pool_append_char(&mut dtd.pool, '\0' as crate::expat_external_h::XML_Char) {
-        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    }
-    let mut name = poolStoreString(&raw mut dtd.pool, enc, start, end);
-    if name.is_null() {
-        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    }
-    name = name.wrapping_add(1);
-    // `poolStoreString` has just appended the terminating XML character.
-    // Resolve that address back through its owning pool before examining the
-    // name: unlike `CStr::from_ptr`, this cannot scan past the live slab when
-    // a malformed cursor reaches this parser path.
-    let Some(id_name_ref) = pool_string_ref_from_address(&dtd.pool, name.addr(), false) else {
-        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    let Some(parser) = parser.as_mut() else {
+        return ::core::ptr::null_mut();
     };
-    let (is_xmlns_name, xmlns_is_default, local_prefix) = {
-        let Some(name_chars) = dtd.pool.chars_from(id_name_ref) else {
-            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    let Some(enc) = enc.as_ref() else {
+        return ::core::ptr::null_mut();
+    };
+    let dtd = &mut *parser_dtd_ptr!(parser);
+    // Attribute names are tokenizer cursors, never arbitrary C strings.  Find
+    // the parser/entity allocation that owns the complete range before the
+    // converter sees it; this rejects a reversed or cross-allocation window.
+    let Some(source) = entity_value_token_source(parser, dtd, start.addr(), end.addr()) else {
+        return ::core::ptr::null_mut();
+    };
+    let Some(source) = raw_name_bytes(source) else {
+        return ::core::ptr::null_mut();
+    };
+    let unknown_encoding = match parser.m_encoding {
+        EncodingState::Initial => None,
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .and_then(UnknownEncodingMemory::initialized_encoding)
+            .copied(),
+    };
+    if matches!(enc.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
+        && unknown_encoding.is_none()
+    {
+        return ::core::ptr::null_mut();
+    }
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    if !pool_append_char(&mut dtd.pool, 0) {
+        return ::core::ptr::null_mut();
+    }
+    let Some(name_start) = pool_store_name_source(&mut dtd.pool, enc, unknown_encoding.as_ref(), &source)
+    else {
+        return ::core::ptr::null_mut();
+    };
+    get_attribute_id_impl(
+        &mut dtd.pool,
+        &mut dtd.attributeIds,
+        &mut dtd.prefixes,
+        parser.m_ns != 0,
+        salt,
+        name_start,
+        retained_name,
+    )
+        .map_or(::core::ptr::null_mut(), std::ptr::from_mut)
+}
+
+/// Copies a tokenizer-owned name into a bounded byte buffer before mutating
+/// the parser or DTD.  `try_reserve_exact` keeps allocation failure on the
+/// existing null/`XML_ERROR_NO_MEMORY` path instead of panicking.
+fn raw_name_bytes(source: RawNameSource<'_>) -> Option<Vec<u8>> {
+    let source: &[u8] = match source {
+        RawNameSource::Bytes(bytes) => bytes,
+        RawNameSource::Chars(chars) => bytemuck::cast_slice(chars),
+    };
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(source.len()).ok()?;
+    bytes.extend_from_slice(source);
+    Some(bytes)
+}
+
+/// Appends a bounded tokenizer name to a string pool without recreating raw
+/// cursor pairs.  The input and output windows remain checked slices through
+/// every conversion/growth iteration.
+fn pool_store_name_source(
+    pool: &mut STRING_POOL,
+    enc: &crate::src::xmltok::ENCODING,
+    unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
+    input: &[u8],
+) -> Option<PoolStringRef> {
+    if pool.start.is_none() && poolGrow(pool) == 0 {
+        return None;
+    }
+    let mut input_offset = 0usize;
+    loop {
+        let (result, consumed, written) = {
+            let start = pool.start_ref(true)?;
+            let capacity = pool.remaining_capacity()?;
+            let output_start = start.offset.checked_add(pool.ptr_offset)?;
+            let output_end = start.offset.checked_add(capacity)?;
+            let block = pool
+                .storage
+                .active
+                .get_mut(start.block_from_tail.get().checked_sub(1)?)?;
+            let output = block.chars.get_mut(output_start..output_end)?;
+            crate::src::xmltok::convert_to_utf8_slice(
+                enc,
+                unknown_encoding,
+                input.get(input_offset..)?,
+                bytemuck::cast_slice_mut(output),
+            )
         };
-        let Some(name_len) = name_chars
+        input_offset = input_offset.checked_add(consumed)?;
+        pool.ptr_offset = pool.ptr_offset.checked_add(written)?;
+        if input_offset > input.len() {
+            return None;
+        }
+        if result == crate::src::xmltok::XML_CONVERT_COMPLETED
+            || result == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+        {
+            if !pool_append_char(pool, 0) {
+                return None;
+            }
+            return pool.start_ref(true);
+        }
+        if poolGrow(pool) == 0 {
+            return None;
+        }
+    }
+}
+
+/// Produces a second checked pool handle within the same retained string.
+/// Unlike pointer addition, this validates the requested offset against the
+/// owning slab before it is used as a hash-table key.
+fn pool_string_ref_at(
+    pool: &STRING_POOL,
+    start: PoolStringRef,
+    offset: usize,
+) -> Option<PoolStringRef> {
+    pool.chars_from(start)?.get(offset..)?;
+    Some(PoolStringRef {
+        block_from_tail: start.block_from_tail,
+        offset: start.offset.checked_add(offset)?,
+    })
+}
+
+/// Looks up or creates an attribute identifier from an already bounded name.
+/// Pool locations, rather than temporary C addresses, are retained across
+/// hash-table growth and namespace-prefix processing.
+fn get_attribute_id_impl<'a>(
+    pool: &mut STRING_POOL,
+    attribute_ids: &'a mut HASH_TABLE,
+    prefixes: &mut HASH_TABLE,
+    namespaces_enabled: bool,
+    salt: ::core::ffi::c_ulong,
+    name_start: PoolStringRef,
+    retained_name: Option<&mut Option<PoolStringRef>>,
+) -> Option<&'a mut ATTRIBUTE_ID> {
+    // The leading NUL is the duplicate-attribute marker.  The name itself
+    // begins immediately after it, and the checked pool handle keeps that
+    // one-character offset valid without an interior raw pointer.
+    let id_name_ref = pool_string_ref_at(pool, name_start, 1)?;
+    let (is_xmlns_name, xmlns_is_default, local_prefix) = {
+        let name_chars = pool.chars_from(id_name_ref)?;
+        let name_len = name_chars
             .iter()
             .position(|&character| character == 0)
-        else {
-            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        };
+            ?;
         let name_chars = &name_chars[..name_len];
         let is_xmlns_name = name_chars.starts_with(&[
             'x' as crate::expat_external_h::XML_Char,
@@ -19230,21 +19356,19 @@ unsafe fn getAttributeId(
             .flatten();
         (is_xmlns_name, name_chars.len() == 5, local_prefix)
     };
-    let id = lookup(
-        parser_ptr,
-        &raw mut dtd.attributeIds,
-        name as KEY,
+    let id = lookup_impl(
+        pool,
+        attribute_ids,
+        LookupName::Retained(id_name_ref),
         ::core::mem::size_of::<ATTRIBUTE_ID>(),
-    ) as *mut ATTRIBUTE_ID;
-    if id.is_null() {
-        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    }
-    let id = &mut *id;
+        salt,
+    )?
+    .attribute_mut()?;
     if id.named.name != id_name_ref {
-        dtd.pool.rewind();
+        pool.rewind();
     } else {
-        dtd.pool.commit();
-        if parser.m_ns != 0 {
+        pool.commit();
+        if namespaces_enabled {
             if is_xmlns_name {
                 if xmlns_is_default {
                     id.prefix = AttributePrefix::Default;
@@ -19252,109 +19376,59 @@ unsafe fn getAttributeId(
                     // The checked name slice above established the `xmlns:`
                     // prefix, so offset six is within this terminated pool
                     // string even for an empty namespace prefix.
-                    let Some(prefix_start) = dtd
-                        .pool
-                        .chars_from(id_name_ref)
-                        .and_then(|chars| chars.get(6..))
-                        .map(|chars| chars.as_ptr())
-                    else {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                    };
-                    let prefix = lookup(
-                        parser_ptr,
-                        &raw mut dtd.prefixes,
-                        prefix_start,
+                    let prefix_start = pool_string_ref_at(pool, id_name_ref, 6)?;
+                    let prefix = lookup_impl(
+                        pool,
+                        prefixes,
+                        LookupName::Retained(prefix_start),
                         ::core::mem::size_of::<PREFIX>(),
-                    ) as *mut PREFIX;
-                    if prefix.is_null() {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                    }
-                    let Some(prefix_name) = (*prefix).name else {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                        salt,
+                    )?;
+                    let NamedRecord::Prefix(prefix) = prefix else {
+                        return None;
                     };
+                    let prefix_name = prefix.name?;
                     id.prefix = AttributePrefix::Named(prefix_name);
                 }
                 id.xmlns = crate::expat_h::XML_TRUE;
             } else {
                 if let Some(prefix_chars) = local_prefix {
                     for character in prefix_chars {
-                        if !pool_append_char(&mut dtd.pool, character) {
-                            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                        if !pool_append_char(pool, character) {
+                            return None;
                         }
                     }
-                    if !pool_append_char(&mut dtd.pool, '\0' as crate::expat_external_h::XML_Char) {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    if !pool_append_char(pool, '\0' as crate::expat_external_h::XML_Char) {
+                        return None;
                     }
-                    let Some(pool_start) = dtd.pool.start_ref(true) else {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    let Some(pool_start) = pool.start_ref(true) else {
+                        return None;
                     };
-                    let pool_start = dtd
-                        .pool
-                        .chars_from(pool_start)
-                        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                    if pool_start.is_null() {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                    }
-                    let prefix = lookup(
-                        parser_ptr,
-                        &raw mut dtd.prefixes,
-                        pool_start as KEY,
+                    let prefix = lookup_impl(
+                        pool,
+                        prefixes,
+                        LookupName::Retained(pool_start),
                         ::core::mem::size_of::<PREFIX>(),
-                    ) as *mut PREFIX;
-                    if prefix.is_null() {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                    }
-                    let Some(pool_start_ref) =
-                        pool_string_ref_from_address(&dtd.pool, pool_start.addr(), false)
-                    else {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                        salt,
+                    )?;
+                    let NamedRecord::Prefix(prefix) = prefix else {
+                        return None;
                     };
-                    let Some(prefix_name) = (*prefix).name else {
-                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                    };
+                    let prefix_name = prefix.name?;
                     id.prefix = AttributePrefix::Named(prefix_name);
-                    if prefix_name == pool_start_ref {
-                        dtd.pool.commit();
+                    if prefix_name == pool_start {
+                        pool.commit();
                     } else {
-                        dtd.pool.rewind();
+                        pool.rewind();
                     }
                 }
             }
         }
     }
-    let id_name = pool_string_pointer!(&dtd.pool, id.named.name);
-    if id_name.is_null() {
-        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    }
     if let Some(retained_name) = retained_name {
-        let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
-        let name = dtd
-            .pool
-            .storage
-            .active
-            .iter()
-            .enumerate()
-            .find_map(|(block_index, block)| {
-                let block_start = block.chars.as_ptr();
-                let byte_offset = id_name.addr().wrapping_sub(block_start.addr());
-                let capacity_bytes = block.chars.len().wrapping_mul(char_size);
-                if id_name.addr() < block_start.addr()
-                    || byte_offset >= capacity_bytes
-                    || byte_offset % char_size != 0
-                {
-                    return None;
-                }
-                Some(PoolStringRef {
-                    block_from_tail: std::num::NonZeroUsize::new(block_index.checked_add(1)?)?,
-                    offset: byte_offset / char_size,
-                })
-            });
-        let Some(name) = name else {
-            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        };
-        *retained_name = Some(name);
+        *retained_name = Some(id.named.name);
     }
-    id as *mut ATTRIBUTE_ID
+    Some(id)
 }
 
 // The string pool owns the resulting context.  Its cursor invariant is
