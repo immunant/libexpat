@@ -10902,12 +10902,12 @@ fn cdata_parsing_state(parser: &XML_ParserStruct) -> CdataParsingState {
 // callbacks: a callback may re-enter the parser and grow or otherwise update
 // the active-entity storage.
 #[derive(Copy, Clone)]
-enum CdataEventTarget {
+enum EventCursorTarget {
     Parser,
     InternalEntity(usize),
 }
 
-impl CdataEventTarget {
+impl EventCursorTarget {
     fn set_start(
         self,
         parser: &mut XML_ParserStruct,
@@ -10991,7 +10991,7 @@ unsafe extern "C" fn doCdataSection(
         .m_buffer
         .window_from_addresses(s.addr(), end.addr())
         .is_some();
-    let mut event_target = CdataEventTarget::Parser;
+    let mut event_target = EventCursorTarget::Parser;
     let mut internal_event_text: Option<(
         EntityTextRef,
         ::core::ffi::c_int,
@@ -11024,7 +11024,7 @@ unsafe extern "C" fn doCdataSection(
             internal_event_window = Some((text.as_ptr().addr(), text.len()));
             open_entity_index
         };
-        event_target = CdataEventTarget::InternalEntity(open_entity);
+        event_target = EventCursorTarget::InternalEntity(open_entity);
     }
     let event_parser = parser_handle;
     let mut update_event_start = |start: *const ::core::ffi::c_char| {
@@ -11275,7 +11275,7 @@ unsafe extern "C" fn ignoreSectionProcessor(
     let mut result: crate::expat_h::XML_Error = doIgnoreSection(
         parser,
         parser_encoding(parser),
-        &raw mut start,
+        &mut start,
         end,
         endPtr,
         ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
@@ -11296,7 +11296,7 @@ unsafe extern "C" fn ignoreSectionProcessor(
 unsafe extern "C" fn doIgnoreSection(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
-    mut startPtr: *mut *const ::core::ffi::c_char,
+    startPtr: &mut *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
     mut haveMore: crate::expat_h::XML_Bool,
@@ -11305,38 +11305,38 @@ unsafe extern "C" fn doIgnoreSection(
     let mut tok: ::core::ffi::c_int = 0;
     let mut s: *const ::core::ffi::c_char = *startPtr;
     let parser_events = enc == parser_encoding(parser);
-    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let mut internal_event_start = None;
+    // Event cursors name either the parser buffer or a live internal-entity
+    // slot.  Retain the slot index, rather than an interior pointer to its
+    // cursor fields, because callbacks may grow the entity storage.
+    let mut event_target = EventCursorTarget::Parser;
     let mut internal_event_window = None;
     if !parser_events {
-        let open_entity = {
+        let open_entity_index = {
             let parser_state = &mut *parser;
-            let open_entity_index = parser_state
-                .m_openInternalEntities
-                .expect("internal entity parsing requires an open entity");
-            std::ptr::from_mut(
-                parser_state
-                    .m_activeInternalEntities
-                    .get_mut(open_entity_index)
-                    .expect("open internal entity index is live")
-                    .node_mut(),
-            )
+            let Some(open_entity_index) = parser_state.m_openInternalEntities else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(dtd) = parser_state.m_dtd.clone() else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(open_entity) = parser_state.m_activeInternalEntities.get(open_entity_index)
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let entity = open_entity.node();
+            let Some(text) = shared_entity_text_chars(&dtd, entity.eventText, entity.eventTextLen)
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            internal_event_window = Some((text.as_ptr().addr(), text.len()));
+            open_entity_index
         };
-        let open_entity = &mut *open_entity;
-        let dtd = (&*parser)
-            .m_dtd
-            .as_ref()
-            .expect("internal entity parsing requires a DTD");
-        let Some(window) = shared_event_text_window(dtd, open_entity) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        internal_event_window = Some(window);
-        eventPP = &raw mut open_entity.internalEventPtr;
-        eventEndPP = &raw mut open_entity.internalEventEndPtr;
+        event_target = EventCursorTarget::InternalEntity(open_entity_index);
     }
-    set_event_start!(parser, parser_events, eventPP, internal_event_window, s);
-    internal_event_start = internal_event_offset(internal_event_window, s.addr());
+    event_target.set_start(&mut *parser, internal_event_window, s.addr());
+    let internal_event_start = (!parser_events)
+        .then(|| internal_event_offset(internal_event_window, s.addr()))
+        .flatten();
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
     tok = (*enc).scanners[3 as usize].scan(enc, s, end, &raw mut next);
     if accountingDiffTolerated(
@@ -11351,13 +11351,11 @@ unsafe extern "C" fn doIgnoreSection(
         accountingOnAbort(parser);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
-    set_event_end!(
-        parser,
-        parser_events,
+    event_target.set_end(
+        &mut *parser,
         internal_event_start,
         internal_event_window,
-        eventEndPP,
-        next
+        next.addr(),
     );
     match tok {
         crate::src::xmltok::XML_TOK_IGNORE_SECT => {
@@ -11375,7 +11373,7 @@ unsafe extern "C" fn doIgnoreSection(
             }
         }
         crate::src::xmltok::XML_TOK_INVALID => {
-            set_event_start!(parser, parser_events, eventPP, internal_event_window, next);
+            event_target.set_start(&mut *parser, internal_event_window, next.addr());
             return crate::expat_h::XML_ERROR_INVALID_TOKEN;
         }
         crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
@@ -11393,7 +11391,7 @@ unsafe extern "C" fn doIgnoreSection(
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
         _ => {
-            set_event_start!(parser, parser_events, eventPP, internal_event_window, next);
+            event_target.set_start(&mut *parser, internal_event_window, next.addr());
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
     };
@@ -14031,7 +14029,7 @@ unsafe extern "C" fn doProlog(
                                         result_3 = doIgnoreSection(
                                             parser,
                                             enc,
-                                            &raw mut next,
+                                            &mut next,
                                             end,
                                             nextPtr,
                                             haveMore,
