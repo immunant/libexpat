@@ -1628,6 +1628,25 @@ static START_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+/// A start-doctype handler registration prepared from the ABI callback value.
+///
+/// Parser state retains only this typed registry entry and its opaque address
+/// key, never the C callback representation itself.
+struct StartDoctypeDeclHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn StartDoctypeDeclCallback>>,
+}
+
+fn start_doctype_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> StartDoctypeDeclHandlerRegistration
+where
+    Callback: StartDoctypeDeclCallback + 'static,
+{
+    StartDoctypeDeclHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 // End-doctype has the same callback signature as end-CDATA, but keeps a
 // separate registration namespace because the two handlers are independent.
 static END_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
@@ -9556,23 +9575,22 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler_ffi(
         handlers,
     )
 }
-pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
+fn set_start_doctype_decl_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: StartDoctypeDeclHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_startDoctypeDeclHandler = start.is_some();
-        let mut handlers = START_DOCTYPE_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match start {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_startDoctypeDeclHandler = registration.callback.is_some();
+    let mut handlers = START_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
@@ -9582,7 +9600,13 @@ pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
 ) {
-    XML_SetStartDoctypeDeclHandler(parser, start)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = start_doctype_decl_handler_registration(start);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_start_doctype_decl_handler(parser, parser_address, registration)
 }
 fn set_end_doctype_decl_handler(
     parser: &mut XML_ParserStruct,
