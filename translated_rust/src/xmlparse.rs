@@ -2184,7 +2184,9 @@ pub struct ELEMENT_TYPE {
     // pointer-bearing view of the same allocation while retaining the table's
     // layout and configured allocator.
     pub named: NAMED,
-    pub prefix: *mut PREFIX,
+    // Prefix records are owned by the DTD prefix table.  Element types only
+    // retain an optional non-null link into that table.
+    pub prefix: Option<std::ptr::NonNull<PREFIX>>,
     pub idAtt: *const ATTRIBUTE_ID,
     pub nDefaultAtts: ::core::ffi::c_int,
     pub allocDefaultAtts: ::core::ffi::c_int,
@@ -8104,8 +8106,8 @@ unsafe extern "C" fn storeAtts(
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
     }
-    if !(*elementType).prefix.is_null() {
-        binding = (*(*elementType).prefix).binding;
+    if let Some(element_prefix) = (*elementType).prefix {
+        binding = (*element_prefix.as_ptr()).binding;
         if binding.is_null() {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
         }
@@ -12692,7 +12694,7 @@ unsafe extern "C" fn setElementTypePrefix(
             } else {
                 (*dtd).pool.ptr = (*dtd).pool.start;
             }
-            (*elementType).prefix = prefix;
+            (*elementType).prefix = std::ptr::NonNull::new(prefix);
             break;
         } else {
             name = name.offset(1);
@@ -13370,14 +13372,14 @@ unsafe extern "C" fn dtdCopy(
         }
         new_e.nDefaultAtts = old_e.nDefaultAtts;
         new_e.allocDefaultAtts = new_e.nDefaultAtts;
-        if !old_e.prefix.is_null() {
-            let old_prefix = &*old_e.prefix;
-            new_e.prefix = lookup(
+        if let Some(old_prefix) = old_e.prefix {
+            let old_prefix = &*old_prefix.as_ptr();
+            new_e.prefix = std::ptr::NonNull::new(lookup(
                 oldParser,
                 &raw mut new_dtd.prefixes,
                 old_prefix.name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut PREFIX;
+            ) as *mut PREFIX);
         }
         let mut i = 0 as ::core::ffi::c_int;
         while i < new_e.nDefaultAtts {
