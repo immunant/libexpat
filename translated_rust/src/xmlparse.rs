@@ -1398,13 +1398,7 @@ type TwoXmlCharCallback = dyn ProcessingInstructionCallback;
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a comment callback is installed.
-trait CommentCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        data: *const crate::expat_external_h::XML_Char,
-    );
-}
+trait CommentCallback: Send + Sync + std::any::Any {}
 
 impl CommentCallback
     for unsafe extern "C" fn(
@@ -1412,13 +1406,6 @@ impl CommentCallback
         *const crate::expat_external_h::XML_Char,
     ) -> ()
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        data: *const crate::expat_external_h::XML_Char,
-    ) {
-        self(user_data, data);
-    }
 }
 
 static COMMENT_HANDLERS: std::sync::OnceLock<
@@ -1861,9 +1848,15 @@ fn dispatch_comment_callback(
     parser: &XML_ParserStruct,
     data: &[crate::expat_external_h::XML_Char],
 ) {
-    unsafe {
-        callback.invoke(handler_arg_from_state!(parser), data.as_ptr());
-    }
+    let Some(callback) = (callback as &dyn std::any::Any).downcast_ref::<
+        unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    >() else {
+        return;
+    };
+    unsafe { callback(handler_arg_from_state!(parser), data.as_ptr()) }
 }
 
 fn dispatch_character_data_slice(
