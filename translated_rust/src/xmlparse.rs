@@ -11621,25 +11621,27 @@ unsafe extern "C" fn doCdataSection(
     };
     *startPtr = ::core::ptr::null();
 
-    let mut account_token = |token, before: usize, after: usize| {
-        let (before, after) = match &input {
-            CdataInput::Bytes(bytes) => (
-                bytes.as_ptr().wrapping_add(before).cast::<::core::ffi::c_char>(),
-                bytes.as_ptr().wrapping_add(after).cast::<::core::ffi::c_char>(),
-            ),
-            CdataInput::Chars(chars) => (
-                chars.as_ptr().wrapping_add(before),
-                chars.as_ptr().wrapping_add(after),
-            ),
-        };
-        if accountingDiffTolerated(parser, token, before, after, 4619, account) == 0 {
-            accountingOnAbort(parser);
-            false
-        } else {
-            true
+    let mut account_token = |parser_state: &XML_ParserStruct,
+                             token,
+                             before: usize,
+                             after: usize| {
+        let tolerated = cdata_accounting_diff_tolerated(
+            parser_state,
+            token,
+            &input,
+            before,
+            after,
+            4619,
+            account,
+        );
+        if !tolerated {
+            cdata_accounting_on_abort(parser_state);
         }
+        tolerated
     };
-    let mut dispatch = |event: CdataCallbackEvent| -> Result<(), crate::expat_h::XML_Error> {
+    let mut dispatch = |parser_state: &mut XML_ParserStruct,
+                        event: CdataCallbackEvent|
+     -> Result<(), crate::expat_h::XML_Error> {
         match event {
             CdataCallbackEvent::End => {
                 let callback = END_CDATA_SECTION_HANDLERS
@@ -11649,7 +11651,7 @@ unsafe extern "C" fn doCdataSection(
                     .get(&(parser as usize))
                     .cloned()
                     .expect("installed end CDATA handler");
-                callback.invoke(handler_arg!(parser));
+                callback.invoke(handler_arg_from_state!(parser_state));
             }
             CdataCallbackEvent::Newline => {
                 let callback = CHARACTER_DATA_HANDLERS
@@ -11660,7 +11662,7 @@ unsafe extern "C" fn doCdataSection(
                     .cloned();
                 if let Some(callback) = callback {
                     let newline: crate::expat_external_h::XML_Char = 0xa;
-                    callback.invoke(handler_arg!(parser), &raw const newline, 1);
+                    callback.invoke(handler_arg_from_state!(parser_state), &raw const newline, 1);
                 }
             }
             CdataCallbackEvent::CharacterData(chars) => {
@@ -11675,12 +11677,11 @@ unsafe extern "C" fn doCdataSection(
                     let Some(length) = ::core::ffi::c_int::try_from(chars.len()).ok() else {
                         return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                     };
-                    callback.invoke(handler_arg!(parser), chars.as_ptr(), length);
+                    callback.invoke(handler_arg_from_state!(parser_state), chars.as_ptr(), length);
                 } else {
                     let mut from = chars.as_ptr();
                     let from_end = from.wrapping_add(chars.len());
                     loop {
-                        let parser_state = &mut *parser;
                         let data_start = parser_state.m_dataBuf.chars.as_mut_ptr();
                         let data_end = data_start.wrapping_add(parser_state.m_dataBufEnd);
                         let capacity = parser_state.m_dataBufEnd;
@@ -11700,7 +11701,7 @@ unsafe extern "C" fn doCdataSection(
                         else {
                             return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                         };
-                        callback.invoke(handler_arg!(parser), data_start, length);
+                        callback.invoke(handler_arg_from_state!(parser_state), data_start, length);
                         if conversion as ::core::ffi::c_uint
                             == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                                 as ::core::ffi::c_uint
@@ -11742,7 +11743,7 @@ unsafe extern "C" fn doCdataSection(
         match event_target {
             CdataEventTarget::Parser { input_start } => {
                 let offset = input_start.checked_add(cursor)?;
-                let bytes = (&*parser).m_buffer.bytes.as_deref()?;
+                let bytes = parser_state.m_buffer.bytes.as_deref()?;
                 bytes.get(offset..)
                     .map(|_| bytes.as_ptr().wrapping_add(offset).cast())
             }
@@ -11830,6 +11831,180 @@ impl CdataInput {
             Self::Chars(chars) => chars.get(range).map(ToOwned::to_owned),
         }
     }
+
+    fn bytes(&self, range: std::ops::Range<usize>) -> Option<Vec<u8>> {
+        match self {
+            Self::Bytes(bytes) => bytes.get(range).map(ToOwned::to_owned),
+            Self::Chars(chars) => chars
+                .get(range)
+                .map(|chars| chars.iter().map(|&byte| byte as u8).collect()),
+        }
+    }
+}
+
+// CDATA already owns a bounded token copy, so its accounting path can keep
+// byte positions as offsets instead of recovering raw cursor pairs.  The
+// debug output remains deliberately equivalent to the legacy accounting
+// diagnostics, including its short-context elision rule.
+fn cdata_accounting_diff_tolerated(
+    parser: &XML_ParserStruct,
+    token: ::core::ffi::c_int,
+    input: &CdataInput,
+    before: usize,
+    after: usize,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+) -> bool {
+    match token {
+        crate::src::xmltok::XML_TOK_INVALID
+        | crate::src::xmltok::XML_TOK_PARTIAL
+        | crate::src::xmltok::XML_TOK_PARTIAL_CHAR
+        | crate::src::xmltok::XML_TOK_NONE => return true,
+        _ => {}
+    }
+    if account as ::core::ffi::c_uint
+        == XML_ACCOUNT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return true;
+    }
+    let Some(bytes_more) = after.checked_sub(before) else {
+        return false;
+    };
+    let levels_away_from_root = parser
+        .m_parentParser
+        .map_or(0, ::core::num::NonZeroU32::get);
+    let is_direct = account as ::core::ffi::c_uint
+        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
+        && parser.m_parentParser.is_none();
+    let (count_bytes_output, amplification_factor, threshold, maximum, debug_level) = {
+        let mut root = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let addition_target = if is_direct {
+            &mut root.accounting.countBytesDirect
+        } else {
+            &mut root.accounting.countBytesIndirect
+        };
+        if *addition_target > XmlBigCount::MAX.wrapping_sub(bytes_more as XmlBigCount) {
+            return false;
+        }
+        *addition_target = addition_target.wrapping_add(bytes_more as XmlBigCount);
+        let output = root
+            .accounting
+            .countBytesDirect
+            .wrapping_add(root.accounting.countBytesIndirect);
+        let amplification = if root.accounting.countBytesDirect != 0 {
+            output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
+        } else {
+            (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
+                as ::core::ffi::c_float
+                / 23.0
+        };
+        (
+            output,
+            amplification,
+            root.accounting.activationThresholdBytes,
+            root.accounting.maximumAmplificationFactor,
+            root.accounting.debugLevel,
+        )
+    };
+    let tolerated = count_bytes_output < threshold || amplification_factor <= maximum;
+    if debug_level >= 2 {
+        cdata_accounting_report_stats(parser, "");
+        let Some(window) = input.bytes(before..after) else {
+            return false;
+        };
+        cdata_accounting_report_diff(
+            debug_level,
+            levels_away_from_root,
+            &window,
+            bytes_more,
+            source_line,
+            account,
+        );
+    }
+    tolerated
+}
+
+fn cdata_accounting_on_abort(parser: &XML_ParserStruct) {
+    cdata_accounting_report_stats(parser, " ABORTING\n");
+}
+
+fn cdata_accounting_report_stats(parser: &XML_ParserStruct, epilog: &str) {
+    use std::io::Write;
+
+    let root = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if root.accounting.debugLevel == 0 {
+        return;
+    }
+    let output = root
+        .accounting
+        .countBytesDirect
+        .wrapping_add(root.accounting.countBytesIndirect);
+    let amplification_factor = if root.accounting.countBytesDirect != 0 {
+        output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
+    } else {
+        (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect) as ::core::ffi::c_float
+            / 23.0
+    };
+    let _ = write!(
+        std::io::stderr().lock(),
+        "expat: Accounting({:p}): Direct {:10}, indirect {:10}, amplification {:8.2}{}",
+        std::ptr::from_ref(parser),
+        root.accounting.countBytesDirect,
+        root.accounting.countBytesIndirect,
+        amplification_factor,
+        epilog,
+    );
+}
+
+fn cdata_accounting_report_diff(
+    debug_level: ::core::ffi::c_ulong,
+    levels_away_from_root: ::core::ffi::c_uint,
+    bytes: &[u8],
+    bytes_more: usize,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+) {
+    use std::io::Write;
+
+    let account_kind = if account as ::core::ffi::c_uint
+        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        "DIR"
+    } else {
+        "EXP"
+    };
+    let mut rendered = Vec::new();
+    if debug_level >= 3 || bytes.len() <= 23 {
+        for &byte in bytes {
+            append_printable_byte(&mut rendered, byte);
+        }
+    } else {
+        for &byte in &bytes[..10] {
+            append_printable_byte(&mut rendered, byte);
+        }
+        rendered.extend_from_slice(b"[..]");
+        for &byte in &bytes[bytes.len() - 10..] {
+            append_printable_byte(&mut rendered, byte);
+        }
+    }
+    let mut stderr = std::io::stderr().lock();
+    let _ = write!(
+        stderr,
+        " (+{:>6} bytes {}|{}, xmlparse.c:{}) {:>10}\"",
+        bytes_more,
+        account_kind,
+        levels_away_from_root,
+        source_line,
+        "",
+    );
+    let _ = stderr.write_all(&rendered);
+    let _ = stderr.write_all(b"\"\n");
 }
 
 enum CdataCallbackEvent {
@@ -11863,8 +12038,11 @@ fn do_cdata_section_impl(
     input: &CdataInput,
     event_target: CdataEventTarget,
     have_more: bool,
-    account: &mut dyn FnMut(::core::ffi::c_int, usize, usize) -> bool,
-    dispatch: &mut dyn FnMut(CdataCallbackEvent) -> Result<(), crate::expat_h::XML_Error>,
+    account: &mut dyn FnMut(&XML_ParserStruct, ::core::ffi::c_int, usize, usize) -> bool,
+    dispatch: &mut dyn FnMut(
+        &mut XML_ParserStruct,
+        CdataCallbackEvent,
+    ) -> Result<(), crate::expat_h::XML_Error>,
 ) -> CdataResult {
     let mut cursor = 0;
     loop {
@@ -11873,7 +12051,7 @@ fn do_cdata_section_impl(
             .and_then(|offset| cursor.checked_add(offset))
             .unwrap_or(cursor);
         event_target.set_start(parser, cursor);
-        if !account(token, cursor, next) {
+        if !account(parser, token, cursor, next) {
             return cdata_result(
                 crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH,
                 None,
@@ -11882,7 +12060,7 @@ fn do_cdata_section_impl(
         }
         event_target.set_end(parser, cursor, next);
         let handler_flags = cdata_handler_flags(parser);
-        let mut callback = |event| dispatch(event);
+        let mut callback = |event| dispatch(parser, event);
         let emit_default = |input: &CdataInput,
                             start: usize,
                             end: usize,
