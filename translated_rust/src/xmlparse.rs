@@ -15419,14 +15419,13 @@ unsafe extern "C" fn doProlog(
                                     }
                                     6 => {
                                         (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
-                                        let entity = lookup(
-                                            parser,
-                                            &raw mut (*dtd).paramEntities,
-                                            EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
+                                        if external_subset_entity_mut(
+                                            dtd,
                                             ::core::mem::size_of::<ENTITY>(),
+                                            hash_salt,
                                         )
-                                            as *mut ENTITY;
-                                        if entity.is_null() {
+                                        .is_none()
+                                        {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
                                         (*parser).m_declEntity =
@@ -15605,19 +15604,17 @@ unsafe extern "C" fn doProlog(
                                                 != 0
                                                 && (*parser).m_externalEntityRefHandler
                                             {
-                                                let mut entity: *mut ENTITY = lookup(
-                                                    parser,
-                                                    &raw mut (*dtd).paramEntities,
-                                                    EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
+                                                let Some(entity) = external_subset_entity_mut(
+                                                    dtd,
                                                     ::core::mem::size_of::<ENTITY>(),
-                                                )
-                                                    as *mut ENTITY;
-                                                if entity.is_null() {
+                                                    hash_salt,
+                                                ) else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                }
+                                                };
                                                 if (*parser).m_useForeignDTD != 0 {
-                                                    (*entity).base = (*parser).m_curBase;
+                                                    entity.base = (*parser).m_curBase;
                                                 }
+                                                let entity = std::ptr::from_mut(entity);
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                                     .get_or_init(|| {
@@ -15701,17 +15698,15 @@ unsafe extern "C" fn doProlog(
                                                 != 0
                                                 && (*parser).m_externalEntityRefHandler
                                             {
-                                                let mut entity_0: *mut ENTITY = lookup(
-                                                    parser,
-                                                    &raw mut (*dtd).paramEntities,
-                                                    EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
+                                                let Some(entity) = external_subset_entity_mut(
+                                                    dtd,
                                                     ::core::mem::size_of::<ENTITY>(),
-                                                )
-                                                    as *mut ENTITY;
-                                                if entity_0.is_null() {
+                                                    hash_salt,
+                                                ) else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                }
-                                                (*entity_0).base = (*parser).m_curBase;
+                                                };
+                                                entity.base = (*parser).m_curBase;
+                                                let entity_0 = std::ptr::from_mut(entity);
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                                     .get_or_init(|| {
@@ -22452,6 +22447,28 @@ fn declared_entity_mut(
         ),
     };
     let NamedRecord::Entity(entity) = lookup_impl(&mut dtd.pool, table, name, 0, salt)? else {
+        return None;
+    };
+    Some(entity.as_mut())
+}
+
+/// Resolves the synthetic external-subset parameter entity through the DTD's
+/// typed table.  Prolog processing is the only creator of this entry, so the
+/// caller supplies the requested allocation size just as the former raw hash
+/// lookup did.
+fn external_subset_entity_mut(
+    dtd: &mut DTD,
+    create_size: crate::__stddef_size_t_h::size_t,
+    salt: ::core::ffi::c_ulong,
+) -> Option<&mut ENTITY> {
+    let NamedRecord::Entity(entity) = lookup_impl(
+        &mut dtd.pool,
+        &mut dtd.paramEntities,
+        LookupName::Borrowed(&EXTERNAL_SUBSET_NAME),
+        create_size,
+        salt,
+    )?
+    else {
         return None;
     };
     Some(entity.as_mut())
