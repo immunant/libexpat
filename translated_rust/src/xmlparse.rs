@@ -2514,7 +2514,7 @@ fn parserCreate(
             if !dtd.is_null() {
                 (*parser).m_dtd = ::core::ptr::null_mut::<DTD>();
             }
-            XML_ParserFree(parser);
+            XML_ParserFree_ffi(parser);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
         if !nameSep.is_null() {
@@ -2638,21 +2638,21 @@ fn parserInit(
     };
 }
 
-unsafe extern "C" fn moveToFreeBindingList(
-    mut parser: crate::expat_h::XML_Parser,
-    mut bindings: *mut BINDING,
-) {
-    while !bindings.is_null() {
-        let mut b: *mut BINDING = bindings;
-        bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-        (*parser).m_freeBindingList = b;
-    }
-}
-pub unsafe extern "C" fn XML_ParserReset(
+#[export_name = "XML_ParserReset"]
+
+pub unsafe extern "C" fn XML_ParserReset_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
+    let move_to_free_binding_list =
+        |parser: crate::expat_h::XML_Parser, mut bindings: *mut BINDING| {
+            while !bindings.is_null() {
+                let mut b: *mut BINDING = bindings;
+                bindings = (*bindings).nextTagBinding as *mut BINDING;
+                (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
+                (*parser).m_freeBindingList = b;
+            }
+        };
     let mut tStk: *mut TAG = ::core::ptr::null_mut::<TAG>();
     let mut openEntityList: *mut OPEN_INTERNAL_ENTITY =
         ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
@@ -2667,7 +2667,7 @@ pub unsafe extern "C" fn XML_ParserReset(
         let mut tag: *mut TAG = tStk;
         tStk = (*tStk).parent as *mut TAG;
         (*tag).parent = (*parser).m_freeTagList as *mut tag;
-        moveToFreeBindingList(parser, (*tag).bindings);
+        move_to_free_binding_list(parser, (*tag).bindings);
         (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
         (*parser).m_freeTagList = tag;
     }
@@ -2692,7 +2692,7 @@ pub unsafe extern "C" fn XML_ParserReset(
         (*openEntity_1).next = (*parser).m_freeValueEntities as *mut open_internal_entity;
         (*parser).m_freeValueEntities = openEntity_1;
     }
-    moveToFreeBindingList(parser, (*parser).m_inheritedBindings);
+    move_to_free_binding_list(parser, (*parser).m_inheritedBindings);
     expat_free(
         parser,
         (*parser).m_unknownEncodingMem,
@@ -2733,14 +2733,6 @@ pub unsafe extern "C" fn XML_ParserReset(
     parserInit(&mut *parser, protocol_encoding_name);
     dtdReset((*parser).m_dtd, parser);
     return crate::expat_h::XML_TRUE;
-}
-#[export_name = "XML_ParserReset"]
-
-pub unsafe extern "C" fn XML_ParserReset_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Bool {
-    XML_ParserReset(parser, encodingName)
 }
 fn parserBusy(parser: &XML_ParserStruct) -> crate::expat_h::XML_Bool {
     match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
@@ -2954,7 +2946,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         if dtdCopy(oldParser, (*parser).m_dtd, oldDtd, parser) == 0
             || setContext(parser, context) == 0
         {
-            XML_ParserFree(parser);
+            XML_ParserFree_ffi(parser);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
         (*parser).m_processor = Some(
@@ -2990,11 +2982,10 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
 ) -> crate::expat_h::XML_Parser {
     XML_ExternalEntityParserCreate(oldParser, context, encodingName)
 }
-unsafe extern "C" fn destroyBindings(
-    mut bindings: *mut BINDING,
-    mut parser: crate::expat_h::XML_Parser,
-) {
-    loop {
+#[export_name = "XML_ParserFree"]
+
+pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Parser) {
+    let destroy_bindings = |parser: crate::expat_h::XML_Parser, mut bindings: *mut BINDING| loop {
         let mut b: *mut BINDING = bindings;
         if b.is_null() {
             break;
@@ -3010,9 +3001,7 @@ unsafe extern "C" fn destroyBindings(
             b as *mut ::core::ffi::c_void,
             1920 as ::core::ffi::c_int,
         );
-    }
-}
-pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) {
+    };
     let mut tagList: *mut TAG = ::core::ptr::null_mut::<TAG>();
     let mut entityList: *mut OPEN_INTERNAL_ENTITY = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     if parser.is_null() {
@@ -3035,7 +3024,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
             (*p).buf.raw as *mut ::core::ffi::c_void,
             1942 as ::core::ffi::c_int,
         );
-        destroyBindings((*p).bindings, parser);
+        destroy_bindings(parser, (*p).bindings);
         expat_free(
             parser,
             p as *mut ::core::ffi::c_void,
@@ -3099,8 +3088,8 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
             1986 as ::core::ffi::c_int,
         );
     }
-    destroyBindings((*parser).m_freeBindingList, parser);
-    destroyBindings((*parser).m_inheritedBindings, parser);
+    destroy_bindings(parser, (*parser).m_freeBindingList);
+    destroy_bindings(parser, (*parser).m_inheritedBindings);
     poolDestroy(&mut (*parser).m_tempPool);
     poolDestroy(&mut (*parser).m_temp2Pool);
     expat_free(
@@ -3153,11 +3142,6 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         parser as *mut ::core::ffi::c_void,
         2016 as ::core::ffi::c_int,
     );
-}
-#[export_name = "XML_ParserFree"]
-
-pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Parser) {
-    XML_ParserFree(parser)
 }
 pub fn XML_UseParserAsHandlerArg(parser: Option<&mut XML_ParserStruct>) {
     with_parser_mut(parser, |parser_ref| {
