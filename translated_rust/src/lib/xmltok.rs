@@ -4523,24 +4523,24 @@ unsafe extern "C" fn normal_predefinedEntityName(
     }
 }
 extern "C" fn normal_nameMatchesAscii(
-    mut enc: *const ENCODING,
+    _enc: *const ENCODING,
     mut ptr1: *const ::core::ffi::c_char,
-    mut end1: *const ::core::ffi::c_char,
+    end1: *const ::core::ffi::c_char,
     mut ptr2: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 1 as ::core::ffi::c_long {
-                return 0 as ::core::ffi::c_int;
-            }
-            if !(*ptr1 as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int) {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(1 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+    while read_c_char_bytes::<1>(ptr2)[0] != 0 {
+        if ptr1 == end1 {
+            return 0;
         }
-        return (ptr1 == end1) as ::core::ffi::c_int;
+        if read_c_char_bytes::<1>(ptr1)[0] as ::core::ffi::c_int
+            != read_c_char_bytes::<1>(ptr2)[0] as ::core::ffi::c_int
+        {
+            return 0;
+        }
+        ptr1 = ptr1.wrapping_add(1);
+        ptr2 = ptr2.wrapping_add(1);
     }
+    (ptr1 == end1) as ::core::ffi::c_int
 }
 unsafe extern "C" fn normal_nameLength(
     mut enc: *const ENCODING,
@@ -9045,28 +9045,25 @@ unsafe extern "C" fn little2_predefinedEntityName(
     }
 }
 extern "C" fn little2_nameMatchesAscii(
-    mut enc: *const ENCODING,
+    _enc: *const ENCODING,
     mut ptr1: *const ::core::ffi::c_char,
-    mut end1: *const ::core::ffi::c_char,
+    end1: *const ::core::ffi::c_char,
     mut ptr2: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                return 0 as ::core::ffi::c_int;
-            }
-            if !(*ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+    while read_c_char_bytes::<1>(ptr2)[0] != 0 {
+        if ptr1.wrapping_add(1) >= end1 {
+            return 0;
         }
-        return (ptr1 == end1) as ::core::ffi::c_int;
+        let [first, second] = read_c_char_bytes::<2>(ptr1);
+        if second as ::core::ffi::c_int != 0
+            || first as ::core::ffi::c_int != read_c_char_bytes::<1>(ptr2)[0] as ::core::ffi::c_int
+        {
+            return 0;
+        }
+        ptr1 = ptr1.wrapping_add(2);
+        ptr2 = ptr2.wrapping_add(1);
     }
+    (ptr1 == end1) as ::core::ffi::c_int
 }
 unsafe extern "C" fn little2_nameLength(
     mut enc: *const ENCODING,
@@ -13667,28 +13664,25 @@ unsafe extern "C" fn big2_predefinedEntityName(
     }
 }
 extern "C" fn big2_nameMatchesAscii(
-    mut enc: *const ENCODING,
+    _enc: *const ENCODING,
     mut ptr1: *const ::core::ffi::c_char,
-    mut end1: *const ::core::ffi::c_char,
+    end1: *const ::core::ffi::c_char,
     mut ptr2: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                return 0 as ::core::ffi::c_int;
-            }
-            if !(*ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+    while read_c_char_bytes::<1>(ptr2)[0] != 0 {
+        if ptr1.wrapping_add(1) >= end1 {
+            return 0;
         }
-        return (ptr1 == end1) as ::core::ffi::c_int;
+        let [first, second] = read_c_char_bytes::<2>(ptr1);
+        if first as ::core::ffi::c_int != 0
+            || second as ::core::ffi::c_int != read_c_char_bytes::<1>(ptr2)[0] as ::core::ffi::c_int
+        {
+            return 0;
+        }
+        ptr1 = ptr1.wrapping_add(2);
+        ptr2 = ptr2.wrapping_add(1);
     }
+    (ptr1 == end1) as ::core::ffi::c_int
 }
 unsafe extern "C" fn big2_nameLength(
     mut enc: *const ENCODING,
