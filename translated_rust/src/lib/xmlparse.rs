@@ -1110,6 +1110,24 @@ macro_rules! call_handler_one_arg {
     }};
 }
 
+macro_rules! call_external_entity_ref_handler {
+    ($handler:expr, $arg0:expr, $arg1:expr, $arg2:expr, $arg3:expr, $arg4:expr $(,)?) => {{
+        unsafe { $handler($arg0, $arg1, $arg2, $arg3, $arg4) }
+    }};
+}
+
+macro_rules! xml_utf8_encode {
+    ($code:expr, $buf:expr $(,)?) => {{
+        unsafe { XmlUtf8Encode($code, $buf) }
+    }};
+}
+
+macro_rules! c_ptr_offset_from {
+    ($ptr:expr, $base:expr $(,)?) => {{
+        unsafe { ($ptr).offset_from($base) }
+    }};
+}
+
 macro_rules! call_handler_plain_one_arg {
     ($handler:expr, $arg0:expr $(,)?) => {{
         unsafe { $handler($arg0) }
@@ -8761,111 +8779,89 @@ extern "C" fn storeAttributeValue(
     mut pool: *mut STRING_POOL,
     mut account: XML_Account,
 ) -> XML_Error {
-    unsafe {
-        let mut next: *const ::core::ffi::c_char = ptr;
-        let mut result: XML_Error = XML_ERROR_NONE;
-        loop {
-            if (*parser).m_openAttributeEntities.is_null() {
+    let mut next: *const ::core::ffi::c_char = ptr;
+    let mut result: XML_Error = XML_ERROR_NONE;
+    loop {
+        let open_entity = ptr_ref(parser).m_openAttributeEntities;
+        if open_entity.is_null() {
+            result = appendAttributeValue(
+                parser,
+                enc,
+                isCdata,
+                next,
+                end,
+                pool,
+                account,
+                &raw mut next,
+            );
+        } else {
+            let entity = ptr_ref(open_entity).entity;
+            let text_start = (ptr_ref(entity).textPtr as *const ::core::ffi::c_char)
+                .wrapping_offset(ptr_ref(entity).processed as isize);
+            let text_end = ptr_ref(entity)
+                .textPtr
+                .wrapping_offset(ptr_ref(entity).textLen as isize)
+                as *const ::core::ffi::c_char;
+            let mut next_in_entity = text_start;
+            if ptr_ref(entity).hasMore != 0 {
                 result = appendAttributeValue(
                     parser,
-                    enc,
+                    ptr_ref(parser).m_internalEncoding,
                     isCdata,
-                    next,
-                    end,
+                    text_start,
+                    text_end,
                     pool,
-                    account,
-                    &raw mut next,
+                    XML_ACCOUNT_ENTITY_EXPANSION,
+                    &raw mut next_in_entity,
                 );
-            } else {
-                let openEntity: *mut OPEN_INTERNAL_ENTITY = (*parser).m_openAttributeEntities;
-                if openEntity.is_null() {
-                    return XML_ERROR_UNEXPECTED_STATE;
+                if result as ::core::ffi::c_uint
+                    != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+                {
+                    break;
                 }
-                let entity: *mut ENTITY = (*openEntity).entity;
-                let textStart: *const ::core::ffi::c_char = ((*entity).textPtr
-                    as *const ::core::ffi::c_char)
-                    .offset((*entity).processed as isize);
-                let textEnd: *const ::core::ffi::c_char =
-                    (*entity).textPtr.offset((*entity).textLen as isize)
-                        as *const ::core::ffi::c_char;
-                let mut nextInEntity: *const ::core::ffi::c_char = textStart;
-                if (*entity).hasMore != 0 {
-                    result = appendAttributeValue(
-                        parser,
-                        (*parser).m_internalEncoding,
-                        isCdata,
-                        textStart,
-                        textEnd,
-                        pool,
-                        XML_ACCOUNT_ENTITY_EXPANSION,
-                        &raw mut nextInEntity,
-                    );
-                    if result as ::core::ffi::c_uint
-                        != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        break;
-                    }
-                    if textEnd != nextInEntity {
-                        (*entity).processed = nextInEntity
-                            .offset_from((*entity).textPtr as *const ::core::ffi::c_char)
-                            as ::core::ffi::c_long
-                            as ::core::ffi::c_int;
-                        continue;
-                    } else {
-                        (*entity).hasMore = XML_FALSE;
-                        continue;
-                    }
-                } else {
-                    entityTrackingOnClose(&mut *parser, &*entity, 6547 as ::core::ffi::c_int);
-                    if (*parser).m_openAttributeEntities == openEntity {
-                    } else {
-                        __assert_fail(
-                            b"parser->m_openAttributeEntities == openEntity\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            b"/root/work/expat/lib/xmlparse.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            6553 as ::core::ffi::c_uint,
-                            b"enum XML_Error storeAttributeValue(XML_Parser, const ENCODING *, XML_Bool, const char *, const char *, STRING_POOL *, enum XML_Account)\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    };
-                    (*entity).open = XML_FALSE;
-                    (*parser).m_openAttributeEntities =
-                        (*(*parser).m_openAttributeEntities).next as *mut OPEN_INTERNAL_ENTITY;
-                    (*openEntity).next =
-                        (*parser).m_freeAttributeEntities as *mut open_internal_entity;
-                    (*parser).m_freeAttributeEntities = openEntity;
+                if text_end != next_in_entity {
+                    ptr_mut(entity).processed = c_ptr_offset_from!(
+                        next_in_entity,
+                        ptr_ref(entity).textPtr as *const ::core::ffi::c_char,
+                    ) as ::core::ffi::c_long
+                        as ::core::ffi::c_int;
+                    continue;
                 }
+                ptr_mut(entity).hasMore = XML_FALSE;
+                continue;
             }
-            if result as ::core::ffi::c_uint != 0
-                || (*parser).m_openAttributeEntities.is_null() && end == next
-            {
-                break;
-            }
+
+            entityTrackingOnClose(ptr_mut(parser), ptr_ref(entity), 6547 as ::core::ffi::c_int);
+            if ptr_ref(parser).m_openAttributeEntities != open_entity {
+                xmlparse_assert_fail!(
+                    b"parser->m_openAttributeEntities == openEntity\0",
+                    6553 as ::core::ffi::c_uint,
+                    b"enum XML_Error storeAttributeValue(XML_Parser, const ENCODING *, XML_Bool, const char *, const char *, STRING_POOL *, enum XML_Account)\0",
+                );
+            };
+            ptr_mut(entity).open = XML_FALSE;
+            let next_open = ptr_ref(open_entity).next as *mut OPEN_INTERNAL_ENTITY;
+            ptr_mut(parser).m_openAttributeEntities = next_open;
+            ptr_mut(open_entity).next =
+                ptr_ref(parser).m_freeAttributeEntities as *mut open_internal_entity;
+            ptr_mut(parser).m_freeAttributeEntities = open_entity;
         }
-        if result as u64 != 0 {
-            return result;
-        }
-        if isCdata == 0
-            && (*pool).ptr.offset_from((*pool).start) as ::core::ffi::c_long != 0
-            && *(*pool).ptr.offset(-(1 as ::core::ffi::c_int) as isize) as ::core::ffi::c_int
-                == 0x20 as ::core::ffi::c_int
+        if result as ::core::ffi::c_uint != 0
+            || ptr_ref(parser).m_openAttributeEntities.is_null() && end == next
         {
-            (*pool).ptr = (*pool).ptr.offset(-1);
+            break;
         }
-        if if (*pool).ptr == (*pool).end as *mut XML_Char && poolGrow(&mut *pool) == 0 {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh55 = (*pool).ptr;
-            (*pool).ptr = (*pool).ptr.offset(1);
-            *c2rust_fresh55 = '\0' as i32 as XML_Char;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
-            return XML_ERROR_NO_MEMORY;
-        }
-        return XML_ERROR_NONE;
     }
+    if result as u64 != 0 {
+        return result;
+    }
+    if isCdata == 0 && pool_ends_with_space(ptr_ref(pool)) {
+        ptr_mut(pool).ptr = ptr_ref(pool).ptr.wrapping_sub(1);
+    }
+    if !pool_append_xml_char(ptr_mut(pool), '\0' as i32 as XML_Char) {
+        return XML_ERROR_NO_MEMORY;
+    }
+    XML_ERROR_NONE
 }
 extern "C" fn appendAttributeValue(
     mut parser: XML_Parser,
@@ -8877,256 +8873,191 @@ extern "C" fn appendAttributeValue(
     mut account: XML_Account,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        loop {
-            let mut next: *const ::core::ffi::c_char = ptr;
-            let mut tok: ::core::ffi::c_int = (*enc).literalScanners
-                [0 as ::core::ffi::c_int as usize]
-                .expect("non-null function pointer")(
-                enc, ptr, end, &raw mut next
-            );
-            if accountingDiffTolerated(
-                &mut *parser,
-                tok,
-                ptr,
-                next,
-                6591 as ::core::ffi::c_int,
-                account,
-            ) == 0
-            {
-                accountingOnAbort(&mut *parser);
-                return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+    let dtd = ptr_ref(parser).m_dtd;
+    loop {
+        let mut next: *const ::core::ffi::c_char = ptr;
+        let tok = ptr_ref(enc).literalScanners[0 as ::core::ffi::c_int as usize]
+            .expect("non-null function pointer")(enc, ptr, end, &raw mut next);
+        if accountingDiffTolerated(
+            ptr_mut(parser),
+            tok,
+            ptr,
+            next,
+            6591 as ::core::ffi::c_int,
+            account,
+        ) == 0
+        {
+            accountingOnAbort(ptr_mut(parser));
+            return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+        }
+        let mut append_space = false;
+        match tok {
+            XML_TOK_NONE => {
+                if !nextPtr.is_null() {
+                    write_copy(nextPtr, next);
+                }
+                return XML_ERROR_NONE;
             }
-            let mut c2rust_current_block_70: u64;
-            match tok {
-                XML_TOK_NONE => {
-                    if !nextPtr.is_null() {
-                        *nextPtr = next;
-                    }
-                    return XML_ERROR_NONE;
+            XML_TOK_INVALID => {
+                if enc == ptr_ref(parser).m_encoding {
+                    ptr_mut(parser).m_eventPtr = next;
                 }
-                XML_TOK_INVALID => {
-                    if enc == (*parser).m_encoding {
-                        (*parser).m_eventPtr = next;
-                    }
-                    return XML_ERROR_INVALID_TOKEN;
+                return XML_ERROR_INVALID_TOKEN;
+            }
+            XML_TOK_PARTIAL => {
+                if enc == ptr_ref(parser).m_encoding {
+                    ptr_mut(parser).m_eventPtr = ptr;
                 }
-                XML_TOK_PARTIAL => {
-                    if enc == (*parser).m_encoding {
-                        (*parser).m_eventPtr = ptr;
+                return XML_ERROR_INVALID_TOKEN;
+            }
+            XML_TOK_CHAR_REF => {
+                let mut buf: [XML_Char; 4] = [0; 4];
+                let mut n = ptr_ref(enc)
+                    .charRefNumber
+                    .expect("non-null function pointer")(enc, ptr);
+                if n < 0 as ::core::ffi::c_int {
+                    if enc == ptr_ref(parser).m_encoding {
+                        ptr_mut(parser).m_eventPtr = ptr;
                     }
-                    return XML_ERROR_INVALID_TOKEN;
+                    return XML_ERROR_BAD_CHAR_REF;
                 }
-                XML_TOK_CHAR_REF => {
-                    let mut buf: [XML_Char; 4] = [0; 4];
-                    let mut i: ::core::ffi::c_int = 0;
-                    let mut n: ::core::ffi::c_int =
-                        (*enc).charRefNumber.expect("non-null function pointer")(enc, ptr);
-                    if n < 0 as ::core::ffi::c_int {
-                        if enc == (*parser).m_encoding {
-                            (*parser).m_eventPtr = ptr;
-                        }
-                        return XML_ERROR_BAD_CHAR_REF;
-                    }
-                    if isCdata == 0
-                        && n == 0x20 as ::core::ffi::c_int
-                        && ((*pool).ptr.offset_from((*pool).start) as ::core::ffi::c_long
-                            == 0 as ::core::ffi::c_long
-                            || *(*pool).ptr.offset(-(1 as ::core::ffi::c_int) as isize)
-                                as ::core::ffi::c_int
-                                == 0x20 as ::core::ffi::c_int)
-                    {
-                        c2rust_current_block_70 = 18038362259723567392;
-                    } else {
-                        n = XmlUtf8Encode(
-                            n,
-                            &raw mut buf as *mut XML_Char as *mut ::core::ffi::c_char,
-                        );
-                        i = 0 as ::core::ffi::c_int;
-                        while i < n {
-                            if if (*pool).ptr == (*pool).end as *mut XML_Char
-                                && poolGrow(&mut *pool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh56 = (*pool).ptr;
-                                (*pool).ptr = (*pool).ptr.offset(1);
-                                *c2rust_fresh56 = buf[i as usize];
-                                1 as ::core::ffi::c_int
-                            } == 0
-                            {
-                                return XML_ERROR_NO_MEMORY;
-                            }
-                            i += 1;
-                        }
-                        c2rust_current_block_70 = 18038362259723567392;
-                    }
-                }
-                XML_TOK_DATA_CHARS => {
-                    if poolAppend(&mut *pool, enc, ptr, next).is_null() {
+                if !(isCdata == 0
+                    && n == 0x20 as ::core::ffi::c_int
+                    && pool_is_empty_or_ends_with_space(ptr_ref(pool)))
+                {
+                    n = xml_utf8_encode!(
+                        n,
+                        &raw mut buf as *mut XML_Char as *mut ::core::ffi::c_char,
+                    );
+                    if !pool_append_xml_chars(ptr_mut(pool), &buf[..n as usize]) {
                         return XML_ERROR_NO_MEMORY;
                     }
-                    c2rust_current_block_70 = 18038362259723567392;
                 }
-                XML_TOK_TRAILING_CR => {
-                    next = ptr.offset((*enc).minBytesPerChar as isize);
-                    c2rust_current_block_70 = 7656738238013719706;
+            }
+            XML_TOK_DATA_CHARS => {
+                if poolAppend(ptr_mut(pool), enc, ptr, next).is_null() {
+                    return XML_ERROR_NO_MEMORY;
                 }
-                XML_TOK_ATTRIBUTE_VALUE_S | XML_TOK_DATA_NEWLINE => {
-                    c2rust_current_block_70 = 7656738238013719706;
-                }
-                XML_TOK_ENTITY_REF => {
-                    let mut name: *const XML_Char = ::core::ptr::null::<XML_Char>();
-                    let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                    let mut checkEntityDecl: bool = false;
-                    let mut ch: XML_Char = (*enc)
-                        .predefinedEntityName
-                        .expect("non-null function pointer")(
+            }
+            XML_TOK_TRAILING_CR => {
+                next = ptr.wrapping_offset(ptr_ref(enc).minBytesPerChar as isize);
+                append_space = true;
+            }
+            XML_TOK_ATTRIBUTE_VALUE_S | XML_TOK_DATA_NEWLINE => {
+                append_space = true;
+            }
+            XML_TOK_ENTITY_REF => {
+                let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
+                let mut check_entity_decl = false;
+                let mut ch = ptr_ref(enc)
+                    .predefinedEntityName
+                    .expect("non-null function pointer")(
+                    enc,
+                    ptr.wrapping_offset(ptr_ref(enc).minBytesPerChar as isize),
+                    next.wrapping_offset(-(ptr_ref(enc).minBytesPerChar as isize)),
+                ) as XML_Char;
+                if ch != 0 {
+                    accountingDiffTolerated(
+                        ptr_mut(parser),
+                        tok,
+                        &raw mut ch as *mut ::core::ffi::c_char,
+                        (&raw mut ch as *mut ::core::ffi::c_char)
+                            .wrapping_offset(::core::mem::size_of::<XML_Char>() as isize),
+                        6663 as ::core::ffi::c_int,
+                        XML_ACCOUNT_ENTITY_EXPANSION,
+                    );
+                    if !pool_append_xml_char(ptr_mut(pool), ch) {
+                        return XML_ERROR_NO_MEMORY;
+                    }
+                } else {
+                    let name = poolStoreString(
+                        &mut ptr_mut(parser).m_temp2Pool,
                         enc,
-                        ptr.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    ) as XML_Char;
-                    if ch != 0 {
-                        accountingDiffTolerated(
-                            &mut *parser,
-                            tok,
-                            &raw mut ch as *mut ::core::ffi::c_char,
-                            (&raw mut ch as *mut ::core::ffi::c_char)
-                                .offset(::core::mem::size_of::<XML_Char>() as usize as isize),
-                            6663 as ::core::ffi::c_int,
-                            XML_ACCOUNT_ENTITY_EXPANSION,
-                        );
-                        if if (*pool).ptr == (*pool).end as *mut XML_Char
-                            && poolGrow(&mut *pool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            let c2rust_fresh58 = (*pool).ptr;
-                            (*pool).ptr = (*pool).ptr.offset(1);
-                            *c2rust_fresh58 = ch;
-                            1 as ::core::ffi::c_int
-                        } == 0
-                        {
-                            return XML_ERROR_NO_MEMORY;
-                        }
+                        ptr.wrapping_offset(ptr_ref(enc).minBytesPerChar as isize),
+                        next.wrapping_offset(-(ptr_ref(enc).minBytesPerChar as isize)),
+                    );
+                    if name.is_null() {
+                        return XML_ERROR_NO_MEMORY;
+                    }
+                    entity = lookup(
+                        parser,
+                        &raw mut ptr_mut(dtd).generalEntities,
+                        name as KEY,
+                        0 as size_t,
+                    ) as *mut ENTITY;
+                    ptr_mut(parser).m_temp2Pool.ptr = ptr_ref(parser).m_temp2Pool.start;
+                    let dtd_pool = &raw mut ptr_mut(dtd).pool;
+                    if pool == dtd_pool {
+                        check_entity_decl = ptr_ref(parser).m_prologState.documentEntity != 0
+                            && (if ptr_ref(dtd).standalone as ::core::ffi::c_int != 0 {
+                                ptr_ref(parser).m_openInternalEntities.is_null()
+                                    as ::core::ffi::c_int
+                            } else {
+                                (ptr_ref(dtd).hasParamEntityRefs == 0) as ::core::ffi::c_int
+                            }) != 0;
                     } else {
-                        name = poolStoreString(
-                            &mut (*parser).m_temp2Pool,
-                            enc,
-                            ptr.offset((*enc).minBytesPerChar as isize),
-                            next.offset(-((*enc).minBytesPerChar as isize)),
-                        );
-                        if name.is_null() {
-                            return XML_ERROR_NO_MEMORY;
-                        }
-                        entity = lookup(
-                            parser,
-                            &raw mut (*dtd).generalEntities,
-                            name as KEY,
-                            0 as size_t,
-                        ) as *mut ENTITY;
-                        (*parser).m_temp2Pool.ptr = (*parser).m_temp2Pool.start;
-                        if pool == &raw mut (*dtd).pool {
-                            checkEntityDecl = (*parser).m_prologState.documentEntity != 0
-                                && (if (*dtd).standalone as ::core::ffi::c_int != 0 {
-                                    (*parser).m_openInternalEntities.is_null() as ::core::ffi::c_int
-                                } else {
-                                    ((*dtd).hasParamEntityRefs == 0) as ::core::ffi::c_int
-                                }) != 0;
-                        } else {
-                            checkEntityDecl = (*dtd).hasParamEntityRefs == 0
-                                || (*dtd).standalone as ::core::ffi::c_int != 0;
-                        }
-                        if checkEntityDecl {
-                            if entity.is_null() {
-                                return XML_ERROR_UNDEFINED_ENTITY;
-                            } else if (*entity).is_internal == 0 {
-                                return XML_ERROR_ENTITY_DECLARED_IN_PE;
-                            }
-                            c2rust_current_block_70 = 13678349939556791712;
-                        } else if entity.is_null() {
-                            c2rust_current_block_70 = 18038362259723567392;
-                        } else {
-                            c2rust_current_block_70 = 13678349939556791712;
-                        }
-                        match c2rust_current_block_70 {
-                            18038362259723567392 => {}
-                            _ => {
-                                if (*entity).open != 0 {
-                                    if enc == (*parser).m_encoding {
-                                        (*parser).m_eventPtr = ptr;
-                                    }
-                                    return XML_ERROR_RECURSIVE_ENTITY_REF;
-                                }
-                                if !(*entity).notation.is_null() {
-                                    if enc == (*parser).m_encoding {
-                                        (*parser).m_eventPtr = ptr;
-                                    }
-                                    return XML_ERROR_BINARY_ENTITY_REF;
-                                }
-                                if (*entity).textPtr.is_null() {
-                                    if enc == (*parser).m_encoding {
-                                        (*parser).m_eventPtr = ptr;
-                                    }
-                                    return XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
-                                } else {
-                                    let mut result: XML_Error = XML_ERROR_NONE;
-                                    result = processEntity(
-                                        &mut *parser,
-                                        &mut *entity,
-                                        XML_FALSE,
-                                        ENTITY_ATTRIBUTE,
-                                    );
-                                    if result as ::core::ffi::c_uint
-                                        == XML_ERROR_NONE as ::core::ffi::c_int
-                                            as ::core::ffi::c_uint
-                                        && !nextPtr.is_null()
-                                    {
-                                        *nextPtr = next;
-                                    }
-                                    return result;
-                                }
-                            }
-                        }
+                        check_entity_decl = ptr_ref(dtd).hasParamEntityRefs == 0
+                            || ptr_ref(dtd).standalone as ::core::ffi::c_int != 0;
                     }
-                    c2rust_current_block_70 = 18038362259723567392;
-                }
-                _ => {
-                    if enc == (*parser).m_encoding {
-                        (*parser).m_eventPtr = ptr;
+                    if check_entity_decl {
+                        if entity.is_null() {
+                            return XML_ERROR_UNDEFINED_ENTITY;
+                        }
+                        if ptr_ref(entity).is_internal == 0 {
+                            return XML_ERROR_ENTITY_DECLARED_IN_PE;
+                        }
+                    } else if entity.is_null() {
+                        ptr = next;
+                        continue;
                     }
-                    return XML_ERROR_UNEXPECTED_STATE;
-                }
-            }
-            match c2rust_current_block_70 {
-                7656738238013719706 => {
-                    if !(isCdata == 0
-                        && ((*pool).ptr.offset_from((*pool).start) as ::core::ffi::c_long
-                            == 0 as ::core::ffi::c_long
-                            || *(*pool).ptr.offset(-(1 as ::core::ffi::c_int) as isize)
-                                as ::core::ffi::c_int
-                                == 0x20 as ::core::ffi::c_int))
+                    if ptr_ref(entity).open != 0 {
+                        if enc == ptr_ref(parser).m_encoding {
+                            ptr_mut(parser).m_eventPtr = ptr;
+                        }
+                        return XML_ERROR_RECURSIVE_ENTITY_REF;
+                    }
+                    if !ptr_ref(entity).notation.is_null() {
+                        if enc == ptr_ref(parser).m_encoding {
+                            ptr_mut(parser).m_eventPtr = ptr;
+                        }
+                        return XML_ERROR_BINARY_ENTITY_REF;
+                    }
+                    if ptr_ref(entity).textPtr.is_null() {
+                        if enc == ptr_ref(parser).m_encoding {
+                            ptr_mut(parser).m_eventPtr = ptr;
+                        }
+                        return XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF;
+                    }
+
+                    let result = processEntity(
+                        ptr_mut(parser),
+                        ptr_mut(entity),
+                        XML_FALSE,
+                        ENTITY_ATTRIBUTE,
+                    );
+                    if result as ::core::ffi::c_uint
+                        == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+                        && !nextPtr.is_null()
                     {
-                        if if (*pool).ptr == (*pool).end as *mut XML_Char
-                            && poolGrow(&mut *pool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            let c2rust_fresh57 = (*pool).ptr;
-                            (*pool).ptr = (*pool).ptr.offset(1);
-                            *c2rust_fresh57 = 0x20 as XML_Char;
-                            1 as ::core::ffi::c_int
-                        } == 0
-                        {
-                            return XML_ERROR_NO_MEMORY;
-                        }
+                        write_copy(nextPtr, next);
                     }
+                    return result;
                 }
-                _ => {}
             }
-            ptr = next;
+            _ => {
+                if enc == ptr_ref(parser).m_encoding {
+                    ptr_mut(parser).m_eventPtr = ptr;
+                }
+                return XML_ERROR_UNEXPECTED_STATE;
+            }
         }
+        if append_space
+            && !(isCdata == 0 && pool_is_empty_or_ends_with_space(ptr_ref(pool)))
+            && !pool_append_xml_char(ptr_mut(pool), 0x20 as XML_Char)
+        {
+            return XML_ERROR_NO_MEMORY;
+        }
+        ptr = next;
     }
 }
 extern "C" fn storeEntityValue(
@@ -9137,236 +9068,196 @@ extern "C" fn storeEntityValue(
     mut account: XML_Account,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut c2rust_current_block: u64;
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut pool: *mut STRING_POOL = &raw mut (*dtd).entityValuePool;
-        let mut result: XML_Error = XML_ERROR_NONE;
-        let mut oldInEntityValue: ::core::ffi::c_int = (*parser).m_prologState.inEntityValue;
-        (*parser).m_prologState.inEntityValue = 1 as ::core::ffi::c_int;
-        if (*pool).blocks.is_null() {
-            if poolGrow(&mut *pool) == 0 {
-                return XML_ERROR_NO_MEMORY;
-            }
-        }
-        let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        's_35: loop {
-            next = entityTextPtr;
-            let mut tok: ::core::ffi::c_int = (*enc).literalScanners
-                [1 as ::core::ffi::c_int as usize]
-                .expect("non-null function pointer")(
-                enc,
-                entityTextPtr,
-                entityTextEnd,
-                &raw mut next,
-            );
-            if accountingDiffTolerated(
-                &mut *parser,
-                tok,
-                entityTextPtr,
-                next,
-                6798 as ::core::ffi::c_int,
-                account,
-            ) == 0
-            {
-                accountingOnAbort(&mut *parser);
-                result = XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-                break;
-            } else {
-                match tok {
-                    XML_TOK_PARAM_ENTITY_REF => {
-                        if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
-                            || enc != (*parser).m_encoding
-                        {
-                            let mut name: *const XML_Char = ::core::ptr::null::<XML_Char>();
-                            let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                            name = poolStoreString(
-                                &mut (*parser).m_tempPool,
-                                enc,
-                                entityTextPtr.offset((*enc).minBytesPerChar as isize),
-                                next.offset(-((*enc).minBytesPerChar as isize)),
-                            );
-                            if name.is_null() {
-                                result = XML_ERROR_NO_MEMORY;
-                                break;
-                            } else {
-                                entity = lookup(
-                                    parser,
-                                    &raw mut (*dtd).paramEntities,
-                                    name as KEY,
-                                    0 as size_t,
-                                ) as *mut ENTITY;
-                                (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-                                if entity.is_null() {
-                                    (*dtd).keepProcessing = (*dtd).standalone;
-                                    break;
-                                } else if (*entity).open as ::core::ffi::c_int != 0
-                                    || entity == (*parser).m_declEntity
-                                {
-                                    if enc == (*parser).m_encoding {
-                                        (*parser).m_eventPtr = entityTextPtr;
-                                    }
-                                    result = XML_ERROR_RECURSIVE_ENTITY_REF;
-                                    break;
-                                } else if !(*entity).systemId.is_null() {
-                                    if (*parser).m_externalEntityRefHandler.is_some() {
-                                        (*dtd).paramEntityRead = XML_FALSE;
-                                        (*entity).open = XML_TRUE;
-                                        entityTrackingOnOpen(
-                                            &mut *parser,
-                                            &*entity,
-                                            6840 as ::core::ffi::c_int,
-                                        );
-                                        if (*parser)
-                                            .m_externalEntityRefHandler
-                                            .expect("non-null function pointer")(
-                                            (*parser).m_externalEntityRefHandlerArg,
-                                            ::core::ptr::null::<XML_Char>(),
-                                            (*entity).base,
-                                            (*entity).systemId,
-                                            (*entity).publicId,
-                                        ) == 0
-                                        {
-                                            entityTrackingOnClose(
-                                                &mut *parser,
-                                                &*entity,
-                                                6844 as ::core::ffi::c_int,
-                                            );
-                                            (*entity).open = XML_FALSE;
-                                            result = XML_ERROR_EXTERNAL_ENTITY_HANDLING;
-                                            break;
-                                        } else {
-                                            entityTrackingOnClose(
-                                                &mut *parser,
-                                                &*entity,
-                                                6849 as ::core::ffi::c_int,
-                                            );
-                                            (*entity).open = XML_FALSE;
-                                            if (*dtd).paramEntityRead == 0 {
-                                                (*dtd).keepProcessing = (*dtd).standalone;
-                                            }
-                                        }
-                                    } else {
-                                        (*dtd).keepProcessing = (*dtd).standalone;
-                                    }
-                                } else {
-                                    result = processEntity(
-                                        &mut *parser,
-                                        &mut *entity,
-                                        XML_FALSE,
-                                        ENTITY_VALUE,
-                                    );
-                                    break;
-                                }
-                            }
-                        } else {
-                            (*parser).m_eventPtr = entityTextPtr;
-                            result = XML_ERROR_PARAM_ENTITY_REF;
-                            break;
-                        }
-                        c2rust_current_block = 5028470053297453708;
-                    }
-                    XML_TOK_NONE => {
-                        result = XML_ERROR_NONE;
-                        break;
-                    }
-                    XML_TOK_ENTITY_REF | XML_TOK_DATA_CHARS => {
-                        if poolAppend(&mut *pool, enc, entityTextPtr, next).is_null() {
-                            result = XML_ERROR_NO_MEMORY;
-                            break;
-                        } else {
-                            c2rust_current_block = 5028470053297453708;
-                        }
-                    }
-                    XML_TOK_TRAILING_CR => {
-                        next = entityTextPtr.offset((*enc).minBytesPerChar as isize);
-                        c2rust_current_block = 5255620059650731591;
-                    }
-                    XML_TOK_DATA_NEWLINE => {
-                        c2rust_current_block = 5255620059650731591;
-                    }
-                    XML_TOK_CHAR_REF => {
-                        let mut buf: [XML_Char; 4] = [0; 4];
-                        let mut i: ::core::ffi::c_int = 0;
-                        let mut n: ::core::ffi::c_int = (*enc)
-                            .charRefNumber
-                            .expect("non-null function pointer")(
-                            enc, entityTextPtr
-                        );
-                        if n < 0 as ::core::ffi::c_int {
-                            if enc == (*parser).m_encoding {
-                                (*parser).m_eventPtr = entityTextPtr;
-                            }
-                            result = XML_ERROR_BAD_CHAR_REF;
-                            break;
-                        } else {
-                            n = XmlUtf8Encode(
-                                n,
-                                &raw mut buf as *mut XML_Char as *mut ::core::ffi::c_char,
-                            );
-                            i = 0 as ::core::ffi::c_int;
-                            while i < n {
-                                if (*pool).end == (*pool).ptr as *const XML_Char
-                                    && poolGrow(&mut *pool) == 0
-                                {
-                                    result = XML_ERROR_NO_MEMORY;
-                                    break 's_35;
-                                } else {
-                                    let c2rust_fresh73 = (*pool).ptr;
-                                    (*pool).ptr = (*pool).ptr.offset(1);
-                                    *c2rust_fresh73 = buf[i as usize];
-                                    i += 1;
-                                }
-                            }
-                        }
-                        c2rust_current_block = 5028470053297453708;
-                    }
-                    XML_TOK_PARTIAL => {
-                        if enc == (*parser).m_encoding {
-                            (*parser).m_eventPtr = entityTextPtr;
-                        }
-                        result = XML_ERROR_INVALID_TOKEN;
-                        break;
-                    }
-                    XML_TOK_INVALID => {
-                        if enc == (*parser).m_encoding {
-                            (*parser).m_eventPtr = next;
-                        }
-                        result = XML_ERROR_INVALID_TOKEN;
-                        break;
-                    }
-                    _ => {
-                        if enc == (*parser).m_encoding {
-                            (*parser).m_eventPtr = entityTextPtr;
-                        }
-                        result = XML_ERROR_UNEXPECTED_STATE;
-                        break;
-                    }
-                }
-                match c2rust_current_block {
-                    5255620059650731591 => {
-                        if (*pool).end == (*pool).ptr as *const XML_Char
-                            && poolGrow(&mut *pool) == 0
-                        {
-                            result = XML_ERROR_NO_MEMORY;
-                            break;
-                        } else {
-                            let c2rust_fresh72 = (*pool).ptr;
-                            (*pool).ptr = (*pool).ptr.offset(1);
-                            *c2rust_fresh72 = 0xa as XML_Char;
-                        }
-                    }
-                    _ => {}
-                }
-                entityTextPtr = next;
-            }
-        }
-        (*parser).m_prologState.inEntityValue = oldInEntityValue;
-        if !nextPtr.is_null() {
-            *nextPtr = next;
-        }
-        return result;
+    let dtd = ptr_ref(parser).m_dtd;
+    let pool: *mut STRING_POOL = &raw mut ptr_mut(dtd).entityValuePool;
+    let mut result = XML_ERROR_NONE;
+    let old_in_entity_value = ptr_ref(parser).m_prologState.inEntityValue;
+    ptr_mut(parser).m_prologState.inEntityValue = 1 as ::core::ffi::c_int;
+    if ptr_ref(pool).blocks.is_null() && poolGrow(ptr_mut(pool)) == 0 {
+        return XML_ERROR_NO_MEMORY;
     }
+    let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    'entity_loop: loop {
+        next = entityTextPtr;
+        let tok = ptr_ref(enc).literalScanners[1 as ::core::ffi::c_int as usize]
+            .expect("non-null function pointer")(
+            enc, entityTextPtr, entityTextEnd, &raw mut next
+        );
+        if accountingDiffTolerated(
+            ptr_mut(parser),
+            tok,
+            entityTextPtr,
+            next,
+            6798 as ::core::ffi::c_int,
+            account,
+        ) == 0
+        {
+            accountingOnAbort(ptr_mut(parser));
+            result = XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+            break;
+        }
+
+        let mut append_newline = false;
+        match tok {
+            XML_TOK_PARAM_ENTITY_REF => {
+                if ptr_ref(parser).m_isParamEntity as ::core::ffi::c_int != 0
+                    || enc != ptr_ref(parser).m_encoding
+                {
+                    let name = poolStoreString(
+                        &mut ptr_mut(parser).m_tempPool,
+                        enc,
+                        entityTextPtr.wrapping_offset(ptr_ref(enc).minBytesPerChar as isize),
+                        next.wrapping_offset(-(ptr_ref(enc).minBytesPerChar as isize)),
+                    );
+                    if name.is_null() {
+                        result = XML_ERROR_NO_MEMORY;
+                        break;
+                    }
+                    let entity = lookup(
+                        parser,
+                        &raw mut ptr_mut(dtd).paramEntities,
+                        name as KEY,
+                        0 as size_t,
+                    ) as *mut ENTITY;
+                    ptr_mut(parser).m_tempPool.ptr = ptr_ref(parser).m_tempPool.start;
+                    if entity.is_null() {
+                        ptr_mut(dtd).keepProcessing = ptr_ref(dtd).standalone;
+                        break;
+                    }
+                    if ptr_ref(entity).open as ::core::ffi::c_int != 0
+                        || entity == ptr_ref(parser).m_declEntity
+                    {
+                        if enc == ptr_ref(parser).m_encoding {
+                            ptr_mut(parser).m_eventPtr = entityTextPtr;
+                        }
+                        result = XML_ERROR_RECURSIVE_ENTITY_REF;
+                        break;
+                    }
+                    if !ptr_ref(entity).systemId.is_null() {
+                        if let Some(external_entity_ref_handler) =
+                            ptr_ref(parser).m_externalEntityRefHandler
+                        {
+                            ptr_mut(dtd).paramEntityRead = XML_FALSE;
+                            ptr_mut(entity).open = XML_TRUE;
+                            entityTrackingOnOpen(
+                                ptr_mut(parser),
+                                ptr_ref(entity),
+                                6840 as ::core::ffi::c_int,
+                            );
+                            if call_external_entity_ref_handler!(
+                                external_entity_ref_handler,
+                                ptr_ref(parser).m_externalEntityRefHandlerArg,
+                                ::core::ptr::null::<XML_Char>(),
+                                ptr_ref(entity).base,
+                                ptr_ref(entity).systemId,
+                                ptr_ref(entity).publicId,
+                            ) == 0
+                            {
+                                entityTrackingOnClose(
+                                    ptr_mut(parser),
+                                    ptr_ref(entity),
+                                    6844 as ::core::ffi::c_int,
+                                );
+                                ptr_mut(entity).open = XML_FALSE;
+                                result = XML_ERROR_EXTERNAL_ENTITY_HANDLING;
+                                break;
+                            }
+                            entityTrackingOnClose(
+                                ptr_mut(parser),
+                                ptr_ref(entity),
+                                6849 as ::core::ffi::c_int,
+                            );
+                            ptr_mut(entity).open = XML_FALSE;
+                            if ptr_ref(dtd).paramEntityRead == 0 {
+                                ptr_mut(dtd).keepProcessing = ptr_ref(dtd).standalone;
+                            }
+                        } else {
+                            ptr_mut(dtd).keepProcessing = ptr_ref(dtd).standalone;
+                        }
+                    } else {
+                        result = processEntity(
+                            ptr_mut(parser),
+                            ptr_mut(entity),
+                            XML_FALSE,
+                            ENTITY_VALUE,
+                        );
+                        break;
+                    }
+                } else {
+                    ptr_mut(parser).m_eventPtr = entityTextPtr;
+                    result = XML_ERROR_PARAM_ENTITY_REF;
+                    break;
+                }
+            }
+            XML_TOK_NONE => {
+                result = XML_ERROR_NONE;
+                break;
+            }
+            XML_TOK_ENTITY_REF | XML_TOK_DATA_CHARS => {
+                if poolAppend(ptr_mut(pool), enc, entityTextPtr, next).is_null() {
+                    result = XML_ERROR_NO_MEMORY;
+                    break;
+                }
+            }
+            XML_TOK_TRAILING_CR => {
+                next = entityTextPtr.wrapping_offset(ptr_ref(enc).minBytesPerChar as isize);
+                append_newline = true;
+            }
+            XML_TOK_DATA_NEWLINE => {
+                append_newline = true;
+            }
+            XML_TOK_CHAR_REF => {
+                let mut buf: [XML_Char; 4] = [0; 4];
+                let mut n =
+                    ptr_ref(enc)
+                        .charRefNumber
+                        .expect("non-null function pointer")(enc, entityTextPtr);
+                if n < 0 as ::core::ffi::c_int {
+                    if enc == ptr_ref(parser).m_encoding {
+                        ptr_mut(parser).m_eventPtr = entityTextPtr;
+                    }
+                    result = XML_ERROR_BAD_CHAR_REF;
+                    break;
+                }
+                n = xml_utf8_encode!(n, &raw mut buf as *mut XML_Char as *mut ::core::ffi::c_char,);
+                if !pool_append_xml_chars(ptr_mut(pool), &buf[..n as usize]) {
+                    result = XML_ERROR_NO_MEMORY;
+                    break 'entity_loop;
+                }
+            }
+            XML_TOK_PARTIAL => {
+                if enc == ptr_ref(parser).m_encoding {
+                    ptr_mut(parser).m_eventPtr = entityTextPtr;
+                }
+                result = XML_ERROR_INVALID_TOKEN;
+                break;
+            }
+            XML_TOK_INVALID => {
+                if enc == ptr_ref(parser).m_encoding {
+                    ptr_mut(parser).m_eventPtr = next;
+                }
+                result = XML_ERROR_INVALID_TOKEN;
+                break;
+            }
+            _ => {
+                if enc == ptr_ref(parser).m_encoding {
+                    ptr_mut(parser).m_eventPtr = entityTextPtr;
+                }
+                result = XML_ERROR_UNEXPECTED_STATE;
+                break;
+            }
+        }
+        if append_newline && !pool_append_xml_char(ptr_mut(pool), 0xa as XML_Char) {
+            result = XML_ERROR_NO_MEMORY;
+            break;
+        }
+        entityTextPtr = next;
+    }
+    ptr_mut(parser).m_prologState.inEntityValue = old_in_entity_value;
+    if !nextPtr.is_null() {
+        write_copy(nextPtr, next);
+    }
+    result
 }
 extern "C" fn callStoreEntityValue(
     mut parser: XML_Parser,
@@ -10805,6 +10696,15 @@ fn read_xml_char(ptr: *const XML_Char) -> XML_Char {
 
 fn write_xml_char(ptr: *mut XML_Char, value: XML_Char) {
     *ptr_mut(ptr) = value;
+}
+
+fn pool_ends_with_space(pool: &STRING_POOL) -> bool {
+    pool.ptr != pool.start
+        && read_xml_char(pool.ptr.wrapping_sub(1).cast_const()) == 0x20 as XML_Char
+}
+
+fn pool_is_empty_or_ends_with_space(pool: &STRING_POOL) -> bool {
+    pool.ptr == pool.start || pool_ends_with_space(pool)
 }
 
 fn pool_append_xml_char(pool: &mut STRING_POOL, value: XML_Char) -> bool {
