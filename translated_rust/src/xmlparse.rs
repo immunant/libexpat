@@ -3027,6 +3027,38 @@ impl STRING_POOL {
             .get_mut(string.offset..)
     }
 
+    // Attribute-name state is kept in the character immediately before a
+    // DTD-pool name, just as in Expat's original hash-table representation.
+    // Resolve that location through the checked pool handle rather than
+    // recreating it with pointer arithmetic at each attribute-processing
+    // call site.
+    fn marker_before(&self, string: PoolStringRef) -> Option<crate::expat_external_h::XML_Char> {
+        let block_index = string.block_from_tail.get().checked_sub(1)?;
+        let marker_offset = string.offset.checked_sub(1)?;
+        self.storage
+            .active
+            .get(block_index)?
+            .chars
+            .get(marker_offset)
+            .copied()
+    }
+
+    fn set_marker_before(
+        &mut self,
+        string: PoolStringRef,
+        marker: crate::expat_external_h::XML_Char,
+    ) -> Option<()> {
+        let block_index = string.block_from_tail.get().checked_sub(1)?;
+        let marker_offset = string.offset.checked_sub(1)?;
+        *self
+            .storage
+            .active
+            .get_mut(block_index)?
+            .chars
+            .get_mut(marker_offset)? = marker;
+        Some(())
+    }
+
     fn start_ref(&self, allow_block_end: bool) -> Option<PoolStringRef> {
         let start = self.start?;
         let block = self.storage.active.get(start.block_from_tail.get() - 1)?;
@@ -10881,18 +10913,27 @@ unsafe extern "C" fn storeAtts(
         if attId.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let att_id_name = pool_string_pointer!(&dtd.pool, (*attId).named.name);
+        let att_id_name_ref = (*attId).named.name;
+        let att_id_name = pool_string_pointer!(&dtd.pool, att_id_name_ref);
         if att_id_name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if *att_id_name.offset(-1 as isize) != 0 {
+        let Some(marker) = dtd.pool.marker_before(att_id_name_ref) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        if marker != 0 {
             if parser_events {
                 set_parser_event_start!(&mut *parser, name);
             }
             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
         }
-        *(att_id_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-            1 as crate::expat_external_h::XML_Char;
+        if dtd
+            .pool
+            .set_marker_before(att_id_name_ref, 1 as crate::expat_external_h::XML_Char)
+            .is_none()
+        {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        }
         let c2rust_fresh23 = attIndex;
         attIndex = attIndex + 1;
         appAtts[c2rust_fresh23 as usize] = att_id_name;
@@ -10995,8 +11036,13 @@ unsafe extern "C" fn storeAtts(
             } else {
                 attIndex += 1;
                 nPrefixes += 1;
-                *(att_id_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-                    2 as crate::expat_external_h::XML_Char;
+                if dtd
+                    .pool
+                    .set_marker_before(att_id_name_ref, 2 as crate::expat_external_h::XML_Char)
+                    .is_none()
+                {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
             }
         } else {
             attIndex += 1;
@@ -11051,11 +11097,15 @@ unsafe extern "C" fn storeAtts(
         if id.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let id_name_pointer = pool_string_pointer!(&dtd.pool, (*id).named.name);
+        let id_name_ref = (*id).named.name;
+        let id_name_pointer = pool_string_pointer!(&dtd.pool, id_name_ref);
         if id_name_pointer.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if *id_name_pointer.offset(-1 as isize) == 0 && da.value.is_some() {
+        let Some(marker) = dtd.pool.marker_before(id_name_ref) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        if marker == 0 && da.value.is_some() {
             let value_ref = da
                 .value
                 .expect("a present default attribute value has a pool location");
@@ -11095,8 +11145,13 @@ unsafe extern "C" fn storeAtts(
                         return result_1;
                     }
                 } else {
-                    *(id_name_pointer as *mut crate::expat_external_h::XML_Char)
-                        .offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
+                    if dtd
+                        .pool
+                        .set_marker_before(id_name_ref, 2 as crate::expat_external_h::XML_Char)
+                        .is_none()
+                    {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    }
                     nPrefixes += 1;
                     let c2rust_fresh24 = attIndex;
                     attIndex = attIndex + 1;
@@ -11106,8 +11161,13 @@ unsafe extern "C" fn storeAtts(
                     appAtts[c2rust_fresh25 as usize] = value;
                 }
             } else {
-                *(id_name_pointer as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-                    1 as crate::expat_external_h::XML_Char;
+                if dtd
+                    .pool
+                    .set_marker_before(id_name_ref, 1 as crate::expat_external_h::XML_Char)
+                    .is_none()
+                {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
                 let c2rust_fresh26 = attIndex;
                 attIndex = attIndex + 1;
                 appAtts[c2rust_fresh26 as usize] = id_name_pointer;
@@ -11215,7 +11275,15 @@ unsafe extern "C" fn storeAtts(
         let parser_ref = &mut *parser;
         while i < attIndex {
             let mut s: *const crate::expat_external_h::XML_Char = appAtts[i as usize];
-            if *s.offset(-1 as isize) as ::core::ffi::c_int == 2 as ::core::ffi::c_int {
+            let Some(attribute_name) =
+                pool_string_ref_from_address(&dtd.pool, s.addr(), false)
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(marker) = dtd.pool.marker_before(attribute_name) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            if marker as ::core::ffi::c_int == 2 as ::core::ffi::c_int {
                 let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                 let mut uriHash: ::core::ffi::c_ulong = 0;
                 let mut sip_state: crate::siphash_h::siphash = crate::siphash_h::siphash {
@@ -11231,8 +11299,13 @@ unsafe extern "C" fn storeAtts(
                     k: [0, get_hash_secret_salt(parser) as crate::stdlib::uint64_t],
                 };
                 sip24_init(&raw mut sip_state, &raw mut sip_key);
-                *(s as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-                    0 as crate::expat_external_h::XML_Char;
+                if dtd
+                    .pool
+                    .set_marker_before(attribute_name, 0 as crate::expat_external_h::XML_Char)
+                    .is_none()
+                {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
                 id = lookup(
                     parser,
                     &raw mut dtd.attributeIds,
@@ -11456,15 +11529,30 @@ unsafe extern "C" fn storeAtts(
                     break;
                 }
             } else {
-                *(s as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-                    0 as crate::expat_external_h::XML_Char;
+                if dtd
+                    .pool
+                    .set_marker_before(attribute_name, 0 as crate::expat_external_h::XML_Char)
+                    .is_none()
+                {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
             }
             i += 2 as ::core::ffi::c_int;
         }
     }
     while i < attIndex {
-        *(appAtts[i as usize] as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-            0 as crate::expat_external_h::XML_Char;
+        let Some(attribute_name) =
+            pool_string_ref_from_address(&dtd.pool, appAtts[i as usize].addr(), false)
+        else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        if dtd
+            .pool
+            .set_marker_before(attribute_name, 0 as crate::expat_external_h::XML_Char)
+            .is_none()
+        {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        }
         i += 2 as ::core::ffi::c_int;
     }
     {
@@ -11485,8 +11573,13 @@ unsafe extern "C" fn storeAtts(
             if binding_name.is_null() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
-            *(binding_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-                0 as crate::expat_external_h::XML_Char;
+            if dtd
+                .pool
+                .set_marker_before(attribute_name, 0 as crate::expat_external_h::XML_Char)
+                .is_none()
+            {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
             binding_id = binding_ref.nextTagBinding;
         }
     }
