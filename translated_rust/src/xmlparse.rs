@@ -2789,14 +2789,22 @@ struct LiveParserAllocationBacking {
     actions: Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>,
 }
 
-/// The allocation route captured while a parser handle is known live.  Its
+/// The allocator policy owned by a parser's Rust state.  It carries the
+/// configured allocator callbacks and the accounting registry needed to make
+/// their opaque tokens observable, without retaining a parser handle.
+#[derive(Clone)]
+struct ParserAllocatorPolicy {
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+    root: std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    parser_address: usize,
+}
+
+/// The allocation route captured while a parser is being constructed.  Its
 /// factory hands out only opaque allocation tokens, so parser-owned storage
 /// never needs to retain or pass a raw parser handle.
 #[derive(Clone)]
 struct AllocationBackingFactory {
-    allocate: std::sync::Arc<
-        dyn Fn(crate::__stddef_size_t_h::size_t, ::core::ffi::c_int) -> Option<AllocationBacking>,
-    >,
+    policy: ParserAllocatorPolicy,
 }
 
 impl AllocationBacking {
@@ -2818,15 +2826,18 @@ impl LiveParserAllocationBacking {
 }
 
 impl AllocationBackingFactory {
-    /// Capture the allocation route for a parser whose address is stable for
-    /// the lifetime of every token produced by this factory.
-    ///
-    /// The returned factory exposes only opaque allocation backings.  Its
-    /// foreign allocator calls stay at this allocation boundary rather than
-    /// leaking into parser construction and its Rust-owned buffers.
+    /// Snapshot the configured allocator and accounting route after the
+    /// parser's root state has been selected.  Pinning documents that the
+    /// parser address used in diagnostics remains stable; it is recorded as
+    /// an integer key rather than retained as a raw handle.
     fn for_pinned_parser(parser: std::pin::Pin<&XML_ParserStruct>) -> Self {
+        let parser = parser.get_ref();
         Self {
-            allocate: captured_parser_allocation_route(parser),
+            policy: ParserAllocatorPolicy {
+                memory_suite: parser.m_mem,
+                root: std::sync::Arc::clone(&parser.m_root),
+                parser_address: std::ptr::from_ref(parser).addr(),
+            },
         }
     }
 
@@ -2835,60 +2846,258 @@ impl AllocationBackingFactory {
         size: crate::__stddef_size_t_h::size_t,
         source_line: ::core::ffi::c_int,
     ) -> Option<AllocationBacking> {
-        (self.allocate)(size, source_line)
+        self.policy.allocation_backing(size, source_line)
     }
 }
 
-/// Construct the opaque allocation route while the parser's stable address
-/// is still available.  This is the sole implementation boundary that keeps
-/// the raw parser handle needed by Expat's allocator ABI; the factory itself
-/// only deals in typed allocation tokens.
-fn captured_parser_allocation_route(
-    parser: std::pin::Pin<&XML_ParserStruct>,
-) -> std::sync::Arc<
-    dyn Fn(crate::__stddef_size_t_h::size_t, ::core::ffi::c_int) -> Option<AllocationBacking>,
-> {
-    let parser_ptr = std::ptr::from_ref(parser.get_ref()).cast_mut();
-    std::sync::Arc::new(move |size, source_line| {
-        let allocation = unsafe { expat_malloc(parser_ptr, size, source_line) };
+impl ParserAllocatorPolicy {
+    fn reserve(
+        &self,
+        bytes: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> bool {
+        let allocation_would_overflow = {
+            let root = self
+                .root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            (-1 as ::core::ffi::c_int as XmlBigCount)
+                .wrapping_sub(root.alloc_tracker.bytesAllocated)
+                < bytes as XmlBigCount
+        };
+        !allocation_would_overflow
+            && expat_heap_increase_tolerable(
+                &self.root,
+                self.parser_address,
+                bytes as XmlBigCount,
+                source_line,
+            )
+    }
+
+    fn account_free(
+        &self,
+        bytes: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) {
+        let allocation_totals = {
+            let mut root = self
+                .root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            assert!(root.alloc_tracker.bytesAllocated >= bytes as XmlBigCount);
+            root.alloc_tracker.bytesAllocated = root
+                .alloc_tracker
+                .bytesAllocated
+                .wrapping_sub(bytes as XmlBigCount);
+            (root.alloc_tracker.debugLevel >= 2 as ::core::ffi::c_ulong).then_some((
+                root.alloc_tracker.bytesAllocated,
+                root.alloc_tracker.peakBytesAllocated,
+            ))
+        };
+        if let Some((new_total, peak_total)) = allocation_totals {
+            expat_heap_stat(
+                &self.root,
+                self.parser_address,
+                '-' as ::core::ffi::c_char,
+                bytes as XmlBigCount,
+                new_total,
+                peak_total,
+                source_line,
+            );
+        }
+    }
+
+    /// Reserve one opaque allocation token.  The readable storage remains in
+    /// Rust-owned collections; foreign memory exists only to preserve the
+    /// custom allocator's callback order, sizes, and failure behavior.
+    fn allocation_backing(
+        &self,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> Option<AllocationBacking> {
+        let bytes = expat_allocation_bytes(size)?;
+        if !self.reserve(bytes, source_line) {
+            return None;
+        }
+        let malloc = self.memory_suite.malloc_fcn.expect("non-null function pointer");
+        let allocation = unsafe { malloc(bytes) };
         if allocation.is_null() {
             return None;
         }
-        let mut allocation = allocation;
+        // This allocation is an opaque token rather than ABI-transferred
+        // storage, so its size remains solely in the owned registry.  In
+        // particular, no foreign memory is dereferenced to maintain it.
+        let payload_offset = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING);
+        let mut allocation = allocation.wrapping_byte_add(payload_offset);
+        expat_malloc_record(
+            &self.root,
+            self.parser_address,
+            allocation.addr(),
+            size,
+            bytes,
+            source_line,
+        );
+        let policy = self.clone();
         Some(AllocationBacking {
             actions: Box::new(move |action| match action {
                 ParserAllocationAction::Grow { size, source_line } => {
-                    let reallocated = unsafe { expat_realloc(parser_ptr, allocation, size, source_line) };
-                    if reallocated.is_null() {
-                        false
-                    } else {
-                        allocation = reallocated;
-                        true
+                    if size == 0 {
+                        return false;
                     }
+                    let previous_size = policy
+                        .root
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .allocations
+                        .get(&allocation.addr())
+                        .expect("allocator token must be tracked")
+                        .payload_size;
+                    let change = expat_reallocation_change(size, previous_size);
+                    if change.is_increase {
+                        let (tolerable, report_total) = {
+                            let root = policy
+                                .root
+                                .lock()
+                                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                            expat_heap_increase_tolerable_impl(
+                                &root,
+                                change.absolute_difference as XmlBigCount,
+                            )
+                        };
+                        if let Some(new_total) = report_total {
+                            expat_heap_stat(
+                                &policy.root,
+                                policy.parser_address,
+                                '+' as ::core::ffi::c_char,
+                                change.absolute_difference as XmlBigCount,
+                                new_total,
+                                new_total,
+                                source_line,
+                            );
+                        }
+                        if !tolerable {
+                            return false;
+                        }
+                    }
+                    let bytes = match expat_allocation_bytes(size) {
+                        Some(bytes) => bytes,
+                        None => return false,
+                    };
+                    let prefix = allocation
+                        .cast::<u8>()
+                        .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
+                        .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+                        .cast::<::core::ffi::c_void>();
+                    let realloc = policy
+                        .memory_suite
+                        .realloc_fcn
+                        .expect("non-null function pointer");
+                    let replacement = unsafe { realloc(prefix, bytes) };
+                    if replacement.is_null() {
+                        return false;
+                    }
+                    let payload_offset = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+                        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING);
+                    let replacement = replacement.wrapping_byte_add(payload_offset);
+                    let totals = expat_apply_reallocation_tracking(
+                        &policy.root,
+                        change,
+                        allocation.addr(),
+                        replacement.addr(),
+                        size,
+                    );
+                    if let Some((new_total, peak_total)) = totals {
+                        expat_heap_stat(
+                            &policy.root,
+                            policy.parser_address,
+                            if change.is_increase { '+' as ::core::ffi::c_char } else { '-' as ::core::ffi::c_char },
+                            change.absolute_difference as XmlBigCount,
+                            new_total,
+                            peak_total,
+                            source_line,
+                        );
+                    }
+                    allocation = replacement;
+                    true
                 }
                 ParserAllocationAction::Replace {
                     size,
                     allocation_source_line,
                     free_source_line,
                 } => {
-                    let replacement = unsafe {
-                        expat_malloc(parser_ptr, size, allocation_source_line)
+                    let Some(bytes) = expat_allocation_bytes(size) else {
+                        return false;
                     };
-                    if replacement.is_null() {
-                        false
-                    } else {
-                        unsafe { expat_free(parser_ptr, allocation, free_source_line) };
-                        allocation = replacement;
-                        true
+                    if !policy.reserve(bytes, allocation_source_line) {
+                        return false;
                     }
+                    let malloc = policy
+                        .memory_suite
+                        .malloc_fcn
+                        .expect("non-null function pointer");
+                    let replacement = unsafe { malloc(bytes) };
+                    if replacement.is_null() {
+                        return false;
+                    }
+                    let payload_offset = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+                        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING);
+                    let replacement = replacement.wrapping_byte_add(payload_offset);
+                    expat_malloc_record(
+                        &policy.root,
+                        policy.parser_address,
+                        replacement.addr(),
+                        size,
+                        bytes,
+                        allocation_source_line,
+                    );
+                    let prefix = allocation
+                        .cast::<u8>()
+                        .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
+                        .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+                        .cast::<::core::ffi::c_void>();
+                    let previous_size = policy
+                        .root
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .allocations
+                        .remove(&allocation.addr())
+                        .expect("allocator token must be tracked")
+                        .payload_size;
+                    let previous_bytes = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+                        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+                        .wrapping_add(previous_size);
+                    policy.account_free(previous_bytes, free_source_line);
+                    let free = policy.memory_suite.free_fcn.expect("non-null function pointer");
+                    unsafe { free(prefix) };
+                    allocation = replacement;
+                    true
                 }
                 ParserAllocationAction::Free(source_line) => {
-                    unsafe { expat_free(parser_ptr, allocation, source_line) };
+                    let prefix = allocation
+                        .cast::<u8>()
+                        .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
+                        .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+                        .cast::<::core::ffi::c_void>();
+                    let size = policy
+                        .root
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .allocations
+                        .remove(&allocation.addr())
+                        .expect("allocator token must be tracked")
+                        .payload_size;
+                    let bytes = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
+                        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+                        .wrapping_add(size);
+                    policy.account_free(bytes, source_line);
+                    let free = policy.memory_suite.free_fcn.expect("non-null function pointer");
+                    unsafe { free(prefix) };
                     true
                 }
             }),
         })
-    })
+    }
 }
 
 /// Reserve the allocator-observable storage token paired with a parser.
@@ -6285,22 +6494,6 @@ struct ParserParentState {
     inherited_dtd: Option<std::sync::Arc<SharedDtd>>,
 }
 
-/// Install the allocator-token route for a pinned parser that is still
-/// exclusively owned by its constructor.
-fn install_parser_allocation_backing(
-    mut parser: std::pin::Pin<&mut XML_ParserStruct>,
-    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-) -> bool {
-    let allocation_factory = AllocationBackingFactory::for_pinned_parser(parser.as_ref());
-    let Some(storage_backing) = parser_storage_backing(memory_suite) else {
-        return false;
-    };
-    let parser = parser.as_mut().get_mut();
-    parser.m_allocationBackingFactory = Some(allocation_factory);
-    parser.m_parserStorageBacking = Some(storage_backing);
-    true
-}
-
 /// Construct a parser through the single allocator-aware ownership boundary.
 ///
 /// Parser storage keeps the same physical prefix as `expat_malloc`
@@ -6351,10 +6544,11 @@ unsafe fn parser_create_ownership_facade(
     }
     let mut parser_owner = Box::pin(initial_parser_struct(memory_suite));
     let parser_ptr = std::ptr::from_mut(parser_owner.as_mut().get_mut());
-    if !install_parser_allocation_backing(parser_owner.as_mut(), memory_suite) {
+    let Some(storage_backing) = parser_storage_backing(memory_suite) else {
         return None;
-    }
+    };
     let parser = parser_owner.as_mut().get_mut();
+    parser.m_parserStorageBacking = Some(storage_backing);
     let root_owner = {
         let alloc_tracker = MALLOC_TRACKER {
             bytesAllocated: 0 as XmlBigCount,
@@ -6395,6 +6589,9 @@ unsafe fn parser_create_ownership_facade(
         }
         std::sync::Arc::clone(&parser.m_root)
     };
+    parser.m_allocationBackingFactory = Some(AllocationBackingFactory::for_pinned_parser(
+        std::pin::Pin::new(&*parser),
+    ));
     {
         let mut root = root_owner
             .lock()
