@@ -10754,30 +10754,16 @@ unsafe fn doContent(
                         *terminator = '\0' as crate::expat_external_h::XML_Char;
                     }
                     let mut app_atts = Vec::new();
-                    // `storeAtts` has not yet shed its C-compatible tag
-                    // parameters.  Form those handles from the owned active
-                    // tag immediately before the call, then resume using the
-                    // vector index so no raw tag dereference escapes this
-                    // boundary.
-                    let (tag_name, tag) = {
-                        let tag = parser.m_activeTags[tag_index]
-                            .tag
-                            .first_mut()
-                            .expect("tag storage has one tag");
-                        (
-                            std::ptr::from_mut(&mut tag.name),
-                            std::ptr::from_mut(tag),
-                        )
-                    };
                     let mut tag_bindings = None;
+                    let mut tag_name_update = None;
                     let result_0 = storeAtts(
                         parser,
                         enc,
                         parser_events,
                         s,
                         next,
-                        tag_name,
-                        tag,
+                        StoreAttsTag::Active(tag_index),
+                        &mut tag_name_update,
                         &mut tag_bindings,
                         account,
                         &mut app_atts,
@@ -10789,6 +10775,15 @@ unsafe fn doContent(
                         .bindings = tag_bindings;
                     if result_0 as u64 != 0 {
                         return result_0;
+                    }
+                    if let Some(update) = tag_name_update {
+                        update.apply(
+                            &mut parser.m_activeTags[tag_index]
+                                .tag
+                                .first_mut()
+                                .expect("tag storage has one tag")
+                                .name,
+                        );
                     }
                     let handlers = content_token_handlers(parser);
                     if handlers.start_element {
@@ -10876,14 +10871,15 @@ unsafe fn doContent(
                         .map_or(::core::ptr::null(), |chars| chars.as_ptr());
                     parser.m_tempPool.commit();
                     let mut app_atts = Vec::new();
+                    let mut tag_name_update = None;
                     result_1 = storeAtts(
                         parser,
                         enc,
                         parser_events,
                         s,
                         next,
-                        &raw mut name_0,
-                        ::core::ptr::null_mut(),
+                        StoreAttsTag::Detached(&name_0),
+                        &mut tag_name_update,
                         &mut bindings,
                         XML_ACCOUNT_NONE,
                         &mut app_atts,
@@ -10894,6 +10890,9 @@ unsafe fn doContent(
                     {
                         freeBindings(parser, bindings);
                         return result_1;
+                    }
+                    if let Some(update) = tag_name_update {
+                        update.apply(&mut name_0);
                     }
                     let name_pointer = match name_0.str {
                         TagNameStorage::TempPool(name) => parser
@@ -11590,14 +11589,53 @@ unsafe fn namespace_name_pointer(
     parser_state.m_activeBindings[binding_index].uri.as_ptr()
 }
 
-unsafe extern "C" fn storeAtts(
+// `storeAtts` needs either an active-tag index or the temporary name used for
+// an empty element.  Keep that distinction explicit instead of passing a
+// nullable C-style tag pointer alongside a separate name pointer.
+enum StoreAttsTag<'a> {
+    Active(usize),
+    Detached(&'a TAG_NAME),
+}
+
+impl StoreAttsTag<'_> {
+    fn name_chars<'a>(
+        &self,
+        parser: &'a XML_ParserStruct,
+    ) -> Option<&'a [crate::expat_external_h::XML_Char]> {
+        match self {
+            Self::Active(index) => {
+                let tag = parser.m_activeTags.get(*index)?.tag.first()?;
+                tag_name_chars(parser, tag.name.str, Some(tag))
+            }
+            Self::Detached(name) => tag_name_chars(parser, name.str, None),
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+struct NamespaceTagNameUpdate {
+    local_part: usize,
+    uri_len: ::core::ffi::c_int,
+    prefix_len: ::core::ffi::c_int,
+}
+
+impl NamespaceTagNameUpdate {
+    fn apply(self, tag_name: &mut TAG_NAME) {
+        tag_name.localPart = Some(self.local_part);
+        tag_name.uriLen = self.uri_len;
+        tag_name.prefixLen = self.prefix_len;
+        tag_name.str = TagNameStorage::NamespaceUri;
+    }
+}
+
+unsafe fn storeAtts(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     parser_events: bool,
     mut attStr: *const ::core::ffi::c_char,
     mut attEnd: *const ::core::ffi::c_char,
-    mut tagNamePtr: *mut TAG_NAME,
-    mut tagPtr: *mut TAG,
+    tag_input: StoreAttsTag<'_>,
+    tag_name_update: &mut Option<NamespaceTagNameUpdate>,
     bindings: &mut Option<BindingId>,
     mut account: XML_Account,
     appAtts: &mut Vec<*const crate::expat_external_h::XML_Char>,
@@ -11609,12 +11647,9 @@ unsafe extern "C" fn storeAtts(
     let mut i: ::core::ffi::c_int = 0;
     let mut n: ::core::ffi::c_int = 0;
     let mut nPrefixes: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    let tag_name_state = &mut *tagNamePtr;
-    let tag_name_storage = tag_name_state.str;
     let tag_name = {
         let parser_ref = &*parser;
-        let tag = tagPtr.as_ref();
-        let Some(chars) = tag_name_chars(parser_ref, tag_name_storage, tag) else {
+        let Some(chars) = tag_input.name_chars(parser_ref) else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
         chars.as_ptr()
@@ -12413,8 +12448,7 @@ unsafe extern "C" fn storeAtts(
         };
         let tag_name = {
             let parser_ref = &*parser;
-            let tag = tagPtr.as_ref();
-            let Some(chars) = tag_name_chars(parser_ref, tag_name_storage, tag) else {
+            let Some(chars) = tag_input.name_chars(parser_ref) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             chars
@@ -12479,8 +12513,7 @@ unsafe extern "C" fn storeAtts(
     };
     let local_part = {
         let parser_ref = &*parser;
-        let tag = tagPtr.as_ref();
-        let Some(tag_name) = tag_name_chars(parser_ref, tag_name_storage, tag) else {
+        let Some(tag_name) = tag_input.name_chars(parser_ref) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         let Some(local_part) = tag_name.get(local_part_offset..) else {
@@ -12545,10 +12578,11 @@ unsafe extern "C" fn storeAtts(
             prefix_destination.copy_from_slice(prefix_name);
         }
     }
-    tag_name_state.localPart = Some(local_part_offset);
-    tag_name_state.uriLen = uri_len;
-    tag_name_state.prefixLen = prefix_len;
-    tag_name_state.str = TagNameStorage::NamespaceUri;
+    *tag_name_update = Some(NamespaceTagNameUpdate {
+        local_part: local_part_offset,
+        uri_len,
+        prefix_len,
+    });
     return crate::expat_h::XML_ERROR_NONE;
 }
 
