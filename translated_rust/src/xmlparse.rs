@@ -2270,6 +2270,30 @@ impl ElementDeclCallback
     }
 }
 
+/// Delivers an element-declaration model through the one C callback boundary.
+/// The registry owns the model's backing storage before this function obtains
+/// its stable vector address, so a callback may retain or free the model with
+/// the same lifetime it has in the C API.
+fn dispatch_element_decl_callback(
+    callback: &dyn ElementDeclCallback,
+    parser: &XML_ParserStruct,
+    name: &[crate::expat_external_h::XML_Char],
+    model_key: usize,
+) -> bool {
+    let model = {
+        let models = CONTENT_MODEL_STORAGE
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let Some(model) = models.get(&model_key) else {
+            return false;
+        };
+        model.contents.as_ptr().cast_mut()
+    };
+    unsafe { callback.invoke(handler_arg_from_state!(parser), name.as_ptr(), model) };
+    true
+}
+
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an element-declaration callback is installed.
 static ELEMENT_DECL_HANDLERS: std::sync::OnceLock<
@@ -20016,10 +20040,11 @@ unsafe fn doProlog(
                                     41 | 42 => {
                                         if dtd.in_eldecl != 0 {
                                             if parser.m_elementDeclHandler {
-                                                if !build_model_and_dispatch(
-                                                    parser,
-                                                    dtd,
-                                                    ContentModelSource::Simple(if role
+                                                if !build_model_and_dispatch_impl(
+                                                    ContentModelDispatchRequest {
+                                                        parser,
+                                                        dtd,
+                                                        source: ContentModelSource::Simple(if role
                                                         == crate::src::xmlrole::XML_ROLE_CONTENT_ANY
                                                             as ::core::ffi::c_int
                                                     {
@@ -20027,10 +20052,11 @@ unsafe fn doProlog(
                                                     } else {
                                                         crate::expat_h::XML_CTYPE_EMPTY
                                                     }),
-                                                    event_target,
-                                                    internal_event_start,
-                                                    internal_event_window,
-                                                    s.addr(),
+                                                        event_target,
+                                                        internal_event_start,
+                                                        internal_event_window,
+                                                        event_end: s.addr(),
+                                                    },
                                                 ) {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
@@ -20383,14 +20409,15 @@ unsafe fn doProlog(
                     }
                     if dtd.scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
-                            if !build_model_and_dispatch(
+                            if !build_model_and_dispatch_impl(ContentModelDispatchRequest {
                                 parser,
                                 dtd,
-                                ContentModelSource::Scaffold,
+                                source: ContentModelSource::Scaffold,
                                 event_target,
                                 internal_event_start,
                                 internal_event_window,
-                                s.addr(),
+                                event_end: s.addr(),
+                            }
                             ) {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
@@ -25696,6 +25723,24 @@ struct ContentModelStorage {
     backing: Option<Box<dyn FnMut()>>,
 }
 
+#[derive(Clone, Copy)]
+struct ContentModelEntry {
+    type_0: crate::expat_h::XML_Content_Type,
+    quant: crate::expat_h::XML_Content_Quant,
+    numchildren: ::core::ffi::c_uint,
+}
+
+/// A fully checked model before its ABI pointer links are materialized at
+/// registration time.  Keeping links as indices makes model construction a
+/// safe operation independent of callback-visible storage.
+struct ContentModelBuild {
+    contents: Vec<ContentModelEntry>,
+    strings: Box<[crate::expat_external_h::XML_Char]>,
+    name_offsets: Vec<Option<usize>>,
+    child_starts: Vec<Option<usize>>,
+    backing: Option<Box<dyn FnMut()>>,
+}
+
 // `contents` points only into the allocations owned by this value. Moving the
 // registry entry does not move those allocations; the allocator callback has
 // the same cross-thread contract as the former C-owned model allocation.
@@ -25720,7 +25765,37 @@ fn content_model_allocation_backing(
     Some(Box::new(move || free(allocation)))
 }
 
-fn register_content_model(model_key: usize, mut model: ContentModelStorage) -> bool {
+fn register_content_model(mut build: ContentModelBuild) -> Option<usize> {
+    let mut contents = Vec::new();
+    if contents.try_reserve_exact(build.contents.len()).is_err() {
+        if let Some(mut backing) = build.backing.take() {
+            backing();
+        }
+        return None;
+    }
+    contents.extend(build.contents.iter().map(|entry| crate::expat_h::XML_Content {
+        type_0: entry.type_0,
+        quant: entry.quant,
+        name: ::core::ptr::null_mut(),
+        numchildren: entry.numchildren,
+        children: ::core::ptr::null_mut(),
+    }));
+    let string_start = build.strings.as_mut_ptr();
+    let content_start = contents.as_mut_ptr();
+    for (index, content) in contents.iter_mut().enumerate() {
+        if let Some(name_offset) = build.name_offsets[index] {
+            content.name = string_start.wrapping_add(name_offset);
+        }
+        if let Some(child_start) = build.child_starts[index] {
+            content.children = content_start.wrapping_add(child_start);
+        }
+    }
+    let model_key = content_start.addr();
+    let mut model = ContentModelStorage {
+        contents,
+        _strings: build.strings,
+        backing: build.backing,
+    };
     let mut models = CONTENT_MODEL_STORAGE
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -25730,24 +25805,86 @@ fn register_content_model(model_key: usize, mut model: ContentModelStorage) -> b
         if let Some(mut backing) = model.backing.take() {
             backing();
         }
-        return false;
+        return None;
     }
     models.insert(model_key, model);
-    true
+    Some(model_key)
 }
 
-// `build_model` is reached from the parser's declaration state machine with
-// its exclusive parser borrow already established.  Keep that typed borrow at
-// this internal boundary; only the final ABI-owned model allocation remains
-// pointer-based.
-unsafe fn build_model(
-    parser: &mut XML_ParserStruct,
-    dtd: &mut DTD,
-    source: ContentModelSource,
-) -> Option<ContentModelStorage> {
-    let (content_count, string_count) = match source {
-        ContentModelSource::Scaffold => (dtd.scaffCount as usize, dtd.contentStringLen as usize),
-        ContentModelSource::Simple(_) => (1, 0),
+struct ContentModelNode {
+    type_0: crate::expat_h::XML_Content_Type,
+    quant: crate::expat_h::XML_Content_Quant,
+    name: Option<Vec<crate::expat_external_h::XML_Char>>,
+    firstchild: ::core::ffi::c_int,
+    childcnt: ::core::ffi::c_int,
+    nextsib: ::core::ffi::c_int,
+}
+
+enum ContentModelInput {
+    Simple(crate::expat_h::XML_Content_Type),
+    Scaffold {
+        nodes: Vec<ContentModelNode>,
+        string_count: usize,
+    },
+}
+
+/// Copies the declaration scaffold while it is protected by the DTD borrow.
+/// The builder itself then works exclusively from this owned, pointer-free
+/// input and can no longer observe a re-entrant DTD mutation.
+fn content_model_input(dtd: &DTD, source: ContentModelSource) -> Option<ContentModelInput> {
+    match source {
+        ContentModelSource::Simple(type_0) => Some(ContentModelInput::Simple(type_0)),
+        ContentModelSource::Scaffold => {
+            let content_count = usize::try_from(dtd.scaffCount).ok()?;
+            let string_count = usize::try_from(dtd.contentStringLen).ok()?;
+            let scaffold = dtd
+                .scaffold
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut nodes = Vec::new();
+            nodes.try_reserve_exact(content_count).ok()?;
+            for node in scaffold.nodes.get(..content_count)? {
+                let name = if node.type_0 == crate::expat_h::XML_CTYPE_NAME {
+                    let name_ref = node.name?;
+                    let chars = dtd.pool.chars_from(name_ref)?;
+                    let length = chars.iter().position(|&character| character == 0)?;
+                    let length = length.checked_add(1)?;
+                    let mut name = Vec::new();
+                    name.try_reserve_exact(length).ok()?;
+                    name.extend_from_slice(chars.get(..length)?);
+                    Some(name)
+                } else {
+                    None
+                };
+                nodes.push(ContentModelNode {
+                    type_0: node.type_0,
+                    quant: node.quant,
+                    name,
+                    firstchild: node.firstchild,
+                    childcnt: node.childcnt,
+                    nextsib: node.nextsib,
+                });
+            }
+            Some(ContentModelInput::Scaffold {
+                nodes,
+                string_count,
+            })
+        }
+    }
+}
+
+/// Builds a declaration model from a copied, Rust-owned scaffold. Allocation
+/// through the parser's configured allocator happens only after this
+/// construction has succeeded, at the callback ownership boundary.
+fn build_model(
+    source: ContentModelInput,
+) -> Option<(ContentModelBuild, crate::__stddef_size_t_h::size_t)> {
+    let (content_count, string_count) = match &source {
+        ContentModelInput::Scaffold {
+            nodes,
+            string_count,
+        } => (nodes.len(), *string_count),
+        ContentModelInput::Simple(_) => (1, 0),
     };
     let Some(content_bytes) =
         content_count.checked_mul(::core::mem::size_of::<crate::expat_h::XML_Content>())
@@ -25769,12 +25906,10 @@ unsafe fn build_model(
     // Stage the model in owned Rust storage first.  The final allocation must
     // still use Expat's configured allocator because XML_FreeContentModel
     // returns that ABI-owned block through the same allocator.
-    let empty_content = crate::expat_h::XML_Content {
+    let empty_content = ContentModelEntry {
         type_0: crate::expat_h::XML_CTYPE_EMPTY,
         quant: crate::expat_h::XML_CQUANT_NONE,
-        name: ::core::ptr::null_mut(),
         numchildren: 0,
-        children: ::core::ptr::null_mut(),
     };
     let mut contents = Vec::new();
     let mut child_starts = Vec::new();
@@ -25792,40 +25927,20 @@ unsafe fn build_model(
     name_offsets.resize(content_count, None::<usize>);
 
     match source {
-        ContentModelSource::Simple(type_0) => contents[0].type_0 = type_0,
-        ContentModelSource::Scaffold => {
-            let scaffold = dtd
-                .scaffold
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+        ContentModelInput::Simple(type_0) => contents[0].type_0 = type_0,
+        ContentModelInput::Scaffold { nodes, .. } => {
             let mut job_dest = 1usize;
             contents[0].numchildren = 0;
             for dest_index in 0..content_count {
                 let source_index = contents[dest_index].numchildren as usize;
-               let Some(source) = scaffold.nodes.get(source_index) else {
+               let Some(source) = nodes.get(source_index) else {
                     return None;
                };
                 contents[dest_index].type_0 = source.type_0;
                 contents[dest_index].quant = source.quant;
                 if source.type_0 == crate::expat_h::XML_CTYPE_NAME {
-                    let name_ref = source
-                        .name
-                        .expect("name content scaffold must have a pool name");
-                   let Some(block_index) = name_ref.block_from_tail.get().checked_sub(1) else {
-                        return None;
-                   };
-                   let Some(block) = dtd.pool.storage.active.get(block_index) else {
-                        return None;
-                   };
-                   let Some(name) = block.chars.get(name_ref.offset..) else {
-                        return None;
-                   };
-                   let Some(nul_offset) = name.iter().position(|&ch| ch == 0) else {
-                        return None;
-                   };
-                   let Some(name_len) = nul_offset.checked_add(1) else {
-                        return None;
-                   };
+                    let name = source.name.as_deref()?;
+                    let name_len = name.len();
                    let Some(name_end) = names.len().checked_add(name_len) else {
                         return None;
                    };
@@ -25833,7 +25948,7 @@ unsafe fn build_model(
                         return None;
                    }
                     name_offsets[dest_index] = Some(names.len());
-                    names.extend_from_slice(&name[..name_len]);
+                    names.extend_from_slice(name);
                     contents[dest_index].numchildren = 0;
                 } else {
                    let Ok(child_count) = usize::try_from(source.childcnt) else {
@@ -25854,7 +25969,7 @@ unsafe fn build_model(
                        let Ok(child_index_usize) = usize::try_from(child_index) else {
                             return None;
                        };
-                       let Some(child) = scaffold.nodes.get(child_index_usize) else {
+                       let Some(child) = nodes.get(child_index_usize) else {
                             return None;
                        };
                         contents[child_dest].numchildren = child_index as ::core::ffi::c_uint;
@@ -25869,49 +25984,57 @@ unsafe fn build_model(
         }
     }
 
-    let mut strings = names.into_boxed_slice();
-    let string_start = strings.as_mut_ptr();
-    let content_start = contents.as_mut_ptr();
-    // Fill links only after both owned allocations have reached their stable
-    // final locations. The registry retains these owners for the documented
-    // callback-visible lifetime of the model.
-    for (index, content) in contents.iter_mut().enumerate() {
-        if let Some(name_offset) = name_offsets[index] {
-            content.name = string_start.wrapping_add(name_offset);
-        }
-        if let Some(child_start) = child_starts[index] {
-            content.children = content_start.wrapping_add(child_start);
-        }
-    }
-    let backing = content_model_allocation_backing(parser, allocsize)?;
-    Some(ContentModelStorage {
-        contents,
-        _strings: strings,
-        backing: Some(backing),
-    })
+    Some((
+        ContentModelBuild {
+            contents,
+            strings: names.into_boxed_slice(),
+            name_offsets,
+            child_starts,
+            backing: None,
+        },
+        allocsize,
+    ))
 }
 
-/// Builds the ABI-owned declaration model and hands it to the installed
-/// element-declaration callback.  The model allocation is transferred to the
-/// callback exactly as in Expat's public callback contract, so its raw
-/// pointer never needs to escape into the prolog state machine.
-unsafe fn build_model_and_dispatch(
-    parser: &mut XML_ParserStruct,
-    dtd: &mut DTD,
+/// The state required to build and deliver one element-declaration model.
+/// Keeping parser and DTD borrows together prevents declaration processing
+/// from manufacturing raw cursors around the callback transition.
+struct ContentModelDispatchRequest<'a> {
+    parser: &'a mut XML_ParserStruct,
+    dtd: &'a mut DTD,
     source: ContentModelSource,
     event_target: EventCursorTarget,
     internal_event_start: Option<usize>,
     internal_event_window: Option<(usize, usize)>,
     event_end: usize,
-) -> bool {
-    let Some(mut model) = build_model(parser, dtd, source) else {
+}
+
+/// Builds the ABI-owned declaration model and hands it to the installed
+/// element-declaration callback.  The model is registered before dispatch so
+/// XML_FreeContentModel remains valid even during a re-entrant callback.
+fn build_model_and_dispatch_impl(request: ContentModelDispatchRequest<'_>) -> bool {
+    let ContentModelDispatchRequest {
+        parser,
+        dtd,
+        source,
+        event_target,
+        internal_event_start,
+        internal_event_window,
+        event_end,
+    } = request;
+    let Some(input) = content_model_input(dtd, source) else {
         return false;
     };
-    let model_ptr = model.contents.as_mut_ptr();
-    if !register_content_model(model_ptr.addr(), model) {
+    let Some((mut model, allocation_size)) = build_model(input) else {
         return false;
-    }
-    let model = model_ptr;
+    };
+    let Some(backing) = content_model_allocation_backing(parser, allocation_size) else {
+        return false;
+    };
+    model.backing = Some(backing);
+    let Some(model_key) = register_content_model(model) else {
+        return false;
+    };
     let name = dtd
         .pool
         .chars_from(
@@ -25919,8 +26042,7 @@ unsafe fn build_model_and_dispatch(
                 .m_declElementType
                 .expect("element declaration must be set before its callback"),
         )
-        .expect("element declaration name must remain in the DTD pool")
-        .as_ptr();
+        .expect("element declaration name must remain in the DTD pool");
     event_target.set_end(
         parser,
         internal_event_start,
@@ -25934,7 +26056,9 @@ unsafe fn build_model_and_dispatch(
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     if let Some(callback) = callback {
-        callback.invoke(handler_arg_from_state!(parser), name, model);
+        if !dispatch_element_decl_callback(callback.as_ref(), parser, name, model_key) {
+            return false;
+        }
     }
     true
 }
