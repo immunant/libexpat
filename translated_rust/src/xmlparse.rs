@@ -6596,7 +6596,7 @@ unsafe extern "C" fn storeAtts(
     return crate::expat_h::XML_ERROR_NONE;
 }
 
-unsafe extern "C" fn is_rfc3986_uri_char(
+extern "C" fn is_rfc3986_uri_char(
     mut candidate: crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
     match candidate as ::core::ffi::c_int {

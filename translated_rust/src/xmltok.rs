@@ -15502,7 +15502,7 @@ pub type C2Rust_Unnamed_9 = ::core::ffi::c_int;
 
 pub const US_ASCII_ENC: C2Rust_Unnamed_9 = 1;
 
-unsafe extern "C" fn isNever(
+extern "C" fn isNever(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
@@ -19625,7 +19625,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
     }
 };
 
-unsafe extern "C" fn unicode_byte_type(
+extern "C" fn unicode_byte_type(
     mut hi: ::core::ffi::c_char,
     mut lo: ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {

@@ -3766,7 +3766,7 @@ unsafe extern "C" fn declClose(
     return common(state, tok);
 }
 
-unsafe extern "C" fn error(
+extern "C" fn error(
     mut state: *mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
