@@ -5941,6 +5941,80 @@ pub mod xmltok_impl_c {
         Little2ScanLtAction::Token(crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
+    /// Scans the `CDATA[` prefix after `<!` using the tokenizer's bounded
+    /// UTF-16LE input.  The raw scanner historically reported the beginning
+    /// of this prefix, rather than the mismatching byte, on failure.
+    fn little2_scan_cdata_section_open_impl(input: &[u8]) -> Little2ScanResult {
+        const CDATA_LSQB: [u8; 12] = [b'C', 0, b'D', 0, b'A', 0, b'T', 0, b'A', 0, b'[', 0];
+
+        if input.len() < CDATA_LSQB.len() {
+            return Little2ScanResult {
+                token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+                next: None,
+            };
+        }
+        if input[..CDATA_LSQB.len()] != CDATA_LSQB {
+            return Little2ScanResult {
+                token: crate::src::xmltok::XML_TOK_INVALID_1,
+                next: Some(0),
+            };
+        }
+        Little2ScanResult {
+            token: crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1,
+            next: Some(CDATA_LSQB.len()),
+        }
+    }
+
+    /// Resolves the follow-up scanner selected by a UTF-16LE `<` token using
+    /// bounded views of the same input.  Keeping the offsets relative to the
+    /// original input lets the pointer adapter perform a single final cursor
+    /// update without re-entering another raw scanner.
+    fn little2_scan_lt_result(
+        enc: &normal_encoding,
+        bytes: &[u8],
+        chars: &[::core::ffi::c_char],
+    ) -> Little2ScanResult {
+        let result = match little2_scan_lt_impl(enc, bytes) {
+            Little2ScanLtAction::Token(token, next) => return Little2ScanResult { token, next },
+            Little2ScanLtAction::Comment(start) => {
+                match little2_scan_comment_impl(enc, &chars[start..]) {
+                    Little2ScanOutcome::Token(token, next) => (token, Some(start + next)),
+                    Little2ScanOutcome::Partial(token) => (token, None),
+                    Little2ScanOutcome::Invalid(at) => {
+                        (crate::src::xmltok::XML_TOK_INVALID_1, Some(start + at))
+                    }
+                }
+            }
+            Little2ScanLtAction::CdataSection(start) => {
+                let result = little2_scan_cdata_section_open_impl(&bytes[start..]);
+                (result.token, result.next.map(|next| start + next))
+            }
+            Little2ScanLtAction::ProcessingInstruction(start) => {
+                let (token, next) = little2_scan_pi_impl(enc, &chars[start..]);
+                (token, next.map(|next| start + next))
+            }
+            Little2ScanLtAction::EndTag(start) => {
+                match little2_scan_end_tag_impl(enc, &bytes[start..]) {
+                    Little2ScanLtAction::Token(token, next) => {
+                        (token, next.map(|next| start + next))
+                    }
+                    _ => unreachable!("end-tag scanning produces only token outcomes"),
+                }
+            }
+            Little2ScanLtAction::Attributes(start) => {
+                let result = little2_scan_atts_impl(&enc.type_0, &chars[start..], |ref_start| {
+                    let result = little2_scan_ref_impl(enc, &chars[start + ref_start..]);
+                    (result.token, result.next.map_or(0, |next| ref_start + next))
+                });
+                (result.token, result.next.map(|next| start + next))
+            }
+        };
+        Little2ScanResult {
+            token: result.0,
+            next: result.1,
+        }
+    }
+
     pub unsafe extern "C" fn little2_scanLt(
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,
@@ -5952,30 +6026,13 @@ pub mod xmltok_impl_c {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
         let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
+        let chars = ::core::slice::from_raw_parts(ptr, input_len as usize);
         let normal = &*(enc as *const normal_encoding);
-        match little2_scan_lt_impl(normal, input) {
-            Little2ScanLtAction::Token(token, next) => {
-                if let Some(next) = next {
-                    *nextTokPtr = ptr.add(next);
-                }
-                token
-            }
-            Little2ScanLtAction::Comment(start) => {
-                little2_scanComment(enc, ptr.add(start), end, nextTokPtr)
-            }
-            Little2ScanLtAction::CdataSection(start) => {
-                little2_scanCdataSection(enc, ptr.add(start), end, nextTokPtr)
-            }
-            Little2ScanLtAction::ProcessingInstruction(start) => {
-                little2_scanPi(enc, ptr.add(start), end, nextTokPtr)
-            }
-            Little2ScanLtAction::EndTag(start) => {
-                little2_scanEndTag(enc, ptr.add(start), end, nextTokPtr)
-            }
-            Little2ScanLtAction::Attributes(start) => {
-                little2_scanAtts(enc, ptr.add(start), end, nextTokPtr)
-            }
+        let result = little2_scan_lt_result(normal, input, chars);
+        if let Some(next) = result.next {
+            *nextTokPtr = ptr.add(next);
         }
+        result.token
     }
 
     enum Little2ContentToken {
