@@ -15607,6 +15607,8 @@ enum ByteOutputConversion {
     Utf8Identity,
     Latin1ToUtf8,
     AsciiIdentity,
+    LittleEndianUtf16ToUtf8,
+    BigEndianUtf16ToUtf8,
 }
 
 #[derive(Copy, Clone)]
@@ -15695,6 +15697,130 @@ fn convert_to_utf8_bytes(
                     *c2rust_fresh9 = *c2rust_fresh8;
                 }
             },
+            ByteOutputConversion::LittleEndianUtf16ToUtf8
+            | ByteOutputConversion::BigEndianUtf16ToUtf8 => {
+                let (low_byte_offset, high_byte_offset) = match conversion {
+                    ByteOutputConversion::LittleEndianUtf16ToUtf8 => (0, 1),
+                    ByteOutputConversion::BigEndianUtf16ToUtf8 => (1, 0),
+                    _ => unreachable!(),
+                };
+                let from_lim = from.offset(
+                    ((fromLim.offset_from(from) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
+                        << 1 as ::core::ffi::c_int) as isize,
+                );
+
+                loop {
+                    if from >= from_lim {
+                        break crate::src::xmltok::XML_CONVERT_COMPLETED;
+                    }
+
+                    let lo = *from.offset(low_byte_offset) as ::core::ffi::c_uchar;
+                    let hi = *from.offset(high_byte_offset) as ::core::ffi::c_uchar;
+                    match hi as ::core::ffi::c_int {
+                        0 if (lo as ::core::ffi::c_int) < 0x80 as ::core::ffi::c_int => {
+                            if to == toLim as *mut ::core::ffi::c_char {
+                                break crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                            }
+                            let target = to;
+                            to = to.offset(1);
+                            *target = lo as ::core::ffi::c_char;
+                        }
+                        0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 => {
+                            if (toLim.offset_from(to) as ::core::ffi::c_long)
+                                < 2 as ::core::ffi::c_long
+                            {
+                                break crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                            }
+                            let target = to;
+                            to = to.offset(1);
+                            *target = (lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
+                                | (hi as ::core::ffi::c_int) << 2 as ::core::ffi::c_int
+                                | UTF8_cval2 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                            let target = to;
+                            to = to.offset(1);
+                            *target = (lo as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+                                | 0x80 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                        }
+                        216 | 217 | 218 | 219 => {
+                            if (toLim.offset_from(to) as ::core::ffi::c_long)
+                                < 4 as ::core::ffi::c_long
+                            {
+                                break crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                            }
+                            if (from_lim.offset_from(from) as ::core::ffi::c_long)
+                                < 4 as ::core::ffi::c_long
+                            {
+                                break crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+                            }
+
+                            let plane = ((hi as ::core::ffi::c_int & 0x3 as ::core::ffi::c_int)
+                                << 2 as ::core::ffi::c_int
+                                | lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
+                                    & 0x3 as ::core::ffi::c_int)
+                                + 1 as ::core::ffi::c_int;
+                            let next = from.offset(2);
+                            let lo2 = *next.offset(low_byte_offset) as ::core::ffi::c_uchar;
+                            let hi2 = *next.offset(high_byte_offset) as ::core::ffi::c_uchar;
+
+                            let target = to;
+                            to = to.offset(1);
+                            *target = (plane >> 2 as ::core::ffi::c_int
+                                | UTF8_cval4 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                            let target = to;
+                            to = to.offset(1);
+                            *target = (lo as ::core::ffi::c_int >> 2 as ::core::ffi::c_int
+                                & 0xf as ::core::ffi::c_int
+                                | (plane & 0x3 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int
+                                | 0x80 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                            let target = to;
+                            to = to.offset(1);
+                            *target = ((lo as ::core::ffi::c_int & 0x3 as ::core::ffi::c_int)
+                                << 4 as ::core::ffi::c_int
+                                | (hi2 as ::core::ffi::c_int & 0x3 as ::core::ffi::c_int)
+                                    << 2 as ::core::ffi::c_int
+                                | lo2 as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
+                                | 0x80 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                            let target = to;
+                            to = to.offset(1);
+                            *target = (lo2 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+                                | 0x80 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                            from = from.offset(2);
+                        }
+                        _ => {
+                            if (toLim.offset_from(to) as ::core::ffi::c_long)
+                                < 3 as ::core::ffi::c_long
+                            {
+                                break crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
+                            }
+                            let target = to;
+                            to = to.offset(1);
+                            *target = (hi as ::core::ffi::c_int >> 4 as ::core::ffi::c_int
+                                | UTF8_cval3 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                            let target = to;
+                            to = to.offset(1);
+                            *target = ((hi as ::core::ffi::c_int & 0xf as ::core::ffi::c_int)
+                                << 2 as ::core::ffi::c_int
+                                | lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
+                                | 0x80 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                            let target = to;
+                            to = to.offset(1);
+                            *target = (lo as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+                                | 0x80 as ::core::ffi::c_int)
+                                as ::core::ffi::c_char;
+                        }
+                    }
+
+                    from = from.offset(2);
+                }
+            }
             ByteOutputConversion::AsciiIdentity => loop {
                 if !(from < fromLim && to < toLim as *mut ::core::ffi::c_char) {
                     break if to == toLim as *mut ::core::ffi::c_char && from < fromLim {
@@ -19526,145 +19652,21 @@ extern "C" fn unicode_byte_type(
     return crate::xmltok_impl_h::BT_NONASCII as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn little2_toUtf8(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+extern "C" fn little2_toUtf8(
+    _enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut from: *const ::core::ffi::c_char = *fromP;
-    fromLim = from.offset(
-        ((fromLim.offset_from(from) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int) as isize,
-    );
-    while from < fromLim {
-        let mut plane: ::core::ffi::c_int = 0;
-        let mut lo2: ::core::ffi::c_uchar = 0;
-        let mut lo: ::core::ffi::c_uchar =
-            *from.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar;
-        let mut hi: ::core::ffi::c_uchar =
-            *from.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar;
-        let mut c2rust_current_block_34: u64;
-        match hi as ::core::ffi::c_int {
-            0 => {
-                if (lo as ::core::ffi::c_int) < 0x80 as ::core::ffi::c_int {
-                    if *toP == toLim as *mut ::core::ffi::c_char {
-                        *fromP = from;
-                        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                    }
-                    let c2rust_fresh19 = *toP;
-                    *toP = (*toP).offset(1);
-                    *c2rust_fresh19 = lo as ::core::ffi::c_char;
-                    c2rust_current_block_34 = 14136749492126903395;
-                } else {
-                    c2rust_current_block_34 = 1439209438531519227;
-                }
-            }
-            1 | 2 | 3 | 4 | 5 | 6 | 7 => {
-                c2rust_current_block_34 = 1439209438531519227;
-            }
-            216 | 217 | 218 | 219 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                if (fromLim.offset_from(from) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-                }
-                plane = ((hi as ::core::ffi::c_int & 0x3 as ::core::ffi::c_int)
-                    << 2 as ::core::ffi::c_int
-                    | lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                        & 0x3 as ::core::ffi::c_int)
-                    + 1 as ::core::ffi::c_int;
-                let c2rust_fresh25 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh25 = (plane >> 2 as ::core::ffi::c_int
-                    | UTF8_cval4 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh26 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh26 = (lo as ::core::ffi::c_int >> 2 as ::core::ffi::c_int
-                    & 0xf as ::core::ffi::c_int
-                    | (plane & 0x3 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                from = from.offset(2 as ::core::ffi::c_int as isize);
-                lo2 = *from.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar;
-                let c2rust_fresh27 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh27 = ((lo as ::core::ffi::c_int & 0x3 as ::core::ffi::c_int)
-                    << 4 as ::core::ffi::c_int
-                    | (*from.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        & 0x3 as ::core::ffi::c_int)
-                        << 2 as ::core::ffi::c_int
-                    | lo2 as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh28 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh28 = (lo2 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                c2rust_current_block_34 = 14136749492126903395;
-            }
-            _ => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                let c2rust_fresh22 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh22 = (hi as ::core::ffi::c_int >> 4 as ::core::ffi::c_int
-                    | UTF8_cval3 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh23 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh23 = ((hi as ::core::ffi::c_int & 0xf as ::core::ffi::c_int)
-                    << 2 as ::core::ffi::c_int
-                    | lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh24 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh24 = (lo as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                c2rust_current_block_34 = 14136749492126903395;
-            }
-        }
-        match c2rust_current_block_34 {
-            1439209438531519227 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                let c2rust_fresh20 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh20 = (lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                    | (hi as ::core::ffi::c_int) << 2 as ::core::ffi::c_int
-                    | UTF8_cval2 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh21 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh21 = (lo as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-            }
-            _ => {}
-        }
-        from = from.offset(2 as ::core::ffi::c_int as isize);
-    }
-    *fromP = from;
-    if from < fromLim {
-        return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-    } else {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
-    };
+    convert_to_utf8_bytes(
+        ByteOutputConversion::LittleEndianUtf16ToUtf8,
+        fromP,
+        fromLim,
+        toP,
+        toLim,
+    )
 }
-
 extern "C" fn little2_toUtf16(
     _enc: *const crate::src::xmltok::ENCODING,
     fromP: *mut *const ::core::ffi::c_char,
@@ -19681,145 +19683,21 @@ extern "C" fn little2_toUtf16(
     )
 }
 
-unsafe extern "C" fn big2_toUtf8(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+extern "C" fn big2_toUtf8(
+    _enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut from: *const ::core::ffi::c_char = *fromP;
-    fromLim = from.offset(
-        ((fromLim.offset_from(from) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int) as isize,
-    );
-    while from < fromLim {
-        let mut plane: ::core::ffi::c_int = 0;
-        let mut lo2: ::core::ffi::c_uchar = 0;
-        let mut lo: ::core::ffi::c_uchar =
-            *from.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar;
-        let mut hi: ::core::ffi::c_uchar =
-            *from.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar;
-        let mut c2rust_current_block_34: u64;
-        match hi as ::core::ffi::c_int {
-            0 => {
-                if (lo as ::core::ffi::c_int) < 0x80 as ::core::ffi::c_int {
-                    if *toP == toLim as *mut ::core::ffi::c_char {
-                        *fromP = from;
-                        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                    }
-                    let c2rust_fresh38 = *toP;
-                    *toP = (*toP).offset(1);
-                    *c2rust_fresh38 = lo as ::core::ffi::c_char;
-                    c2rust_current_block_34 = 14136749492126903395;
-                } else {
-                    c2rust_current_block_34 = 5068516122610302910;
-                }
-            }
-            1 | 2 | 3 | 4 | 5 | 6 | 7 => {
-                c2rust_current_block_34 = 5068516122610302910;
-            }
-            216 | 217 | 218 | 219 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                if (fromLim.offset_from(from) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-                }
-                plane = ((hi as ::core::ffi::c_int & 0x3 as ::core::ffi::c_int)
-                    << 2 as ::core::ffi::c_int
-                    | lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                        & 0x3 as ::core::ffi::c_int)
-                    + 1 as ::core::ffi::c_int;
-                let c2rust_fresh44 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh44 = (plane >> 2 as ::core::ffi::c_int
-                    | UTF8_cval4 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh45 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh45 = (lo as ::core::ffi::c_int >> 2 as ::core::ffi::c_int
-                    & 0xf as ::core::ffi::c_int
-                    | (plane & 0x3 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                from = from.offset(2 as ::core::ffi::c_int as isize);
-                lo2 = *from.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar;
-                let c2rust_fresh46 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh46 = ((lo as ::core::ffi::c_int & 0x3 as ::core::ffi::c_int)
-                    << 4 as ::core::ffi::c_int
-                    | (*from.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                        as ::core::ffi::c_int
-                        & 0x3 as ::core::ffi::c_int)
-                        << 2 as ::core::ffi::c_int
-                    | lo2 as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh47 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh47 = (lo2 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                c2rust_current_block_34 = 14136749492126903395;
-            }
-            _ => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                let c2rust_fresh41 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh41 = (hi as ::core::ffi::c_int >> 4 as ::core::ffi::c_int
-                    | UTF8_cval3 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh42 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh42 = ((hi as ::core::ffi::c_int & 0xf as ::core::ffi::c_int)
-                    << 2 as ::core::ffi::c_int
-                    | lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh43 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh43 = (lo as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                c2rust_current_block_34 = 14136749492126903395;
-            }
-        }
-        match c2rust_current_block_34 {
-            5068516122610302910 => {
-                if (toLim.offset_from(*toP) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    *fromP = from;
-                    return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                let c2rust_fresh39 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh39 = (lo as ::core::ffi::c_int >> 6 as ::core::ffi::c_int
-                    | (hi as ::core::ffi::c_int) << 2 as ::core::ffi::c_int
-                    | UTF8_cval2 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-                let c2rust_fresh40 = *toP;
-                *toP = (*toP).offset(1);
-                *c2rust_fresh40 = (lo as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int)
-                    as ::core::ffi::c_char;
-            }
-            _ => {}
-        }
-        from = from.offset(2 as ::core::ffi::c_int as isize);
-    }
-    *fromP = from;
-    if from < fromLim {
-        return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-    } else {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
-    };
+    convert_to_utf8_bytes(
+        ByteOutputConversion::BigEndianUtf16ToUtf8,
+        fromP,
+        fromLim,
+        toP,
+        toLim,
+    )
 }
-
 extern "C" fn big2_toUtf16(
     _enc: *const crate::src::xmltok::ENCODING,
     fromP: *mut *const ::core::ffi::c_char,
