@@ -6040,32 +6040,6 @@ pub mod xmltok_impl_c {
         Little2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
     }
 
-    pub unsafe extern "C" fn little2_scanLit(
-        open: ::core::ffi::c_int,
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let encoding = &*(enc as *const normal_encoding);
-        match little2_scan_lit_impl(open, encoding, input) {
-            Little2ScanOutcome::Token(token, next) => {
-                *nextTokPtr = ptr.add(next);
-                token
-            }
-            Little2ScanOutcome::Partial(token) => token,
-            Little2ScanOutcome::Invalid(at) => {
-                *nextTokPtr = ptr.add(at);
-                crate::src::xmltok::XML_TOK_INVALID_1
-            }
-        }
-    }
-
     enum Little2PrologAction {
         Return {
             token: ::core::ffi::c_int,
@@ -11618,7 +11592,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanComment;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanDecl;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanEndTag;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanHexCharRef;
-pub use crate::src::xmltok::xmltok_impl_c::little2_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
