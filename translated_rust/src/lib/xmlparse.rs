@@ -5154,7 +5154,7 @@ unsafe extern "C" fn storeAtts(
                     };
                     let mut sip_key: sipkey = sipkey { k: [0; 2] };
                     copy_salt_to_sipkey(parser, &raw mut sip_key);
-                    sip24_init(&raw mut sip_state, &raw mut sip_key);
+                    sip24_init(&mut sip_state, &sip_key);
                     *(s as *mut XML_Char).offset(-(1 as ::core::ffi::c_int) as isize) =
                         0 as XML_Char;
                     id = lookup(parser, &raw mut (*dtd).attributeIds, s as KEY, 0 as size_t)
@@ -5222,7 +5222,7 @@ unsafe extern "C" fn storeAtts(
                             break;
                         }
                     }
-                    uriHash = sip24_final(&raw mut sip_state) as ::core::ffi::c_ulong;
+                    uriHash = sip24_final(&mut sip_state) as ::core::ffi::c_ulong;
                     let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
                     let mut mask: ::core::ffi::c_ulong =
                         nsAttsSize.wrapping_sub(1 as ::core::ffi::c_uint) as ::core::ffi::c_ulong;
@@ -5423,19 +5423,15 @@ unsafe extern "C" fn storeAtts(
         return XML_ERROR_NONE;
     }
 }
-unsafe extern "C" fn is_rfc3986_uri_char(mut candidate: XML_Char) -> XML_Bool {
-    unsafe {
-        match candidate as ::core::ffi::c_int {
-            65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81
-            | 82 | 83 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 97 | 98 | 99 | 100 | 101 | 102 | 103
-            | 104 | 105 | 106 | 107 | 108 | 109 | 110 | 111 | 112 | 113 | 114 | 115 | 116 | 117
-            | 118 | 119 | 120 | 121 | 122 | 48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57
-            | 37 | 45 | 46 | 95 | 126 | 58 | 47 | 63 | 35 | 91 | 93 | 64 | 33 | 36 | 38 | 39
-            | 40 | 41 | 42 | 43 | 44 | 59 | 61 => {
-                return XML_TRUE;
-            }
-            _ => return XML_FALSE,
-        };
+fn is_rfc3986_uri_char(candidate: XML_Char) -> XML_Bool {
+    match candidate as ::core::ffi::c_int {
+        65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81 | 82
+        | 83 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 97 | 98 | 99 | 100 | 101 | 102 | 103 | 104
+        | 105 | 106 | 107 | 108 | 109 | 110 | 111 | 112 | 113 | 114 | 115 | 116 | 117 | 118
+        | 119 | 120 | 121 | 122 | 48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 | 37 | 45
+        | 46 | 95 | 126 | 58 | 47 | 63 | 35 | 91 | 93 | 64 | 33 | 36 | 38 | 39 | 40 | 41 | 42
+        | 43 | 44 | 59 | 61 => XML_TRUE,
+        _ => XML_FALSE,
     }
 }
 unsafe extern "C" fn addBinding(
@@ -10489,13 +10485,13 @@ unsafe extern "C" fn hash(mut parser: XML_Parser, mut s: KEY) -> ::core::ffi::c_
         };
         let mut key: sipkey = sipkey { k: [0; 2] };
         copy_salt_to_sipkey(parser, &raw mut key);
-        sip24_init(&raw mut state, &raw mut key);
+        sip24_init(&mut state, &key);
         sip24_update(
             &raw mut state,
             s as *const ::core::ffi::c_void,
             keylen(s).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
         );
-        return sip24_final(&raw mut state) as ::core::ffi::c_ulong;
+        return sip24_final(&mut state) as ::core::ffi::c_ulong;
     }
 }
 unsafe extern "C" fn lookup(
@@ -10914,24 +10910,22 @@ unsafe extern "C" fn poolStoreString(
         return (*pool).start;
     }
 }
-unsafe extern "C" fn poolBytesToAllocateFor(mut blockSize: ::core::ffi::c_int) -> size_t {
-    unsafe {
-        let stretch: size_t = ::core::mem::size_of::<XML_Char>() as size_t;
-        if blockSize <= 0 as ::core::ffi::c_int {
-            return 0 as size_t;
-        }
-        if blockSize > (INT_MAX as size_t).wrapping_div(stretch) as ::core::ffi::c_int {
-            return 0 as size_t;
-        }
-        let stretchedBlockSize: ::core::ffi::c_int = blockSize * stretch as ::core::ffi::c_int;
-        let bytesToAllocate: ::core::ffi::c_int = (12 as ::core::ffi::c_ulong)
-            .wrapping_add(stretchedBlockSize as ::core::ffi::c_uint as ::core::ffi::c_ulong)
-            as ::core::ffi::c_int;
-        if bytesToAllocate < 0 as ::core::ffi::c_int {
-            return 0 as size_t;
-        }
-        return bytesToAllocate as size_t;
+fn poolBytesToAllocateFor(blockSize: ::core::ffi::c_int) -> size_t {
+    let stretch = ::core::mem::size_of::<XML_Char>() as size_t;
+    if blockSize <= 0 as ::core::ffi::c_int {
+        return 0 as size_t;
     }
+    if blockSize > (INT_MAX as size_t).wrapping_div(stretch) as ::core::ffi::c_int {
+        return 0 as size_t;
+    }
+    let stretchedBlockSize = blockSize * stretch as ::core::ffi::c_int;
+    let bytesToAllocate: ::core::ffi::c_int = (12 as ::core::ffi::c_ulong)
+        .wrapping_add(stretchedBlockSize as ::core::ffi::c_uint as ::core::ffi::c_ulong)
+        as ::core::ffi::c_int;
+    if bytesToAllocate < 0 as ::core::ffi::c_int {
+        return 0 as size_t;
+    }
+    bytesToAllocate as size_t
 }
 unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> XML_Bool {
     unsafe {
@@ -11992,119 +11986,55 @@ pub const XML_TOK_INSTANCE_START: ::core::ffi::c_int = 29 as ::core::ffi::c_int;
 pub const XML_TOK_ATTRIBUTE_VALUE_S: ::core::ffi::c_int = 39;
 pub const XML_TOK_CDATA_SECT_CLOSE: ::core::ffi::c_int = 40;
 pub const XML_TOK_IGNORE_SECT: ::core::ffi::c_int = 42;
-unsafe extern "C" fn sip_tokey(
-    mut key: *mut sipkey,
-    mut src: *const ::core::ffi::c_void,
-) -> *mut sipkey {
-    unsafe {
-        (*key).k[0 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 0 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as uint64_t)
-                << 8 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as uint64_t)
-                << 16 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
-                as uint64_t)
-                << 24 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(4 as ::core::ffi::c_int as isize)
-                as uint64_t)
-                << 32 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(5 as ::core::ffi::c_int as isize)
-                as uint64_t)
-                << 40 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(6 as ::core::ffi::c_int as isize)
-                as uint64_t)
-                << 48 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(7 as ::core::ffi::c_int as isize)
-                as uint64_t)
-                << 56 as ::core::ffi::c_int;
-        (*key).k[1 as ::core::ffi::c_int as usize] = (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as uint64_t)
-            << 0 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(1 as ::core::ffi::c_int as isize) as uint64_t)
-                << 8 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(2 as ::core::ffi::c_int as isize) as uint64_t)
-                << 16 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(3 as ::core::ffi::c_int as isize) as uint64_t)
-                << 24 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(4 as ::core::ffi::c_int as isize) as uint64_t)
-                << 32 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(5 as ::core::ffi::c_int as isize) as uint64_t)
-                << 40 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(6 as ::core::ffi::c_int as isize) as uint64_t)
-                << 48 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(7 as ::core::ffi::c_int as isize) as uint64_t)
-                << 56 as ::core::ffi::c_int;
-        return key;
+fn sip_tokey(key: &mut sipkey, src: &[::core::ffi::c_uchar; 16]) {
+    let mut first = [0; 8];
+    first.copy_from_slice(&src[..8]);
+    let mut second = [0; 8];
+    second.copy_from_slice(&src[8..]);
+    key.k[0] = u64::from_le_bytes(first);
+    key.k[1] = u64::from_le_bytes(second);
+}
+fn sip_round(state: &mut siphash, rounds: ::core::ffi::c_int) {
+    let mut i = 0 as ::core::ffi::c_int;
+    while i < rounds {
+        state.v0 = state.v0.wrapping_add(state.v1);
+        state.v1 = state.v1 << 13 as ::core::ffi::c_int
+            | state.v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
+        state.v1 ^= state.v0;
+        state.v0 = state.v0 << 32 as ::core::ffi::c_int
+            | state.v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+        state.v2 = state.v2.wrapping_add(state.v3);
+        state.v3 = state.v3 << 16 as ::core::ffi::c_int
+            | state.v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
+        state.v3 ^= state.v2;
+        state.v0 = state.v0.wrapping_add(state.v3);
+        state.v3 = state.v3 << 21 as ::core::ffi::c_int
+            | state.v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
+        state.v3 ^= state.v0;
+        state.v2 = state.v2.wrapping_add(state.v1);
+        state.v1 = state.v1 << 17 as ::core::ffi::c_int
+            | state.v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
+        state.v1 ^= state.v2;
+        state.v2 = state.v2 << 32 as ::core::ffi::c_int
+            | state.v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
+        i += 1;
     }
 }
-unsafe extern "C" fn sip_round(mut H: *mut siphash, rounds: ::core::ffi::c_int) {
-    unsafe {
-        let mut i: ::core::ffi::c_int = 0;
-        i = 0 as ::core::ffi::c_int;
-        while i < rounds {
-            (*H).v0 = (*H).v0.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 13 as ::core::ffi::c_int
-                | (*H).v1 >> 64 as ::core::ffi::c_int - 13 as ::core::ffi::c_int;
-            (*H).v1 ^= (*H).v0;
-            (*H).v0 = (*H).v0 << 32 as ::core::ffi::c_int
-                | (*H).v0 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-            (*H).v2 = (*H).v2.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 16 as ::core::ffi::c_int
-                | (*H).v3 >> 64 as ::core::ffi::c_int - 16 as ::core::ffi::c_int;
-            (*H).v3 ^= (*H).v2;
-            (*H).v0 = (*H).v0.wrapping_add((*H).v3);
-            (*H).v3 = (*H).v3 << 21 as ::core::ffi::c_int
-                | (*H).v3 >> 64 as ::core::ffi::c_int - 21 as ::core::ffi::c_int;
-            (*H).v3 ^= (*H).v0;
-            (*H).v2 = (*H).v2.wrapping_add((*H).v1);
-            (*H).v1 = (*H).v1 << 17 as ::core::ffi::c_int
-                | (*H).v1 >> 64 as ::core::ffi::c_int - 17 as ::core::ffi::c_int;
-            (*H).v1 ^= (*H).v2;
-            (*H).v2 = (*H).v2 << 32 as ::core::ffi::c_int
-                | (*H).v2 >> 64 as ::core::ffi::c_int - 32 as ::core::ffi::c_int;
-            i += 1;
-        }
-    }
-}
-unsafe extern "C" fn sip24_init(mut H: *mut siphash, mut key: *const sipkey) -> *mut siphash {
-    unsafe {
-        (*H).v0 = ((0x736f6d65 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-            | 0x70736575 as uint64_t)
-            ^ (*key).k[0 as ::core::ffi::c_int as usize];
-        (*H).v1 = ((0x646f7261 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-            | 0x6e646f6d as uint64_t)
-            ^ (*key).k[1 as ::core::ffi::c_int as usize];
-        (*H).v2 = ((0x6c796765 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-            | 0x6e657261 as uint64_t)
-            ^ (*key).k[0 as ::core::ffi::c_int as usize];
-        (*H).v3 = ((0x74656462 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
-            | 0x79746573 as uint64_t)
-            ^ (*key).k[1 as ::core::ffi::c_int as usize];
-        (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-        (*H).c = 0 as uint64_t;
-        return H;
-    }
+fn sip24_init(state: &mut siphash, key: &sipkey) {
+    state.v0 = ((0x736f6d65 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+        | 0x70736575 as uint64_t)
+        ^ key.k[0];
+    state.v1 = ((0x646f7261 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+        | 0x6e646f6d as uint64_t)
+        ^ key.k[1];
+    state.v2 = ((0x6c796765 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+        | 0x6e657261 as uint64_t)
+        ^ key.k[0];
+    state.v3 = ((0x74656462 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
+        | 0x79746573 as uint64_t)
+        ^ key.k[1];
+    state.p = &raw mut state.buf as *mut ::core::ffi::c_uchar;
+    state.c = 0 as uint64_t;
 }
 unsafe extern "C" fn sip24_update(
     mut H: *mut siphash,
@@ -12155,7 +12085,7 @@ unsafe extern "C" fn sip24_update(
                 | ((*H).buf[7 as ::core::ffi::c_int as usize] as uint64_t)
                     << 56 as ::core::ffi::c_int;
             (*H).v3 ^= m;
-            sip_round(H, 2 as ::core::ffi::c_int);
+            sip_round(&mut *H, 2 as ::core::ffi::c_int);
             (*H).v0 ^= m;
             (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
             (*H).c = (*H).c.wrapping_add(8 as uint64_t);
@@ -12166,96 +12096,91 @@ unsafe extern "C" fn sip24_update(
         return H;
     }
 }
-unsafe extern "C" fn sip24_final(mut H: *mut siphash) -> uint64_t {
-    unsafe {
-        let left: ::core::ffi::c_char = (*H)
-            .p
-            .offset_from(&raw mut (*H).buf as *mut ::core::ffi::c_uchar)
-            as ::core::ffi::c_long as ::core::ffi::c_char;
-        let mut b: uint64_t = (*H).c.wrapping_add(left as uint64_t) << 56 as ::core::ffi::c_int;
-        let mut c2rust_current_block_6: u64;
-        match left as ::core::ffi::c_int {
-            7 => {
-                b |= ((*H).buf[6 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 48 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 765793381763078134;
-            }
-            6 => {
-                c2rust_current_block_6 = 765793381763078134;
-            }
-            5 => {
-                c2rust_current_block_6 = 3105948935974009916;
-            }
-            4 => {
-                c2rust_current_block_6 = 16488506295619998735;
-            }
-            3 => {
-                c2rust_current_block_6 = 2165477741955893522;
-            }
-            2 => {
-                c2rust_current_block_6 = 16420434121503669123;
-            }
-            1 => {
-                c2rust_current_block_6 = 4773154127383362184;
-            }
-            0 | _ => {
-                c2rust_current_block_6 = 5720623009719927633;
-            }
+fn sip24_final(state: &mut siphash) -> uint64_t {
+    let left = (state.p as usize).wrapping_sub(state.buf.as_ptr() as usize) as ::core::ffi::c_char;
+    let mut b: uint64_t = state.c.wrapping_add(left as uint64_t) << 56 as ::core::ffi::c_int;
+    let mut c2rust_current_block_6: u64;
+    match left as ::core::ffi::c_int {
+        7 => {
+            b |= (state.buf[6 as ::core::ffi::c_int as usize] as uint64_t)
+                << 48 as ::core::ffi::c_int;
+            c2rust_current_block_6 = 765793381763078134;
         }
-        match c2rust_current_block_6 {
-            765793381763078134 => {
-                b |= ((*H).buf[5 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 40 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 3105948935974009916;
-            }
-            _ => {}
+        6 => {
+            c2rust_current_block_6 = 765793381763078134;
         }
-        match c2rust_current_block_6 {
-            3105948935974009916 => {
-                b |= ((*H).buf[4 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 32 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 16488506295619998735;
-            }
-            _ => {}
+        5 => {
+            c2rust_current_block_6 = 3105948935974009916;
         }
-        match c2rust_current_block_6 {
-            16488506295619998735 => {
-                b |= ((*H).buf[3 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 24 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 2165477741955893522;
-            }
-            _ => {}
+        4 => {
+            c2rust_current_block_6 = 16488506295619998735;
         }
-        match c2rust_current_block_6 {
-            2165477741955893522 => {
-                b |= ((*H).buf[2 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 16 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 16420434121503669123;
-            }
-            _ => {}
+        3 => {
+            c2rust_current_block_6 = 2165477741955893522;
         }
-        match c2rust_current_block_6 {
-            16420434121503669123 => {
-                b |= ((*H).buf[1 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 8 as ::core::ffi::c_int;
-                c2rust_current_block_6 = 4773154127383362184;
-            }
-            _ => {}
+        2 => {
+            c2rust_current_block_6 = 16420434121503669123;
         }
-        match c2rust_current_block_6 {
-            4773154127383362184 => {
-                b |= ((*H).buf[0 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 0 as ::core::ffi::c_int;
-            }
-            _ => {}
+        1 => {
+            c2rust_current_block_6 = 4773154127383362184;
         }
-        (*H).v3 ^= b;
-        sip_round(H, 2 as ::core::ffi::c_int);
-        (*H).v0 ^= b;
-        (*H).v2 ^= 0xff as uint64_t;
-        sip_round(H, 4 as ::core::ffi::c_int);
-        return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
+        0 | _ => {
+            c2rust_current_block_6 = 5720623009719927633;
+        }
     }
+    match c2rust_current_block_6 {
+        765793381763078134 => {
+            b |= (state.buf[5 as ::core::ffi::c_int as usize] as uint64_t)
+                << 40 as ::core::ffi::c_int;
+            c2rust_current_block_6 = 3105948935974009916;
+        }
+        _ => {}
+    }
+    match c2rust_current_block_6 {
+        3105948935974009916 => {
+            b |= (state.buf[4 as ::core::ffi::c_int as usize] as uint64_t)
+                << 32 as ::core::ffi::c_int;
+            c2rust_current_block_6 = 16488506295619998735;
+        }
+        _ => {}
+    }
+    match c2rust_current_block_6 {
+        16488506295619998735 => {
+            b |= (state.buf[3 as ::core::ffi::c_int as usize] as uint64_t)
+                << 24 as ::core::ffi::c_int;
+            c2rust_current_block_6 = 2165477741955893522;
+        }
+        _ => {}
+    }
+    match c2rust_current_block_6 {
+        2165477741955893522 => {
+            b |= (state.buf[2 as ::core::ffi::c_int as usize] as uint64_t)
+                << 16 as ::core::ffi::c_int;
+            c2rust_current_block_6 = 16420434121503669123;
+        }
+        _ => {}
+    }
+    match c2rust_current_block_6 {
+        16420434121503669123 => {
+            b |= (state.buf[1 as ::core::ffi::c_int as usize] as uint64_t)
+                << 8 as ::core::ffi::c_int;
+            c2rust_current_block_6 = 4773154127383362184;
+        }
+        _ => {}
+    }
+    match c2rust_current_block_6 {
+        4773154127383362184 => {
+            b |= (state.buf[0 as ::core::ffi::c_int as usize] as uint64_t)
+                << 0 as ::core::ffi::c_int;
+        }
+        _ => {}
+    }
+    state.v3 ^= b;
+    sip_round(state, 2 as ::core::ffi::c_int);
+    state.v0 ^= b;
+    state.v2 ^= 0xff as uint64_t;
+    sip_round(state, 4 as ::core::ffi::c_int);
+    state.v0 ^ state.v1 ^ state.v2 ^ state.v3
 }
 unsafe extern "C" fn siphash24(
     mut src: *const ::core::ffi::c_void,
@@ -12281,7 +12206,9 @@ unsafe extern "C" fn siphash24(
             p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
             c: 0 as uint64_t,
         };
-        return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
+        sip24_init(&mut state, &*key);
+        sip24_update(&raw mut state, src, len);
+        return sip24_final(&mut state);
     }
 }
 unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
@@ -12932,9 +12859,8 @@ unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
         let mut k: sipkey = sipkey { k: [0; 2] };
         let mut i: size_t = 0;
         sip_tokey(
-            &raw mut k,
-            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0".as_ptr()
-                as *const ::core::ffi::c_char as *const ::core::ffi::c_void,
+            &mut k,
+            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F",
         );
         i = 0 as size_t;
         while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() as usize {
