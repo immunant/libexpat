@@ -16597,9 +16597,9 @@ unsafe extern "C" fn doProlog(
                                                 .expect("entity declaration must be set");
                                             let notation_pointer =
                                                 poolStoreString(dtd_pool, enc, s, next);
-                                            let Some(notation) = pool_string_ref(
-                                                dtd_pool as *const STRING_POOL,
-                                                notation_pointer,
+                                            let Some(notation) = pool_string_ref_from_address(
+                                                &dtd.pool,
+                                                notation_pointer.addr(),
                                                 false,
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -16742,22 +16742,26 @@ unsafe extern "C" fn doProlog(
                                                 if entity.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                let Some(entity_name) = pool_string_ref(
-                                                    dtd_pool as *const STRING_POOL,
-                                                    name,
-                                                    false,
-                                                ) else {
+                                                let Some(entity_name) =
+                                                    pool_string_ref_from_address(
+                                                        &dtd.pool,
+                                                        name.addr(),
+                                                        false,
+                                                    )
+                                                else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
                                                 if (*entity).named.name != entity_name {
                                                     (*dtd).pool.rewind();
                                                     (*parser).m_declEntity = None;
                                                 } else {
-                                                    let Some(declaration_name) = pool_string_ref(
-                                                        dtd_pool as *const STRING_POOL,
-                                                        name,
-                                                        false,
-                                                    ) else {
+                                                    let Some(declaration_name) =
+                                                        pool_string_ref_from_address(
+                                                            &dtd.pool,
+                                                            name.addr(),
+                                                            false,
+                                                        )
+                                                    else {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     };
                                                     (*dtd).pool.commit();
@@ -16801,9 +16805,9 @@ unsafe extern "C" fn doProlog(
                                             if entity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            let Some(entity_name) = pool_string_ref(
-                                                dtd_pool as *const STRING_POOL,
-                                                name_0,
+                                            let Some(entity_name) = pool_string_ref_from_address(
+                                                &dtd.pool,
+                                                name_0.addr(),
                                                 false,
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -16812,11 +16816,13 @@ unsafe extern "C" fn doProlog(
                                                 (*dtd).pool.rewind();
                                                 (*parser).m_declEntity = None;
                                             } else {
-                                                let Some(declaration_name) = pool_string_ref(
-                                                    dtd_pool as *const STRING_POOL,
-                                                    name_0,
-                                                    false,
-                                                ) else {
+                                                let Some(declaration_name) =
+                                                    pool_string_ref_from_address(
+                                                        &dtd.pool,
+                                                        name_0.addr(),
+                                                        false,
+                                                    )
+                                                else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
                                                 (*dtd).pool.commit();
@@ -17815,20 +17821,20 @@ unsafe extern "C" fn doProlog(
                                 let declaration = (*parser)
                                     .m_declEntity
                                     .expect("entity declaration must be set");
-                                let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
-                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                };
                                 let system_id = poolStoreString(
                                     dtd_pool,
                                     enc,
                                     s.wrapping_add(encoding.minBytesPerChar as usize),
                                     next.wrapping_sub(encoding.minBytesPerChar as usize),
                                 );
-                                let Some(system_id) = pool_string_ref(
-                                    dtd_pool as *const STRING_POOL,
-                                    system_id,
+                                let Some(system_id) = pool_string_ref_from_address(
+                                    &dtd.pool,
+                                    system_id.addr(),
                                     false,
                                 ) else {
+                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                };
+                                let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
                                 entity.systemId = Some(system_id);
