@@ -17420,40 +17420,6 @@ fn entity_value_init_processor_safe(
     }
 }
 
-unsafe extern "C" fn externalParEntProcessor(
-    parser: crate::expat_h::XML_Parser,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let Some(parser) = parser.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(next_ptr) = nextPtr.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(start_offset) = parser.m_buffer.offset_from_address(s.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(end_offset) = parser.m_buffer.offset_from_address(end.addr()) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let result = external_par_ent_processor_impl(parser, start_offset, end_offset);
-    if let PrologCursorUpdate::Cursor(cursor) = result.cursor {
-        *next_ptr = match cursor {
-            Some(offset) => {
-                let Some(window) = parser.m_buffer.window_from_offsets(offset, offset)
-                else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                window.as_ptr().cast::<::core::ffi::c_char>()
-            }
-            None => ::core::ptr::null(),
-        };
-    }
-    result.error
-}
-
 struct ExternalParEntProcessorResult {
     error: crate::expat_h::XML_Error,
     cursor: PrologCursorUpdate,
