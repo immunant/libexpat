@@ -15939,12 +15939,15 @@ unsafe extern "C" fn storeAttributeValue(
     mut pool: *mut STRING_POOL,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
+    let parser = &mut *parser;
+    let enc = &*enc;
+    let pool = &mut *pool;
     let mut next: *const ::core::ffi::c_char = ptr;
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
-        if (*parser).m_openAttributeEntities.is_empty() {
+        if parser.m_openAttributeEntities.is_empty() {
             let (append_result, append_next) =
-                appendAttributeValue(parser, &*enc, isCdata, next, end, pool, account);
+                appendAttributeValue(parser, enc, isCdata, next, end, pool, account);
             result = append_result;
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -15959,46 +15962,54 @@ unsafe extern "C" fn storeAttributeValue(
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let dtd = parser_dtd_ptr!(parser);
-            if dtd.is_null() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            let entity_name_pointer = pool_string_pointer!(&(*dtd).pool, entity_name);
-            if entity_name_pointer.is_null() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            let entity = lookup(
-                parser,
-                &raw mut (*dtd).generalEntities,
-                entity_name_pointer as KEY,
-                0,
-            ) as *mut ENTITY;
-            if entity.is_null() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            let entity = &mut *entity;
-            let Some(text) = entity.textPtr.present() else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            let (entity, entity_has_more, textStart, textEnd) = {
+                let dtd = parser_dtd_ptr!(parser);
+                if dtd.is_null() {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
+                let dtd = &mut *dtd;
+                let entity_name_pointer = pool_string_pointer!(&dtd.pool, entity_name);
+                if entity_name_pointer.is_null() {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
+                let entity = lookup(
+                    std::ptr::from_mut(parser),
+                    &mut dtd.generalEntities,
+                    entity_name_pointer as KEY,
+                    0,
+                ) as *mut ENTITY;
+                if entity.is_null() {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
+                let entity = &mut *entity;
+                let Some(text) = entity.textPtr.present() else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(text) = entity_text_chars(dtd, text, entity.textLen) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Ok(processed) = usize::try_from(entity.processed) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(unprocessed) = text.get(processed..) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let entity_has_more = entity.hasMore;
+                let entity = std::ptr::from_mut(entity);
+                (
+                    entity,
+                    entity_has_more,
+                    unprocessed.as_ptr().cast::<::core::ffi::c_char>(),
+                    text.as_ptr()
+                        .wrapping_add(text.len())
+                        .cast::<::core::ffi::c_char>(),
+                )
             };
-            let Some(text) = entity_text_chars(&*dtd, text, entity.textLen) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Ok(processed) = usize::try_from(entity.processed) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(unprocessed) = text.get(processed..) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let textStart = unprocessed.as_ptr().cast::<::core::ffi::c_char>();
-            let textEnd = text
-                .as_ptr()
-                .wrapping_add(text.len())
-                .cast::<::core::ffi::c_char>();
             let mut nextInEntity: *const ::core::ffi::c_char = textStart;
-            if entity.hasMore != 0 {
+            if entity_has_more != 0 {
                 let (append_result, append_next) = appendAttributeValue(
                     parser,
-                    internal_encoding((*parser).m_internalEncoding),
+                    internal_encoding(parser.m_internalEncoding),
                     isCdata,
                     textStart,
                     textEnd,
@@ -16019,45 +16030,36 @@ unsafe extern "C" fn storeAttributeValue(
                     let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
+                    let entity = &mut *entity;
                     entity.processed = entity.processed.saturating_add(processed);
                     continue;
                 } else {
-                    entity.hasMore = crate::expat_h::XML_FALSE;
+                    (&mut *entity).hasMore = crate::expat_h::XML_FALSE;
                     continue;
                 }
             } else {
+                let entity = &mut *entity;
                 entityTrackingOnClose(
-                    parser,
+                    std::ptr::from_mut(parser),
                     std::ptr::from_mut(entity),
                     6547 as ::core::ffi::c_int,
                 );
-                '_c2rust_label: {
-                    if (*parser)
-                        .m_openAttributeEntities
-                        .last()
-                        .is_some_and(|head| head.entity_name == entity_name)
-                    {
-                    } else {
-                        crate::stdlib::__assert_fail(
-                            b"parser->m_openAttributeEntities == openEntity\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            b"../../expat/lib/xmlparse.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            6553 as ::core::ffi::c_uint,
-                            b"enum XML_Error storeAttributeValue(XML_Parser, const ENCODING *, XML_Bool, const char *, const char *, STRING_POOL *, enum XML_Account)\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    }
+                if !parser
+                    .m_openAttributeEntities
+                    .last()
+                    .is_some_and(|head| head.entity_name == entity_name)
+                {
+                    std::process::abort();
                 };
                 entity.open = crate::expat_h::XML_FALSE;
-                let Some(storage) = (*parser).m_openAttributeEntities.pop() else {
+                let Some(storage) = parser.m_openAttributeEntities.pop() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                (*parser).m_freeAttributeEntities.push(storage);
+                parser.m_freeAttributeEntities.push(storage);
             }
         }
         if result as ::core::ffi::c_uint != 0
-            || (*parser).m_openAttributeEntities.is_empty() && end == next
+            || parser.m_openAttributeEntities.is_empty() && end == next
         {
             break;
         }
@@ -16066,15 +16068,15 @@ unsafe extern "C" fn storeAttributeValue(
         return result;
     }
     if isCdata == 0
-        && (*pool).ptr_offset != 0
-        && (*pool).last_cursor_char() == Some(0x20 as crate::expat_external_h::XML_Char)
+        && pool.ptr_offset != 0
+        && pool.last_cursor_char() == Some(0x20 as crate::expat_external_h::XML_Char)
     {
-        (*pool).discard_last_cursor_char();
+        pool.discard_last_cursor_char();
     }
-    if if (*pool).is_full() && poolGrow(&mut *pool) == 0 {
+    if if pool.is_full() && poolGrow(pool) == 0 {
         0 as ::core::ffi::c_int
     } else {
-        if (&mut *pool).write_cursor('\0' as crate::expat_external_h::XML_Char) {
+        if pool.write_cursor('\0' as crate::expat_external_h::XML_Char) {
             1 as ::core::ffi::c_int
         } else {
             0 as ::core::ffi::c_int
@@ -16161,19 +16163,17 @@ fn pool_store_xml_decl_ascii(
 }
 
 unsafe fn appendAttributeValue(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
     enc: &crate::src::xmltok::ENCODING,
     mut isCdata: crate::expat_h::XML_Bool,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut pool: *mut STRING_POOL,
+    pool: &mut STRING_POOL,
     mut account: XML_Account,
 ) -> (crate::expat_h::XML_Error, *const ::core::ffi::c_char) {
-    let parser = &mut *parser;
     let enc_ptr: *const crate::src::xmltok::ENCODING = enc;
     let dtd = &mut *parser_dtd_ptr!(parser);
-    let pool_is_dtd_pool = ::core::ptr::eq(pool, &raw mut dtd.pool);
-    let pool = &mut *pool;
+    let pool_is_dtd_pool = ::core::ptr::eq(pool, &mut dtd.pool);
     loop {
         let Ok(char_width) = usize::try_from(enc.minBytesPerChar) else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
