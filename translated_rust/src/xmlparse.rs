@@ -1291,24 +1291,11 @@ static START_NAMESPACE_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<TwoXmlCharCallback>>>,
 > = std::sync::OnceLock::new();
 
-trait EndElementCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        name: *const crate::expat_external_h::XML_Char,
-    );
-}
+trait EndElementCallback: Send + Sync + std::any::Any {}
 
 impl EndElementCallback
     for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        name: *const crate::expat_external_h::XML_Char,
-    ) {
-        self(user_data, name);
-    }
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
@@ -10882,7 +10869,15 @@ unsafe fn doContent(
                             .get(&(parser as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            callback.invoke(handler_arg!(parser), name_pointer);
+                            let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+                                unsafe extern "C" fn(
+                                    *mut ::core::ffi::c_void,
+                                    *const crate::expat_external_h::XML_Char,
+                                ),
+                            >() else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            callback(handler_arg!(parser), name_pointer);
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
@@ -11063,7 +11058,15 @@ unsafe fn doContent(
                                 .get(&(parser as usize))
                                 .cloned();
                             if let Some(callback) = callback {
-                                callback.invoke(handler_arg!(parser), end_element_name);
+                                let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+                                    unsafe extern "C" fn(
+                                        *mut ::core::ffi::c_void,
+                                        *const crate::expat_external_h::XML_Char,
+                                    ),
+                                >() else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                };
+                                callback(handler_arg!(parser), end_element_name);
                             }
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
