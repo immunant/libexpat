@@ -2820,7 +2820,12 @@ impl AllocationBackingFactory {
     /// parser address used in diagnostics remains stable; it is recorded as
     /// an integer key rather than retained as a raw handle.
     fn for_pinned_parser(parser: std::pin::Pin<&XML_ParserStruct>) -> Self {
-        let parser = parser.get_ref();
+        Self::for_parser(parser.get_ref())
+    }
+
+    /// Capture the allocation route from a parser that is already owned by a
+    /// typed Rust caller.  The resulting factory retains no parser handle.
+    fn for_parser(parser: &XML_ParserStruct) -> Self {
         Self {
             policy: ParserAllocatorPolicy {
                 memory_suite: parser.m_mem,
@@ -2880,17 +2885,6 @@ struct TestVisibleAllocation {
 }
 
 impl ParserAllocatorPolicy {
-    /// Capture the allocator route for parser-owned storage without retaining
-    /// the parser's ABI handle.  The parser itself remains pinned by its
-    /// boxed owner for the lifetime of every backing token created here.
-    fn for_parser(parser: &XML_ParserStruct) -> Self {
-        Self {
-            memory_suite: parser.m_mem,
-            root: std::sync::Arc::clone(&parser.m_root),
-            parser_address: std::ptr::from_ref(parser).addr(),
-        }
-    }
-
     fn reserve(
         &self,
         bytes: crate::__stddef_size_t_h::size_t,
@@ -2951,6 +2945,18 @@ impl ParserAllocatorPolicy {
     /// Rust-owned collections; foreign memory exists only to preserve the
     /// custom allocator's callback order, sizes, and failure behavior.
     fn allocation_backing(
+        &self,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> Option<AllocationBacking> {
+        self.allocation_backing_ownership_facade(size, source_line)
+    }
+
+    /// Performs the opaque callback-token work after the policy has captured
+    /// a validated parser's allocator route.  Keeping this separate from the
+    /// public policy operation leaves the latter as a safe ownership dispatch
+    /// and confines all foreign allocator calls to one named facade.
+    fn allocation_backing_ownership_facade(
         &self,
         size: crate::__stddef_size_t_h::size_t,
         source_line: ::core::ffi::c_int,
@@ -4540,8 +4546,8 @@ fn tag_buffer_allocation_backing(
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(TagBufferAllocationAction) -> bool>> {
-    let policy = ParserAllocatorPolicy::for_parser(parser);
-    let mut backing = policy.allocation_backing(size, source_line)?;
+    let factory = AllocationBackingFactory::for_parser(parser);
+    let mut backing = factory.allocation_backing(size, source_line)?;
     Some(Box::new(move |action| match action {
         TagBufferAllocationAction::Grow { size, source_line } => {
             backing.apply(ParserAllocationAction::Grow { size, source_line })
@@ -5742,8 +5748,8 @@ pub unsafe fn expat_malloc(
     let Some(storage) = TestAllocationStorage::new(size) else {
         return crate::__stddef_null_h::NULL;
     };
-    let Some(backing) =
-        ParserAllocatorPolicy::for_parser(parser).allocation_backing(size, sourceLine)
+    let Some(backing) = AllocationBackingFactory::for_parser(parser)
+        .allocation_backing(size, sourceLine)
     else {
         return crate::__stddef_null_h::NULL;
     };
@@ -24480,7 +24486,7 @@ unsafe fn live_parser_allocation_backing(
     allocation_size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<LiveParserAllocationBacking> {
-    let backing = ParserAllocatorPolicy::for_parser(parser)
+    let backing = AllocationBackingFactory::for_parser(parser)
         .allocation_backing(allocation_size, source_line)?;
     Some(LiveParserAllocationBacking {
         backing,
