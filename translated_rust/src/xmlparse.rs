@@ -2851,6 +2851,17 @@ impl AllocationBackingFactory {
 }
 
 impl ParserAllocatorPolicy {
+    /// Capture the allocator route for parser-owned storage without retaining
+    /// the parser's ABI handle.  The parser itself remains pinned by its
+    /// boxed owner for the lifetime of every backing token created here.
+    fn for_parser(parser: &XML_ParserStruct) -> Self {
+        Self {
+            memory_suite: parser.m_mem,
+            root: std::sync::Arc::clone(&parser.m_root),
+            parser_address: std::ptr::from_ref(parser).addr(),
+        }
+    }
+
     fn reserve(
         &self,
         bytes: crate::__stddef_size_t_h::size_t,
@@ -4499,25 +4510,14 @@ fn tag_buffer_allocation_backing(
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(TagBufferAllocationAction) -> bool>> {
-    let parser_ptr = std::ptr::from_mut(parser);
-    let allocation = unsafe { expat_malloc(parser_ptr, size, source_line) };
-    if allocation.is_null() {
-        return None;
-    }
-    let mut allocation = allocation;
+    let policy = ParserAllocatorPolicy::for_parser(parser);
+    let mut backing = policy.allocation_backing(size, source_line)?;
     Some(Box::new(move |action| match action {
         TagBufferAllocationAction::Grow { size, source_line } => {
-            let reallocated =
-                unsafe { expat_realloc(parser_ptr, allocation, size, source_line) };
-            if reallocated.is_null() {
-                false
-            } else {
-                allocation = reallocated;
-                true
-            }
+            backing.apply(ParserAllocationAction::Grow { size, source_line })
         }
         TagBufferAllocationAction::Free(source_line) => {
-            unsafe { expat_free(parser_ptr, allocation, source_line) };
+            backing.apply(ParserAllocationAction::Free(source_line));
             true
         }
     }))
