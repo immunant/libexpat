@@ -2180,7 +2180,7 @@ pub struct DTD {
     pub scaffSize: ::core::ffi::c_uint,
     pub scaffCount: ::core::ffi::c_uint,
     pub scaffLevel: ::core::ffi::c_int,
-    pub scaffIndex: *mut ::core::ffi::c_int,
+    pub scaffIndex: std::sync::Arc<std::sync::Mutex<Vec<::core::ffi::c_int>>>,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -10493,29 +10493,21 @@ unsafe extern "C" fn doProlog(
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
                                                 (*parser).m_groupConnector = new_connector;
-                                                if !(*dtd).scaffIndex.is_null() {
-                                                    let new_scaff_index: *mut ::core::ffi::c_int =
-                                                        expat_realloc(
-                                                            parser,
-                                                            (*dtd).scaffIndex
-                                                                as *mut ::core::ffi::c_void,
-                                                            ((*parser).m_groupSize as crate::__stddef_size_t_h::size_t)
-                                                                .wrapping_mul(
-                                                                    ::core::mem::size_of:: <
-                                                                        ::core::ffi::c_int,
-                                                                    >(
-                                                                    ),
-                                                                ),
-                                                            5936 as ::core::ffi::c_int,
-                                                        )
-                                                            as *mut ::core::ffi::c_int;
-                                                    if new_scaff_index.is_null() {
-                                                        (*parser).m_groupSize = (*parser)
-                                                            .m_groupSize
-                                                            .wrapping_div(2 as ::core::ffi::c_uint);
-                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                    }
-                                                    (*dtd).scaffIndex = new_scaff_index;
+                                                let mut scaff_index = (*dtd)
+                                                    .scaffIndex
+                                                    .lock()
+                                                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                                let additional = ((*parser).m_groupSize as usize)
+                                                    .saturating_sub(scaff_index.len());
+                                                if !scaff_index.is_empty()
+                                                    && scaff_index
+                                                        .try_reserve_exact(additional)
+                                                        .is_err()
+                                                {
+                                                    (*parser).m_groupSize = (*parser)
+                                                        .m_groupSize
+                                                        .wrapping_div(2 as ::core::ffi::c_uint);
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
                                             } else {
                                                 (*parser).m_groupSize = 32 as ::core::ffi::c_uint;
@@ -10543,22 +10535,22 @@ unsafe extern "C" fn doProlog(
                                             if myindex < 0 as ::core::ffi::c_int {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            '_c2rust_label: {
-                                                if !(*dtd).scaffIndex.is_null() {
-                                                } else {
-                                                    crate::stdlib::__assert_fail(
-                                                        b"dtd->scaffIndex != NULL\0".as_ptr()
-                                                            as *const ::core::ffi::c_char,
-                                                        b"../../expat/lib/xmlparse.c\0".as_ptr()
-                                                            as *const ::core::ffi::c_char,
-                                                        5956 as ::core::ffi::c_uint,
-                                                        b"enum XML_Error doProlog(XML_Parser, const ENCODING *, const char *, const char *, int, const char *, const char **, XML_Bool, XML_Bool, enum XML_Account)\0"
-                                                            .as_ptr() as *const ::core::ffi::c_char,
-                                                    );
+                                            let mut scaff_index = (*dtd)
+                                                .scaffIndex
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                            let level = (*dtd).scaffLevel as usize;
+                                            if scaff_index.len() <= level {
+                                                let additional = level + 1 - scaff_index.len();
+                                                if scaff_index
+                                                    .try_reserve_exact(additional)
+                                                    .is_err()
+                                                {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                            };
-                                            *(*dtd).scaffIndex.offset((*dtd).scaffLevel as isize) =
-                                                myindex;
+                                                scaff_index.resize(level + 1, 0);
+                                            }
+                                            scaff_index[level] = myindex;
                                             (*dtd).scaffLevel += 1;
                                             (*(*dtd).scaffold.offset(myindex as isize)).type_0 =
                                                 crate::expat_h::XML_CTYPE_SEQ;
@@ -10602,25 +10594,31 @@ unsafe extern "C" fn doProlog(
                                                 .m_groupConnector
                                                 .offset((*parser).m_prologState.level as isize)
                                                 == 0
-                                            && (*(*dtd).scaffold.offset(*(*dtd).scaffIndex.offset(
-                                                ((*dtd).scaffLevel - 1 as ::core::ffi::c_int)
-                                                    as isize,
-                                            )
-                                                as isize))
-                                            .type_0
-                                                as ::core::ffi::c_uint
+                                        {
+                                            let parent_index = {
+                                                let scaff_index = (*dtd)
+                                                    .scaffIndex
+                                                    .lock()
+                                                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                                match scaff_index
+                                                    .get(((*dtd).scaffLevel - 1) as usize)
+                                                    .copied()
+                                                {
+                                                    Some(index) => index,
+                                                    None => return crate::expat_h::XML_ERROR_SYNTAX,
+                                                }
+                                            };
+                                            if (*(*dtd).scaffold.offset(parent_index as isize))
+                                                .type_0 as ::core::ffi::c_uint
                                                 != crate::expat_h::XML_CTYPE_MIXED
                                                     as ::core::ffi::c_int
                                                     as ::core::ffi::c_uint
-                                        {
-                                            (*(*dtd).scaffold.offset(*(*dtd).scaffIndex.offset(
-                                                ((*dtd).scaffLevel - 1 as ::core::ffi::c_int)
-                                                    as isize,
-                                            )
-                                                as isize))
-                                            .type_0 = crate::expat_h::XML_CTYPE_CHOICE;
-                                            if (*parser).m_elementDeclHandler {
-                                                handleDefault = crate::expat_h::XML_FALSE;
+                                            {
+                                                (*(*dtd).scaffold.offset(parent_index as isize))
+                                                    .type_0 = crate::expat_h::XML_CTYPE_CHOICE;
+                                                if (*parser).m_elementDeclHandler {
+                                                    handleDefault = crate::expat_h::XML_FALSE;
+                                                }
                                             }
                                         }
                                         *(*parser)
@@ -10853,12 +10851,21 @@ unsafe extern "C" fn doProlog(
                                     }
                                     43 => {
                                         if (*dtd).in_eldecl != 0 {
-                                            (*(*dtd).scaffold.offset(*(*dtd).scaffIndex.offset(
-                                                ((*dtd).scaffLevel - 1 as ::core::ffi::c_int)
-                                                    as isize,
-                                            )
-                                                as isize))
-                                            .type_0 = crate::expat_h::XML_CTYPE_MIXED;
+                                            let parent_index = {
+                                                let scaff_index = (*dtd)
+                                                    .scaffIndex
+                                                    .lock()
+                                                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                                match scaff_index
+                                                    .get(((*dtd).scaffLevel - 1) as usize)
+                                                    .copied()
+                                                {
+                                                    Some(index) => index,
+                                                    None => return crate::expat_h::XML_ERROR_SYNTAX,
+                                                }
+                                            };
+                                            (*(*dtd).scaffold.offset(parent_index as isize)).type_0 =
+                                                crate::expat_h::XML_CTYPE_MIXED;
                                             if (*parser).m_elementDeclHandler {
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
@@ -11055,10 +11062,17 @@ unsafe extern "C" fn doProlog(
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
                     (*dtd).scaffLevel -= 1;
-                    (*(*dtd)
-                        .scaffold
-                        .offset(*(*dtd).scaffIndex.offset((*dtd).scaffLevel as isize) as isize))
-                    .quant = quant;
+                    let parent_index = {
+                        let scaff_index = (*dtd)
+                            .scaffIndex
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner());
+                        match scaff_index.get((*dtd).scaffLevel as usize).copied() {
+                            Some(index) => index,
+                            None => return crate::expat_h::XML_ERROR_SYNTAX,
+                        }
+                    };
+                    (*(*dtd).scaffold.offset(parent_index as isize)).quant = quant;
                     if (*dtd).scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
                             let mut model: *mut crate::expat_h::XML_Content = build_model(parser);
@@ -12892,7 +12906,10 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
     (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    (*p).scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
+    ::core::ptr::write(
+        &raw mut (*p).scaffIndex,
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+    );
     (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
     (*p).scaffLevel = 0 as ::core::ffi::c_int;
     (*p).scaffSize = 0 as ::core::ffi::c_uint;
@@ -12935,12 +12952,7 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_P
     (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     (*p).in_eldecl = crate::expat_h::XML_FALSE;
-    expat_free(
-        parser,
-        (*p).scaffIndex as *mut ::core::ffi::c_void,
-        7556 as ::core::ffi::c_int,
-    );
-    (*p).scaffIndex = ::core::ptr::null_mut::<::core::ffi::c_int>();
+    (*p).scaffIndex = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     expat_free(
         parser,
         (*p).scaffold as *mut ::core::ffi::c_void,
@@ -12990,15 +13002,11 @@ unsafe extern "C" fn dtdDestroy(
     if isDocEntity != 0 {
         expat_free(
             parser,
-            (*p).scaffIndex as *mut ::core::ffi::c_void,
-            7592 as ::core::ffi::c_int,
-        );
-        expat_free(
-            parser,
             (*p).scaffold as *mut ::core::ffi::c_void,
             7593 as ::core::ffi::c_int,
         );
     }
+    ::core::ptr::drop_in_place(&raw mut (*p).scaffIndex);
     expat_free(
         parser,
         p as *mut ::core::ffi::c_void,
@@ -13199,7 +13207,7 @@ unsafe extern "C" fn dtdCopy(
     new_dtd.contentStringLen = old_dtd.contentStringLen;
     new_dtd.scaffSize = old_dtd.scaffSize;
     new_dtd.scaffLevel = old_dtd.scaffLevel;
-    new_dtd.scaffIndex = old_dtd.scaffIndex;
+    new_dtd.scaffIndex = old_dtd.scaffIndex.clone();
     return 1 as ::core::ffi::c_int;
 }
 
@@ -13883,17 +13891,20 @@ unsafe extern "C" fn nextScaffoldPart(
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut me: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
     let mut next: ::core::ffi::c_int = 0;
-    if (*dtd).scaffIndex.is_null() {
-        (*dtd).scaffIndex = expat_malloc(
-            parser,
-            ((*parser).m_groupSize as crate::__stddef_size_t_h::size_t)
-                .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>()),
-            8232 as ::core::ffi::c_int,
-        ) as *mut ::core::ffi::c_int;
-        if (*dtd).scaffIndex.is_null() {
-            return -1 as ::core::ffi::c_int;
+    {
+        let mut scaff_index = (*dtd)
+            .scaffIndex
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if scaff_index.is_empty() {
+            if scaff_index
+                .try_reserve_exact((*parser).m_groupSize as usize)
+                .is_err()
+            {
+                return -1 as ::core::ffi::c_int;
+            }
+            scaff_index.push(0);
         }
-        *(*dtd).scaffIndex.offset(0 as isize) = 0 as ::core::ffi::c_int;
     }
     if (*dtd).scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
         return -1 as ::core::ffi::c_int;
@@ -13935,12 +13946,18 @@ unsafe extern "C" fn nextScaffoldPart(
     next = c2rust_fresh13 as ::core::ffi::c_int;
     me = (*dtd).scaffold.offset(next as isize);
     if (*dtd).scaffLevel != 0 {
-        let mut parent: *mut CONTENT_SCAFFOLD = (*dtd).scaffold.offset(
-            *(*dtd)
+        let parent_index = {
+            let scaff_index = (*dtd)
                 .scaffIndex
-                .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
-                as isize,
-        );
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            match scaff_index.get(((*dtd).scaffLevel - 1) as usize).copied() {
+                Some(index) => index,
+                None => return -1 as ::core::ffi::c_int,
+            }
+        };
+        let mut parent: *mut CONTENT_SCAFFOLD =
+            (*dtd).scaffold.offset(parent_index as isize);
         if (*parent).lastchild != 0 {
             (*(*dtd).scaffold.offset((*parent).lastchild as isize)).nextsib = next;
         }
