@@ -1382,6 +1382,23 @@ static COMMENT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn CommentCallback>>>,
 > = std::sync::OnceLock::new();
 
+// End-CDATA callbacks use the same boundary registry as the other handler
+// families.  Parser state only records whether one is installed, so an
+// address supplied by C is not retained in the parser object.
+trait EndCdataSectionCallback: Send + Sync {
+    unsafe fn invoke(&self, user_data: *mut ::core::ffi::c_void);
+}
+
+impl EndCdataSectionCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> () {
+    unsafe fn invoke(&self, user_data: *mut ::core::ffi::c_void) {
+        self(user_data);
+    }
+}
+
+static END_CDATA_SECTION_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
+> = std::sync::OnceLock::new();
+
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a default callback is installed.
 trait DefaultCallback: Send + Sync {
@@ -1992,7 +2009,7 @@ pub struct XML_ParserStruct {
     pub m_processingInstructionHandler: bool,
     pub m_commentHandler: bool,
     pub m_startCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler,
-    pub m_endCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler,
+    pub m_endCdataSectionHandler: bool,
     pub m_defaultHandler: bool,
     pub m_startDoctypeDeclHandler: bool,
     pub m_endDoctypeDeclHandler: crate::expat_h::XML_EndDoctypeDeclHandler,
@@ -3598,7 +3615,7 @@ fn initial_parser_struct(
         m_processingInstructionHandler: false,
         m_commentHandler: false,
         m_startCdataSectionHandler: None,
-        m_endCdataSectionHandler: None,
+        m_endCdataSectionHandler: false,
         m_defaultHandler: false,
         m_startDoctypeDeclHandler: false,
         m_endDoctypeDeclHandler: None,
@@ -3986,7 +4003,12 @@ fn parser_init(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
     parser.m_startCdataSectionHandler = None;
-    parser.m_endCdataSectionHandler = None;
+    parser.m_endCdataSectionHandler = false;
+    END_CDATA_SECTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
     parser.m_defaultHandler = false;
     DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -4318,7 +4340,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldCommentHandler = false;
     let mut oldCommentCallback: Option<std::sync::Arc<dyn CommentCallback>> = None;
     let mut oldStartCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler = None;
-    let mut oldEndCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler = None;
+    let mut oldEndCdataSectionHandler = false;
+    let mut oldEndCdataSectionCallback: Option<std::sync::Arc<dyn EndCdataSectionCallback>> = None;
     let mut oldDefaultHandler = false;
     let mut oldDefaultCallback: Option<std::sync::Arc<dyn DefaultCallback>> = None;
     let mut oldUnparsedEntityDeclHandler = false;
@@ -4397,6 +4420,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .cloned();
     oldStartCdataSectionHandler = (*parser).m_startCdataSectionHandler;
     oldEndCdataSectionHandler = (*parser).m_endCdataSectionHandler;
+    oldEndCdataSectionCallback = END_CDATA_SECTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldDefaultHandler = (*parser).m_defaultHandler;
     oldDefaultCallback = DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -4557,6 +4586,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     }
     (*parser).m_startCdataSectionHandler = oldStartCdataSectionHandler;
     (*parser).m_endCdataSectionHandler = oldEndCdataSectionHandler;
+    if let Some(callback) = oldEndCdataSectionCallback {
+        END_CDATA_SECTION_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_defaultHandler = oldDefaultHandler;
     if let Some(callback) = oldDefaultCallback {
         DEFAULT_HANDLERS
@@ -4757,6 +4793,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
     COMMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
+    END_CDATA_SECTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -5302,7 +5343,19 @@ pub unsafe extern "C" fn XML_SetCdataSectionHandler(
         return;
     }
     (*parser).m_startCdataSectionHandler = start;
-    (*parser).m_endCdataSectionHandler = end;
+    (*parser).m_endCdataSectionHandler = end.is_some();
+    let mut handlers = END_CDATA_SECTION_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match end {
+        Some(callback) => {
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        }
+        None => {
+            handlers.remove(&(parser as usize));
+        }
+    }
 }
 #[export_name = "XML_SetCdataSectionHandler"]
 
@@ -5334,7 +5387,19 @@ pub unsafe extern "C" fn XML_SetEndCdataSectionHandler(
     mut end: crate::expat_h::XML_EndCdataSectionHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_endCdataSectionHandler = end;
+        (*parser).m_endCdataSectionHandler = end.is_some();
+        let mut handlers = END_CDATA_SECTION_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match end {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetEndCdataSectionHandler"]
@@ -9363,8 +9428,12 @@ unsafe extern "C" fn doCdataSection(
     mut haveMore: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
+    // `enc` is selected before entering this processor and remains valid for
+    // this token.  Borrow it once so the loop does not repeatedly dereference
+    // the same validated encoding pointer.
+    let enc = &*enc;
     let mut s: *const ::core::ffi::c_char = *startPtr;
-    let parser_events = enc == parser_encoding(parser);
+    let parser_events = ::core::ptr::eq(enc, parser_encoding(parser));
     let mut eventPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
@@ -9388,12 +9457,15 @@ unsafe extern "C" fn doCdataSection(
         set_event_end!(parser, parser_events, eventEndPP, next);
         match tok {
             crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE => {
-                if (*parser).m_endCdataSectionHandler.is_some() {
-                    (*parser)
-                        .m_endCdataSectionHandler
-                        .expect("non-null function pointer")(
-                        (*parser).m_handlerArg
-                    );
+                if (*parser).m_endCdataSectionHandler {
+                    let callback = END_CDATA_SECTION_HANDLERS
+                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .get(&(parser as usize))
+                        .cloned()
+                        .expect("installed end CDATA handler");
+                    callback.invoke((*parser).m_handlerArg);
                 } else if false && (*parser).m_characterDataHandler {
                     callCharacterDataHandler(
                         parser,
