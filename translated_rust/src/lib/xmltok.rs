@@ -1,10 +1,3 @@
-extern "C" {
-    fn memcpy(
-        __dest: *mut ::core::ffi::c_void,
-        __src: *const ::core::ffi::c_void,
-        __n: size_t,
-    ) -> *mut ::core::ffi::c_void;
-}
 pub type ptrdiff_t = isize;
 pub type size_t = usize;
 pub type XML_Size = ::core::ffi::c_ulong;
@@ -273,11 +266,7 @@ pub const XML_TOK_IGNORE_SECT: ::core::ffi::c_int = 42 as ::core::ffi::c_int;
 pub const XML_PROLOG_STATE: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
 pub const XML_CONTENT_STATE: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
 fn read_c_char_bytes<const N: usize>(p: *const ::core::ffi::c_char) -> [u8; N] {
-    let mut bytes = [0_u8; N];
-    unsafe {
-        ::core::ptr::copy_nonoverlapping(p.cast::<u8>(), bytes.as_mut_ptr(), N);
-    }
-    bytes
+    ::core::array::from_fn(|index| read_copy(p.cast::<u8>().wrapping_add(index)))
 }
 
 fn with_ref<T, R>(ptr: *const T, f: impl FnOnce(&T) -> R) -> R {
@@ -1334,12 +1323,8 @@ fn call_encoding_finder(
 }
 
 fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char, len: size_t) {
-    unsafe {
-        memcpy(
-            dest.cast::<::core::ffi::c_void>(),
-            src.cast::<::core::ffi::c_void>(),
-            len,
-        );
+    for index in 0..len {
+        write_copy(dest.wrapping_add(index), read_copy(src.wrapping_add(index)));
     }
 }
 
@@ -18323,11 +18308,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     unsafe {
         let mut i: ::core::ffi::c_int = 0;
         let mut e: *mut unknown_encoding = mem as *mut unknown_encoding;
-        memcpy(
-            mem,
-            &raw const latin1_encoding as *const ::core::ffi::c_void,
-            ::core::mem::size_of::<normal_encoding>() as size_t,
-        );
+        write_copy(e.cast::<normal_encoding>(), latin1_encoding);
         i = 0 as ::core::ffi::c_int;
         while i < 128 as ::core::ffi::c_int {
             if latin1_encoding.type_0[i as usize] as ::core::ffi::c_int
