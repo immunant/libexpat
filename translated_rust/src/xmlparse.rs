@@ -5744,24 +5744,6 @@ unsafe fn call_processor_impl(
     let mut next = input.start;
     let mut ret = crate::expat_h::XML_ERROR_NONE;
     loop {
-        let processor: Processor = match parser.m_processor {
-            ProcessorState::PrologInit => prologInitProcessor,
-            ProcessorState::Content => contentProcessor,
-            ProcessorState::ExternalEntityInit => externalEntityInitProcessor,
-            ProcessorState::ExternalEntityInit2 => externalEntityInitProcessor2,
-            ProcessorState::ExternalEntityInit3 => externalEntityInitProcessor3,
-            ProcessorState::ExternalEntityContent => externalEntityContentProcessor,
-            ProcessorState::ExternalParEntInit => externalParEntInitProcessor,
-            ProcessorState::ExternalParEnt => externalParEntProcessor,
-            ProcessorState::EntityValueInit => entityValueInitProcessor,
-            ProcessorState::EntityValue => entityValueProcessor,
-            ProcessorState::CdataSection => cdataSectionProcessor,
-            ProcessorState::IgnoreSection => ignoreSectionProcessor,
-            ProcessorState::Prolog => prologProcessor,
-            ProcessorState::Epilog => epilogProcessor,
-            ProcessorState::InternalEntity => internalEntityProcessor,
-            ProcessorState::Error => errorProcessor,
-        };
         let Some(bytes) = parser.m_buffer.bytes.as_ref() else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
         };
@@ -5771,7 +5753,59 @@ unsafe fn call_processor_impl(
         let start = bytes.as_ptr().wrapping_add(next).cast();
         let end = bytes.as_ptr().wrapping_add(input.end).cast();
         let mut next_pointer = start;
-        ret = processor(std::ptr::from_mut(parser), start, end, &raw mut next_pointer);
+        ret = if matches!(parser.m_processor, ProcessorState::Content) {
+            let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
+            let start_tag_level = if parser.m_parentParser.is_some() { 1 } else { 0 };
+            let have_more = (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+                as crate::expat_h::XML_Bool;
+            let encoding = std::ptr::from_ref(current_parser_encoding(parser));
+            let mut result = doContent(
+                parser,
+                start_tag_level,
+                normal_encoding,
+                encoding,
+                true,
+                start,
+                end,
+                &mut next_pointer,
+                have_more,
+                XML_ACCOUNT_DIRECT,
+            );
+            if result as ::core::ffi::c_uint
+                == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                let raw_names_stored = match parser.m_dtd.clone() {
+                    Some(dtd_owner) => dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd)),
+                    None => crate::expat_h::XML_FALSE,
+                };
+                if raw_names_stored == 0 {
+                    result = crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
+            }
+            result
+        } else {
+            let processor: Processor = match parser.m_processor {
+                ProcessorState::PrologInit => prologInitProcessor,
+                ProcessorState::Content => unreachable!("content dispatch is handled above"),
+                ProcessorState::ExternalEntityInit => externalEntityInitProcessor,
+                ProcessorState::ExternalEntityInit2 => externalEntityInitProcessor2,
+                ProcessorState::ExternalEntityInit3 => externalEntityInitProcessor3,
+                ProcessorState::ExternalEntityContent => externalEntityContentProcessor,
+                ProcessorState::ExternalParEntInit => externalParEntInitProcessor,
+                ProcessorState::ExternalParEnt => externalParEntProcessor,
+                ProcessorState::EntityValueInit => entityValueInitProcessor,
+                ProcessorState::EntityValue => entityValueProcessor,
+                ProcessorState::CdataSection => cdataSectionProcessor,
+                ProcessorState::IgnoreSection => ignoreSectionProcessor,
+                ProcessorState::Prolog => prologProcessor,
+                ProcessorState::Epilog => epilogProcessor,
+                ProcessorState::InternalEntity => internalEntityProcessor,
+                ProcessorState::Error => errorProcessor,
+            };
+            processor(std::ptr::from_mut(parser), start, end, &raw mut next_pointer)
+        };
         let Some(next_offset) = parser.m_buffer.offset_from_address(next_pointer.addr()) else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
         };
@@ -10112,49 +10146,6 @@ unsafe extern "C" fn storeRawNames(
         return crate::expat_h::XML_FALSE;
     };
     dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd))
-}
-
-unsafe extern "C" fn contentProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let parser_state = &mut *parser;
-    let Some(next_ptr) = endPtr.as_mut() else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    let start_tag_level = if parser_state.m_parentParser.is_some() {
-        1 as ::core::ffi::c_int
-    } else {
-        0 as ::core::ffi::c_int
-    };
-    let have_more = (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-        as crate::expat_h::XML_Bool;
-    let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
-    let mut result: crate::expat_h::XML_Error = doContent(
-        parser_state,
-        start_tag_level,
-        normal_encoding,
-        encoding,
-        true,
-        start,
-        end,
-        next_ptr,
-        have_more,
-        XML_ACCOUNT_DIRECT,
-    );
-    if result as ::core::ffi::c_uint
-        == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        if storeRawNames(parser) == 0 {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-    }
-    return result;
 }
 
 unsafe extern "C" fn externalEntityInitProcessor(
@@ -16422,9 +16413,9 @@ fn continue_prolog_as_content(
             account,
         )
     };
-    // `contentProcessor` records raw tag names after a successful content
-    // pass.  Keep that postcondition in the adapter rather than skipping it
-    // when prolog transitions directly to content.
+    // Normal content dispatch records raw tag names after a successful pass.
+    // Keep that postcondition here rather than skipping it when prolog
+    // transitions directly to content.
     if error as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
         && store_raw_names_impl(parser, dtd) == 0
