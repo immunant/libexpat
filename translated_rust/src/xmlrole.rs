@@ -130,15 +130,7 @@ pub type PROLOG_STATE = crate::src::xmlrole::prolog_state;
 #[repr(C)]
 
 pub struct prolog_state {
-    pub handler: Option<
-        unsafe extern "C" fn(
-            *mut crate::src::xmlrole::prolog_state,
-            ::core::ffi::c_int,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-            *const crate::src::xmltok::ENCODING,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub handler: Option<crate::src::xmlrole::PROLOG_HANDLER>,
     pub level: ::core::ffi::c_uint,
     pub role_none: ::core::ffi::c_int,
     pub includeLevel: ::core::ffi::c_uint,
@@ -209,8 +201,8 @@ pub use crate::src::xmltok::XML_TOK_PREFIXED_NAME;
 pub use crate::src::xmltok::XML_TOK_PROLOG_S;
 pub use crate::src::xmltok::XML_TOK_XML_DECL;
 
-pub type PROLOG_HANDLER = unsafe extern "C" fn(
-    *mut crate::src::xmlrole::PROLOG_STATE,
+pub type PROLOG_HANDLER = extern "C" fn(
+    &mut crate::src::xmlrole::PROLOG_STATE,
     ::core::ffi::c_int,
     *const ::core::ffi::c_char,
     *const ::core::ffi::c_char,
@@ -449,12 +441,6 @@ static KW_SYSTEM: [::core::ffi::c_char; 7] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-fn prolog_state_mut<'a>(
-    state: *mut crate::src::xmlrole::PROLOG_STATE,
-) -> &'a mut crate::src::xmlrole::PROLOG_STATE {
-    unsafe { &mut *state }
-}
-
 fn encoded_name_matches_ascii(
     enc: *const crate::src::xmltok::ENCODING,
     ptr: *const ::core::ffi::c_char,
@@ -468,100 +454,27 @@ fn encoded_name_matches_ascii(
 }
 
 extern "C" fn prolog0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
-            state.handler = Some(
-                prolog1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(prolog1);
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_XML_DECL => {
-            state.handler = Some(
-                prolog1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(prolog1);
             return crate::src::xmlrole::XML_ROLE_XML_DECL as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_PI => {
-            state.handler = Some(
-                prolog1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(prolog1);
             return crate::src::xmlrole::XML_ROLE_PI as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_COMMENT => {
-            state.handler = Some(
-                prolog1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(prolog1);
             return crate::src::xmlrole::XML_ROLE_COMMENT as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_BOM => {
@@ -569,48 +482,12 @@ extern "C" fn prolog0(
         }
         crate::src::xmltok::XML_TOK_DECL_OPEN => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_DOCTYPE, 2 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    doctype0
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(doctype0);
                 return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_INSTANCE_START_1 => {
-            state.handler = Some(
-                error
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(error);
             return crate::src::xmlrole::XML_ROLE_INSTANCE_START as ::core::ffi::c_int;
         }
         _ => {}
@@ -619,13 +496,12 @@ extern "C" fn prolog0(
 }
 
 extern "C" fn prolog1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
@@ -641,48 +517,12 @@ extern "C" fn prolog1(
         }
         crate::src::xmltok::XML_TOK_DECL_OPEN => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_DOCTYPE, 2 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    doctype0
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(doctype0);
                 return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_INSTANCE_START_1 => {
-            state.handler = Some(
-                error
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(error);
             return crate::src::xmlrole::XML_ROLE_INSTANCE_START as ::core::ffi::c_int;
         }
         _ => {}
@@ -691,13 +531,12 @@ extern "C" fn prolog1(
 }
 
 extern "C" fn prolog2(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
@@ -709,25 +548,7 @@ extern "C" fn prolog2(
             return crate::src::xmlrole::XML_ROLE_COMMENT as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_INSTANCE_START_1 => {
-            state.handler = Some(
-                error
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(error);
             return crate::src::xmlrole::XML_ROLE_INSTANCE_START as ::core::ffi::c_int;
         }
         _ => {}
@@ -736,37 +557,18 @@ extern "C" fn prolog2(
 }
 
 extern "C" fn doctype0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                doctype1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(doctype1);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NAME as ::core::ffi::c_int;
         }
         _ => {}
@@ -775,104 +577,31 @@ extern "C" fn doctype0(
 }
 
 extern "C" fn doctype1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_OPEN_BRACKET => {
-            state.handler = Some(
-                internalSubset
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(internalSubset);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_INTERNAL_SUBSET as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
-            state.handler = Some(
-                prolog2
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(prolog2);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_CLOSE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_SYSTEM, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    doctype3
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(doctype3);
                 return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_PUBLIC, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    doctype2
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(doctype2);
                 return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int;
             }
         }
@@ -882,37 +611,18 @@ extern "C" fn doctype1(
 }
 
 extern "C" fn doctype2(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                doctype3
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(doctype3);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_PUBLIC_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -921,37 +631,18 @@ extern "C" fn doctype2(
 }
 
 extern "C" fn doctype3(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                doctype4
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(doctype4);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_SYSTEM_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -960,59 +651,22 @@ extern "C" fn doctype3(
 }
 
 extern "C" fn doctype4(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_OPEN_BRACKET => {
-            state.handler = Some(
-                internalSubset
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(internalSubset);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_INTERNAL_SUBSET as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
-            state.handler = Some(
-                prolog2
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(prolog2);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_CLOSE as ::core::ffi::c_int;
         }
         _ => {}
@@ -1021,37 +675,18 @@ extern "C" fn doctype4(
 }
 
 extern "C" fn doctype5(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
-            state.handler = Some(
-                prolog2
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(prolog2);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_CLOSE as ::core::ffi::c_int;
         }
         _ => {}
@@ -1060,104 +695,31 @@ extern "C" fn doctype5(
 }
 
 extern "C" fn internalSubset(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_DECL_OPEN => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_ENTITY, 2 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    entity0
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(entity0);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_ATTLIST, 2 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    attlist0
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(attlist0);
                 return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_ELEMENT, 2 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    element0
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(element0);
                 return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_NOTATION, 2 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    notation0
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(notation0);
                 return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             }
         }
@@ -1171,25 +733,7 @@ extern "C" fn internalSubset(
             return crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_CLOSE_BRACKET => {
-            state.handler = Some(
-                doctype5
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(doctype5);
             return crate::src::xmlrole::XML_ROLE_DOCTYPE_NONE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NONE => {
@@ -1201,32 +745,13 @@ extern "C" fn internalSubset(
 }
 
 extern "C" fn externalSubset0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state_ref = prolog_state_mut(state);
-    state_ref.handler = Some(
-        externalSubset1
-            as unsafe extern "C" fn(
-                *mut crate::src::xmlrole::PROLOG_STATE,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-    )
-        as Option<
-            unsafe extern "C" fn(
-                *mut crate::src::xmlrole::prolog_state,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-        >;
+    state.handler = Some(externalSubset1);
     if tok == crate::src::xmltok::XML_TOK_XML_DECL {
         return crate::src::xmlrole::XML_ROLE_TEXT_DECL as ::core::ffi::c_int;
     }
@@ -1234,41 +759,20 @@ extern "C" fn externalSubset0(
 }
 
 extern "C" fn externalSubset1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state_ref = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_COND_SECT_OPEN => {
-            state_ref.handler = Some(
-                condSect0
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(condSect0);
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_COND_SECT_CLOSE => {
-            if !(state_ref.includeLevel == 0 as ::core::ffi::c_uint) {
-                state_ref.includeLevel = state_ref
-                    .includeLevel
-                    .wrapping_sub(1 as ::core::ffi::c_uint);
+            if !(state.includeLevel == 0 as ::core::ffi::c_uint) {
+                state.includeLevel = state.includeLevel.wrapping_sub(1 as ::core::ffi::c_uint);
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
         }
@@ -1277,69 +781,32 @@ extern "C" fn externalSubset1(
         }
         crate::src::xmltok::XML_TOK_CLOSE_BRACKET => {}
         crate::src::xmltok::XML_TOK_NONE => {
-            if !(state_ref.includeLevel != 0) {
+            if !(state.includeLevel != 0) {
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
         }
         _ => return internalSubset(state, tok, ptr, end, enc),
     }
-    return common(state_ref, tok);
+    return common(state, tok);
 }
 
 extern "C" fn entity0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_PERCENT => {
-            state.handler = Some(
-                entity1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(entity1);
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            state.handler = Some(
-                entity2
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(entity2);
             return crate::src::xmlrole::XML_ROLE_GENERAL_ENTITY_NAME as ::core::ffi::c_int;
         }
         _ => {}
@@ -1348,37 +815,18 @@ extern "C" fn entity0(
 }
 
 extern "C" fn entity1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            state.handler = Some(
-                entity7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(entity7);
             return crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_NAME as ::core::ffi::c_int;
         }
         _ => {}
@@ -1387,83 +835,28 @@ extern "C" fn entity1(
 }
 
 extern "C" fn entity2(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_SYSTEM, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    entity4
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(entity4);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_PUBLIC, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    entity3
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(entity3);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_ENTITY_VALUE as ::core::ffi::c_int;
         }
@@ -1473,37 +866,18 @@ extern "C" fn entity2(
 }
 
 extern "C" fn entity3(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                entity4
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(entity4);
             return crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -1512,37 +886,18 @@ extern "C" fn entity3(
 }
 
 extern "C" fn entity4(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                entity5
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(entity5);
             return crate::src::xmlrole::XML_ROLE_ENTITY_SYSTEM_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -1551,73 +906,27 @@ extern "C" fn entity4(
 }
 
 extern "C" fn entity5(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
             state.handler = (if state.documentEntity != 0 {
-                Some(
-                    internalSubset
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
+                Some(internalSubset)
             } else {
-                Some(
-                    externalSubset1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-            })
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+                Some(externalSubset1)
+            });
             return crate::src::xmlrole::XML_ROLE_ENTITY_COMPLETE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_NDATA, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    entity6
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(entity6);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
         }
@@ -1627,37 +936,18 @@ extern "C" fn entity5(
 }
 
 extern "C" fn entity6(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_ENTITY_NOTATION_NAME as ::core::ffi::c_int;
         }
@@ -1667,83 +957,28 @@ extern "C" fn entity6(
 }
 
 extern "C" fn entity7(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_SYSTEM, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    entity9
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(entity9);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_PUBLIC, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    entity8
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(entity8);
                 return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_ENTITY_VALUE as ::core::ffi::c_int;
         }
@@ -1753,37 +988,18 @@ extern "C" fn entity7(
 }
 
 extern "C" fn entity8(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                entity9
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(entity9);
             return crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -1792,37 +1008,18 @@ extern "C" fn entity8(
 }
 
 extern "C" fn entity9(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                entity10
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(entity10);
             return crate::src::xmlrole::XML_ROLE_ENTITY_SYSTEM_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -1831,50 +1028,22 @@ extern "C" fn entity9(
 }
 
 extern "C" fn entity10(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
             state.handler = (if state.documentEntity != 0 {
-                Some(
-                    internalSubset
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
+                Some(internalSubset)
             } else {
-                Some(
-                    externalSubset1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-            })
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+                Some(externalSubset1)
+            });
             return crate::src::xmlrole::XML_ROLE_ENTITY_COMPLETE as ::core::ffi::c_int;
         }
         _ => {}
@@ -1883,37 +1052,18 @@ extern "C" fn entity10(
 }
 
 extern "C" fn notation0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            state.handler = Some(
-                notation1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(notation1);
             return crate::src::xmlrole::XML_ROLE_NOTATION_NAME as ::core::ffi::c_int;
         }
         _ => {}
@@ -1922,60 +1072,23 @@ extern "C" fn notation0(
 }
 
 extern "C" fn notation1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_SYSTEM, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    notation3
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(notation3);
                 return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_PUBLIC, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    notation2
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(notation2);
                 return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             }
         }
@@ -1985,37 +1098,18 @@ extern "C" fn notation1(
 }
 
 extern "C" fn notation2(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                notation4
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(notation4);
             return crate::src::xmlrole::XML_ROLE_NOTATION_PUBLIC_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -2024,37 +1118,18 @@ extern "C" fn notation2(
 }
 
 extern "C" fn notation3(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_NOTATION_SYSTEM_ID as ::core::ffi::c_int;
         }
@@ -2064,73 +1139,27 @@ extern "C" fn notation3(
 }
 
 extern "C" fn notation4(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_NOTATION_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_NOTATION_SYSTEM_ID as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
             state.handler = (if state.documentEntity != 0 {
-                Some(
-                    internalSubset
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
+                Some(internalSubset)
             } else {
-                Some(
-                    externalSubset1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-            })
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+                Some(externalSubset1)
+            });
             return crate::src::xmlrole::XML_ROLE_NOTATION_NO_SYSTEM_ID as ::core::ffi::c_int;
         }
         _ => {}
@@ -2139,37 +1168,18 @@ extern "C" fn notation4(
 }
 
 extern "C" fn attlist0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                attlist1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist1);
             return crate::src::xmlrole::XML_ROLE_ATTLIST_ELEMENT_NAME as ::core::ffi::c_int;
         }
         _ => {}
@@ -2178,72 +1188,26 @@ extern "C" fn attlist0(
 }
 
 extern "C" fn attlist1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
             state.handler = (if state.documentEntity != 0 {
-                Some(
-                    internalSubset
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
+                Some(internalSubset)
             } else {
-                Some(
-                    externalSubset1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-            })
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+                Some(externalSubset1)
+            });
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                attlist2
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist2);
             return crate::src::xmlrole::XML_ROLE_ATTRIBUTE_NAME as ::core::ffi::c_int;
         }
         _ => {}
@@ -2252,13 +1216,12 @@ extern "C" fn attlist1(
 }
 
 extern "C" fn attlist2(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
@@ -2284,26 +1247,7 @@ extern "C" fn attlist2(
                     types[i as usize],
                     0 as ::core::ffi::c_int,
                 ) {
-                    state.handler = Some(
-                        attlist8
-                            as unsafe extern "C" fn(
-                                *mut crate::src::xmlrole::PROLOG_STATE,
-                                ::core::ffi::c_int,
-                                *const ::core::ffi::c_char,
-                                *const ::core::ffi::c_char,
-                                *const crate::src::xmltok::ENCODING,
-                            )
-                                -> ::core::ffi::c_int,
-                    )
-                        as Option<
-                            unsafe extern "C" fn(
-                                *mut crate::src::xmlrole::prolog_state,
-                                ::core::ffi::c_int,
-                                *const ::core::ffi::c_char,
-                                *const ::core::ffi::c_char,
-                                *const crate::src::xmltok::ENCODING,
-                            ) -> ::core::ffi::c_int,
-                        >;
+                    state.handler = Some(attlist8);
                     return crate::src::xmlrole::XML_ROLE_ATTRIBUTE_TYPE_CDATA
                         as ::core::ffi::c_int
                         + i;
@@ -2311,48 +1255,12 @@ extern "C" fn attlist2(
                 i += 1;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_NOTATION, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    attlist5
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(attlist5);
                 return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_OPEN_PAREN => {
-            state.handler = Some(
-                attlist3
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist3);
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2361,13 +1269,12 @@ extern "C" fn attlist2(
 }
 
 extern "C" fn attlist3(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
@@ -2375,25 +1282,7 @@ extern "C" fn attlist3(
         crate::src::xmltok::XML_TOK_NMTOKEN
         | crate::src::xmltok::XML_TOK_NAME
         | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                attlist4
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist4);
             return crate::src::xmlrole::XML_ROLE_ATTRIBUTE_ENUM_VALUE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2402,59 +1291,22 @@ extern "C" fn attlist3(
 }
 
 extern "C" fn attlist4(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_CLOSE_PAREN => {
-            state.handler = Some(
-                attlist8
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist8);
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_OR => {
-            state.handler = Some(
-                attlist3
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist3);
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2463,37 +1315,18 @@ extern "C" fn attlist4(
 }
 
 extern "C" fn attlist5(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_OPEN_PAREN => {
-            state.handler = Some(
-                attlist6
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist6);
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2502,37 +1335,18 @@ extern "C" fn attlist5(
 }
 
 extern "C" fn attlist6(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
-            state.handler = Some(
-                attlist7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist7);
             return crate::src::xmlrole::XML_ROLE_ATTRIBUTE_NOTATION_VALUE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2541,59 +1355,22 @@ extern "C" fn attlist6(
 }
 
 extern "C" fn attlist7(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_CLOSE_PAREN => {
-            state.handler = Some(
-                attlist8
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist8);
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_OR => {
-            state.handler = Some(
-                attlist6
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist6);
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2602,106 +1379,33 @@ extern "C" fn attlist7(
 }
 
 extern "C" fn attlist8(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_POUND_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_IMPLIED, 1 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    attlist1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(attlist1);
                 return crate::src::xmlrole::XML_ROLE_IMPLIED_ATTRIBUTE_VALUE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_REQUIRED, 1 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    attlist1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(attlist1);
                 return crate::src::xmlrole::XML_ROLE_REQUIRED_ATTRIBUTE_VALUE
                     as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_FIXED, 1 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    attlist9
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(attlist9);
                 return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                attlist1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist1);
             return crate::src::xmlrole::XML_ROLE_DEFAULT_ATTRIBUTE_VALUE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2710,37 +1414,18 @@ extern "C" fn attlist8(
 }
 
 extern "C" fn attlist9(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ATTLIST_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            state.handler = Some(
-                attlist1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(attlist1);
             return crate::src::xmlrole::XML_ROLE_FIXED_ATTRIBUTE_VALUE as ::core::ffi::c_int;
         }
         _ => {}
@@ -2749,37 +1434,18 @@ extern "C" fn attlist9(
 }
 
 extern "C" fn element0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                element1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element1);
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NAME as ::core::ffi::c_int;
         }
         _ => {}
@@ -2788,85 +1454,30 @@ extern "C" fn element0(
 }
 
 extern "C" fn element1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_EMPTY, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    declClose
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(declClose);
                 state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
                 return crate::src::xmlrole::XML_ROLE_CONTENT_EMPTY as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_ANY, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    declClose
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(declClose);
                 state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
                 return crate::src::xmlrole::XML_ROLE_CONTENT_ANY as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_OPEN_PAREN => {
-            state.handler = Some(
-                element2
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element2);
             state.level = 1 as ::core::ffi::c_uint;
             return crate::src::xmlrole::XML_ROLE_GROUP_OPEN as ::core::ffi::c_int;
         }
@@ -2876,150 +1487,41 @@ extern "C" fn element1(
 }
 
 extern "C" fn element2(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_POUND_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_PCDATA, 1 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    element3
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(element3);
                 return crate::src::xmlrole::XML_ROLE_CONTENT_PCDATA as ::core::ffi::c_int;
             }
         }
         crate::src::xmltok::XML_TOK_OPEN_PAREN => {
             state.level = 2 as ::core::ffi::c_uint;
-            state.handler = Some(
-                element6
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element6);
             return crate::src::xmlrole::XML_ROLE_GROUP_OPEN as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME_QUESTION => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT_OPT as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME_ASTERISK => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT_REP as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME_PLUS => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT_PLUS as ::core::ffi::c_int;
         }
         _ => {}
@@ -3028,83 +1530,28 @@ extern "C" fn element2(
 }
 
 extern "C" fn element3(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_CLOSE_PAREN => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_GROUP_CLOSE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_GROUP_CLOSE_REP as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_OR => {
-            state.handler = Some(
-                element4
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element4);
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
         }
         _ => {}
@@ -3113,37 +1560,18 @@ extern "C" fn element3(
 }
 
 extern "C" fn element4(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                element5
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element5);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT as ::core::ffi::c_int;
         }
         _ => {}
@@ -3152,60 +1580,23 @@ extern "C" fn element4(
 }
 
 extern "C" fn element5(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK => {
-            state.handler = Some(
-                declClose
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(declClose);
             state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             return crate::src::xmlrole::XML_ROLE_GROUP_CLOSE_REP as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_OR => {
-            state.handler = Some(
-                element4
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element4);
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
         }
         _ => {}
@@ -3214,13 +1605,12 @@ extern "C" fn element5(
 }
 
 extern "C" fn element6(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
@@ -3230,91 +1620,19 @@ extern "C" fn element6(
             return crate::src::xmlrole::XML_ROLE_GROUP_OPEN as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME | crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME_QUESTION => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT_OPT as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME_ASTERISK => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT_REP as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_NAME_PLUS => {
-            state.handler = Some(
-                element7
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element7);
             return crate::src::xmlrole::XML_ROLE_CONTENT_ELEMENT_PLUS as ::core::ffi::c_int;
         }
         _ => {}
@@ -3323,13 +1641,12 @@ extern "C" fn element6(
 }
 
 extern "C" fn element7(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int
@@ -3337,25 +1654,7 @@ extern "C" fn element7(
         crate::src::xmltok::XML_TOK_CLOSE_PAREN => {
             state.level = state.level.wrapping_sub(1 as ::core::ffi::c_uint);
             if state.level == 0 as ::core::ffi::c_uint {
-                state.handler = Some(
-                    declClose
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(declClose);
                 state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             }
             return crate::src::xmlrole::XML_ROLE_GROUP_CLOSE as ::core::ffi::c_int;
@@ -3363,25 +1662,7 @@ extern "C" fn element7(
         crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK => {
             state.level = state.level.wrapping_sub(1 as ::core::ffi::c_uint);
             if state.level == 0 as ::core::ffi::c_uint {
-                state.handler = Some(
-                    declClose
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(declClose);
                 state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             }
             return crate::src::xmlrole::XML_ROLE_GROUP_CLOSE_REP as ::core::ffi::c_int;
@@ -3389,25 +1670,7 @@ extern "C" fn element7(
         crate::src::xmltok::XML_TOK_CLOSE_PAREN_QUESTION => {
             state.level = state.level.wrapping_sub(1 as ::core::ffi::c_uint);
             if state.level == 0 as ::core::ffi::c_uint {
-                state.handler = Some(
-                    declClose
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(declClose);
                 state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             }
             return crate::src::xmlrole::XML_ROLE_GROUP_CLOSE_OPT as ::core::ffi::c_int;
@@ -3415,71 +1678,17 @@ extern "C" fn element7(
         crate::src::xmltok::XML_TOK_CLOSE_PAREN_PLUS => {
             state.level = state.level.wrapping_sub(1 as ::core::ffi::c_uint);
             if state.level == 0 as ::core::ffi::c_uint {
-                state.handler = Some(
-                    declClose
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(declClose);
                 state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
             }
             return crate::src::xmlrole::XML_ROLE_GROUP_CLOSE_PLUS as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_COMMA => {
-            state.handler = Some(
-                element6
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element6);
             return crate::src::xmlrole::XML_ROLE_GROUP_SEQUENCE as ::core::ffi::c_int;
         }
         crate::src::xmltok::XML_TOK_OR => {
-            state.handler = Some(
-                element6
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(element6);
             return crate::src::xmlrole::XML_ROLE_GROUP_CHOICE as ::core::ffi::c_int;
         }
         _ => {}
@@ -3488,60 +1697,23 @@ extern "C" fn element7(
 }
 
 extern "C" fn condSect0(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_NAME => {
             if encoded_name_matches_ascii(enc, ptr, end, &KW_INCLUDE, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    condSect1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(condSect1);
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
             if encoded_name_matches_ascii(enc, ptr, end, &KW_IGNORE, 0 as ::core::ffi::c_int) {
-                state.handler = Some(
-                    condSect2
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-                    as Option<
-                        unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::prolog_state,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                    >;
+                state.handler = Some(condSect2);
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
         }
@@ -3551,37 +1723,18 @@ extern "C" fn condSect0(
 }
 
 extern "C" fn condSect1(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_OPEN_BRACKET => {
-            state.handler = Some(
-                externalSubset1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(externalSubset1);
             state.includeLevel = state.includeLevel.wrapping_add(1 as ::core::ffi::c_uint);
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
         }
@@ -3591,37 +1744,18 @@ extern "C" fn condSect1(
 }
 
 extern "C" fn condSect2(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_OPEN_BRACKET => {
-            state.handler = Some(
-                externalSubset1
-                    as unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::PROLOG_STATE,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+            state.handler = Some(externalSubset1);
             return crate::src::xmlrole::XML_ROLE_IGNORE_SECT as ::core::ffi::c_int;
         }
         _ => {}
@@ -3630,48 +1764,20 @@ extern "C" fn condSect2(
 }
 
 extern "C" fn declClose(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
-    let state = prolog_state_mut(state);
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => return state.role_none,
         crate::src::xmltok::XML_TOK_DECL_CLOSE => {
             state.handler = (if state.documentEntity != 0 {
-                Some(
-                    internalSubset
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
+                Some(internalSubset)
             } else {
-                Some(
-                    externalSubset1
-                        as unsafe extern "C" fn(
-                            *mut crate::src::xmlrole::PROLOG_STATE,
-                            ::core::ffi::c_int,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *const crate::src::xmltok::ENCODING,
-                        ) -> ::core::ffi::c_int,
-                )
-            })
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut crate::src::xmlrole::prolog_state,
-                        ::core::ffi::c_int,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *const crate::src::xmltok::ENCODING,
-                    ) -> ::core::ffi::c_int,
-                >;
+                Some(externalSubset1)
+            });
             return state.role_none;
         }
         _ => {}
@@ -3680,7 +1786,7 @@ extern "C" fn declClose(
 }
 
 extern "C" fn error(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -3696,47 +1802,11 @@ fn common(
     if state.documentEntity == 0 && tok == crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF_1 {
         return crate::src::xmlrole::XML_ROLE_INNER_PARAM_ENTITY_REF as ::core::ffi::c_int;
     }
-    state.handler = Some(
-        error
-            as unsafe extern "C" fn(
-                *mut crate::src::xmlrole::PROLOG_STATE,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-    )
-        as Option<
-            unsafe extern "C" fn(
-                *mut crate::src::xmlrole::prolog_state,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-        >;
+    state.handler = Some(error);
     return crate::src::xmlrole::XML_ROLE_ERROR as ::core::ffi::c_int;
 }
 pub fn XmlPrologStateInit(state: &mut crate::src::xmlrole::PROLOG_STATE) {
-    state.handler = Some(
-        prolog0
-            as unsafe extern "C" fn(
-                *mut crate::src::xmlrole::PROLOG_STATE,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-    )
-        as Option<
-            unsafe extern "C" fn(
-                *mut crate::src::xmlrole::prolog_state,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-        >;
+    state.handler = Some(prolog0);
     state.documentEntity = 1 as ::core::ffi::c_int;
     state.includeLevel = 0 as ::core::ffi::c_uint;
     state.inEntityValue = 0 as ::core::ffi::c_int;
@@ -3747,25 +1817,7 @@ pub unsafe extern "C" fn XmlPrologStateInit_ffi(mut state: *mut crate::src::xmlr
     XmlPrologStateInit(&mut *state)
 }
 pub fn XmlPrologStateInitExternalEntity(state: &mut crate::src::xmlrole::PROLOG_STATE) {
-    state.handler = Some(
-        externalSubset0
-            as unsafe extern "C" fn(
-                *mut crate::src::xmlrole::PROLOG_STATE,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-    )
-        as Option<
-            unsafe extern "C" fn(
-                *mut crate::src::xmlrole::prolog_state,
-                ::core::ffi::c_int,
-                *const ::core::ffi::c_char,
-                *const ::core::ffi::c_char,
-                *const crate::src::xmltok::ENCODING,
-            ) -> ::core::ffi::c_int,
-        >;
+    state.handler = Some(externalSubset0);
     state.documentEntity = 0 as ::core::ffi::c_int;
     state.includeLevel = 0 as ::core::ffi::c_uint;
 }

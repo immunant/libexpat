@@ -7904,7 +7904,7 @@ unsafe extern "C" fn doProlog(
                             .m_prologState
                             .handler
                             .expect("non-null function pointer")(
-                            &raw mut (*parser).m_prologState,
+                            &mut (*parser).m_prologState,
                             -4 as ::core::ffi::c_int,
                             end,
                             end,
@@ -7928,11 +7928,7 @@ unsafe extern "C" fn doProlog(
             .m_prologState
             .handler
             .expect("non-null function pointer")(
-            &raw mut (*parser).m_prologState,
-            tok,
-            s,
-            next,
-            enc,
+            &mut (*parser).m_prologState, tok, s, next, enc
         );
         match role {
             2 | 1 | 57 => {}
