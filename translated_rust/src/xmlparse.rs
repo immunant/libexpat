@@ -17958,51 +17958,79 @@ unsafe extern "C" fn reportComment(
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn reportDefault(
-    mut parser: crate::expat_h::XML_Parser,
+unsafe fn reportDefault(
+    parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) {
+    let parser_handle = parser;
+    let report_chunk = |data: *const crate::expat_external_h::XML_Char,
+                        len: ::core::ffi::c_int| {
+        let callback = DEFAULT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&(parser_handle as usize))
+            .cloned()
+            .expect("default callback must be registered when installed");
+        callback.invoke(handler_arg!(parser_handle), data, len);
+    };
     if (*enc).isUtf8 == 0 {
         let mut convert_res: crate::src::xmltok::XML_Convert_Result =
             crate::src::xmltok::XML_CONVERT_COMPLETED;
-        let parser_events = enc == parser_encoding(parser);
-        let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-        let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-        let mut internal_event_start = None;
-        let mut internal_event_window = None;
-        if !parser_events {
-            let open_entity = {
-                let parser_state = &mut *parser;
+        let ((event_target, internal_event_window, internal_event_start), (data_start, data_end)) = {
+            let parser_state = &mut *parser;
+            let active_parser_encoding = match parser_state.m_encoding {
+                EncodingState::Initial => match parser_state.m_initEncoding.selected_encoding {
+                    Some(index) if index < 7 => {
+                        if parser_state.m_ns != 0 {
+                            crate::src::xmltok::encodingsNS[index]
+                        } else {
+                            crate::src::xmltok::encodings[index]
+                        }
+                    }
+                    _ => &raw const parser_state.m_initEncoding.initEnc,
+                },
+                EncodingState::Unknown => parser_state
+                    .m_unknownEncodingMem
+                    .as_ref()
+                    .expect("unknown encoding storage is installed")
+                    .storage
+                    .as_ptr()
+                    .cast(),
+            };
+            let parser_events = enc == active_parser_encoding;
+            let event_target = if parser_events {
+                (EventCursorTarget::Parser, None, None)
+            } else {
                 let open_entity_index = parser_state
                     .m_openInternalEntities
                     .expect("internal entity default reporting requires an open entity");
-                std::ptr::from_mut(
-                    parser_state
-                        .m_activeInternalEntities
-                        .get_mut(open_entity_index)
-                        .expect("open internal entity index is live")
-                        .node_mut(),
+                let dtd = parser_state
+                    .m_dtd
+                    .as_ref()
+                    .expect("internal entity default reporting requires a DTD");
+                let open_entity = parser_state
+                    .m_activeInternalEntities
+                    .get(open_entity_index)
+                    .expect("open internal entity index is live")
+                    .node();
+                let Some(window) = shared_event_text_window(dtd, open_entity) else {
+                    return;
+                };
+                let internal_window = Some(window);
+                (
+                    EventCursorTarget::InternalEntity(open_entity_index),
+                    internal_window,
+                    internal_event_offset(internal_window, s.addr()),
                 )
             };
-            let open_entity = &mut *open_entity;
-            let dtd = (&*parser)
-                .m_dtd
-                .as_ref()
-                .expect("internal entity default reporting requires a DTD");
-            let Some(window) = shared_event_text_window(dtd, open_entity) else {
-                return;
-            };
-            internal_event_window = Some(window);
-            internal_event_start = internal_event_offset(internal_event_window, s.addr());
-            eventPP = &raw mut open_entity.internalEventPtr;
-            eventEndPP = &raw mut open_entity.internalEventEndPtr;
-        }
-        let (data_start, data_end) = {
-            let parser_ref = &mut *parser;
-            let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
-            (data_start, data_start.wrapping_add(parser_ref.m_dataBufEnd))
+            let data_start = parser_state.m_dataBuf.chars.as_mut_ptr();
+            (
+                event_target,
+                (data_start, data_start.wrapping_add(parser_state.m_dataBufEnd)),
+            )
         };
         loop {
             let mut dataPtr: *mut ICHAR = data_start;
@@ -18013,27 +18041,17 @@ unsafe extern "C" fn reportDefault(
                 &raw mut dataPtr,
                 data_end,
             );
-            set_event_end!(
-                parser,
-                parser_events,
+            event_target.set_end(
+                &mut *parser,
                 internal_event_start,
                 internal_event_window,
-                eventEndPP,
-                s
+                s.addr(),
             );
-            let callback = DEFAULT_HANDLERS
-                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .get(&(parser as usize))
-                .cloned()
-                .expect("default callback must be registered when installed");
-            callback.invoke(
-                handler_arg!(parser),
+            report_chunk(
                 data_start,
-                dataPtr.offset_from(data_start) as ::core::ffi::c_int,
+                dataPtr.addr().wrapping_sub(data_start.addr()) as ::core::ffi::c_int,
             );
-            set_event_start!(parser, parser_events, eventPP, internal_event_window, s);
+            event_target.set_start(&mut *parser, internal_event_window, s.addr());
             if !(convert_res as ::core::ffi::c_uint
                 != crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                     as ::core::ffi::c_uint
@@ -18045,19 +18063,9 @@ unsafe extern "C" fn reportDefault(
             }
         }
     } else {
-        let callback = DEFAULT_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .get(&(parser as usize))
-            .cloned()
-            .expect("default callback must be registered when installed");
-        callback.invoke(
-            handler_arg!(parser),
+        report_chunk(
             s as *const crate::expat_external_h::XML_Char,
-            (end as *const crate::expat_external_h::XML_Char)
-                .offset_from(s as *const crate::expat_external_h::XML_Char)
-                as ::core::ffi::c_int,
+            end.addr().wrapping_sub(s.addr()) as ::core::ffi::c_int,
         );
     };
 }
