@@ -5989,19 +5989,21 @@ struct ParserParentState {
     inherited_dtd: Option<std::sync::Arc<SharedDtd>>,
 }
 
-// Parser storage keeps the same physical prefix as expat_malloc allocations,
-// so custom allocators observe the same requested size.  Its payload size is
-// registered with the root state immediately after construction, rather than
-// being read from an in-band raw-memory header during release.  The first
-// mutable access to the new allocation is kept here, while it remains wholly
-// owned by this allocation boundary.
-unsafe fn allocate_parser_storage(
+/// Construct a parser through the single allocator-aware ownership boundary.
+///
+/// Parser storage keeps the same physical prefix as `expat_malloc`
+/// allocations, so custom allocators observe the same requested size. Its
+/// payload size is registered with the root state immediately after
+/// construction, rather than being read from an in-band raw-memory header
+/// during release. The first mutable access to the new allocation is kept
+/// here, while it remains wholly owned by this allocation boundary.
+unsafe fn parser_create_ownership_facade(
+    encoding_name: Option<&std::ffi::CStr>,
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+    namespace_separator: Option<crate::expat_external_h::XML_Char>,
     share_parent_dtd: bool,
     parent: Option<&XML_ParserStruct>,
-    encoding_name: Option<&std::ffi::CStr>,
-    namespace_separator: Option<crate::expat_external_h::XML_Char>,
-) -> Option<crate::expat_h::XML_Parser> {
+) -> crate::expat_h::XML_Parser {
     let increase = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
@@ -6014,10 +6016,13 @@ unsafe fn allocate_parser_storage(
             increase as XmlBigCount,
             1354 as ::core::ffi::c_int,
         ) {
-            return None;
+            return ::core::ptr::null_mut();
         }
         let inherited_dtd = if share_parent_dtd {
-            Some(std::sync::Arc::clone(parent.m_dtd.as_ref()?))
+            let Some(dtd) = parent.m_dtd.as_ref() else {
+                return ::core::ptr::null_mut();
+            };
+            Some(std::sync::Arc::clone(dtd))
         } else {
             None
         };
@@ -6030,7 +6035,7 @@ unsafe fn allocate_parser_storage(
         None
     };
     if share_parent_dtd && parent_state.is_none() {
-        return None;
+        return ::core::ptr::null_mut();
     }
     let mut parser_owner = Box::new(initial_parser_struct(memory_suite));
     let parser_ptr = std::ptr::from_mut(parser_owner.as_mut());
@@ -6040,7 +6045,7 @@ unsafe fn allocate_parser_storage(
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
     let allocation = memory_suite.malloc_fcn.expect("non-null function pointer")(allocation_size);
     if allocation.is_null() {
-        return None;
+        return ::core::ptr::null_mut();
     }
     let free = memory_suite.free_fcn.expect("non-null function pointer");
     parser.m_parserStorageBacking = Some(Box::new(move || unsafe {
@@ -6192,7 +6197,7 @@ unsafe fn allocate_parser_storage(
     })();
     if storage_result.is_err() {
         cleanup_failed_parser_construction(parser);
-        return None;
+        return ::core::ptr::null_mut();
     }
     initialize_parser_collections(parser);
     parser.m_unknownEncodingHandler = false;
@@ -6212,7 +6217,7 @@ unsafe fn allocate_parser_storage(
     pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
     if !parser_initialize_from_cstr(parser, encoding_name) {
         cleanup_failed_parser_construction(parser);
-        return None;
+        return ::core::ptr::null_mut();
     }
     if let Some(namespace_separator) = namespace_separator {
         parser.m_ns = crate::expat_h::XML_TRUE;
@@ -6221,7 +6226,7 @@ unsafe fn allocate_parser_storage(
     } else {
         parser.m_internalEncoding = InternalEncoding::Utf8;
     }
-    Some(Box::into_raw(parser_owner))
+    Box::into_raw(parser_owner)
 }
 
 fn empty_string_pool() -> STRING_POOL {
@@ -6418,26 +6423,6 @@ fn initialize_parser_collections(parser: &mut XML_ParserStruct) {
     parser.m_nsAttsVersion = 0;
     parser.m_nsAttsPower = 0;
     parser.m_protocolEncodingName = None;
-}
-
-/// Route the public construction variants through the one allocator-aware
-/// constructor.  That constructor keeps the parser handle private until it
-/// has either completed initialization or released all acquired allocations.
-unsafe fn parser_create_ownership_facade(
-    encoding_name: Option<&std::ffi::CStr>,
-    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-    namespace_separator: Option<crate::expat_external_h::XML_Char>,
-    share_parent_dtd: bool,
-    parent: Option<&XML_ParserStruct>,
-) -> crate::expat_h::XML_Parser {
-    allocate_parser_storage(
-        memory_suite,
-        share_parent_dtd,
-        parent,
-        encoding_name,
-        namespace_separator,
-    )
-    .unwrap_or(::core::ptr::null_mut::<XML_ParserStruct>())
 }
 
 /// Read the decimal debug switches using the same accepted input as
