@@ -8425,11 +8425,29 @@ unsafe extern "C" fn doContent(
                     let mut name: *const crate::expat_external_h::XML_Char =
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
+                    let (min_bytes_per_char, entity_name_matcher) = {
+                        let encoding = &*enc;
+                        (encoding.minBytesPerChar, encoding.predefinedEntityName)
+                    };
+                    let entity_start = s.wrapping_offset(min_bytes_per_char as isize);
+                    let entity_end = next.wrapping_offset(-(min_bytes_per_char as isize));
+                    // The tokenizer produced this complete entity-reference
+                    // token, so this subrange is within its readable input.
+                    let entity_len = entity_end.addr().checked_sub(entity_start.addr()).unwrap_or(0);
+                    let max_entity_name_len = match entity_name_matcher {
+                        crate::src::xmltok::PredefinedEntityNameMatcher::Normal => 4,
+                        crate::src::xmltok::PredefinedEntityNameMatcher::Little2
+                        | crate::src::xmltok::PredefinedEntityNameMatcher::Big2 => 9,
+                    };
+                    let entity_name = if entity_len <= max_entity_name_len {
+                        ::core::slice::from_raw_parts(entity_start, entity_len)
+                    } else {
+                        &[]
+                    };
                     let mut ch: crate::expat_external_h::XML_Char =
                         crate::src::xmltok::predefined_entity_name(
-                            enc,
-                            s.wrapping_offset((*enc).minBytesPerChar as isize),
-                            next.wrapping_offset(-((*enc).minBytesPerChar as isize)),
+                            entity_name_matcher,
+                            entity_name,
                         ) as crate::expat_external_h::XML_Char;
                     if ch != 0 {
                         accountingDiffTolerated(
@@ -12026,7 +12044,10 @@ unsafe extern "C" fn doProlog(
         }
         let prolog_state = &mut (*parser).m_prologState;
         let token = ::core::slice::from_raw_parts(s, next.offset_from(s) as usize);
-        let min_bytes_per_char = (*enc).minBytesPerChar;
+        let (min_bytes_per_char, entity_name_matcher) = {
+            let encoding = &*enc;
+            (encoding.minBytesPerChar, encoding.predefinedEntityName)
+        };
         role = crate::src::xmlrole::prolog_handler_dispatch(
             prolog_state
                 .handler
@@ -13371,7 +13392,10 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     9 => {
-                                        if crate::src::xmltok::predefined_entity_name(enc, s, next)
+                                        if crate::src::xmltok::predefined_entity_name(
+                                            entity_name_matcher,
+                                            token,
+                                        )
                                             != 0
                                         {
                                             (*parser).m_declEntity = None;
@@ -15408,11 +15432,25 @@ unsafe fn appendAttributeValue(
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                     let mut checkEntityDecl: bool = false;
+                    let entity_start = ptr.offset(enc.minBytesPerChar as isize);
+                    let entity_end = next.offset(-(enc.minBytesPerChar as isize));
+                    // The literal scanner returned the complete token, so
+                    // this interior span is readable for the match below.
+                    let entity_len = entity_end.addr().checked_sub(entity_start.addr()).unwrap_or(0);
+                    let max_entity_name_len = match enc.predefinedEntityName {
+                        crate::src::xmltok::PredefinedEntityNameMatcher::Normal => 4,
+                        crate::src::xmltok::PredefinedEntityNameMatcher::Little2
+                        | crate::src::xmltok::PredefinedEntityNameMatcher::Big2 => 9,
+                    };
+                    let entity_name = if entity_len <= max_entity_name_len {
+                        ::core::slice::from_raw_parts(entity_start, entity_len)
+                    } else {
+                        &[]
+                    };
                     let mut ch: crate::expat_external_h::XML_Char =
                         crate::src::xmltok::predefined_entity_name(
-                            enc_ptr,
-                            ptr.offset(enc.minBytesPerChar as isize),
-                            next.offset(-(enc.minBytesPerChar as isize)),
+                            enc.predefinedEntityName,
+                            entity_name,
                         ) as crate::expat_external_h::XML_Char;
                     if ch != 0 {
                         accountingDiffTolerated(
