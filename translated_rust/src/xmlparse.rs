@@ -10649,14 +10649,29 @@ unsafe fn doContent(
                                 }
                             }
                         } else if handlers.external_entity_ref {
-                            let mut context: *const crate::expat_external_h::XML_Char =
-                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             (*entity).open = crate::expat_h::XML_TRUE;
-                            context = getContext(parser);
+                            let context = getContext(parser);
                             (*entity).open = crate::expat_h::XML_FALSE;
                             if context.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
+                            // `getContext` commits this terminated value in
+                            // the temporary pool.  Resolve its checked owner
+                            // before copying it into the re-entry-safe event.
+                            let Some(context_ref) = pool_string_ref_from_address(
+                                &parser.m_tempPool,
+                                context.addr(),
+                                false,
+                            ) else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            let Some(context_chars) = parser
+                                .m_tempPool
+                                .chars_from(context_ref)
+                                .map(<[_]>::to_vec)
+                            else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
                             let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                 .get_or_init(|| {
                                     std::sync::Mutex::new(std::collections::HashMap::new())
@@ -10669,7 +10684,7 @@ unsafe fn doContent(
                             if invoke_external_entity_ref_handler(
                                 handler.as_ref(),
                                 parser,
-                                context,
+                                Some(&context_chars),
                                 dtd_pool,
                                 entity,
                             ) == 0
@@ -15922,7 +15937,7 @@ unsafe extern "C" fn doProlog(
                                                 if invoke_external_entity_ref_handler(
                                                     handler.as_ref(),
                                                     parser,
-                                                    ::core::ptr::null(),
+                                                    None,
                                                     std::ptr::from_ref(&dtd.pool),
                                                     entity,
                                                 ) == 0
@@ -16014,7 +16029,7 @@ unsafe extern "C" fn doProlog(
                                                 if invoke_external_entity_ref_handler(
                                                     handler.as_ref(),
                                                     parser,
-                                                    ::core::ptr::null(),
+                                                    None,
                                                     std::ptr::from_ref(&dtd.pool),
                                                     entity_0,
                                                 ) == 0
@@ -17705,7 +17720,7 @@ unsafe extern "C" fn doProlog(
                                                 if invoke_external_entity_ref_handler(
                                                     handler.as_ref(),
                                                     parser,
-                                                    ::core::ptr::null(),
+                                                    None,
                                                     std::ptr::from_ref(&dtd.pool),
                                                     entity_1,
                                                 ) == 0
@@ -19857,7 +19872,7 @@ unsafe fn storeEntityValue(
                                         if invoke_external_entity_ref_handler(
                                             handler.as_ref(),
                                             std::ptr::from_mut(parser),
-                                            ::core::ptr::null(),
+                                            None,
                                             &raw const dtd.pool,
                                             entity,
                                         ) == 0
@@ -22935,32 +22950,74 @@ unsafe fn pool_string_ref(
     pool_string_ref_from_address(&*pool, string.addr(), allow_block_end)
 }
 
-// The callback boundary is the only point where pool-backed entity
-// identifiers become C pointers.  Keeping the conversion with the callback
-// invocation avoids retaining allocator-owned addresses in `ENTITY`.
+// An external-entity callback may re-enter the parser and grow either pool.
+// Snapshot every callback value before dispatch so the foreign call never
+// receives an address into mutable DTD or temporary-pool storage.
+struct ExternalEntityRefEvent {
+    context: Option<Vec<crate::expat_external_h::XML_Char>>,
+    base: Option<Vec<crate::expat_external_h::XML_Char>>,
+    system_id: Option<Vec<crate::expat_external_h::XML_Char>>,
+    public_id: Option<Vec<crate::expat_external_h::XML_Char>>,
+}
+
+fn external_entity_ref_event(
+    context: Option<&[crate::expat_external_h::XML_Char]>,
+    pool: &STRING_POOL,
+    entity: &ENTITY,
+) -> ExternalEntityRefEvent {
+    external_entity_ref_event_from_names(
+        context,
+        pool,
+        entity.base,
+        entity.systemId,
+        entity.publicId,
+    )
+}
+
+fn external_entity_ref_event_from_names(
+    context: Option<&[crate::expat_external_h::XML_Char]>,
+    pool: &STRING_POOL,
+    base: Option<PoolStringRef>,
+    system_id: Option<PoolStringRef>,
+    public_id: Option<PoolStringRef>,
+) -> ExternalEntityRefEvent {
+    let copy_pool_string = |name: Option<PoolStringRef>| {
+        name.and_then(|name| pool.chars_from(name).map(<[_]>::to_vec))
+    };
+    ExternalEntityRefEvent {
+        context: context.map(<[_]>::to_vec),
+        base: copy_pool_string(base),
+        system_id: copy_pool_string(system_id),
+        public_id: copy_pool_string(public_id),
+    }
+}
+
+// The callback boundary consumes the owned event assembled above.  Raw
+// pointers exist only for the duration of the foreign callback itself.
 unsafe fn invoke_external_entity_ref_handler(
     handler: &dyn ExternalEntityRefCallback,
     parser: crate::expat_h::XML_Parser,
-    context: *const crate::expat_external_h::XML_Char,
+    context: Option<&[crate::expat_external_h::XML_Char]>,
     pool: *const STRING_POOL,
     entity: *const ENTITY,
 ) -> ::core::ffi::c_int {
-    let entity = &*entity;
-    let base = entity.base.map_or(::core::ptr::null(), |base| {
-        (&*pool)
-            .chars_from(base)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    let system_id = entity.systemId.map_or(::core::ptr::null(), |system_id| {
-        (&*pool)
-            .chars_from(system_id)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
-    let public_id = entity.publicId.map_or(::core::ptr::null(), |public_id| {
-        (&*pool)
-            .chars_from(public_id)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-    });
+    let event = external_entity_ref_event(context, &*pool, &*entity);
+    let context = event
+        .context
+        .as_ref()
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let base = event
+        .base
+        .as_ref()
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let system_id = event
+        .system_id
+        .as_ref()
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let public_id = event
+        .public_id
+        .as_ref()
+        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
     let callback_arg = EXTERNAL_ENTITY_REF_HANDLER_ARGS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
