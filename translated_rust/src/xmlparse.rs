@@ -17872,7 +17872,43 @@ unsafe fn getAttributeId(
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
     name = name.wrapping_add(1);
-    let name_bytes = ::std::ffi::CStr::from_ptr(name).to_bytes();
+    // `poolStoreString` has just appended the terminating XML character.
+    // Resolve that address back through its owning pool before examining the
+    // name: unlike `CStr::from_ptr`, this cannot scan past the live slab when
+    // a malformed cursor reaches this parser path.
+    let Some(id_name_ref) = pool_string_ref_from_address(&dtd.pool, name.addr(), false) else {
+        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    };
+    let (is_xmlns_name, xmlns_is_default, local_prefix) = {
+        let Some(name_chars) = dtd.pool.chars_from(id_name_ref) else {
+            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+        };
+        let Some(name_len) = name_chars
+            .iter()
+            .position(|&character| character == 0)
+        else {
+            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+        };
+        let name_chars = &name_chars[..name_len];
+        let is_xmlns_name = name_chars.starts_with(&[
+            'x' as crate::expat_external_h::XML_Char,
+            'm' as crate::expat_external_h::XML_Char,
+            'l' as crate::expat_external_h::XML_Char,
+            'n' as crate::expat_external_h::XML_Char,
+            's' as crate::expat_external_h::XML_Char,
+        ]) && name_chars.get(5).map_or(true, |&character| {
+            character == ':' as crate::expat_external_h::XML_Char
+        });
+        let local_prefix = (!is_xmlns_name)
+            .then(|| {
+                name_chars
+                    .iter()
+                    .position(|&character| character == ':' as crate::expat_external_h::XML_Char)
+                    .map(|prefix_len| name_chars[..prefix_len].to_vec())
+            })
+            .flatten();
+        (is_xmlns_name, name_chars.len() == 5, local_prefix)
+    };
     let id = lookup(
         parser_ptr,
         &raw mut dtd.attributeIds,
@@ -17883,22 +17919,30 @@ unsafe fn getAttributeId(
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
     let id = &mut *id;
-    let Some(id_name_ref) = pool_string_ref(&raw const dtd.pool, name, false) else {
-        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    };
     if id.named.name != id_name_ref {
         dtd.pool.rewind();
     } else {
         dtd.pool.commit();
         if parser.m_ns != 0 {
-            if name_bytes.starts_with(b"xmlns") && matches!(name_bytes.get(5), None | Some(b':')) {
-                if name_bytes.len() == 5 {
+            if is_xmlns_name {
+                if xmlns_is_default {
                     id.prefix = AttributePrefix::Default;
                 } else {
+                    // The checked name slice above established the `xmlns:`
+                    // prefix, so offset six is within this terminated pool
+                    // string even for an empty namespace prefix.
+                    let Some(prefix_start) = dtd
+                        .pool
+                        .chars_from(id_name_ref)
+                        .and_then(|chars| chars.get(6..))
+                        .map(|chars| chars.as_ptr())
+                    else {
+                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    };
                     let prefix = lookup(
                         parser_ptr,
                         &raw mut dtd.prefixes,
-                        name.wrapping_add(6),
+                        prefix_start,
                         ::core::mem::size_of::<PREFIX>(),
                     ) as *mut PREFIX;
                     if prefix.is_null() {
@@ -17911,10 +17955,9 @@ unsafe fn getAttributeId(
                 }
                 id.xmlns = crate::expat_h::XML_TRUE;
             } else {
-                if let Some(prefix_len) = name_bytes.iter().position(|&ch| ch == b':') {
-                    for &ch in &name_bytes[..prefix_len] {
-                        if !pool_append_char(&mut dtd.pool, ch as crate::expat_external_h::XML_Char)
-                        {
+                if let Some(prefix_chars) = local_prefix {
+                    for character in prefix_chars {
+                        if !pool_append_char(&mut dtd.pool, character) {
                             return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                         }
                     }
@@ -17941,7 +17984,7 @@ unsafe fn getAttributeId(
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     }
                     let Some(pool_start_ref) =
-                        pool_string_ref(&raw const dtd.pool, pool_start, false)
+                        pool_string_ref_from_address(&dtd.pool, pool_start.addr(), false)
                     else {
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     };
@@ -19429,25 +19472,21 @@ unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut N
 // through the configured Expat memory suite.  This conversion records only a
 // checked tail-relative block ordinal and character offset; it never transfers
 // ownership or turns an integer back into an address.
-unsafe fn pool_string_ref(
-    pool: *const STRING_POOL,
-    string: *const crate::expat_external_h::XML_Char,
+fn pool_string_ref_from_address(
+    pool: &STRING_POOL,
+    string_address: usize,
     allow_block_end: bool,
 ) -> Option<PoolStringRef> {
-    if string.is_null() {
-        return None;
-    }
-    let pool = &*pool;
     let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
     for (block_index, block) in pool.storage.active.iter().enumerate() {
         let start = block.chars.as_ptr();
         let start_address = start.addr();
-        let byte_offset = string.addr().wrapping_sub(start_address);
+        let byte_offset = string_address.wrapping_sub(start_address);
         let capacity_bytes = block.chars.len().wrapping_mul(char_size);
         // A committed empty entity may start directly after a preceding value
         // that filled its slab.  Its caller explicitly permits that one-past
         // location; terminated identifiers always require an in-slab element.
-        if string.addr() >= start_address
+        if string_address >= start_address
             && (byte_offset < capacity_bytes || allow_block_end && byte_offset == capacity_bytes)
             && byte_offset % char_size == 0
         {
@@ -19458,6 +19497,17 @@ unsafe fn pool_string_ref(
         }
     }
     None
+}
+
+unsafe fn pool_string_ref(
+    pool: *const STRING_POOL,
+    string: *const crate::expat_external_h::XML_Char,
+    allow_block_end: bool,
+) -> Option<PoolStringRef> {
+    if string.is_null() {
+        return None;
+    }
+    pool_string_ref_from_address(&*pool, string.addr(), allow_block_end)
 }
 
 // The callback boundary is the only point where pool-backed entity
