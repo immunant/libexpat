@@ -9065,9 +9065,8 @@ pub unsafe extern "C" fn XML_SetUserData_ffi(
     );
 }
 /// Stores an already-validated, NUL-terminated base identifier in the DTD
-/// pool.  The shared DTD cell is the existing parser-ownership boundary;
-/// callers have already established exclusive parser access before entering
-/// this implementation.
+/// pool.  `SharedDtd::inspect` confines the shared DTD's interior-mutability
+/// boundary, while parser access remains exclusive for this operation.
 unsafe fn xml_set_base_impl(
     parser: &mut XML_ParserStruct,
     base: Option<&[crate::expat_external_h::XML_Char]>,
@@ -9076,8 +9075,7 @@ unsafe fn xml_set_base_impl(
         let Some(dtd_owner) = parser.m_dtd.as_ref() else {
             return crate::expat_h::XML_STATUS_ERROR;
         };
-        let dtd = &mut *dtd_owner.value.get();
-        let Some(base) = poolCopyString(&mut dtd.pool, base) else {
+        let Some(base) = dtd_owner.inspect(|dtd| poolCopyString(&mut dtd.pool, base)) else {
             return crate::expat_h::XML_STATUS_ERROR;
         };
         parser.m_curBase = Some(base);
