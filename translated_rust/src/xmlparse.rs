@@ -139,35 +139,34 @@ pub mod siphash_h {
         return H;
     }
 
-    pub unsafe extern "C" fn sip24_final(
-        mut H: *mut crate::siphash_h::siphash,
+    /// Finalizes an already-borrowed SipHash state.  `p` is an internal cursor
+    /// into `buf`, established by `sip24_init` and maintained by
+    /// `sip24_update`; represent its position as a checked offset before using
+    /// the bytes.  This keeps the final compression round wholly on the
+    /// reference-based side of the state boundary.
+    pub unsafe fn sip24_final(
+        state: &mut crate::siphash_h::siphash,
     ) -> crate::stdlib::uint64_t {
-        let b = {
-            let state = &mut *H;
-            let left = state.p.offset_from(state.buf.as_mut_ptr()) as ::core::ffi::c_char;
-            let mut b =
-                state.c.wrapping_add(left as crate::stdlib::uint64_t) << 56 as ::core::ffi::c_int;
-            if (0..=7).contains(&(left as ::core::ffi::c_int)) {
-                for index in 0..left as usize {
-                    b |= (state.buf[index] as crate::stdlib::uint64_t)
-                        << (index * 8) as ::core::ffi::c_int;
-                }
-            }
-            b
+        let buffer_start = state.buf.as_ptr().addr();
+        let Some(left) = state.p.addr().checked_sub(buffer_start) else {
+            return 0;
         };
-        {
-            let state = &mut *H;
-            state.v3 ^= b;
+        if left > 7 {
+            return 0;
         }
-        sip_round(H, 2 as ::core::ffi::c_int);
-        {
-            let state = &mut *H;
-            state.v0 ^= b;
-            state.v2 ^= 0xff as crate::stdlib::uint64_t;
+        let mut b = state.c.wrapping_add(left as crate::stdlib::uint64_t) << 56;
+        for (index, byte) in state.buf[..left].iter().copied().enumerate() {
+            b |= (byte as crate::stdlib::uint64_t) << (index * 8);
         }
-        sip_round(H, 4 as ::core::ffi::c_int);
-        let state = &*H;
-        return state.v0 ^ state.v1 ^ state.v2 ^ state.v3;
+
+        let mut values = [state.v0, state.v1, state.v2, state.v3];
+        values[3] ^= b;
+        sip_round_values(&mut values, 2);
+        values[0] ^= b;
+        values[2] ^= 0xff;
+        sip_round_values(&mut values, 4);
+        [state.v0, state.v1, state.v2, state.v3] = values;
+        state.v0 ^ state.v1 ^ state.v2 ^ state.v3
     }
 
     pub unsafe extern "C" fn siphash24(
@@ -176,7 +175,8 @@ pub mod siphash_h {
         mut key: *const crate::siphash_h::sipkey,
     ) -> crate::stdlib::uint64_t {
         let mut state: crate::siphash_h::siphash = crate::siphash_h::SIPHASH_INITIALIZER;
-        return sip24_final(sip24_update(sip24_init(&raw mut state, key), src, len));
+        sip24_update(sip24_init(&raw mut state, key), src, len);
+        sip24_final(&mut state)
     }
 
     fn sip_round_values(state: &mut [crate::stdlib::uint64_t; 4], rounds: usize) {
@@ -22038,7 +22038,7 @@ unsafe extern "C" fn hash(
         s as *const ::core::ffi::c_void,
         keylen(s).wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
     );
-    return sip24_final(&raw mut state) as ::core::ffi::c_ulong;
+    return sip24_final(&mut state) as ::core::ffi::c_ulong;
 }
 
 unsafe fn allocation_backing(
