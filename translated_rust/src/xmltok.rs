@@ -1528,6 +1528,7 @@ pub mod xmltok_impl_c {
     }
 
     pub unsafe extern "C" fn normal_scanEndTag(
+        normal: &normal_encoding,
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,
         end: *const ::core::ffi::c_char,
@@ -1538,7 +1539,6 @@ pub mod xmltok_impl_c {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
         let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
         let result = normal_scan_end_tag_impl(normal, input, |kind, offset, width| {
             let kind = match kind {
                 NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
@@ -2270,7 +2270,7 @@ pub mod xmltok_impl_c {
                 normal_scanPi(enc, ptr.add(start), end, nextTokPtr)
             }
             NormalScanLtAction::EndTag(start) => {
-                normal_scanEndTag(enc, ptr.add(start), end, nextTokPtr)
+                normal_scanEndTag(normal, enc, ptr.add(start), end, nextTokPtr)
             }
             NormalScanLtAction::Attributes(start) => {
                 let attributes = &input[start..];
