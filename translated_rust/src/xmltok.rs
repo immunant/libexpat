@@ -13973,14 +13973,26 @@ pub mod xmltok_ns_c {
     pub static mut encodings: [*const crate::src::xmltok::ENCODING; 7] =
         [::core::ptr::null::<crate::src::xmltok::ENCODING>(); 7];
 
-    pub unsafe extern "C" fn initScanProlog(
+    fn init_scan_encoding_table(
+        namespace_aware: bool,
+    ) -> *const *const crate::src::xmltok::ENCODING {
+        unsafe {
+            if namespace_aware {
+                &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING
+            } else {
+                &raw const encodings as *const *const crate::src::xmltok::ENCODING
+            }
+        }
+    }
+
+    pub extern "C" fn initScanProlog(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::xmltok::ENCODING,
+            init_scan_encoding_table(false),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -13989,14 +14001,14 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub unsafe extern "C" fn initScanContent(
+    pub extern "C" fn initScanContent(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodings as *const *const crate::src::xmltok::ENCODING,
+            init_scan_encoding_table(false),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
@@ -14223,14 +14235,14 @@ pub mod xmltok_ns_c {
     pub static mut encodingsNS: [*const crate::src::xmltok::ENCODING; 7] =
         [::core::ptr::null::<crate::src::xmltok::ENCODING>(); 7];
 
-    pub unsafe extern "C" fn initScanPrologNS(
+    pub extern "C" fn initScanPrologNS(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING,
+            init_scan_encoding_table(true),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_PROLOG_STATE,
             ptr,
@@ -14239,14 +14251,14 @@ pub mod xmltok_ns_c {
         );
     }
 
-    pub unsafe extern "C" fn initScanContentNS(
+    pub extern "C" fn initScanContentNS(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut nextTokPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         return initScan(
-            &raw const encodingsNS as *const *const crate::src::xmltok::ENCODING,
+            init_scan_encoding_table(true),
             enc as *const crate::src::xmltok::INIT_ENCODING,
             crate::src::xmltok::XML_CONTENT_STATE,
             ptr,
