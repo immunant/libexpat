@@ -9705,24 +9705,6 @@ unsafe fn scanner_context_from_raw<'a>(
     }
 }
 
-unsafe fn select_known_encoding(
-    mut parser: crate::expat_h::XML_Parser,
-    encoding: *const crate::src::xmltok::ENCODING,
-) -> bool {
-    let parser_ref = &mut *parser;
-    let table = if parser_ref.m_ns != 0 {
-        crate::src::xmltok::encodingsNS
-    } else {
-        crate::src::xmltok::encodings
-    };
-    let Some(index) = table.iter().position(|&candidate| candidate == encoding) else {
-        return false;
-    };
-    parser_ref.m_initEncoding.selected_encoding = Some(index);
-    parser_ref.m_encoding = EncodingState::Initial;
-    true
-}
-
 unsafe extern "C" fn externalEntityInitProcessor2(
     mut parser: crate::expat_h::XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -13117,6 +13099,90 @@ fn cdata_accounting_diff_tolerated(
     tolerated
 }
 
+/// Applies accounting to a checked byte range.  XML declaration processing
+/// already owns its complete tokenizer token as a slice, so it need not
+/// recover that range from legacy cursor pointers merely for accounting.
+fn accounting_slice_diff_tolerated(
+    parser: &XML_ParserStruct,
+    token: ::core::ffi::c_int,
+    input: &[u8],
+    before: usize,
+    after: usize,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+) -> bool {
+    match token {
+        crate::src::xmltok::XML_TOK_INVALID
+        | crate::src::xmltok::XML_TOK_PARTIAL
+        | crate::src::xmltok::XML_TOK_PARTIAL_CHAR
+        | crate::src::xmltok::XML_TOK_NONE => return true,
+        _ => {}
+    }
+    if account as ::core::ffi::c_uint
+        == XML_ACCOUNT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return true;
+    }
+    let Some(bytes_more) = after.checked_sub(before) else {
+        return false;
+    };
+    let Some(window) = input.get(before..after) else {
+        return false;
+    };
+    let levels_away_from_root = parser
+        .m_parentParser
+        .map_or(0, ::core::num::NonZeroU32::get);
+    let is_direct = account as ::core::ffi::c_uint
+        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
+        && parser.m_parentParser.is_none();
+    let (count_bytes_output, amplification_factor, threshold, maximum, debug_level) = {
+        let mut root = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let addition_target = if is_direct {
+            &mut root.accounting.countBytesDirect
+        } else {
+            &mut root.accounting.countBytesIndirect
+        };
+        if *addition_target > XmlBigCount::MAX.wrapping_sub(bytes_more as XmlBigCount) {
+            return false;
+        }
+        *addition_target = addition_target.wrapping_add(bytes_more as XmlBigCount);
+        let output = root
+            .accounting
+            .countBytesDirect
+            .wrapping_add(root.accounting.countBytesIndirect);
+        let amplification = if root.accounting.countBytesDirect != 0 {
+            output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
+        } else {
+            (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
+                as ::core::ffi::c_float
+                / 23.0
+        };
+        (
+            output,
+            amplification,
+            root.accounting.activationThresholdBytes,
+            root.accounting.maximumAmplificationFactor,
+            root.accounting.debugLevel,
+        )
+    };
+    let tolerated = count_bytes_output < threshold || amplification_factor <= maximum;
+    if debug_level >= 2 {
+        cdata_accounting_report_stats(parser, "");
+        cdata_accounting_report_diff(
+            debug_level,
+            levels_away_from_root,
+            window,
+            bytes_more,
+            source_line,
+            account,
+        );
+    }
+    tolerated
+}
+
 fn cdata_accounting_on_abort(parser: &XML_ParserStruct) {
     cdata_accounting_report_stats(parser, " ABORTING\n");
 }
@@ -13867,8 +13933,7 @@ unsafe fn process_xml_decl(
     let mut encoding_name = None;
     let mut storedEncName: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    let mut newEncoding: *const crate::src::xmltok::ENCODING =
-        ::core::ptr::null::<crate::src::xmltok::ENCODING>();
+    let mut declared_encoding = None;
     let mut version = None;
     let mut storedversion: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -13876,17 +13941,16 @@ unsafe fn process_xml_decl(
     let mut declaration_encoding = None;
     let mut declaration_input: Option<&[u8]> = None;
     let parser_handle = std::ptr::from_mut(parser);
-    if accountingDiffTolerated(
-        parser_handle,
+    if !accounting_slice_diff_tolerated(
+        parser,
         crate::src::xmltok::XML_TOK_XML_DECL,
-        s,
-        next,
+        input,
+        0,
+        input.len(),
         4870 as ::core::ffi::c_int,
         XML_ACCOUNT_DIRECT,
-        None,
-    ) == 0
-    {
-        accountingOnAbort(parser);
+    ) {
+        cdata_accounting_on_abort(parser);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     // XmlParseXmlDecl writes this only for a malformed declaration.  Seed it
@@ -13906,20 +13970,10 @@ unsafe fn process_xml_decl(
                 version = declaration.version;
                 encoding_name = declaration.encoding_name;
                 if let Some(range) = encoding_name.as_ref() {
-                    newEncoding = match crate::src::xmltok::xml_decl_encoding(
+                    declared_encoding = Some(crate::src::xmltok::xml_decl_encoding(
                         encoding_info,
                         &input[range.clone()],
-                    ) {
-                        crate::src::xmltok::XmlDeclEncoding::Current => encoding,
-                        crate::src::xmltok::XmlDeclEncoding::Known(index) => {
-                            if parser.m_ns != 0 {
-                                crate::src::xmltok::encodingsNS[index]
-                            } else {
-                                crate::src::xmltok::encodings[index]
-                            }
-                        }
-                        crate::src::xmltok::XmlDeclEncoding::Unknown => ::core::ptr::null(),
-                    };
+                    ));
                 }
                 standalone = declaration.standalone.unwrap_or(-1);
                 true
@@ -14011,11 +14065,23 @@ unsafe fn process_xml_decl(
     if has_no_protocol_encoding {
         let parsed_encoding_info =
             declaration_encoding.expect("a parsed XML declaration always has encoding metadata");
-        if !newEncoding.is_null() {
-            let new_encoding = &*newEncoding;
+        let selected_index = match declared_encoding {
+            Some(crate::src::xmltok::XmlDeclEncoding::Known(index)) => Some(index),
+            Some(crate::src::xmltok::XmlDeclEncoding::Current) => {
+                parser.m_initEncoding.selected_encoding
+            }
+            Some(crate::src::xmltok::XmlDeclEncoding::Unknown) | None => None,
+        };
+        if let Some(index) = selected_index {
+            let Some(new_encoding) =
+                crate::src::xmltok::initial_known_encoding(index, parser.m_ns != 0)
+                    .map(|encoding| &encoding.enc)
+            else {
+                return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
+            };
             if new_encoding.minBytesPerChar != parsed_encoding_info.min_bytes_per_char
                 || new_encoding.minBytesPerChar == 2 as ::core::ffi::c_int
-                    && newEncoding != encoding
+                    && !std::ptr::eq(new_encoding, encoding)
             {
                 let encoding_name_ptr = encoding_name
                     .as_ref()
@@ -14023,10 +14089,15 @@ unsafe fn process_xml_decl(
                 set_parser_event_start!(parser, encoding_name_ptr);
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
-            if !select_known_encoding(parser_handle, newEncoding) {
+            parser.m_initEncoding.selected_encoding = Some(index);
+            parser.m_encoding = EncodingState::Initial;
+        } else if let Some(encoding_name) = encoding_name {
+            if matches!(
+                declared_encoding,
+                Some(crate::src::xmltok::XmlDeclEncoding::Current)
+            ) {
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
-        } else if let Some(encoding_name) = encoding_name {
             let encoding_name_ptr = s.wrapping_add(encoding_name.start);
             if storedEncName.is_null() {
                 let Some(stored_name) = pool_store_xml_decl_ascii(
