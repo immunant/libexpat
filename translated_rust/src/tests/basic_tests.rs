@@ -1548,6 +1548,13 @@ fn parser_set_default_handler(handler: XML_DefaultHandler) {
     ffi_call2(XML_SetDefaultHandler, current_parser(), handler);
 }
 
+fn parser_set_doctype_decl_handler(
+    start: XML_StartDoctypeDeclHandler,
+    end: XML_EndDoctypeDeclHandler,
+) {
+    ffi_call3(XML_SetDoctypeDeclHandler, current_parser(), start, end);
+}
+
 fn parser_set_start_doctype_decl_handler(handler: XML_StartDoctypeDeclHandler) {
     ffi_call2(XML_SetStartDoctypeDeclHandler, current_parser(), handler);
 }
@@ -10639,36 +10646,19 @@ extern "C" fn test_ext_entity_value_abort() {
     }
 }
 extern "C" fn test_bad_public_doctype() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_public_doctype\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3538 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC '{BadName}' 'test'>\n<doc></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetDoctypeDeclHandler(
-            g_parser,
-            Some(
-                dummy_start_doctype_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-            Some(dummy_end_doctype_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_PUBLICID,
-            b"Bad Public ID not failed\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3546 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_public_doctype\0", 3538 as ::core::ffi::c_int);
+    let text =
+        b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC '{BadName}' 'test'>\n<doc></doc>\0";
+    parser_set_doctype_decl_handler(
+        Some(dummy_start_doctype_handler),
+        Some(dummy_end_doctype_handler),
+    );
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_PUBLICID,
+        b"Bad Public ID not failed\0",
+        3546 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_attribute_enum_value() {
     unsafe {
@@ -13708,149 +13698,75 @@ extern "C" fn test_bad_attr_desc_keyword_utf16() {
     }
 }
 extern "C" fn test_bad_doctype() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_doctype\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5126 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<?xml version='1.0' encoding='prefix-conv'?>\n<!DOCTYPE doc [ \x80D ]><doc/>\0"
-                .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetUnknownEncodingHandler(
-            g_parser,
-            Some(
-                MiscEncodingHandler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Encoding,
-                    ) -> ::core::ffi::c_int,
-            ),
-            NULL,
-        );
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"Invalid bytes in DOCTYPE not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5132 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_doctype\0", 5126 as ::core::ffi::c_int);
+    let text = b"<?xml version='1.0' encoding='prefix-conv'?>\n<!DOCTYPE doc [ \x80D ]><doc/>\0";
+    parser_set_unknown_encoding_handler(misc_encoding_handler_for_tests(), NULL);
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"Invalid bytes in DOCTYPE not faulted\0",
+        5132 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_doctype_utf8() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_doctype_utf8\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5136 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE \xDB%doc><doc/>\0".as_ptr() as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Invalid UTF-8 in DOCTYPE not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5140 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_doctype_utf8\0", 5136 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE \xDB%doc><doc/>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_INVALID_TOKEN,
+        b"Invalid UTF-8 in DOCTYPE not faulted\0",
+        5140 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_doctype_utf16() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_doctype_utf16\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5144 as ::core::ffi::c_int,
-        );
-        let text: [::core::ffi::c_char; 53] = ::core::mem::transmute::<
-            [u8; 53],
-            [::core::ffi::c_char; 53],
-        >(
-            *b"\0<\0!\0D\0O\0C\0T\0Y\0P\0E\0 \0d\0o\0c\0 \0[\0 \x06\xF2\0 \0]\0>\0<\0d\0o\0c\0/\0>\0",
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            &raw const text as *const ::core::ffi::c_char,
-            ::core::mem::size_of::<[::core::ffi::c_char; 53]>() as ::core::ffi::c_int
-                - 1 as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5157 as ::core::ffi::c_int,
-                b"Invalid bytes in DOCTYPE not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetErrorCode(g_parser) as ::core::ffi::c_uint
-            != XML_ERROR_SYNTAX as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5159 as ::core::ffi::c_int,
-            );
-        }
+    set_test_info(b"test_bad_doctype_utf16\0", 5144 as ::core::ffi::c_int);
+    let text =
+        b"\0<\0!\0D\0O\0C\0T\0Y\0P\0E\0 \0d\0o\0c\0 \0[\0 \x06\xF2\0 \0]\0>\0<\0d\0o\0c\0/\0>\0";
+    let status = parse_single_bytes_with_final(
+        bytes_as_c_char_ptr(text),
+        text.len() as ::core::ffi::c_int - 1 as ::core::ffi::c_int,
+        XML_TRUE as ::core::ffi::c_int,
+    );
+    assert_test_condition(
+        parser_status_is_error(status),
+        5157 as ::core::ffi::c_int,
+        b"Invalid bytes in DOCTYPE not faulted\0",
+    );
+    if parser_error_code() as ::core::ffi::c_uint
+        != XML_ERROR_SYNTAX as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(5159 as ::core::ffi::c_int);
     }
 }
 extern "C" fn test_bad_doctype_plus() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_doctype_plus\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5163 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE 1+ [ <!ENTITY foo 'bar'> ]>\n<1+>&foo;</1+>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"'+' in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5168 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_doctype_plus\0", 5163 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE 1+ [ <!ENTITY foo 'bar'> ]>\n<1+>&foo;</1+>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_INVALID_TOKEN,
+        b"'+' in document name not faulted\0",
+        5168 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_doctype_star() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_doctype_star\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5172 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE 1* [ <!ENTITY foo 'bar'> ]>\n<1*>&foo;</1*>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"'*' in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5177 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_doctype_star\0", 5172 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE 1* [ <!ENTITY foo 'bar'> ]>\n<1*>&foo;</1*>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_INVALID_TOKEN,
+        b"'*' in document name not faulted\0",
+        5177 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_doctype_query() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_doctype_query\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5181 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE 1? [ <!ENTITY foo 'bar'> ]>\n<1?>&foo;</1?>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"'?' in document name not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5186 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_doctype_query\0", 5181 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE 1? [ <!ENTITY foo 'bar'> ]>\n<1?>&foo;</1?>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_INVALID_TOKEN,
+        b"'?' in document name not faulted\0",
+        5186 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_unknown_encoding_bad_ignore() {
     set_test_info(
@@ -14119,174 +14035,94 @@ extern "C" fn test_entity_public_utf16_le() {
     }
 }
 extern "C" fn test_short_doctype() {
-    unsafe {
-        _check_set_test_info(
-            b"test_short_doctype\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5318 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"DOCTYPE without subset not rejected\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5321 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_short_doctype\0", 5318 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc></doc>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_INVALID_TOKEN,
+        b"DOCTYPE without subset not rejected\0",
+        5321 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_short_doctype_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_short_doctype_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5325 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc PUBLIC></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"DOCTYPE without Public ID not rejected\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5328 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_short_doctype_2\0", 5325 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc PUBLIC></doc>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"DOCTYPE without Public ID not rejected\0",
+        5328 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_short_doctype_3() {
-    unsafe {
-        _check_set_test_info(
-            b"test_short_doctype_3\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5332 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM></doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"DOCTYPE without System ID not rejected\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5335 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_short_doctype_3\0", 5332 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc SYSTEM></doc>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"DOCTYPE without System ID not rejected\0",
+        5335 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_long_doctype() {
-    unsafe {
-        _check_set_test_info(
-            b"test_long_doctype\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5339 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc PUBLIC 'foo' 'bar' 'baz'></doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"DOCTYPE with extra ID not rejected\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5341 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_long_doctype\0", 5339 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc PUBLIC 'foo' 'bar' 'baz'></doc>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"DOCTYPE with extra ID not rejected\0",
+        5341 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5345 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY foo PUBLIC>\n]>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"ENTITY without Public ID is not rejected\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5351 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_entity\0", 5345 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc [\n  <!ENTITY foo PUBLIC>\n]>\n<doc/>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"ENTITY without Public ID is not rejected\0",
+        5351 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_entity_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5356 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY % foo bar>\n]>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"ENTITY without Public ID is not rejected\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5362 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_entity_2\0", 5356 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc [\n  <!ENTITY % foo bar>\n]>\n<doc/>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"ENTITY without Public ID is not rejected\0",
+        5362 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_entity_3() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_entity_3\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5366 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY % foo PUBLIC>\n]>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"Parameter ENTITY without Public ID is not rejected\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5372 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_entity_3\0", 5366 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc [\n  <!ENTITY % foo PUBLIC>\n]>\n<doc/>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"Parameter ENTITY without Public ID is not rejected\0",
+        5372 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_entity_4() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_entity_4\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5376 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY % foo SYSTEM>\n]>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"Parameter ENTITY without Public ID is not rejected\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5382 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_entity_4\0", 5376 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc [\n  <!ENTITY % foo SYSTEM>\n]>\n<doc/>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"Parameter ENTITY without Public ID is not rejected\0",
+        5382 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_notation() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_notation\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5386 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!NOTATION n SYSTEM>\n]>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_SYNTAX,
-            b"Notation without System ID is not rejected\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5392 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_notation\0", 5386 as ::core::ffi::c_int);
+    let text = b"<!DOCTYPE doc [\n  <!NOTATION n SYSTEM>\n]>\n<doc/>\0";
+    expect_failure(
+        bytes_as_c_char_ptr(text),
+        XML_ERROR_SYNTAX,
+        b"Notation without System ID is not rejected\0",
+        5392 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_default_doctype_handler() {
     unsafe {
