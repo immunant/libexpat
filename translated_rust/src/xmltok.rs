@@ -17068,18 +17068,98 @@ struct XmlDeclAttribute {
     next: usize,
 }
 
-struct XmlDeclResult {
-    version: Option<core::ops::Range<usize>>,
-    version_end: Option<usize>,
-    encoding_name: Option<core::ops::Range<usize>>,
-    encoding_end: Option<usize>,
-    standalone: Option<::core::ffi::c_int>,
+pub(crate) struct XmlDeclResult {
+    pub(crate) version: Option<core::ops::Range<usize>>,
+    pub(crate) version_end: Option<usize>,
+    pub(crate) encoding_name: Option<core::ops::Range<usize>>,
+    pub(crate) encoding_end: Option<usize>,
+    pub(crate) standalone: Option<::core::ffi::c_int>,
 }
 
-fn xml_decl_ascii_at(enc: &encoding, input: &[u8], offset: usize) -> Option<u8> {
-    let width = usize::try_from(enc.minBytesPerChar).ok()?;
+#[derive(Copy, Clone)]
+pub(crate) struct XmlDeclEncodingInfo {
+    pub(crate) name_matcher: NameMatcher,
+    pub(crate) min_bytes_per_char: ::core::ffi::c_int,
+}
+
+impl encoding {
+    pub(crate) fn xml_decl_info(&self) -> XmlDeclEncodingInfo {
+        XmlDeclEncodingInfo {
+            name_matcher: self.nameMatchesAscii,
+            min_bytes_per_char: self.minBytesPerChar,
+        }
+    }
+}
+
+/// The encoding selected by a syntactically valid XML declaration.  The
+/// parser consumes this index using its own namespace-specific encoding
+/// table, avoiding a raw tokenizer callback at the declaration boundary.
+pub(crate) enum XmlDeclEncoding {
+    Current,
+    Known(usize),
+    Unknown,
+}
+
+fn xml_decl_name_matches(
+    encoding: XmlDeclEncodingInfo,
+    input: &[u8],
+    expected: &[u8],
+) -> bool {
+    let Ok(width) = usize::try_from(encoding.min_bytes_per_char) else {
+        return false;
+    };
+    if width == 0 || input.len() != expected.len().saturating_mul(width) {
+        return false;
+    }
+    expected.iter().enumerate().all(|(index, &expected)| {
+        let Some(bytes) = input.get(index * width..(index + 1) * width) else {
+            return false;
+        };
+        let actual = match encoding.name_matcher {
+            NameMatcher::Normal => bytes.first().copied(),
+            NameMatcher::Little2 if bytes.len() == 2 && bytes[1] == 0 => bytes.first().copied(),
+            NameMatcher::Big2 if bytes.len() == 2 && bytes[0] == 0 => bytes.get(1).copied(),
+            NameMatcher::Little2 | NameMatcher::Big2 => None,
+        };
+        actual.is_some_and(|actual| actual.eq_ignore_ascii_case(&expected))
+    })
+}
+
+/// Resolves an XML declaration's bounded encoding-name token using the same
+/// case-insensitive names as `findEncoding`, without materialising a raw
+/// NUL-terminated buffer.
+pub(crate) fn xml_decl_encoding(
+    encoding: XmlDeclEncodingInfo,
+    input: &[u8],
+) -> XmlDeclEncoding {
+    const NAMES: [&[u8]; 6] = [
+        b"iso-8859-1",
+        b"us-ascii",
+        b"utf-8",
+        b"utf-16",
+        b"utf-16be",
+        b"utf-16le",
+    ];
+
+    if xml_decl_name_matches(encoding, input, NAMES[3])
+        && encoding.min_bytes_per_char == 2
+    {
+        return XmlDeclEncoding::Current;
+    }
+    NAMES
+        .iter()
+        .position(|name| xml_decl_name_matches(encoding, input, name))
+        .map_or(XmlDeclEncoding::Unknown, XmlDeclEncoding::Known)
+}
+
+fn xml_decl_ascii_at(
+    encoding: XmlDeclEncodingInfo,
+    input: &[u8],
+    offset: usize,
+) -> Option<u8> {
+    let width = usize::try_from(encoding.min_bytes_per_char).ok()?;
     let bytes = input.get(offset..offset.checked_add(width)?)?;
-    match enc.nameMatchesAscii {
+    match encoding.name_matcher {
         NameMatcher::Normal => bytes.first().copied(),
         NameMatcher::Little2 if bytes.len() == 2 && bytes[1] == 0 => Some(bytes[0]),
         NameMatcher::Big2 if bytes.len() == 2 && bytes[0] == 0 => Some(bytes[1]),
@@ -17088,12 +17168,12 @@ fn xml_decl_ascii_at(enc: &encoding, input: &[u8], offset: usize) -> Option<u8> 
 }
 
 fn xml_decl_matches_ascii(
-    enc: &encoding,
+    encoding: XmlDeclEncodingInfo,
     input: &[u8],
     span: core::ops::Range<usize>,
     word: &[u8],
 ) -> bool {
-    let width = match usize::try_from(enc.minBytesPerChar) {
+    let width = match usize::try_from(encoding.min_bytes_per_char) {
         Ok(width) => width,
         Err(_) => return false,
     };
@@ -17101,7 +17181,7 @@ fn xml_decl_matches_ascii(
         return false;
     }
     word.iter().enumerate().all(|(index, &expected)| {
-        xml_decl_ascii_at(enc, input, span.start + index * width) == Some(expected)
+        xml_decl_ascii_at(encoding, input, span.start + index * width) == Some(expected)
     })
 }
 
@@ -17110,21 +17190,21 @@ fn xml_decl_is_space(character: Option<u8>) -> bool {
 }
 
 fn parse_xml_decl_pseudo_attribute(
-    enc: &encoding,
+    encoding: XmlDeclEncodingInfo,
     input: &[u8],
     mut cursor: usize,
     end: usize,
 ) -> Result<Option<XmlDeclAttribute>, usize> {
-    let width = usize::try_from(enc.minBytesPerChar).map_err(|_| cursor)?;
+    let width = usize::try_from(encoding.min_bytes_per_char).map_err(|_| cursor)?;
     if cursor == end {
         return Ok(None);
     }
-    if !xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+    if !xml_decl_is_space(xml_decl_ascii_at(encoding, input, cursor)) {
         return Err(cursor);
     }
     loop {
         cursor = cursor.checked_add(width).ok_or(cursor)?;
-        if !xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+        if !xml_decl_is_space(xml_decl_ascii_at(encoding, input, cursor)) {
             break;
         }
     }
@@ -17135,7 +17215,7 @@ fn parse_xml_decl_pseudo_attribute(
     let name_start = cursor;
     let name_end;
     loop {
-        match xml_decl_ascii_at(enc, input, cursor) {
+        match xml_decl_ascii_at(encoding, input, cursor) {
             None => return Err(cursor),
             Some(b'=') => {
                 name_end = cursor;
@@ -17145,7 +17225,7 @@ fn parse_xml_decl_pseudo_attribute(
                 name_end = cursor;
                 loop {
                     cursor = cursor.checked_add(width).ok_or(cursor)?;
-                    let character = xml_decl_ascii_at(enc, input, cursor);
+                    let character = xml_decl_ascii_at(encoding, input, cursor);
                     if !xml_decl_is_space(character) {
                         if character != Some(b'=') {
                             return Err(cursor);
@@ -17163,17 +17243,17 @@ fn parse_xml_decl_pseudo_attribute(
     }
 
     cursor = cursor.checked_add(width).ok_or(cursor)?;
-    while xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+    while xml_decl_is_space(xml_decl_ascii_at(encoding, input, cursor)) {
         cursor = cursor.checked_add(width).ok_or(cursor)?;
     }
-    let quote = match xml_decl_ascii_at(enc, input, cursor) {
+    let quote = match xml_decl_ascii_at(encoding, input, cursor) {
         Some(quote @ (b'\'' | b'"')) => quote,
         _ => return Err(cursor),
     };
     cursor = cursor.checked_add(width).ok_or(cursor)?;
     let value_start = cursor;
     loop {
-        let character = xml_decl_ascii_at(enc, input, cursor).ok_or(cursor)?;
+        let character = xml_decl_ascii_at(encoding, input, cursor).ok_or(cursor)?;
         if character == quote {
             break;
         }
@@ -17193,12 +17273,24 @@ fn parse_xml_decl_pseudo_attribute(
     }))
 }
 
-fn parse_xml_decl(
+/// Parses a bounded XML declaration token without retaining pointers into its
+/// input.  Callers translate the returned byte offsets only at their own
+/// boundary, so malformed-declaration cursors remain tied to the token that
+/// was actually scanned.
+pub(crate) fn parse_xml_decl(
     is_general_text_entity: bool,
     enc: &encoding,
     input: &[u8],
 ) -> Result<XmlDeclResult, usize> {
-    let width = usize::try_from(enc.minBytesPerChar).map_err(|_| 0usize)?;
+    parse_xml_decl_with_info(is_general_text_entity, enc.xml_decl_info(), input)
+}
+
+pub(crate) fn parse_xml_decl_with_info(
+    is_general_text_entity: bool,
+    encoding: XmlDeclEncodingInfo,
+    input: &[u8],
+) -> Result<XmlDeclResult, usize> {
+    let width = usize::try_from(encoding.min_bytes_per_char).map_err(|_| 0usize)?;
     let start = width.checked_mul(5).ok_or(0usize)?;
     let suffix = width.checked_mul(2).ok_or(0usize)?;
     let end = input.len().checked_sub(suffix).ok_or(input.len())?;
@@ -17214,15 +17306,15 @@ fn parse_xml_decl(
         standalone: None,
     };
 
-    let mut attribute = parse_xml_decl_pseudo_attribute(enc, input, cursor, end)?;
+    let mut attribute = parse_xml_decl_pseudo_attribute(encoding, input, cursor, end)?;
     let Some(ref first) = attribute else {
         return Err(cursor);
     };
-    if xml_decl_matches_ascii(enc, input, first.name.clone(), XML_DECL_VERSION) {
+    if xml_decl_matches_ascii(encoding, input, first.name.clone(), XML_DECL_VERSION) {
         result.version = Some(first.value.clone());
         result.version_end = Some(first.next);
         cursor = first.next;
-        attribute = parse_xml_decl_pseudo_attribute(enc, input, cursor, end)?;
+        attribute = parse_xml_decl_pseudo_attribute(encoding, input, cursor, end)?;
         if attribute.is_none() {
             return if is_general_text_entity {
                 Err(cursor)
@@ -17237,10 +17329,10 @@ fn parse_xml_decl(
     let current = attribute
         .as_ref()
         .expect("XML declaration attribute is present");
-    if xml_decl_matches_ascii(enc, input, current.name.clone(), XML_DECL_ENCODING) {
+    if xml_decl_matches_ascii(encoding, input, current.name.clone(), XML_DECL_ENCODING) {
         let value_start = current.value.start;
         if !matches!(
-            xml_decl_ascii_at(enc, input, value_start),
+            xml_decl_ascii_at(encoding, input, value_start),
             Some(b'a'..=b'z' | b'A'..=b'Z')
         ) {
             return Err(value_start);
@@ -17248,7 +17340,7 @@ fn parse_xml_decl(
         result.encoding_name = Some(current.value.clone());
         result.encoding_end = current.next.checked_sub(width);
         cursor = current.next;
-        attribute = parse_xml_decl_pseudo_attribute(enc, input, cursor, end)?;
+        attribute = parse_xml_decl_pseudo_attribute(encoding, input, cursor, end)?;
         if attribute.is_none() {
             return Ok(result);
         }
@@ -17256,19 +17348,19 @@ fn parse_xml_decl(
 
     let attribute = attribute.expect("XML declaration attribute is present");
     if is_general_text_entity
-        || !xml_decl_matches_ascii(enc, input, attribute.name.clone(), XML_DECL_STANDALONE)
+        || !xml_decl_matches_ascii(encoding, input, attribute.name.clone(), XML_DECL_STANDALONE)
     {
         return Err(attribute.name.start);
     }
-    if xml_decl_matches_ascii(enc, input, attribute.value.clone(), XML_DECL_YES) {
+    if xml_decl_matches_ascii(encoding, input, attribute.value.clone(), XML_DECL_YES) {
         result.standalone = Some(1);
-    } else if xml_decl_matches_ascii(enc, input, attribute.value.clone(), XML_DECL_NO) {
+    } else if xml_decl_matches_ascii(encoding, input, attribute.value.clone(), XML_DECL_NO) {
         result.standalone = Some(0);
     } else {
         return Err(attribute.value.start);
     }
     cursor = attribute.next;
-    while xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+    while xml_decl_is_space(xml_decl_ascii_at(encoding, input, cursor)) {
         cursor = cursor.checked_add(width).ok_or(cursor)?;
     }
     if cursor == end {

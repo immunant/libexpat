@@ -10128,6 +10128,7 @@ unsafe extern "C" fn processXmlDecl(
     let mut storedversion: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut standalone: ::core::ffi::c_int = -1 as ::core::ffi::c_int;
+    let mut declaration_encoding = None;
     if accountingDiffTolerated(
         parser,
         crate::src::xmltok::XML_TOK_XML_DECL,
@@ -10144,52 +10145,55 @@ unsafe extern "C" fn processXmlDecl(
     // from the current event so a successful declaration keeps its callback
     // location instead of clearing it.
     let mut bad_ptr = parser_event_start!(&*parser).unwrap_or(::core::ptr::null());
-    let parsed = {
-        if (*parser).m_ns as ::core::ffi::c_int != 0 {
-            Some(
-                crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS
-                    as unsafe extern "C" fn(
-                        ::core::ffi::c_int,
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const crate::src::xmltok::ENCODING,
-                        *mut ::core::ffi::c_int,
-                    ) -> ::core::ffi::c_int,
-            )
-        } else {
-            Some(
-                crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl
-                    as unsafe extern "C" fn(
-                        ::core::ffi::c_int,
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const ::core::ffi::c_char,
-                        *mut *const crate::src::xmltok::ENCODING,
-                        *mut ::core::ffi::c_int,
-                    ) -> ::core::ffi::c_int,
-            )
+    let parsed = if encoding.is_null() || s.is_null() || next.addr() < s.addr() {
+        false
+    } else {
+        // Every caller passes the scanner's bounded token window.  Form it
+        // once here, then keep the tokenizer's result as offsets so no
+        // output pointer can outlive that window.
+        let input = ::core::slice::from_raw_parts(s.cast::<u8>(), next.addr() - s.addr());
+        let encoding_info = (*encoding).xml_decl_info();
+        declaration_encoding = Some(encoding_info);
+        match crate::src::xmltok::parse_xml_decl_with_info(
+            isGeneralTextEntity != 0,
+            encoding_info,
+            input,
+        ) {
+            Ok(declaration) => {
+                version = declaration
+                    .version
+                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
+                versionend = declaration
+                    .version_end
+                    .map_or(::core::ptr::null(), |offset| s.wrapping_add(offset));
+                encodingName = declaration
+                    .encoding_name
+                    .as_ref()
+                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
+                if let Some(range) = declaration.encoding_name {
+                    newEncoding = match crate::src::xmltok::xml_decl_encoding(
+                        encoding_info,
+                        &input[range],
+                    ) {
+                        crate::src::xmltok::XmlDeclEncoding::Current => encoding,
+                        crate::src::xmltok::XmlDeclEncoding::Known(index) => {
+                            if (*parser).m_ns != 0 {
+                                crate::src::xmltok::encodingsNS[index]
+                            } else {
+                                crate::src::xmltok::encodings[index]
+                            }
+                        }
+                        crate::src::xmltok::XmlDeclEncoding::Unknown => ::core::ptr::null(),
+                    };
+                }
+                standalone = declaration.standalone.unwrap_or(-1);
+                true
+            }
+            Err(offset) => {
+                bad_ptr = s.wrapping_add(offset.min(input.len()));
+                false
+            }
         }
-        .expect("non-null function pointer")(
-            isGeneralTextEntity,
-            encoding,
-            s,
-            next,
-            &raw mut bad_ptr,
-            &raw mut version,
-            &raw mut versionend,
-            &raw mut encodingName,
-            &raw mut newEncoding,
-            &raw mut standalone,
-        ) != 0
     };
     set_parser_event_start!(&mut *parser, bad_ptr);
     if !parsed {
@@ -10273,8 +10277,10 @@ unsafe extern "C" fn processXmlDecl(
         parser_state.m_protocolEncodingName.is_null()
     };
     if has_no_protocol_encoding {
+        let declaration_encoding = declaration_encoding
+            .expect("a parsed XML declaration always has encoding metadata");
         if !newEncoding.is_null() {
-            if (*newEncoding).minBytesPerChar != (*encoding).minBytesPerChar
+            if (*newEncoding).minBytesPerChar != declaration_encoding.min_bytes_per_char
                 || (*newEncoding).minBytesPerChar == 2 as ::core::ffi::c_int
                     && newEncoding != encoding
             {
