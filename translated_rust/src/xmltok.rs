@@ -458,6 +458,28 @@ pub enum PredefinedEntityNameMatcher {
     Big2,
 }
 
+/// Selects the fixed decoder for numeric character references.
+#[derive(Copy, Clone)]
+pub enum CharRefNumberDecoder {
+    Normal,
+    Little2,
+    Big2,
+}
+
+impl CharRefNumberDecoder {
+    pub unsafe fn decode(
+        self,
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        match self {
+            Self::Normal => crate::src::xmltok::normal_charRefNumber(enc, ptr),
+            Self::Little2 => crate::src::xmltok::little2_charRefNumber(enc, ptr),
+            Self::Big2 => crate::src::xmltok::big2_charRefNumber(enc, ptr),
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct encoding {
@@ -472,12 +494,7 @@ pub struct encoding {
     >,
     pub skipS: crate::src::xmltok::WhitespaceSkipper,
     pub getAtts: crate::src::xmltok::AttributeScanner,
-    pub charRefNumber: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub charRefNumber: crate::src::xmltok::CharRefNumberDecoder,
     pub predefinedEntityName: crate::src::xmltok::PredefinedEntityNameMatcher,
     pub updatePosition: crate::src::xmltok::PositionUpdater,
     pub isPublicId: crate::src::xmltok::PublicIdChecker,
@@ -3439,9 +3456,9 @@ pub mod xmltok_impl_c {
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset((2 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize);
+        ptr = ptr.wrapping_add((2 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as usize);
         if *ptr as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int {
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+            ptr = ptr.wrapping_add(1 as ::core::ffi::c_int as usize);
             while *ptr as ::core::ffi::c_int != 0x3b as ::core::ffi::c_int {
                 let mut c: ::core::ffi::c_int = *ptr as ::core::ffi::c_int;
                 match c {
@@ -3481,7 +3498,7 @@ pub mod xmltok_impl_c {
                 if result >= 0x110000 as ::core::ffi::c_int {
                     return -1 as ::core::ffi::c_int;
                 }
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                ptr = ptr.wrapping_add(1 as ::core::ffi::c_int as usize);
             }
         } else {
             while *ptr as ::core::ffi::c_int != 0x3b as ::core::ffi::c_int {
@@ -3491,7 +3508,7 @@ pub mod xmltok_impl_c {
                 if result >= 0x110000 as ::core::ffi::c_int {
                     return -1 as ::core::ffi::c_int;
                 }
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                ptr = ptr.wrapping_add(1 as ::core::ffi::c_int as usize);
             }
         }
         return checkCharRefNumber(result);
@@ -12469,13 +12486,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -12830,13 +12841,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -13191,13 +13196,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -13552,13 +13551,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -13974,13 +13967,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -14281,13 +14268,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -14609,13 +14590,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -14916,13 +14891,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Normal,
         getAtts: AttributeScanner::Normal,
-        charRefNumber: Some(
-            normal_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Normal,
         predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
@@ -15488,13 +15457,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
-        charRefNumber: Some(
-            little2_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Little2,
         predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
@@ -15795,13 +15758,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
-        charRefNumber: Some(
-            little2_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Little2,
         predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
@@ -16102,13 +16059,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
-        charRefNumber: Some(
-            little2_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Little2,
         predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
@@ -16409,13 +16360,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Little2,
         getAtts: AttributeScanner::Little2,
-        charRefNumber: Some(
-            little2_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Little2,
         predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
@@ -16716,13 +16661,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Big2,
         getAtts: AttributeScanner::Big2,
-        charRefNumber: Some(
-            big2_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Big2,
         predefinedEntityName: PredefinedEntityNameMatcher::Big2,
         updatePosition: PositionUpdater::Big2,
         isPublicId: PublicIdChecker::Big2,
@@ -17023,13 +16962,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
         ),
         skipS: WhitespaceSkipper::Big2,
         getAtts: AttributeScanner::Big2,
-        charRefNumber: Some(
-            big2_charRefNumber
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        charRefNumber: CharRefNumberDecoder::Big2,
         predefinedEntityName: PredefinedEntityNameMatcher::Big2,
         updatePosition: PositionUpdater::Big2,
         isPublicId: PublicIdChecker::Big2,

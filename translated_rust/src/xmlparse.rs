@@ -6557,7 +6557,7 @@ unsafe extern "C" fn doContent(
                 }
                 crate::src::xmltok::XML_TOK_CHAR_REF => {
                     let mut n: ::core::ffi::c_int =
-                        (*enc).charRefNumber.expect("non-null function pointer")(enc, s);
+                        (*enc).charRefNumber.decode(enc, s);
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }
@@ -10906,7 +10906,7 @@ unsafe extern "C" fn appendAttributeValue(
                     let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                     let mut i: ::core::ffi::c_int = 0;
                     let mut n: ::core::ffi::c_int =
-                        (*enc).charRefNumber.expect("non-null function pointer")(enc, ptr);
+                        (*enc).charRefNumber.decode(enc, ptr);
                     if n < 0 as ::core::ffi::c_int {
                         if enc == parser_encoding(parser) {
                             (*parser).m_eventPtr = ptr;
@@ -11230,11 +11230,8 @@ unsafe extern "C" fn storeEntityValue(
                     crate::src::xmltok::XML_TOK_CHAR_REF => {
                         let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                         let mut i: ::core::ffi::c_int = 0;
-                        let mut n: ::core::ffi::c_int = (*enc)
-                            .charRefNumber
-                            .expect("non-null function pointer")(
-                            enc, entityTextPtr
-                        );
+                        let mut n: ::core::ffi::c_int =
+                            (*enc).charRefNumber.decode(enc, entityTextPtr);
                         if n < 0 as ::core::ffi::c_int {
                             if enc == parser_encoding(parser) {
                                 (*parser).m_eventPtr = entityTextPtr;
