@@ -3008,24 +3008,22 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
 ) -> crate::expat_h::XML_Parser {
     XML_ExternalEntityParserCreate(oldParser, context, encodingName)
 }
-unsafe extern "C" fn destroyBindings(
-    mut bindings: *mut BINDING,
-    mut parser: crate::expat_h::XML_Parser,
-) {
+extern "C" fn destroyBindings(mut bindings: *mut BINDING, mut parser: crate::expat_h::XML_Parser) {
     loop {
-        let mut b: *mut BINDING = bindings;
-        if b.is_null() {
+        let b_ptr: *mut BINDING = bindings;
+        if b_ptr.is_null() {
             break;
         }
-        bindings = (*b).nextTagBinding as *mut BINDING;
+        let binding = expect_binding_ref_ptr(b_ptr);
+        bindings = binding.nextTagBinding as *mut BINDING;
         expat_free(
             parser,
-            (*b).uri as *mut ::core::ffi::c_void,
+            binding.uri as *mut ::core::ffi::c_void,
             1919 as ::core::ffi::c_int,
         );
         expat_free(
             parser,
-            b as *mut ::core::ffi::c_void,
+            b_ptr as *mut ::core::ffi::c_void,
             1920 as ::core::ffi::c_int,
         );
     }
@@ -3372,6 +3370,21 @@ macro_rules! expect_binding_ref {
             unsafe { &*$ptr }
         }
     };
+}
+
+#[inline]
+fn expect_binding_ref_ptr<'a>(ptr: *const BINDING) -> &'a BINDING {
+    expect_binding_ref!(ptr)
+}
+
+#[inline]
+fn expect_prefix_ref_ptr<'a>(ptr: *const PREFIX) -> &'a PREFIX {
+    expect_prefix_ref!(ptr)
+}
+
+#[inline]
+fn expect_prefix_mut_ptr<'a>(ptr: *mut PREFIX) -> &'a mut PREFIX {
+    expect_prefix_mut!(ptr)
 }
 
 macro_rules! expect_entity_mut {
@@ -6307,23 +6320,28 @@ unsafe extern "C" fn doContent(
     }
 }
 
-unsafe extern "C" fn freeBindings(
-    mut parser: crate::expat_h::XML_Parser,
-    mut bindings: *mut BINDING,
-) {
+extern "C" fn freeBindings(mut parser: crate::expat_h::XML_Parser, mut bindings: *mut BINDING) {
     while !bindings.is_null() {
-        let mut b: *mut BINDING = bindings;
-        if (*parser).m_endNamespaceDeclHandler.is_some() {
-            (*parser)
-                .m_endNamespaceDeclHandler
-                .expect("non-null function pointer")(
-                (*parser).m_handlerArg, (*(*b).prefix).name
-            );
+        let b_ptr: *mut BINDING = bindings;
+        let parser_state = expect_parser_mut(parser);
+        let (next_tag_binding, prefix_ptr, prev_prefix_binding) = {
+            let binding = expect_binding_ref_ptr(b_ptr);
+            (
+                binding.nextTagBinding as *mut BINDING,
+                binding.prefix,
+                binding.prevPrefixBinding as *mut BINDING,
+            )
+        };
+        if let Some(handler) = parser_state.m_endNamespaceDeclHandler {
+            helper_unsafe!(handler(
+                parser_state.m_handlerArg,
+                expect_prefix_ref_ptr(prefix_ptr).name,
+            ));
         }
-        bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*b).nextTagBinding = (*parser).m_freeBindingList as *mut binding;
-        (*parser).m_freeBindingList = b;
-        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+        bindings = next_tag_binding;
+        helper_unsafe!((*b_ptr).nextTagBinding = parser_state.m_freeBindingList as *mut binding);
+        parser_state.m_freeBindingList = b_ptr;
+        expect_prefix_mut_ptr(prefix_ptr).binding = prev_prefix_binding;
     }
 }
 
