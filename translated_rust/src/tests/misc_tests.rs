@@ -403,41 +403,97 @@ fn bytes_as_c_char_ptr(bytes: &[u8]) -> *const ::core::ffi::c_char {
     bytes.as_ptr().cast()
 }
 
-fn ffi_call0<R>(function: unsafe extern "C" fn() -> R) -> R {
-    unsafe { function() }
+macro_rules! ffi_call0 {
+    ($function:expr $(,)?) => {{
+        unsafe { $function() }
+    }};
 }
 
-fn ffi_call1<A, R>(function: unsafe extern "C" fn(A) -> R, a: A) -> R {
-    unsafe { function(a) }
+macro_rules! ffi_call1 {
+    ($function:expr, $a:expr $(,)?) => {{
+        unsafe { $function($a) }
+    }};
 }
 
-fn ffi_call2<A, B, R>(function: unsafe extern "C" fn(A, B) -> R, a: A, b: B) -> R {
-    unsafe { function(a, b) }
+macro_rules! ffi_call2 {
+    ($function:expr, $a:expr, $b:expr $(,)?) => {{
+        unsafe { $function($a, $b) }
+    }};
 }
 
-fn ffi_call3<A, B, C, R>(function: unsafe extern "C" fn(A, B, C) -> R, a: A, b: B, c: C) -> R {
-    unsafe { function(a, b, c) }
+macro_rules! ffi_call3 {
+    ($function:expr, $a:expr, $b:expr, $c:expr $(,)?) => {{
+        unsafe { $function($a, $b, $c) }
+    }};
 }
 
-fn ffi_call4<A, B, C, D, R>(
-    function: unsafe extern "C" fn(A, B, C, D) -> R,
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-) -> R {
-    unsafe { function(a, b, c, d) }
+macro_rules! ffi_call4 {
+    ($function:expr, $a:expr, $b:expr, $c:expr, $d:expr $(,)?) => {{
+        unsafe { $function($a, $b, $c, $d) }
+    }};
 }
 
-fn ffi_call5<A, B, C, D, E, R>(
-    function: unsafe extern "C" fn(A, B, C, D, E) -> R,
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-) -> R {
-    unsafe { function(a, b, c, d, e) }
+macro_rules! ffi_call5 {
+    ($function:expr, $a:expr, $b:expr, $c:expr, $d:expr, $e:expr $(,)?) => {{
+        unsafe { $function($a, $b, $c, $d, $e) }
+    }};
+}
+
+macro_rules! set_allocation_count {
+    ($count:expr $(,)?) => {{
+        unsafe {
+            g_allocation_count = $count;
+        }
+    }};
+}
+
+macro_rules! current_chunk_size {
+    () => {{
+        unsafe { g_chunkSize }
+    }};
+}
+
+macro_rules! next_feature {
+    ($feature:expr $(,)?) => {{
+        let feature = $feature;
+        unsafe {
+            feature
+                .as_ref()
+                .map(|feature_ref| (feature_ref, feature.wrapping_add(1)))
+        }
+    }};
+}
+
+macro_rules! set_case_subtest {
+    ($index:expr $(,)?) => {{
+        unsafe {
+            set_subtest(bytes_as_c_char_ptr(b"cases[%d]\0"), $index);
+        }
+    }};
+}
+
+macro_rules! set_issue_317_subtest {
+    ($input_index:expr, $suspend:expr, $input:expr $(,)?) => {{
+        let suspend = $suspend;
+        unsafe {
+            set_subtest(
+                bytes_as_c_char_ptr(b"[input=%d suspend=%s] %s\0"),
+                $input_index,
+                if suspend as ::core::ffi::c_int != 0 {
+                    bytes_as_c_char_ptr(b"true\0")
+                } else {
+                    bytes_as_c_char_ptr(b"false\0")
+                },
+                $input,
+            );
+        }
+    }};
+}
+
+macro_rules! c_string {
+    ($text:expr $(,)?) => {{
+        unsafe { std::ffi::CStr::from_ptr($text) }
+    }};
 }
 
 fn current_parser() -> XML_Parser {
@@ -448,26 +504,16 @@ fn set_current_parser(parser: XML_Parser) {
     set_current_test_parser(parser as crate::src::tests::runtests::XML_Parser);
 }
 
-fn set_allocation_count(count: ::core::ffi::c_int) {
-    unsafe {
-        g_allocation_count = count;
-    }
-}
-
-fn current_chunk_size() -> ::core::ffi::c_int {
-    unsafe { g_chunkSize }
-}
-
 fn parser_create() -> XML_Parser {
-    ffi_call1(XML_ParserCreate, ::core::ptr::null::<XML_Char>())
+    ffi_call1!(XML_ParserCreate, ::core::ptr::null::<XML_Char>())
 }
 
 fn parser_create_with_encoding(encoding: *const XML_Char) -> XML_Parser {
-    ffi_call1(XML_ParserCreate, encoding)
+    ffi_call1!(XML_ParserCreate, encoding)
 }
 
 fn parser_create_ns(namespace_separator: XML_Char) -> XML_Parser {
-    ffi_call2(
+    ffi_call2!(
         XML_ParserCreateNS,
         ::core::ptr::null::<XML_Char>(),
         namespace_separator,
@@ -479,7 +525,7 @@ fn parser_create_mm(
     memsuite: &XML_Memory_Handling_Suite,
     namespace_separator: *const XML_Char,
 ) -> XML_Parser {
-    ffi_call3(
+    ffi_call3!(
         XML_ParserCreate_MM,
         encoding,
         memsuite as *const XML_Memory_Handling_Suite,
@@ -488,15 +534,15 @@ fn parser_create_mm(
 }
 
 fn parser_free(parser: XML_Parser) {
-    ffi_call1(XML_ParserFree, parser);
+    ffi_call1!(XML_ParserFree, parser);
 }
 
 fn parser_reset(parser: XML_Parser) -> XML_Bool {
-    ffi_call2(XML_ParserReset, parser, ::core::ptr::null::<XML_Char>())
+    ffi_call2!(XML_ParserReset, parser, ::core::ptr::null::<XML_Char>())
 }
 
 fn parser_create_external_entity(parser: XML_Parser) -> XML_Parser {
-    ffi_call3(
+    ffi_call3!(
         XML_ExternalEntityParserCreate,
         parser,
         ::core::ptr::null::<XML_Char>(),
@@ -510,35 +556,35 @@ fn parse_single_bytes(
     len: ::core::ffi::c_int,
     is_final: ::core::ffi::c_int,
 ) -> XML_Status {
-    ffi_call4(_XML_Parse_SINGLE_BYTES, parser, text, len, is_final)
+    ffi_call4!(_XML_Parse_SINGLE_BYTES, parser, text, len, is_final)
 }
 
 fn parser_get_buffer(parser: XML_Parser, len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
-    ffi_call2(XML_GetBuffer, parser, len)
+    ffi_call2!(XML_GetBuffer, parser, len)
 }
 
 fn stop_parser(parser: XML_Parser, resumable: XML_Bool) -> XML_Status {
-    ffi_call2(XML_StopParser, parser, resumable)
+    ffi_call2!(XML_StopParser, parser, resumable)
 }
 
 fn resume_parser(parser: XML_Parser) -> XML_Status {
-    ffi_call1(XML_ResumeParser, parser)
+    ffi_call1!(XML_ResumeParser, parser)
 }
 
 fn parser_error_code(parser: XML_Parser) -> XML_Error {
-    ffi_call1(XML_GetErrorCode, parser)
+    ffi_call1!(XML_GetErrorCode, parser)
 }
 
 fn parser_current_line(parser: XML_Parser) -> XML_Size {
-    ffi_call1(XML_GetCurrentLineNumber, parser)
+    ffi_call1!(XML_GetCurrentLineNumber, parser)
 }
 
 fn parser_current_column(parser: XML_Parser) -> XML_Size {
-    ffi_call1(XML_GetCurrentColumnNumber, parser)
+    ffi_call1!(XML_GetCurrentColumnNumber, parser)
 }
 
 fn parser_current_byte_count(parser: XML_Parser) -> ::core::ffi::c_int {
-    ffi_call1(XML_GetCurrentByteCount, parser) as ::core::ffi::c_int
+    ffi_call1!(XML_GetCurrentByteCount, parser) as ::core::ffi::c_int
 }
 
 fn parser_input_context(
@@ -546,7 +592,7 @@ fn parser_input_context(
     offset: &mut ::core::ffi::c_int,
     size: &mut ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    ffi_call3(
+    ffi_call3!(
         XML_GetInputContext,
         parser,
         offset as *mut _,
@@ -556,11 +602,11 @@ fn parser_input_context(
 }
 
 fn parser_set_user_data(parser: XML_Parser, user_data: *mut ::core::ffi::c_void) {
-    ffi_call2(XML_SetUserData, parser, user_data);
+    ffi_call2!(XML_SetUserData, parser, user_data);
 }
 
 fn parser_set_entity_decl_handler(parser: XML_Parser, handler: XML_EntityDeclHandler) {
-    ffi_call2(XML_SetEntityDeclHandler, parser, handler);
+    ffi_call2!(XML_SetEntityDeclHandler, parser, handler);
 }
 
 fn parser_set_element_handler(
@@ -568,33 +614,33 @@ fn parser_set_element_handler(
     start: XML_StartElementHandler,
     end: XML_EndElementHandler,
 ) {
-    ffi_call3(XML_SetElementHandler, parser, start, end);
+    ffi_call3!(XML_SetElementHandler, parser, start, end);
 }
 
 fn parser_set_start_element_handler(parser: XML_Parser, handler: XML_StartElementHandler) {
-    ffi_call2(XML_SetStartElementHandler, parser, handler);
+    ffi_call2!(XML_SetStartElementHandler, parser, handler);
 }
 
 fn parser_set_character_data_handler(parser: XML_Parser, handler: XML_CharacterDataHandler) {
-    ffi_call2(XML_SetCharacterDataHandler, parser, handler);
+    ffi_call2!(XML_SetCharacterDataHandler, parser, handler);
 }
 
 fn parser_set_external_entity_ref_handler(
     parser: XML_Parser,
     handler: XML_ExternalEntityRefHandler,
 ) {
-    ffi_call2(XML_SetExternalEntityRefHandler, parser, handler);
+    ffi_call2!(XML_SetExternalEntityRefHandler, parser, handler);
 }
 
 fn parser_set_element_decl_handler(parser: XML_Parser, handler: XML_ElementDeclHandler) {
-    ffi_call2(XML_SetElementDeclHandler, parser, handler);
+    ffi_call2!(XML_SetElementDeclHandler, parser, handler);
 }
 
 fn parser_set_param_entity_parsing(
     parser: XML_Parser,
     parsing: XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
-    ffi_call2(XML_SetParamEntityParsing, parser, parsing)
+    ffi_call2!(XML_SetParamEntityParsing, parser, parsing)
 }
 
 fn parser_parse(
@@ -603,46 +649,38 @@ fn parser_parse(
     len: ::core::ffi::c_int,
     is_final: ::core::ffi::c_int,
 ) -> XML_Status {
-    ffi_call4(XML_Parse, parser, text, len, is_final)
+    ffi_call4!(XML_Parse, parser, text, len, is_final)
 }
 
 fn xml_error_string(code: XML_Error) -> *const XML_LChar {
-    ffi_call1(XML_ErrorString, code)
+    ffi_call1!(XML_ErrorString, code)
 }
 
 fn expat_version_text() -> *const XML_LChar {
-    ffi_call0(XML_ExpatVersion)
+    ffi_call0!(XML_ExpatVersion)
 }
 
 fn expat_version_info() -> XML_Expat_Version {
-    ffi_call0(XML_ExpatVersionInfo)
+    ffi_call0!(XML_ExpatVersionInfo)
 }
 
 fn feature_list() -> *const XML_Feature {
-    ffi_call0(XML_GetFeatureList)
-}
-
-fn next_feature<'a>(feature: *const XML_Feature) -> Option<(&'a XML_Feature, *const XML_Feature)> {
-    unsafe {
-        feature
-            .as_ref()
-            .map(|feature_ref| (feature_ref, feature.wrapping_add(1)))
-    }
+    ffi_call0!(XML_GetFeatureList)
 }
 
 fn char_data_init(storage: &mut CharData) {
-    ffi_call1(CharData_Init, storage as *mut CharData);
+    ffi_call1!(CharData_Init, storage as *mut CharData);
 }
 
 fn char_data_check_xml_chars(
     storage: &mut CharData,
     expected: *const XML_Char,
 ) -> ::core::ffi::c_int {
-    ffi_call2(CharData_CheckXMLChars, storage as *mut CharData, expected)
+    ffi_call2!(CharData_CheckXMLChars, storage as *mut CharData, expected)
 }
 
 fn set_test_info_name(name: &[u8], line: ::core::ffi::c_int) {
-    ffi_call3(
+    ffi_call3!(
         _check_set_test_info,
         bytes_as_c_char_ptr(name),
         bytes_as_c_char_ptr(MISC_TESTS_FILE),
@@ -651,7 +689,7 @@ fn set_test_info_name(name: &[u8], line: ::core::ffi::c_int) {
 }
 
 fn fail_test(line: ::core::ffi::c_int, message: &[u8]) -> ! {
-    ffi_call3(
+    ffi_call3!(
         _fail,
         bytes_as_c_char_ptr(MISC_TESTS_FILE),
         line,
@@ -660,7 +698,7 @@ fn fail_test(line: ::core::ffi::c_int, message: &[u8]) -> ! {
 }
 
 fn xml_failure(parser: XML_Parser, line: ::core::ffi::c_int) {
-    ffi_call3(
+    ffi_call3!(
         _xml_failure,
         parser,
         bytes_as_c_char_ptr(MISC_TESTS_FILE),
@@ -668,33 +706,8 @@ fn xml_failure(parser: XML_Parser, line: ::core::ffi::c_int) {
     );
 }
 
-fn set_case_subtest(index: ::core::ffi::c_int) {
-    unsafe {
-        set_subtest(bytes_as_c_char_ptr(b"cases[%d]\0"), index);
-    }
-}
-
-fn set_issue_317_subtest(
-    input_index: ::core::ffi::c_int,
-    suspend: XML_Bool,
-    input: *const ::core::ffi::c_char,
-) {
-    unsafe {
-        set_subtest(
-            bytes_as_c_char_ptr(b"[input=%d suspend=%s] %s\0"),
-            input_index,
-            if suspend as ::core::ffi::c_int != 0 {
-                bytes_as_c_char_ptr(b"true\0")
-            } else {
-                bytes_as_c_char_ptr(b"false\0")
-            },
-            input,
-        );
-    }
-}
-
 fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    ffi_call1(strlen, text) as ::core::ffi::c_int
+    ffi_call1!(strlen, text) as ::core::ffi::c_int
 }
 
 fn expect_failure(
@@ -703,7 +716,7 @@ fn expect_failure(
     error_message: &[u8],
     line: ::core::ffi::c_int,
 ) {
-    ffi_call5(
+    ffi_call5!(
         _expect_failure,
         text,
         error_code,
@@ -717,23 +730,23 @@ fn compare_strings(
     left: *const ::core::ffi::c_char,
     right: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    ffi_call2(strcmp, left, right)
+    ffi_call2!(strcmp, left, right)
 }
 
 fn duplicate_c_string(text: *const ::core::ffi::c_char, len: size_t) -> *mut ::core::ffi::c_char {
-    ffi_call2(portable_strndup, text, len)
+    ffi_call2!(portable_strndup, text, len)
 }
 
 fn free_ptr(ptr: *mut ::core::ffi::c_void) {
-    ffi_call1(free, ptr);
+    ffi_call1!(free, ptr);
 }
 
 fn tracking_report_value() -> ::core::ffi::c_int {
-    ffi_call0(tracking_report)
+    ffi_call0!(tracking_report)
 }
 
 extern "C" fn basic_teardown_shim() {
-    ffi_call0(basic_teardown);
+    ffi_call0!(basic_teardown);
 }
 
 extern "C" fn test_misc_deny_internal_entity_closing_doctype_issue_317_shim() {
@@ -750,7 +763,7 @@ extern "C" fn test_misc_alloc_create_parser() {
     let max_alloc_count: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
     let mut i: ::core::ffi::c_uint = 0;
     while i < max_alloc_count {
-        set_allocation_count(i as ::core::ffi::c_int);
+        set_allocation_count!(i as ::core::ffi::c_int);
         set_current_parser(parser_create_mm(
             ::core::ptr::null::<XML_Char>(),
             &memsuite,
@@ -786,7 +799,7 @@ extern "C" fn test_misc_alloc_create_parser_with_encoding() {
     let max_alloc_count: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
     let mut i: ::core::ffi::c_uint = 0;
     while i < max_alloc_count {
-        set_allocation_count(i as ::core::ffi::c_int);
+        set_allocation_count!(i as ::core::ffi::c_int);
         set_current_parser(parser_create_mm(
             b"us-ascii\0".as_ptr() as *const XML_Char,
             &memsuite,
@@ -839,12 +852,8 @@ fn expat_version() -> Option<(XML_Expat_Version, &'static std::ffi::CStr)> {
     if version_text.is_null() {
         None
     } else {
-        Some((expat_version_info(), c_string(version_text)))
+        Some((expat_version_info(), c_string!(version_text)))
     }
-}
-
-fn c_string<'a>(text: *const ::core::ffi::c_char) -> &'a std::ffi::CStr {
-    unsafe { std::ffi::CStr::from_ptr(text) }
 }
 
 fn parse_version(version_text: &std::ffi::CStr) -> Option<XML_Expat_Version> {
@@ -928,7 +937,7 @@ extern "C" fn test_misc_features() {
             b"Failed to get feature information\0",
         );
     }
-    while let Some((feature, next)) = next_feature(features) {
+    while let Some((feature, next)) = next_feature!(features) {
         if feature.feature == XML_FEATURE_END {
             break;
         }
@@ -1071,12 +1080,12 @@ fn test_misc_deny_internal_entity_closing_doctype_issue_317() {
 
     for (input_index, input) in inputs.iter().copied().enumerate() {
         for suspend in suspend_or_not {
-            if suspend as ::core::ffi::c_int != 0 && current_chunk_size() > 0 as ::core::ffi::c_int
+            if suspend as ::core::ffi::c_int != 0 && current_chunk_size!() > 0 as ::core::ffi::c_int
             {
                 return;
             }
 
-            set_issue_317_subtest(input_index as ::core::ffi::c_int, suspend, input);
+            set_issue_317_subtest!(input_index as ::core::ffi::c_int, suspend, input);
 
             let parser = parser_create();
             let mut parse_result = XML_STATUS_ERROR;
@@ -1550,7 +1559,7 @@ extern "C" fn test_misc_async_entity_rejected() {
     let mut i: size_t = 0;
     while i < cases.len() {
         let testCase: test_case = cases[i as usize];
-        set_case_subtest(i as ::core::ffi::c_int);
+        set_case_subtest!(i as ::core::ffi::c_int);
         let doc: *const ::core::ffi::c_char = testCase.doc;
         let expectedStatus: XML_Status = XML_STATUS_ERROR;
         let expectedError: XML_Error = XML_ERROR_ASYNC_ENTITY;
