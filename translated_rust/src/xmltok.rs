@@ -18783,6 +18783,131 @@ unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> :
     return UNKNOWN_ENC as ::core::ffi::c_int;
 }
 
+#[derive(Copy, Clone)]
+enum InitScanState {
+    Prolog,
+    Content,
+}
+
+impl InitScanState {
+    fn is_content(self) -> bool {
+        matches!(self, Self::Content)
+    }
+
+    fn scanner_index(self) -> usize {
+        match self {
+            Self::Prolog => crate::src::xmltok::XML_PROLOG_STATE as usize,
+            Self::Content => crate::src::xmltok::XML_CONTENT_STATE as usize,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+enum InitScanAction {
+    None,
+    Partial,
+    Bom { encoding_index: usize, consumed: usize },
+    Scan { encoding_index: usize },
+}
+
+/// Decides which initial encoding scanner to use from the bytes already made
+/// available to the tokenizer.  The caller retains the raw cursor only to
+/// update Expat's fixed C ABI state after this bounded inspection.
+fn init_scan_action(
+    initial_encoding: ::core::ffi::c_char,
+    state: InitScanState,
+    input: &[u8],
+) -> InitScanAction {
+    let initial_encoding = initial_encoding as ::core::ffi::c_int;
+    let content_uses_latin1 = initial_encoding == ISO_8859_1_ENC as ::core::ffi::c_int
+        && state.is_content();
+
+    let Some(&first) = input.first() else {
+        return InitScanAction::None;
+    };
+    if input.len() == 1 {
+        if matches!(initial_encoding, 3 | 5 | 4) {
+            return InitScanAction::Partial;
+        }
+        if matches!(first, 254 | 255 | 239) && !content_uses_latin1
+            || matches!(first, 0 | 60)
+        {
+            return InitScanAction::Partial;
+        }
+        return InitScanAction::Scan {
+            encoding_index: initial_encoding as usize,
+        };
+    }
+
+    let second = input[1];
+    match u16::from_be_bytes([first, second]) {
+        0xfeff if !content_uses_latin1 => InitScanAction::Bom {
+            encoding_index: UTF_16BE_ENC as usize,
+            consumed: 2,
+        },
+        0x3c00
+            if !((initial_encoding == UTF_16BE_ENC as ::core::ffi::c_int
+                || initial_encoding == UTF_16_ENC as ::core::ffi::c_int)
+                && state.is_content()) =>
+        {
+            InitScanAction::Scan {
+                encoding_index: UTF_16LE_ENC as usize,
+            }
+        }
+        0xfffe if !content_uses_latin1 => InitScanAction::Bom {
+            encoding_index: UTF_16LE_ENC as usize,
+            consumed: 2,
+        },
+        0xefbb => {
+            if state.is_content()
+                && matches!(
+                    initial_encoding,
+                    value
+                        if value == ISO_8859_1_ENC as ::core::ffi::c_int
+                            || value == UTF_16BE_ENC as ::core::ffi::c_int
+                            || value == UTF_16LE_ENC as ::core::ffi::c_int
+                            || value == UTF_16_ENC as ::core::ffi::c_int
+                )
+            {
+                InitScanAction::Scan {
+                    encoding_index: initial_encoding as usize,
+                }
+            } else if input.len() == 2 {
+                InitScanAction::Partial
+            } else if input[2] == 0xbf {
+                InitScanAction::Bom {
+                    encoding_index: UTF_8_ENC as usize,
+                    consumed: 3,
+                }
+            } else {
+                InitScanAction::Scan {
+                    encoding_index: initial_encoding as usize,
+                }
+            }
+        }
+        _ if first == 0
+            && !(state.is_content()
+                && initial_encoding == UTF_16LE_ENC as ::core::ffi::c_int) =>
+        {
+            InitScanAction::Scan {
+                encoding_index: UTF_16BE_ENC as usize,
+            }
+        }
+        _ if second == 0 && !state.is_content() => InitScanAction::Scan {
+            encoding_index: UTF_16LE_ENC as usize,
+        },
+        _ => InitScanAction::Scan {
+            encoding_index: initial_encoding as usize,
+        },
+    }
+}
+
+/// # Safety
+///
+/// The tokenizer dispatch contract supplies a valid, readable `ptr..end`
+/// range from one allocation, a seven-entry encoding table, and writable
+/// output slots in both `enc` and `nextTokPtr`.  This adapter confines those
+/// C ABI cursors to the final state update and scanner dispatch.
 unsafe extern "C" fn initScan(
     mut encodingTable: *const *const crate::src::xmltok::ENCODING,
     mut enc: *const crate::src::xmltok::INIT_ENCODING,
@@ -18791,125 +18916,39 @@ unsafe extern "C" fn initScan(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut encPtr: *mut *const crate::src::xmltok::ENCODING =
-        ::core::ptr::null_mut::<*const crate::src::xmltok::ENCODING>();
-    if ptr >= end {
+    let input_len = end.offset_from(ptr);
+    if input_len <= 0 {
         return crate::src::xmltok::XML_TOK_NONE_1;
     }
-    encPtr = (*enc).encPtr;
-    if ptr.offset(1 as ::core::ffi::c_int as isize) == end {
-        match (*enc).initEnc.isUtf16 as ::core::ffi::c_int {
-            3 | 5 | 4 => return crate::src::xmltok::XML_TOK_PARTIAL_1,
-            _ => {}
-        }
-        's_48: {
-            match *ptr as ::core::ffi::c_uchar as ::core::ffi::c_int {
-                254 | 255 | 239 => {
-                    if (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                        == ISO_8859_1_ENC as ::core::ffi::c_int
-                        && state == crate::src::xmltok::XML_CONTENT_STATE
-                    {
-                        break 's_48;
-                    }
-                }
-                0 | 60 => {}
-                _ => {
-                    break 's_48;
-                }
-            }
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
+    let state = if state == crate::src::xmltok::XML_CONTENT_STATE {
+        InitScanState::Content
     } else {
-        's_181: {
-            match (*ptr.offset(0 as isize) as ::core::ffi::c_uchar as ::core::ffi::c_int)
-                << 8 as ::core::ffi::c_int
-                | *ptr.offset(1 as isize) as ::core::ffi::c_uchar as ::core::ffi::c_int
-            {
-                65279 => {
-                    if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                        == ISO_8859_1_ENC as ::core::ffi::c_int
-                        && state == crate::src::xmltok::XML_CONTENT_STATE)
-                    {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        *encPtr =
-                            *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_BOM_1;
-                    }
-                }
-                15360 => {
-                    if !(((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                        == UTF_16BE_ENC as ::core::ffi::c_int
-                        || (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                            == UTF_16_ENC as ::core::ffi::c_int)
-                        && state == crate::src::xmltok::XML_CONTENT_STATE)
-                    {
-                        *encPtr =
-                            *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
-                        return (**encPtr).scanners[state as usize]
-                            .scan(*encPtr, ptr, end, nextTokPtr);
-                    }
-                }
-                65534 => {
-                    if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                        == ISO_8859_1_ENC as ::core::ffi::c_int
-                        && state == crate::src::xmltok::XML_CONTENT_STATE)
-                    {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        *encPtr =
-                            *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_BOM_1;
-                    }
-                }
-                61371 => {
-                    if state == crate::src::xmltok::XML_CONTENT_STATE {
-                        let mut e: ::core::ffi::c_int =
-                            (*enc).initEnc.isUtf16 as ::core::ffi::c_int;
-                        if e == ISO_8859_1_ENC as ::core::ffi::c_int
-                            || e == UTF_16BE_ENC as ::core::ffi::c_int
-                            || e == UTF_16LE_ENC as ::core::ffi::c_int
-                            || e == UTF_16_ENC as ::core::ffi::c_int
-                        {
-                            break 's_181;
-                        }
-                    }
-                    if ptr.offset(2 as ::core::ffi::c_int as isize) == end {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                    }
-                    if *ptr.offset(2 as isize) as ::core::ffi::c_uchar as ::core::ffi::c_int
-                        == 0xbf as ::core::ffi::c_int
-                    {
-                        *nextTokPtr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                        *encPtr = *encodingTable.offset(UTF_8_ENC as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_BOM_1;
-                    }
-                }
-                _ => {
-                    if *ptr.offset(0 as isize) as ::core::ffi::c_int == '\0' as ::core::ffi::c_int {
-                        if !(state == crate::src::xmltok::XML_CONTENT_STATE
-                            && (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                                == UTF_16LE_ENC as ::core::ffi::c_int)
-                        {
-                            *encPtr =
-                                *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
-                            return (**encPtr).scanners[state as usize]
-                                .scan(*encPtr, ptr, end, nextTokPtr);
-                        }
-                    } else if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                        == '\0' as ::core::ffi::c_int
-                    {
-                        if state != crate::src::xmltok::XML_CONTENT_STATE {
-                            *encPtr =
-                                *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
-                            return (**encPtr).scanners[state as usize]
-                                .scan(*encPtr, ptr, end, nextTokPtr);
-                        }
-                    }
-                }
-            }
+        InitScanState::Prolog
+    };
+    let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
+    let initial_encoding = &*enc;
+    match init_scan_action(initial_encoding.initEnc.isUtf16, state, input) {
+        InitScanAction::None => crate::src::xmltok::XML_TOK_NONE_1,
+        InitScanAction::Partial => crate::src::xmltok::XML_TOK_PARTIAL_1,
+        InitScanAction::Bom {
+            encoding_index,
+            consumed,
+        } => {
+            *nextTokPtr = ptr.add(consumed);
+            *initial_encoding.encPtr = *encodingTable.add(encoding_index);
+            crate::src::xmltok::XML_TOK_BOM_1
+        }
+        InitScanAction::Scan { encoding_index } => {
+            let selected_encoding = *encodingTable.add(encoding_index);
+            *initial_encoding.encPtr = selected_encoding;
+            (*selected_encoding).scanners[state.scanner_index()].scan(
+                selected_encoding,
+                ptr,
+                end,
+                nextTokPtr,
+            )
         }
     }
-    *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
-    return (**encPtr).scanners[state as usize].scan(*encPtr, ptr, end, nextTokPtr);
 }
 pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
     mut mem: *mut ::core::ffi::c_void,
