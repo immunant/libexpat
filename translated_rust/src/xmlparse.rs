@@ -15430,7 +15430,7 @@ unsafe extern "C" fn doProlog(
         match role {
             2 | 1 | 57 => {}
             _ => {
-                if !accounting_raw_slice_diff_tolerated(
+                if !accounting_slice_diff_tolerated(
                     parser,
                     tok,
                     &token_bytes,
@@ -15438,9 +15438,8 @@ unsafe extern "C" fn doProlog(
                     token_bytes.len(),
                     5301 as ::core::ffi::c_int,
                     account,
-                    true,
-                )
-                {
+                ) {
+                    cdata_accounting_on_abort(parser);
                     return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
                 }
             }
@@ -16536,17 +16535,14 @@ unsafe extern "C" fn doProlog(
                                             }
                                         }
                                         if (*parser).m_declEntity.is_none() {
-                                            let entity = lookup(
-                                                parser,
-                                                &raw mut (*dtd).paramEntities,
-                                                EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
+                                            let Some(entity) = external_subset_entity_mut(
+                                                dtd,
                                                 ::core::mem::size_of::<ENTITY>(),
-                                            )
-                                                as *mut ENTITY;
-                                            if entity.is_null() {
+                                                hash_salt,
+                                            ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            (*entity).publicId = None;
+                                            };
+                                            entity.publicId = None;
                                             (*parser).m_declEntity =
                                                 Some(DeclaredEntity::ExternalSubset);
                                         }
