@@ -2853,6 +2853,19 @@ pub struct PoolStringRef {
     offset: usize,
 }
 
+macro_rules! pool_string_pointer {
+    ($pool:expr, $string:expr $(,)?) => {
+        ($pool)
+            .chars_from($string)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
+    };
+}
+
+const EXTERNAL_SUBSET_NAME: [crate::expat_external_h::XML_Char; 2] = [
+    crate::ascii_h::ASCII_HASH as crate::expat_external_h::XML_Char,
+    '\0' as crate::expat_external_h::XML_Char,
+];
+
 // Attribute declaration types are either fixed XML keywords or a
 // notation/enumeration retained in the temporary string pool.
 #[derive(Copy, Clone)]
@@ -2978,7 +2991,9 @@ pub type PREFIX = prefix;
 #[repr(C)]
 
 pub struct prefix {
-    pub name: *const crate::expat_external_h::XML_Char,
+    // Prefix records share the hash table's leading name header.  The default
+    // namespace has no name; all other prefixes retain a DTD-pool location.
+    pub name: Option<PoolStringRef>,
     pub binding: *mut BINDING,
 }
 
@@ -3221,11 +3236,10 @@ struct NamedAllocation {
 #[repr(C)]
 
 pub struct NAMED {
-    // The leading status character of an attribute name is updated while
-    // storing attributes, so the shared header retains a mutable view.
-    // Callers that only inspect a key continue to receive the usual shared
-    // pointer coercion.
-    pub name: ::core::ptr::NonNull<crate::expat_external_h::XML_Char>,
+    // Every table key is retained in the DTD string pool.  Store its checked
+    // pool location rather than an address into a growable slab; callers
+    // materialize a pointer only at the operation that needs one.
+    pub name: PoolStringRef,
 }
 
 pub type KEY = *const crate::expat_external_h::XML_Char;
@@ -8353,9 +8367,16 @@ unsafe extern "C" fn doContent(
                                         .get(&(parser as usize))
                                         .cloned();
                                     if let Some(callback) = callback {
+                                        let entity_name = pool_string_pointer!(
+                                            &(*dtd).pool,
+                                            (*entity).named.name,
+                                        );
+                                        if entity_name.is_null() {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        }
                                         callback.invoke(
                                             handler_arg!(parser),
-                                            (*entity).named.name.as_ptr(),
+                                            entity_name,
                                             0 as ::core::ffi::c_int,
                                         );
                                     }
@@ -8822,10 +8843,14 @@ unsafe extern "C" fn doContent(
                                     .unwrap_or_else(|poisoned| poisoned.into_inner())
                                     .get(&(parser as usize))
                                     .cloned();
-                                if let Some(callback) = callback {
-                                    callback.invoke(
-                                        handler_arg!(parser),
-                                        (*(*b).prefix).name,
+                                    if let Some(callback) = callback {
+                                        let prefix_name = (*(*b).prefix).name.map_or(
+                                            ::core::ptr::null(),
+                                            |name| pool_string_pointer!(&(*dtd).pool, name),
+                                        );
+                                        callback.invoke(
+                                            handler_arg!(parser),
+                                            prefix_name,
                                     );
                                 }
                             }
@@ -9109,9 +9134,13 @@ unsafe extern "C" fn freeBindings(
                 .get(&(parser as usize))
                 .cloned();
             if let Some(callback) = callback {
+                let dtd = parser_dtd_ptr!(parser);
+                let prefix_name = (*(*b).prefix).name.map_or(::core::ptr::null(), |name| {
+                    pool_string_pointer!(&(*dtd).pool, name)
+                });
                 callback.invoke(
                     handler_arg!(parser),
-                    (*(*b).prefix).name,
+                    prefix_name,
                 );
             }
         }
@@ -9141,7 +9170,7 @@ unsafe fn namespace_name_pointer(
     }
     let element_ref = &*element;
     let binding = if element_ref.hasPrefix != 0 {
-        let prefix_name = pool_string_pointer(&raw const dtd_ref.pool, element_ref.prefix);
+        let prefix_name = pool_string_pointer!(&dtd_ref.pool, element_ref.prefix);
         if prefix_name.is_null() {
             return ::core::ptr::null();
         }
@@ -9451,16 +9480,21 @@ unsafe extern "C" fn storeAtts(
         if attId.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if *(*attId).named.name.as_ptr().offset(-1 as isize) != 0 {
+        let att_id_name = pool_string_pointer!(&(*dtd).pool, (*attId).named.name);
+        if att_id_name.is_null() {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        }
+        if *att_id_name.offset(-1 as isize) != 0 {
             if enc == parser_encoding(parser) {
                 set_parser_event_start!(&mut *parser, currAtt.name);
             }
             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
         }
-        *(*attId).named.name.as_ptr().offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
+        *(att_id_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
+            1 as crate::expat_external_h::XML_Char;
         let c2rust_fresh23 = attIndex;
         attIndex = attIndex + 1;
-        appAtts[c2rust_fresh23 as usize] = (*attId).named.name.as_ptr();
+        appAtts[c2rust_fresh23 as usize] = att_id_name;
         if currAtt.normalized == 0 {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             let mut isCdata: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
@@ -9481,7 +9515,7 @@ unsafe extern "C" fn storeAtts(
                             .chars_from(name)
                             .map_or(::core::ptr::null(), |chars| chars.as_ptr())
                     });
-                    if default_name == (*attId).named.name.as_ptr() {
+                    if default_name == att_id_name {
                         isCdata = (*elementType)
                             .defaultAtts
                             .as_ref()
@@ -9544,7 +9578,8 @@ unsafe extern "C" fn storeAtts(
             } else {
                 attIndex += 1;
                 nPrefixes += 1;
-                *(*attId).named.name.as_ptr().offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
+                *(att_id_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
+                    2 as crate::expat_external_h::XML_Char;
             }
         } else {
             attIndex += 1;
@@ -9599,7 +9634,11 @@ unsafe extern "C" fn storeAtts(
         if id.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if *(*id).named.name.as_ptr().offset(-1 as isize) == 0 && da.value.is_some() {
+        let id_name_pointer = pool_string_pointer!(&(*dtd).pool, (*id).named.name);
+        if id_name_pointer.is_null() {
+            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        }
+        if *id_name_pointer.offset(-1 as isize) == 0 && da.value.is_some() {
             let value_ref = da
                 .value
                 .expect("a present default attribute value has a pool location");
@@ -9618,20 +9657,22 @@ unsafe extern "C" fn storeAtts(
                         return result_1;
                     }
                 } else {
-                    *(*id).named.name.as_ptr().offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
+                    *(id_name_pointer as *mut crate::expat_external_h::XML_Char)
+                        .offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
                     nPrefixes += 1;
                     let c2rust_fresh24 = attIndex;
                     attIndex = attIndex + 1;
-                    appAtts[c2rust_fresh24 as usize] = (*id).named.name.as_ptr();
+                    appAtts[c2rust_fresh24 as usize] = id_name_pointer;
                     let c2rust_fresh25 = attIndex;
                     attIndex = attIndex + 1;
                     appAtts[c2rust_fresh25 as usize] = value;
                 }
             } else {
-                *(*id).named.name.as_ptr().offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
+                *(id_name_pointer as *mut crate::expat_external_h::XML_Char)
+                    .offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
                 let c2rust_fresh26 = attIndex;
                 attIndex = attIndex + 1;
-                appAtts[c2rust_fresh26 as usize] = (*id).named.name.as_ptr();
+                appAtts[c2rust_fresh26 as usize] = id_name_pointer;
                 let c2rust_fresh27 = attIndex;
                 attIndex = attIndex + 1;
                 appAtts[c2rust_fresh27 as usize] = value;
@@ -9852,7 +9893,7 @@ unsafe extern "C" fn storeAtts(
                         let Some(uri_name) = entry.uriName else {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         };
-                        let s2 = pool_string_pointer(&raw const parser_ref.m_tempPool, uri_name);
+                        let s2 = pool_string_pointer!(&parser_ref.m_tempPool, uri_name);
                         if s2.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
@@ -9889,7 +9930,13 @@ unsafe extern "C" fn storeAtts(
                     {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    s = (*(*b).prefix).name;
+                    let Some(prefix_name) = (*(*b).prefix).name else {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    };
+                    s = pool_string_pointer!(&(*dtd).pool, prefix_name);
+                    if s.is_null() {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
                     loop {
                         if if parser_ref.m_tempPool.is_full()
                             && poolGrow(&mut parser_ref.m_tempPool) == 0
@@ -9954,14 +10001,22 @@ unsafe extern "C" fn storeAtts(
     binding = *bindingsPtr;
     while !binding.is_null() {
         let binding_ref = &*binding;
-        *(*binding_ref.attId).named.name.as_ptr().offset(-1 as isize) = 0 as crate::expat_external_h::XML_Char;
+        let binding_name = pool_string_pointer!(
+            &(*dtd).pool,
+            (*binding_ref.attId).named.name,
+        );
+        if binding_name.is_null() {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        }
+        *(binding_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
+            0 as crate::expat_external_h::XML_Char;
         binding = binding_ref.nextTagBinding as *mut BINDING;
     }
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
     }
     if (*elementType).hasPrefix != 0 {
-        let prefix_name = pool_string_pointer(&raw const (*dtd).pool, (*elementType).prefix);
+        let prefix_name = pool_string_pointer!(&(*dtd).pool, (*elementType).prefix);
         if prefix_name.is_null() {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
         }
@@ -9995,11 +10050,14 @@ unsafe extern "C" fn storeAtts(
     }
     let binding_ref = &mut *binding;
     prefixLen = 0 as ::core::ffi::c_int;
-    if (*parser).m_ns_triplets as ::core::ffi::c_int != 0 && !(*binding_ref.prefix).name.is_null() {
+    let prefix_name = (*binding_ref.prefix).name.map_or(::core::ptr::null(), |name| {
+        pool_string_pointer!(&(*dtd).pool, name)
+    });
+    if (*parser).m_ns_triplets as ::core::ffi::c_int != 0 && !prefix_name.is_null() {
         loop {
             let c2rust_fresh36 = prefixLen;
             prefixLen = prefixLen + 1;
-            if *(*binding_ref.prefix).name.offset(c2rust_fresh36 as isize) == 0 {
+            if *prefix_name.offset(c2rust_fresh36 as isize) == 0 {
                 break;
             }
         }
@@ -10060,7 +10118,7 @@ unsafe extern "C" fn storeAtts(
         *uri = (*parser).m_namespaceSeparator;
         crate::stdlib::memcpy(
             uri.offset(1 as ::core::ffi::c_int as isize) as *mut ::core::ffi::c_void,
-            (*binding_ref.prefix).name as *const ::core::ffi::c_void,
+            prefix_name as *const ::core::ffi::c_void,
             (prefixLen as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
         );
@@ -10133,12 +10191,17 @@ unsafe extern "C" fn addBinding(
     mut bindingsPtr: *mut *mut BINDING,
 ) -> crate::expat_h::XML_Error {
     let parser = &mut *parser;
+    let parser_ptr = parser as *mut XML_ParserStruct;
     let prefix = &mut *prefix;
     let uri = ::core::ffi::CStr::from_ptr(uri).to_bytes();
-    let prefix_name = if prefix.name.is_null() {
+    let dtd = &*parser_dtd_ptr!(parser_ptr);
+    let prefix_name_pointer = prefix.name.map_or(::core::ptr::null(), |name| {
+        pool_string_pointer!(&dtd.pool, name)
+    });
+    let prefix_name = if prefix_name_pointer.is_null() {
         None
     } else {
-        Some(::core::ffi::CStr::from_ptr(prefix.name).to_bytes())
+        Some(::core::ffi::CStr::from_ptr(prefix_name_pointer).to_bytes())
     };
     let namespace_error =
         validate_namespace_binding(prefix_name, uri, parser.m_ns, parser.m_namespaceSeparator);
@@ -10156,7 +10219,6 @@ unsafe extern "C" fn addBinding(
             None => return crate::expat_h::XML_ERROR_NO_MEMORY,
         };
     }
-    let parser_ptr = parser as *mut XML_ParserStruct;
     let b: &mut BINDING = if let Some(free_binding) = parser.m_freeBindingList {
         let b_ptr = free_binding.as_ptr();
         let b = &mut *b_ptr;
@@ -10249,7 +10311,7 @@ unsafe extern "C" fn addBinding(
         if let Some(callback) = callback {
             callback.invoke(
                 handler_arg_from_state!(parser),
-                prefix.name,
+                prefix_name_pointer,
                 if !prefix.binding.is_null() {
                     uri.as_ptr().cast()
                 } else {
@@ -11382,10 +11444,6 @@ unsafe extern "C" fn doProlog(
     mut allowClosingDoctype: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    static externalSubsetName: [crate::expat_external_h::XML_Char; 2] = [
-        crate::ascii_h::ASCII_HASH as crate::expat_external_h::XML_Char,
-        '\0' as crate::expat_external_h::XML_Char,
-    ];
     static atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
         crate::ascii_h::ASCII_C as crate::expat_external_h::XML_Char,
         crate::ascii_h::ASCII_D as crate::expat_external_h::XML_Char,
@@ -11507,7 +11565,7 @@ unsafe extern "C" fn doProlog(
                     .chars_from(name)
                     .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
             ),
-            DeclaredEntity::ExternalSubset => (true, externalSubsetName.as_ptr()),
+            DeclaredEntity::ExternalSubset => (true, EXTERNAL_SUBSET_NAME.as_ptr()),
         };
         if name.is_null() {
             None
@@ -11848,7 +11906,7 @@ unsafe extern "C" fn doProlog(
                                         let entity = lookup(
                                             parser,
                                             &raw mut (*dtd).paramEntities,
-                                            &raw const externalSubsetName as KEY,
+                                            EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
                                             ::core::mem::size_of::<ENTITY>(),
                                         )
                                             as *mut ENTITY;
@@ -11981,7 +12039,7 @@ unsafe extern "C" fn doProlog(
                                                 let mut entity: *mut ENTITY = lookup(
                                                     parser,
                                                     &raw mut (*dtd).paramEntities,
-                                                    &raw const externalSubsetName as KEY,
+                                                    EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
                                                     ::core::mem::size_of::<ENTITY>(),
                                                 )
                                                     as *mut ENTITY;
@@ -12065,7 +12123,7 @@ unsafe extern "C" fn doProlog(
                                                 let mut entity_0: *mut ENTITY = lookup(
                                                     parser,
                                                     &raw mut (*dtd).paramEntities,
-                                                    &raw const externalSubsetName as KEY,
+                                                    EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
                                                     ::core::mem::size_of::<ENTITY>(),
                                                 )
                                                     as *mut ENTITY;
@@ -12126,14 +12184,7 @@ unsafe extern "C" fn doProlog(
                                         if element.is_null() {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
-                                        (*parser).m_declElementType = pool_string_ref(
-                                            &raw const (*dtd).pool,
-                                            (*element).named.name.as_ptr(),
-                                            false,
-                                        );
-                                        if (*parser).m_declElementType.is_none() {
-                                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                        }
+                                        (*parser).m_declElementType = Some((*element).named.name);
                                         break '_checkAttListDeclHandler;
                                     }
                                     22 => {
@@ -12661,7 +12712,10 @@ unsafe extern "C" fn doProlog(
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
                                                             handler_arg_from_state!(parser),
-                                                            (*entity).named.name.as_ptr(),
+                                                            pool_string_pointer!(
+                                                                &*dtd_pool,
+                                                                (*entity).named.name,
+                                                            ),
                                                             (*entity).is_param
                                                                 as ::core::ffi::c_int,
                                                             entity_text,
@@ -12669,9 +12723,8 @@ unsafe extern "C" fn doProlog(
                                                             (*parser)
                                                                 .m_curBase
                                                                 .map(|base| {
-                                                                    pool_string_pointer(
-                                                                        dtd_pool
-                                                                            as *const STRING_POOL,
+                                                                    pool_string_pointer!(
+                                                                        &*dtd_pool,
                                                                         base,
                                                                     )
                                                                 })
@@ -12751,7 +12804,7 @@ unsafe extern "C" fn doProlog(
                                             let entity = lookup(
                                                 parser,
                                                 &raw mut (*dtd).paramEntities,
-                                                &raw const externalSubsetName as KEY,
+                                                EXTERNAL_SUBSET_NAME.as_ptr() as KEY,
                                                 ::core::mem::size_of::<ENTITY>(),
                                             )
                                                 as *mut ENTITY;
@@ -12800,7 +12853,10 @@ unsafe extern "C" fn doProlog(
                                                     let entity = &*entity;
                                                     (
                                                         handler_arg_from_state!(parser),
-                                                        entity.named.name.as_ptr(),
+                                                        pool_string_pointer!(
+                                                            &*dtd_pool,
+                                                            entity.named.name,
+                                                        ),
                                                         entity.is_param as ::core::ffi::c_int,
                                                         entity.base,
                                                         entity.systemId,
@@ -12819,8 +12875,8 @@ unsafe extern "C" fn doProlog(
                                                     entity_base.map_or(
                                                         ::core::ptr::null(),
                                                         |base| {
-                                                            pool_string_pointer(
-                                                                dtd_pool as *const STRING_POOL,
+                                                            pool_string_pointer!(
+                                                                &*dtd_pool,
                                                                 base,
                                                             )
                                                         },
@@ -12828,8 +12884,8 @@ unsafe extern "C" fn doProlog(
                                                     entity_system_id.map_or(
                                                         ::core::ptr::null(),
                                                         |system_id| {
-                                                            pool_string_pointer(
-                                                                dtd_pool as *const STRING_POOL,
+                                                            pool_string_pointer!(
+                                                                &*dtd_pool,
                                                                 system_id,
                                                             )
                                                         },
@@ -12837,8 +12893,8 @@ unsafe extern "C" fn doProlog(
                                                     entity_public_id.map_or(
                                                         ::core::ptr::null(),
                                                         |public_id| {
-                                                            pool_string_pointer(
-                                                                dtd_pool as *const STRING_POOL,
+                                                            pool_string_pointer!(
+                                                                &*dtd_pool,
                                                                 public_id,
                                                             )
                                                         },
@@ -12895,7 +12951,10 @@ unsafe extern "C" fn doProlog(
                                                 let entity = &*entity;
                                                 (
                                                     handler_arg_from_state!(parser),
-                                                    entity.named.name.as_ptr(),
+                                                    pool_string_pointer!(
+                                                        &*dtd_pool,
+                                                        entity.named.name,
+                                                    ),
                                                     entity.base,
                                                     entity.systemId,
                                                     entity.publicId,
@@ -12904,16 +12963,16 @@ unsafe extern "C" fn doProlog(
                                             };
                                             let entity_base =
                                                 entity_base.map_or(::core::ptr::null(), |base| {
-                                                    pool_string_pointer(
-                                                        dtd_pool as *const STRING_POOL,
+                                                    pool_string_pointer!(
+                                                        &*dtd_pool,
                                                         base,
                                                     )
                                                 });
                                             let entity_system_id = entity_system_id.map_or(
                                                 ::core::ptr::null(),
                                                 |system_id| {
-                                                    pool_string_pointer(
-                                                        dtd_pool as *const STRING_POOL,
+                                                    pool_string_pointer!(
+                                                        &*dtd_pool,
                                                         system_id,
                                                     )
                                                 },
@@ -12921,8 +12980,8 @@ unsafe extern "C" fn doProlog(
                                             let entity_public_id = entity_public_id.map_or(
                                                 ::core::ptr::null(),
                                                 |public_id| {
-                                                    pool_string_pointer(
-                                                        dtd_pool as *const STRING_POOL,
+                                                    pool_string_pointer!(
+                                                        &*dtd_pool,
                                                         public_id,
                                                     )
                                                 },
@@ -13000,7 +13059,14 @@ unsafe extern "C" fn doProlog(
                                                 if entity.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                if (*entity).named.name.as_ptr().cast_const() != name {
+                                                let Some(entity_name) = pool_string_ref(
+                                                    dtd_pool as *const STRING_POOL,
+                                                    name,
+                                                    false,
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
+                                                if (*entity).named.name != entity_name {
                                                     (*dtd).pool.rewind();
                                                     (*parser).m_declEntity = None;
                                                 } else {
@@ -13052,7 +13118,14 @@ unsafe extern "C" fn doProlog(
                                             if entity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                                if (*entity).named.name.as_ptr().cast_const() != name_0 {
+                                                let Some(entity_name) = pool_string_ref(
+                                                    dtd_pool as *const STRING_POOL,
+                                                    name_0,
+                                                    false,
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
+                                                if (*entity).named.name != entity_name {
                                                 (*dtd).pool.rewind();
                                                 (*parser).m_declEntity = None;
                                             } else {
@@ -13194,8 +13267,8 @@ unsafe extern "C" fn doProlog(
                                                         parser_ref
                                                             .m_curBase
                                                             .map(|base| {
-                                                                pool_string_pointer(
-                                                                    dtd_pool as *const STRING_POOL,
+                                                                pool_string_pointer!(
+                                                                    &*dtd_pool,
                                                                     base,
                                                                 )
                                                             })
@@ -13265,8 +13338,8 @@ unsafe extern "C" fn doProlog(
                                                         parser_ref
                                                             .m_curBase
                                                             .map(|base| {
-                                                                pool_string_pointer(
-                                                                    dtd_pool as *const STRING_POOL,
+                                                                pool_string_pointer!(
+                                                                    &*dtd_pool,
                                                                     base,
                                                                 )
                                                             })
@@ -13754,14 +13827,7 @@ unsafe extern "C" fn doProlog(
                                             if element.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*parser).m_declElementType = pool_string_ref(
-                                                &raw const (*dtd).pool,
-                                                (*element).named.name.as_ptr(),
-                                                false,
-                                            );
-                                            if (*parser).m_declElementType.is_none() {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
+                                            (*parser).m_declElementType = Some((*element).named.name);
                                             (*dtd).scaffLevel = 0 as ::core::ffi::c_int;
                                             (*dtd).scaffCount = 0 as ::core::ffi::c_uint;
                                             (*dtd).in_eldecl = crate::expat_h::XML_TRUE;
@@ -14040,9 +14106,11 @@ unsafe extern "C" fn doProlog(
                         if el.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        let name_2 = (*el).named.name.as_ptr();
-                        let name_ref = pool_string_ref(&raw const (*dtd).pool, name_2, false)
-                            .expect("element type table entries always have a DTD pool name");
+                        let name_ref = (*el).named.name;
+                        let name_2 = pool_string_pointer!(&(*dtd).pool, name_ref);
+                        if name_2.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
                         {
                             let mut scaffold = (*dtd)
                                 .scaffold
@@ -14348,11 +14416,7 @@ unsafe extern "C" fn processEntity(
             if dtd.is_null() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
-            let Some(entity_name) =
-                pool_string_ref(&raw const (*dtd).pool, entity.named.name.as_ptr(), false)
-            else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
+            let entity_name = entity.named.name;
             if parser_state.m_openAttributeEntities.try_reserve(1).is_err() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
@@ -14450,10 +14514,7 @@ unsafe extern "C" fn processEntity(
     if dtd.is_null() {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
-    let Some(name) = pool_string_ref(&raw const (*dtd).pool, entity.named.name.as_ptr(), false)
-    else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
+    let name = entity.named.name;
     let entity_ref = OpenEntityRef {
         name,
         table: if entity.is_param != 0 {
@@ -14729,7 +14790,7 @@ unsafe extern "C" fn storeAttributeValue(
             if dtd.is_null() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
-            let entity_name_pointer = pool_string_pointer(&raw const (*dtd).pool, entity_name);
+            let entity_name_pointer = pool_string_pointer!(&(*dtd).pool, entity_name);
             if entity_name_pointer.is_null() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
@@ -15187,11 +15248,7 @@ unsafe extern "C" fn storeEntityValue(
                                 let is_current_declaration = match parser.m_declEntity {
                                     Some(DeclaredEntity::General(name))
                                     | Some(DeclaredEntity::Parameter(name)) => {
-                                        pool_string_ref(
-                                            &raw const dtd.pool,
-                                            entity.named.name.as_ptr(),
-                                            false,
-                                        ) == Some(name)
+                                        entity.named.name == name
                                     }
                                     // The synthetic external-subset entity never has an
                                     // internal value, so it cannot be the record being
@@ -15844,13 +15901,17 @@ unsafe extern "C" fn setElementTypePrefix(
     let dtd = parser_dtd_ptr!(parser);
     let mut name: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    name = (*elementType).named.name.as_ptr();
+    let element_name = pool_string_pointer!(&(*dtd).pool, (*elementType).named.name);
+    if element_name.is_null() {
+        return 0 as ::core::ffi::c_int;
+    }
+    name = element_name;
     while *name != 0 {
         if *name as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
             let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
             let mut s: *const crate::expat_external_h::XML_Char =
                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            s = (*elementType).named.name.as_ptr();
+            s = element_name;
             while s != name {
                 if if (*dtd).pool.is_full() && poolGrow(&mut (*dtd).pool) == 0 {
                     0 as ::core::ffi::c_int
@@ -15900,13 +15961,16 @@ unsafe extern "C" fn setElementTypePrefix(
             if prefix.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            if (*prefix).name == pool_start {
+            let Some(pool_start_ref) = pool_string_ref(&raw const (*dtd).pool, pool_start, false)
+            else {
+                return 0 as ::core::ffi::c_int;
+            };
+            if (*prefix).name == Some(pool_start_ref) {
                 (*dtd).pool.commit();
             } else {
                 (*dtd).pool.rewind();
             }
-            let prefix_ref = pool_string_ref(&raw const (*dtd).pool, (*prefix).name, false);
-            let Some(prefix_ref) = prefix_ref else {
+            let Some(prefix_ref) = (*prefix).name else {
                 return 0 as ::core::ffi::c_int;
             };
             (*elementType).prefix = prefix_ref;
@@ -15948,7 +16012,10 @@ unsafe fn getAttributeId(
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
     let id = &mut *id;
-    if id.named.name.as_ptr() != name as *mut crate::expat_external_h::XML_Char {
+    let Some(id_name_ref) = pool_string_ref(&raw const dtd.pool, name, false) else {
+        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    };
+    if id.named.name != id_name_ref {
         dtd.pool.rewind();
     } else {
         dtd.pool.commit();
@@ -16000,7 +16067,12 @@ unsafe fn getAttributeId(
                     if id.prefix.is_null() {
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     }
-                    if (*id.prefix).name == pool_start {
+                    let Some(pool_start_ref) =
+                        pool_string_ref(&raw const dtd.pool, pool_start, false)
+                    else {
+                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    };
+                    if (*id.prefix).name == Some(pool_start_ref) {
                         dtd.pool.commit();
                     } else {
                         dtd.pool.rewind();
@@ -16009,7 +16081,10 @@ unsafe fn getAttributeId(
             }
         }
     }
-    let id_name = id.named.name.as_ptr();
+    let id_name = pool_string_pointer!(&dtd.pool, id.named.name);
+    if id_name.is_null() {
+        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    }
     if let Some(retained_name) = retained_name {
         let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
         let name = dtd
@@ -16128,7 +16203,13 @@ unsafe extern "C" fn getContext(
         {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        if !pool_append_context_c_string(&mut parser.m_tempPool, prefix.name) {
+        let Some(prefix_name) = prefix.name else {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        };
+        let prefix_name = pool_string_pointer!(&dtd.pool, prefix_name);
+        if prefix_name.is_null()
+            || !pool_append_context_c_string(&mut parser.m_tempPool, prefix_name)
+        {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
         if !pool_append_context_char(
@@ -16160,7 +16241,10 @@ unsafe extern "C" fn getContext(
         {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        if !pool_append_context_c_string(&mut parser.m_tempPool, e.named.name.as_ptr()) {
+        let entity_name = pool_string_pointer!(&dtd.pool, e.named.name);
+        if entity_name.is_null()
+            || !pool_append_context_c_string(&mut parser.m_tempPool, entity_name)
+        {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
         needSep = crate::expat_h::XML_TRUE;
@@ -16255,11 +16339,18 @@ unsafe extern "C" fn setContext(
                     if prefix.is_null() {
                         return crate::expat_h::XML_FALSE;
                     }
-                    if (*prefix).name == pool_start {
-                        (*prefix).name = poolCopyString(&raw mut dtd.pool, (*prefix).name).0;
-                        if (*prefix).name.is_null() {
+                    let Some(pool_start_ref) =
+                        pool_string_ref(&raw const dtd.pool, pool_start, false)
+                    else {
+                        return crate::expat_h::XML_FALSE;
+                    };
+                    if (*prefix).name == Some(pool_start_ref) {
+                        let (copied_name, copied_name_ref) =
+                            poolCopyString(&raw mut dtd.pool, pool_start);
+                        if copied_name.is_null() || copied_name_ref.is_none() {
                             return crate::expat_h::XML_FALSE;
                         }
+                        (*prefix).name = copied_name_ref;
                     }
                     parser.m_tempPool.rewind();
                     prefix
@@ -16419,7 +16510,7 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
         paramEntityRead: crate::expat_h::XML_FALSE,
         paramEntities: empty_hash_table(),
         defaultPrefix: PREFIX {
-            name: ::core::ptr::null(),
+            name: None,
             binding: ::core::ptr::null_mut(),
         },
         in_eldecl: crate::expat_h::XML_FALSE,
@@ -16469,7 +16560,7 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_
     hashTableClear(&raw mut p.prefixes);
     poolClear(&raw mut p.pool);
     poolClear(&raw mut p.entityValuePool);
-    p.defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    p.defaultPrefix.name = None;
     p.defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     p.in_eldecl = crate::expat_h::XML_FALSE;
     p.scaffIndex = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -16560,12 +16651,19 @@ unsafe extern "C" fn dtdCopy(
                 continue;
             };
             let old_p = &*(entry.bytes.as_ptr() as *const PREFIX);
-            let name = poolCopyString(&raw mut new_dtd.pool, old_p.name).0;
+            let Some(old_name_ref) = old_p.name else {
+                return 0 as ::core::ffi::c_int;
+            };
+            let old_name = pool_string_pointer!(&old_dtd.pool, old_name_ref);
+            if old_name.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let name = poolCopyString(&raw mut new_dtd.pool, old_name).0;
             if name.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
             if lookup(
-                oldParser,
+                parser,
                 &raw mut new_dtd.prefixes,
                 name as KEY,
                 ::core::mem::size_of::<PREFIX>(),
@@ -16597,13 +16695,20 @@ unsafe extern "C" fn dtdCopy(
             {
                 return 0 as ::core::ffi::c_int;
             }
-            let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.named.name.as_ptr()).0;
+            let old_name = old_dtd
+                .pool
+                .chars_from(old_a.named.name)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+            if old_name.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let name_0 = poolCopyString(&raw mut new_dtd.pool, old_name).0;
             if name_0.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
             let name_0 = name_0.wrapping_add(1);
             let new_a = lookup(
-                oldParser,
+                parser,
                 &raw mut new_dtd.attributeIds,
                 name_0 as KEY,
                 ::core::mem::size_of::<ATTRIBUTE_ID>(),
@@ -16620,9 +16725,12 @@ unsafe extern "C" fn dtdCopy(
                 } else {
                     let old_prefix = &*old_a.prefix;
                     new_a.prefix = lookup(
-                        oldParser,
+                        parser,
                         &raw mut new_dtd.prefixes,
-                        old_prefix.name as KEY,
+                        pool_string_pointer!(
+                            &old_dtd.pool,
+                            old_prefix.name.expect("named prefix table entry"),
+                        ) as KEY,
                         0 as crate::__stddef_size_t_h::size_t,
                     ) as *mut PREFIX;
                 }
@@ -16635,12 +16743,19 @@ unsafe extern "C" fn dtdCopy(
                 continue;
             };
             let old_e = &*(entry.bytes.as_ptr() as *const ELEMENT_TYPE);
-            let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.named.name.as_ptr()).0;
+            let old_name = old_dtd
+                .pool
+                .chars_from(old_e.named.name)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+            if old_name.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            let name_1 = poolCopyString(&raw mut new_dtd.pool, old_name).0;
             if name_1.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
             let new_e = lookup(
-                oldParser,
+                parser,
                 &raw mut new_dtd.elementTypes,
                 name_1 as KEY,
                 ::core::mem::size_of::<ELEMENT_TYPE>(),
@@ -16658,12 +16773,12 @@ unsafe extern "C" fn dtdCopy(
                 new_e.defaultAtts = Some(storage);
             }
             if let Some(old_id_att) = old_e.idAtt {
-                let old_id_att = pool_string_pointer(&raw const old_dtd.pool, old_id_att);
+                let old_id_att = pool_string_pointer!(&old_dtd.pool, old_id_att);
                 if old_id_att.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
                 let new_id_att = lookup(
-                    oldParser,
+                    parser,
                     &raw mut new_dtd.attributeIds,
                     old_id_att as KEY,
                     0 as crate::__stddef_size_t_h::size_t,
@@ -16671,19 +16786,15 @@ unsafe extern "C" fn dtdCopy(
                 if new_id_att.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
-                new_e.idAtt =
-                    pool_string_ref(&raw const new_dtd.pool, (*new_id_att).named.name.as_ptr(), false);
-                if new_e.idAtt.is_none() {
-                    return 0 as ::core::ffi::c_int;
-                }
+                new_e.idAtt = Some((*new_id_att).named.name);
             }
         if old_e.hasPrefix != 0 {
-            let old_prefix_name = pool_string_pointer(&raw const old_dtd.pool, old_e.prefix);
+            let old_prefix_name = pool_string_pointer!(&old_dtd.pool, old_e.prefix);
             if old_prefix_name.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
             let new_prefix = lookup(
-                oldParser,
+                parser,
                 &raw mut new_dtd.prefixes,
                 old_prefix_name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
@@ -16691,8 +16802,7 @@ unsafe extern "C" fn dtdCopy(
             if new_prefix.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            let prefix_ref = pool_string_ref(&raw const new_dtd.pool, (*new_prefix).name, false);
-            let Some(prefix_ref) = prefix_ref else {
+            let Some(prefix_ref) = (*new_prefix).name else {
                 return 0 as ::core::ffi::c_int;
             };
             new_e.prefix = prefix_ref;
@@ -16718,7 +16828,7 @@ unsafe extern "C" fn dtdCopy(
                 return 0 as ::core::ffi::c_int;
             }
             let new_id = lookup(
-                oldParser,
+                parser,
                 &raw mut new_dtd.attributeIds,
                 old_id_name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
@@ -16726,10 +16836,7 @@ unsafe extern "C" fn dtdCopy(
             if new_id.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            let Some(new_id_name) = pool_string_ref(&raw const new_dtd.pool, (*new_id).named.name.as_ptr(), false)
-            else {
-                return 0 as ::core::ffi::c_int;
-            };
+            let new_id_name = (*new_id).named.name;
             let value = if let Some(value) = old_att.value {
                 let Some(old_value) = old_dtd.pool.chars_from(value) else {
                     return 0 as ::core::ffi::c_int;
@@ -16769,6 +16876,7 @@ unsafe extern "C" fn dtdCopy(
     }
     if copyEntityTable(
         oldParser,
+        parser,
         &raw mut new_dtd.generalEntities,
         &raw mut new_dtd.pool,
         &raw const old_dtd.generalEntities,
@@ -16778,6 +16886,7 @@ unsafe extern "C" fn dtdCopy(
     }
     if copyEntityTable(
         oldParser,
+        parser,
         &raw mut new_dtd.paramEntities,
         &raw mut new_dtd.pool,
         &raw const old_dtd.paramEntities,
@@ -16807,6 +16916,7 @@ fn copy_dtd_metadata(new_dtd: &mut DTD, old_dtd: &DTD) {
 
 unsafe extern "C" fn copyEntityTable(
     mut oldParser: crate::expat_h::XML_Parser,
+    mut newParser: crate::expat_h::XML_Parser,
     mut newTable: *mut HASH_TABLE,
     mut newPool: *mut STRING_POOL,
     mut oldTable: *const HASH_TABLE,
@@ -16829,12 +16939,19 @@ unsafe extern "C" fn copyEntityTable(
             break;
         }
         let old_e = &*oldE;
-        name = poolCopyString(newPool, old_e.named.name.as_ptr()).0;
+        let old_name = old_dtd
+            .pool
+            .chars_from(old_e.named.name)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        if old_name.is_null() {
+            return 0 as ::core::ffi::c_int;
+        }
+        name = poolCopyString(newPool, old_name).0;
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
         newE = lookup(
-            oldParser,
+            newParser,
             newTable,
             name as KEY,
             ::core::mem::size_of::<ENTITY>(),
@@ -16844,7 +16961,7 @@ unsafe extern "C" fn copyEntityTable(
         }
         let new_e = &mut *newE;
         if let Some(old_system_id) = old_e.systemId {
-            let old_system_id = pool_string_pointer(&raw const old_dtd.pool, old_system_id);
+            let old_system_id = pool_string_pointer!(&old_dtd.pool, old_system_id);
             if old_system_id.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -16863,8 +16980,8 @@ unsafe extern "C" fn copyEntityTable(
                     cachedOldBase = old_e.base;
                     let (copied_base, base) = poolCopyString(
                         newPool,
-                        pool_string_pointer(
-                            &raw const old_dtd.pool,
+                        pool_string_pointer!(
+                            &old_dtd.pool,
                             cachedOldBase.expect("base is present after the non-null check"),
                         ),
                     );
@@ -16880,7 +16997,7 @@ unsafe extern "C" fn copyEntityTable(
                 }
             }
             if let Some(old_public_id) = old_e.publicId {
-                let old_public_id = pool_string_pointer(&raw const old_dtd.pool, old_public_id);
+                let old_public_id = pool_string_pointer!(&old_dtd.pool, old_public_id);
                 if old_public_id.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
@@ -16911,7 +17028,7 @@ unsafe extern "C" fn copyEntityTable(
             new_e.textLen = old_e.textLen;
         }
         if let Some(old_notation) = old_e.notation {
-            let old_notation = pool_string_pointer(&raw const old_dtd.pool, old_notation);
+            let old_notation = pool_string_pointer!(&old_dtd.pool, old_notation);
             if old_notation.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -17152,6 +17269,10 @@ unsafe extern "C" fn lookup(
     mut name: KEY,
     mut createSize: crate::__stddef_size_t_h::size_t,
 ) -> *mut NAMED {
+    let dtd = parser_dtd_ptr!(parser);
+    if dtd.is_null() {
+        return ::core::ptr::null_mut::<NAMED>();
+    }
     let table = &mut *table;
     let mut i: crate::__stddef_size_t_h::size_t = 0;
     if table.size == 0 as crate::__stddef_size_t_h::size_t {
@@ -17195,7 +17316,11 @@ unsafe extern "C" fn lookup(
                 .expect("occupied hash table slot")
                 .bytes
                 .as_ptr() as *mut NAMED;
-            if keyeq(name, (*entry).name.as_ptr()) != 0 {
+            let entry_name = pool_string_pointer!(&(*dtd).pool, (*entry).name);
+            if entry_name.is_null() {
+                return ::core::ptr::null_mut::<NAMED>();
+            }
+            if keyeq(name, entry_name) != 0 {
                 return entry;
             }
             if step == 0 {
@@ -17253,7 +17378,11 @@ unsafe extern "C" fn lookup(
                 let entry = table.v.as_mut().expect("initialized hash table").entries[i].take();
                 if let Some(entry) = entry {
                     let named = entry.bytes.as_ptr() as *mut NAMED;
-                    let mut newHash: ::core::ffi::c_ulong = hash(parser, (*named).name.as_ptr());
+                    let named_name = pool_string_pointer!(&(*dtd).pool, (*named).name);
+                    if named_name.is_null() {
+                        return ::core::ptr::null_mut::<NAMED>();
+                    }
+                    let mut newHash: ::core::ffi::c_ulong = hash(parser, named_name);
                     let mut j: crate::__stddef_size_t_h::size_t = newHash
                         as crate::__stddef_size_t_h::size_t
                         & newMask as crate::__stddef_size_t_h::size_t;
@@ -17329,8 +17458,15 @@ unsafe extern "C" fn lookup(
     }
     bytes.resize(words, 0);
     let entry = bytes.as_mut_ptr() as *mut NAMED;
-    let Some(name) = ::core::ptr::NonNull::new(name as *mut crate::expat_external_h::XML_Char)
-    else {
+    let name = if let Some(name) = pool_string_ref(&raw const (*dtd).pool, name, false) {
+        name
+    } else if name == EXTERNAL_SUBSET_NAME.as_ptr() {
+        let Some(name) = pool_copy_chars(&mut (*dtd).pool, &EXTERNAL_SUBSET_NAME) else {
+            backing(7915 as ::core::ffi::c_int);
+            return ::core::ptr::null_mut::<NAMED>();
+        };
+        name
+    } else {
         backing(7915 as ::core::ffi::c_int);
         return ::core::ptr::null_mut::<NAMED>();
     };
@@ -17445,25 +17581,6 @@ unsafe fn pool_string_ref(
     None
 }
 
-unsafe fn pool_string_pointer(
-    pool: *const STRING_POOL,
-    string: PoolStringRef,
-) -> *const crate::expat_external_h::XML_Char {
-    let pool = &*pool;
-    let Some(block_index) = string.block_from_tail.get().checked_sub(1) else {
-        return ::core::ptr::null();
-    };
-    let Some(block) = pool.storage.active.get(block_index) else {
-        return ::core::ptr::null();
-    };
-    // `offset == len` is the valid zero-length string retained above; callers
-    // use it only with the entity's explicit zero length.
-    if string.offset > block.chars.len() {
-        return ::core::ptr::null();
-    }
-    block.chars.as_ptr().wrapping_add(string.offset)
-}
-
 // The callback boundary is the only point where pool-backed entity
 // identifiers become C pointers.  Keeping the conversion with the callback
 // invocation avoids retaining allocator-owned addresses in `ENTITY`.
@@ -17477,12 +17594,18 @@ unsafe fn invoke_external_entity_ref_handler(
     let entity = &*entity;
     let base = entity
         .base
-        .map_or(::core::ptr::null(), |base| pool_string_pointer(pool, base));
+        .map_or(::core::ptr::null(), |base| {
+            (&*pool).chars_from(base).map_or(::core::ptr::null(), |chars| chars.as_ptr())
+        });
     let system_id = entity.systemId.map_or(::core::ptr::null(), |system_id| {
-        pool_string_pointer(pool, system_id)
+        (&*pool)
+            .chars_from(system_id)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
     });
     let public_id = entity.publicId.map_or(::core::ptr::null(), |public_id| {
-        pool_string_pointer(pool, public_id)
+        (&*pool)
+            .chars_from(public_id)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
     });
     let callback_arg = EXTERNAL_ENTITY_REF_HANDLER_ARGS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -18235,7 +18358,10 @@ unsafe extern "C" fn getElementType(
     if ret.is_null() {
         return ::core::ptr::null_mut::<ELEMENT_TYPE>();
     }
-    if (*ret).named.name.as_ptr().cast_const() != name {
+    let Some(name_ref) = pool_string_ref(&raw const (*dtd).pool, name, false) else {
+        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    };
+    if (*ret).named.name != name_ref {
         (*dtd).pool.rewind();
     } else {
         (*dtd).pool.commit();
@@ -18530,7 +18656,15 @@ unsafe extern "C" fn entityTrackingReportStats(
     if stats.entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
-    let entityName: *const ::core::ffi::c_char = (*entity).named.name.as_ptr().cast();
+    let dtd = parser_dtd_ptr!(rootParser);
+    if dtd.is_null() {
+        return;
+    }
+    let entity_name = pool_string_pointer!(&(*dtd).pool, (*entity).named.name);
+    if entity_name.is_null() {
+        return;
+    }
+    let entityName: *const ::core::ffi::c_char = entity_name.cast();
     crate::stdlib::fprintf(
         crate::stdlib::stderr,
         b"expat: Entities(%p): Count %9u, depth %2u/%2u %*s%s%s; %s length %d (xmlparse.c:%d)\n\0"
