@@ -1593,17 +1593,12 @@ struct DefaultCallbackEvent<'a> {
 /// Owns the erased C callback representation while parser-side dispatch uses
 /// a checked, typed event.
 struct DefaultCallbackAdapter {
-    callback: std::sync::Arc<dyn DefaultCallback>,
+    callback: std::sync::Arc<dyn for<'a> Fn(DefaultCallbackEvent<'a>) + Send + Sync>,
 }
 
 impl DefaultCallbackAdapter {
-    fn new<Callback>(callback: Callback) -> Self
-    where
-        Callback: DefaultCallback + 'static,
-    {
-        Self {
-            callback: std::sync::Arc::new(callback),
-        }
+    fn invoke(&self, event: DefaultCallbackEvent<'_>) {
+        (self.callback)(event);
     }
 }
 
@@ -1618,7 +1613,7 @@ where
     Callback: DefaultCallback + 'static,
 {
     DefaultHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(DefaultCallbackAdapter::new(callback))),
+        callback: handler.map(|callback| default_callback_adapter(std::sync::Arc::new(callback))),
     }
 }
 
@@ -1863,6 +1858,35 @@ macro_rules! handler_arg_from_state {
     }};
 }
 
+/// Captures a C default handler behind a typed event adapter.
+///
+/// Registration is the callback ABI boundary.  Parser dispatch later supplies
+/// only a live parser borrow and a bounded XML-character slice.
+fn default_callback_adapter(
+    callback: std::sync::Arc<dyn DefaultCallback>,
+) -> std::sync::Arc<DefaultCallbackAdapter> {
+    let callback = std::sync::Arc::new(move |event: DefaultCallbackEvent<'_>| {
+        let Ok(len) = ::core::ffi::c_int::try_from(event.data.len()) else {
+            return;
+        };
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+            ),
+        >() else {
+            return;
+        };
+        // The typed event provides a live parser context and a bounded,
+        // parser-owned character slice for this synchronous C callback.
+        unsafe {
+            callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
+        }
+    });
+    std::sync::Arc::new(DefaultCallbackAdapter { callback })
+}
+
 impl StartDoctypeDeclCallbackAdapter {
     fn invoke(&self, event: StartDoctypeDeclCallbackEvent<'_>) {
         let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
@@ -1944,26 +1968,6 @@ fn character_data_callback_adapter(
         }
     });
     std::sync::Arc::new(CharacterDataCallbackAdapter { callback })
-}
-
-impl DefaultCallbackAdapter {
-    fn invoke(&self, event: DefaultCallbackEvent<'_>) {
-        let Ok(len) = ::core::ffi::c_int::try_from(event.data.len()) else {
-            return;
-        };
-        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
-                *mut ::core::ffi::c_void,
-                *const crate::expat_external_h::XML_Char,
-                ::core::ffi::c_int,
-            ),
-        >() else {
-            return;
-        };
-        unsafe {
-            callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
-        }
-    }
 }
 
 impl TwoXmlCharCallbackAdapter {
