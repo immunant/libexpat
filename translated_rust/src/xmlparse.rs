@@ -10279,7 +10279,7 @@ unsafe fn doContent(
                     );
                     // Take the handler state before invoking either callback,
                     // but release the parser borrow before re-entry.
-                    let handlers = content_token_handlers(&*parser_ptr);
+                    let handlers = content_token_handlers(parser);
                     if handlers.character_data {
                         let mut c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
@@ -10290,7 +10290,7 @@ unsafe fn doContent(
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_NO_ELEMENTS;
                     }
-                    if (&*parser_ptr).m_tagLevel != startTagLevel {
+                    if parser.m_tagLevel != startTagLevel {
                         return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
                     }
                     *nextPtr = end;
@@ -10383,7 +10383,7 @@ unsafe fn doContent(
                             XML_ACCOUNT_ENTITY_EXPANSION,
                             Some(bytemuck::bytes_of(&ch)),
                         );
-                        let handlers = content_token_handlers(&*parser_ptr);
+                        let handlers = content_token_handlers(parser);
                         if handlers.character_data {
                             callCharacterDataHandler(
                                 parser,
@@ -10446,7 +10446,7 @@ unsafe fn doContent(
                                 return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
                         } else if entity.is_none() {
-                            let handlers = content_entity_handlers(&*parser_ptr);
+                            let handlers = content_entity_handlers(parser);
                             if handlers.skipped_entity {
                                 let callback = SKIPPED_ENTITY_HANDLERS
                                     .get_or_init(|| {
@@ -10479,7 +10479,7 @@ unsafe fn doContent(
                         if has_notation {
                             return crate::expat_h::XML_ERROR_BINARY_ENTITY_REF;
                         }
-                        let handlers = content_entity_handlers(&*parser_ptr);
+                        let handlers = content_entity_handlers(parser);
                         if has_text {
                             let mut result: crate::expat_h::XML_Error =
                                 crate::expat_h::XML_ERROR_NONE;
@@ -10560,10 +10560,6 @@ unsafe fn doContent(
                 }
                 crate::src::xmltok::XML_TOK_START_TAG_NO_ATTS
                 | crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS => {
-                    let mut tag: *mut TAG = ::core::ptr::null_mut::<TAG>();
-                    let mut result_0: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                    let mut toPtr: *mut crate::expat_external_h::XML_Char =
-                        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
                     let mut tag_storage = {
                         // No callback can run while reserving parser-owned tag
                         // storage or taking a recycled tag.  Borrow the parser
@@ -10635,15 +10631,11 @@ unsafe fn doContent(
                             .expect("tag storage has one tag")
                             .buffer = buffer;
                     }
-                    let parser_state = &mut *parser;
-                    let tag_index = parser_state.m_activeTags.len();
-                    parser_state.m_activeTags.push(tag_storage);
-                    tag = parser_state.m_activeTags[tag_index].tag.as_mut_ptr();
-                    (*tag).bindings = None;
-                    parser_state.m_tagStack = Some(tag_index);
-                    (*tag).name.localPart = None;
+                    let tag_index = parser.m_activeTags.len();
+                    parser.m_activeTags.push(tag_storage);
+                    parser.m_tagStack = Some(tag_index);
                     let raw_name = s.wrapping_offset(encoding.minBytesPerChar as isize);
-                    (*tag).rawName = match event_raw_name_storage(
+                    let raw_name_storage = match event_raw_name_storage(
                         &*parser_ptr,
                         &*dtd,
                         parser_events,
@@ -10664,9 +10656,8 @@ unsafe fn doContent(
                     else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    (*tag).rawNameLength = raw_name_len.length;
-                    parser_state.m_tagLevel += 1;
-                    let raw_name_length = match usize::try_from((*tag).rawNameLength) {
+                    parser.m_tagLevel += 1;
+                    let raw_name_length = match usize::try_from(raw_name_len.length) {
                         Ok(length) => length,
                         Err(_) => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                     };
@@ -10686,9 +10677,9 @@ unsafe fn doContent(
                     ) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let unknown_encoding = match (&*parser_ptr).m_encoding {
+                    let unknown_encoding = match parser.m_encoding {
                         EncodingState::Initial => None,
-                        EncodingState::Unknown => (&*parser_ptr)
+                        EncodingState::Unknown => parser
                             .m_unknownEncodingMem
                             .as_ref()
                             .and_then(UnknownEncodingMemory::initialized_encoding),
@@ -10705,37 +10696,69 @@ unsafe fn doContent(
                         encoding,
                         unknown_encoding,
                         raw_name_source,
-                        &mut (*tag).buffer,
+                        &mut parser.m_activeTags[tag_index]
+                            .tag
+                            .first_mut()
+                            .expect("tag storage has one tag")
+                            .buffer,
                     ) {
                         Ok(length) => length,
                         Err(error) => return error,
                     };
-                    (*tag).name.strLen = conv_len;
-                    toPtr = (*tag)
-                        .buffer
-                        .bytes
-                        .as_mut_ptr()
-                        .wrapping_add(conv_len as usize)
-                        .cast::<crate::expat_external_h::XML_Char>();
-                    (*tag).name.str = TagNameStorage::TagBuffer { offset: 0 };
-                    *toPtr = '\0' as crate::expat_external_h::XML_Char;
+                    {
+                        let tag = parser.m_activeTags[tag_index]
+                            .tag
+                            .first_mut()
+                            .expect("tag storage has one tag");
+                        tag.bindings = None;
+                        tag.name.localPart = None;
+                        tag.rawName = raw_name_storage;
+                        tag.rawNameLength = raw_name_len.length;
+                        tag.name.strLen = conv_len;
+                        tag.name.str = TagNameStorage::TagBuffer { offset: 0 };
+                        let Some(terminator) = tag.buffer.bytes.get_mut(conv_len as usize) else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        *terminator = '\0' as crate::expat_external_h::XML_Char;
+                    }
                     let mut app_atts = Vec::new();
-                    result_0 = storeAtts(
+                    // `storeAtts` has not yet shed its C-compatible tag
+                    // parameters.  Form those handles from the owned active
+                    // tag immediately before the call, then resume using the
+                    // vector index so no raw tag dereference escapes this
+                    // boundary.
+                    let (tag_name, tag) = {
+                        let tag = parser.m_activeTags[tag_index]
+                            .tag
+                            .first_mut()
+                            .expect("tag storage has one tag");
+                        (
+                            std::ptr::from_mut(&mut tag.name),
+                            std::ptr::from_mut(tag),
+                        )
+                    };
+                    let mut tag_bindings = None;
+                    let result_0 = storeAtts(
                         parser,
                         enc,
                         parser_events,
                         s,
                         next,
-                        &raw mut (*tag).name,
+                        tag_name,
                         tag,
-                        &mut (*tag).bindings,
+                        &mut tag_bindings,
                         account,
                         &mut app_atts,
                     );
+                    parser.m_activeTags[tag_index]
+                        .tag
+                        .first_mut()
+                        .expect("tag storage has one tag")
+                        .bindings = tag_bindings;
                     if result_0 as u64 != 0 {
                         return result_0;
                     }
-                    let handlers = content_token_handlers(&*parser_ptr);
+                    let handlers = content_token_handlers(parser);
                     if handlers.start_element {
                         let callback = START_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -10744,16 +10767,24 @@ unsafe fn doContent(
                             .get(&(parser_ptr as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            let name = match (*tag).name.str {
+                            let (name_storage, tag_buffer) = {
+                                let tag = parser.m_activeTags[tag_index]
+                                    .tag
+                                    .first()
+                                    .expect("tag storage has one tag");
+                                (
+                                    tag.name.str,
+                                    tag.buffer.bytes.as_ptr()
+                                        as *const crate::expat_external_h::XML_Char,
+                                )
+                            };
+                            let name = match name_storage {
                                 TagNameStorage::TagBuffer { offset } => {
-                                    ((*tag).buffer.bytes.as_ptr()
-                                        as *const crate::expat_external_h::XML_Char)
-                                        .wrapping_offset(offset as isize)
+                                    tag_buffer.wrapping_offset(offset as isize)
                                 }
                                 TagNameStorage::NamespaceUri => namespace_name_pointer(
                                     parser,
-                                    (*tag).buffer.bytes.as_ptr()
-                                        as *const crate::expat_external_h::XML_Char,
+                                    tag_buffer,
                                 ),
                                 _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
@@ -10766,7 +10797,7 @@ unsafe fn doContent(
                     } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
-                    poolClear(&mut (*parser).m_tempPool);
+                    poolClear(&mut parser.m_tempPool);
                 }
                 crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
                 | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
@@ -10843,7 +10874,7 @@ unsafe fn doContent(
                         _ => ::core::ptr::null(),
                     };
                     (*parser).m_tempPool.commit();
-                    let start_handlers = content_token_handlers(&*parser_ptr);
+                    let start_handlers = content_token_handlers(parser);
                     if start_handlers.start_element {
                         let callback = START_ELEMENT_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -10862,7 +10893,7 @@ unsafe fn doContent(
                     }
                     // Re-snapshot after the start callback: it may install or
                     // remove the end-element handler before Expat dispatches it.
-                    let end_handlers = content_token_handlers(&*parser_ptr);
+                    let end_handlers = content_token_handlers(parser);
                     if end_handlers.end_element {
                         if end_handlers.start_element {
                             content_advance_event_start_to_end(
@@ -11106,7 +11137,7 @@ unsafe fn doContent(
                     }
                     // Handler selection is a pre-callback snapshot, so the
                     // borrow does not remain live during callback re-entry.
-                    let handlers = content_token_handlers(&*parser_ptr);
+                    let handlers = content_token_handlers(parser);
                     if handlers.character_data {
                         let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                         callCharacterDataHandler(
@@ -11122,7 +11153,7 @@ unsafe fn doContent(
                     return crate::expat_h::XML_ERROR_MISPLACED_XML_PI
                 }
                 crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
-                    let handlers = content_token_handlers(&*parser_ptr);
+                    let handlers = content_token_handlers(parser);
                     if handlers.character_data {
                         let mut c_0: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
@@ -11133,7 +11164,7 @@ unsafe fn doContent(
                 }
                 crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN => {
                     let mut result_2: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                    let handlers = content_token_handlers(&*parser_ptr);
+                    let handlers = content_token_handlers(parser);
                     if handlers.start_cdata_section {
                         let callback = START_CDATA_SECTION_HANDLERS
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -11169,7 +11200,7 @@ unsafe fn doContent(
                         *nextPtr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
-                    let handlers = content_token_handlers(&*parser_ptr);
+                    let handlers = content_token_handlers(parser);
                     if handlers.character_data {
                         if encoding.isUtf8 == 0 {
                             let unknown_encoding = match encoding.utf8Convert {
