@@ -17547,8 +17547,6 @@ unsafe fn doProlog(
                                         _ => return crate::expat_h::XML_ERROR_SYNTAX,
                                     },
                                     58 => {
-                                        let mut result_3: crate::expat_h::XML_Error =
-                                            crate::expat_h::XML_ERROR_NONE;
                                         if parser.m_defaultHandler {
                                             report_default_token(
                                                 parser_key,
@@ -17561,14 +17559,124 @@ unsafe fn doProlog(
                                             );
                                         }
                                         handleDefault = crate::expat_h::XML_FALSE;
-                                        result_3 = doIgnoreSection(
+                                        let ignore_start = next;
+                                        let ignore_input = if parser.m_defaultHandler {
+                                            if parser_events {
+                                                let Some(input) = parser
+                                                    .m_buffer
+                                                    .window_from_addresses(
+                                                        ignore_start.addr(),
+                                                        end.addr(),
+                                                    )
+                                                else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                let mut snapshot = Vec::new();
+                                                if snapshot.try_reserve_exact(input.len()).is_err() {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                }
+                                                snapshot.extend_from_slice(input);
+                                                snapshot
+                                            } else {
+                                                let Some(start) = internal_event_offset(
+                                                    internal_event_window,
+                                                    ignore_start.addr(),
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                let Some(end_offset) = internal_event_offset(
+                                                    internal_event_window,
+                                                    end.addr(),
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                let Some(open_entity_index) =
+                                                    parser.m_openInternalEntities
+                                                else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                let Some(open_entity) = parser
+                                                    .m_activeInternalEntities
+                                                    .get(open_entity_index)
+                                                else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                let Some(input) = entity_text_chars(
+                                                    dtd,
+                                                    open_entity.node().eventText,
+                                                    open_entity.node().eventTextLen,
+                                                )
+                                                .and_then(|text| text.get(start..end_offset))
+                                                else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                let input = bytemuck::cast_slice(input);
+                                                let mut snapshot = Vec::new();
+                                                if snapshot.try_reserve_exact(input.len()).is_err() {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                }
+                                                snapshot.extend_from_slice(input);
+                                                snapshot
+                                            }
+                                        } else {
+                                            Vec::new()
+                                        };
+                                        let action = do_ignore_section_checked(
                                             parser,
-                                            enc,
-                                            &mut next,
-                                            end,
-                                            std::ptr::from_mut(next_ptr),
-                                            haveMore,
+                                            Some(dtd),
+                                            IgnoreSectionRequest {
+                                                start_address: ignore_start.addr(),
+                                                end_address: end.addr(),
+                                                encoding_address: enc.addr(),
+                                                have_more: haveMore != 0,
+                                            },
                                         );
+                                        if let Some(default_range) = action.default_range {
+                                            let Some(input_start) = ignore_start
+                                                .addr()
+                                                .checked_add(default_range.start)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            let Some(input_end) = ignore_start
+                                                .addr()
+                                                .checked_add(default_range.end)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            let Some(input) = ignore_input
+                                                .get(default_range.start..default_range.end)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            report_default_token(
+                                                parser_key,
+                                                parser,
+                                                &encoding,
+                                                enc.addr(),
+                                                input_start,
+                                                input_end,
+                                                input,
+                                            );
+                                        }
+                                        next = action
+                                            .start_offset
+                                            .map(|offset| ignore_start.wrapping_add(offset))
+                                            .unwrap_or(::core::ptr::null());
+                                        if let Some(offset) = action.next_offset {
+                                            *next_ptr = ignore_start.wrapping_add(offset);
+                                        }
+                                        let result_3 = if action.check_finished_after_default
+                                            && parser.m_parsingStatus.parsing
+                                                as ::core::ffi::c_uint
+                                                == crate::expat_h::XML_FINISHED
+                                                    as ::core::ffi::c_int
+                                                    as ::core::ffi::c_uint
+                                        {
+                                            crate::expat_h::XML_ERROR_ABORTED
+                                        } else {
+                                            action.error
+                                        };
                                         if result_3 as ::core::ffi::c_uint
                                             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                                                 as ::core::ffi::c_uint
