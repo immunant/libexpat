@@ -15149,35 +15149,6 @@ fn store_atts_element(
     })
 }
 
-/// Legacy raw-cursor adapter retained for parser processors that still carry
-/// the tokenizer's C cursor ABI.  All attribute work is delegated to the
-/// checked address-based facade below.
-unsafe fn storeAtts(
-    parser: &mut XML_ParserStruct,
-    enc: *const crate::src::xmltok::ENCODING,
-    parser_events: bool,
-    att_str: *const ::core::ffi::c_char,
-    att_end: *const ::core::ffi::c_char,
-    tag_input: StoreAttsTag<'_>,
-    tag_name_update: &mut Option<NamespaceTagNameUpdate>,
-    bindings: &mut Option<BindingId>,
-    account: XML_Account,
-    app_atts: &mut Vec<Option<StartElementAttributeValue>>,
-) -> crate::expat_h::XML_Error {
-    store_atts_for_parser(
-        parser,
-        enc.addr(),
-        parser_events,
-        att_str.addr(),
-        att_end.addr(),
-        tag_input,
-        tag_name_update,
-        bindings,
-        account,
-        app_atts,
-    )
-}
-
 fn store_atts_for_parser(
     parser: &mut XML_ParserStruct,
     encoding_address: usize,
