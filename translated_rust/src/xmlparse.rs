@@ -15267,7 +15267,6 @@ unsafe extern "C" fn doProlog(
         .clone()
         .expect("parser processing requires an attached DTD");
     let dtd = &mut *dtd_owner.value.get();
-    let dtd_pool: *mut STRING_POOL = &raw mut dtd.pool;
     let mut active_parser_encoding = std::ptr::from_ref(current_parser_encoding(parser));
     let parser_events = enc == active_parser_encoding;
     let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
@@ -15843,7 +15842,7 @@ unsafe extern "C" fn doProlog(
                                                     handler.as_ref(),
                                                     parser,
                                                     ::core::ptr::null(),
-                                                    dtd_pool as *const STRING_POOL,
+                                                    std::ptr::from_ref(&dtd.pool),
                                                     entity,
                                                 ) == 0
                                                 {
@@ -15935,7 +15934,7 @@ unsafe extern "C" fn doProlog(
                                                     handler.as_ref(),
                                                     parser,
                                                     ::core::ptr::null(),
-                                                    dtd_pool as *const STRING_POOL,
+                                                    std::ptr::from_ref(&dtd.pool),
                                                     entity_0,
                                                 ) == 0
                                                 {
@@ -16230,7 +16229,7 @@ unsafe extern "C" fn doProlog(
                                                     (*parser).m_declAttributeIsCdata,
                                                     s.wrapping_add(encoding.minBytesPerChar as usize),
                                                     next.wrapping_sub(encoding.minBytesPerChar as usize),
-                                                    dtd_pool,
+                                                    std::ptr::from_mut(&mut dtd.pool),
                                                     XML_ACCOUNT_NONE,
                                                 );
                                             if result_1 as u64 != 0 {
@@ -16441,16 +16440,19 @@ unsafe extern "C" fn doProlog(
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
                                                 dtd_ref.entityValuePool.commit();
-                                                let Some(entity) =
-                                                    declared_entity_mut(dtd, declaration, hash_salt)
-                                                else {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                let (entity_name, entity_is_param, entity_text_len) = {
+                                                    let Some(entity) =
+                                                        declared_entity_mut(dtd, declaration, hash_salt)
+                                                    else {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    };
+                                                    entity.textPtr = EntityTextRef {
+                                                        pool: EntityTextPool::EntityValue,
+                                                        string: Some(entity_text_ref),
+                                                    };
+                                                    entity.textLen = text_len;
+                                                    (entity.named.name, entity.is_param, entity.textLen)
                                                 };
-                                                entity.textPtr = EntityTextRef {
-                                                    pool: EntityTextPool::EntityValue,
-                                                    string: Some(entity_text_ref),
-                                                };
-                                                entity.textLen = text_len;
                                                 if (*parser).m_entityDeclHandler {
                                                     set_event_end!(
                                                         parser,
@@ -16476,18 +16478,18 @@ unsafe extern "C" fn doProlog(
                                                         callback.invoke(
                                                             handler_arg_from_state!(parser),
                                                             pool_string_pointer!(
-                                                                &*dtd_pool,
-                                                                entity.named.name,
+                                                                &dtd.pool,
+                                                                entity_name,
                                                             ),
-                                                            entity.is_param
+                                                            entity_is_param
                                                                 as ::core::ffi::c_int,
                                                             entity_text,
-                                                            entity.textLen,
+                                                            entity_text_len,
                                                             (*parser)
                                                                 .m_curBase
                                                                 .map(|base| {
                                                                     pool_string_pointer!(
-                                                                        &*dtd_pool, base,
+                                                                        &dtd.pool, base,
                                                                     )
                                                                 })
                                                                 .unwrap_or(::core::ptr::null()),
@@ -16685,8 +16687,12 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let notation_pointer =
-                                                poolStoreString(dtd_pool, enc, s, next);
+                                            let notation_pointer = poolStoreString(
+                                                std::ptr::from_mut(&mut dtd.pool),
+                                                enc,
+                                                s,
+                                                next,
+                                            );
                                             let Some(notation) = pool_string_ref_from_address(
                                                 &dtd.pool,
                                                 notation_pointer.addr(),
@@ -16695,12 +16701,25 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             (*dtd).pool.commit();
-                                            let Some(entity) =
-                                                declared_entity_mut(dtd, declaration, hash_salt)
-                                            else {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            let (
+                                                entity_name_ref,
+                                                entity_base_ref,
+                                                entity_system_id_ref,
+                                                entity_public_id_ref,
+                                            ) = {
+                                                let Some(entity) =
+                                                    declared_entity_mut(dtd, declaration, hash_salt)
+                                                else {
+                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                };
+                                                entity.notation = Some(notation);
+                                                (
+                                                    entity.named.name,
+                                                    entity.base,
+                                                    entity.systemId,
+                                                    entity.publicId,
+                                                )
                                             };
-                                            entity.notation = Some(notation);
                                             let callback = UNPARSED_ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -16722,29 +16741,29 @@ unsafe extern "C" fn doProlog(
                                                 (
                                                     handler_arg_from_state!(parser),
                                                     pool_string_pointer!(
-                                                        &*dtd_pool,
-                                                        entity.named.name,
+                                                        &dtd.pool,
+                                                        entity_name_ref,
                                                     ),
-                                                    entity.base,
-                                                    entity.systemId,
-                                                    entity.publicId,
+                                                    entity_base_ref,
+                                                    entity_system_id_ref,
+                                                    entity_public_id_ref,
                                                     notation_pointer,
                                                 )
                                             };
                                             let entity_base = entity_base
                                                 .map_or(::core::ptr::null(), |base| {
-                                                    pool_string_pointer!(&*dtd_pool, base,)
+                                                    pool_string_pointer!(&dtd.pool, base,)
                                                 });
                                             let entity_system_id = entity_system_id.map_or(
                                                 ::core::ptr::null(),
                                                 |system_id| {
-                                                    pool_string_pointer!(&*dtd_pool, system_id,)
+                                                    pool_string_pointer!(&dtd.pool, system_id,)
                                                 },
                                             );
                                             let entity_public_id = entity_public_id.map_or(
                                                 ::core::ptr::null(),
                                                 |public_id| {
-                                                    pool_string_pointer!(&*dtd_pool, public_id,)
+                                                    pool_string_pointer!(&dtd.pool, public_id,)
                                                 },
                                             );
                                             if let Some(callback) = callback {
@@ -17500,7 +17519,7 @@ unsafe extern "C" fn doProlog(
                                             let mut entity_1: *mut ENTITY =
                                                 ::core::ptr::null_mut::<ENTITY>();
                                             name_1 = poolStoreString(
-                                                dtd_pool,
+                                                std::ptr::from_mut(&mut dtd.pool),
                                                 enc,
                                                 s.wrapping_add(encoding.minBytesPerChar as usize),
                                                 next.wrapping_sub(encoding.minBytesPerChar as usize),
@@ -17610,7 +17629,7 @@ unsafe extern "C" fn doProlog(
                                                     handler.as_ref(),
                                                     parser,
                                                     ::core::ptr::null(),
-                                                    dtd_pool as *const STRING_POOL,
+                                                    std::ptr::from_ref(&dtd.pool),
                                                     entity_1,
                                                 ) == 0
                                                 {
@@ -17905,7 +17924,7 @@ unsafe extern "C" fn doProlog(
                                     .m_declEntity
                                     .expect("entity declaration must be set");
                                 let system_id = poolStoreString(
-                                    dtd_pool,
+                                    std::ptr::from_mut(&mut dtd.pool),
                                     enc,
                                     s.wrapping_add(encoding.minBytesPerChar as usize),
                                     next.wrapping_sub(encoding.minBytesPerChar as usize),
@@ -18070,7 +18089,7 @@ unsafe extern "C" fn doProlog(
                     .m_declEntity
                     .expect("entity declaration must be set");
                 let stored_public_id = poolStoreString(
-                    dtd_pool,
+                    std::ptr::from_mut(&mut dtd.pool),
                     enc,
                     s.wrapping_add(encoding.minBytesPerChar as usize),
                     next.wrapping_sub(encoding.minBytesPerChar as usize),
