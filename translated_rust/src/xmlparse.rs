@@ -2070,7 +2070,10 @@ pub struct XML_ParserStruct {
     // callback is staged.  Keep their checked temporary-pool location rather
     // than an address into a growable slab.
     pub m_declNotationPublicId: Option<PoolStringRef>,
-    pub m_declElementType: *mut ELEMENT_TYPE,
+    // An element declaration is a nullable handle into the DTD's element
+    // table.  The table owns its boxed records, while this state only tracks
+    // the declaration currently being parsed.
+    pub m_declElementType: Option<::core::ptr::NonNull<ELEMENT_TYPE>>,
     // Attribute declarations refer to an identifier owned by the DTD hash
     // table.  The pool-backed name is stable across table growth, unlike a
     // pointer into the table's allocator-backed record storage.
@@ -3712,7 +3715,7 @@ fn initial_parser_struct(
         m_declAttributeType: None,
         m_declNotationName: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         m_declNotationPublicId: None,
-        m_declElementType: ::core::ptr::null_mut::<ELEMENT_TYPE>(),
+        m_declElementType: None,
         m_declAttributeId: None,
         m_declAttributeIsCdata: crate::expat_h::XML_FALSE,
         m_declAttributeIsId: crate::expat_h::XML_FALSE,
@@ -4132,7 +4135,7 @@ fn parser_init(
     parser.m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
     parser.m_reparseDeferralEnabled = reparse_deferral_enabled;
     parser.m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
-    parser.m_declElementType = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    parser.m_declElementType = None;
     parser.m_declAttributeId = None;
     parser.m_declEntity = ::core::ptr::null_mut::<ENTITY>();
     parser.m_doctypeName = None;
@@ -4409,7 +4412,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldAttlistDeclCallback: Option<std::sync::Arc<dyn AttlistDeclCallback>> = None;
     let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
     let mut oldXmlDeclHandler: Option<std::sync::Arc<dyn XmlDeclCallback>> = None;
-    let mut oldDeclElementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    let mut oldDeclElementType: Option<::core::ptr::NonNull<ELEMENT_TYPE>> = None;
     let mut oldUserData: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut oldHandlerArg: *mut ::core::ffi::c_void =
         ::core::ptr::null_mut::<::core::ffi::c_void>();
@@ -10953,8 +10956,8 @@ unsafe extern "C" fn doProlog(
                                     }
                                     34 => {
                                         (*parser).m_declElementType =
-                                            getElementType(parser, enc, s, next);
-                                        if (*parser).m_declElementType.is_null() {
+                                            ::core::ptr::NonNull::new(getElementType(parser, enc, s, next));
+                                        if (*parser).m_declElementType.is_none() {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
                                         break '_checkAttListDeclHandler;
@@ -11067,7 +11070,10 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             if defineAttribute(
-                                                (*parser).m_declElementType,
+                                                (*parser)
+                                                    .m_declElementType
+                                                    .expect("element declaration must be set before its attributes")
+                                                    .as_ptr(),
                                                 attribute_name,
                                                 (*parser).m_declAttributeIsCdata,
                                                 (*parser).m_declAttributeIsId,
@@ -11191,7 +11197,12 @@ unsafe extern "C" fn doProlog(
                                                     }
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
-                                                        (*(*parser).m_declElementType).named.name,
+                                                        (*(*parser)
+                                                            .m_declElementType
+                                                            .expect("element declaration must be set before its callback")
+                                                            .as_ptr())
+                                                        .named
+                                                        .name,
                                                         attribute_name,
                                                         attribute_type,
                                                         ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
@@ -11240,7 +11251,10 @@ unsafe extern "C" fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             if defineAttribute(
-                                                (*parser).m_declElementType,
+                                                (*parser)
+                                                    .m_declElementType
+                                                    .expect("element declaration must be set before its attributes")
+                                                    .as_ptr(),
                                                 attribute_name,
                                                 (*parser).m_declAttributeIsCdata,
                                                 crate::expat_h::XML_FALSE,
@@ -11364,7 +11378,12 @@ unsafe extern "C" fn doProlog(
                                                     }
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
-                                                        (*(*parser).m_declElementType).named.name,
+                                                        (*(*parser)
+                                                            .m_declElementType
+                                                            .expect("element declaration must be set before its callback")
+                                                            .as_ptr())
+                                                        .named
+                                                        .name,
                                                         attribute_name,
                                                         attribute_type,
                                                         attVal,
@@ -12392,8 +12411,8 @@ unsafe extern "C" fn doProlog(
                                     40 => {
                                         if (*parser).m_elementDeclHandler {
                                             (*parser).m_declElementType =
-                                                getElementType(parser, enc, s, next);
-                                            if (*parser).m_declElementType.is_null() {
+                                                ::core::ptr::NonNull::new(getElementType(parser, enc, s, next));
+                                            if (*parser).m_declElementType.is_none() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             (*dtd).scaffLevel = 0 as ::core::ffi::c_int;
@@ -12444,7 +12463,12 @@ unsafe extern "C" fn doProlog(
                                                 set_event_end!(parser, parser_events, eventEndPP, s);
                                                 callElementDeclHandler(
                                                     parser,
-                                                    (*(*parser).m_declElementType).named.name,
+                                                    (*(*parser)
+                                                        .m_declElementType
+                                                        .expect("element declaration must be set before its callback")
+                                                        .as_ptr())
+                                                    .named
+                                                    .name,
                                                     content,
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
@@ -12730,7 +12754,12 @@ unsafe extern "C" fn doProlog(
                             set_event_end!(parser, parser_events, eventEndPP, s);
                             callElementDeclHandler(
                                 parser,
-                                (*(*parser).m_declElementType).named.name,
+                                (*(*parser)
+                                    .m_declElementType
+                                    .expect("element declaration must be set before its callback")
+                                    .as_ptr())
+                                .named
+                                .name,
                                 model,
                             );
                         }
