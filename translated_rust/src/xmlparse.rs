@@ -23897,40 +23897,35 @@ fn dispatch_external_entity_ref_event_handler(
 
 unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
     let pool = &mut *pool;
-    // DTD pools are initialized in memory returned directly by the configured
-    // allocator, so this field may not have been constructed yet.
-    ::core::ptr::write(
-        &raw mut pool.storage,
-        StringPoolStorage {
-            active: Vec::new(),
-            free: Vec::new(),
-            // Keep the parser handle confined to the allocator token factory.
-            // Slabs never need to retain it as parser state: each backing token
-            // owns the allocation it must later grow or free.
-            allocate: Some(Box::new(move |size| {
-                let allocation = expat_malloc(parser, size, 8201 as ::core::ffi::c_int);
-                if allocation.is_null() {
-                    return None;
-                }
-                let mut allocation = allocation;
-                Some(Box::new(move |action| match action {
-                    StringPoolAllocationAction::Grow(size) => {
-                        let reallocated = expat_realloc(parser, allocation, size, 8161);
-                        if reallocated.is_null() {
-                            false
-                        } else {
-                            allocation = reallocated;
-                            true
-                        }
-                    }
-                    StringPoolAllocationAction::Free(source_line) => {
-                        expat_free(parser, allocation, source_line);
+    pool.storage = StringPoolStorage {
+        active: Vec::new(),
+        free: Vec::new(),
+        // Keep the parser handle confined to the allocator token factory.
+        // Slabs never need to retain it as parser state: each backing token
+        // owns the allocation it must later grow or free.
+        allocate: Some(Box::new(move |size| {
+            let allocation = expat_malloc(parser, size, 8201 as ::core::ffi::c_int);
+            if allocation.is_null() {
+                return None;
+            }
+            let mut allocation = allocation;
+            Some(Box::new(move |action| match action {
+                StringPoolAllocationAction::Grow(size) => {
+                    let reallocated = expat_realloc(parser, allocation, size, 8161);
+                    if reallocated.is_null() {
+                        false
+                    } else {
+                        allocation = reallocated;
                         true
                     }
-                }))
-            })),
-        },
-    );
+                }
+                StringPoolAllocationAction::Free(source_line) => {
+                    expat_free(parser, allocation, source_line);
+                    true
+                }
+            }))
+        })),
+    };
     pool.start = None;
     pool.ptr_offset = 0;
     pool.blockCount = 0;
