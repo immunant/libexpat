@@ -2187,7 +2187,9 @@ pub struct DTD {
 pub struct CONTENT_SCAFFOLD {
     pub type_0: crate::expat_h::XML_Content_Type,
     pub quant: crate::expat_h::XML_Content_Quant,
-    pub name: *const crate::expat_external_h::XML_Char,
+    // Name scaffolds borrow a non-null, NUL-terminated value committed in the
+    // DTD string pool.  Other scaffold kinds do not have a name.
+    pub name: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>>,
     pub firstchild: ::core::ffi::c_int,
     pub lastchild: ::core::ffi::c_int,
     pub childcnt: ::core::ffi::c_int,
@@ -11166,8 +11168,6 @@ unsafe extern "C" fn doProlog(
                     }
                     if (*dtd).in_eldecl != 0 {
                         let mut el: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-                        let mut name_2: *const crate::expat_external_h::XML_Char =
-                            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                         let mut nameLen: crate::__stddef_size_t_h::size_t = 0;
                         let mut nxt: *const ::core::ffi::c_char = if quant as ::core::ffi::c_uint
                             == crate::expat_h::XML_CQUANT_NONE as ::core::ffi::c_int
@@ -11188,13 +11188,13 @@ unsafe extern "C" fn doProlog(
                         if el.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        name_2 = (*el).name.as_ptr();
-                        (*(*dtd).scaffold.offset(myindex_0 as isize)).name = name_2;
+                        let name_2 = (*el).name;
+                        (*(*dtd).scaffold.offset(myindex_0 as isize)).name = Some(name_2);
                         nameLen = 0 as crate::__stddef_size_t_h::size_t;
                         loop {
                             let c2rust_fresh5 = nameLen;
                             nameLen = nameLen.wrapping_add(1);
-                            if *name_2.offset(c2rust_fresh5 as isize) == 0 {
+                            if *name_2.as_ptr().offset(c2rust_fresh5 as isize) == 0 {
                                 break;
                             }
                         }
@@ -14163,7 +14163,12 @@ unsafe extern "C" fn build_model(
             let mut src: *const crate::expat_external_h::XML_Char =
                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
             (*dest).name = str;
-            src = (*(*dtd).scaffold.offset(src_node as isize)).name;
+            // A name content node is populated from ELEMENT_TYPE.name when it
+            // is scaffolded; non-name nodes never enter this branch.
+            src = (*(*dtd).scaffold.offset(src_node as isize))
+                .name
+                .expect("name content scaffold must have a pool name")
+                .as_ptr();
             loop {
                 let c2rust_fresh11 = str;
                 str = str.offset(1);
