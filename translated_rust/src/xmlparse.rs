@@ -1531,6 +1531,15 @@ pub type Processor = unsafe extern "C" fn(
     *const ::core::ffi::c_char,
     *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error;
+
+fn with_parser_mut<R>(
+    parser: crate::expat_h::XML_Parser,
+    f: impl FnOnce(&mut XML_ParserStruct) -> R,
+) -> Option<R> {
+    let parser = unsafe { parser.as_mut() }?;
+    Some(f(parser))
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -3275,16 +3284,15 @@ pub unsafe extern "C" fn XML_GetIdAttributeIndex_ffi(
 ) -> ::core::ffi::c_int {
     XML_GetIdAttributeIndex(parser)
 }
-pub unsafe extern "C" fn XML_SetElementHandler(
+pub extern "C" fn XML_SetElementHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartElementHandler,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_startElementHandler = start;
-    (*parser).m_endElementHandler = end;
+    with_parser_mut(parser, |parser| {
+        parser.m_startElementHandler = start;
+        parser.m_endElementHandler = end;
+    });
 }
 #[export_name = "XML_SetElementHandler"]
 
@@ -3295,13 +3303,13 @@ pub unsafe extern "C" fn XML_SetElementHandler_ffi(
 ) {
     XML_SetElementHandler(parser, start, end)
 }
-pub unsafe extern "C" fn XML_SetStartElementHandler(
+pub extern "C" fn XML_SetStartElementHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartElementHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_startElementHandler = start;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_startElementHandler = start;
+    });
 }
 #[export_name = "XML_SetStartElementHandler"]
 
@@ -3311,13 +3319,13 @@ pub unsafe extern "C" fn XML_SetStartElementHandler_ffi(
 ) {
     XML_SetStartElementHandler(parser, start)
 }
-pub unsafe extern "C" fn XML_SetEndElementHandler(
+pub extern "C" fn XML_SetEndElementHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_endElementHandler = end;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_endElementHandler = end;
+    });
 }
 #[export_name = "XML_SetEndElementHandler"]
 
@@ -3327,13 +3335,13 @@ pub unsafe extern "C" fn XML_SetEndElementHandler_ffi(
 ) {
     XML_SetEndElementHandler(parser, end)
 }
-pub unsafe extern "C" fn XML_SetCharacterDataHandler(
+pub extern "C" fn XML_SetCharacterDataHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_CharacterDataHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_characterDataHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_characterDataHandler = handler;
+    });
 }
 #[export_name = "XML_SetCharacterDataHandler"]
 
@@ -3343,13 +3351,13 @@ pub unsafe extern "C" fn XML_SetCharacterDataHandler_ffi(
 ) {
     XML_SetCharacterDataHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetProcessingInstructionHandler(
+pub extern "C" fn XML_SetProcessingInstructionHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_ProcessingInstructionHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_processingInstructionHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_processingInstructionHandler = handler;
+    });
 }
 #[export_name = "XML_SetProcessingInstructionHandler"]
 
@@ -3359,13 +3367,13 @@ pub unsafe extern "C" fn XML_SetProcessingInstructionHandler_ffi(
 ) {
     XML_SetProcessingInstructionHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetCommentHandler(
+pub extern "C" fn XML_SetCommentHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_CommentHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_commentHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_commentHandler = handler;
+    });
 }
 #[export_name = "XML_SetCommentHandler"]
 
@@ -3375,16 +3383,15 @@ pub unsafe extern "C" fn XML_SetCommentHandler_ffi(
 ) {
     XML_SetCommentHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetCdataSectionHandler(
+pub extern "C" fn XML_SetCdataSectionHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartCdataSectionHandler,
     mut end: crate::expat_h::XML_EndCdataSectionHandler,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_startCdataSectionHandler = start;
-    (*parser).m_endCdataSectionHandler = end;
+    with_parser_mut(parser, |parser| {
+        parser.m_startCdataSectionHandler = start;
+        parser.m_endCdataSectionHandler = end;
+    });
 }
 #[export_name = "XML_SetCdataSectionHandler"]
 
@@ -3395,13 +3402,13 @@ pub unsafe extern "C" fn XML_SetCdataSectionHandler_ffi(
 ) {
     XML_SetCdataSectionHandler(parser, start, end)
 }
-pub unsafe extern "C" fn XML_SetStartCdataSectionHandler(
+pub extern "C" fn XML_SetStartCdataSectionHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartCdataSectionHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_startCdataSectionHandler = start;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_startCdataSectionHandler = start;
+    });
 }
 #[export_name = "XML_SetStartCdataSectionHandler"]
 
@@ -3411,13 +3418,13 @@ pub unsafe extern "C" fn XML_SetStartCdataSectionHandler_ffi(
 ) {
     XML_SetStartCdataSectionHandler(parser, start)
 }
-pub unsafe extern "C" fn XML_SetEndCdataSectionHandler(
+pub extern "C" fn XML_SetEndCdataSectionHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndCdataSectionHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_endCdataSectionHandler = end;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_endCdataSectionHandler = end;
+    });
 }
 #[export_name = "XML_SetEndCdataSectionHandler"]
 
@@ -3427,15 +3434,14 @@ pub unsafe extern "C" fn XML_SetEndCdataSectionHandler_ffi(
 ) {
     XML_SetEndCdataSectionHandler(parser, end)
 }
-pub unsafe extern "C" fn XML_SetDefaultHandler(
+pub extern "C" fn XML_SetDefaultHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_DefaultHandler,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_defaultHandler = handler;
-    (*parser).m_defaultExpandInternalEntities = crate::expat_h::XML_FALSE;
+    with_parser_mut(parser, |parser| {
+        parser.m_defaultHandler = handler;
+        parser.m_defaultExpandInternalEntities = crate::expat_h::XML_FALSE;
+    });
 }
 #[export_name = "XML_SetDefaultHandler"]
 
@@ -3445,15 +3451,14 @@ pub unsafe extern "C" fn XML_SetDefaultHandler_ffi(
 ) {
     XML_SetDefaultHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetDefaultHandlerExpand(
+pub extern "C" fn XML_SetDefaultHandlerExpand(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_DefaultHandler,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_defaultHandler = handler;
-    (*parser).m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
+    with_parser_mut(parser, |parser| {
+        parser.m_defaultHandler = handler;
+        parser.m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
+    });
 }
 #[export_name = "XML_SetDefaultHandlerExpand"]
 
@@ -3463,16 +3468,15 @@ pub unsafe extern "C" fn XML_SetDefaultHandlerExpand_ffi(
 ) {
     XML_SetDefaultHandlerExpand(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetDoctypeDeclHandler(
+pub extern "C" fn XML_SetDoctypeDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
     mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_startDoctypeDeclHandler = start;
-    (*parser).m_endDoctypeDeclHandler = end;
+    with_parser_mut(parser, |parser| {
+        parser.m_startDoctypeDeclHandler = start;
+        parser.m_endDoctypeDeclHandler = end;
+    });
 }
 #[export_name = "XML_SetDoctypeDeclHandler"]
 
@@ -3483,13 +3487,13 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler_ffi(
 ) {
     XML_SetDoctypeDeclHandler(parser, start, end)
 }
-pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler(
+pub extern "C" fn XML_SetStartDoctypeDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_startDoctypeDeclHandler = start;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_startDoctypeDeclHandler = start;
+    });
 }
 #[export_name = "XML_SetStartDoctypeDeclHandler"]
 
@@ -3499,13 +3503,13 @@ pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler_ffi(
 ) {
     XML_SetStartDoctypeDeclHandler(parser, start)
 }
-pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler(
+pub extern "C" fn XML_SetEndDoctypeDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_endDoctypeDeclHandler = end;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_endDoctypeDeclHandler = end;
+    });
 }
 #[export_name = "XML_SetEndDoctypeDeclHandler"]
 
@@ -3515,13 +3519,13 @@ pub unsafe extern "C" fn XML_SetEndDoctypeDeclHandler_ffi(
 ) {
     XML_SetEndDoctypeDeclHandler(parser, end)
 }
-pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler(
+pub extern "C" fn XML_SetUnparsedEntityDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_UnparsedEntityDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_unparsedEntityDeclHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_unparsedEntityDeclHandler = handler;
+    });
 }
 #[export_name = "XML_SetUnparsedEntityDeclHandler"]
 
@@ -3531,13 +3535,13 @@ pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler_ffi(
 ) {
     XML_SetUnparsedEntityDeclHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetNotationDeclHandler(
+pub extern "C" fn XML_SetNotationDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_NotationDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_notationDeclHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_notationDeclHandler = handler;
+    });
 }
 #[export_name = "XML_SetNotationDeclHandler"]
 
@@ -3547,16 +3551,15 @@ pub unsafe extern "C" fn XML_SetNotationDeclHandler_ffi(
 ) {
     XML_SetNotationDeclHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetNamespaceDeclHandler(
+pub extern "C" fn XML_SetNamespaceDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
     mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_startNamespaceDeclHandler = start;
-    (*parser).m_endNamespaceDeclHandler = end;
+    with_parser_mut(parser, |parser| {
+        parser.m_startNamespaceDeclHandler = start;
+        parser.m_endNamespaceDeclHandler = end;
+    });
 }
 #[export_name = "XML_SetNamespaceDeclHandler"]
 
@@ -3567,13 +3570,13 @@ pub unsafe extern "C" fn XML_SetNamespaceDeclHandler_ffi(
 ) {
     XML_SetNamespaceDeclHandler(parser, start, end)
 }
-pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler(
+pub extern "C" fn XML_SetStartNamespaceDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_startNamespaceDeclHandler = start;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_startNamespaceDeclHandler = start;
+    });
 }
 #[export_name = "XML_SetStartNamespaceDeclHandler"]
 
@@ -3583,13 +3586,13 @@ pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler_ffi(
 ) {
     XML_SetStartNamespaceDeclHandler(parser, start)
 }
-pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler(
+pub extern "C" fn XML_SetEndNamespaceDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_endNamespaceDeclHandler = end;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_endNamespaceDeclHandler = end;
+    });
 }
 #[export_name = "XML_SetEndNamespaceDeclHandler"]
 
@@ -3599,13 +3602,13 @@ pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler_ffi(
 ) {
     XML_SetEndNamespaceDeclHandler(parser, end)
 }
-pub unsafe extern "C" fn XML_SetNotStandaloneHandler(
+pub extern "C" fn XML_SetNotStandaloneHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_NotStandaloneHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_notStandaloneHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_notStandaloneHandler = handler;
+    });
 }
 #[export_name = "XML_SetNotStandaloneHandler"]
 
@@ -3615,13 +3618,13 @@ pub unsafe extern "C" fn XML_SetNotStandaloneHandler_ffi(
 ) {
     XML_SetNotStandaloneHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetExternalEntityRefHandler(
+pub extern "C" fn XML_SetExternalEntityRefHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_ExternalEntityRefHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_externalEntityRefHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_externalEntityRefHandler = handler;
+    });
 }
 #[export_name = "XML_SetExternalEntityRefHandler"]
 
@@ -3631,18 +3634,17 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandler_ffi(
 ) {
     XML_SetExternalEntityRefHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg(
+pub extern "C" fn XML_SetExternalEntityRefHandlerArg(
     mut parser: crate::expat_h::XML_Parser,
     mut arg: *mut ::core::ffi::c_void,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    if !arg.is_null() {
-        (*parser).m_externalEntityRefHandlerArg = arg as crate::expat_h::XML_Parser;
-    } else {
-        (*parser).m_externalEntityRefHandlerArg = parser;
-    };
+    with_parser_mut(parser, |parser_ref| {
+        if !arg.is_null() {
+            parser_ref.m_externalEntityRefHandlerArg = arg as crate::expat_h::XML_Parser;
+        } else {
+            parser_ref.m_externalEntityRefHandlerArg = parser;
+        }
+    });
 }
 #[export_name = "XML_SetExternalEntityRefHandlerArg"]
 
@@ -3652,13 +3654,13 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg_ffi(
 ) {
     XML_SetExternalEntityRefHandlerArg(parser, arg)
 }
-pub unsafe extern "C" fn XML_SetSkippedEntityHandler(
+pub extern "C" fn XML_SetSkippedEntityHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_SkippedEntityHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_skippedEntityHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_skippedEntityHandler = handler;
+    });
 }
 #[export_name = "XML_SetSkippedEntityHandler"]
 
@@ -3668,16 +3670,15 @@ pub unsafe extern "C" fn XML_SetSkippedEntityHandler_ffi(
 ) {
     XML_SetSkippedEntityHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
+pub extern "C" fn XML_SetUnknownEncodingHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_UnknownEncodingHandler,
     mut data: *mut ::core::ffi::c_void,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_unknownEncodingHandler = handler;
-    (*parser).m_unknownEncodingHandlerData = data;
+    with_parser_mut(parser, |parser| {
+        parser.m_unknownEncodingHandler = handler;
+        parser.m_unknownEncodingHandlerData = data;
+    });
 }
 #[export_name = "XML_SetUnknownEncodingHandler"]
 
@@ -3688,13 +3689,13 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler_ffi(
 ) {
     XML_SetUnknownEncodingHandler(parser, handler, data)
 }
-pub unsafe extern "C" fn XML_SetElementDeclHandler(
+pub extern "C" fn XML_SetElementDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut eldecl: crate::expat_h::XML_ElementDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_elementDeclHandler = eldecl;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_elementDeclHandler = eldecl;
+    });
 }
 #[export_name = "XML_SetElementDeclHandler"]
 
@@ -3704,13 +3705,13 @@ pub unsafe extern "C" fn XML_SetElementDeclHandler_ffi(
 ) {
     XML_SetElementDeclHandler(parser, eldecl)
 }
-pub unsafe extern "C" fn XML_SetAttlistDeclHandler(
+pub extern "C" fn XML_SetAttlistDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut attdecl: crate::expat_h::XML_AttlistDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_attlistDeclHandler = attdecl;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_attlistDeclHandler = attdecl;
+    });
 }
 #[export_name = "XML_SetAttlistDeclHandler"]
 
@@ -3720,13 +3721,13 @@ pub unsafe extern "C" fn XML_SetAttlistDeclHandler_ffi(
 ) {
     XML_SetAttlistDeclHandler(parser, attdecl)
 }
-pub unsafe extern "C" fn XML_SetEntityDeclHandler(
+pub extern "C" fn XML_SetEntityDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_EntityDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_entityDeclHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_entityDeclHandler = handler;
+    });
 }
 #[export_name = "XML_SetEntityDeclHandler"]
 
@@ -3736,13 +3737,13 @@ pub unsafe extern "C" fn XML_SetEntityDeclHandler_ffi(
 ) {
     XML_SetEntityDeclHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetXmlDeclHandler(
+pub extern "C" fn XML_SetXmlDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_XmlDeclHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_xmlDeclHandler = handler;
-    }
+    with_parser_mut(parser, |parser| {
+        parser.m_xmlDeclHandler = handler;
+    });
 }
 #[export_name = "XML_SetXmlDeclHandler"]
 
