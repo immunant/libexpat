@@ -2721,8 +2721,8 @@ pub unsafe extern "C" fn XML_ParserReset(
             .m_unknownEncodingRelease
             .expect("non-null function pointer")((*parser).m_unknownEncodingData);
     }
-    poolClear(&raw mut (*parser).m_tempPool);
-    poolClear(&raw mut (*parser).m_temp2Pool);
+    poolClear(&mut (*parser).m_tempPool);
+    poolClear(&mut (*parser).m_temp2Pool);
     expat_free(
         parser,
         (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
@@ -3075,8 +3075,8 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     }
     destroyBindings((*parser).m_freeBindingList, parser);
     destroyBindings((*parser).m_inheritedBindings, parser);
-    poolDestroy(&raw mut (*parser).m_tempPool);
-    poolDestroy(&raw mut (*parser).m_temp2Pool);
+    poolDestroy(&mut (*parser).m_tempPool);
+    poolDestroy(&mut (*parser).m_temp2Pool);
     expat_free(
         parser,
         (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
@@ -5553,7 +5553,7 @@ unsafe extern "C" fn doContent(
                 } else if (*parser).m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
-                poolClear(&raw mut (*parser).m_tempPool);
+                poolClear(&mut (*parser).m_tempPool);
             }
             crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
             | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
@@ -5622,7 +5622,7 @@ unsafe extern "C" fn doContent(
                 {
                     reportDefault(parser, enc, s, next);
                 }
-                poolClear(&raw mut (*parser).m_tempPool);
+                poolClear(&mut (*parser).m_tempPool);
                 freeBindings(parser, bindings);
                 if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
                     && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
@@ -7404,7 +7404,7 @@ unsafe extern "C" fn processXmlDecl(
                 }
             }
             result = handleUnknownEncoding(parser, storedEncName);
-            poolClear(&raw mut (*parser).m_temp2Pool);
+            poolClear(&mut (*parser).m_temp2Pool);
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
                     as ::core::ffi::c_uint
@@ -7415,7 +7415,7 @@ unsafe extern "C" fn processXmlDecl(
         }
     }
     if !storedEncName.is_null() || !storedversion.is_null() {
-        poolClear(&raw mut (*parser).m_temp2Pool);
+        poolClear(&mut (*parser).m_temp2Pool);
     }
     return crate::expat_h::XML_ERROR_NONE;
 }
@@ -8031,7 +8031,7 @@ unsafe extern "C" fn doProlog(
                     );
                     (*parser).m_doctypeName =
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    poolClear(&raw mut (*parser).m_tempPool);
+                    poolClear(&mut (*parser).m_tempPool);
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
                 c2rust_current_block = 8258632986558375165;
@@ -8105,7 +8105,7 @@ unsafe extern "C" fn doProlog(
                         (*parser).m_doctypePubid,
                         0 as ::core::ffi::c_int,
                     );
-                    poolClear(&raw mut (*parser).m_tempPool);
+                    poolClear(&mut (*parser).m_tempPool);
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
                 if !(*parser).m_doctypeSysid.is_null()
@@ -8383,7 +8383,7 @@ unsafe extern "C" fn doProlog(
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
                 }
-                poolClear(&raw mut (*parser).m_tempPool);
+                poolClear(&mut (*parser).m_tempPool);
                 c2rust_current_block = 8258632986558375165;
             }
             37 | 38 => {
@@ -8473,7 +8473,7 @@ unsafe extern "C" fn doProlog(
                                     as ::core::ffi::c_int)
                                 as ::core::ffi::c_int,
                         );
-                        poolClear(&raw mut (*parser).m_tempPool);
+                        poolClear(&mut (*parser).m_tempPool);
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
                 }
@@ -8786,7 +8786,7 @@ unsafe extern "C" fn doProlog(
                     );
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
-                poolClear(&raw mut (*parser).m_tempPool);
+                poolClear(&mut (*parser).m_tempPool);
                 c2rust_current_block = 8258632986558375165;
             }
             20 => {
@@ -8805,7 +8805,7 @@ unsafe extern "C" fn doProlog(
                     );
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
-                poolClear(&raw mut (*parser).m_tempPool);
+                poolClear(&mut (*parser).m_tempPool);
                 c2rust_current_block = 8258632986558375165;
             }
             -1 => match tok {
@@ -10549,7 +10549,7 @@ unsafe extern "C" fn reportProcessingInstruction(
     (*parser)
         .m_processingInstructionHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
-    poolClear(&raw mut (*parser).m_tempPool);
+    poolClear(&mut (*parser).m_tempPool);
     return 1 as ::core::ffi::c_int;
 }
 
@@ -10580,7 +10580,7 @@ unsafe extern "C" fn reportComment(
     (*parser)
         .m_commentHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, data);
-    poolClear(&raw mut (*parser).m_tempPool);
+    poolClear(&mut (*parser).m_tempPool);
     return 1 as ::core::ffi::c_int;
 }
 
@@ -11355,14 +11355,14 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_P
             );
         }
     }
-    hashTableClear(&raw mut (*p).generalEntities);
+    hashTableClear(&mut (*p).generalEntities);
     (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableClear(&raw mut (*p).paramEntities);
-    hashTableClear(&raw mut (*p).elementTypes);
-    hashTableClear(&raw mut (*p).attributeIds);
-    hashTableClear(&raw mut (*p).prefixes);
-    poolClear(&raw mut (*p).pool);
-    poolClear(&raw mut (*p).entityValuePool);
+    hashTableClear(&mut (*p).paramEntities);
+    hashTableClear(&mut (*p).elementTypes);
+    hashTableClear(&mut (*p).attributeIds);
+    hashTableClear(&mut (*p).prefixes);
+    poolClear(&mut (*p).pool);
+    poolClear(&mut (*p).entityValuePool);
     (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     (*p).in_eldecl = crate::expat_h::XML_FALSE;
@@ -11407,13 +11407,13 @@ unsafe extern "C" fn dtdDestroy(
             );
         }
     }
-    hashTableDestroy(&raw mut (*p).generalEntities);
-    hashTableDestroy(&raw mut (*p).paramEntities);
-    hashTableDestroy(&raw mut (*p).elementTypes);
-    hashTableDestroy(&raw mut (*p).attributeIds);
-    hashTableDestroy(&raw mut (*p).prefixes);
-    poolDestroy(&raw mut (*p).pool);
-    poolDestroy(&raw mut (*p).entityValuePool);
+    hashTableDestroy(&mut (*p).generalEntities);
+    hashTableDestroy(&mut (*p).paramEntities);
+    hashTableDestroy(&mut (*p).elementTypes);
+    hashTableDestroy(&mut (*p).attributeIds);
+    hashTableDestroy(&mut (*p).prefixes);
+    poolDestroy(&mut (*p).pool);
+    poolDestroy(&mut (*p).entityValuePool);
     if isDocEntity != 0 {
         expat_free(
             parser,
@@ -11947,38 +11947,42 @@ unsafe extern "C" fn lookup(
     return *(*table).v.offset(i as isize);
 }
 
-unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
-    let mut i: crate::__stddef_size_t_h::size_t = 0;
-    i = 0 as crate::__stddef_size_t_h::size_t;
-    while i < (*table).size {
-        expat_free(
-            (*table).parser,
-            *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-            7927 as ::core::ffi::c_int,
-        );
-        let ref mut c2rust_fresh75 = *(*table).v.offset(i as isize);
-        *c2rust_fresh75 = ::core::ptr::null_mut::<NAMED>();
-        i = i.wrapping_add(1);
+fn free_hash_table_entries(
+    table: &mut HASH_TABLE,
+    source_line: ::core::ffi::c_int,
+    clear_slots: bool,
+    free_vector: bool,
+) {
+    unsafe {
+        let mut i: crate::__stddef_size_t_h::size_t = 0;
+        while i < table.size {
+            expat_free(
+                table.parser,
+                *table.v.offset(i as isize) as *mut ::core::ffi::c_void,
+                source_line,
+            );
+            if clear_slots {
+                *table.v.offset(i as isize) = ::core::ptr::null_mut::<NAMED>();
+            }
+            i = i.wrapping_add(1);
+        }
+        if free_vector {
+            expat_free(
+                table.parser,
+                table.v as *mut ::core::ffi::c_void,
+                7938 as ::core::ffi::c_int,
+            );
+        }
     }
-    (*table).used = 0 as crate::__stddef_size_t_h::size_t;
 }
 
-unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
-    let mut i: crate::__stddef_size_t_h::size_t = 0;
-    i = 0 as crate::__stddef_size_t_h::size_t;
-    while i < (*table).size {
-        expat_free(
-            (*table).parser,
-            *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-            7937 as ::core::ffi::c_int,
-        );
-        i = i.wrapping_add(1);
-    }
-    expat_free(
-        (*table).parser,
-        (*table).v as *mut ::core::ffi::c_void,
-        7938 as ::core::ffi::c_int,
-    );
+fn hashTableClear(table: &mut HASH_TABLE) {
+    free_hash_table_entries(table, 7927 as ::core::ffi::c_int, true, false);
+    table.used = 0 as crate::__stddef_size_t_h::size_t;
+}
+
+fn hashTableDestroy(table: &mut HASH_TABLE) {
+    free_hash_table_entries(table, 7937 as ::core::ffi::c_int, false, true);
 }
 
 fn hashTableInit(p: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
@@ -11998,45 +12002,75 @@ fn poolInit(pool: &mut STRING_POOL, parser: crate::expat_h::XML_Parser) {
     pool.parser = parser;
 }
 
-unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
-    if (*pool).freeBlocks.is_null() {
-        (*pool).freeBlocks = (*pool).blocks;
-    } else {
-        let mut p: *mut BLOCK = (*pool).blocks;
-        while !p.is_null() {
-            let mut tem: *mut BLOCK = (*p).next as *mut BLOCK;
-            (*p).next = (*pool).freeBlocks as *mut block;
-            (*pool).freeBlocks = p;
-            p = tem;
-        }
-    }
-    (*pool).blocks = ::core::ptr::null_mut::<BLOCK>();
-    (*pool).start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    (*pool).ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    (*pool).end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+enum PoolBlockAction<'a> {
+    MoveToFreeList {
+        free_blocks: &'a mut *mut BLOCK,
+    },
+    Free {
+        parser: crate::expat_h::XML_Parser,
+        source_line: ::core::ffi::c_int,
+    },
 }
 
-unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
-    let mut p: *mut BLOCK = (*pool).blocks;
-    while !p.is_null() {
-        let mut tem: *mut BLOCK = (*p).next as *mut BLOCK;
-        expat_free(
-            (*pool).parser,
-            p as *mut ::core::ffi::c_void,
-            8000 as ::core::ffi::c_int,
-        );
-        p = tem;
+fn drain_pool_blocks(blocks: &mut *mut BLOCK, mut action: PoolBlockAction<'_>) {
+    unsafe {
+        let mut p: *mut BLOCK = *blocks;
+        while !p.is_null() {
+            let next: *mut BLOCK = (*p).next as *mut BLOCK;
+            match &mut action {
+                PoolBlockAction::MoveToFreeList { free_blocks } => {
+                    (*p).next = **free_blocks as *mut block;
+                    **free_blocks = p;
+                }
+                PoolBlockAction::Free {
+                    parser,
+                    source_line,
+                } => {
+                    expat_free(
+                        *parser,
+                        p as *mut ::core::ffi::c_void,
+                        *source_line as ::core::ffi::c_int,
+                    );
+                }
+            }
+            p = next;
+        }
     }
-    p = (*pool).freeBlocks;
-    while !p.is_null() {
-        let mut tem_0: *mut BLOCK = (*p).next as *mut BLOCK;
-        expat_free(
-            (*pool).parser,
-            p as *mut ::core::ffi::c_void,
-            8006 as ::core::ffi::c_int,
+    *blocks = ::core::ptr::null_mut::<BLOCK>();
+}
+
+fn poolClear(pool: &mut STRING_POOL) {
+    if pool.freeBlocks.is_null() {
+        pool.freeBlocks = pool.blocks;
+        pool.blocks = ::core::ptr::null_mut::<BLOCK>();
+    } else {
+        drain_pool_blocks(
+            &mut pool.blocks,
+            PoolBlockAction::MoveToFreeList {
+                free_blocks: &mut pool.freeBlocks,
+            },
         );
-        p = tem_0;
     }
+    pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+    pool.end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+}
+
+fn poolDestroy(pool: &mut STRING_POOL) {
+    drain_pool_blocks(
+        &mut pool.blocks,
+        PoolBlockAction::Free {
+            parser: pool.parser,
+            source_line: 8000 as ::core::ffi::c_int,
+        },
+    );
+    drain_pool_blocks(
+        &mut pool.freeBlocks,
+        PoolBlockAction::Free {
+            parser: pool.parser,
+            source_line: 8006 as ::core::ffi::c_int,
+        },
+    );
 }
 
 unsafe extern "C" fn poolAppend(
