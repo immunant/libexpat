@@ -2178,16 +2178,11 @@ unsafe extern "C" fn callProcessor(
     return ret;
 }
 
-unsafe extern "C" fn startParsing(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Bool {
-    if (*parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
-        (*parser).m_hash_secret_salt = generate_hash_secret_salt();
+fn prepare_root_parser_for_start(parser: &mut XML_ParserStruct) -> bool {
+    if parser.m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
+        parser.m_hash_secret_salt = generate_hash_secret_salt();
     }
-    if (*parser).m_ns != 0 {
-        return setContext(parser, implicitContext.as_ptr());
-    }
-    return crate::expat_h::XML_TRUE;
+    parser.m_ns != 0
 }
 pub extern "C" fn XML_ParserCreate_MM(
     mut encodingName: *const crate::expat_external_h::XML_Char,
@@ -3803,9 +3798,12 @@ pub unsafe extern "C" fn XML_Parse(
             return crate::expat_h::XML_STATUS_ERROR;
         }
         0 => {
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::expat_h::XML_STATUS_ERROR;
+            if (*parser).m_parentParser.is_null() {
+                let needs_context = prepare_root_parser_for_start(&mut *parser);
+                if needs_context && setContext(parser, implicitContext.as_ptr()) == 0 {
+                    (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+                    return crate::expat_h::XML_STATUS_ERROR;
+                }
             }
         }
         _ => {}
@@ -3874,9 +3872,12 @@ pub unsafe extern "C" fn XML_ParseBuffer(
                 (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::expat_h::XML_STATUS_ERROR;
+            if (*parser).m_parentParser.is_null() {
+                let needs_context = prepare_root_parser_for_start(&mut *parser);
+                if needs_context && setContext(parser, implicitContext.as_ptr()) == 0 {
+                    (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+                    return crate::expat_h::XML_STATUS_ERROR;
+                }
             }
         }
         _ => {}
