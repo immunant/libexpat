@@ -5649,12 +5649,6 @@ pub enum ProcessorState {
     Error,
 }
 
-type Processor = unsafe extern "C" fn(
-    crate::expat_h::XML_Parser,
-    *const ::core::ffi::c_char,
-    *const ::core::ffi::c_char,
-    *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error;
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -17133,28 +17127,6 @@ fn external_par_ent_init_processor_impl(
     } else {
         parser.m_processor = ProcessorState::ExternalParEnt;
         Ok(ExternalParEntInitAction::ExternalParameterEntity)
-    }
-}
-
-unsafe extern "C" fn externalParEntInitProcessor(
-    parser: crate::expat_h::XML_Parser,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() || !parser.is_aligned() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let parser = &mut *parser;
-    match external_par_ent_init_processor_impl(parser) {
-        Err(error) => error,
-        Ok(action) => {
-            let processor: Processor = match action {
-                ExternalParEntInitAction::EntityValue => entityValueInitProcessor,
-                ExternalParEntInitAction::ExternalParameterEntity => externalParEntProcessor,
-            };
-            processor(std::ptr::from_mut(parser), s, end, nextPtr)
-        }
     }
 }
 
