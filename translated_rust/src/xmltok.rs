@@ -566,6 +566,16 @@ pub enum AttributeScanner {
     Big2,
 }
 
+/// A complete start-tag token whose allocation has already been validated by
+/// the parser.  Internal entity text is kept as `XML_Char` storage, while the
+/// parser input buffer is naturally bytes.  Keeping both representations here
+/// avoids fabricating a byte slice from an entity cursor just to run the
+/// tokenizer.
+pub(crate) enum AttributeSource<'a> {
+    Bytes(&'a [u8]),
+    Chars(&'a [::core::ffi::c_char]),
+}
+
 impl AttributeScanner {
     /// Scans one complete start-tag token already bounded by its tokenizer
     /// cursor.  Attribute pointers are derived only from that verified slice;
@@ -574,7 +584,7 @@ impl AttributeScanner {
     pub(crate) fn scan(
         self,
         encoding: &normal_encoding,
-        source: &[u8],
+        source: AttributeSource<'_>,
         attributes: &mut [ATTRIBUTE],
     ) -> ::core::ffi::c_int {
         xmltok_impl_c::scan_atts(self, &encoding.type_0, source, attributes)
@@ -10619,10 +10629,28 @@ pub mod xmltok_impl_c {
     pub(crate) fn scan_atts(
         scanner: crate::src::xmltok::AttributeScanner,
         byte_types: &[::core::ffi::c_uchar; 256],
-        source: &[u8],
+        source: crate::src::xmltok::AttributeSource<'_>,
         attributes: &mut [crate::src::xmltok::ATTRIBUTE],
     ) -> ::core::ffi::c_int {
-        let source_start = source.as_ptr().cast::<::core::ffi::c_char>();
+        let source_start = match &source {
+            crate::src::xmltok::AttributeSource::Bytes(bytes) => {
+                bytes.as_ptr().cast::<::core::ffi::c_char>()
+            }
+            crate::src::xmltok::AttributeSource::Chars(chars) => chars.as_ptr(),
+        };
+        // The token scanners operate on unsigned byte values.  Entity text is
+        // already a checked `XML_Char` slice, so convert its signed storage
+        // values without changing their byte representation rather than
+        // constructing another slice with a raw pointer and a cursor-derived
+        // length.
+        let entity_bytes;
+        let source = match source {
+            crate::src::xmltok::AttributeSource::Bytes(bytes) => bytes,
+            crate::src::xmltok::AttributeSource::Chars(chars) => {
+                entity_bytes = chars.iter().map(|&byte| byte as u8).collect::<Vec<_>>();
+                &entity_bytes
+            }
+        };
         let mut store = |attribute: ::core::ffi::c_int, update: AttributeUpdate| {
             let Ok(attribute) = usize::try_from(attribute) else {
                 return;

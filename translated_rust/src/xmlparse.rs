@@ -9495,7 +9495,7 @@ unsafe extern "C" fn storeAtts(
             let Some(source) = bytes.get(start..end) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            source
+            crate::src::xmltok::AttributeSource::Bytes(source)
         } else {
             let Some(open_entity_index) = (*parser).m_openInternalEntities else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -9520,10 +9520,7 @@ unsafe extern "C" fn storeAtts(
             let Some(text) = text.get(start..end) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            // XML_Char is the one-byte C character at this internal parser
-            // boundary.  The range above was obtained from `text` itself, so
-            // this byte view retains its allocation and exact token length.
-            ::core::slice::from_raw_parts(text.as_ptr().cast::<u8>(), text.len())
+            crate::src::xmltok::AttributeSource::Chars(text)
         };
         // Keep the scanner's output borrow local: it fills the owned records
         // before later parser work can grow them or invoke a callback.
@@ -9591,7 +9588,7 @@ unsafe extern "C" fn storeAtts(
                 let Some(source) = bytes.get(start..end) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                source
+                crate::src::xmltok::AttributeSource::Bytes(source)
             } else {
                 let Some(open_entity_index) = (*parser).m_openInternalEntities else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -9617,7 +9614,7 @@ unsafe extern "C" fn storeAtts(
                 let Some(text) = text.get(start..end) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                ::core::slice::from_raw_parts(text.as_ptr().cast::<u8>(), text.len())
+                crate::src::xmltok::AttributeSource::Chars(text)
             };
             (*enc).getAtts.scan(
                 &*(enc as *const crate::src::xmltok::normal_encoding),
