@@ -1154,8 +1154,6 @@ pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS;
 pub use crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl;
 pub use crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS;
 pub use crate::src::xmltok::XML_Convert_Result;
-pub use crate::src::xmltok::XmlInitUnknownEncoding;
-pub use crate::src::xmltok::XmlInitUnknownEncodingNS;
 pub use crate::src::xmltok::XmlSizeOfUnknownEncoding;
 pub use crate::src::xmltok::XmlUtf8Encode;
 pub use crate::src::xmltok::ATTRIBUTE;
@@ -12140,47 +12138,42 @@ unsafe extern "C" fn handleUnknownEncoding(
                 }
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
+            // Keep the caller-observable allocation, but also materialize the
+            // one safe slot that will receive the initialized tokenizer state.
+            storage.push(::core::mem::MaybeUninit::uninit());
             (*parser).m_unknownEncodingMem = Some(UnknownEncodingMemory {
                 storage,
                 backing: Some(backing),
                 info: None,
             });
-            let enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
-                Some(
-                    crate::src::xmltok::XmlInitUnknownEncodingNS
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const ::core::ffi::c_int,
-                            crate::src::xmltok::CONVERTER,
-                            *mut ::core::ffi::c_void,
+            let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
+            let converter = crate::src::xmltok::unknown_encoding_callback(info.convert.map(
+                |callback| {
+                    let callback_arg = callback_arg.clone();
+                    move |input: &[u8]| unsafe {
+                        callback(
+                            callback_arg.load(std::sync::atomic::Ordering::Relaxed),
+                            input.as_ptr().cast::<::core::ffi::c_char>(),
                         )
-                            -> *mut crate::src::xmltok::ENCODING,
-                )
-            } else {
-                Some(
-                    crate::src::xmltok::XmlInitUnknownEncoding
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const ::core::ffi::c_int,
-                            crate::src::xmltok::CONVERTER,
-                            *mut ::core::ffi::c_void,
-                        )
-                            -> *mut crate::src::xmltok::ENCODING,
-                )
-            }
-            .expect("non-null function pointer")(
-                (*parser)
-                    .m_unknownEncodingMem
-                    .as_mut()
-                    .expect("unknown encoding storage is installed")
-                    .storage
-                    .as_mut_ptr()
-                    .cast(),
-                &raw mut info.map as *mut ::core::ffi::c_int,
-                info.convert as crate::src::xmltok::CONVERTER,
-                info.data,
+                    }
+                },
+            ));
+            let storage = (*parser)
+                .m_unknownEncodingMem
+                .as_mut()
+                .expect("unknown encoding storage is installed")
+                .storage
+                .first_mut()
+                .expect("unknown encoding storage has one reserved slot");
+            let encoding = crate::src::xmltok::initialize_unknown_encoding_state(
+                &info.map,
+                converter,
+                storage.as_mut_ptr().addr(),
+                info.data.addr(),
+                (*parser).m_ns != 0,
             );
-            if !enc.is_null() {
+            if let Some(encoding) = encoding {
+                storage.write(encoding);
                 (*parser)
                     .m_unknownEncodingMem
                     .as_mut()

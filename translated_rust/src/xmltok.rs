@@ -1068,8 +1068,19 @@ where
 }
 
 #[derive(Clone)]
-struct UnknownEncodingConverterRegistration {
+pub(crate) struct UnknownEncodingConverterRegistration {
     invoke: std::sync::Arc<dyn UnknownEncodingConverter>,
+}
+
+pub(crate) fn unknown_encoding_callback<F>(
+    callback: Option<F>,
+) -> Option<UnknownEncodingConverterRegistration>
+where
+    F: Fn(&[u8]) -> ::core::ffi::c_int + Send + Sync + 'static,
+{
+    callback.map(|callback| UnknownEncodingConverterRegistration {
+        invoke: std::sync::Arc::new(callback),
+    })
 }
 
 // Unknown encodings are initialized in caller-provided storage.  Keep the
@@ -17861,59 +17872,87 @@ fn install_unknown_name_checks(encoding: &mut unknown_encoding) {
     encoding.normal.invalid4 = Invalid4Checker::Unknown;
 }
 
-pub unsafe extern "C" fn XmlInitUnknownEncoding(
-    mem: *mut ::core::ffi::c_void,
-    table: *const ::core::ffi::c_int,
-    convert: crate::src::xmltok::CONVERTER,
-    userData: *mut ::core::ffi::c_void,
-) -> *mut crate::src::xmltok::ENCODING {
-    register_unknown_encoding_converter(mem as usize, None);
-    let (encoding, table, latin1) = unsafe {
-        (
-            &mut *(mem as *mut unknown_encoding),
-            &*(table as *const [::core::ffi::c_int; 256]),
-            &latin1_encoding,
-        )
+/// Initializes owned unknown-encoding state from an already-validated table.
+///
+/// The foreign callback is represented by a boundary registration, so the
+/// tokenizer itself only stores a stable registry key and never holds or
+/// dereferences the callback context.
+pub(crate) fn initialize_unknown_encoding_state(
+    table: &[::core::ffi::c_int; 256],
+    converter: Option<UnknownEncodingConverterRegistration>,
+    storage_id: usize,
+    user_data_token: usize,
+    namespace_aware: bool,
+) -> Option<unknown_encoding> {
+    register_unknown_encoding_converter(storage_id, None);
+
+    let mut encoding = unknown_encoding {
+        normal: latin1_encoding,
+        converter_id: storage_id,
+        user_data_token,
+        utf16: [0; 256],
+        utf8: [[0; 4]; 256],
     };
-    if !initialize_unknown_encoding(encoding, table, latin1, convert.is_some()) {
-        return ::core::ptr::null_mut();
+    let has_converter = converter.is_some();
+    if !initialize_unknown_encoding(&mut encoding, table, &latin1_encoding, has_converter) {
+        return None;
     }
-    encoding.converter_id = mem as usize;
-    encoding.user_data_token = userData.addr();
-    register_unknown_encoding_converter(
-        encoding.converter_id,
-        convert.map(|callback| {
-            // The callback argument is an opaque C token.  AtomicPtr carries
-            // it across the synchronized registry without Rust ever
-            // dereferencing it; the foreign callback remains responsible for
-            // the token's lifetime and thread-safety.
-            let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(userData));
-            UnknownEncodingConverterRegistration {
-                invoke: std::sync::Arc::new(move |input: &[u8]| unsafe {
-                    callback(
-                        callback_arg.load(std::sync::atomic::Ordering::Relaxed),
-                        input.as_ptr().cast::<::core::ffi::c_char>(),
-                    )
-                }),
-            }
-        }),
-    );
-    if convert.is_some() {
-        install_unknown_name_checks(encoding);
+
+    if namespace_aware {
+        encoding.normal.type_0[crate::ascii_h::ASCII_COLON as usize] =
+            crate::xmltok_impl_h::BT_COLON_0 as ::core::ffi::c_uchar;
+    }
+    if has_converter {
+        install_unknown_name_checks(&mut encoding);
     }
     encoding.normal.enc.utf8Convert = Utf8Converter::Unknown;
     encoding.normal.enc.utf16Convert = Utf16Converter::Unknown;
-    &mut encoding.normal.enc
+    register_unknown_encoding_converter(storage_id, converter);
+    Some(encoding)
 }
-#[export_name = "XmlInitUnknownEncoding"]
 
+#[export_name = "XmlInitUnknownEncoding"]
 pub unsafe extern "C" fn XmlInitUnknownEncoding_ffi(
-    mut mem: *mut ::core::ffi::c_void,
-    mut table: *const ::core::ffi::c_int,
-    mut convert: crate::src::xmltok::CONVERTER,
-    mut userData: *mut ::core::ffi::c_void,
+    mem: *mut ::core::ffi::c_void,
+    table: *const ::core::ffi::c_int,
+    convert: crate::src::xmltok::CONVERTER,
+    user_data: *mut ::core::ffi::c_void,
 ) -> *mut crate::src::xmltok::ENCODING {
-    XmlInitUnknownEncoding(mem, table, convert, userData)
+    if mem.is_null() || table.is_null() {
+        return ::core::ptr::null_mut();
+    }
+    let storage = mem.cast::<unknown_encoding>();
+    if !storage.is_aligned() || !table.is_aligned() {
+        return ::core::ptr::null_mut();
+    }
+    let table = &*table.cast::<[::core::ffi::c_int; 256]>();
+    let storage_id = mem.addr();
+    // The callback context is an opaque C token.  AtomicPtr preserves it for
+    // the callback adapter without Rust ever dereferencing it.
+    let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(user_data));
+    let converter = unknown_encoding_callback(convert.map(|callback| {
+        let callback_arg = callback_arg.clone();
+        move |input: &[u8]| {
+            callback(
+                callback_arg.load(std::sync::atomic::Ordering::Relaxed),
+                input.as_ptr().cast::<::core::ffi::c_char>(),
+            )
+        }
+    }));
+    let Some(encoding) = initialize_unknown_encoding_state(
+        table,
+        converter,
+        storage_id,
+        user_data.addr(),
+        false,
+    ) else {
+        return ::core::ptr::null_mut();
+    };
+    // `normal.enc` is the first repr(C) member of this storage, matching the
+    // C API's returned `ENCODING *` without another raw dereference.
+    let output = storage.cast::<crate::src::xmltok::ENCODING>();
+    storage.write(encoding);
+    output
 }
 fn encoding_index(name: &[u8]) -> ::core::ffi::c_int {
     const ENCODING_NAMES: [&[u8]; 6] = [
@@ -18113,27 +18152,42 @@ unsafe extern "C" fn initScan(
         }
     }
 }
-pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
-    mut mem: *mut ::core::ffi::c_void,
-    mut table: *const ::core::ffi::c_int,
-    mut convert: crate::src::xmltok::CONVERTER,
-    mut userData: *mut ::core::ffi::c_void,
-) -> *mut crate::src::xmltok::ENCODING {
-    let mut enc: *mut crate::src::xmltok::ENCODING =
-        XmlInitUnknownEncoding(mem, table, convert, userData);
-    if !enc.is_null() {
-        (*(enc as *mut normal_encoding)).type_0[crate::ascii_h::ASCII_COLON as usize] =
-            crate::xmltok_impl_h::BT_COLON_0 as ::core::ffi::c_int as ::core::ffi::c_uchar;
-    }
-    return enc;
-}
 #[export_name = "XmlInitUnknownEncodingNS"]
-
 pub unsafe extern "C" fn XmlInitUnknownEncodingNS_ffi(
-    mut mem: *mut ::core::ffi::c_void,
-    mut table: *const ::core::ffi::c_int,
-    mut convert: crate::src::xmltok::CONVERTER,
-    mut userData: *mut ::core::ffi::c_void,
+    mem: *mut ::core::ffi::c_void,
+    table: *const ::core::ffi::c_int,
+    convert: crate::src::xmltok::CONVERTER,
+    user_data: *mut ::core::ffi::c_void,
 ) -> *mut crate::src::xmltok::ENCODING {
-    XmlInitUnknownEncodingNS(mem, table, convert, userData)
+    if mem.is_null() || table.is_null() {
+        return ::core::ptr::null_mut();
+    }
+    let storage = mem.cast::<unknown_encoding>();
+    if !storage.is_aligned() || !table.is_aligned() {
+        return ::core::ptr::null_mut();
+    }
+    let table = &*table.cast::<[::core::ffi::c_int; 256]>();
+    let storage_id = mem.addr();
+    let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(user_data));
+    let converter = unknown_encoding_callback(convert.map(|callback| {
+        let callback_arg = callback_arg.clone();
+        move |input: &[u8]| {
+            callback(
+                callback_arg.load(std::sync::atomic::Ordering::Relaxed),
+                input.as_ptr().cast::<::core::ffi::c_char>(),
+            )
+        }
+    }));
+    let Some(encoding) = initialize_unknown_encoding_state(
+        table,
+        converter,
+        storage_id,
+        user_data.addr(),
+        true,
+    ) else {
+        return ::core::ptr::null_mut();
+    };
+    let output = storage.cast::<crate::src::xmltok::ENCODING>();
+    storage.write(encoding);
+    output
 }
