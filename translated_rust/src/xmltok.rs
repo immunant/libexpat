@@ -510,36 +510,34 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    pub fn normal_checkPiTarget(
+        mut _enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+        tok: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
         let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (1 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
+        *tok = crate::src::xmltok::XML_TOK_PI_1;
+        if super::byte_distance(ptr, end) != 3 as ::core::ffi::c_long {
             return 1 as ::core::ffi::c_int;
         }
-        match *ptr as ::core::ffi::c_int {
+        match super::normal_ascii_byte(ptr) {
             crate::ascii_h::ASCII_x_1 => {}
             crate::ascii_h::ASCII_X_1 => {
                 upper = 1 as ::core::ffi::c_int;
             }
             _ => return 1 as ::core::ffi::c_int,
         }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
+        ptr = ptr.wrapping_add(1);
+        match super::normal_ascii_byte(ptr) {
             crate::ascii_h::ASCII_m_1 => {}
             crate::ascii_h::ASCII_M_1 => {
                 upper = 1 as ::core::ffi::c_int;
             }
             _ => return 1 as ::core::ffi::c_int,
         }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
+        ptr = ptr.wrapping_add(1);
+        match super::normal_ascii_byte(ptr) {
             crate::ascii_h::ASCII_l_1 => {}
             crate::ascii_h::ASCII_L_1 => {
                 upper = 1 as ::core::ffi::c_int;
@@ -549,7 +547,7 @@ pub mod xmltok_impl_c {
         if upper != 0 {
             return 0 as ::core::ffi::c_int;
         }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
+        *tok = crate::src::xmltok::XML_TOK_XML_DECL_1;
         return 1 as ::core::ffi::c_int;
     }
 
@@ -723,7 +721,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_118 = 13349765058737954042;
                 }
                 21 | 9 | 10 => {
-                    if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if normal_checkPiTarget(enc, target, ptr, &mut tok) == 0 {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -812,7 +810,7 @@ pub mod xmltok_impl_c {
                     return crate::src::xmltok::XML_TOK_PARTIAL_1;
                 }
                 15 => {
-                    if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if normal_checkPiTarget(enc, target, ptr, &mut tok) == 0 {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -4666,54 +4664,34 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    pub fn little2_checkPiTarget(
+        mut _enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+        tok: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
         let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
+        *tok = crate::src::xmltok::XML_TOK_PI_1;
+        if super::byte_distance(ptr, end) != 6 as ::core::ffi::c_long {
             return 1 as ::core::ffi::c_int;
         }
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
+        match super::little2_ascii_byte(ptr) {
             crate::ascii_h::ASCII_x_1 => {}
             crate::ascii_h::ASCII_X_1 => {
                 upper = 1 as ::core::ffi::c_int;
             }
             _ => return 1 as ::core::ffi::c_int,
         }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
+        ptr = ptr.wrapping_add(2);
+        match super::little2_ascii_byte(ptr) {
             crate::ascii_h::ASCII_m_1 => {}
             crate::ascii_h::ASCII_M_1 => {
                 upper = 1 as ::core::ffi::c_int;
             }
             _ => return 1 as ::core::ffi::c_int,
         }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
+        ptr = ptr.wrapping_add(2);
+        match super::little2_ascii_byte(ptr) {
             crate::ascii_h::ASCII_l_1 => {}
             crate::ascii_h::ASCII_L_1 => {
                 upper = 1 as ::core::ffi::c_int;
@@ -4723,7 +4701,7 @@ pub mod xmltok_impl_c {
         if upper != 0 {
             return 0 as ::core::ffi::c_int;
         }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
+        *tok = crate::src::xmltok::XML_TOK_XML_DECL_1;
         return 1 as ::core::ffi::c_int;
     }
 
@@ -4891,7 +4869,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_118 = 13349765058737954042;
                 }
                 21 | 9 | 10 => {
-                    if little2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if little2_checkPiTarget(enc, target, ptr, &mut tok) == 0 {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -4967,7 +4945,7 @@ pub mod xmltok_impl_c {
                     return crate::src::xmltok::XML_TOK_PARTIAL_1;
                 }
                 15 => {
-                    if little2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if little2_checkPiTarget(enc, target, ptr, &mut tok) == 0 {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -8971,54 +8949,34 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_checkPiTarget(
-        mut enc: *const crate::src::xmltok::ENCODING,
+    pub fn big2_checkPiTarget(
+        mut _enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+        tok: &mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
         let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
+        *tok = crate::src::xmltok::XML_TOK_PI_1;
+        if super::byte_distance(ptr, end) != 6 as ::core::ffi::c_long {
             return 1 as ::core::ffi::c_int;
         }
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
+        match super::big2_ascii_byte(ptr) {
             crate::ascii_h::ASCII_x_1 => {}
             crate::ascii_h::ASCII_X_1 => {
                 upper = 1 as ::core::ffi::c_int;
             }
             _ => return 1 as ::core::ffi::c_int,
         }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
+        ptr = ptr.wrapping_add(2);
+        match super::big2_ascii_byte(ptr) {
             crate::ascii_h::ASCII_m_1 => {}
             crate::ascii_h::ASCII_M_1 => {
                 upper = 1 as ::core::ffi::c_int;
             }
             _ => return 1 as ::core::ffi::c_int,
         }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
+        ptr = ptr.wrapping_add(2);
+        match super::big2_ascii_byte(ptr) {
             crate::ascii_h::ASCII_l_1 => {}
             crate::ascii_h::ASCII_L_1 => {
                 upper = 1 as ::core::ffi::c_int;
@@ -9028,7 +8986,7 @@ pub mod xmltok_impl_c {
         if upper != 0 {
             return 0 as ::core::ffi::c_int;
         }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
+        *tok = crate::src::xmltok::XML_TOK_XML_DECL_1;
         return 1 as ::core::ffi::c_int;
     }
 
@@ -9198,7 +9156,7 @@ pub mod xmltok_impl_c {
                     c2rust_current_block_118 = 13349765058737954042;
                 }
                 21 | 9 | 10 => {
-                    if big2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if big2_checkPiTarget(enc, target, ptr, &mut tok) == 0 {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -9275,7 +9233,7 @@ pub mod xmltok_impl_c {
                     return crate::src::xmltok::XML_TOK_PARTIAL_1;
                 }
                 15 => {
-                    if big2_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    if big2_checkPiTarget(enc, target, ptr, &mut tok) == 0 {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
