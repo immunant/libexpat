@@ -1331,6 +1331,38 @@ static COMMENT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn CommentCallback>>>,
 > = std::sync::OnceLock::new();
 
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether a default callback is installed.
+trait DefaultCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        data: *const crate::expat_external_h::XML_Char,
+        len: ::core::ffi::c_int,
+    );
+}
+
+impl DefaultCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+        ::core::ffi::c_int,
+    ) -> ()
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        data: *const crate::expat_external_h::XML_Char,
+        len: ::core::ffi::c_int,
+    ) {
+        self(user_data, data, len);
+    }
+}
+
+static DEFAULT_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn DefaultCallback>>>,
+> = std::sync::OnceLock::new();
+
 unsafe fn callCharacterDataHandler(
     parser: crate::expat_h::XML_Parser,
     data: *const crate::expat_external_h::XML_Char,
@@ -1498,7 +1530,7 @@ pub struct XML_ParserStruct {
     pub m_commentHandler: bool,
     pub m_startCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler,
     pub m_endCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler,
-    pub m_defaultHandler: crate::expat_h::XML_DefaultHandler,
+    pub m_defaultHandler: bool,
     pub m_startDoctypeDeclHandler: crate::expat_h::XML_StartDoctypeDeclHandler,
     pub m_endDoctypeDeclHandler: crate::expat_h::XML_EndDoctypeDeclHandler,
     pub m_unparsedEntityDeclHandler: crate::expat_h::XML_UnparsedEntityDeclHandler,
@@ -2893,7 +2925,12 @@ unsafe extern "C" fn parserInit(
         .remove(&(parser as usize));
     (*parser).m_startCdataSectionHandler = None;
     (*parser).m_endCdataSectionHandler = None;
-    (*parser).m_defaultHandler = None;
+    (*parser).m_defaultHandler = false;
+    DEFAULT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_startDoctypeDeclHandler = None;
     (*parser).m_endDoctypeDeclHandler = None;
     (*parser).m_unparsedEntityDeclHandler = None;
@@ -3132,7 +3169,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldCommentCallback: Option<std::sync::Arc<dyn CommentCallback>> = None;
     let mut oldStartCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler = None;
     let mut oldEndCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler = None;
-    let mut oldDefaultHandler: crate::expat_h::XML_DefaultHandler = None;
+    let mut oldDefaultHandler = false;
+    let mut oldDefaultCallback: Option<std::sync::Arc<dyn DefaultCallback>> = None;
     let mut oldUnparsedEntityDeclHandler: crate::expat_h::XML_UnparsedEntityDeclHandler = None;
     let mut oldNotationDeclHandler: crate::expat_h::XML_NotationDeclHandler = None;
     let mut oldStartNamespaceDeclHandler: crate::expat_h::XML_StartNamespaceDeclHandler = None;
@@ -3190,6 +3228,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     oldStartCdataSectionHandler = (*parser).m_startCdataSectionHandler;
     oldEndCdataSectionHandler = (*parser).m_endCdataSectionHandler;
     oldDefaultHandler = (*parser).m_defaultHandler;
+    oldDefaultCallback = DEFAULT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldUnparsedEntityDeclHandler = (*parser).m_unparsedEntityDeclHandler;
     oldNotationDeclHandler = (*parser).m_notationDeclHandler;
     oldStartNamespaceDeclHandler = (*parser).m_startNamespaceDeclHandler;
@@ -3284,6 +3328,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     (*parser).m_startCdataSectionHandler = oldStartCdataSectionHandler;
     (*parser).m_endCdataSectionHandler = oldEndCdataSectionHandler;
     (*parser).m_defaultHandler = oldDefaultHandler;
+    if let Some(callback) = oldDefaultCallback {
+        DEFAULT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_unparsedEntityDeclHandler = oldUnparsedEntityDeclHandler;
     (*parser).m_notationDeclHandler = oldNotationDeclHandler;
     (*parser).m_startNamespaceDeclHandler = oldStartNamespaceDeclHandler;
@@ -3398,6 +3449,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     COMMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
+    DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -3913,7 +3969,19 @@ pub unsafe extern "C" fn XML_SetDefaultHandler(
     if parser.is_null() {
         return;
     }
-    (*parser).m_defaultHandler = handler;
+    (*parser).m_defaultHandler = handler.is_some();
+    let mut handlers = DEFAULT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match handler {
+        Some(callback) => {
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        }
+        None => {
+            handlers.remove(&(parser as usize));
+        }
+    }
     (*parser).m_defaultExpandInternalEntities = crate::expat_h::XML_FALSE;
 }
 #[export_name = "XML_SetDefaultHandler"]
@@ -3931,7 +3999,19 @@ pub unsafe extern "C" fn XML_SetDefaultHandlerExpand(
     if parser.is_null() {
         return;
     }
-    (*parser).m_defaultHandler = handler;
+    (*parser).m_defaultHandler = handler.is_some();
+    let mut handlers = DEFAULT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match handler {
+        Some(callback) => {
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        }
+        None => {
+            handlers.remove(&(parser as usize));
+        }
+    }
     (*parser).m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetDefaultHandlerExpand"]
@@ -5002,7 +5082,7 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
     if parser.is_null() {
         return;
     }
-    if (*parser).m_defaultHandler.is_some() {
+    if (*parser).m_defaultHandler {
         if !(*parser).m_openInternalEntities.is_null() {
             reportDefault(
                 parser,
@@ -5673,7 +5753,7 @@ unsafe extern "C" fn doContent(
                         let mut c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
                         callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
-                    } else if (*parser).m_defaultHandler.is_some() {
+                    } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, end);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
@@ -5745,7 +5825,7 @@ unsafe extern "C" fn doContent(
                                 &raw const ch,
                                 1 as ::core::ffi::c_int,
                             );
-                        } else if (*parser).m_defaultHandler.is_some() {
+                        } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
                     } else {
@@ -5782,7 +5862,7 @@ unsafe extern "C" fn doContent(
                                     name,
                                     0 as ::core::ffi::c_int,
                                 );
-                            } else if (*parser).m_defaultHandler.is_some() {
+                            } else if (*parser).m_defaultHandler {
                                 reportDefault(parser, enc, s, next);
                             }
                             break 's_1235;
@@ -5805,7 +5885,7 @@ unsafe extern "C" fn doContent(
                                         (*entity).name,
                                         0 as ::core::ffi::c_int,
                                     );
-                                } else if (*parser).m_defaultHandler.is_some() {
+                                } else if (*parser).m_defaultHandler {
                                     reportDefault(parser, enc, s, next);
                                 }
                             } else {
@@ -5844,7 +5924,7 @@ unsafe extern "C" fn doContent(
                                 return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                             }
                             (*parser).m_tempPool.ptr = (*parser).m_tempPool.start;
-                        } else if (*parser).m_defaultHandler.is_some() {
+                        } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
                     }
@@ -5971,7 +6051,7 @@ unsafe extern "C" fn doContent(
                                 (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
                             );
                         }
-                    } else if (*parser).m_defaultHandler.is_some() {
+                    } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                     poolClear(&raw mut (*parser).m_tempPool);
@@ -6048,7 +6128,7 @@ unsafe extern "C" fn doContent(
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
                     if noElmHandlers as ::core::ffi::c_int != 0
-                        && (*parser).m_defaultHandler.is_some()
+                        && (*parser).m_defaultHandler
                     {
                         reportDefault(parser, enc, s, next);
                     }
@@ -6139,7 +6219,7 @@ unsafe extern "C" fn doContent(
                                 (*parser).m_handlerArg,
                                 (*tag_0).name.str,
                             );
-                        } else if (*parser).m_defaultHandler.is_some() {
+                        } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
                         while !(*tag_0).bindings.is_null() {
@@ -6194,7 +6274,7 @@ unsafe extern "C" fn doContent(
                                     as *mut ::core::ffi::c_char,
                             ),
                         );
-                    } else if (*parser).m_defaultHandler.is_some() {
+                    } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                 }
@@ -6206,7 +6286,7 @@ unsafe extern "C" fn doContent(
                         let mut c_0: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
                         callCharacterDataHandler(parser, &raw const c_0, 1 as ::core::ffi::c_int);
-                    } else if (*parser).m_defaultHandler.is_some() {
+                    } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                 }
@@ -6224,7 +6304,7 @@ unsafe extern "C" fn doContent(
                             (*parser).m_dataBuf,
                             0 as ::core::ffi::c_int,
                         );
-                    } else if (*parser).m_defaultHandler.is_some() {
+                    } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                     result_2 =
@@ -6269,7 +6349,7 @@ unsafe extern "C" fn doContent(
                                     as ::core::ffi::c_int,
                             );
                         }
-                    } else if (*parser).m_defaultHandler.is_some() {
+                    } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, end);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
@@ -6331,7 +6411,7 @@ unsafe extern "C" fn doContent(
                                     as ::core::ffi::c_int,
                             );
                         }
-                    } else if (*parser).m_defaultHandler.is_some() {
+                    } else if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                 }
@@ -6346,7 +6426,7 @@ unsafe extern "C" fn doContent(
                     }
                 }
                 _ => {
-                    if (*parser).m_defaultHandler.is_some() {
+                    if (*parser).m_defaultHandler {
                         reportDefault(parser, enc, s, next);
                     }
                 }
@@ -7306,7 +7386,7 @@ unsafe extern "C" fn doCdataSection(
                     );
                 } else if false && (*parser).m_characterDataHandler {
                     callCharacterDataHandler(parser, (*parser).m_dataBuf, 0 as ::core::ffi::c_int);
-                } else if (*parser).m_defaultHandler.is_some() {
+                } else if (*parser).m_defaultHandler {
                     reportDefault(parser, enc, s, next);
                 }
                 *startPtr = next;
@@ -7324,7 +7404,7 @@ unsafe extern "C" fn doCdataSection(
                     let mut c: crate::expat_external_h::XML_Char =
                         0xa as crate::expat_external_h::XML_Char;
                     callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
-                } else if (*parser).m_defaultHandler.is_some() {
+                } else if (*parser).m_defaultHandler {
                     reportDefault(parser, enc, s, next);
                 }
             }
@@ -7375,7 +7455,7 @@ unsafe extern "C" fn doCdataSection(
                                 as ::core::ffi::c_int,
                         );
                     }
-                } else if (*parser).m_defaultHandler.is_some() {
+                } else if (*parser).m_defaultHandler {
                     reportDefault(parser, enc, s, next);
                 }
             }
@@ -7492,7 +7572,7 @@ unsafe extern "C" fn doIgnoreSection(
     *eventEndPP = next;
     match tok {
         crate::src::xmltok::XML_TOK_IGNORE_SECT => {
-            if (*parser).m_defaultHandler.is_some() {
+            if (*parser).m_defaultHandler {
                 reportDefault(parser, enc, s, next);
             }
             *startPtr = next;
@@ -7696,7 +7776,7 @@ unsafe extern "C" fn processXmlDecl(
                 standalone,
             );
         }
-    } else if (*parser).m_defaultHandler.is_some() {
+    } else if (*parser).m_defaultHandler {
         reportDefault(parser, (*parser).m_encoding, s, next);
     }
     if (*parser).m_protocolEncodingName.is_null() {
@@ -9315,7 +9395,7 @@ unsafe extern "C" fn doProlog(
                                     58 => {
                                         let mut result_3: crate::expat_h::XML_Error =
                                             crate::expat_h::XML_ERROR_NONE;
-                                        if (*parser).m_defaultHandler.is_some() {
+                                        if (*parser).m_defaultHandler {
                                             reportDefault(parser, enc, s, next);
                                         }
                                         handleDefault = crate::expat_h::XML_FALSE;
@@ -9967,7 +10047,7 @@ unsafe extern "C" fn doProlog(
                 }
             }
         }
-        if handleDefault as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler.is_some() {
+        if handleDefault as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler {
             reportDefault(parser, enc, s, next);
         }
         match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
@@ -10020,7 +10100,7 @@ unsafe extern "C" fn epilogProcessor(
         (*parser).m_eventEndPtr = next;
         match tok {
             -15 => {
-                if (*parser).m_defaultHandler.is_some() {
+                if (*parser).m_defaultHandler {
                     reportDefault(parser, (*parser).m_encoding, s, next);
                     if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
                         == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -10036,7 +10116,7 @@ unsafe extern "C" fn epilogProcessor(
                 return crate::expat_h::XML_ERROR_NONE;
             }
             crate::src::xmltok::XML_TOK_PROLOG_S => {
-                if (*parser).m_defaultHandler.is_some() {
+                if (*parser).m_defaultHandler {
                     reportDefault(parser, (*parser).m_encoding, s, next);
                 }
             }
@@ -11013,7 +11093,7 @@ unsafe extern "C" fn reportProcessingInstruction(
         ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     let mut tem: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     if (*parser).m_processingInstructionHandler.is_none() {
-        if (*parser).m_defaultHandler.is_some() {
+        if (*parser).m_defaultHandler {
             reportDefault(parser, enc, start, end);
         }
         return 1 as ::core::ffi::c_int;
@@ -11054,7 +11134,7 @@ unsafe extern "C" fn reportComment(
         let parser_state = &*parser;
         (
             parser_state.m_commentHandler,
-            parser_state.m_defaultHandler.is_some(),
+            parser_state.m_defaultHandler,
         )
     };
     if !has_comment_handler {
@@ -11117,9 +11197,14 @@ unsafe extern "C" fn reportDefault(
                 (*parser).m_dataBufEnd as *mut ICHAR,
             );
             *eventEndPP = s;
-            (*parser)
-                .m_defaultHandler
-                .expect("non-null function pointer")(
+            let callback = DEFAULT_HANDLERS
+                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .get(&(parser as usize))
+                .cloned()
+                .expect("default callback must be registered when installed");
+            callback.invoke(
                 (*parser).m_handlerArg,
                 (*parser).m_dataBuf,
                 dataPtr.offset_from((*parser).m_dataBuf as *mut ICHAR) as ::core::ffi::c_int,
@@ -11136,9 +11221,14 @@ unsafe extern "C" fn reportDefault(
             }
         }
     } else {
-        (*parser)
-            .m_defaultHandler
-            .expect("non-null function pointer")(
+        let callback = DEFAULT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&(parser as usize))
+            .cloned()
+            .expect("default callback must be registered when installed");
+        callback.invoke(
             (*parser).m_handlerArg,
             s as *const crate::expat_external_h::XML_Char,
             (end as *const crate::expat_external_h::XML_Char)
