@@ -5967,6 +5967,30 @@ fn initial_parser_struct(
     }
 }
 
+/// Reset construction-only collection state after the parser's mandatory
+/// buffer and DTD allocations have succeeded.  This is deliberately separate
+/// from allocation: it operates only on owned Rust values and can therefore
+/// remain safe while `parserCreate` retains the ABI allocation boundary.
+fn initialize_parser_collections(parser: &mut XML_ParserStruct) {
+    parser.m_freeBindingList = FreeBindingList::empty();
+    parser.m_activeBindings = Vec::new();
+    parser.m_freeTagList = FreeTagList::empty();
+    parser.m_freeInternalEntities = Vec::new();
+    parser.m_activeInternalEntities = Vec::new();
+    parser.m_freeAttributeEntities = Vec::new();
+    parser.m_freeValueEntities = Vec::new();
+    parser.m_activeValueEntities = Vec::new();
+    parser.m_groupSize = 0;
+    parser.m_groupConnector = GroupConnectorStorage::empty();
+    parser.m_namespaceSeparator = crate::ascii_h::ASCII_EXCL as crate::expat_external_h::XML_Char;
+    parser.m_ns = crate::expat_h::XML_FALSE;
+    parser.m_ns_triplets = crate::expat_h::XML_FALSE;
+    parser.m_nsAtts = NamespaceAttributeStorage::empty();
+    parser.m_nsAttsVersion = 0;
+    parser.m_nsAttsPower = 0;
+    parser.m_protocolEncodingName = None;
+}
+
 unsafe extern "C" fn parserCreate(
     mut encodingName: *const crate::expat_external_h::XML_Char,
     mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
@@ -6184,16 +6208,7 @@ unsafe extern "C" fn parserCreate(
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
     }
-    parser.m_freeBindingList = FreeBindingList::empty();
-    parser.m_activeBindings = Vec::new();
-    parser.m_freeTagList = FreeTagList::empty();
-    parser.m_freeInternalEntities = Vec::new();
-    parser.m_activeInternalEntities = Vec::new();
-    parser.m_freeAttributeEntities = Vec::new();
-    parser.m_freeValueEntities = Vec::new();
-    parser.m_activeValueEntities = Vec::new();
-    parser.m_groupSize = 0 as ::core::ffi::c_uint;
-    parser.m_groupConnector = GroupConnectorStorage::empty();
+    initialize_parser_collections(parser);
     parser.m_unknownEncodingHandler = false;
     UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -6205,13 +6220,6 @@ unsafe extern "C" fn parserCreate(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as *mut XML_ParserStruct as usize));
-    parser.m_namespaceSeparator = crate::ascii_h::ASCII_EXCL as crate::expat_external_h::XML_Char;
-    parser.m_ns = crate::expat_h::XML_FALSE;
-    parser.m_ns_triplets = crate::expat_h::XML_FALSE;
-    parser.m_nsAtts = NamespaceAttributeStorage::empty();
-    parser.m_nsAttsVersion = 0 as ::core::ffi::c_ulong;
-    parser.m_nsAttsPower = 0 as ::core::ffi::c_uchar;
-    parser.m_protocolEncodingName = None;
     poolInit(&raw mut parser.m_tempPool, parser);
     poolInit(&raw mut parser.m_temp2Pool, parser);
     parserInit(parser, encodingName);
@@ -24724,11 +24732,10 @@ unsafe fn copyString(
         return None;
     }
     chars.resize(chars_required, 0);
-    crate::stdlib::memcpy(
-        chars.as_mut_ptr().cast::<::core::ffi::c_void>(),
-        s.cast::<::core::ffi::c_void>(),
-        allocation_size,
-    );
+    // `chars_required` was established by scanning through the terminating
+    // XML character above, so this intrinsic copy stays within the validated
+    // terminated range and avoids the C `memcpy` entry point.
+    ::core::ptr::copy_nonoverlapping(s, chars.as_mut_ptr(), chars_required);
     Some(ProtocolEncodingName {
         chars,
         backing: Some(backing),
