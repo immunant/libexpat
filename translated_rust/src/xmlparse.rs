@@ -10773,23 +10773,24 @@ pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feat
 pub unsafe extern "C" fn XML_GetFeatureList_ffi() -> *const crate::expat_h::XML_Feature {
     XML_GetFeatureList()
 }
-pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplification(
-    mut parser: crate::expat_h::XML_Parser,
-    mut maximumAmplificationFactor: ::core::ffi::c_float,
+/// Updates the root parser's amplification limit after the opaque parser
+/// handle has been validated at the ABI boundary.
+fn set_billion_laughs_maximum_amplification_impl(
+    root: &std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    is_child_parser: bool,
+    maximum_amplification_factor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null()
-        || (*parser).m_parentParser.is_some()
-        || maximumAmplificationFactor.is_nan() as i32 != 0
-        || maximumAmplificationFactor < 1.0f32
+    if is_child_parser
+        || maximum_amplification_factor.is_nan()
+        || maximum_amplification_factor < 1.0f32
     {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser)
-        .m_root
+    root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .accounting
-        .maximumAmplificationFactor = maximumAmplificationFactor;
+        .maximumAmplificationFactor = maximum_amplification_factor;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetBillionLaughsAttackProtectionMaximumAmplification"]
@@ -10798,7 +10799,15 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplificatio
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetBillionLaughsAttackProtectionMaximumAmplification(parser, maximumAmplificationFactor)
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_FALSE;
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_billion_laughs_maximum_amplification_impl(
+        &parser.m_root,
+        parser.m_parentParser.is_some(),
+        maximumAmplificationFactor,
+    )
 }
 pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
     mut parser: crate::expat_h::XML_Parser,
