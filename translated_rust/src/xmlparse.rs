@@ -2048,7 +2048,10 @@ pub struct block {
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct PoolStringRef {
-    block_from_tail: usize,
+    // A zeroed `Option<PoolStringRef>` is used for freshly allocated hash
+    // table records.  Reserve zero as its niche so that initialization stays
+    // valid while the actual tail-relative ordinal remains lossless.
+    block_from_tail: std::num::NonZeroUsize,
     offset: usize,
 }
 #[derive(Copy, Clone)]
@@ -2259,7 +2262,10 @@ pub struct ENTITY {
     pub textPtr: *const crate::expat_external_h::XML_Char,
     pub textLen: ::core::ffi::c_int,
     pub processed: ::core::ffi::c_int,
-    pub systemId: *const crate::expat_external_h::XML_Char,
+    // System identifiers are owned by the DTD string pool.  Retain their
+    // stable pool location instead of an address into allocator-managed
+    // storage; callback adapters resolve it immediately before invocation.
+    pub systemId: Option<PoolStringRef>,
     // A base identifier is nullable and, when present, is identified by its
     // stable location in the DTD string pool.  The address is recovered only
     // at callback boundaries, after checking that the pool block is live.
@@ -7068,14 +7074,12 @@ unsafe extern "C" fn doContent(
                                 .get(&(parser as usize))
                                 .cloned()
                                 .expect("installed external entity handler");
-                            if handler.invoke(
+                            if invoke_external_entity_ref_handler(
+                                handler.as_ref(),
                                 (*parser).m_externalEntityRefHandlerArg,
                                 context,
-                                (*entity).base.map_or(::core::ptr::null(), |base| {
-                                    pool_string_pointer(&raw const (*dtd).pool, base)
-                                }),
-                                (*entity).systemId,
-                                (*entity).publicId,
+                                &raw const (*dtd).pool,
+                                entity,
                             ) == 0
                             {
                                 return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
@@ -9839,21 +9843,12 @@ unsafe extern "C" fn doProlog(
                                                     .get(&(parser as usize))
                                                     .cloned()
                                                     .expect("installed external entity handler");
-                                                if handler.invoke(
+                                                if invoke_external_entity_ref_handler(
+                                                    handler.as_ref(),
                                                     (*parser).m_externalEntityRefHandlerArg,
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    ),
-                                                    (*entity).base.map_or(
-                                                        ::core::ptr::null(),
-                                                        |base| pool_string_pointer(
-                                                            dtd_pool as *const STRING_POOL,
-                                                            base,
-                                                        ),
-                                                    ),
-                                                    (*entity).systemId,
-                                                    (*entity).publicId,
+                                                    ::core::ptr::null(),
+                                                    dtd_pool as *const STRING_POOL,
+                                                    entity,
                                                 ) == 0
                                                 {
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
@@ -9918,21 +9913,12 @@ unsafe extern "C" fn doProlog(
                                                     .get(&(parser as usize))
                                                     .cloned()
                                                     .expect("installed external entity handler");
-                                                if handler.invoke(
+                                                if invoke_external_entity_ref_handler(
+                                                    handler.as_ref(),
                                                     (*parser).m_externalEntityRefHandlerArg,
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    ),
-                                                    (*entity_0).base.map_or(
-                                                        ::core::ptr::null(),
-                                                        |base| pool_string_pointer(
-                                                            dtd_pool as *const STRING_POOL,
-                                                            base,
-                                                        ),
-                                                    ),
-                                                    (*entity_0).systemId,
-                                                    (*entity_0).publicId,
+                                                    ::core::ptr::null(),
+                                                    dtd_pool as *const STRING_POOL,
+                                                    entity_0,
                                                 ) == 0
                                                 {
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
@@ -10415,7 +10401,13 @@ unsafe extern "C" fn doProlog(
                                                             base,
                                                         ),
                                                     ),
-                                                    (*(*parser).m_declEntity).systemId,
+                                                    (*(*parser).m_declEntity).systemId.map_or(
+                                                        ::core::ptr::null(),
+                                                        |system_id| pool_string_pointer(
+                                                            dtd_pool as *const STRING_POOL,
+                                                            system_id,
+                                                        ),
+                                                    ),
                                                     (*(*parser).m_declEntity).publicId,
                                                     ::core::ptr::null::<
                                                         crate::expat_external_h::XML_Char,
@@ -10461,7 +10453,13 @@ unsafe extern "C" fn doProlog(
                                                             base,
                                                         ),
                                                     ),
-                                                    (*(*parser).m_declEntity).systemId,
+                                                    (*(*parser).m_declEntity).systemId.map_or(
+                                                        ::core::ptr::null(),
+                                                        |system_id| pool_string_pointer(
+                                                            dtd_pool as *const STRING_POOL,
+                                                            system_id,
+                                                        ),
+                                                    ),
                                                     (*(*parser).m_declEntity).publicId,
                                                     (*(*parser).m_declEntity).notation,
                                                 );
@@ -10497,7 +10495,13 @@ unsafe extern "C" fn doProlog(
                                                                 base,
                                                             ),
                                                         ),
-                                                        (*(*parser).m_declEntity).systemId,
+                                                        (*(*parser).m_declEntity).systemId.map_or(
+                                                            ::core::ptr::null(),
+                                                            |system_id| pool_string_pointer(
+                                                                dtd_pool as *const STRING_POOL,
+                                                                system_id,
+                                                            ),
+                                                        ),
                                                         (*(*parser).m_declEntity).publicId,
                                                         (*(*parser).m_declEntity).notation,
                                                     );
@@ -11061,21 +11065,12 @@ unsafe extern "C" fn doProlog(
                                                     .get(&(parser as usize))
                                                     .cloned()
                                                     .expect("installed external entity handler");
-                                                if handler.invoke(
+                                                if invoke_external_entity_ref_handler(
+                                                    handler.as_ref(),
                                                     (*parser).m_externalEntityRefHandlerArg,
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    ),
-                                                    (*entity_1).base.map_or(
-                                                        ::core::ptr::null(),
-                                                        |base| pool_string_pointer(
-                                                            dtd_pool as *const STRING_POOL,
-                                                            base,
-                                                        ),
-                                                    ),
-                                                    (*entity_1).systemId,
-                                                    (*entity_1).publicId,
+                                                    ::core::ptr::null(),
+                                                    dtd_pool as *const STRING_POOL,
+                                                    entity_1,
                                                 ) == 0
                                                 {
                                                     entityTrackingOnClose(
@@ -11315,15 +11310,19 @@ unsafe extern "C" fn doProlog(
                             if (*dtd).keepProcessing as ::core::ffi::c_int != 0
                                 && !(*parser).m_declEntity.is_null()
                             {
-                                (*(*parser).m_declEntity).systemId = poolStoreString(
+                                let system_id = poolStoreString(
                                     dtd_pool,
                                     enc,
                                     s.offset((*enc).minBytesPerChar as isize),
                                     next.offset(-((*enc).minBytesPerChar as isize)),
                                 );
-                                if (*(*parser).m_declEntity).systemId.is_null() {
+                                let Some(system_id) = pool_string_ref(
+                                    dtd_pool as *const STRING_POOL,
+                                    system_id,
+                                ) else {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                }
+                                };
+                                (*(*parser).m_declEntity).systemId = Some(system_id);
                                 (*(*parser).m_declEntity).base = pool_string_ref(
                                     dtd_pool as *const STRING_POOL,
                                     (*parser).m_curBase,
@@ -12250,7 +12249,7 @@ unsafe extern "C" fn storeEntityValue(
                                     }
                                     result = crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
                                     break '_endEntityValue;
-                                } else if !(*entity).systemId.is_null() {
+                                } else if (*entity).systemId.is_some() {
                                     if (*parser).m_externalEntityRefHandler {
                                         (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
                                         (*entity).open = crate::expat_h::XML_TRUE;
@@ -12266,15 +12265,12 @@ unsafe extern "C" fn storeEntityValue(
                                             .get(&(parser as usize))
                                             .cloned()
                                             .expect("installed external entity handler");
-                                        if handler.invoke(
+                                        if invoke_external_entity_ref_handler(
+                                            handler.as_ref(),
                                             (*parser).m_externalEntityRefHandlerArg,
-                                            ::core::ptr::null::<crate::expat_external_h::XML_Char>(
-                                            ),
-                                            (*entity).base.map_or(::core::ptr::null(), |base| {
-                                                pool_string_pointer(&raw const (*dtd).pool, base)
-                                            }),
-                                            (*entity).systemId,
-                                            (*entity).publicId,
+                                            ::core::ptr::null(),
+                                            &raw const (*dtd).pool,
+                                            entity,
                                         ) == 0
                                         {
                                             entityTrackingOnClose(
@@ -13663,13 +13659,23 @@ unsafe extern "C" fn copyEntityTable(
         if newE.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        if !(*oldE).systemId.is_null() {
+        if let Some(old_system_id) = (*oldE).systemId {
+            let old_system_id = pool_string_pointer(
+                &raw const (*(*oldParser).m_dtd).pool,
+                old_system_id,
+            );
+            if old_system_id.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
             let mut tem: *const crate::expat_external_h::XML_Char =
-                poolCopyString(newPool, (*oldE).systemId);
+                poolCopyString(newPool, old_system_id);
             if tem.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            (*newE).systemId = tem;
+            (*newE).systemId = pool_string_ref(newPool, tem);
+            if (*newE).systemId.is_none() {
+                return 0 as ::core::ffi::c_int;
+            }
             if (*oldE).base.is_some() {
                 if (*oldE).base == cachedOldBase {
                     (*newE).base = cachedNewBase;
@@ -14012,9 +14018,9 @@ unsafe fn pool_string_ref(
                 && byte_offset % char_size == 0
             {
                 return Some(PoolStringRef {
-                    block_from_tail: pool
-                        .blockCount
-                        .checked_sub(1 + block_depth)?,
+                    block_from_tail: std::num::NonZeroUsize::new(
+                        pool.blockCount.checked_sub(1 + block_depth)?.checked_add(1)?,
+                    )?,
                     offset: byte_offset / char_size,
                 });
             }
@@ -14030,7 +14036,10 @@ unsafe fn pool_string_pointer(
     string: PoolStringRef,
 ) -> *const crate::expat_external_h::XML_Char {
     let pool = &*pool;
-    let target_from_head = match pool.blockCount.checked_sub(1 + string.block_from_tail) {
+    let target_from_head = match pool
+        .blockCount
+        .checked_sub(string.block_from_tail.get())
+    {
         Some(target) => target,
         None => return ::core::ptr::null(),
     };
@@ -14046,6 +14055,30 @@ unsafe fn pool_string_pointer(
         block_depth = block_depth.wrapping_add(1);
     }
     ::core::ptr::null()
+}
+
+// The callback boundary is the only point where pool-backed entity
+// identifiers become C pointers.  Keeping the conversion with the callback
+// invocation avoids retaining allocator-owned addresses in `ENTITY`.
+unsafe fn invoke_external_entity_ref_handler(
+    handler: &dyn ExternalEntityRefCallback,
+    parser: crate::expat_h::XML_Parser,
+    context: *const crate::expat_external_h::XML_Char,
+    pool: *const STRING_POOL,
+    entity: *const ENTITY,
+) -> ::core::ffi::c_int {
+    let entity = &*entity;
+    handler.invoke(
+        parser,
+        context,
+        entity.base.map_or(::core::ptr::null(), |base| {
+            pool_string_pointer(pool, base)
+        }),
+        entity.systemId.map_or(::core::ptr::null(), |system_id| {
+            pool_string_pointer(pool, system_id)
+        }),
+        entity.publicId,
+    )
 }
 
 unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
