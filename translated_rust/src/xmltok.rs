@@ -6774,13 +6774,24 @@ fn public_id_type_is_allowed(t: ::core::ffi::c_int) -> bool {
     )
 }
 
+fn write_raw<T>(dst: *mut T, value: T) {
+    unsafe {
+        *dst = value;
+    }
+}
+
 fn set_next_tok_ptr(
     next_tok_ptr: *mut *const ::core::ffi::c_char,
     ptr: *const ::core::ffi::c_char,
 ) {
-    unsafe {
-        *next_tok_ptr = ptr;
-    }
+    write_raw(next_tok_ptr, ptr);
+}
+
+fn current_attribute(
+    atts: *mut crate::src::xmltok::ATTRIBUTE,
+    index: ::core::ffi::c_int,
+) -> *mut crate::src::xmltok::ATTRIBUTE {
+    atts.wrapping_add(index as usize)
 }
 
 fn ignore_section_tok(
@@ -6932,6 +6943,12 @@ fn get_atts(
     let mut state = crate::xmltok_impl_c::inName;
     let mut n_atts: ::core::ffi::c_int = 0;
     let mut open: ::core::ffi::c_int = 0;
+    let mut current_att = crate::src::xmltok::ATTRIBUTE {
+        name: ::core::ptr::null(),
+        valuePtr: ::core::ptr::null(),
+        valueEnd: ::core::ptr::null(),
+        normalized: 1,
+    };
     ptr = ptr.wrapping_add(width);
     loop {
         match byte_type(enc, ptr) {
@@ -6947,11 +6964,13 @@ fn get_atts(
             {
                 if state == crate::xmltok_impl_c::other {
                     if n_atts < atts_max {
-                        unsafe {
-                            let att = &mut *atts.offset(n_atts as isize);
-                            att.name = ptr;
-                            att.normalized = 1;
-                        }
+                        current_att = crate::src::xmltok::ATTRIBUTE {
+                            name: ptr,
+                            valuePtr: ::core::ptr::null(),
+                            valueEnd: ::core::ptr::null(),
+                            normalized: 1,
+                        };
+                        write_raw(current_attribute(atts, n_atts), current_att);
                     }
                     state = crate::xmltok_impl_c::inName;
                 }
@@ -6964,27 +6983,24 @@ fn get_atts(
             {
                 if state != crate::xmltok_impl_c::inValue {
                     if n_atts < atts_max {
-                        unsafe {
-                            (*atts.offset(n_atts as isize)).valuePtr = ptr.wrapping_add(width);
-                        }
+                        current_att.valuePtr = ptr.wrapping_add(width);
+                        write_raw(current_attribute(atts, n_atts), current_att);
                     }
                     state = crate::xmltok_impl_c::inValue;
                     open = t;
                 } else if open == t {
                     state = crate::xmltok_impl_c::other;
                     if n_atts < atts_max {
-                        unsafe {
-                            (*atts.offset(n_atts as isize)).valueEnd = ptr;
-                        }
+                        current_att.valueEnd = ptr;
+                        write_raw(current_attribute(atts, n_atts), current_att);
                     }
                     n_atts += 1;
                 }
             }
             t if t == crate::xmltok_impl_h::BT_AMP as ::core::ffi::c_int => {
                 if n_atts < atts_max {
-                    unsafe {
-                        (*atts.offset(n_atts as isize)).normalized = 0;
-                    }
+                    current_att.normalized = 0;
+                    write_raw(current_attribute(atts, n_atts), current_att);
                 }
             }
             t if t == crate::xmltok_impl_h::BT_S as ::core::ffi::c_int => {
@@ -6992,16 +7008,14 @@ fn get_atts(
                     state = crate::xmltok_impl_c::other;
                 } else if state == crate::xmltok_impl_c::inValue && n_atts < atts_max {
                     let next = ptr.wrapping_add(width);
-                    unsafe {
-                        let att = &mut *atts.offset(n_atts as isize);
-                        if att.normalized != 0
-                            && (ptr == att.valuePtr
-                                || ascii_byte(ptr) != crate::ascii_h::ASCII_SPACE
-                                || ascii_byte(next) == crate::ascii_h::ASCII_SPACE
-                                || byte_type(enc, next) == open)
-                        {
-                            att.normalized = 0;
-                        }
+                    if current_att.normalized != 0
+                        && (ptr == current_att.valuePtr
+                            || ascii_byte(ptr) != crate::ascii_h::ASCII_SPACE
+                            || ascii_byte(next) == crate::ascii_h::ASCII_SPACE
+                            || byte_type(enc, next) == open)
+                    {
+                        current_att.normalized = 0;
+                        write_raw(current_attribute(atts, n_atts), current_att);
                     }
                 }
             }
@@ -7011,9 +7025,8 @@ fn get_atts(
                 if state == crate::xmltok_impl_c::inName {
                     state = crate::xmltok_impl_c::other;
                 } else if state == crate::xmltok_impl_c::inValue && n_atts < atts_max {
-                    unsafe {
-                        (*atts.offset(n_atts as isize)).normalized = 0;
-                    }
+                    current_att.normalized = 0;
+                    write_raw(current_attribute(atts, n_atts), current_att);
                 }
             }
             t if t == crate::xmltok_impl_h::BT_SOL as ::core::ffi::c_int
