@@ -3128,7 +3128,11 @@ pub struct tag {
     // malloc/realloc/free sequence without retaining a dereferenceable C
     // allocation pointer in parser state.
     buffer: TagBufferStorage,
-    pub bindings: *mut BINDING,
+    // Tag-local namespace bindings are owned by the parser's active binding
+    // arena.  Keep its stable ID rather than an interior pointer into that
+    // arena: the arena may grow or swap-remove entries while tags remain
+    // active.
+    bindings: Option<BindingId>,
 }
 
 // A raw tag name must remain comparable after parsing an internal entity or
@@ -3503,7 +3507,7 @@ unsafe fn tag_storage_new(
             prefixLen: 0,
         },
         buffer: TagBufferStorage::empty(),
-        bindings: ::core::ptr::null_mut(),
+        bindings: None,
     });
     Some(TagStorage {
         tag,
@@ -5428,25 +5432,19 @@ unsafe extern "C" fn parserInit(
     );
 }
 
-unsafe extern "C" fn moveToFreeBindingList(
+unsafe fn moveToFreeBindingList(
     parser: &mut XML_ParserStruct,
-    mut bindings: *mut BINDING,
+    mut bindings: Option<BindingId>,
 ) {
-    while !bindings.is_null() {
-        let mut b: *mut BINDING = bindings;
-        bindings = (*bindings)
-            .nextTagBinding
-            .and_then(|id| parser.binding_index(id))
-            .map_or(::core::ptr::null_mut(), |index| {
-                parser.m_activeBindings[index].binding.as_ptr().cast_mut()
-            });
-        let Some(index) = parser
-            .m_activeBindings
-            .iter()
-            .position(|storage| storage.binding.as_ptr() == b)
-        else {
+    while let Some(binding_id) = bindings {
+        let Some(index) = parser.binding_index(binding_id) else {
             std::process::abort();
         };
+        bindings = parser.m_activeBindings[index]
+            .binding
+            .first()
+            .expect("binding storage has one binding")
+            .nextTagBinding;
         let storage = parser.m_activeBindings.swap_remove(index);
         parser.m_freeBindingList.bindings.push(storage);
     }
@@ -5469,7 +5467,7 @@ pub unsafe extern "C" fn XML_ParserReset(
         for mut tag_storage in active_tags.drain(..).rev() {
             let tag = tag_storage.tag.as_mut_ptr();
             moveToFreeBindingList(parser_state, (*tag).bindings);
-            (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
+            (*tag).bindings = None;
             parser_state.m_freeTagList.tags.push(tag_storage);
         }
         parser_state.m_openInternalEntities = None;
@@ -5497,9 +5495,7 @@ pub unsafe extern "C" fn XML_ParserReset(
         let inherited_bindings = parser_state
             .m_inheritedBindings
             .and_then(|index| parser_state.m_activeBindings.get(index))
-            .map_or(::core::ptr::null_mut(), |storage| {
-                storage.binding.as_ptr().cast_mut()
-            });
+            .map(|storage| storage.id);
         moveToFreeBindingList(parser_state, inherited_bindings);
         let unknown_encoding_mem = parser_state.m_unknownEncodingMem.take();
         let protocol_encoding_name = parser_state.m_protocolEncodingName.take();
@@ -6036,26 +6032,20 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
 ) -> crate::expat_h::XML_Parser {
     XML_ExternalEntityParserCreate(oldParser, context, encodingName)
 }
-unsafe extern "C" fn destroyBindings(
-    mut bindings: *mut BINDING,
+unsafe fn destroyBindings(
+    mut bindings: Option<BindingId>,
     mut parser: crate::expat_h::XML_Parser,
 ) {
-    while !bindings.is_null() {
-        let b = bindings;
+    while let Some(binding_id) = bindings {
         let parser_state = &mut *parser;
-        bindings = (*b)
-            .nextTagBinding
-            .and_then(|id| parser_state.binding_index(id))
-            .map_or(::core::ptr::null_mut(), |index| {
-                parser_state.m_activeBindings[index].binding.as_ptr().cast_mut()
-            });
-        let Some(index) = parser_state
-            .m_activeBindings
-            .iter()
-            .position(|storage| storage.binding.as_ptr() == b)
-        else {
+        let Some(index) = parser_state.binding_index(binding_id) else {
             std::process::abort();
         };
+        bindings = parser_state.m_activeBindings[index]
+            .binding
+            .first()
+            .expect("binding storage has one binding")
+            .nextTagBinding;
         parser_state.m_activeBindings.swap_remove(index).release();
     }
 }
@@ -6219,9 +6209,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
     let inherited_bindings = parser
         .m_inheritedBindings
         .and_then(|index| parser.m_activeBindings.get(index))
-        .map_or(::core::ptr::null_mut(), |storage| {
-            storage.binding.as_ptr().cast_mut()
-        });
+        .map(|storage| storage.id);
     destroyBindings(inherited_bindings, parser as *mut XML_ParserStruct);
     poolDestroy(&mut parser.m_tempPool);
     poolDestroy(&mut parser.m_temp2Pool);
@@ -9299,7 +9287,7 @@ unsafe extern "C" fn doContent(
                     let tag_index = parser_state.m_activeTags.len();
                     parser_state.m_activeTags.push(tag_storage);
                     tag = parser_state.m_activeTags[tag_index].tag.as_mut_ptr();
-                    (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
+                    (*tag).bindings = None;
                     parser_state.m_tagStack = Some(tag_index);
                     (*tag).name.localPart = None;
                     let raw_name = s.wrapping_offset((*enc).minBytesPerChar as isize);
@@ -9388,7 +9376,7 @@ unsafe extern "C" fn doContent(
                         next,
                         &raw mut (*tag).name,
                         tag,
-                        &raw mut (*tag).bindings,
+                        &mut (*tag).bindings,
                         account,
                         &mut app_atts,
                     );
@@ -9432,7 +9420,7 @@ unsafe extern "C" fn doContent(
                     let mut rawName: *const ::core::ffi::c_char =
                         s.wrapping_offset((*enc).minBytesPerChar as isize);
                     let mut result_1: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-                    let mut bindings: *mut BINDING = ::core::ptr::null_mut::<BINDING>();
+                    let mut bindings = None;
                     let mut noElmHandlers: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
                     let mut name_0: TAG_NAME = TAG_NAME {
                         str: TagNameStorage::Unset,
@@ -9473,7 +9461,7 @@ unsafe extern "C" fn doContent(
                         next,
                         &raw mut name_0,
                         ::core::ptr::null_mut(),
-                        &raw mut bindings,
+                        &mut bindings,
                         XML_ACCOUNT_NONE,
                         &mut app_atts,
                     );
@@ -9713,8 +9701,17 @@ unsafe extern "C" fn doContent(
                         } else if (*parser).m_defaultHandler {
                             reportDefault(parser, enc, s, next);
                         }
-                        while !(*tag_0).bindings.is_null() {
-                            let mut b: *mut BINDING = (*tag_0).bindings;
+                        while let Some(binding_id) = (*tag_0).bindings {
+                            let parser_state = &*parser;
+                            let Some(index) = parser_state.binding_index(binding_id) else {
+                                std::process::abort();
+                            };
+                            let binding = parser_state.m_activeBindings[index]
+                                .binding
+                                .first()
+                                .expect("binding storage has one binding");
+                            let binding_prefix = binding.prefix;
+                            let next_binding = binding.nextTagBinding;
                             if (*parser).m_endNamespaceDeclHandler {
                                 let callback = END_NAMESPACE_DECL_HANDLERS
                                     .get_or_init(|| {
@@ -9725,7 +9722,7 @@ unsafe extern "C" fn doContent(
                                     .get(&(parser as usize))
                                     .cloned();
                                 if let Some(callback) = callback {
-                                    let prefix_name = match (*b).prefix {
+                                    let prefix_name = match binding_prefix {
                                         BindingPrefix::Default => ::core::ptr::null(),
                                         BindingPrefix::Named(name) => {
                                             pool_string_pointer!(&(*dtd).pool, name)
@@ -9734,21 +9731,9 @@ unsafe extern "C" fn doContent(
                                     callback.invoke(handler_arg!(parser), prefix_name);
                                 }
                             }
+                            (*tag_0).bindings = next_binding;
                             let parser_state = &mut *parser;
-                            (*tag_0).bindings = (*b)
-                                .nextTagBinding
-                                .and_then(|id| parser_state.binding_index(id))
-                                .map_or(::core::ptr::null_mut(), |index| {
-                                    parser_state.m_activeBindings[index]
-                                        .binding
-                                        .as_ptr()
-                                        .cast_mut()
-                                });
-                            let Some(index) = parser_state
-                                .m_activeBindings
-                                .iter()
-                                .position(|storage| storage.binding.as_ptr() == b)
-                            else {
+                            let Some(index) = parser_state.binding_index(binding_id) else {
                                 std::process::abort();
                             };
                             let storage = parser_state.m_activeBindings.swap_remove(index);
@@ -10028,12 +10013,21 @@ unsafe extern "C" fn doContent(
     }
 }
 
-unsafe extern "C" fn freeBindings(
+unsafe fn freeBindings(
     mut parser: crate::expat_h::XML_Parser,
-    mut bindings: *mut BINDING,
+    mut bindings: Option<BindingId>,
 ) {
-    while !bindings.is_null() {
-        let mut b: *mut BINDING = bindings;
+    while let Some(binding_id) = bindings {
+        let parser_state = &*parser;
+        let Some(index) = parser_state.binding_index(binding_id) else {
+            std::process::abort();
+        };
+        let binding = parser_state.m_activeBindings[index]
+            .binding
+            .first()
+            .expect("binding storage has one binding");
+        let binding_prefix = binding.prefix;
+        let next_binding = binding.nextTagBinding;
         if (*parser).m_endNamespaceDeclHandler {
             let callback = END_NAMESPACE_DECL_HANDLERS
                 .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -10043,28 +10037,16 @@ unsafe extern "C" fn freeBindings(
                 .cloned();
             if let Some(callback) = callback {
                 let dtd = parser_dtd_ptr!(parser);
-                let prefix_name = match (*b).prefix {
+                let prefix_name = match binding_prefix {
                     BindingPrefix::Default => ::core::ptr::null(),
                     BindingPrefix::Named(name) => pool_string_pointer!(&(*dtd).pool, name),
                 };
                 callback.invoke(handler_arg!(parser), prefix_name);
             }
         }
+        bindings = next_binding;
         let parser_state = &mut *parser;
-        bindings = (*b)
-            .nextTagBinding
-            .and_then(|id| parser_state.binding_index(id))
-            .map_or(::core::ptr::null_mut(), |index| {
-                parser_state.m_activeBindings[index]
-                    .binding
-                    .as_ptr()
-                    .cast_mut()
-            });
-        let Some(index) = parser_state
-            .m_activeBindings
-            .iter()
-            .position(|storage| storage.binding.as_ptr() == b)
-        else {
+        let Some(index) = parser_state.binding_index(binding_id) else {
             std::process::abort();
         };
         let storage = parser_state.m_activeBindings.swap_remove(index);
@@ -10112,7 +10094,7 @@ unsafe extern "C" fn storeAtts(
     mut attEnd: *const ::core::ffi::c_char,
     mut tagNamePtr: *mut TAG_NAME,
     mut tagPtr: *mut TAG,
-    mut bindingsPtr: *mut *mut BINDING,
+    bindings: &mut Option<BindingId>,
     mut account: XML_Account,
     appAtts: &mut Vec<*const crate::expat_external_h::XML_Char>,
 ) -> crate::expat_h::XML_Error {
@@ -10403,7 +10385,7 @@ unsafe extern "C" fn storeAtts(
                     prefix,
                     attId,
                     appAtts[attIndex as usize],
-                    bindingsPtr,
+                    bindings,
                 );
                 if result_0 as u64 != 0 {
                     return result_0;
@@ -10507,7 +10489,7 @@ unsafe extern "C" fn storeAtts(
                         }
                     };
                     let mut result_1: crate::expat_h::XML_Error =
-                        addBinding(parser, prefix, id, value, bindingsPtr);
+                        addBinding(parser, prefix, id, value, bindings);
                     if result_1 as u64 != 0 {
                         return result_1;
                     }
@@ -10886,16 +10868,7 @@ unsafe extern "C" fn storeAtts(
     }
     {
         let parser_ref = &*parser;
-        let binding = *bindingsPtr;
-        let mut binding_id = if binding.is_null() {
-            None
-        } else {
-            parser_ref
-                .m_activeBindings
-                .iter()
-                .find(|storage| storage.binding.as_ptr() == binding)
-                .map(|storage| storage.id)
-        };
+        let mut binding_id = *bindings;
         while let Some(id) = binding_id {
             let Some(index) = parser_ref.binding_index(id) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -11131,7 +11104,7 @@ unsafe extern "C" fn addBinding(
     mut prefix: *mut PREFIX,
     mut attId: *const ATTRIBUTE_ID,
     mut uri: *const crate::expat_external_h::XML_Char,
-    mut bindingsPtr: *mut *mut BINDING,
+    bindings: &mut Option<BindingId>,
 ) -> crate::expat_h::XML_Error {
     let parser = &mut *parser;
     let parser_ptr = parser as *mut XML_ParserStruct;
@@ -11170,19 +11143,7 @@ unsafe extern "C" fn addBinding(
     if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
-    let next_binding = *bindingsPtr;
-    let nextTagBinding = if next_binding.is_null() {
-        None
-    } else {
-        let Some(storage) = parser
-            .m_activeBindings
-            .iter()
-            .find(|storage| storage.binding.as_ptr() == next_binding)
-        else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        Some(storage.id)
-    };
+    let nextTagBinding = *bindings;
     let is_default_prefix = ::core::ptr::eq(
         prefix as *const PREFIX,
         &raw const (*parser_dtd_ptr!(parser_ptr)).defaultPrefix,
@@ -11245,7 +11206,7 @@ unsafe extern "C" fn addBinding(
     b.attId = attribute_name;
     b.prevPrefixBinding = previous_prefix_binding;
     b.nextTagBinding = nextTagBinding;
-    *bindingsPtr = b;
+    *bindings = Some(binding_id);
     if attribute_name.is_some() && parser.m_startNamespaceDeclHandler {
         let callback = START_NAMESPACE_DECL_HANDLERS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -17763,25 +17724,21 @@ unsafe extern "C" fn setContext(
                 let mut inherited_bindings = parser
                     .m_inheritedBindings
                     .and_then(|index| parser.m_activeBindings.get(index))
-                    .map_or(::core::ptr::null_mut(), |storage| {
-                        storage.binding.as_ptr().cast_mut()
-                    });
+                    .map(|storage| storage.id);
                 let inherited_binding_result = addBinding(
                     parser as *mut XML_ParserStruct,
                     prefix,
                     ::core::ptr::null::<ATTRIBUTE_ID>(),
                     pool_start,
-                    &raw mut inherited_bindings,
+                    &mut inherited_bindings,
                 );
                 if inherited_binding_result as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     return crate::expat_h::XML_FALSE;
                 }
-                parser.m_inheritedBindings = parser
-                    .m_activeBindings
-                    .iter()
-                    .position(|storage| storage.binding.as_ptr() == inherited_bindings);
+                parser.m_inheritedBindings =
+                    inherited_bindings.and_then(|id| parser.binding_index(id));
                 parser.m_tempPool.rewind();
                 if position < context.len() {
                     position += 1;
