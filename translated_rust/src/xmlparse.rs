@@ -7261,52 +7261,81 @@ unsafe extern "C" fn processXmlDecl(
         accountingOnAbort(parser);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
-    if if (*parser).m_ns as ::core::ffi::c_int != 0 {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS
-                as unsafe extern "C" fn(
-                    ::core::ffi::c_int,
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *mut ::core::ffi::c_int,
-                ) -> ::core::ffi::c_int,
+    let enc = (*parser).m_encoding;
+    let min_bytes_per_char = (*enc).minBytesPerChar;
+    let utf8_convert = (*enc).utf8Convert.expect("non-null function pointer");
+    let name_matches = (*enc).nameMatchesAscii.expect("non-null function pointer");
+    let mut to_ascii = |ptr: *const ::core::ffi::c_char, end: *const ::core::ffi::c_char| {
+        let mut buf: [::core::ffi::c_char; 1] = [0; 1];
+        let mut out_ptr: *mut ::core::ffi::c_char = buf.as_mut_ptr();
+        let mut current = ptr;
+        utf8_convert(
+            enc,
+            &mut current,
+            end,
+            &mut out_ptr,
+            out_ptr.wrapping_offset(1),
+        );
+        if out_ptr == buf.as_mut_ptr() {
+            -1 as ::core::ffi::c_int
+        } else {
+            buf[0] as ::core::ffi::c_int
+        }
+    };
+    let mut name_matches_ascii =
+        |name: *const ::core::ffi::c_char,
+         name_end: *const ::core::ffi::c_char,
+         keyword: *const ::core::ffi::c_char| {
+            name_matches(enc, name, name_end, keyword)
+        };
+    let xml_decl = if (*parser).m_ns as ::core::ffi::c_int != 0 {
+        let mut encoding_finder =
+            |name: *const ::core::ffi::c_char, name_end: *const ::core::ffi::c_char| {
+                crate::src::xmltok::xmltok_ns_c::findEncodingNS(enc, name, name_end)
+            };
+        crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS(
+            isGeneralTextEntity,
+            min_bytes_per_char,
+            s,
+            next,
+            &mut to_ascii,
+            &mut name_matches_ascii,
+            &mut encoding_finder,
         )
     } else {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl
-                as unsafe extern "C" fn(
-                    ::core::ffi::c_int,
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *mut ::core::ffi::c_int,
-                ) -> ::core::ffi::c_int,
+        let mut encoding_finder =
+            |name: *const ::core::ffi::c_char, name_end: *const ::core::ffi::c_char| {
+                crate::src::xmltok::xmltok_ns_c::findEncoding(enc, name, name_end)
+            };
+        crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl(
+            isGeneralTextEntity,
+            min_bytes_per_char,
+            s,
+            next,
+            &mut to_ascii,
+            &mut name_matches_ascii,
+            &mut encoding_finder,
         )
+    };
+    if let Some(event_ptr) = xml_decl.bad_ptr {
+        (*parser).m_eventPtr = event_ptr;
     }
-    .expect("non-null function pointer")(
-        isGeneralTextEntity,
-        (*parser).m_encoding,
-        s,
-        next,
-        &raw mut (*parser).m_eventPtr,
-        &raw mut version,
-        &raw mut versionend,
-        &raw mut encodingName,
-        &raw mut newEncoding,
-        &raw mut standalone,
-    ) == 0
-    {
+    if let Some(parsed_version) = xml_decl.version_ptr {
+        version = parsed_version;
+    }
+    if let Some(parsed_version_end) = xml_decl.version_end_ptr {
+        versionend = parsed_version_end;
+    }
+    if let Some(parsed_encoding_name) = xml_decl.encoding_name {
+        encodingName = parsed_encoding_name;
+    }
+    if let Some(parsed_encoding) = xml_decl.encoding {
+        newEncoding = parsed_encoding;
+    }
+    if let Some(is_decl_standalone) = xml_decl.standalone {
+        standalone = is_decl_standalone;
+    }
+    if xml_decl.status == 0 {
         if isGeneralTextEntity != 0 {
             return crate::expat_h::XML_ERROR_TEXT_DECL;
         } else {
