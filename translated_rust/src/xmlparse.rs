@@ -17637,8 +17637,17 @@ unsafe fn doProlog(
                                         };
                                         *connector = 0;
                                         if dtd.in_eldecl != 0 {
-                                            let mut myindex: ::core::ffi::c_int =
-                                                nextScaffoldPart(parser);
+                                            // The current prolog pass already holds the DTD
+                                            // borrow used by the scaffold.  Keep the allocator
+                                            // token at this boundary instead of round-tripping
+                                            // through the raw parser/DTD adapter.
+                                            let mut allocate =
+                                                scaffold_allocator(std::ptr::from_mut(parser));
+                                            let myindex = next_scaffold_part_impl(
+                                                parser.m_groupSize,
+                                                dtd,
+                                                &mut allocate,
+                                            );
                                             if myindex < 0 as ::core::ffi::c_int {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
@@ -18304,7 +18313,12 @@ unsafe fn doProlog(
                         break 's_2375;
                     }
                     if dtd.in_eldecl != 0 {
-                        let mut myindex_0: ::core::ffi::c_int = nextScaffoldPart(parser);
+                        let mut allocate = scaffold_allocator(std::ptr::from_mut(parser));
+                        let myindex_0 = next_scaffold_part_impl(
+                            parser.m_groupSize,
+                            dtd,
+                            &mut allocate,
+                        );
                         if myindex_0 < 0 as ::core::ffi::c_int {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
@@ -23848,19 +23862,6 @@ fn next_scaffold_part_impl(
         scaffold.nodes.push(node);
     }
     return next;
-}
-
-unsafe extern "C" fn nextScaffoldPart(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    let group_size = (*parser).m_groupSize;
-    let dtd = parser_dtd_ptr!(parser);
-    if dtd.is_null() {
-        return -1;
-    }
-    let dtd = &mut *dtd;
-    let mut allocate = scaffold_allocator(parser);
-    next_scaffold_part_impl(group_size, dtd, &mut allocate)
 }
 
 unsafe fn scaffold_allocator(
