@@ -1321,7 +1321,7 @@ where
 trait EndNamespaceDeclCallback: Send + Sync + std::any::Any {}
 
 impl EndNamespaceDeclCallback
-    for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
+    for extern "C" fn(*mut ::core::ffi::c_void, *const crate::expat_external_h::XML_Char)
 {
 }
 
@@ -2038,7 +2038,7 @@ fn end_namespace_decl_callback_adapter(
 ) -> std::sync::Arc<dyn Fn(EndNamespaceDeclCallbackEvent<'_>) + Send + Sync> {
     std::sync::Arc::new(move |event: EndNamespaceDeclCallbackEvent<'_>| {
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
             ),
@@ -2048,12 +2048,10 @@ fn end_namespace_decl_callback_adapter(
         // The registration boundary accepts only this ABI callback shape.
         // The event keeps its parser context and optional terminated prefix
         // alive for the synchronous callback.
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event.prefix.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            );
-        }
+        callback(
+            handler_arg_from_state!(event.parser),
+            event.prefix.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+        );
     })
 }
 
@@ -10645,6 +10643,12 @@ pub unsafe extern "C" fn XML_SetNamespaceDeclHandler_ffi(
             *const crate::expat_external_h::XML_Char,
         ),
     > = unsafe { ::core::mem::transmute(start) };
+    let end: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    > = unsafe { ::core::mem::transmute(end) };
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_namespace_decl_handler_callbacks(
         &mut parser.m_startNamespaceDeclHandler,
@@ -10737,6 +10741,12 @@ pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    let end: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    > = unsafe { ::core::mem::transmute(end) };
     let registration = end_namespace_decl_handler_registration(end);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_end_namespace_decl_handler(parser, parser_address, registration)
