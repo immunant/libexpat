@@ -4261,7 +4261,15 @@ pub unsafe extern "C" fn XML_ResumeParser_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_ResumeParser(parser)
 }
-pub unsafe extern "C" fn XML_GetParsingStatus(
+pub fn XML_GetParsingStatus(
+    parser: &XML_ParserStruct,
+    status: &mut crate::expat_h::XML_ParsingStatus,
+) {
+    *status = parser.m_parsingStatus;
+}
+#[export_name = "XML_GetParsingStatus"]
+
+pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut status: *mut crate::expat_h::XML_ParsingStatus,
 ) {
@@ -4280,15 +4288,7 @@ pub unsafe extern "C" fn XML_GetParsingStatus(
             );
         }
     };
-    *status = (*parser).m_parsingStatus;
-}
-#[export_name = "XML_GetParsingStatus"]
-
-pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut status: *mut crate::expat_h::XML_ParsingStatus,
-) {
-    XML_GetParsingStatus(parser, status)
+    XML_GetParsingStatus(&*parser, &mut *status)
 }
 pub extern "C" fn XML_GetErrorCode(
     parser: crate::expat_h::XML_Parser,
@@ -4375,24 +4375,8 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
 ) -> *const ::core::ffi::c_char {
     XML_GetInputContext(parser, unsafe { offset.as_mut() }, unsafe { size.as_mut() })
 }
-pub unsafe extern "C" fn XML_GetCurrentLineNumber(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_external_h::XML_Size {
-    if parser.is_null() {
-        return 0 as crate::expat_external_h::XML_Size;
-    }
-    if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
-        (*(*parser).m_encoding)
-            .updatePosition
-            .expect("non-null function pointer")(
-            (*parser).m_encoding,
-            (*parser).m_positionPtr,
-            (*parser).m_eventPtr,
-            &raw mut (*parser).m_position,
-        );
-        (*parser).m_positionPtr = (*parser).m_eventPtr;
-    }
-    return (*parser)
+pub fn XML_GetCurrentLineNumber(parser: &XML_ParserStruct) -> crate::expat_external_h::XML_Size {
+    return parser
         .m_position
         .lineNumber
         .wrapping_add(1 as crate::expat_external_h::XML_Size);
@@ -4402,9 +4386,28 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(
 pub unsafe extern "C" fn XML_GetCurrentLineNumber_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Size {
-    XML_GetCurrentLineNumber(parser)
+    if parser.is_null() {
+        return 0 as crate::expat_external_h::XML_Size;
+    }
+    if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
+        (*(*parser).m_encoding)
+            .updatePosition
+            .expect("non-null function pointer")(
+            (*parser).m_encoding,
+            (*parser).m_positionPtr,
+            (*parser).m_eventPtr,
+            &raw mut (*parser).m_position,
+        );
+        (*parser).m_positionPtr = (*parser).m_eventPtr;
+    }
+    XML_GetCurrentLineNumber(&*parser)
 }
-pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
+pub fn XML_GetCurrentColumnNumber(parser: &XML_ParserStruct) -> crate::expat_external_h::XML_Size {
+    return parser.m_position.columnNumber;
+}
+#[export_name = "XML_GetCurrentColumnNumber"]
+
+pub unsafe extern "C" fn XML_GetCurrentColumnNumber_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Size {
     if parser.is_null() {
@@ -4421,14 +4424,7 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
         );
         (*parser).m_positionPtr = (*parser).m_eventPtr;
     }
-    return (*parser).m_position.columnNumber;
-}
-#[export_name = "XML_GetCurrentColumnNumber"]
-
-pub unsafe extern "C" fn XML_GetCurrentColumnNumber_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_external_h::XML_Size {
-    XML_GetCurrentColumnNumber(parser)
+    XML_GetCurrentColumnNumber(&*parser)
 }
 pub unsafe extern "C" fn XML_FreeContentModel(
     mut parser: crate::expat_h::XML_Parser,
