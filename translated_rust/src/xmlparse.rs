@@ -3018,7 +3018,6 @@ pub type TAG = tag;
 #[repr(C)]
 
 pub struct tag {
-    pub parent: *mut tag,
     pub rawName: *const ::core::ffi::c_char,
     pub rawNameLength: ::core::ffi::c_int,
     pub name: TAG_NAME,
@@ -3132,7 +3131,6 @@ unsafe fn tag_storage_new(
         return None;
     }
     tag.push(TAG {
-        parent: ::core::ptr::null_mut(),
         rawName: ::core::ptr::null(),
         rawNameLength: 0,
         name: TAG_NAME {
@@ -8672,15 +8670,8 @@ unsafe extern "C" fn doContent(
                     }
                     let parser_state = &mut *parser;
                     let tag_index = parser_state.m_activeTags.len();
-                    let parent = parser_state
-                        .m_tagStack
-                        .and_then(|index| parser_state.m_activeTags.get(index))
-                        .map_or(::core::ptr::null_mut(), |storage| {
-                            storage.tag.as_ptr() as *mut TAG
-                        });
                     parser_state.m_activeTags.push(tag_storage);
                     (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
-                    (*tag).parent = parent;
                     parser_state.m_tagStack = Some(tag_index);
                     (*tag).name.localPart = None;
                     (*tag).rawName = s.wrapping_offset((*enc).minBytesPerChar as isize);
