@@ -13965,6 +13965,12 @@ pub mod xmltok_ns_c {
         mut encPtr: *mut *const crate::src::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        let name = if name.is_null() {
+            None
+        } else {
+            let len = std::ffi::CStr::from_ptr(name).to_bytes_with_nul().len();
+            Some(::core::slice::from_raw_parts(name, len))
+        };
         let mut i: ::core::ffi::c_int = getEncodingIndex(name);
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return 0 as ::core::ffi::c_int;
@@ -14045,12 +14051,12 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        if streqci(&raw mut buf as *mut ::core::ffi::c_char, KW_UTF_16.as_ptr()) != 0
+        if streqci(buf.iter().copied(), KW_UTF_16.iter().copied()) != 0
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
+        i = getEncodingIndex(Some(&buf));
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
@@ -14185,6 +14191,12 @@ pub mod xmltok_ns_c {
         mut encPtr: *mut *const crate::src::xmltok::ENCODING,
         mut name: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
+        let name = if name.is_null() {
+            None
+        } else {
+            let len = std::ffi::CStr::from_ptr(name).to_bytes_with_nul().len();
+            Some(::core::slice::from_raw_parts(name, len))
+        };
         let mut i: ::core::ffi::c_int = getEncodingIndex(name);
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return 0 as ::core::ffi::c_int;
@@ -14265,12 +14277,12 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        if streqci(&raw mut buf as *mut ::core::ffi::c_char, KW_UTF_16.as_ptr()) != 0
+        if streqci(buf.iter().copied(), KW_UTF_16.iter().copied()) != 0
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
             return enc;
         }
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
+        i = getEncodingIndex(Some(&buf));
         if i == UNKNOWN_ENC as ::core::ffi::c_int {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
@@ -22524,17 +22536,19 @@ static big2_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-unsafe extern "C" fn streqci(
-    mut s1: *const ::core::ffi::c_char,
-    mut s2: *const ::core::ffi::c_char,
+fn streqci(
+    s1: impl IntoIterator<Item = ::core::ffi::c_char>,
+    s2: impl IntoIterator<Item = ::core::ffi::c_char>,
 ) -> ::core::ffi::c_int {
+    let mut s1 = s1.into_iter();
+    let mut s2 = s2.into_iter();
     loop {
-        let c2rust_fresh58 = s1;
-        s1 = s1.offset(1);
-        let mut c1: ::core::ffi::c_char = *c2rust_fresh58;
-        let c2rust_fresh59 = s2;
-        s2 = s2.offset(1);
-        let mut c2: ::core::ffi::c_char = *c2rust_fresh59;
+        let Some(mut c1) = s1.next() else {
+            return 0 as ::core::ffi::c_int;
+        };
+        let Some(mut c2) = s2.next() else {
+            return 0 as ::core::ffi::c_int;
+        };
         if crate::ascii_h::ASCII_a_1 <= c1 as ::core::ffi::c_int
             && c1 as ::core::ffi::c_int <= crate::ascii_h::ASCII_z
         {
@@ -23485,25 +23499,22 @@ static KW_UTF_16LE: [::core::ffi::c_char; 9] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    let encoding_names: [*const ::core::ffi::c_char; 6] = [
-        KW_ISO_8859_1.as_ptr(),
-        KW_US_ASCII.as_ptr(),
-        KW_UTF_8.as_ptr(),
-        KW_UTF_16.as_ptr(),
-        KW_UTF_16BE.as_ptr(),
-        KW_UTF_16LE.as_ptr(),
-    ];
-    let mut i: ::core::ffi::c_int = 0;
-    if name.is_null() {
+fn getEncodingIndex(name: Option<&[::core::ffi::c_char]>) -> ::core::ffi::c_int {
+    let Some(name) = name else {
         return NO_ENC as ::core::ffi::c_int;
-    }
-    i = 0 as ::core::ffi::c_int;
-    while i < encoding_names.len() as ::core::ffi::c_int {
-        if streqci(name, encoding_names[i as usize]) != 0 {
-            return i;
+    };
+    let encoding_names: [&[::core::ffi::c_char]; 6] = [
+        &KW_ISO_8859_1,
+        &KW_US_ASCII,
+        &KW_UTF_8,
+        &KW_UTF_16,
+        &KW_UTF_16BE,
+        &KW_UTF_16LE,
+    ];
+    for (i, encoding_name) in encoding_names.iter().enumerate() {
+        if streqci(name.iter().copied(), encoding_name.iter().copied()) != 0 {
+            return i as ::core::ffi::c_int;
         }
-        i += 1;
     }
     return UNKNOWN_ENC as ::core::ffi::c_int;
 }
