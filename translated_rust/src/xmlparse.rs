@@ -11423,44 +11423,66 @@ unsafe fn doContent(
     }
 }
 
+// Snapshot the link before dispatching the namespace callback.  The callback
+// may re-enter the parser, so the binding must remain active until after it
+// returns, but the next link and prefix are value types that remain valid
+// across that re-entry.
+#[derive(Copy, Clone)]
+struct BindingReleaseEvent {
+    next: Option<BindingId>,
+    prefix: BindingPrefix,
+}
+
+fn binding_release_event(
+    parser: &XML_ParserStruct,
+    binding_id: BindingId,
+) -> BindingReleaseEvent {
+    let Some(index) = parser.binding_index(binding_id) else {
+        std::process::abort();
+    };
+    let binding = parser.m_activeBindings[index]
+        .binding
+        .first()
+        .expect("binding storage has one binding");
+    BindingReleaseEvent {
+        next: binding.nextTagBinding,
+        prefix: binding.prefix,
+    }
+}
+
+fn release_binding(parser: &mut XML_ParserStruct, binding_id: BindingId) {
+    let Some(index) = parser.binding_index(binding_id) else {
+        std::process::abort();
+    };
+    let storage = parser.m_activeBindings.swap_remove(index);
+    parser.m_freeBindingList.bindings.push(storage);
+}
+
 unsafe fn freeBindings(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: crate::expat_h::XML_Parser,
     mut bindings: Option<BindingId>,
 ) {
+    let parser_state = &mut *parser;
     while let Some(binding_id) = bindings {
-        let parser_state = &*parser;
-        let Some(index) = parser_state.binding_index(binding_id) else {
-            std::process::abort();
-        };
-        let binding = parser_state.m_activeBindings[index]
-            .binding
-            .first()
-            .expect("binding storage has one binding");
-        let binding_prefix = binding.prefix;
-        let next_binding = binding.nextTagBinding;
-        if (*parser).m_endNamespaceDeclHandler {
+        let event = binding_release_event(parser_state, binding_id);
+        if parser_state.m_endNamespaceDeclHandler {
             let callback = END_NAMESPACE_DECL_HANDLERS
                 .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .get(&(parser as usize))
+                .get(&std::ptr::from_ref(parser_state).addr())
                 .cloned();
             if let Some(callback) = callback {
-                let dtd = parser_dtd_ptr!(parser);
-                let prefix_name = match binding_prefix {
+                let dtd = parser_dtd_ptr!(parser_state);
+                let prefix_name = match event.prefix {
                     BindingPrefix::Default => ::core::ptr::null(),
                     BindingPrefix::Named(name) => pool_string_pointer!(&(*dtd).pool, name),
                 };
-                callback.invoke(handler_arg!(parser), prefix_name);
+                callback.invoke(handler_arg_from_state!(parser_state), prefix_name);
             }
         }
-        bindings = next_binding;
-        let parser_state = &mut *parser;
-        let Some(index) = parser_state.binding_index(binding_id) else {
-            std::process::abort();
-        };
-        let storage = parser_state.m_activeBindings.swap_remove(index);
-        parser_state.m_freeBindingList.bindings.push(storage);
+        bindings = event.next;
+        release_binding(parser_state, binding_id);
     }
 }
 
