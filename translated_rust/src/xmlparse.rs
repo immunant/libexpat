@@ -10324,7 +10324,15 @@ unsafe extern "C" fn doCdataSection(
         }
         error
     };
-    let parser_events = ::core::ptr::eq(enc_ptr, parser_encoding(parser_handle));
+    // Parser-originated CDATA cursors must lie in the parser-owned input
+    // buffer.  This is the same distinction previously inferred through the
+    // current encoding pointer, but validating the cursor pair directly also
+    // establishes the slice boundary used by the tokenizer below.  Internal
+    // entity replacement text is held in a distinct pool allocation.
+    let parser_events = (&*parser_handle)
+        .m_buffer
+        .window_from_addresses(s.addr(), end.addr())
+        .is_some();
     let mut eventPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
@@ -10380,7 +10388,17 @@ unsafe extern "C" fn doCdataSection(
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         set_event_end!(&mut *parser_handle, parser_events, eventEndPP, next);
-        let handler_flags = cdata_handler_flags(&*parser_handle);
+        // The flags and callback context are both observed between tokens.
+        // `callback_context` is only a transient boundary value: it is not
+        // retained in parser state, and the multi-chunk character-data path
+        // below continues to re-read it before each callback.
+        let (handler_flags, callback_context) = {
+            let parser_state = &*parser_handle;
+            (
+                cdata_handler_flags(parser_state),
+                handler_arg_from_state!(parser_state),
+            )
+        };
         match tok {
             crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE => {
                 if handler_flags.end {
@@ -10391,7 +10409,7 @@ unsafe extern "C" fn doCdataSection(
                         .get(&(parser_handle as usize))
                         .cloned()
                         .expect("installed end CDATA handler");
-                    callback.invoke(handler_arg!(parser_handle));
+                    callback.invoke(callback_context);
                 } else if handler_flags.default {
                     reportDefault(parser_handle, enc_ptr, s, next);
                 }
@@ -10413,9 +10431,21 @@ unsafe extern "C" fn doCdataSection(
             }
             crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
                 if handler_flags.character_data {
-                    let mut c: crate::expat_external_h::XML_Char =
+                    let c: crate::expat_external_h::XML_Char =
                         0xa as crate::expat_external_h::XML_Char;
-                    callCharacterDataHandler(parser_handle, &raw const c, 1 as ::core::ffi::c_int);
+                    let callback = CHARACTER_DATA_HANDLERS
+                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .get(&(parser_handle as usize))
+                        .cloned();
+                    if let Some(callback) = callback {
+                        callback.invoke(
+                            callback_context,
+                            &raw const c,
+                            1 as ::core::ffi::c_int,
+                        );
+                    }
                 } else if handler_flags.default {
                     reportDefault(parser_handle, enc_ptr, s, next);
                 }
