@@ -598,6 +598,70 @@ pub type CONVERTER = Option<
     ) -> ::core::ffi::c_int,
 >;
 
+trait UnknownEncodingConverter: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        input: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int;
+}
+
+impl UnknownEncodingConverter
+    for unsafe extern "C" fn(*mut ::core::ffi::c_void, *const ::core::ffi::c_char) -> ::core::ffi::c_int
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        input: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        self(user_data, input)
+    }
+}
+
+// Unknown encodings are initialized in caller-provided storage.  Keep the
+// foreign callback in this boundary adapter instead of retaining it in that
+// internal tokenizer object; the storage address is a stable key until the
+// parser resets or is freed.
+static UNKNOWN_ENCODING_CONVERTERS: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingConverter>>,
+    >,
+> = std::sync::OnceLock::new();
+
+fn register_unknown_encoding_converter(
+    storage_id: usize,
+    converter: Option<std::sync::Arc<dyn UnknownEncodingConverter>>,
+) {
+    let mut converters = UNKNOWN_ENCODING_CONVERTERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(converter) = converter {
+        converters.insert(storage_id, converter);
+    } else {
+        converters.remove(&storage_id);
+    }
+}
+
+fn unknown_encoding_converter(
+    storage_id: usize,
+) -> Option<std::sync::Arc<dyn UnknownEncodingConverter>> {
+    UNKNOWN_ENCODING_CONVERTERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&storage_id)
+        .cloned()
+}
+
+pub fn unregister_unknown_encoding_converter(storage_id: usize) {
+    UNKNOWN_ENCODING_CONVERTERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&storage_id);
+}
+
 pub mod xmltok_impl_c {
 
     enum NormalCharCheck {
@@ -11847,7 +11911,7 @@ pub type C2Rust_Unnamed_7 = ::core::ffi::c_uint;
 
 pub struct unknown_encoding {
     pub normal: normal_encoding,
-    pub convert: crate::src::xmltok::CONVERTER,
+    pub converter_id: usize,
     pub userData: *mut ::core::ffi::c_void,
     pub utf16: [::core::ffi::c_ushort; 256],
     pub utf8: [[::core::ffi::c_char; 4]; 256],
@@ -13743,7 +13807,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
     invalid4: Invalid4Checker::Never,
 };
 
-static mut latin1_encoding: normal_encoding = normal_encoding {
+static latin1_encoding: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
             crate::src::xmltok::Scanner::NormalProlog,
@@ -17141,7 +17205,7 @@ unsafe extern "C" fn doParseXmlDecl(
     1
 }
 
-unsafe extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
+fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
     match result >> 8 as ::core::ffi::c_int {
         216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => return -1 as ::core::ffi::c_int,
         0 => {
@@ -17252,8 +17316,9 @@ unsafe extern "C" fn unknown_isName(
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let mut c: ::core::ffi::c_int = unknown_encoding_converter((*uenc).converter_id)
+        .expect("unknown encoding converter is registered")
+        .invoke((*uenc).userData, p);
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return 0 as ::core::ffi::c_int;
     }
@@ -17272,8 +17337,9 @@ unsafe extern "C" fn unknown_isNmstrt(
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let mut c: ::core::ffi::c_int = unknown_encoding_converter((*uenc).converter_id)
+        .expect("unknown encoding converter is registered")
+        .invoke((*uenc).userData, p);
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return 0 as ::core::ffi::c_int;
     }
@@ -17292,8 +17358,9 @@ unsafe extern "C" fn unknown_isInvalid(
     mut p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let mut c: ::core::ffi::c_int = unknown_encoding_converter((*uenc).converter_id)
+        .expect("unknown encoding converter is registered")
+        .invoke((*uenc).userData, p);
     return (c & !(0xffff as ::core::ffi::c_int) != 0
         || checkCharRefNumber(c) < 0 as ::core::ffi::c_int) as ::core::ffi::c_int;
 }
@@ -17320,9 +17387,10 @@ unsafe extern "C" fn unknown_toUtf8(
         utf8 = utf8.offset(1);
         n = *c2rust_fresh37 as ::core::ffi::c_int;
         if n == 0 as ::core::ffi::c_int {
-            let mut c: ::core::ffi::c_int =
-                (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP);
-            n = XmlUtf8Encode(c, &raw mut buf as *mut ::core::ffi::c_char);
+            let mut c: ::core::ffi::c_int = unknown_encoding_converter((*uenc).converter_id)
+                .expect("unknown encoding converter is registered")
+                .invoke((*uenc).userData, *fromP);
+            n = encode_unknown_utf8(c, &mut buf) as ::core::ffi::c_int;
             if n as isize > toLim.offset_from(*toP) {
                 return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
             }
@@ -17359,8 +17427,9 @@ unsafe extern "C" fn unknown_toUtf16(
     while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
         let mut c: ::core::ffi::c_ushort = (*uenc).utf16[**fromP as ::core::ffi::c_uchar as usize];
         if c as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            c = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP)
-                as ::core::ffi::c_ushort;
+            c = unknown_encoding_converter((*uenc).converter_id)
+                .expect("unknown encoding converter is registered")
+                .invoke((*uenc).userData, *fromP) as ::core::ffi::c_ushort;
             *fromP = (*fromP).offset(
                 ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
@@ -17402,18 +17471,28 @@ fn bitmap_contains(
 }
 
 fn encode_unknown_utf8(character: ::core::ffi::c_int, output: &mut [::core::ffi::c_char]) -> usize {
-    if character < min2 as ::core::ffi::c_int {
+    if character < 0 || output.is_empty() {
+        0
+    } else if character < min2 as ::core::ffi::c_int {
         output[0] = character as ::core::ffi::c_char;
         1
-    } else if character < min3 as ::core::ffi::c_int {
+    } else if character < min3 as ::core::ffi::c_int && output.len() >= 2 {
         output[0] = (character >> 6 | UTF8_cval2 as ::core::ffi::c_int) as ::core::ffi::c_char;
         output[1] = (character & 0x3f | 0x80) as ::core::ffi::c_char;
         2
-    } else {
+    } else if character < min4 as ::core::ffi::c_int && output.len() >= 3 {
         output[0] = (character >> 12 | UTF8_cval3 as ::core::ffi::c_int) as ::core::ffi::c_char;
         output[1] = (character >> 6 & 0x3f | 0x80) as ::core::ffi::c_char;
         output[2] = (character & 0x3f | 0x80) as ::core::ffi::c_char;
         3
+    } else if character < 0x110000 && output.len() >= 4 {
+        output[0] = (character >> 18 | UTF8_cval4 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        output[1] = (character >> 12 & 0x3f | 0x80) as ::core::ffi::c_char;
+        output[2] = (character >> 6 & 0x3f | 0x80) as ::core::ffi::c_char;
+        output[3] = (character & 0x3f | 0x80) as ::core::ffi::c_char;
+        4
+    } else {
+        0
     }
 }
 
@@ -17507,18 +17586,25 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     convert: crate::src::xmltok::CONVERTER,
     userData: *mut ::core::ffi::c_void,
 ) -> *mut crate::src::xmltok::ENCODING {
+    register_unknown_encoding_converter(mem as usize, None);
     let (encoding, table, latin1) = unsafe {
         (
             &mut *(mem as *mut unknown_encoding),
             &*(table as *const [::core::ffi::c_int; 256]),
-            &*::core::ptr::addr_of!(latin1_encoding),
+            &latin1_encoding,
         )
     };
     if !initialize_unknown_encoding(encoding, table, latin1, convert.is_some()) {
         return ::core::ptr::null_mut();
     }
+    encoding.converter_id = mem as usize;
     encoding.userData = userData;
-    encoding.convert = convert;
+    register_unknown_encoding_converter(
+        encoding.converter_id,
+        convert.map(|callback| {
+            std::sync::Arc::new(callback) as std::sync::Arc<dyn UnknownEncodingConverter>
+        }),
+    );
     if convert.is_some() {
         install_unknown_name_checks(encoding);
     }

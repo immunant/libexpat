@@ -3371,9 +3371,11 @@ pub unsafe extern "C" fn XML_ParserReset(
         (*parser).m_freeValueEntities = openEntity_1;
     }
     moveToFreeBindingList(parser, (*parser).m_inheritedBindings);
+    let unknown_encoding_mem = (*parser).m_unknownEncodingMem;
+    crate::src::xmltok::unregister_unknown_encoding_converter(unknown_encoding_mem as usize);
     expat_free(
         parser,
-        (*parser).m_unknownEncodingMem,
+        unknown_encoding_mem,
         1686 as ::core::ffi::c_int,
     );
     if (*parser).m_unknownEncodingRelease.is_some() {
@@ -4001,6 +4003,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         parser.m_nsAtts as *mut ::core::ffi::c_void,
         2012 as ::core::ffi::c_int,
     );
+    crate::src::xmltok::unregister_unknown_encoding_converter(parser.m_unknownEncodingMem as usize);
     expat_free(
         parser as *mut XML_ParserStruct,
         parser.m_unknownEncodingMem,
