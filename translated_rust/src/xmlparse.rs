@@ -25878,11 +25878,7 @@ fn hash_table_init(table: &mut HASH_TABLE, allocator: HashTableAllocator) {
     table.allocator = Some(allocator);
 }
 
-unsafe extern "C" fn hashTableIterInit<'a>(
-    mut iter: *mut HASH_TABLE_ITER<'a>,
-    table: &'a HASH_TABLE,
-) {
-    let iter = &mut *iter;
+fn hashTableIterInit<'a>(iter: &mut HASH_TABLE_ITER<'a>, table: &'a HASH_TABLE) {
     iter.table = Some(table);
     iter.next = 0 as crate::__stddef_size_t_h::size_t;
 }
