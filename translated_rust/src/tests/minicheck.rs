@@ -1,4 +1,6 @@
 use ::c2rust_bitfields;
+use std::ptr::NonNull;
+use std::sync::{Mutex, MutexGuard};
 extern "C" {
     pub type _IO_wide_data;
     pub type _IO_codecvt;
@@ -124,61 +126,190 @@ pub const NULL: *mut ::core::ffi::c_void =
     ::core::ptr::null::<::core::ffi::c_void>() as *mut ::core::ffi::c_void;
 pub const CK_SILENT: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
 pub const CK_VERBOSE: ::core::ffi::c_int = 2 as ::core::ffi::c_int;
+pub const SUBTEST_LEN: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
+
+#[derive(Copy, Clone)]
+struct CheckState {
+    current_function: usize,
+    current_subtest: [::core::ffi::c_char; SUBTEST_LEN as usize],
+    current_lineno: ::core::ffi::c_int,
+    current_filename: usize,
+}
+
+static CHECK_STATE: Mutex<CheckState> = Mutex::new(CheckState {
+    current_function: 0,
+    current_subtest: [0; SUBTEST_LEN as usize],
+    current_lineno: -(1 as ::core::ffi::c_int),
+    current_filename: 0,
+});
+
+fn check_state() -> MutexGuard<'static, CheckState> {
+    CHECK_STATE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn allocate_zeroed<T>() -> *mut T {
+    unsafe { calloc(1 as size_t, ::core::mem::size_of::<T>() as size_t) as *mut T }
+}
+
+fn reallocate_array<T>(ptr: *mut T, len: usize) -> *mut T {
+    unsafe {
+        realloc(
+            ptr as *mut ::core::ffi::c_void,
+            (::core::mem::size_of::<T>() as size_t).wrapping_mul(len as size_t),
+        ) as *mut T
+    }
+}
+
+fn free_ptr<T>(ptr: *mut T) {
+    unsafe {
+        free(ptr as *mut ::core::ffi::c_void);
+    }
+}
+
+fn with_ref<T, R>(ptr: *const T, f: impl FnOnce(&T) -> R) -> Option<R> {
+    let ptr = NonNull::new(ptr as *mut T)?;
+    Some(unsafe { f(ptr.as_ref()) })
+}
+
+fn with_mut<T, R>(ptr: *mut T, f: impl FnOnce(&mut T) -> R) -> Option<R> {
+    let mut ptr = NonNull::new(ptr)?;
+    Some(unsafe { f(ptr.as_mut()) })
+}
+
+fn assert_ptr<T>(
+    ptr: *mut T,
+    expect_null: bool,
+    assertion: *const ::core::ffi::c_char,
+    file: *const ::core::ffi::c_char,
+    line: ::core::ffi::c_uint,
+    function: *const ::core::ffi::c_char,
+) -> Option<NonNull<T>> {
+    let ptr = NonNull::new(ptr);
+    if ptr.is_none() != expect_null {
+        unsafe {
+            __assert_fail(assertion, file, line, function);
+        }
+    }
+    ptr
+}
+
+enum PrintMessage {
+    Pass(*const ::core::ffi::c_char),
+    Fail {
+        context: *const ::core::ffi::c_char,
+        function: *const ::core::ffi::c_char,
+        phase_info: *const ::core::ffi::c_char,
+        filename: *const ::core::ffi::c_char,
+        line: ::core::ffi::c_int,
+    },
+    Summary {
+        display: ::core::ffi::c_int,
+        nchecks: ::core::ffi::c_int,
+        nfailures: ::core::ffi::c_int,
+    },
+}
+
+fn print_message(message: PrintMessage) {
+    unsafe {
+        match message {
+            PrintMessage::Pass(function) => {
+                printf(
+                    b"PASS: %s\n\0".as_ptr() as *const ::core::ffi::c_char,
+                    function,
+                );
+            }
+            PrintMessage::Fail {
+                context,
+                function,
+                phase_info,
+                filename,
+                line,
+            } => {
+                printf(
+                    b"FAIL [%s]: %s (%s at %s:%d)\n\0".as_ptr() as *const ::core::ffi::c_char,
+                    context,
+                    function,
+                    phase_info,
+                    filename,
+                    line,
+                );
+            }
+            PrintMessage::Summary {
+                display,
+                nchecks,
+                nfailures,
+            } => {
+                printf(
+                    b"%d%%: Checks: %d, Failed: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
+                    display,
+                    nchecks,
+                    nfailures,
+                );
+            }
+        }
+    }
+}
+
+fn check_state_function(state: &CheckState) -> *const ::core::ffi::c_char {
+    state.current_function as *const ::core::ffi::c_char
+}
+
+fn check_state_filename(state: &CheckState) -> *const ::core::ffi::c_char {
+    state.current_filename as *const ::core::ffi::c_char
+}
 #[no_mangle]
 pub unsafe extern "C" fn suite_create(mut name: *const ::core::ffi::c_char) -> *mut Suite {
-    unsafe {
-        let mut suite: *mut Suite =
-            calloc(1 as size_t, ::core::mem::size_of::<Suite>() as size_t) as *mut Suite;
-        if !suite.is_null() {
-            (*suite).name = name;
-        }
-        return suite;
-    }
+    let suite = allocate_zeroed::<Suite>();
+    let _ = with_mut(suite, |suite| {
+        suite.name = name;
+    });
+    suite
 }
 #[no_mangle]
 pub unsafe extern "C" fn tcase_create(mut name: *const ::core::ffi::c_char) -> *mut TCase {
-    unsafe {
-        let mut tc: *mut TCase =
-            calloc(1 as size_t, ::core::mem::size_of::<TCase>() as size_t) as *mut TCase;
-        if !tc.is_null() {
-            (*tc).name = name;
-        }
-        return tc;
-    }
+    let tc = allocate_zeroed::<TCase>();
+    let _ = with_mut(tc, |tc| {
+        tc.name = name;
+    });
+    tc
 }
 #[no_mangle]
 pub unsafe extern "C" fn suite_add_tcase(mut suite: *mut Suite, mut tc: *mut TCase) {
-    unsafe {
-        if !suite.is_null() {
-        } else {
-            __assert_fail(
-                b"suite != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-                75 as ::core::ffi::c_uint,
-                b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        if !tc.is_null() {
-        } else {
-            __assert_fail(
-                b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-                76 as ::core::ffi::c_uint,
-                b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        if (*tc).next_tcase.is_null() {
-        } else {
-            __assert_fail(
-                b"tc->next_tcase == NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-                77 as ::core::ffi::c_uint,
-                b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        (*tc).next_tcase = (*suite).tests;
-        (*suite).tests = tc;
-    }
+    let suite = assert_ptr(
+        suite,
+        false,
+        b"suite != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+        75 as ::core::ffi::c_uint,
+        b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
+    )
+    .unwrap();
+    let tc = assert_ptr(
+        tc,
+        false,
+        b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+        76 as ::core::ffi::c_uint,
+        b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
+    )
+    .unwrap();
+    let _ = assert_ptr(
+        with_ref(tc.as_ptr(), |tc| tc.next_tcase).unwrap_or(::core::ptr::null_mut()),
+        true,
+        b"tc->next_tcase == NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+        77 as ::core::ffi::c_uint,
+        b"void suite_add_tcase(Suite *, TCase *)\0".as_ptr() as *const ::core::ffi::c_char,
+    );
+    let tests = with_ref(suite.as_ptr(), |suite| suite.tests).unwrap_or(::core::ptr::null_mut());
+    let _ = with_mut(tc.as_ptr(), |tc| {
+        tc.next_tcase = tests;
+    });
+    let _ = with_mut(suite.as_ptr(), |suite| {
+        suite.tests = tc.as_ptr();
+    });
 }
 #[no_mangle]
 pub unsafe extern "C" fn tcase_add_checked_fixture(
@@ -186,174 +317,156 @@ pub unsafe extern "C" fn tcase_add_checked_fixture(
     mut setup: tcase_setup_function,
     mut teardown: tcase_teardown_function,
 ) {
-    unsafe {
-        if !tc.is_null() {
-        } else {
-            __assert_fail(
-                b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/minicheck.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                86 as ::core::ffi::c_uint,
-                b"void tcase_add_checked_fixture(TCase *, tcase_setup_function, tcase_teardown_function)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        (*tc).setup = setup;
-        (*tc).teardown = teardown;
-    }
+    let tc = assert_ptr(
+        tc,
+        false,
+        b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+        86 as ::core::ffi::c_uint,
+        b"void tcase_add_checked_fixture(TCase *, tcase_setup_function, tcase_teardown_function)\0"
+            .as_ptr() as *const ::core::ffi::c_char,
+    )
+    .unwrap();
+    let _ = with_mut(tc.as_ptr(), |tc| {
+        tc.setup = setup;
+        tc.teardown = teardown;
+    });
 }
 #[no_mangle]
 pub unsafe extern "C" fn tcase_add_test(mut tc: *mut TCase, mut test: tcase_test_function) {
-    unsafe {
-        if !tc.is_null() {
-        } else {
-            __assert_fail(
-                b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-                93 as ::core::ffi::c_uint,
-                b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if (*tc).allocated == (*tc).ntests {
-            let mut nalloc: ::core::ffi::c_int = (*tc).allocated + 100 as ::core::ffi::c_int;
-            let mut new_size: size_t = (::core::mem::size_of::<tcase_test_function>() as size_t)
-                .wrapping_mul(nalloc as size_t);
-            let new_tests: *mut tcase_test_function =
-                realloc((*tc).tests as *mut ::core::ffi::c_void, new_size)
-                    as *mut tcase_test_function;
-            if !new_tests.is_null() {
-            } else {
-                __assert_fail(
-                    b"new_tests != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    99 as ::core::ffi::c_uint,
-                    b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            };
-            (*tc).tests = new_tests;
-            (*tc).allocated = nalloc;
-        }
-        let ref mut c2rust_fresh0 = *(*tc).tests.offset((*tc).ntests as isize);
-        *c2rust_fresh0 = test;
-        (*tc).ntests += 1;
+    let tc = assert_ptr(
+        tc,
+        false,
+        b"tc != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+        93 as ::core::ffi::c_uint,
+        b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
+            as *const ::core::ffi::c_char,
+    )
+    .unwrap();
+    if with_ref(tc.as_ptr(), |tc| tc.allocated == tc.ntests).unwrap_or(false) {
+        let nalloc = with_ref(tc.as_ptr(), |tc| tc.allocated + 100 as ::core::ffi::c_int).unwrap();
+        let current_tests = with_ref(tc.as_ptr(), |tc| tc.tests).unwrap_or(::core::ptr::null_mut());
+        let new_tests = reallocate_array(current_tests, nalloc as usize);
+        let _ = assert_ptr(
+            new_tests,
+            false,
+            b"new_tests != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+            b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+            99 as ::core::ffi::c_uint,
+            b"void tcase_add_test(TCase *, tcase_test_function)\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+        let _ = with_mut(tc.as_ptr(), |tc| {
+            tc.tests = new_tests;
+            tc.allocated = nalloc;
+        });
+    }
+
+    let index = with_ref(tc.as_ptr(), |tc| tc.ntests as usize).unwrap();
+    let tests = with_ref(tc.as_ptr(), |tc| tc.tests).unwrap();
+    let _ = with_mut(tests.wrapping_add(index), |slot| {
+        *slot = test;
+    });
+    let _ = with_mut(tc.as_ptr(), |tc| {
+        tc.ntests += 1;
+    });
+}
+fn tcase_free(tc: *mut TCase) {
+    if let Some(tests) = with_ref(tc, |tc| tc.tests) {
+        free_ptr(tests);
+        free_ptr(tc);
     }
 }
-unsafe extern "C" fn tcase_free(mut tc: *mut TCase) {
-    unsafe {
-        if tc.is_null() {
-            return;
-        }
-        free((*tc).tests as *mut ::core::ffi::c_void);
-        free(tc as *mut ::core::ffi::c_void);
+fn suite_free(suite: *mut Suite) {
+    let Some(mut next_tcase) = with_mut(suite, |suite| {
+        ::core::mem::replace(&mut suite.tests, ::core::ptr::null_mut())
+    }) else {
+        return;
+    };
+
+    while !next_tcase.is_null() {
+        let current = next_tcase;
+        next_tcase = with_ref(current, |tc| tc.next_tcase).unwrap_or(::core::ptr::null_mut());
+        tcase_free(current);
     }
-}
-unsafe extern "C" fn suite_free(mut suite: *mut Suite) {
-    unsafe {
-        if suite.is_null() {
-            return;
-        }
-        while !(*suite).tests.is_null() {
-            let mut next: *mut TCase = (*(*suite).tests).next_tcase;
-            tcase_free((*suite).tests);
-            (*suite).tests = next;
-        }
-        free(suite as *mut ::core::ffi::c_void);
-    }
+
+    free_ptr(suite);
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_create(mut suite: *mut Suite) -> *mut SRunner {
-    unsafe {
-        let runner: *mut SRunner =
-            calloc(1 as size_t, ::core::mem::size_of::<SRunner>() as size_t) as *mut SRunner;
-        if !runner.is_null() {
-            (*runner).suite = suite;
-        }
-        return runner;
-    }
+    let runner = allocate_zeroed::<SRunner>();
+    let _ = with_mut(runner, |runner| {
+        runner.suite = suite;
+    });
+    runner
 }
 static mut env: jmp_buf = [__jmp_buf_tag {
     __jmpbuf: [0; 8],
     __mask_was_saved: 0,
     __saved_mask: __sigset_t { __val: [0; 16] },
 }; 1];
-pub const SUBTEST_LEN: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
-static mut _check_current_function: *const ::core::ffi::c_char =
-    ::core::ptr::null::<::core::ffi::c_char>();
-static mut _check_current_subtest: [::core::ffi::c_char; 50] = [0; 50];
-static mut _check_current_lineno: ::core::ffi::c_int = -(1 as ::core::ffi::c_int);
-static mut _check_current_filename: *const ::core::ffi::c_char =
-    ::core::ptr::null::<::core::ffi::c_char>();
 #[no_mangle]
 pub unsafe extern "C" fn _check_set_test_info(
     mut function: *const ::core::ffi::c_char,
     mut filename: *const ::core::ffi::c_char,
     mut lineno: ::core::ffi::c_int,
 ) {
-    unsafe {
-        _check_current_function = function;
-        set_subtest(
-            b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-            b"\0".as_ptr() as *const ::core::ffi::c_char,
-        );
-        _check_current_lineno = lineno;
-        _check_current_filename = filename;
-    }
+    let mut state = check_state();
+    state.current_function = function as usize;
+    state.current_lineno = lineno;
+    state.current_filename = filename as usize;
+    state.current_subtest = [0; SUBTEST_LEN as usize];
 }
 #[no_mangle]
 pub unsafe extern "C" fn set_subtest(mut fmt: *const ::core::ffi::c_char, mut c2rust_args: ...) {
+    let mut ap: ::core::ffi::VaListImpl = c2rust_args.clone();
+    let mut state = check_state();
     unsafe {
-        let mut ap: ::core::ffi::VaListImpl;
-        ap = c2rust_args.clone();
         vsnprintf(
-            &raw mut _check_current_subtest as *mut ::core::ffi::c_char,
+            state.current_subtest.as_mut_ptr(),
             SUBTEST_LEN as size_t,
             fmt,
             ap.as_va_list(),
         );
-        let mut i: size_t = 0 as size_t;
-        while i < SUBTEST_LEN as size_t {
-            if _check_current_subtest[i as usize] as ::core::ffi::c_int == '\n' as i32 {
-                _check_current_subtest[i as usize] = ' ' as i32 as ::core::ffi::c_char;
-            }
-            i = i.wrapping_add(1);
-        }
-        _check_current_subtest[(SUBTEST_LEN - 1 as ::core::ffi::c_int) as usize] =
-            '\0' as i32 as ::core::ffi::c_char;
     }
-}
-unsafe extern "C" fn handle_success(mut verbosity: ::core::ffi::c_int) {
-    unsafe {
-        if verbosity >= CK_VERBOSE {
-            printf(
-                b"PASS: %s\n\0".as_ptr() as *const ::core::ffi::c_char,
-                _check_current_function,
-            );
+    for ch in state.current_subtest.iter_mut() {
+        if *ch as ::core::ffi::c_int == '\n' as i32 {
+            *ch = ' ' as i32 as ::core::ffi::c_char;
         }
     }
+    state.current_subtest[(SUBTEST_LEN - 1 as ::core::ffi::c_int) as usize] =
+        '\0' as i32 as ::core::ffi::c_char;
 }
-unsafe extern "C" fn handle_failure(
-    mut runner: *mut SRunner,
-    mut verbosity: ::core::ffi::c_int,
-    mut context: *const ::core::ffi::c_char,
-    mut phase_info: *const ::core::ffi::c_char,
+fn handle_success(verbosity: ::core::ffi::c_int) {
+    if verbosity >= CK_VERBOSE {
+        let state = check_state();
+        print_message(PrintMessage::Pass(check_state_function(&state)));
+    }
+}
+fn handle_failure(
+    runner: *mut SRunner,
+    verbosity: ::core::ffi::c_int,
+    context: *const ::core::ffi::c_char,
+    phase_info: *const ::core::ffi::c_char,
 ) {
-    unsafe {
-        (*runner).nfailures += 1;
-        if verbosity != CK_SILENT {
-            if strlen(&raw mut _check_current_subtest as *mut ::core::ffi::c_char) != 0 as size_t {
-                phase_info = &raw mut _check_current_subtest as *mut ::core::ffi::c_char;
-            }
-            printf(
-                b"FAIL [%s]: %s (%s at %s:%d)\n\0".as_ptr() as *const ::core::ffi::c_char,
-                context,
-                _check_current_function,
-                phase_info,
-                _check_current_filename,
-                _check_current_lineno,
-            );
-        }
+    let _ = with_mut(runner, |runner| {
+        runner.nfailures += 1;
+    });
+    if verbosity != CK_SILENT {
+        let state = check_state();
+        let phase_info = if state.current_subtest[0] != 0 {
+            state.current_subtest.as_ptr()
+        } else {
+            phase_info
+        };
+        print_message(PrintMessage::Fail {
+            context,
+            function: check_state_function(&state),
+            phase_info,
+            filename: check_state_filename(&state),
+            line: state.current_lineno,
+        });
     }
 }
 #[no_mangle]
@@ -460,21 +573,19 @@ pub unsafe extern "C" fn srunner_summarize(
     mut runner: *mut SRunner,
     mut verbosity: ::core::ffi::c_int,
 ) {
-    unsafe {
-        if verbosity != CK_SILENT {
-            let mut passed: ::core::ffi::c_int = (*runner).nchecks - (*runner).nfailures;
-            let mut percentage: ::core::ffi::c_double =
-                passed as ::core::ffi::c_double / (*runner).nchecks as ::core::ffi::c_double;
-            let mut display: ::core::ffi::c_int = (percentage
-                * 100 as ::core::ffi::c_int as ::core::ffi::c_double)
-                as ::core::ffi::c_int;
-            printf(
-                b"%d%%: Checks: %d, Failed: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
-                display,
-                (*runner).nchecks,
-                (*runner).nfailures,
-            );
-        }
+    if verbosity != CK_SILENT {
+        let (nchecks, nfailures) =
+            with_ref(runner, |runner| (runner.nchecks, runner.nfailures)).unwrap_or((0, 0));
+        let passed: ::core::ffi::c_int = nchecks - nfailures;
+        let percentage: ::core::ffi::c_double =
+            passed as ::core::ffi::c_double / nchecks as ::core::ffi::c_double;
+        let display: ::core::ffi::c_int =
+            (percentage * 100 as ::core::ffi::c_int as ::core::ffi::c_double) as ::core::ffi::c_int;
+        print_message(PrintMessage::Summary {
+            display,
+            nchecks,
+            nfailures,
+        });
     }
 }
 #[no_mangle]
@@ -483,13 +594,17 @@ pub unsafe extern "C" fn _fail(
     mut line: ::core::ffi::c_int,
     mut msg: *const ::core::ffi::c_char,
 ) -> ! {
-    unsafe {
-        _check_current_filename = file;
-        _check_current_lineno = line;
-        if !msg.is_null() {
-            let has_newline: ::core::ffi::c_int =
-                (*msg.offset(strlen(msg).wrapping_sub(1 as size_t) as isize) as ::core::ffi::c_int
-                    == '\n' as i32) as ::core::ffi::c_int;
+    {
+        let mut state = check_state();
+        state.current_filename = file as usize;
+        state.current_lineno = line;
+    }
+    if !msg.is_null() {
+        let has_newline: ::core::ffi::c_int = unsafe {
+            (*msg.offset(strlen(msg).wrapping_sub(1 as size_t) as isize) as ::core::ffi::c_int
+                == '\n' as i32) as ::core::ffi::c_int
+        };
+        unsafe {
             fprintf(
                 stderr,
                 b"ERROR: %s%s\0".as_ptr() as *const ::core::ffi::c_char,
@@ -501,31 +616,32 @@ pub unsafe extern "C" fn _fail(
                 },
             );
         }
+    }
+    unsafe {
         longjmp(&raw mut env as *mut __jmp_buf_tag, 1 as ::core::ffi::c_int);
     }
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_ntests_failed(mut runner: *mut SRunner) -> ::core::ffi::c_int {
-    unsafe {
-        if !runner.is_null() {
-        } else {
-            __assert_fail(
-                b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
-                263 as ::core::ffi::c_uint,
-                b"int srunner_ntests_failed(SRunner *)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        return (*runner).nfailures;
-    }
+    with_ref(
+        assert_ptr(
+            runner,
+            false,
+            b"runner != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+            b"/root/work/expat/tests/minicheck.c\0".as_ptr() as *const ::core::ffi::c_char,
+            263 as ::core::ffi::c_uint,
+            b"int srunner_ntests_failed(SRunner *)\0".as_ptr() as *const ::core::ffi::c_char,
+        )
+        .unwrap()
+        .as_ptr(),
+        |runner| runner.nfailures,
+    )
+    .unwrap()
 }
 #[no_mangle]
 pub unsafe extern "C" fn srunner_free(mut runner: *mut SRunner) {
-    unsafe {
-        if runner.is_null() {
-            return;
-        }
-        suite_free((*runner).suite);
-        free(runner as *mut ::core::ffi::c_void);
+    if let Some(suite) = with_ref(runner, |runner| runner.suite) {
+        suite_free(suite);
+        free_ptr(runner);
     }
 }
