@@ -21177,11 +21177,11 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
     unsafe {
         poolInit(&raw mut dtd.pool, parser);
         poolInit(&raw mut dtd.entityValuePool, parser);
-        hashTableInit(&raw mut dtd.generalEntities, parser);
-        hashTableInit(&raw mut dtd.elementTypes, parser);
-        hashTableInit(&raw mut dtd.attributeIds, parser);
-        hashTableInit(&raw mut dtd.prefixes, parser);
-        hashTableInit(&raw mut dtd.paramEntities, parser);
+        hashTableInit(&mut dtd.generalEntities, parser);
+        hashTableInit(&mut dtd.elementTypes, parser);
+        hashTableInit(&mut dtd.attributeIds, parser);
+        hashTableInit(&mut dtd.prefixes, parser);
+        hashTableInit(&mut dtd.paramEntities, parser);
     }
     Some(std::sync::Arc::new(SharedDtd::new(dtd)))
 }
@@ -22292,19 +22292,16 @@ unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
     }
 }
 
-unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: crate::expat_h::XML_Parser) {
-    (*p).power = 0 as ::core::ffi::c_uchar;
-    (*p).size = 0 as crate::__stddef_size_t_h::size_t;
-    (*p).used = 0 as crate::__stddef_size_t_h::size_t;
-    ::core::ptr::write(&raw mut (*p).v, None);
-    ::core::ptr::write(
-        &raw mut (*p).allocator,
-        Some(HashTableAllocator {
-            allocate: Box::new(move |size, source_line| {
-                allocation_backing(parser, size, source_line)
-            }),
+unsafe fn hashTableInit(table: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
+    table.power = 0;
+    table.size = 0;
+    table.used = 0;
+    table.v = None;
+    table.allocator = Some(HashTableAllocator {
+        allocate: Box::new(move |size, source_line| {
+            allocation_backing(parser, size, source_line)
         }),
-    );
+    });
 }
 
 unsafe extern "C" fn hashTableIterInit<'a>(
