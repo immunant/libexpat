@@ -1700,6 +1700,21 @@ unsafe fn callCharacterDataHandler(
     }
 }
 
+/// Dispatches character data that is already held in typed Rust storage.
+///
+/// This keeps the raw callback boundary in `callCharacterDataHandler`; callers
+/// with a bounded `XML_Char` slice do not need to manufacture raw parser or
+/// data pointers themselves.
+unsafe fn call_character_data_handler_slice(
+    parser: &mut XML_ParserStruct,
+    data: &[crate::expat_external_h::XML_Char],
+) {
+    let Ok(len) = ::core::ffi::c_int::try_from(data.len()) else {
+        return;
+    };
+    callCharacterDataHandler(std::ptr::from_mut(parser), data.as_ptr(), len);
+}
+
 unsafe fn callElementDeclHandler(
     parser: crate::expat_h::XML_Parser,
     name: *const crate::expat_external_h::XML_Char,
@@ -10360,9 +10375,9 @@ unsafe fn doContent(
                     // but release the parser borrow before re-entry.
                     let handlers = content_token_handlers(parser);
                     if handlers.character_data {
-                        let mut c: crate::expat_external_h::XML_Char =
+                        let c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
-                        callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
+                        call_character_data_handler_slice(parser, core::slice::from_ref(&c));
                     } else if handlers.default {
                         reportDefault(parser, enc, s, end);
                     }
@@ -10426,7 +10441,7 @@ unsafe fn doContent(
                     // and UTF-16 without manufacturing a slice from a raw
                     // cursor.
                     let predefined = match event_raw_name_source(
-                        &*parser_ptr,
+                        &*parser,
                         &*dtd,
                         parser_events,
                         entity_start.addr(),
@@ -10447,7 +10462,7 @@ unsafe fn doContent(
                         }
                         _ => 0,
                     };
-                    let mut ch: crate::expat_external_h::XML_Char =
+                    let ch: crate::expat_external_h::XML_Char =
                         predefined as crate::expat_external_h::XML_Char;
                     if ch != 0 {
                         let entity_bytes = bytemuck::bytes_of(&ch);
@@ -10463,10 +10478,9 @@ unsafe fn doContent(
                         );
                         let handlers = content_token_handlers(parser);
                         if handlers.character_data {
-                            callCharacterDataHandler(
+                            call_character_data_handler_slice(
                                 parser,
-                                &raw const ch,
-                                1 as ::core::ffi::c_int,
+                                core::slice::from_ref(&ch),
                             );
                         } else if handlers.default {
                             reportDefault(parser, enc, s, next);
@@ -10481,7 +10495,7 @@ unsafe fn doContent(
                         if name.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        let salt = (&*parser_ptr)
+                        let salt = (&*parser)
                             .m_root
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -11029,7 +11043,7 @@ unsafe fn doContent(
                         };
                         len = raw_name_len.length;
                         let (tag_index, names_match) = match content_end_tag_match(
-                            &*parser_ptr,
+                            &*parser,
                             &*dtd,
                             startTagLevel,
                             parser_events,
@@ -11200,7 +11214,7 @@ unsafe fn doContent(
                     // or active entity that owns it before decoding.  This
                     // avoids manufacturing a byte slice from raw cursors.
                     let Some(token) = event_raw_name_source(
-                        &*parser_ptr,
+                        &*parser,
                         &*dtd,
                         parser_events,
                         s.addr(),
@@ -11217,11 +11231,14 @@ unsafe fn doContent(
                     let handlers = content_token_handlers(parser);
                     if handlers.character_data {
                         let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
-                        callCharacterDataHandler(
-                            parser,
-                            buf.as_ptr(),
-                            crate::src::xmltok::XmlUtf8Encode(n, &mut buf),
-                        );
+                        let encoded = crate::src::xmltok::XmlUtf8Encode(n, &mut buf);
+                        let Ok(encoded) = usize::try_from(encoded) else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        let Some(chars) = buf.get(..encoded) else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        call_character_data_handler_slice(parser, chars);
                     } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
@@ -11232,9 +11249,9 @@ unsafe fn doContent(
                 crate::src::xmltok::XML_TOK_DATA_NEWLINE => {
                     let handlers = content_token_handlers(parser);
                     if handlers.character_data {
-                        let mut c_0: crate::expat_external_h::XML_Char =
+                        let c_0: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
-                        callCharacterDataHandler(parser, &raw const c_0, 1 as ::core::ffi::c_int);
+                        call_character_data_handler_slice(parser, core::slice::from_ref(&c_0));
                     } else if handlers.default {
                         reportDefault(parser, enc, s, next);
                     }
@@ -11492,7 +11509,7 @@ unsafe fn doContent(
             }
         }
         let loop_status = {
-            let parser_state = &*parser_ptr;
+            let parser_state = &*parser;
             content_loop_status(
                 parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint,
                 parser_state.m_reenter,
