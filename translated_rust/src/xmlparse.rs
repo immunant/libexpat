@@ -26093,7 +26093,7 @@ fn content_model_allocation_backing(
 /// The caller must ensure that no callback can observe the model before this
 /// function returns.  This is the sole place that writes pointer links into
 /// an XML_Content graph; all construction preceding it uses checked indices.
-unsafe fn register_abi_content_model(mut build: ContentModelBuild) -> Option<usize> {
+fn register_abi_content_model(mut build: ContentModelBuild) -> Option<usize> {
     let mut contents = Vec::new();
     if contents.try_reserve_exact(build.contents.len()).is_err() {
         if let Some(mut backing) = build.backing.take() {
@@ -26337,6 +26337,32 @@ struct ContentModelDispatchRequest<'a> {
     event_end: usize,
 }
 
+/// Resolves a registered content model at the callback boundary and invokes
+/// the installed C handler.  The registry lock is released before the call so
+/// a handler may re-enter the parser or free the model, as Expat permits.
+fn dispatch_element_decl_callback(
+    callback: &dyn ElementDeclCallback,
+    parser: &XML_ParserStruct,
+    name: &[crate::expat_external_h::XML_Char],
+    model_key: usize,
+) -> bool {
+    let model = {
+        let models = CONTENT_MODEL_STORAGE
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let Some(model) = models.get(&model_key) else {
+            return false;
+        };
+        model.contents.as_ptr().cast_mut()
+    };
+    // The registry owns the model before this stable vector address is
+    // exposed, so the callback may retain or free the model exactly as the C
+    // API permits.
+    unsafe { callback.invoke(handler_arg_from_state!(parser), name.as_ptr(), model) };
+    true
+}
+
 /// Builds the ABI-owned declaration model and hands it to the installed
 /// element-declaration callback.  The model is registered before dispatch so
 /// XML_FreeContentModel remains valid even during a re-entrant callback.
@@ -26384,20 +26410,9 @@ unsafe fn build_model_and_dispatch(request: ContentModelDispatchRequest<'_>) -> 
         .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     if let Some(callback) = callback {
-        // The registry owns the model before this stable vector address is
-        // exposed, so the callback may retain or free the model exactly as
-        // the C API permits.
-        let model = {
-            let models = CONTENT_MODEL_STORAGE
-                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let Some(model) = models.get(&model_key) else {
-                return false;
-            };
-            model.contents.as_ptr().cast_mut()
-        };
-        callback.invoke(handler_arg_from_state!(parser), name.as_ptr(), model);
+        if !dispatch_element_decl_callback(callback.as_ref(), parser, name, model_key) {
+            return false;
+        }
     }
     true
 }
