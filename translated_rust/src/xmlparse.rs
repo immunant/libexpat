@@ -2217,7 +2217,10 @@ pub struct XML_ParserStruct {
     // the old null endpoint, while `Some(0)` remains a valid empty event at
     // the beginning of the buffer.
     pub m_eventEndPtr: Option<usize>,
-    pub m_positionPtr: *const ::core::ffi::c_char,
+    // Position tracking is another cursor into the owned input buffer.  It is
+    // absent until parsing has established an input position; `Some(0)` is a
+    // valid position at the beginning of a non-empty or empty buffer.
+    pub m_positionPtr: Option<usize>,
     pub m_openInternalEntities: *mut OPEN_INTERNAL_ENTITY,
     pub m_freeInternalEntities: *mut OPEN_INTERNAL_ENTITY,
     pub m_openAttributeEntities: *mut OPEN_INTERNAL_ENTITY,
@@ -3991,7 +3994,7 @@ fn initial_parser_struct(
         m_errorCode: crate::expat_h::XML_ERROR_NONE,
         m_eventPtr: None,
         m_eventEndPtr: None,
-        m_positionPtr: ::core::ptr::null::<::core::ffi::c_char>(),
+        m_positionPtr: None,
         m_openInternalEntities: ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>(),
         m_freeInternalEntities: ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>(),
         m_openAttributeEntities: ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>(),
@@ -4465,7 +4468,7 @@ fn parser_init(
     parser.m_errorCode = crate::expat_h::XML_ERROR_NONE;
     parser.m_eventPtr = None;
     parser.m_eventEndPtr = None;
-    parser.m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    parser.m_positionPtr = None;
     parser.m_openInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_openAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_openValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
@@ -6555,7 +6558,7 @@ unsafe fn parse_buffer_impl(
             .unwrap()
             .as_ptr()
             .wrapping_add(parser_ref.m_bufferPtr.unwrap());
-        parser_ref.m_positionPtr = start;
+        parser_ref.m_positionPtr = parser_ref.m_bufferPtr;
         parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_add(len as usize);
         let parse_end = parser_ref
             .m_buffer
@@ -6609,22 +6612,21 @@ unsafe fn parse_buffer_impl(
     }
     let encoding = parser_encoding(parser);
     let parser_ref = &mut *parser;
-    let position_ptr = parser_ref.m_positionPtr;
-    let buffer_ptr = parser_ref
-        .m_buffer
-        .bytes
-        .as_ref()
-        .unwrap()
-        .as_ptr()
-        .wrapping_add(parser_ref.m_bufferPtr.unwrap());
-    crate::src::xmltok::initUpdatePosition(
-        (*encoding).updatePosition,
-        encoding,
-        position_ptr,
-        buffer_ptr,
-        &raw mut parser_ref.m_position,
-    );
-    parser_ref.m_positionPtr = buffer_ptr;
+    let buffer = parser_ref.m_buffer.bytes.as_ref().unwrap();
+    let buffer_cursor = parser_ref.m_bufferPtr.unwrap();
+    if let Some(position_cursor) = parser_ref
+        .m_positionPtr
+        .filter(|position_cursor| *position_cursor <= buffer.len())
+    {
+        crate::src::xmltok::initUpdatePosition(
+            (*encoding).updatePosition,
+            encoding,
+            buffer.as_ptr().wrapping_add(position_cursor),
+            buffer.as_ptr().wrapping_add(buffer_cursor),
+            &raw mut parser_ref.m_position,
+        );
+    }
+    parser_ref.m_positionPtr = Some(buffer_cursor);
     return result;
 }
 pub unsafe extern "C" fn XML_ParseBuffer(
@@ -6772,7 +6774,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
         }
         parser_ref.m_eventEndPtr = None;
         parser_ref.m_eventPtr = None;
-        parser_ref.m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
+        parser_ref.m_positionPtr = None;
     }
     return parser_ref
         .m_buffer
@@ -6919,21 +6921,21 @@ pub unsafe extern "C" fn XML_ResumeParser(
     }
     let encoding = parser_encoding(parser);
     let parser_ref = &mut *parser;
-    let buffer_ptr = parser_ref
-        .m_buffer
-        .bytes
-        .as_ref()
-        .unwrap()
-        .as_ptr()
-        .wrapping_add(parser_ref.m_bufferPtr.unwrap());
-    crate::src::xmltok::initUpdatePosition(
-        (*encoding).updatePosition,
-        encoding,
-        parser_ref.m_positionPtr,
-        buffer_ptr,
-        &raw mut parser_ref.m_position,
-    );
-    parser_ref.m_positionPtr = buffer_ptr;
+    let buffer = parser_ref.m_buffer.bytes.as_ref().unwrap();
+    let buffer_cursor = parser_ref.m_bufferPtr.unwrap();
+    if let Some(position_cursor) = parser_ref
+        .m_positionPtr
+        .filter(|position_cursor| *position_cursor <= buffer.len())
+    {
+        crate::src::xmltok::initUpdatePosition(
+            (*encoding).updatePosition,
+            encoding,
+            buffer.as_ptr().wrapping_add(position_cursor),
+            buffer.as_ptr().wrapping_add(buffer_cursor),
+            &raw mut parser_ref.m_position,
+        );
+    }
+    parser_ref.m_positionPtr = Some(buffer_cursor);
     return result;
 }
 #[export_name = "XML_ResumeParser"]
@@ -7066,18 +7068,24 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(
     if parser.is_null() {
         return 0 as crate::expat_external_h::XML_Size;
     }
-    if let Some(event_ptr) = parser_event_start!(&*parser) {
-        if event_ptr.addr() < (*parser).m_positionPtr.addr() {
+    if let (Some(event_cursor), Some(position_cursor)) =
+        ((*parser).m_eventPtr, (*parser).m_positionPtr)
+    {
+        if event_cursor < position_cursor {
             return (*parser).m_position.lineNumber.wrapping_add(1 as crate::expat_external_h::XML_Size);
         }
-        crate::src::xmltok::initUpdatePosition(
-            (*parser_encoding(parser)).updatePosition,
-            parser_encoding(parser),
-            (*parser).m_positionPtr,
-            event_ptr,
-            &raw mut (*parser).m_position,
-        );
-        (*parser).m_positionPtr = event_ptr;
+        if let Some(bytes) = (*parser).m_buffer.bytes.as_ref() {
+            if position_cursor <= bytes.len() && event_cursor <= bytes.len() {
+                crate::src::xmltok::initUpdatePosition(
+                    (*parser_encoding(parser)).updatePosition,
+                    parser_encoding(parser),
+                    bytes.as_ptr().wrapping_add(position_cursor),
+                    bytes.as_ptr().wrapping_add(event_cursor),
+                    &raw mut (*parser).m_position,
+                );
+                (*parser).m_positionPtr = Some(event_cursor);
+            }
+        }
     }
     return (*parser)
         .m_position
@@ -7097,18 +7105,24 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
     if parser.is_null() {
         return 0 as crate::expat_external_h::XML_Size;
     }
-    if let Some(event_ptr) = parser_event_start!(&*parser) {
-        if event_ptr.addr() < (*parser).m_positionPtr.addr() {
+    if let (Some(event_cursor), Some(position_cursor)) =
+        ((*parser).m_eventPtr, (*parser).m_positionPtr)
+    {
+        if event_cursor < position_cursor {
             return (*parser).m_position.columnNumber;
         }
-        crate::src::xmltok::initUpdatePosition(
-            (*parser_encoding(parser)).updatePosition,
-            parser_encoding(parser),
-            (*parser).m_positionPtr,
-            event_ptr,
-            &raw mut (*parser).m_position,
-        );
-        (*parser).m_positionPtr = event_ptr;
+        if let Some(bytes) = (*parser).m_buffer.bytes.as_ref() {
+            if position_cursor <= bytes.len() && event_cursor <= bytes.len() {
+                crate::src::xmltok::initUpdatePosition(
+                    (*parser_encoding(parser)).updatePosition,
+                    parser_encoding(parser),
+                    bytes.as_ptr().wrapping_add(position_cursor),
+                    bytes.as_ptr().wrapping_add(event_cursor),
+                    &raw mut (*parser).m_position,
+                );
+                (*parser).m_positionPtr = Some(event_cursor);
+            }
+        }
     }
     return (*parser).m_position.columnNumber;
 }
