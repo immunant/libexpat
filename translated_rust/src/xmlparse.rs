@@ -12594,18 +12594,11 @@ unsafe extern "C" fn processEntity(
             openEntityList = &raw mut (*parser).m_openValueEntities;
             freeEntityList = &raw mut (*parser).m_freeValueEntities;
         }
-        _ => {
-            '_c2rust_label: {
-                crate::stdlib::__assert_fail(
-                    b"0\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    6374 as ::core::ffi::c_uint,
-                    b"enum XML_Error processEntity(XML_Parser, ENTITY *, XML_Bool, enum EntityType)\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                );
-            };
-        }
+        // `EntityType` is selected exclusively by the parser's three
+        // entity-processing paths.  Keep the C assertion's non-returning
+        // behavior for a violated internal invariant without crossing an
+        // unsafe foreign-function boundary.
+        _ => std::process::abort(),
     }
     if !(*freeEntityList).is_null() {
         openEntity = *freeEntityList;
