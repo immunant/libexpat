@@ -11420,12 +11420,26 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_P
             );
         }
     }
-    hashTableClear(&raw mut (*p).generalEntities);
+    for table in [
+        &raw mut (*p).generalEntities,
+        &raw mut (*p).paramEntities,
+        &raw mut (*p).elementTypes,
+        &raw mut (*p).attributeIds,
+        &raw mut (*p).prefixes,
+    ] {
+        let mut i: crate::__stddef_size_t_h::size_t = 0;
+        while i < (*table).size {
+            expat_free(
+                (*table).parser,
+                *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
+                7927 as ::core::ffi::c_int,
+            );
+            *(*table).v.offset(i as isize) = ::core::ptr::null_mut::<NAMED>();
+            i = i.wrapping_add(1);
+        }
+        (*table).used = 0 as crate::__stddef_size_t_h::size_t;
+    }
     (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableClear(&raw mut (*p).paramEntities);
-    hashTableClear(&raw mut (*p).elementTypes);
-    hashTableClear(&raw mut (*p).attributeIds);
-    hashTableClear(&raw mut (*p).prefixes);
     poolClear(&raw mut (*p).pool);
     poolClear(&raw mut (*p).entityValuePool);
     (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -11475,11 +11489,28 @@ unsafe extern "C" fn dtdDestroy(
             );
         }
     }
-    hashTableDestroy(&raw mut (*p).generalEntities);
-    hashTableDestroy(&raw mut (*p).paramEntities);
-    hashTableDestroy(&raw mut (*p).elementTypes);
-    hashTableDestroy(&raw mut (*p).attributeIds);
-    hashTableDestroy(&raw mut (*p).prefixes);
+    for table in [
+        &raw mut (*p).generalEntities,
+        &raw mut (*p).paramEntities,
+        &raw mut (*p).elementTypes,
+        &raw mut (*p).attributeIds,
+        &raw mut (*p).prefixes,
+    ] {
+        let mut i: crate::__stddef_size_t_h::size_t = 0;
+        while i < (*table).size {
+            expat_free(
+                (*table).parser,
+                *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
+                7937 as ::core::ffi::c_int,
+            );
+            i = i.wrapping_add(1);
+        }
+        expat_free(
+            (*table).parser,
+            (*table).v as *mut ::core::ffi::c_void,
+            7938 as ::core::ffi::c_int,
+        );
+    }
     poolDestroy(&raw mut (*p).pool);
     poolDestroy(&raw mut (*p).entityValuePool);
     if isDocEntity != 0 {
@@ -11981,40 +12012,6 @@ unsafe extern "C" fn lookup(
     *c2rust_fresh19 = name;
     (*table).used = (*table).used.wrapping_add(1);
     return *(*table).v.offset(i as isize);
-}
-
-unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
-    let mut i: crate::__stddef_size_t_h::size_t = 0;
-    i = 0 as crate::__stddef_size_t_h::size_t;
-    while i < (*table).size {
-        expat_free(
-            (*table).parser,
-            *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-            7927 as ::core::ffi::c_int,
-        );
-        let ref mut c2rust_fresh75 = *(*table).v.offset(i as isize);
-        *c2rust_fresh75 = ::core::ptr::null_mut::<NAMED>();
-        i = i.wrapping_add(1);
-    }
-    (*table).used = 0 as crate::__stddef_size_t_h::size_t;
-}
-
-unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
-    let mut i: crate::__stddef_size_t_h::size_t = 0;
-    i = 0 as crate::__stddef_size_t_h::size_t;
-    while i < (*table).size {
-        expat_free(
-            (*table).parser,
-            *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-            7937 as ::core::ffi::c_int,
-        );
-        i = i.wrapping_add(1);
-    }
-    expat_free(
-        (*table).parser,
-        (*table).v as *mut ::core::ffi::c_void,
-        7938 as ::core::ffi::c_int,
-    );
 }
 
 fn hashTableInit(p: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
