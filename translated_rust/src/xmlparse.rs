@@ -5608,7 +5608,9 @@ enum NamedRecord {
     Prefix(PREFIX),
     Attribute,
     Element(ELEMENT_TYPE),
-    Entity(Box<ENTITY>),
+    // Entity records retain only pool handles, so moving a table entry during
+    // a resize cannot invalidate data retained by the parser.
+    Entity(ENTITY),
 }
 
 impl NamedRecord {
@@ -5639,7 +5641,7 @@ impl NamedRecord {
             }), None));
         }
         if create_size == ::core::mem::size_of::<ENTITY>() {
-            return Some((Self::Entity(Box::new(ENTITY {
+            return Some((Self::Entity(ENTITY {
                 named: NAMED { name },
                 textPtr: EntityTextRef {
                     pool: EntityTextPool::Dtd,
@@ -5655,7 +5657,7 @@ impl NamedRecord {
                 hasMore: crate::expat_h::XML_FALSE,
                 is_param: crate::expat_h::XML_FALSE,
                 is_internal: crate::expat_h::XML_FALSE,
-            })), None));
+            }), None));
         }
         None
     }
@@ -5695,9 +5697,9 @@ impl NamedAllocation {
         }
     }
 
-    fn entity(&self) -> Option<&ENTITY> {
+    fn entity(&self) -> Option<ENTITY> {
         match &self.record {
-            NamedRecord::Entity(entity) => Some(entity),
+            NamedRecord::Entity(entity) => Some(*entity),
             _ => None,
         }
     }
@@ -22772,7 +22774,7 @@ fn append_attribute_value_impl(
                                 salt,
                             ) {
                                 Some(entry) => match &mut entry.record {
-                                    NamedRecord::Entity(entity) => Some(entity.as_mut()),
+                                    NamedRecord::Entity(entity) => Some(entity),
                                     _ => None,
                                 },
                                 _ => None,
@@ -23145,7 +23147,7 @@ fn store_entity_value_impl(
                                         )
                                     })
                                     .and_then(|entry| match &mut entry.record {
-                                        NamedRecord::Entity(entity) => Some(entity.as_mut()),
+                                        NamedRecord::Entity(entity) => Some(entity),
                                         _ => None,
                                     });
                                 parser.m_tempPool.rewind();
@@ -24636,7 +24638,7 @@ fn set_context_impl(
                         salt,
                     ) {
                         if let NamedRecord::Entity(entity) = &mut entry.record {
-                            entity.as_mut().open = crate::expat_h::XML_TRUE;
+                            entity.open = crate::expat_h::XML_TRUE;
                         }
                     }
                 }
@@ -24785,7 +24787,7 @@ fn set_context_impl(
                 salt,
             ) {
                 if let NamedRecord::Entity(entity) = &mut entry.record {
-                    entity.as_mut().open = crate::expat_h::XML_TRUE;
+                    entity.open = crate::expat_h::XML_TRUE;
                 }
             }
         }
@@ -25336,7 +25338,7 @@ fn dtd_copy_impl(
                 .and_then(|slots| slots.entries.get_mut(index))
                 .and_then(Option::as_mut)
                 .and_then(|entry| match &mut entry.record {
-                    NamedRecord::Entity(entity) => Some(entity.as_mut()),
+                    NamedRecord::Entity(entity) => Some(entity),
                     _ => None,
                 })
             else {
@@ -25807,7 +25809,7 @@ fn declared_entity_mut(
     let NamedRecord::Entity(entity) = &mut entry.record else {
         return None;
     };
-    Some(entity.as_mut())
+    Some(entity)
 }
 
 /// Resolves the synthetic external-subset parameter entity through the DTD's
@@ -25829,7 +25831,7 @@ fn external_subset_entity_mut(
     let NamedRecord::Entity(entity) = &mut entry.record else {
         return None;
     };
-    Some(entity.as_mut())
+    Some(entity)
 }
 
 /// Resolve a general entity through the DTD's typed table entry.
@@ -25853,7 +25855,7 @@ fn general_entity_mut(
     let NamedRecord::Entity(entity) = &mut entry.record else {
         return None;
     };
-    Some(entity.as_mut())
+    Some(entity)
 }
 
 fn hash_table_clear(table: &mut HASH_TABLE) {
