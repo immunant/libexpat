@@ -1591,6 +1591,119 @@ pub struct TAG_NAME {
     pub uriLen: ::core::ffi::c_int,
     pub prefixLen: ::core::ffi::c_int,
 }
+
+impl TAG {
+    fn raw_buffer(&self) -> *mut ::core::ffi::c_char {
+        unsafe { self.buf.raw }
+    }
+
+    fn str_buffer(&self) -> *mut crate::expat_external_h::XML_Char {
+        unsafe { self.buf.str }
+    }
+
+    fn set_raw_buffer(&mut self, raw_buffer: *mut ::core::ffi::c_char) {
+        self.buf.raw = raw_buffer;
+    }
+
+    fn name_byte_len(&self) -> crate::__stddef_size_t_h::size_t {
+        (::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+            as crate::__stddef_size_t_h::size_t)
+            .wrapping_mul(
+                (self.name.strLen + 1 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t,
+            )
+    }
+
+    fn aligned_raw_name_byte_len(&self) -> crate::__stddef_size_t_h::size_t {
+        let alignment = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
+        ((self.rawNameLength as usize).wrapping_add(alignment.wrapping_sub(1))
+            & !alignment.wrapping_sub(1)) as crate::__stddef_size_t_h::size_t
+    }
+
+    fn raw_name_storage(
+        &self,
+        name_byte_len: crate::__stddef_size_t_h::size_t,
+    ) -> *mut ::core::ffi::c_char {
+        self.raw_buffer().wrapping_add(name_byte_len as usize)
+    }
+
+    fn buffer_capacity(&self) -> crate::__stddef_size_t_h::size_t {
+        raw_span_len(self.raw_buffer(), self.bufEnd) as crate::__stddef_size_t_h::size_t
+    }
+
+    fn ensure_raw_name_capacity(
+        &mut self,
+        allocator: &ExpatAllocator,
+        buf_size: crate::__stddef_size_t_h::size_t,
+    ) -> bool {
+        if buf_size <= self.buffer_capacity() {
+            return true;
+        }
+
+        let old_raw_buffer = self.raw_buffer();
+        let old_str_buffer = self.str_buffer();
+        let temp = allocator.realloc(
+            old_raw_buffer as *mut ::core::ffi::c_void,
+            buf_size,
+            3151 as ::core::ffi::c_int,
+        ) as *mut ::core::ffi::c_char;
+        if temp.is_null() {
+            return false;
+        }
+
+        if self.name.str == old_str_buffer as *const crate::expat_external_h::XML_Char {
+            self.name.str = temp as *mut crate::expat_external_h::XML_Char;
+        }
+        if !self.name.localPart.is_null() {
+            let offset = raw_span_len(old_str_buffer, self.name.localPart);
+            self.name.localPart =
+                (temp as *mut crate::expat_external_h::XML_Char).wrapping_add(offset);
+        }
+        self.set_raw_buffer(temp);
+        self.bufEnd = temp.wrapping_add(buf_size as usize);
+        true
+    }
+
+    fn copy_raw_name_to(&mut self, raw_name_buf: *mut ::core::ffi::c_char) {
+        unsafe {
+            crate::stdlib::memcpy(
+                raw_name_buf as *mut ::core::ffi::c_void,
+                self.rawName as *const ::core::ffi::c_void,
+                self.rawNameLength as crate::__stddef_size_t_h::size_t,
+            );
+        }
+        self.rawName = raw_name_buf;
+    }
+}
+
+struct TagStackMut<'a> {
+    next: *mut TAG,
+    _marker: ::core::marker::PhantomData<&'a mut TAG>,
+}
+
+impl<'a> TagStackMut<'a> {
+    fn new(next: *mut TAG) -> Self {
+        Self {
+            next,
+            _marker: ::core::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a> Iterator for TagStackMut<'a> {
+    type Item = &'a mut TAG;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next.is_null() {
+            return None;
+        }
+
+        unsafe {
+            let tag = &mut *self.next;
+            self.next = tag.parent as *mut TAG;
+            Some(tag)
+        }
+    }
+}
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -1687,6 +1800,15 @@ impl ExpatAllocator {
         source_line: ::core::ffi::c_int,
     ) -> *mut ::core::ffi::c_void {
         unsafe { expat_malloc(self.parser, size, source_line) }
+    }
+
+    fn realloc(
+        &self,
+        ptr: *mut ::core::ffi::c_void,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> *mut ::core::ffi::c_void {
+        unsafe { expat_realloc(self.parser, ptr, size, source_line) }
     }
 
     fn free(&self, ptr: *mut ::core::ffi::c_void, source_line: ::core::ffi::c_int) {
@@ -5400,68 +5522,27 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled_ffi(
 ) -> crate::expat_h::XML_Bool {
     XML_SetReparseDeferralEnabled(unsafe { parser.as_mut() }, enabled)
 }
-unsafe extern "C" fn storeRawNames(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Bool {
-    let mut tag: *mut TAG = (*parser).m_tagStack;
-    while !tag.is_null() {
-        let mut bufSize: crate::__stddef_size_t_h::size_t = 0;
-        let mut nameLen: crate::__stddef_size_t_h::size_t = (::core::mem::size_of::<
-            crate::expat_external_h::XML_Char,
-        >()
-            as crate::__stddef_size_t_h::size_t)
-            .wrapping_mul(
-                ((*tag).name.strLen + 1 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t,
-            );
-        let mut rawNameLen: crate::__stddef_size_t_h::size_t = 0;
-        let mut rawNameBuf: *mut ::core::ffi::c_char = (*tag).buf.raw.offset(nameLen as isize);
-        if (*tag).rawName == rawNameBuf as *const ::core::ffi::c_char {
+fn store_raw_names(parser: &mut XML_ParserStruct) -> crate::expat_h::XML_Bool {
+    let allocator = ExpatAllocator::new(parser.as_raw_parser());
+    for tag in TagStackMut::new(parser.m_tagStack) {
+        let name_len = tag.name_byte_len();
+        let raw_name_buf = tag.raw_name_storage(name_len);
+        if tag.rawName == raw_name_buf as *const ::core::ffi::c_char {
             break;
         }
-        rawNameLen = (((*tag).rawNameLength as usize).wrapping_add(
-            (::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
-                .wrapping_sub(1 as usize),
-        ) & !(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
-            .wrapping_sub(1 as usize)) as crate::__stddef_size_t_h::size_t;
-        if rawNameLen
-            > (crate::limits_h::INT_MAX as crate::__stddef_size_t_h::size_t).wrapping_sub(nameLen)
+
+        let raw_name_len = tag.aligned_raw_name_byte_len();
+        if raw_name_len
+            > (crate::limits_h::INT_MAX as crate::__stddef_size_t_h::size_t).wrapping_sub(name_len)
         {
             return crate::expat_h::XML_FALSE;
         }
-        bufSize = nameLen.wrapping_add(rawNameLen);
-        if bufSize
-            > (*tag).bufEnd.offset_from((*tag).buf.raw) as ::core::ffi::c_long
-                as crate::__stddef_size_t_h::size_t
-        {
-            let mut temp: *mut ::core::ffi::c_char = expat_realloc(
-                parser,
-                (*tag).buf.raw as *mut ::core::ffi::c_void,
-                bufSize,
-                3151 as ::core::ffi::c_int,
-            ) as *mut ::core::ffi::c_char;
-            if temp.is_null() {
-                return crate::expat_h::XML_FALSE;
-            }
-            if (*tag).name.str == (*tag).buf.str as *const crate::expat_external_h::XML_Char {
-                (*tag).name.str = temp as *mut crate::expat_external_h::XML_Char;
-            }
-            if !(*tag).name.localPart.is_null() {
-                (*tag).name.localPart =
-                    (temp as *mut crate::expat_external_h::XML_Char)
-                        .offset((*tag).name.localPart.offset_from((*tag).buf.str)
-                            as ::core::ffi::c_long as isize);
-            }
-            (*tag).buf.raw = temp;
-            (*tag).bufEnd = temp.offset(bufSize as isize);
-            rawNameBuf = temp.offset(nameLen as isize);
+
+        let buf_size = name_len.wrapping_add(raw_name_len);
+        if !tag.ensure_raw_name_capacity(&allocator, buf_size) {
+            return crate::expat_h::XML_FALSE;
         }
-        crate::stdlib::memcpy(
-            rawNameBuf as *mut ::core::ffi::c_void,
-            (*tag).rawName as *const ::core::ffi::c_void,
-            (*tag).rawNameLength as crate::__stddef_size_t_h::size_t,
-        );
-        (*tag).rawName = rawNameBuf;
-        tag = (*tag).parent as *mut TAG;
+        tag.copy_raw_name_to(tag.raw_name_storage(name_len));
     }
     return crate::expat_h::XML_TRUE;
 }
@@ -5490,7 +5571,7 @@ unsafe extern "C" fn contentProcessor(
     if result as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        if storeRawNames(parser) == 0 {
+        if store_raw_names(&mut *parser) == 0 {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
     }
@@ -5692,7 +5773,7 @@ unsafe extern "C" fn externalEntityContentProcessor(
     if result as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
-        if storeRawNames(parser) == 0 {
+        if store_raw_names(&mut *parser) == 0 {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
     }
