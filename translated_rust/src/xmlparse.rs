@@ -1270,6 +1270,16 @@ trait StartElementCallback: Send + Sync {
     );
 }
 
+// Start-element attributes are retained in one of the parser's owned pools
+// until the callback completes.  Carry the pool location through content
+// processing instead of an interior raw pointer so a re-entrant callback
+// cannot make the parser loop responsible for the C argument array.
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum StartElementAttributeValue {
+    Dtd(PoolStringRef),
+    Temporary(PoolStringRef),
+}
+
 impl StartElementCallback
     for unsafe extern "C" fn(
         *mut ::core::ffi::c_void,
@@ -1290,6 +1300,22 @@ impl StartElementCallback
 static START_ELEMENT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn StartElementCallback>>>,
 > = std::sync::OnceLock::new();
+
+fn start_element_attribute_chars(
+    parser: &XML_ParserStruct,
+    value: StartElementAttributeValue,
+) -> Option<Vec<crate::expat_external_h::XML_Char>> {
+    match value {
+        StartElementAttributeValue::Dtd(name) => parser
+            .m_dtd
+            .as_ref()?
+            .inspect(|dtd| dtd.pool.chars_from(name).map(ToOwned::to_owned)),
+        StartElementAttributeValue::Temporary(name) => parser
+            .m_tempPool
+            .chars_from(name)
+            .map(ToOwned::to_owned),
+    }
+}
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a start-namespace callback is installed.
@@ -1670,6 +1696,57 @@ macro_rules! handler_arg_from_state {
             HandlerArg::Parser => std::ptr::from_ref(&*parser).cast_mut().cast(),
         }
     }};
+}
+
+/// Stages a start-element event in owned XML-character vectors before making
+/// the one ABI callback.  Attribute pool handles, rather than raw pointers,
+/// survive the parser work leading up to this point; the local pointer array
+/// is valid for precisely this foreign call.
+fn dispatch_start_element_callback(
+    callback: &dyn StartElementCallback,
+    parser: &XML_ParserStruct,
+    name: &[crate::expat_external_h::XML_Char],
+    attributes: &[Option<StartElementAttributeValue>],
+) -> bool {
+    let mut callback_name = Vec::new();
+    if callback_name.try_reserve_exact(name.len()).is_err() {
+        return false;
+    }
+    callback_name.extend_from_slice(name);
+
+    let mut callback_attributes = Vec::new();
+    if callback_attributes
+        .try_reserve_exact(attributes.len().saturating_sub(1))
+        .is_err()
+    {
+        return false;
+    }
+    for value in attributes {
+        let Some(value) = value else {
+            break;
+        };
+        callback_attributes.push(match start_element_attribute_chars(parser, *value) {
+            Some(value) => value,
+            None => return false,
+        });
+    }
+    let mut callback_pointers = Vec::new();
+    if callback_pointers
+        .try_reserve_exact(callback_attributes.len().saturating_add(1))
+        .is_err()
+    {
+        return false;
+    }
+    callback_pointers.extend(callback_attributes.iter().map(|value| value.as_ptr()));
+    callback_pointers.push(::core::ptr::null());
+    unsafe {
+        callback.invoke(
+            handler_arg_from_state!(parser),
+            callback_name.as_ptr(),
+            callback_pointers.as_mut_ptr(),
+        );
+    }
+    true
 }
 
 /// Invokes a start-doctype callback from the parser's retained pool values.
@@ -11465,23 +11542,31 @@ unsafe fn doContent(
                                         else {
                                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                         };
-                                        name.as_ptr()
+                                        name.to_vec()
                                     }
-                                    TagNameStorage::NamespaceUri => tag
-                                        .buffer
-                                        .bytes
-                                        .get(..)
-                                        .and_then(terminated_xml_chars)
-                                        .and_then(|name| namespace_name_chars(parser, name))
-                                        .map_or(::core::ptr::null(), |name| name.as_ptr()),
+                                    TagNameStorage::NamespaceUri => {
+                                        let Some(name) = tag
+                                            .buffer
+                                            .bytes
+                                            .get(..)
+                                            .and_then(terminated_xml_chars)
+                                            .and_then(|name| namespace_name_chars(parser, name))
+                                        else {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        };
+                                        name.to_vec()
+                                    }
                                     _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                                 }
                             };
-                            callback.invoke(
-                                handler_arg_from_state!(parser),
-                                name,
-                                app_atts.as_mut_ptr(),
-                            );
+                            if !dispatch_start_element_callback(
+                                callback.as_ref(),
+                                parser,
+                                &name,
+                                &app_atts,
+                            ) {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
                         }
                     } else if handlers.default {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
@@ -11657,11 +11742,14 @@ unsafe fn doContent(
                             .get(&(parser_ptr as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            callback.invoke(
-                                handler_arg_from_state!(parser),
-                                name_pointer,
-                                app_atts.as_mut_ptr(),
-                            );
+                            if !dispatch_start_element_callback(
+                                callback.as_ref(),
+                                parser,
+                                &end_element_name,
+                                &app_atts,
+                            ) {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
@@ -12601,7 +12689,7 @@ unsafe fn storeAtts(
     tag_name_update: &mut Option<NamespaceTagNameUpdate>,
     bindings: &mut Option<BindingId>,
     mut account: XML_Account,
-    appAtts: &mut Vec<*const crate::expat_external_h::XML_Char>,
+    appAtts: &mut Vec<Option<StartElementAttributeValue>>,
 ) -> crate::expat_h::XML_Error {
     let parser_ptr = std::ptr::from_mut(parser);
     let Some(normal_encoding) = entity_value_normal_encoding(parser, enc.addr()) else {
@@ -12703,7 +12791,7 @@ unsafe fn storeAtts(
     if appAtts.try_reserve_exact(app_atts_len).is_err() {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
-    appAtts.resize(app_atts_len, ::core::ptr::null());
+    appAtts.resize(app_atts_len, None);
     i = 0 as ::core::ffi::c_int;
     while i < n {
         // The scanner has completed before the name/value view is formed.
@@ -12784,10 +12872,6 @@ unsafe fn storeAtts(
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
         let att_id_name_ref = att_id.name;
-        let att_id_name = pool_string_pointer!(&dtd.pool, att_id_name_ref);
-        if att_id_name.is_null() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
         let Some(marker) = dtd.pool.marker_before(att_id_name_ref) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
@@ -12806,7 +12890,7 @@ unsafe fn storeAtts(
         }
         let c2rust_fresh23 = attIndex;
         attIndex = attIndex + 1;
-        appAtts[c2rust_fresh23 as usize] = att_id_name;
+        appAtts[c2rust_fresh23 as usize] = Some(StartElementAttributeValue::Dtd(att_id_name_ref));
         let attribute_value_ref;
         if currAtt.normalized == 0 {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
@@ -12819,12 +12903,7 @@ unsafe fn storeAtts(
                         .default_attributes
                         .get(j as usize)
                         .expect("default attribute count must match stored values");
-                    let default_name = default_att.id.map_or(::core::ptr::null(), |name| {
-                        dtd.pool
-                            .chars_from(name)
-                            .map_or(::core::ptr::null(), |chars| chars.as_ptr())
-                    });
-                    if default_name == att_id_name {
+                    if default_att.id == Some(att_id_name_ref) {
                         isCdata = element_type
                             .default_attributes
                             .get(j as usize)
@@ -12853,20 +12932,18 @@ unsafe fn storeAtts(
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             };
             attribute_value_ref = start;
-            appAtts[attIndex as usize] = temp_pool
-                .chars_from(start)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+            appAtts[attIndex as usize] = Some(StartElementAttributeValue::Temporary(start));
             (*parser).m_tempPool.commit();
         } else {
-            appAtts[attIndex as usize] =
-                poolStoreString(&mut parser.m_tempPool, enc, value_start, value_end);
-            if appAtts[attIndex as usize].is_null() {
+            let stored_value = poolStoreString(&mut parser.m_tempPool, enc, value_start, value_end);
+            if stored_value.is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
             let Some(start) = (*parser).m_tempPool.start_ref(true) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             attribute_value_ref = start;
+            appAtts[attIndex as usize] = Some(StartElementAttributeValue::Temporary(start));
             (*parser).m_tempPool.commit();
         }
         if !matches!(att_id.prefix, AttributePrefix::None) {
@@ -12912,16 +12989,9 @@ unsafe fn storeAtts(
     }
     (*parser).m_nSpecifiedAtts = attIndex;
     if let Some(id_att_name) = element_type.id_attribute {
-        let id_att_name = dtd
-            .pool
-            .chars_from(id_att_name)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-        if id_att_name.is_null() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
         i = 0 as ::core::ffi::c_int;
         while i < attIndex {
-            if appAtts[i as usize] == id_att_name {
+            if appAtts[i as usize] == Some(StartElementAttributeValue::Dtd(id_att_name)) {
                 (*parser).m_idAttIndex = i;
                 break;
             }
@@ -12939,21 +13009,10 @@ unsafe fn storeAtts(
         let Some(id_name_ref) = da.id else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
-        let id_name = dtd
-            .pool
-            .chars_from(id_name_ref)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-        if id_name.is_null() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
         let Some(id) = attribute_id_by_name(dtd, id_name_ref, salt) else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
         let id_name_ref = id.named.name;
-        let id_name_pointer = pool_string_pointer!(&dtd.pool, id_name_ref);
-        if id_name_pointer.is_null() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
         let Some(marker) = dtd.pool.marker_before(id_name_ref) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
@@ -12961,13 +13020,6 @@ unsafe fn storeAtts(
             let value_ref = da
                 .value
                 .expect("a present default attribute value has a pool location");
-            let value = dtd
-                .pool
-                .chars_from(value_ref)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-            if value.is_null() {
-                return crate::expat_h::XML_ERROR_NO_MEMORY;
-            }
             if !matches!(id.prefix, AttributePrefix::None) {
                 let attribute_prefix = id.prefix;
                 if id.xmlns != 0 {
@@ -13003,10 +13055,10 @@ unsafe fn storeAtts(
                     nPrefixes += 1;
                     let c2rust_fresh24 = attIndex;
                     attIndex = attIndex + 1;
-                    appAtts[c2rust_fresh24 as usize] = id_name_pointer;
+                    appAtts[c2rust_fresh24 as usize] = Some(StartElementAttributeValue::Dtd(id_name_ref));
                     let c2rust_fresh25 = attIndex;
                     attIndex = attIndex + 1;
-                    appAtts[c2rust_fresh25 as usize] = value;
+                    appAtts[c2rust_fresh25 as usize] = Some(StartElementAttributeValue::Dtd(value_ref));
                 }
             } else {
                 if dtd
@@ -13018,15 +13070,15 @@ unsafe fn storeAtts(
                 }
                 let c2rust_fresh26 = attIndex;
                 attIndex = attIndex + 1;
-                appAtts[c2rust_fresh26 as usize] = id_name_pointer;
+                appAtts[c2rust_fresh26 as usize] = Some(StartElementAttributeValue::Dtd(id_name_ref));
                 let c2rust_fresh27 = attIndex;
                 attIndex = attIndex + 1;
-                appAtts[c2rust_fresh27 as usize] = value;
+                appAtts[c2rust_fresh27 as usize] = Some(StartElementAttributeValue::Dtd(value_ref));
             }
         }
         i += 1;
     }
-    appAtts[attIndex as usize] = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    appAtts[attIndex as usize] = None;
     i = 0 as ::core::ffi::c_int;
     if nPrefixes != 0 {
         let mut j_0: ::core::ffi::c_uint = 0;
@@ -13122,9 +13174,7 @@ unsafe fn storeAtts(
         (*parser).m_nsAttsVersion = version;
         let parser_ref = &mut *parser;
         while i < attIndex {
-            let attribute_address = appAtts[i as usize].addr();
-            let Some(attribute_name) =
-                pool_string_ref_from_address(&dtd.pool, attribute_address, false)
+            let Some(StartElementAttributeValue::Dtd(attribute_name)) = appAtts[i as usize]
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -13289,15 +13339,11 @@ unsafe fn storeAtts(
                 let Some(callback_start) = parser_ref.m_tempPool.start_ref(true) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                let callback_name = parser_ref
-                    .m_tempPool
-                    .chars_from(callback_start)
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                if callback_name.is_null() {
+                if parser_ref.m_tempPool.chars_from(callback_start).is_none() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
                 parser_ref.m_tempPool.commit();
-                appAtts[i as usize] = callback_name;
+                appAtts[i as usize] = Some(StartElementAttributeValue::Temporary(callback_start));
                 let Some(entry) = parser_ref.m_nsAtts.entries.get_mut(j_0 as usize) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
@@ -13322,9 +13368,7 @@ unsafe fn storeAtts(
         }
     }
     while i < attIndex {
-        let Some(attribute_name) =
-            pool_string_ref_from_address(&dtd.pool, appAtts[i as usize].addr(), false)
-        else {
+        let Some(StartElementAttributeValue::Dtd(attribute_name)) = appAtts[i as usize] else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         if dtd
