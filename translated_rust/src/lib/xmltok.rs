@@ -1857,294 +1857,136 @@ extern "C" fn normal_scanPi(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut tok: ::core::ffi::c_int = 0;
-        let mut target: *const ::core::ffi::c_char = ptr;
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return XML_TOK_PARTIAL;
+    let mut tok: ::core::ffi::c_int = 0;
+    let target = ptr;
+    if !has_c_chars(ptr, end, 1) {
+        return XML_TOK_PARTIAL;
+    }
+    let mut c2rust_current_block_32: u64;
+    match normal_byte_type(enc, ptr) {
+        29 => {
+            write_copy(nextTokPtr, ptr);
+            return XML_TOK_INVALID;
         }
-        let mut c2rust_current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-            as ::core::ffi::c_int
-        {
-            29 => {
-                if 0 as ::core::ffi::c_int == 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                c2rust_current_block_32 = 11470911313929454839;
+        22 | 24 => {
+            c2rust_current_block_32 = 11470911313929454839;
+        }
+        5 | 6 | 7 => {
+            let width = normal_byte_type(enc, ptr) as usize - 3;
+            if !has_c_chars(ptr, end, width) {
+                return XML_TOK_PARTIAL_CHAR;
             }
-            22 | 24 => {
-                c2rust_current_block_32 = 11470911313929454839;
-            }
-            5 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || (*(enc as *const normal_encoding))
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                c2rust_current_block_32 = 14763689060501151050;
-            }
-            6 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || (*(enc as *const normal_encoding))
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                c2rust_current_block_32 = 14763689060501151050;
-            }
-            7 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || (*(enc as *const normal_encoding))
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                c2rust_current_block_32 = 14763689060501151050;
-            }
-            _ => {
-                *nextTokPtr = ptr;
+            if normal_is_invalid(enc, width, ptr) != 0 || normal_is_name_start(enc, width, ptr) == 0
+            {
+                write_copy(nextTokPtr, ptr);
                 return XML_TOK_INVALID;
             }
+            ptr = add_const_c_char(ptr, width as isize);
+            c2rust_current_block_32 = 14763689060501151050;
         }
-        match c2rust_current_block_32 {
-            11470911313929454839 => {
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+        _ => {
+            write_copy(nextTokPtr, ptr);
+            return XML_TOK_INVALID;
+        }
+    }
+    if c2rust_current_block_32 == 11470911313929454839 {
+        ptr = add_const_c_char(ptr, 1);
+    }
+    while has_c_chars(ptr, end, 1) {
+        let mut c2rust_current_block_118: u64;
+        match normal_byte_type(enc, ptr) {
+            29 => {
+                write_copy(nextTokPtr, ptr);
+                return XML_TOK_INVALID;
+            }
+            22 | 24 | 25 | 26 | 27 => {
+                c2rust_current_block_118 = 8485341570193076947;
+            }
+            5 | 6 | 7 => {
+                let width = normal_byte_type(enc, ptr) as usize - 3;
+                if !has_c_chars(ptr, end, width) {
+                    return XML_TOK_PARTIAL_CHAR;
+                }
+                if normal_is_invalid(enc, width, ptr) != 0
+                    || normal_is_name_char(enc, width, ptr) == 0
+                {
+                    write_copy(nextTokPtr, ptr);
+                    return XML_TOK_INVALID;
+                }
+                ptr = add_const_c_char(ptr, width as isize);
+                c2rust_current_block_118 = 13349765058737954042;
+            }
+            21 | 9 | 10 => {
+                if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    write_copy(nextTokPtr, ptr);
+                    return XML_TOK_INVALID;
+                }
+                ptr = add_const_c_char(ptr, 1);
+                while has_c_chars(ptr, end, 1) {
+                    match normal_byte_type(enc, ptr) {
+                        5 | 6 | 7 => {
+                            let width = normal_byte_type(enc, ptr) as usize - 3;
+                            if !has_c_chars(ptr, end, width) {
+                                return XML_TOK_PARTIAL_CHAR;
+                            }
+                            if normal_is_invalid(enc, width, ptr) != 0 {
+                                write_copy(nextTokPtr, ptr);
+                                return XML_TOK_INVALID;
+                            }
+                            ptr = add_const_c_char(ptr, width as isize);
+                        }
+                        0 | 1 | 8 => {
+                            write_copy(nextTokPtr, ptr);
+                            return XML_TOK_INVALID;
+                        }
+                        15 => {
+                            ptr = add_const_c_char(ptr, 1);
+                            if !has_c_chars(ptr, end, 1) {
+                                return XML_TOK_PARTIAL;
+                            }
+                            if c_char_is_ascii(ptr, b'>') {
+                                write_copy(nextTokPtr, add_const_c_char(ptr, 1));
+                                return tok;
+                            }
+                        }
+                        _ => {
+                            ptr = add_const_c_char(ptr, 1);
+                        }
+                    }
+                }
+                return XML_TOK_PARTIAL;
+            }
+            15 => {
+                if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
+                    write_copy(nextTokPtr, ptr);
+                    return XML_TOK_INVALID;
+                }
+                ptr = add_const_c_char(ptr, 1);
+                if !has_c_chars(ptr, end, 1) {
+                    return XML_TOK_PARTIAL;
+                }
+                if c_char_is_ascii(ptr, b'>') {
+                    write_copy(nextTokPtr, add_const_c_char(ptr, 1));
+                    return tok;
+                }
+                c2rust_current_block_118 = 11310415194689177606;
+            }
+            _ => {
+                c2rust_current_block_118 = 11310415194689177606;
+            }
+        }
+        match c2rust_current_block_118 {
+            11310415194689177606 => {
+                write_copy(nextTokPtr, ptr);
+                return XML_TOK_INVALID;
+            }
+            8485341570193076947 => {
+                ptr = add_const_c_char(ptr, 1);
             }
             _ => {}
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut c2rust_current_block_118: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                29 => {
-                    if 0 as ::core::ffi::c_int == 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    c2rust_current_block_118 = 8485341570193076947;
-                }
-                22 | 24 | 25 | 26 | 27 => {
-                    c2rust_current_block_118 = 8485341570193076947;
-                }
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    c2rust_current_block_118 = 13349765058737954042;
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    c2rust_current_block_118 = 13349765058737954042;
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    c2rust_current_block_118 = 13349765058737954042;
-                }
-                21 | 9 | 10 => {
-                    if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                    {
-                        match (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                        {
-                            5 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 2 as ::core::ffi::c_long
-                                {
-                                    return XML_TOK_PARTIAL_CHAR;
-                                }
-                                if (*(enc as *const normal_encoding))
-                                    .isInvalid2
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID;
-                                }
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            }
-                            6 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 3 as ::core::ffi::c_long
-                                {
-                                    return XML_TOK_PARTIAL_CHAR;
-                                }
-                                if (*(enc as *const normal_encoding))
-                                    .isInvalid3
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID;
-                                }
-                                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                            }
-                            7 => {
-                                if (end.offset_from(ptr) as ::core::ffi::c_long)
-                                    < 4 as ::core::ffi::c_long
-                                {
-                                    return XML_TOK_PARTIAL_CHAR;
-                                }
-                                if (*(enc as *const normal_encoding))
-                                    .isInvalid4
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) != 0
-                                {
-                                    *nextTokPtr = ptr;
-                                    return XML_TOK_INVALID;
-                                }
-                                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                            }
-                            0 | 1 | 8 => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID;
-                            }
-                            15 => {
-                                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                                if !(end.offset_from(ptr) as ::core::ffi::c_long
-                                    >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                                        as ::core::ffi::c_long)
-                                {
-                                    return XML_TOK_PARTIAL;
-                                }
-                                if *ptr as ::core::ffi::c_int == 0x3e as ::core::ffi::c_int {
-                                    *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                                    return tok;
-                                }
-                            }
-                            _ => {
-                                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            }
-                        }
-                    }
-                    return XML_TOK_PARTIAL;
-                }
-                15 => {
-                    if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long)
-                    {
-                        return XML_TOK_PARTIAL;
-                    }
-                    if *ptr as ::core::ffi::c_int == 0x3e as ::core::ffi::c_int {
-                        *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        return tok;
-                    }
-                    c2rust_current_block_118 = 11310415194689177606;
-                }
-                _ => {
-                    c2rust_current_block_118 = 11310415194689177606;
-                }
-            }
-            match c2rust_current_block_118 {
-                11310415194689177606 => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                8485341570193076947 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL;
     }
+    XML_TOK_PARTIAL
 }
 extern "C" fn normal_scanCdataSection(
     mut enc: *const ENCODING,
@@ -2169,214 +2011,99 @@ extern "C" fn normal_scanEndTag(
     mut end: *const ::core::ffi::c_char,
     mut nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if !(end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long)
-        {
-            return XML_TOK_PARTIAL;
+    if !has_c_chars(ptr, end, 1) {
+        return XML_TOK_PARTIAL;
+    }
+    let mut c2rust_current_block_32: u64;
+    match normal_byte_type(enc, ptr) {
+        29 => {
+            write_copy(nextTokPtr, ptr);
+            return XML_TOK_INVALID;
         }
-        let mut c2rust_current_block_32: u64;
-        match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-            as ::core::ffi::c_int
-        {
+        22 | 24 => {
+            c2rust_current_block_32 = 4324628675098861213;
+        }
+        5 | 6 | 7 => {
+            let width = normal_byte_type(enc, ptr) as usize - 3;
+            if !has_c_chars(ptr, end, width) {
+                return XML_TOK_PARTIAL_CHAR;
+            }
+            if normal_is_invalid(enc, width, ptr) != 0 || normal_is_name_start(enc, width, ptr) == 0
+            {
+                write_copy(nextTokPtr, ptr);
+                return XML_TOK_INVALID;
+            }
+            ptr = add_const_c_char(ptr, width as isize);
+            c2rust_current_block_32 = 7056779235015430508;
+        }
+        _ => {
+            write_copy(nextTokPtr, ptr);
+            return XML_TOK_INVALID;
+        }
+    }
+    if c2rust_current_block_32 == 4324628675098861213 {
+        ptr = add_const_c_char(ptr, 1);
+    }
+    while has_c_chars(ptr, end, 1) {
+        let mut c2rust_current_block_73: u64;
+        match normal_byte_type(enc, ptr) {
             29 => {
-                if 0 as ::core::ffi::c_int == 0 {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                c2rust_current_block_32 = 4324628675098861213;
+                write_copy(nextTokPtr, ptr);
+                return XML_TOK_INVALID;
             }
-            22 | 24 => {
-                c2rust_current_block_32 = 4324628675098861213;
+            22 | 24 | 25 | 26 | 27 => {
+                c2rust_current_block_73 = 14883924698754021420;
             }
-            5 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
+            5 | 6 | 7 => {
+                let width = normal_byte_type(enc, ptr) as usize - 3;
+                if !has_c_chars(ptr, end, width) {
                     return XML_TOK_PARTIAL_CHAR;
                 }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid2
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || (*(enc as *const normal_encoding))
-                        .isNmstrt2
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
+                if normal_is_invalid(enc, width, ptr) != 0
+                    || normal_is_name_char(enc, width, ptr) == 0
                 {
-                    *nextTokPtr = ptr;
+                    write_copy(nextTokPtr, ptr);
                     return XML_TOK_INVALID;
                 }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                c2rust_current_block_32 = 7056779235015430508;
+                ptr = add_const_c_char(ptr, width as isize);
+                c2rust_current_block_73 = 981995395831942902;
             }
-            6 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
+            21 | 9 | 10 => {
+                ptr = add_const_c_char(ptr, 1);
+                while has_c_chars(ptr, end, 1) {
+                    match normal_byte_type(enc, ptr) {
+                        21 | 9 | 10 => {}
+                        11 => {
+                            write_copy(nextTokPtr, add_const_c_char(ptr, 1));
+                            return XML_TOK_END_TAG;
+                        }
+                        _ => {
+                            write_copy(nextTokPtr, ptr);
+                            return XML_TOK_INVALID;
+                        }
+                    }
+                    ptr = add_const_c_char(ptr, 1);
                 }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid3
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || (*(enc as *const normal_encoding))
-                        .isNmstrt3
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                c2rust_current_block_32 = 7056779235015430508;
+                return XML_TOK_PARTIAL;
             }
-            7 => {
-                if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                    return XML_TOK_PARTIAL_CHAR;
-                }
-                if (*(enc as *const normal_encoding))
-                    .isInvalid4
-                    .expect("non-null function pointer")(enc, ptr)
-                    != 0
-                    || (*(enc as *const normal_encoding))
-                        .isNmstrt4
-                        .expect("non-null function pointer")(enc, ptr)
-                        == 0
-                {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                c2rust_current_block_32 = 7056779235015430508;
+            23 => {
+                ptr = add_const_c_char(ptr, 1);
+                c2rust_current_block_73 = 981995395831942902;
+            }
+            11 => {
+                write_copy(nextTokPtr, add_const_c_char(ptr, 1));
+                return XML_TOK_END_TAG;
             }
             _ => {
-                *nextTokPtr = ptr;
+                write_copy(nextTokPtr, ptr);
                 return XML_TOK_INVALID;
             }
         }
-        match c2rust_current_block_32 {
-            4324628675098861213 => {
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            }
-            _ => {}
+        if c2rust_current_block_73 == 14883924698754021420 {
+            ptr = add_const_c_char(ptr, 1);
         }
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut c2rust_current_block_73: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                29 => {
-                    if 0 as ::core::ffi::c_int == 0 {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    c2rust_current_block_73 = 14883924698754021420;
-                }
-                22 | 24 | 25 | 26 | 27 => {
-                    c2rust_current_block_73 = 14883924698754021420;
-                }
-                5 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isName2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    c2rust_current_block_73 = 981995395831942902;
-                }
-                6 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 3 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isName3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    c2rust_current_block_73 = 981995395831942902;
-                }
-                7 => {
-                    if (end.offset_from(ptr) as ::core::ffi::c_long) < 4 as ::core::ffi::c_long {
-                        return XML_TOK_PARTIAL_CHAR;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isName4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return XML_TOK_INVALID;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    c2rust_current_block_73 = 981995395831942902;
-                }
-                21 | 9 | 10 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    while end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                    {
-                        match (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                        {
-                            21 | 9 | 10 => {}
-                            11 => {
-                                *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                                return XML_TOK_END_TAG;
-                            }
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return XML_TOK_INVALID;
-                            }
-                        }
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    }
-                    return XML_TOK_PARTIAL;
-                }
-                23 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    c2rust_current_block_73 = 981995395831942902;
-                }
-                11 => {
-                    *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    return XML_TOK_END_TAG;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return XML_TOK_INVALID;
-                }
-            }
-            match c2rust_current_block_73 {
-                14883924698754021420 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                _ => {}
-            }
-        }
-        return XML_TOK_PARTIAL;
     }
+    XML_TOK_PARTIAL
 }
 extern "C" fn normal_scanHexCharRef(
     mut enc: *const ENCODING,
