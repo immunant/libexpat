@@ -1881,7 +1881,6 @@ enum EncodingState {
     Unknown,
 }
 
-#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct XML_ParserStruct {
     pub m_userData: *mut ::core::ffi::c_void,
@@ -2021,12 +2020,13 @@ pub struct accounting {
     pub maximumAmplificationFactor: ::core::ffi::c_float,
     pub activationThresholdBytes: ::core::ffi::c_ulonglong,
 }
-#[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct STRING_POOL {
-    pub blocks: *mut BLOCK,
-    pub freeBlocks: *mut BLOCK,
+    // Text lives in Rust-owned slabs.  Each slab also owns an opaque
+    // custom-allocator token, so the configured Expat allocator observes the
+    // same block allocation, reallocation, and release lifecycle.
+    storage: StringPoolStorage,
     pub end: *const crate::expat_external_h::XML_Char,
     pub ptr: *mut crate::expat_external_h::XML_Char,
     pub start: *mut crate::expat_external_h::XML_Char,
@@ -2036,14 +2036,21 @@ pub struct STRING_POOL {
     pub blockCount: usize,
 }
 
-pub type BLOCK = block;
-#[derive(Copy, Clone)]
-#[repr(C)]
+struct StringPoolStorage {
+    // Both vectors are tail-to-head: popping `free` produces the same LIFO
+    // reuse order as Expat's former free-block list.
+    active: Vec<StringPoolBlock>,
+    free: Vec<StringPoolBlock>,
+}
 
-pub struct block {
-    pub next: *mut block,
-    pub size: ::core::ffi::c_int,
-    pub s: [crate::expat_external_h::XML_Char; 0],
+struct StringPoolBlock {
+    chars: Vec<crate::expat_external_h::XML_Char>,
+    backing: Box<dyn FnMut(StringPoolAllocationAction) -> bool>,
+}
+
+enum StringPoolAllocationAction {
+    Grow(crate::__stddef_size_t_h::size_t),
+    Free(::core::ffi::c_int),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -3132,8 +3139,10 @@ unsafe fn allocate_parser_storage(
 
 fn empty_string_pool() -> STRING_POOL {
     STRING_POOL {
-        blocks: ::core::ptr::null_mut::<BLOCK>(),
-        freeBlocks: ::core::ptr::null_mut::<BLOCK>(),
+        storage: StringPoolStorage {
+            active: Vec::new(),
+            free: Vec::new(),
+        },
         end: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         ptr: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
         start: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
@@ -12291,7 +12300,7 @@ unsafe extern "C" fn storeEntityValue(
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     let mut oldInEntityValue: ::core::ffi::c_int = (*parser).m_prologState.inEntityValue;
     (*parser).m_prologState.inEntityValue = 1 as ::core::ffi::c_int;
-    if (*pool).blocks.is_null() {
+    if (*pool).storage.active.is_empty() {
         if poolGrow(pool) == 0 {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -14214,9 +14223,10 @@ unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut N
     return ::core::ptr::null_mut::<NAMED>();
 }
 
-// Pool strings remain custom-allocator-owned.  This conversion records only a
-// checked tail-relative block ordinal and character offset; it never transfers ownership
-// or turns an integer back into an address.
+// Pool strings live in Rust slabs whose allocator backing remains observable
+// through the configured Expat memory suite.  This conversion records only a
+// checked tail-relative block ordinal and character offset; it never transfers
+// ownership or turns an integer back into an address.
 unsafe fn pool_string_ref(
     pool: *const STRING_POOL,
     string: *const crate::expat_external_h::XML_Char,
@@ -14226,30 +14236,20 @@ unsafe fn pool_string_ref(
     }
     let pool = &*pool;
     let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
-    let mut block = pool.blocks;
-    let mut block_depth = 0usize;
-    while !block.is_null() {
-        let block_ref = &*block;
-        let start = &raw const block_ref.s as *const crate::expat_external_h::XML_Char;
-        let capacity = block_ref.size;
-        if capacity > 0 {
-            let start_address = start.addr();
-            let byte_offset = string.addr().wrapping_sub(start_address);
-            let capacity_bytes = (capacity as usize).wrapping_mul(char_size);
-            if string.addr() >= start_address
-                && byte_offset < capacity_bytes
-                && byte_offset % char_size == 0
-            {
-                return Some(PoolStringRef {
-                    block_from_tail: std::num::NonZeroUsize::new(
-                        pool.blockCount.checked_sub(1 + block_depth)?.checked_add(1)?,
-                    )?,
-                    offset: byte_offset / char_size,
-                });
-            }
+    for (block_index, block) in pool.storage.active.iter().enumerate() {
+        let start = block.chars.as_ptr();
+        let start_address = start.addr();
+        let byte_offset = string.addr().wrapping_sub(start_address);
+        let capacity_bytes = block.chars.len().wrapping_mul(char_size);
+        if string.addr() >= start_address
+            && byte_offset < capacity_bytes
+            && byte_offset % char_size == 0
+        {
+            return Some(PoolStringRef {
+                block_from_tail: std::num::NonZeroUsize::new(block_index.checked_add(1)?)?,
+                offset: byte_offset / char_size,
+            });
         }
-        block = block_ref.next;
-        block_depth = block_depth.wrapping_add(1);
     }
     None
 }
@@ -14259,25 +14259,16 @@ unsafe fn pool_string_pointer(
     string: PoolStringRef,
 ) -> *const crate::expat_external_h::XML_Char {
     let pool = &*pool;
-    let target_from_head = match pool
-        .blockCount
-        .checked_sub(string.block_from_tail.get())
-    {
-        Some(target) => target,
-        None => return ::core::ptr::null(),
+    let Some(block_index) = string.block_from_tail.get().checked_sub(1) else {
+        return ::core::ptr::null();
     };
-    let mut block = pool.blocks;
-    let mut block_depth = 0usize;
-    while !block.is_null() {
-        let block_ref = &*block;
-        if block_depth == target_from_head && string.offset < block_ref.size as usize {
-            let start = &raw const block_ref.s as *const crate::expat_external_h::XML_Char;
-            return start.wrapping_add(string.offset);
-        }
-        block = block_ref.next;
-        block_depth = block_depth.wrapping_add(1);
+    let Some(block) = pool.storage.active.get(block_index) else {
+        return ::core::ptr::null();
+    };
+    if string.offset >= block.chars.len() {
+        return ::core::ptr::null();
     }
-    ::core::ptr::null()
+    block.chars.as_ptr().wrapping_add(string.offset)
 }
 
 // The callback boundary is the only point where pool-backed entity
@@ -14308,8 +14299,15 @@ unsafe fn invoke_external_entity_ref_handler(
 
 unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
     let pool = &mut *pool;
-    pool.blocks = ::core::ptr::null_mut::<BLOCK>();
-    pool.freeBlocks = ::core::ptr::null_mut::<BLOCK>();
+    // DTD pools are initialized in memory returned directly by the configured
+    // allocator, so this field may not have been constructed yet.
+    ::core::ptr::write(
+        &raw mut pool.storage,
+        StringPoolStorage {
+            active: Vec::new(),
+            free: Vec::new(),
+        },
+    );
     pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     pool.end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -14319,19 +14317,7 @@ unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::exp
 
 unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
     let pool = &mut *pool;
-    if pool.freeBlocks.is_null() {
-        pool.freeBlocks = pool.blocks;
-    } else {
-        let mut p: *mut BLOCK = pool.blocks;
-        while !p.is_null() {
-            let p_ref = &mut *p;
-            let mut tem: *mut BLOCK = p_ref.next as *mut BLOCK;
-            p_ref.next = pool.freeBlocks as *mut block;
-            pool.freeBlocks = p;
-            p = tem;
-        }
-    }
-    pool.blocks = ::core::ptr::null_mut::<BLOCK>();
+    pool.storage.free.append(&mut pool.storage.active);
     pool.blockCount = 0;
     pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
@@ -14339,27 +14325,12 @@ unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
 }
 
 unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
-    let parser = (*pool).parser;
-    let mut p: *mut BLOCK = (*pool).blocks;
-    let free_blocks = (*pool).freeBlocks;
-    while !p.is_null() {
-        let mut tem: *mut BLOCK = (*p).next as *mut BLOCK;
-        expat_free(
-            parser,
-            p as *mut ::core::ffi::c_void,
-            8000 as ::core::ffi::c_int,
-        );
-        p = tem;
+    let pool = &mut *pool;
+    while let Some(mut block) = pool.storage.active.pop() {
+        (block.backing)(StringPoolAllocationAction::Free(8000));
     }
-    p = free_blocks;
-    while !p.is_null() {
-        let mut tem_0: *mut BLOCK = (*p).next as *mut BLOCK;
-        expat_free(
-            parser,
-            p as *mut ::core::ffi::c_void,
-            8006 as ::core::ffi::c_int,
-        );
-        p = tem_0;
+    while let Some(mut block) = pool.storage.free.pop() {
+        (block.backing)(StringPoolAllocationAction::Free(8006));
     }
 }
 
@@ -14523,77 +14494,95 @@ unsafe extern "C" fn poolBytesToAllocateFor(
 }
 
 unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML_Bool {
-    // The callers maintain a live, ordered range from `start` through `end`, with
-    // `ptr` inside it.  Keep those offsets address-derived while changing the
-    // backing block so that the only raw dereferences here establish the short-lived
-    // ownership of the pool and of an allocated block.
+    // The raw cursors are still the C-facing view of the current slab.  Slab
+    // ownership and free-list order are ordinary Rust collections, while each
+    // slab's backing token preserves the configured allocator lifecycle.
     let pool = &mut *pool;
     let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
 
-    if !pool.freeBlocks.is_null() {
-        let free_block = &mut *pool.freeBlocks;
+    if let Some(mut free_block) = pool.storage.free.pop() {
         if pool.start.is_null() {
-            let start = &raw mut free_block.s as *mut crate::expat_external_h::XML_Char;
-            pool.blocks = pool.freeBlocks;
-            pool.blockCount = pool.blockCount.wrapping_add(1);
-            pool.freeBlocks = free_block.next;
-            free_block.next = ::core::ptr::null_mut::<block>();
+            let start = free_block.chars.as_mut_ptr();
+            let block_size = free_block.chars.len();
+            pool.storage.active.push(free_block);
+            pool.blockCount = pool.storage.active.len();
             pool.start = start;
-            pool.end = start.wrapping_add(free_block.size as usize);
+            pool.end = start.wrapping_add(block_size);
             pool.ptr = start;
             return crate::expat_h::XML_TRUE;
         }
 
         let active_capacity = pool.end.addr().wrapping_sub(pool.start.addr()) / char_size;
-        if free_block.size > 0 && active_capacity < free_block.size as usize {
+        if active_capacity < free_block.chars.len() {
             let source = pool.start;
             let pointer_offset = pool.ptr.addr().wrapping_sub(source.addr()) / char_size;
-            let next_free = free_block.next;
-            let start = &raw mut free_block.s as *mut crate::expat_external_h::XML_Char;
-            free_block.next = pool.blocks;
-            pool.blocks = pool.freeBlocks;
-            pool.blockCount = pool.blockCount.wrapping_add(1);
-            pool.freeBlocks = next_free;
-            crate::stdlib::memcpy(
-                start as *mut ::core::ffi::c_void,
-                source as *const ::core::ffi::c_void,
-                active_capacity.wrapping_mul(char_size),
-            );
-            pool.ptr = start.wrapping_add(pointer_offset);
-            pool.start = start;
-            pool.end = start.wrapping_add(free_block.size as usize);
-            return crate::expat_h::XML_TRUE;
-        }
-    }
-
-    if !pool.blocks.is_null() {
-        let block = &mut *pool.blocks;
-        let block_start = &raw mut block.s as *mut crate::expat_external_h::XML_Char;
-        if pool.start == block_start {
-            let pointer_offset = pool.ptr.addr().wrapping_sub(pool.start.addr()) / char_size;
-            let Some(block_size) = block.size.checked_mul(2) else {
+            let source_index = pool.storage.active.iter().position(|block| {
+                let block_start = block.chars.as_ptr().addr();
+                let byte_offset = source.addr().wrapping_sub(block_start);
+                source.addr() >= block_start
+                    && byte_offset <= block.chars.len().wrapping_mul(char_size)
+                    && byte_offset % char_size == 0
+            });
+            let Some(source_index) = source_index else {
+                pool.storage.free.push(free_block);
                 return crate::expat_h::XML_FALSE;
             };
-            let bytes_to_allocate = poolBytesToAllocateFor(block_size);
+            let source_offset = source.addr().wrapping_sub(
+                pool.storage.active[source_index].chars.as_ptr().addr(),
+            ) / char_size;
+            let block_size = free_block.chars.len();
+            pool.storage.active.push(free_block);
+            let destination_index = pool.storage.active.len() - 1;
+            let (older_blocks, destination) = pool.storage.active.split_at_mut(destination_index);
+            destination[0].chars[..active_capacity].copy_from_slice(
+                &older_blocks[source_index].chars[source_offset..source_offset + active_capacity],
+            );
+            let start = destination[0].chars.as_mut_ptr();
+            pool.blockCount = pool.storage.active.len();
+            pool.ptr = start.wrapping_add(pointer_offset);
+            pool.start = start;
+            pool.end = start.wrapping_add(block_size);
+            return crate::expat_h::XML_TRUE;
+        }
+        pool.storage.free.push(free_block);
+    }
+
+    if let Some(block) = pool.storage.active.last_mut() {
+        let block_start = block.chars.as_mut_ptr();
+        if pool.start == block_start {
+            let pointer_offset = pool.ptr.addr().wrapping_sub(pool.start.addr()) / char_size;
+            let Some(block_size) = block.chars.len().checked_mul(2) else {
+                return crate::expat_h::XML_FALSE;
+            };
+            let Ok(block_size_c) = ::core::ffi::c_int::try_from(block_size) else {
+                return crate::expat_h::XML_FALSE;
+            };
+            let bytes_to_allocate = poolBytesToAllocateFor(block_size_c);
             if bytes_to_allocate == 0 as crate::__stddef_size_t_h::size_t {
                 return crate::expat_h::XML_FALSE;
             }
-            let temp = expat_realloc(
-                pool.parser,
-                pool.blocks as *mut ::core::ffi::c_void,
-                bytes_to_allocate,
-                8161 as ::core::ffi::c_int,
-            ) as *mut BLOCK;
-            if temp.is_null() {
+            if block
+                .chars
+                .try_reserve_exact(block_size - block.chars.len())
+                .is_err()
+            {
                 return crate::expat_h::XML_FALSE;
             }
-            pool.blocks = temp;
-            let block = &mut *temp;
-            block.size = block_size;
-            let start = &raw mut block.s as *mut crate::expat_external_h::XML_Char;
+            // `try_reserve_exact` is allowed to move the Rust slab even if
+            // the custom realloc below fails.  Repair the C-facing cursors
+            // before returning in that case.
+            let resized_start = block.chars.as_mut_ptr();
+            if !(block.backing)(StringPoolAllocationAction::Grow(bytes_to_allocate)) {
+                pool.ptr = resized_start.wrapping_add(pointer_offset);
+                pool.start = resized_start;
+                pool.end = resized_start.wrapping_add(block.chars.len());
+                return crate::expat_h::XML_FALSE;
+            }
+            block.chars.resize(block_size, 0);
+            let start = block.chars.as_mut_ptr();
             pool.ptr = start.wrapping_add(pointer_offset);
             pool.start = start;
-            pool.end = start.wrapping_add(block_size as usize);
+            pool.end = start.wrapping_add(block_size);
             return crate::expat_h::XML_TRUE;
         }
     }
@@ -14616,25 +14605,62 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     if bytes_to_allocate == 0 as crate::__stddef_size_t_h::size_t {
         return crate::expat_h::XML_FALSE;
     }
-    let temp =
-        expat_malloc(pool.parser, bytes_to_allocate, 8201 as ::core::ffi::c_int) as *mut BLOCK;
-    if temp.is_null() {
+    let allocation = expat_malloc(pool.parser, bytes_to_allocate, 8201 as ::core::ffi::c_int);
+    if allocation.is_null() {
         return crate::expat_h::XML_FALSE;
     }
+    let mut chars = Vec::new();
+    if chars.try_reserve_exact(block_size as usize).is_err() {
+        expat_free(pool.parser, allocation, 8201 as ::core::ffi::c_int);
+        return crate::expat_h::XML_FALSE;
+    }
+    chars.resize(block_size as usize, 0);
+    let parser = pool.parser;
+    let mut allocation = allocation;
+    let backing = Box::new(move |action| match action {
+        StringPoolAllocationAction::Grow(size) => {
+            let reallocated = expat_realloc(parser, allocation, size, 8161);
+            if reallocated.is_null() {
+                false
+            } else {
+                allocation = reallocated;
+                true
+            }
+        }
+        StringPoolAllocationAction::Free(source_line) => {
+            expat_free(parser, allocation, source_line);
+            true
+        }
+    });
     let source = pool.start;
-    let block = &mut *temp;
-    block.size = block_size;
-    block.next = pool.blocks;
-    pool.blocks = temp;
-    pool.blockCount = pool.blockCount.wrapping_add(1);
-    let start = &raw mut block.s as *mut crate::expat_external_h::XML_Char;
+    let source_index = if pool.ptr != source {
+        pool.storage.active.iter().position(|block| {
+            let block_start = block.chars.as_ptr().addr();
+            let byte_offset = source.addr().wrapping_sub(block_start);
+            source.addr() >= block_start
+                && byte_offset <= block.chars.len().wrapping_mul(char_size)
+                && byte_offset % char_size == 0
+        })
+    } else {
+        None
+    };
+    let source_offset = source_index.map(|index| {
+        source.addr().wrapping_sub(pool.storage.active[index].chars.as_ptr().addr()) / char_size
+    });
+    pool.storage.active.push(StringPoolBlock { chars, backing });
+    let destination_index = pool.storage.active.len() - 1;
+    let start = pool.storage.active[destination_index].chars.as_mut_ptr();
     if pool.ptr != source {
-        crate::stdlib::memcpy(
-            start as *mut ::core::ffi::c_void,
-            source as *const ::core::ffi::c_void,
-            pointer_offset.wrapping_mul(char_size),
+        let Some(source_index) = source_index else {
+            return crate::expat_h::XML_FALSE;
+        };
+        let source_offset = source_offset.expect("pool source offset must accompany its slab");
+        let (older_blocks, destination) = pool.storage.active.split_at_mut(destination_index);
+        destination[0].chars[..pointer_offset].copy_from_slice(
+            &older_blocks[source_index].chars[source_offset..source_offset + pointer_offset],
         );
     }
+    pool.blockCount = pool.storage.active.len();
     pool.ptr = start.wrapping_add(pointer_offset);
     pool.start = start;
     pool.end = start.wrapping_add(block_size as usize);
