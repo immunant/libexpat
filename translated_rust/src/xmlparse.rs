@@ -4395,6 +4395,15 @@ pub unsafe extern "C" fn XML_GetErrorCode_ffi(
 ) -> crate::expat_h::XML_Error {
     XML_GetErrorCode(parser)
 }
+
+#[inline]
+fn byte_char_ptr_diff(
+    end: *const ::core::ffi::c_char,
+    start: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_long {
+    (end as isize).wrapping_sub(start as isize) as ::core::ffi::c_long
+}
+
 pub extern "C" fn XML_GetCurrentByteIndex(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Index {
@@ -4403,8 +4412,7 @@ pub extern "C" fn XML_GetCurrentByteIndex(
     };
     if !parser.m_eventPtr.is_null() {
         return parser.m_parseEndByteIndex as ::core::ffi::c_long
-            - unsafe { parser.m_parseEndPtr.offset_from(parser.m_eventPtr) }
-                as ::core::ffi::c_long;
+            - byte_char_ptr_diff(parser.m_parseEndPtr, parser.m_eventPtr);
     }
     -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index
 }
@@ -4422,8 +4430,7 @@ pub extern "C" fn XML_GetCurrentByteCount(
         return 0 as ::core::ffi::c_int;
     };
     if !parser.m_eventEndPtr.is_null() && !parser.m_eventPtr.is_null() {
-        return unsafe { parser.m_eventEndPtr.offset_from(parser.m_eventPtr) } as ::core::ffi::c_long
-            as ::core::ffi::c_int;
+        return byte_char_ptr_diff(parser.m_eventEndPtr, parser.m_eventPtr) as ::core::ffi::c_int;
     }
     0 as ::core::ffi::c_int
 }
