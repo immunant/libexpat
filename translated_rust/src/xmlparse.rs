@@ -16607,88 +16607,66 @@ unsafe extern "C" fn setElementTypePrefix(
     mut parser: crate::expat_h::XML_Parser,
     mut elementType: *mut ELEMENT_TYPE,
 ) -> ::core::ffi::c_int {
-    let dtd = parser_dtd_ptr!(parser);
-    let mut name: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    let element_name = pool_string_pointer!(&(*dtd).pool, (*elementType).named.name);
-    if element_name.is_null() {
+    let parser_ptr = parser;
+    let parser = &mut *parser;
+    let dtd = &mut *parser_dtd_ptr!(parser);
+    let element_type = &mut *elementType;
+    let element_name = element_type.named.name;
+    let Some(name_chars) = dtd.pool.chars_from(element_name) else {
         return 0 as ::core::ffi::c_int;
+    };
+    let Some(prefix_len) = name_chars
+        .iter()
+        .position(|&character| character == 0 || character == ':' as crate::expat_external_h::XML_Char)
+    else {
+        return 0 as ::core::ffi::c_int;
+    };
+    if name_chars[prefix_len] != ':' as crate::expat_external_h::XML_Char {
+        return 1 as ::core::ffi::c_int;
     }
-    name = element_name;
-    while *name != 0 {
-        if *name as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
-            let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
-            let mut s: *const crate::expat_external_h::XML_Char =
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            s = element_name;
-            while s != name {
-                if if (*dtd).pool.is_full() && poolGrow(&mut (*dtd).pool) == 0 {
-                    0 as ::core::ffi::c_int
-                } else {
-                    if (*dtd).pool.write_cursor(*s) {
-                        1 as ::core::ffi::c_int
-                    } else {
-                        0 as ::core::ffi::c_int
-                    }
-                } == 0
-                {
-                    return 0 as ::core::ffi::c_int;
-                }
-                s = s.offset(1);
-            }
-            if if (*dtd).pool.is_full() && poolGrow(&mut (*dtd).pool) == 0 {
-                0 as ::core::ffi::c_int
-            } else {
-                if (*dtd)
-                    .pool
-                    .write_cursor('\0' as crate::expat_external_h::XML_Char)
-                {
-                    1 as ::core::ffi::c_int
-                } else {
-                    0 as ::core::ffi::c_int
-                }
-            } == 0
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            let Some(pool_start) = (*dtd).pool.start_ref(true) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            let pool_start = (*dtd)
-                .pool
-                .chars_from(pool_start)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-            if pool_start.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            prefix = lookup(
-                parser,
-                &raw mut (*dtd).prefixes,
-                pool_start as KEY,
-                ::core::mem::size_of::<PREFIX>(),
-            ) as *mut PREFIX;
-            if prefix.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            let Some(pool_start_ref) = pool_string_ref(&raw const (*dtd).pool, pool_start, false)
-            else {
-                return 0 as ::core::ffi::c_int;
-            };
-            if (*prefix).name == Some(pool_start_ref) {
-                (*dtd).pool.commit();
-            } else {
-                (*dtd).pool.rewind();
-            }
-            let Some(prefix_ref) = (*prefix).name else {
-                return 0 as ::core::ffi::c_int;
-            };
-            (*elementType).prefix = prefix_ref;
-            (*elementType).hasPrefix = crate::expat_h::XML_TRUE;
-            break;
-        } else {
-            name = name.offset(1);
+    for index in 0..prefix_len {
+        // Re-resolve the pool-backed name on each iteration because appending
+        // the prefix may grow and relocate the pool's backing storage.
+        let Some(character) = dtd
+            .pool
+            .chars_from(element_name)
+            .and_then(|chars| chars.get(index))
+            .copied()
+        else {
+            return 0 as ::core::ffi::c_int;
+        };
+        if !pool_append_char(&mut dtd.pool, character) {
+            return 0 as ::core::ffi::c_int;
         }
     }
+    if !pool_append_char(&mut dtd.pool, '\0' as crate::expat_external_h::XML_Char) {
+        return 0 as ::core::ffi::c_int;
+    }
+    let Some(pool_start) = dtd.pool.start_ref(true) else {
+        return 0 as ::core::ffi::c_int;
+    };
+    let Some(pool_start_chars) = dtd.pool.chars_from(pool_start) else {
+        return 0 as ::core::ffi::c_int;
+    };
+    let prefix = lookup(
+        parser_ptr,
+        &raw mut dtd.prefixes,
+        pool_start_chars.as_ptr() as KEY,
+        ::core::mem::size_of::<PREFIX>(),
+    ) as *mut PREFIX;
+    let Some(prefix) = prefix.as_mut() else {
+        return 0 as ::core::ffi::c_int;
+    };
+    if prefix.name == Some(pool_start) {
+        dtd.pool.commit();
+    } else {
+        dtd.pool.rewind();
+    }
+    let Some(prefix_ref) = prefix.name else {
+        return 0 as ::core::ffi::c_int;
+    };
+    element_type.prefix = prefix_ref;
+    element_type.hasPrefix = crate::expat_h::XML_TRUE;
     return 1 as ::core::ffi::c_int;
 }
 
