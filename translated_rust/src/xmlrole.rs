@@ -499,14 +499,12 @@ fn name_matches_ascii(
     keyword: *const ::core::ffi::c_char,
 ) -> bool {
     let name_matches = enc.nameMatchesAscii.expect("non-null function pointer");
-    unsafe_expr!(
-        name_matches(
-            enc as *const crate::src::xmltok::ENCODING,
-            ptr.wrapping_offset((offset_chars * enc.minBytesPerChar) as isize),
-            end,
-            keyword,
-        )
-    ) != 0
+    unsafe_expr!(name_matches(
+        enc as *const crate::src::xmltok::ENCODING,
+        ptr.wrapping_offset((offset_chars * enc.minBytesPerChar) as isize),
+        end,
+        keyword,
+    )) != 0
 }
 
 extern "C" fn prolog0(
