@@ -6261,6 +6261,19 @@ unsafe fn call_processor_impl(
             }
             parser.m_processor = ProcessorState::Prolog;
         }
+        // External-entity initialization has the same checked encoding setup
+        // as the prolog initializer.  Its former raw adapter only performed
+        // this state change before tail-calling the ordinary second-stage
+        // processor, so make the transition before raw cursor dispatch.
+        if matches!(parser.m_processor, ProcessorState::ExternalEntityInit) {
+            let result = initialize_encoding_impl(parser);
+            if result as ::core::ffi::c_uint
+                != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                return (result, next);
+            }
+            parser.m_processor = ProcessorState::ExternalEntityInit2;
+        }
         let Some(bytes) = parser.m_buffer.bytes.as_ref() else {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
         };
@@ -6393,13 +6406,21 @@ unsafe fn call_processor_impl(
                     result
                 }
             }
+        } else if matches!(parser.m_processor, ProcessorState::Error) {
+            // The error processor never consumes input or changes the cursor:
+            // it only returns the parser's stored error.  Keep that terminal
+            // state in the checked dispatcher instead of rebuilding a raw
+            // parser handle and cursor solely for this read.
+            parser.m_errorCode
         } else {
             let processor: Processor = match parser.m_processor {
                 ProcessorState::PrologInit => {
                     unreachable!("prolog initialization is dispatched before cursor setup")
                 }
                 ProcessorState::Content => unreachable!("content dispatch is handled above"),
-                ProcessorState::ExternalEntityInit => externalEntityInitProcessor,
+                ProcessorState::ExternalEntityInit => {
+                    unreachable!("external entity initialization is dispatched before cursor setup")
+                }
                 ProcessorState::ExternalEntityInit2 => externalEntityInitProcessor2,
                 ProcessorState::ExternalEntityInit3 => {
                     unreachable!("external entity init processor 3 is dispatched directly")
@@ -6414,7 +6435,9 @@ unsafe fn call_processor_impl(
                 ProcessorState::Prolog => prologProcessor,
                 ProcessorState::Epilog => epilogProcessor,
                 ProcessorState::InternalEntity => internalEntityProcessor,
-                ProcessorState::Error => errorProcessor,
+                ProcessorState::Error => {
+                    unreachable!("error dispatch is handled without a raw cursor adapter")
+                }
             };
             processor(std::ptr::from_mut(parser), start, end, &raw mut next_pointer)
         };
@@ -10824,22 +10847,6 @@ unsafe extern "C" fn storeRawNames(
         return crate::expat_h::XML_FALSE;
     };
     dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd))
-}
-
-unsafe extern "C" fn externalEntityInitProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    let mut result: crate::expat_h::XML_Error = initializeEncoding(parser);
-    if result as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return result;
-    }
-    (*parser).m_processor = ProcessorState::ExternalEntityInit2;
-    return externalEntityInitProcessor2(parser, start, end, endPtr);
 }
 
 /// Returns the tokenizer encoding selected by the parser state.
@@ -21046,15 +21053,6 @@ unsafe extern "C" fn internalEntityProcessor(
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
     crate::expat_h::XML_ERROR_NONE
-}
-
-unsafe extern "C" fn errorProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    _s: *const ::core::ffi::c_char,
-    _end: *const ::core::ffi::c_char,
-    _nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    return (*parser).m_errorCode;
 }
 
 /// Applies the post-scan state change for the attribute entity at the top of
