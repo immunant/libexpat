@@ -109,31 +109,22 @@ pub mod siphash_h {
         true
     }
 
-    pub unsafe extern "C" fn sip24_update(
-        H: *mut crate::siphash_h::siphash,
-        src: *const ::core::ffi::c_void,
-        len: crate::__stddef_size_t_h::size_t,
-    ) -> *mut crate::siphash_h::siphash {
-        if H.is_null() || (len != 0 && src.is_null()) {
-            return H;
-        }
-        let state = &mut *H;
+    /// Incorporates a bounded byte sequence into an already-borrowed SipHash
+    /// state.  The caller supplies a slice, so the input range is validated
+    /// by Rust rather than reconstructed from a raw `(src, len)` pair.
+    pub fn sip24_update<'a>(
+        state: &'a mut crate::siphash_h::siphash,
+        input: &[::core::ffi::c_uchar],
+    ) -> &'a mut crate::siphash_h::siphash {
         if sip24_buffered_len(state).is_none() {
-            return H;
+            return state;
         }
-        for input_offset in 0..len {
-            // The caller's `src`/`len` contract is the raw boundary.  Read a
-            // single byte there and hand it to the reference-based state
-            // transition above; no slice length or lifetime is invented.
-            let byte = src
-                .cast::<::core::ffi::c_uchar>()
-                .wrapping_add(input_offset)
-                .read();
+        for &byte in input {
             if !sip24_update_byte(state, byte) {
-                return H;
+                return state;
             }
         }
-        H
+        state
     }
 
     /// Finalizes an already-borrowed SipHash state.  The pending-byte count is
