@@ -1,5 +1,18 @@
 use core::sync::atomic::{AtomicI32, Ordering};
 
+macro_rules! ffi_call3 {
+    ($function:expr, $a:expr, $b:expr, $c:expr $(,)?) => {{
+        unsafe { $function($a, $b, $c) }
+    }};
+}
+
+macro_rules! with_c_char_slice {
+    ($ptr:expr, $len:expr, |$slice:ident| $body:block $(,)?) => {{
+        let $slice = unsafe { core::slice::from_raw_parts($ptr, $len) };
+        $body
+    }};
+}
+
 extern "C" {
     pub type XML_ParserStruct;
     fn snprintf(
@@ -103,14 +116,8 @@ extern "C" {
     static mut g_reallocation_count: ::core::ffi::c_int;
 }
 
-fn copy_bytes(dest: &mut [::core::ffi::c_char], src: *const ::core::ffi::c_char) {
-    unsafe {
-        memcpy(
-            dest.as_mut_ptr() as *mut ::core::ffi::c_void,
-            src as *const ::core::ffi::c_void,
-            dest.len(),
-        );
-    }
+fn copy_bytes(dest: &mut [::core::ffi::c_char], src: &[::core::ffi::c_char]) {
+    dest.copy_from_slice(&src[..dest.len()]);
 }
 
 static TRIPLET_START_FLAG: AtomicI32 = AtomicI32::new(XML_FALSE as ::core::ffi::c_int);
@@ -881,7 +888,9 @@ extern "C" fn prefix_converter(
     s: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let mut bytes = [0 as ::core::ffi::c_char; 2];
-    copy_bytes(&mut bytes, s);
+    with_c_char_slice!(s, bytes.len(), |source_bytes| {
+        copy_bytes(&mut bytes, source_bytes);
+    });
     if bytes[0] as ::core::ffi::c_int
         == -(1 as ::core::ffi::c_int) as ::core::ffi::c_char as ::core::ffi::c_int
     {
@@ -3490,13 +3499,12 @@ pub unsafe extern "C" fn ext2_accumulate_characters(
     }
 }
 fn fail_handler_record_overflow() -> ! {
-    unsafe {
-        _fail(
-            b"/root/work/expat/tests/handlers.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1682 as ::core::ffi::c_int,
-            b"check failed: rec->count < max_entries\0".as_ptr() as *const ::core::ffi::c_char,
-        )
-    }
+    ffi_call3!(
+        _fail,
+        b"/root/work/expat/tests/handlers.c\0".as_ptr() as *const ::core::ffi::c_char,
+        1682 as ::core::ffi::c_int,
+        b"check failed: rec->count < max_entries\0".as_ptr() as *const ::core::ffi::c_char,
+    )
 }
 
 fn record_call(
