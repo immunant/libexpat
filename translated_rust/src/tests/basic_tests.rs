@@ -1508,6 +1508,97 @@ fn c_string_to_string_lossy(text: *const ::core::ffi::c_char) -> String {
     String::from_utf8_lossy(&copy_c_string_bytes(text)).into_owned()
 }
 
+fn c_string_to_string_lossy_or_null(text: *const ::core::ffi::c_char) -> String {
+    if text.is_null() {
+        String::from("<null>")
+    } else {
+        c_string_to_string_lossy(text)
+    }
+}
+
+fn handler_entries(
+    storage: &handler_record_list,
+    line: ::core::ffi::c_int,
+) -> &[handler_record_entry] {
+    let count = usize::try_from(storage.count)
+        .unwrap_or_else(|_| fail_test(line, b"handler record count must be non-negative\0"));
+    if count > storage.entries.len() {
+        fail_test(line, b"handler record count exceeds storage capacity\0");
+    }
+    &storage.entries[..count]
+}
+
+fn handler_entry(
+    entries: &[handler_record_entry],
+    index: usize,
+    line: ::core::ffi::c_int,
+) -> handler_record_entry {
+    entries.get(index).copied().unwrap_or_else(|| {
+        fail_test_message(line, format!("missing handler record at index {index}"))
+    })
+}
+
+fn expect_handler_name(
+    entries: &[handler_record_entry],
+    index: usize,
+    expected_name: &[u8],
+    line: ::core::ffi::c_int,
+) -> handler_record_entry {
+    let entry = handler_entry(entries, index, line);
+    if !c_string_equals(entry.name, expected_name) {
+        fail_test_message(
+            line,
+            format!(
+                "unexpected handler name at index {index}: got {}, expected {}",
+                c_string_to_string_lossy_or_null(entry.name),
+                c_string_to_string_lossy(bytes_as_c_char_ptr(expected_name)),
+            ),
+        );
+    }
+    entry
+}
+
+fn expect_handler_entry(
+    entries: &[handler_record_entry],
+    index: usize,
+    expected_name: &[u8],
+    expected_arg: ::core::ffi::c_int,
+    line: ::core::ffi::c_int,
+) -> handler_record_entry {
+    let entry = expect_handler_name(entries, index, expected_name, line);
+    if entry.arg != expected_arg {
+        fail_test_message(
+            line,
+            format!(
+                "unexpected handler arg at index {index}: got {}, expected {}",
+                entry.arg, expected_arg,
+            ),
+        );
+    }
+    entry
+}
+
+fn expect_handler_sequence(
+    entries: &[handler_record_entry],
+    expected: &[(&[u8], ::core::ffi::c_int)],
+    line: ::core::ffi::c_int,
+) {
+    if entries.len() != expected.len() {
+        fail_test_message(
+            line,
+            format!(
+                "unexpected handler record count: got {}, expected {}",
+                entries.len(),
+                expected.len(),
+            ),
+        );
+    }
+
+    for (index, (name, arg)) in expected.iter().copied().enumerate() {
+        expect_handler_entry(entries, index, name, arg, line);
+    }
+}
+
 fn copy_xml_content_nodes(model: *const XML_Content, len: usize) -> Vec<XML_Content> {
     let mut nodes = vec![
         XML_Content {
@@ -1911,6 +2002,10 @@ fn parser_set_end_element_handler(handler: XML_EndElementHandler) {
 
 fn parser_set_default_handler(handler: XML_DefaultHandler) {
     ffi_call2(XML_SetDefaultHandler, current_parser(), handler);
+}
+
+fn parser_set_default_handler_expand(handler: XML_DefaultHandler) {
+    ffi_call2(XML_SetDefaultHandlerExpand, current_parser(), handler);
 }
 
 fn parser_set_doctype_decl_handler(
@@ -5729,6 +5824,96 @@ extern "C" fn test_repeated_stop_parser_between_char_data_calls() {
         );
     }
 }
+
+extern "C" fn test_stop_parser_between_cdata_calls() {
+    set_test_info(
+        b"test_stop_parser_between_cdata_calls\0",
+        1930 as ::core::ffi::c_int,
+    );
+    let text = shared_test_text(SharedTestText::Cdata);
+    parser_set_character_data_handler(clearing_aborting_character_data_handler());
+    set_parser_stop_state(XML_FALSE, None);
+    expect_failure(
+        text,
+        XML_ERROR_ABORTED,
+        b"Parse not aborted in CDATA handler\0",
+        1935 as ::core::ffi::c_int,
+    );
+}
+
+extern "C" fn test_suspend_parser_between_cdata_calls() {
+    set_test_info(
+        b"test_suspend_parser_between_cdata_calls\0",
+        1940 as ::core::ffi::c_int,
+    );
+    if current_chunk_size() != 0 {
+        return;
+    }
+
+    let text = shared_test_text(SharedTestText::Cdata);
+    parser_set_character_data_handler(clearing_aborting_character_data_handler());
+    set_parser_stop_state(XML_TRUE, None);
+    let result = parser_parse_c_string(text);
+    if result as ::core::ffi::c_uint
+        != XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        if parser_status_is_error(result) {
+            xml_failure(1956 as ::core::ffi::c_int);
+        }
+        fail_test(
+            1957 as ::core::ffi::c_int,
+            b"Parse not suspended in CDATA handler\0",
+        );
+    }
+    if parser_error_code() as ::core::ffi::c_uint
+        != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        xml_failure(1960 as ::core::ffi::c_int);
+    }
+}
+
+extern "C" fn test_memory_allocation() {
+    set_test_info(b"test_memory_allocation\0", 1965 as ::core::ffi::c_int);
+    let parser = current_parser();
+    let mut buffer = parser_mem_malloc(parser, 256 as size_t).cast::<::core::ffi::c_char>();
+    if buffer.is_null() {
+        fail_test(1970 as ::core::ffi::c_int, b"Allocation failed\0");
+    }
+
+    ffi_call3(
+        memcpy,
+        buffer.cast::<::core::ffi::c_void>(),
+        bytes_as_c_char_ptr(b"TEST\0").cast::<::core::ffi::c_void>(),
+        5 as size_t,
+    );
+    if !c_string_equals(buffer, b"TEST\0") {
+        fail_test(1979 as ::core::ffi::c_int, b"Memory not writable\0");
+    }
+
+    let reallocated =
+        parser_mem_realloc(parser, buffer.cast::<::core::ffi::c_void>(), 512 as size_t)
+            .cast::<::core::ffi::c_char>();
+    if reallocated.is_null() {
+        fail_test(1983 as ::core::ffi::c_int, b"Reallocation failed\0");
+    }
+
+    buffer = reallocated;
+    ffi_call3(
+        memcpy,
+        buffer.cast::<::core::ffi::c_void>(),
+        bytes_as_c_char_ptr(b"VEST\0").cast::<::core::ffi::c_void>(),
+        5 as size_t,
+    );
+    if !c_string_equals(buffer, b"VEST\0") {
+        fail_test(
+            1989 as ::core::ffi::c_int,
+            b"Reallocated memory not writable\0",
+        );
+    }
+
+    parser_mem_free(parser, buffer.cast::<::core::ffi::c_void>());
+}
+
 extern "C" fn test_good_cdata_ascii() {
     set_test_info(b"test_good_cdata_ascii\0", 1571 as ::core::ffi::c_int);
     let text = b"<a><![CDATA[<greeting>Hello, world!</greeting>]]></a>\0";
@@ -6146,2590 +6331,345 @@ extern "C" fn test_bad_cdata_utf16() {
         parser_reset();
     }
 }
-extern "C" fn test_stop_parser_between_cdata_calls() {
-    set_test_info(
-        b"test_stop_parser_between_cdata_calls\0",
-        1930 as ::core::ffi::c_int,
-    );
-    let text = shared_test_text(SharedTestText::Cdata);
-    parser_set_character_data_handler(clearing_aborting_character_data_handler());
-    set_parser_stop_state(XML_FALSE, None);
-    expect_failure(
-        text,
-        XML_ERROR_ABORTED,
-        b"Parse not aborted in CDATA handler\0",
-        1935 as ::core::ffi::c_int,
-    );
-}
-extern "C" fn test_suspend_parser_between_cdata_calls() {
-    set_test_info(
-        b"test_suspend_parser_between_cdata_calls\0",
-        1940 as ::core::ffi::c_int,
-    );
-    if current_chunk_size() != 0 as ::core::ffi::c_int {
-        return;
-    }
-    let text = shared_test_text(SharedTestText::Cdata);
-    let result: XML_Status;
-    parser_set_character_data_handler(clearing_aborting_character_data_handler());
-    set_parser_stop_state(XML_TRUE, None);
-    result = parser_parse_c_string(text);
-    if result as ::core::ffi::c_uint
-        != XML_STATUS_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        if result as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            xml_failure(1956 as ::core::ffi::c_int);
-        }
-        fail_test(
-            1957 as ::core::ffi::c_int,
-            b"Parse not suspended in CDATA handler\0",
-        );
-    }
-    if parser_error_code() as ::core::ffi::c_uint
-        != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        xml_failure(1960 as ::core::ffi::c_int);
-    }
-}
-extern "C" fn test_memory_allocation() {
-    set_test_info(b"test_memory_allocation\0", 1965 as ::core::ffi::c_int);
 
-    let parser = current_parser();
-    let mut buffer = parser_mem_malloc(parser, 256 as size_t).cast::<::core::ffi::c_char>();
-    if buffer.is_null() {
-        fail_test(1970 as ::core::ffi::c_int, b"Allocation failed\0");
-    }
-
-    ffi_call3(
-        memcpy,
-        buffer.cast::<::core::ffi::c_void>(),
-        bytes_as_c_char_ptr(b"TEST\0").cast::<::core::ffi::c_void>(),
-        b"TEST\0".len() as size_t,
-    );
-    if ffi_call2(strcmp, buffer, bytes_as_c_char_ptr(b"TEST\0")) != 0 as ::core::ffi::c_int {
-        fail_test(1979 as ::core::ffi::c_int, b"Memory not writable\0");
-    }
-
-    let resized = parser_mem_realloc(parser, buffer.cast::<::core::ffi::c_void>(), 512 as size_t)
-        .cast::<::core::ffi::c_char>();
-    if resized.is_null() {
-        fail_test(1983 as ::core::ffi::c_int, b"Reallocation failed\0");
-    }
-
-    buffer = resized;
-    ffi_call3(
-        memcpy,
-        buffer.cast::<::core::ffi::c_void>(),
-        bytes_as_c_char_ptr(b"VEST\0").cast::<::core::ffi::c_void>(),
-        b"VEST\0".len() as size_t,
-    );
-    if ffi_call2(strcmp, buffer, bytes_as_c_char_ptr(b"VEST\0")) != 0 as ::core::ffi::c_int {
-        fail_test(
-            1989 as ::core::ffi::c_int,
-            b"Reallocated memory not writable\0",
-        );
-    }
-
-    parser_mem_free(parser, buffer.cast::<::core::ffi::c_void>());
-}
 extern "C" fn test_default_current() {
-    unsafe {
-        _check_set_test_info(
-            b"test_default_current\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1999 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc>hell]</doc>\0".as_ptr() as *const ::core::ffi::c_char;
-        let mut entity_text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n<!ENTITY entity '&#37;'>\n]>\n<doc>&entity;</doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        set_subtest(b"with defaulting\0".as_ptr() as *const ::core::ffi::c_char);
-        let mut storage: handler_record_list = handler_record_list {
-            count: 0,
-            entries: [handler_record_entry {
-                name: ::core::ptr::null::<::core::ffi::c_char>(),
-                arg: 0,
-            }; 50],
-        };
-        storage.count = 0 as ::core::ffi::c_int;
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                record_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                record_cdata_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2015 as ::core::ffi::c_int,
-            );
-        }
-        let mut i: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let c2rust_fresh2 = i;
-        i = i + 1;
-        let mut e: *const handler_record_entry = _handler_record_get(
-            &raw mut storage,
-            c2rust_fresh2,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2017 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2017 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e).arg == 5 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2017 as ::core::ffi::c_int,
-                b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut cdata_len_remaining: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
-        while cdata_len_remaining > 0 as ::core::ffi::c_int {
-            let c2rust_fresh3 = i;
-            i = i + 1;
-            let mut c_entry: *const handler_record_entry = _handler_record_get(
-                &raw mut storage,
-                c2rust_fresh3,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2022 as ::core::ffi::c_int,
-            );
-            if !(strcmp(
-                (*c_entry).name,
-                b"record_cdata_handler\0".as_ptr() as *const ::core::ffi::c_char,
-            ) == 0 as ::core::ffi::c_int)
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2023 as ::core::ffi::c_int,
-                    b"check failed: strcmp(c_entry->name, \"record_cdata_handler\") == 0\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if !((*c_entry).arg > 0 as ::core::ffi::c_int) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2024 as ::core::ffi::c_int,
-                    b"check failed: c_entry->arg > 0\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if !((*c_entry).arg <= cdata_len_remaining) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2025 as ::core::ffi::c_int,
-                    b"check failed: c_entry->arg <= cdata_len_remaining\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            cdata_len_remaining -= (*c_entry).arg;
-            let c2rust_fresh4 = i;
-            i = i + 1;
-            let mut e_0: *const handler_record_entry = _handler_record_get(
-                &raw mut storage,
-                c2rust_fresh4,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2029 as ::core::ffi::c_int,
-            );
-            if !(strcmp(
-                (*e_0).name,
-                b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-            ) == 0 as ::core::ffi::c_int)
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2029 as ::core::ffi::c_int,
-                    b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if !((*e_0).arg == (*c_entry).arg) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2029 as ::core::ffi::c_int,
-                    b"check failed: e->arg == (c_entry->arg)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-        }
-        let c2rust_fresh5 = i;
-        i = i + 1;
-        let mut e_1: *const handler_record_entry = _handler_record_get(
-            &raw mut storage,
-            c2rust_fresh5,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2031 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_1).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2031 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_1).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2031 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(storage.count == i) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2032 as ::core::ffi::c_int,
-                b"check failed: storage.count == i\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        set_subtest(b"no defaulting\0".as_ptr() as *const ::core::ffi::c_char);
-        let mut storage_0: handler_record_list = handler_record_list {
-            count: 0,
-            entries: [handler_record_entry {
-                name: ::core::ptr::null::<::core::ffi::c_char>(),
-                arg: 0,
-            }; 50],
-        };
-        storage_0.count = 0 as ::core::ffi::c_int;
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                record_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                record_cdata_nodefault_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data(&raw mut storage_0 as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2046 as ::core::ffi::c_int,
-            );
-        }
-        let mut i_0: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        let c2rust_fresh6 = i_0;
-        i_0 = i_0 + 1;
-        let mut e_2: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_0,
-            c2rust_fresh6,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2048 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_2).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2048 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_2).arg == 5 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2048 as ::core::ffi::c_int,
-                b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut cdata_len_remaining_0: ::core::ffi::c_int = 5 as ::core::ffi::c_int;
-        while cdata_len_remaining_0 > 0 as ::core::ffi::c_int {
-            let c2rust_fresh7 = i_0;
-            i_0 = i_0 + 1;
-            let mut c_entry_0: *const handler_record_entry = _handler_record_get(
-                &raw mut storage_0,
-                c2rust_fresh7,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2053 as ::core::ffi::c_int,
-            );
-            if !(strcmp(
-                (*c_entry_0).name,
-                b"record_cdata_nodefault_handler\0".as_ptr() as *const ::core::ffi::c_char,
-            ) == 0 as ::core::ffi::c_int)
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2054 as ::core::ffi::c_int,
-                    b"check failed: strcmp(c_entry->name, \"record_cdata_nodefault_handler\") == 0\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if !((*c_entry_0).arg > 0 as ::core::ffi::c_int) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2055 as ::core::ffi::c_int,
-                    b"check failed: c_entry->arg > 0\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if !((*c_entry_0).arg <= cdata_len_remaining_0) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2056 as ::core::ffi::c_int,
-                    b"check failed: c_entry->arg <= cdata_len_remaining\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            cdata_len_remaining_0 -= (*c_entry_0).arg;
-        }
-        let c2rust_fresh8 = i_0;
-        i_0 = i_0 + 1;
-        let mut e_3: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_0,
-            c2rust_fresh8,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2059 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_3).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2059 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_3).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2059 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(storage_0.count == i_0) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2060 as ::core::ffi::c_int,
-                b"check failed: storage.count == i\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        set_subtest(b"with internal entity\0".as_ptr() as *const ::core::ffi::c_char);
-        let mut storage_1: handler_record_list = handler_record_list {
-            count: 0,
-            entries: [handler_record_entry {
-                name: ::core::ptr::null::<::core::ffi::c_char>(),
-                arg: 0,
-            }; 50],
-        };
-        storage_1.count = 0 as ::core::ffi::c_int;
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                record_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                record_cdata_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data(&raw mut storage_1 as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            entity_text,
-            strlen(entity_text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2075 as ::core::ffi::c_int,
-            );
-        }
-        let mut e_4: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            0 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2077 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_4).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2077 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_4).arg == 9 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2077 as ::core::ffi::c_int,
-                b"check failed: e->arg == (9)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_5: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            1 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2078 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_5).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2078 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_5).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2078 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_6: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            2 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2079 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_6).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2079 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_6).arg == 3 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2079 as ::core::ffi::c_int,
-                b"check failed: e->arg == (3)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_7: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            3 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2080 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_7).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2080 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_7).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2080 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_8: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            4 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2081 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_8).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2081 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_8).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2081 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_9: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            5 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2082 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_9).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2082 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_9).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2082 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_10: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            6 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2083 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_10).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2083 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_10).arg == 8 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2083 as ::core::ffi::c_int,
-                b"check failed: e->arg == (8)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_11: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            7 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2084 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_11).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2084 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_11).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2084 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_12: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            8 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2085 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_12).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2085 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_12).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2085 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_13: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            9 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2086 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_13).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2086 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_13).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2086 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_14: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            10 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2087 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_14).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2087 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_14).arg == 7 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2087 as ::core::ffi::c_int,
-                b"check failed: e->arg == (7)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_15: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            11 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2088 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_15).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2088 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_15).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2088 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_16: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            12 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2089 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_16).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2089 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_16).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2089 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_17: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            13 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2090 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_17).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2090 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_17).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2090 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_18: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            14 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2091 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_18).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2091 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_18).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2091 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_19: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            15 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2092 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_19).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2092 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_19).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2092 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_20: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            16 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2093 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_20).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2093 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_20).arg == 5 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2093 as ::core::ffi::c_int,
-                b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_21: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            17 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2094 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_21).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2094 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_21).arg == 8 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2094 as ::core::ffi::c_int,
-                b"check failed: e->arg == (8)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_22: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_1,
-            18 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2095 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_22).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2095 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_22).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2095 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(storage_1.count == 19 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2096 as ::core::ffi::c_int,
-                b"check failed: storage.count == 19\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        set_subtest(b"with skip handler\0".as_ptr() as *const ::core::ffi::c_char);
-        let mut storage_2: handler_record_list = handler_record_list {
-            count: 0,
-            entries: [handler_record_entry {
-                name: ::core::ptr::null::<::core::ffi::c_char>(),
-                arg: 0,
-            }; 50],
-        };
-        storage_2.count = 0 as ::core::ffi::c_int;
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                record_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                record_cdata_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetSkippedEntityHandler(
-            g_parser,
-            Some(
-                record_skip_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data(&raw mut storage_2 as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            entity_text,
-            strlen(entity_text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2112 as ::core::ffi::c_int,
-            );
-        }
-        let mut e_23: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            0 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2114 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_23).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2114 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_23).arg == 9 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2114 as ::core::ffi::c_int,
-                b"check failed: e->arg == (9)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_24: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            1 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2115 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_24).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2115 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_24).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2115 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_25: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            2 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2116 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_25).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2116 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_25).arg == 3 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2116 as ::core::ffi::c_int,
-                b"check failed: e->arg == (3)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_26: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            3 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2117 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_26).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2117 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_26).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2117 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_27: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            4 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2118 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_27).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2118 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_27).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2118 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_28: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            5 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2119 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_28).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2119 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_28).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2119 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_29: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            6 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2120 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_29).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2120 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_29).arg == 8 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2120 as ::core::ffi::c_int,
-                b"check failed: e->arg == (8)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_30: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            7 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2121 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_30).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2121 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_30).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2121 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_31: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            8 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2122 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_31).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2122 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_31).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2122 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_32: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            9 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2123 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_32).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2123 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_32).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2123 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_33: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            10 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2124 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_33).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2124 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_33).arg == 7 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2124 as ::core::ffi::c_int,
-                b"check failed: e->arg == (7)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_34: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            11 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2125 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_34).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2125 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_34).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2125 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_35: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            12 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2126 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_35).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2126 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_35).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2126 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_36: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            13 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2127 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_36).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2127 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_36).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2127 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_37: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            14 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2128 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_37).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2128 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_37).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2128 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_38: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            15 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2129 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_38).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2129 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_38).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2129 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_39: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            16 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2130 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_39).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2130 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_39).arg == 5 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2130 as ::core::ffi::c_int,
-                b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_40: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            17 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2131 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_40).name,
-            b"record_skip_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2131 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_skip_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_40).arg == 0 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2131 as ::core::ffi::c_int,
-                b"check failed: e->arg == (0)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_41: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_2,
-            18 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2132 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_41).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2132 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_41).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2132 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(storage_2.count == 19 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2133 as ::core::ffi::c_int,
-                b"check failed: storage.count == 19\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        set_subtest(b"allow entity\0".as_ptr() as *const ::core::ffi::c_char);
-        let mut storage_3: handler_record_list = handler_record_list {
-            count: 0,
-            entries: [handler_record_entry {
-                name: ::core::ptr::null::<::core::ffi::c_char>(),
-                arg: 0,
-            }; 50],
-        };
-        storage_3.count = 0 as ::core::ffi::c_int;
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_SetDefaultHandlerExpand(
-            g_parser,
-            Some(
-                record_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                record_cdata_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data(&raw mut storage_3 as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            entity_text,
-            strlen(entity_text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2148 as ::core::ffi::c_int,
-            );
-        }
-        let mut e_42: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            0 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2149 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_42).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2149 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_42).arg == 9 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2149 as ::core::ffi::c_int,
-                b"check failed: e->arg == (9)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_43: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            1 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2150 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_43).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2150 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_43).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2150 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_44: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            2 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2151 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_44).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2151 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_44).arg == 3 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2151 as ::core::ffi::c_int,
-                b"check failed: e->arg == (3)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_45: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            3 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2152 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_45).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2152 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_45).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2152 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_46: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            4 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2153 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_46).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2153 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_46).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2153 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_47: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            5 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2154 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_47).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2154 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_47).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2154 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_48: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            6 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2155 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_48).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2155 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_48).arg == 8 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2155 as ::core::ffi::c_int,
-                b"check failed: e->arg == (8)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_49: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            7 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2156 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_49).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2156 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_49).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2156 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_50: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            8 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2157 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_50).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2157 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_50).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2157 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_51: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            9 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2158 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_51).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2158 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_51).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2158 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_52: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            10 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2159 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_52).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2159 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_52).arg == 7 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2159 as ::core::ffi::c_int,
-                b"check failed: e->arg == (7)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_53: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            11 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2160 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_53).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2160 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_53).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2160 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_54: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            12 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2161 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_54).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2161 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_54).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2161 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_55: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            13 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2162 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_55).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2162 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_55).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2162 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_56: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            14 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2163 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_56).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2163 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_56).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2163 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_57: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            15 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2164 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_57).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2164 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_57).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2164 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_58: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            16 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2165 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_58).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2165 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_58).arg == 5 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2165 as ::core::ffi::c_int,
-                b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_59: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            17 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2166 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_59).name,
-            b"record_cdata_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2166 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_cdata_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_59).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2166 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_60: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            18 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2167 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_60).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2167 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_60).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2167 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_61: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_3,
-            19 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2168 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_61).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2168 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_61).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2168 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(storage_3.count == 20 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2169 as ::core::ffi::c_int,
-                b"check failed: storage.count == 20\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        set_subtest(b"not passing cdata\0".as_ptr() as *const ::core::ffi::c_char);
-        let mut storage_4: handler_record_list = handler_record_list {
-            count: 0,
-            entries: [handler_record_entry {
-                name: ::core::ptr::null::<::core::ffi::c_char>(),
-                arg: 0,
-            }; 50],
-        };
-        storage_4.count = 0 as ::core::ffi::c_int;
-        XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-        XML_SetDefaultHandlerExpand(
-            g_parser,
-            Some(
-                record_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetCharacterDataHandler(
-            g_parser,
-            Some(
-                record_cdata_nodefault_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data(&raw mut storage_4 as *mut ::core::ffi::c_void);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            entity_text,
-            strlen(entity_text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2184 as ::core::ffi::c_int,
-            );
-        }
-        let mut e_62: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            0 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2185 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_62).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2185 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_62).arg == 9 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2185 as ::core::ffi::c_int,
-                b"check failed: e->arg == (9)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_63: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            1 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2186 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_63).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2186 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_63).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2186 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_64: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            2 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2187 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_64).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2187 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_64).arg == 3 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2187 as ::core::ffi::c_int,
-                b"check failed: e->arg == (3)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_65: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            3 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2188 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_65).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2188 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_65).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2188 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_66: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            4 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2189 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_66).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2189 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_66).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2189 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_67: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            5 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2190 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_67).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2190 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_67).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2190 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_68: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            6 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2191 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_68).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2191 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_68).arg == 8 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2191 as ::core::ffi::c_int,
-                b"check failed: e->arg == (8)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_69: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            7 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2192 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_69).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2192 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_69).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2192 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_70: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            8 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2193 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_70).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2193 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_70).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2193 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_71: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            9 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2194 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_71).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2194 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_71).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2194 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_72: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            10 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2195 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_72).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2195 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_72).arg == 7 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2195 as ::core::ffi::c_int,
-                b"check failed: e->arg == (7)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_73: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            11 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2196 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_73).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2196 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_73).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2196 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_74: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            12 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2197 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_74).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2197 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_74).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2197 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_75: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            13 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2198 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_75).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2198 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_75).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2198 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_76: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            14 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2199 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_76).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2199 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_76).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2199 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_77: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            15 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2200 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_77).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2200 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_77).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2200 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_78: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            16 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2201 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_78).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2201 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_78).arg == 5 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2201 as ::core::ffi::c_int,
-                b"check failed: e->arg == (5)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_79: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            17 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2203 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_79).name,
-            b"record_cdata_nodefault_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2203 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_cdata_nodefault_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_79).arg == 1 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2203 as ::core::ffi::c_int,
-                b"check failed: e->arg == (1)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut e_80: *const handler_record_entry = _handler_record_get(
-            &raw mut storage_4,
-            18 as ::core::ffi::c_int,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2204 as ::core::ffi::c_int,
-        );
-        if !(strcmp(
-            (*e_80).name,
-            b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
-        ) == 0 as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2204 as ::core::ffi::c_int,
-                b"check failed: strcmp(e->name, \"record_default_handler\") == 0\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !((*e_80).arg == 6 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2204 as ::core::ffi::c_int,
-                b"check failed: e->arg == (6)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(storage_4.count == 19 as ::core::ffi::c_int) {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2205 as ::core::ffi::c_int,
-                b"check failed: storage.count == 19\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    set_test_info(b"test_default_current\0", 1999 as ::core::ffi::c_int);
+
+    let text = bytes_as_c_char_ptr(b"<doc>hell]</doc>\0");
+    let entity_text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n<!ENTITY entity '&#37;'>\n]>\n<doc>&entity;</doc>\0",
+    );
+    let record_default = b"record_default_handler\0";
+    let record_cdata = b"record_cdata_handler\0";
+    let record_cdata_nodefault = b"record_cdata_nodefault_handler\0";
+    let record_skip = b"record_skip_handler\0";
+
+    set_subtest_message("with defaulting");
+    let mut storage = handler_record_list {
+        count: 0,
+        entries: [handler_record_entry {
+            name: ::core::ptr::null::<::core::ffi::c_char>(),
+            arg: 0,
+        }; 50],
+    };
+    parser_set_default_handler(Some(
+        record_default_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_character_data_handler(Some(
+        record_cdata_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_user_data((&raw mut storage).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2015 as ::core::ffi::c_int,
+    );
+
+    let entries = handler_entries(&storage, 2032 as ::core::ffi::c_int);
+    expect_handler_entry(entries, 0, record_default, 5, 2017 as ::core::ffi::c_int);
+    let mut index = 1usize;
+    let mut cdata_len_remaining = 5 as ::core::ffi::c_int;
+    while cdata_len_remaining > 0 {
+        let c_entry = expect_handler_name(entries, index, record_cdata, 2023 as ::core::ffi::c_int);
+        if c_entry.arg <= 0 {
+            fail_test(
+                2024 as ::core::ffi::c_int,
+                b"check failed: c_entry->arg > 0\0",
+            );
+        }
+        if c_entry.arg > cdata_len_remaining {
+            fail_test(
+                2025 as ::core::ffi::c_int,
+                b"check failed: c_entry->arg <= cdata_len_remaining\0",
+            );
+        }
+        cdata_len_remaining -= c_entry.arg;
+        index += 1;
+        expect_handler_entry(
+            entries,
+            index,
+            record_default,
+            c_entry.arg,
+            2029 as ::core::ffi::c_int,
+        );
+        index += 1;
     }
+    expect_handler_entry(
+        entries,
+        index,
+        record_default,
+        6,
+        2031 as ::core::ffi::c_int,
+    );
+    index += 1;
+    if entries.len() != index {
+        fail_test(
+            2032 as ::core::ffi::c_int,
+            b"check failed: storage.count == i\0",
+        );
+    }
+
+    set_subtest_message("no defaulting");
+    let mut storage_0 = handler_record_list {
+        count: 0,
+        entries: [handler_record_entry {
+            name: ::core::ptr::null::<::core::ffi::c_char>(),
+            arg: 0,
+        }; 50],
+    };
+    parser_reset();
+    parser_set_default_handler(Some(
+        record_default_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_character_data_handler(Some(
+        record_cdata_nodefault_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_user_data((&raw mut storage_0).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2046 as ::core::ffi::c_int,
+    );
+
+    let entries = handler_entries(&storage_0, 2060 as ::core::ffi::c_int);
+    expect_handler_entry(entries, 0, record_default, 5, 2048 as ::core::ffi::c_int);
+    let mut index = 1usize;
+    let mut cdata_len_remaining = 5 as ::core::ffi::c_int;
+    while cdata_len_remaining > 0 {
+        let c_entry = expect_handler_name(
+            entries,
+            index,
+            record_cdata_nodefault,
+            2054 as ::core::ffi::c_int,
+        );
+        if c_entry.arg <= 0 {
+            fail_test(
+                2055 as ::core::ffi::c_int,
+                b"check failed: c_entry->arg > 0\0",
+            );
+        }
+        if c_entry.arg > cdata_len_remaining {
+            fail_test(
+                2056 as ::core::ffi::c_int,
+                b"check failed: c_entry->arg <= cdata_len_remaining\0",
+            );
+        }
+        cdata_len_remaining -= c_entry.arg;
+        index += 1;
+    }
+    expect_handler_entry(
+        entries,
+        index,
+        record_default,
+        6,
+        2059 as ::core::ffi::c_int,
+    );
+    index += 1;
+    if entries.len() != index {
+        fail_test(
+            2060 as ::core::ffi::c_int,
+            b"check failed: storage.count == i\0",
+        );
+    }
+
+    set_subtest_message("with internal entity");
+    let mut storage_1 = handler_record_list {
+        count: 0,
+        entries: [handler_record_entry {
+            name: ::core::ptr::null::<::core::ffi::c_char>(),
+            arg: 0,
+        }; 50],
+    };
+    parser_reset();
+    parser_set_default_handler(Some(
+        record_default_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_character_data_handler(Some(
+        record_cdata_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_user_data((&raw mut storage_1).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(entity_text),
+        2075 as ::core::ffi::c_int,
+    );
+
+    let entries = handler_entries(&storage_1, 2096 as ::core::ffi::c_int);
+    let internal_entity_expected = [
+        (&record_default[..], 9),
+        (&record_default[..], 1),
+        (&record_default[..], 3),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 8),
+        (&record_default[..], 1),
+        (&record_default[..], 6),
+        (&record_default[..], 1),
+        (&record_default[..], 7),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 5),
+        (&record_default[..], 8),
+        (&record_default[..], 6),
+    ];
+    expect_handler_sequence(
+        entries,
+        &internal_entity_expected,
+        2077 as ::core::ffi::c_int,
+    );
+
+    set_subtest_message("with skip handler");
+    let mut storage_2 = handler_record_list {
+        count: 0,
+        entries: [handler_record_entry {
+            name: ::core::ptr::null::<::core::ffi::c_char>(),
+            arg: 0,
+        }; 50],
+    };
+    parser_reset();
+    parser_set_default_handler(Some(
+        record_default_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_character_data_handler(Some(
+        record_cdata_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_skipped_entity_handler(Some(
+        record_skip_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_user_data((&raw mut storage_2).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(entity_text),
+        2112 as ::core::ffi::c_int,
+    );
+
+    let entries = handler_entries(&storage_2, 2133 as ::core::ffi::c_int);
+    let skip_handler_expected = [
+        (&record_default[..], 9),
+        (&record_default[..], 1),
+        (&record_default[..], 3),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 8),
+        (&record_default[..], 1),
+        (&record_default[..], 6),
+        (&record_default[..], 1),
+        (&record_default[..], 7),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 5),
+        (&record_skip[..], 0),
+        (&record_default[..], 6),
+    ];
+    expect_handler_sequence(entries, &skip_handler_expected, 2114 as ::core::ffi::c_int);
+
+    set_subtest_message("allow entity");
+    let mut storage_3 = handler_record_list {
+        count: 0,
+        entries: [handler_record_entry {
+            name: ::core::ptr::null::<::core::ffi::c_char>(),
+            arg: 0,
+        }; 50],
+    };
+    parser_reset();
+    parser_set_default_handler_expand(Some(
+        record_default_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_character_data_handler(Some(
+        record_cdata_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_user_data((&raw mut storage_3).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(entity_text),
+        2148 as ::core::ffi::c_int,
+    );
+
+    let entries = handler_entries(&storage_3, 2169 as ::core::ffi::c_int);
+    let allow_entity_expected = [
+        (&record_default[..], 9),
+        (&record_default[..], 1),
+        (&record_default[..], 3),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 8),
+        (&record_default[..], 1),
+        (&record_default[..], 6),
+        (&record_default[..], 1),
+        (&record_default[..], 7),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 5),
+        (&record_cdata[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 6),
+    ];
+    expect_handler_sequence(entries, &allow_entity_expected, 2149 as ::core::ffi::c_int);
+
+    set_subtest_message("not passing cdata");
+    let mut storage_4 = handler_record_list {
+        count: 0,
+        entries: [handler_record_entry {
+            name: ::core::ptr::null::<::core::ffi::c_char>(),
+            arg: 0,
+        }; 50],
+    };
+    parser_reset();
+    parser_set_default_handler_expand(Some(
+        record_default_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_character_data_handler(Some(
+        record_cdata_nodefault_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_user_data((&raw mut storage_4).cast());
+    ensure_parser_success(
+        parse_single_bytes_c_string(entity_text),
+        2184 as ::core::ffi::c_int,
+    );
+
+    let entries = handler_entries(&storage_4, 2205 as ::core::ffi::c_int);
+    let no_cdata_expected = [
+        (&record_default[..], 9),
+        (&record_default[..], 1),
+        (&record_default[..], 3),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 8),
+        (&record_default[..], 1),
+        (&record_default[..], 6),
+        (&record_default[..], 1),
+        (&record_default[..], 7),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 1),
+        (&record_default[..], 5),
+        (&record_cdata_nodefault[..], 1),
+        (&record_default[..], 6),
+    ];
+    expect_handler_sequence(entries, &no_cdata_expected, 2185 as ::core::ffi::c_int);
 }
 extern "C" fn test_dtd_elements() {
     set_test_info(b"test_dtd_elements\0", 2211 as ::core::ffi::c_int);
