@@ -17802,7 +17802,7 @@ unsafe extern "C" fn storeAttributeValue(
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let (entity, entity_has_more, textStart, textEnd) = {
+            let (entity, entity_has_more, entity_input) = {
                 let dtd = parser_dtd_ptr!(parser);
                 if dtd.is_null() {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -17834,32 +17834,15 @@ unsafe extern "C" fn storeAttributeValue(
                 let Some(unprocessed) = text.get(processed..) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                let entity_has_more = entity.hasMore;
-                let entity = std::ptr::from_mut(entity);
-                (
-                    entity,
-                    entity_has_more,
-                    unprocessed.as_ptr().cast::<::core::ffi::c_char>(),
-                    text.as_ptr()
-                        .wrapping_add(text.len())
-                        .cast::<::core::ffi::c_char>(),
-                )
+                (std::ptr::from_mut(entity), entity.hasMore, unprocessed)
             };
-            let mut nextInEntity: *const ::core::ffi::c_char = textStart;
             if entity_has_more != 0 {
-                let entity_input_len = textEnd.addr().checked_sub(textStart.addr());
-                let entity_input = entity_input_len.and_then(|len| {
-                    (!textStart.is_null() && !textEnd.is_null() && len <= isize::MAX as usize)
-                        .then(|| ::core::slice::from_raw_parts(textStart, len))
-                });
-                let Some(entity_input) = entity_input else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
                 let (append_result, append_next) = appendAttributeValue(
                     parser,
-                    &*(internal_encoding(parser.m_internalEncoding)
-                        as *const crate::src::xmltok::ENCODING
-                        as *const crate::src::xmltok::normal_encoding),
+                    crate::src::xmltok::internal_utf8_normal_encoding(matches!(
+                        parser.m_internalEncoding,
+                        InternalEncoding::Utf8Ns
+                    )),
                     isCdata,
                     entity_input,
                     0,
@@ -17872,12 +17855,8 @@ unsafe extern "C" fn storeAttributeValue(
                 {
                     break;
                 }
-                nextInEntity = entity_input.as_ptr().wrapping_add(append_next).cast();
-                if textEnd != nextInEntity {
-                    let Some(processed) = nextInEntity.addr().checked_sub(textStart.addr()) else {
-                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                    };
-                    let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
+                if append_next != entity_input.len() {
+                    let Ok(processed) = ::core::ffi::c_int::try_from(append_next) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
                     let entity = &mut *entity;
