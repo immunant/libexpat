@@ -8710,20 +8710,35 @@ pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount_ffi(
 ) -> ::core::ffi::c_int {
     XML_GetSpecifiedAttributeCount(parser)
 }
-pub unsafe extern "C" fn XML_GetIdAttributeIndex(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    if parser.is_null() {
-        return -1 as ::core::ffi::c_int;
+/// The ID-attribute position copied from a validated parser handle.
+///
+/// This value-only state keeps the query implementation independent of the
+/// ABI-shaped parser, whose unrelated callback and allocator fields are not
+/// needed to answer it.
+struct IdAttributeIndexState {
+    index: ::core::ffi::c_int,
+}
+
+fn id_attribute_index_state(parser: &XML_ParserStruct) -> IdAttributeIndexState {
+    IdAttributeIndexState {
+        index: parser.m_idAttIndex,
     }
-    return (*parser).m_idAttIndex;
+}
+
+fn XML_GetIdAttributeIndex(state: Option<IdAttributeIndexState>) -> ::core::ffi::c_int {
+    state.map(|state| state.index).unwrap_or(-1)
 }
 #[export_name = "XML_GetIdAttributeIndex"]
 
 pub unsafe extern "C" fn XML_GetIdAttributeIndex_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    XML_GetIdAttributeIndex(parser)
+    if parser.is_null()
+        || parser.addr() % ::core::mem::align_of::<XML_ParserStruct>() != 0
+    {
+        return XML_GetIdAttributeIndex(None);
+    }
+    XML_GetIdAttributeIndex(Some(id_attribute_index_state(&*parser)))
 }
 /// Updates callback registrations for a live parser held exclusively by the
 /// caller.  The parser state still carries raw-pointer-backed state, so this
