@@ -543,16 +543,15 @@ pub mod expat_h {
     #[repr(C)]
 
     pub struct XML_Memory_Handling_Suite {
-        pub malloc_fcn: Option<
-            unsafe extern "C" fn(crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void,
-        >,
+        pub malloc_fcn:
+            Option<extern "C" fn(crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void>,
         pub realloc_fcn: Option<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 crate::__stddef_size_t_h::size_t,
             ) -> *mut ::core::ffi::c_void,
         >,
-        pub free_fcn: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+        pub free_fcn: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
     }
 
     pub type XML_StartElementHandler = Option<

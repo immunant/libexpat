@@ -2334,36 +2334,51 @@ fn parserCreate(
                     as crate::expat_h::XML_Parser;
                 mtemp_0 =
                     &raw const (*parser).m_mem as *mut crate::expat_h::XML_Memory_Handling_Suite;
-                (*mtemp_0).malloc_fcn = Some(
+                (*mtemp_0).malloc_fcn = Some(::core::mem::transmute::<
+                    unsafe extern "C" fn(
+                        crate::__stddef_size_t_h::size_t,
+                    ) -> *mut ::core::ffi::c_void,
+                    extern "C" fn(crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void,
+                >(
                     crate::stdlib::malloc
                         as unsafe extern "C" fn(
                             crate::__stddef_size_t_h::size_t,
                         )
                             -> *mut ::core::ffi::c_void,
-                )
+                ))
                     as Option<
-                        unsafe extern "C" fn(
-                            crate::__stddef_size_t_h::size_t,
-                        ) -> *mut ::core::ffi::c_void,
+                        extern "C" fn(crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void,
                     >;
-                (*mtemp_0).realloc_fcn = Some(
+                (*mtemp_0).realloc_fcn = Some(::core::mem::transmute::<
+                    unsafe extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        crate::__stddef_size_t_h::size_t,
+                    ) -> *mut ::core::ffi::c_void,
+                    extern "C" fn(
+                        *mut ::core::ffi::c_void,
+                        crate::__stddef_size_t_h::size_t,
+                    ) -> *mut ::core::ffi::c_void,
+                >(
                     crate::stdlib::realloc
                         as unsafe extern "C" fn(
                             *mut ::core::ffi::c_void,
                             crate::__stddef_size_t_h::size_t,
                         )
                             -> *mut ::core::ffi::c_void,
-                )
+                ))
                     as Option<
-                        unsafe extern "C" fn(
+                        extern "C" fn(
                             *mut ::core::ffi::c_void,
                             crate::__stddef_size_t_h::size_t,
                         ) -> *mut ::core::ffi::c_void,
                     >;
-                (*mtemp_0).free_fcn = Some(
+                (*mtemp_0).free_fcn = Some(::core::mem::transmute::<
+                    unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
+                    extern "C" fn(*mut ::core::ffi::c_void) -> (),
+                >(
                     crate::stdlib::free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-                )
-                    as Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+                ))
+                    as Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
             }
         }
         if parser.is_null() {
@@ -4425,18 +4440,16 @@ fn invoke_memory_handler(
         return crate::__stddef_null_h::NULL;
     };
 
-    unsafe {
-        match action {
-            MemoryAction::Malloc(size) => {
-                parser.m_mem.malloc_fcn.expect("non-null function pointer")(size)
-            }
-            MemoryAction::Realloc(ptr, size) => {
-                parser.m_mem.realloc_fcn.expect("non-null function pointer")(ptr, size)
-            }
-            MemoryAction::Free(ptr) => {
-                parser.m_mem.free_fcn.expect("non-null function pointer")(ptr);
-                crate::__stddef_null_h::NULL
-            }
+    match action {
+        MemoryAction::Malloc(size) => {
+            parser.m_mem.malloc_fcn.expect("non-null function pointer")(size)
+        }
+        MemoryAction::Realloc(ptr, size) => {
+            parser.m_mem.realloc_fcn.expect("non-null function pointer")(ptr, size)
+        }
+        MemoryAction::Free(ptr) => {
+            parser.m_mem.free_fcn.expect("non-null function pointer")(ptr);
+            crate::__stddef_null_h::NULL
         }
     }
 }
