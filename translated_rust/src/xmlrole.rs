@@ -958,24 +958,21 @@ unsafe extern "C" fn entity2(
     return common(state, tok);
 }
 
-unsafe extern "C" fn entity3(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
-    mut tok: ::core::ffi::c_int,
-    _ptr: *const ::core::ffi::c_char,
-    _end: *const ::core::ffi::c_char,
-    _enc: *const crate::src::xmltok::ENCODING,
+fn entity3(
+    state: &mut crate::src::xmlrole::PROLOG_STATE,
+    tok: ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
     match tok {
         crate::src::xmltok::XML_TOK_PROLOG_S => {
             return crate::src::xmlrole::XML_ROLE_ENTITY_NONE as ::core::ffi::c_int
         }
         crate::src::xmltok::XML_TOK_LITERAL => {
-            (*state).handler = Some(PrologHandler::Entity4);
+            state.handler = Some(PrologHandler::Entity4);
             return crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int;
         }
         _ => {}
     }
-    return common(state, tok);
+    common_state(state, tok)
 }
 
 unsafe extern "C" fn entity4(
@@ -1963,6 +1960,7 @@ pub unsafe fn prolog_handler_dispatch(
     end: *const ::core::ffi::c_char,
     enc: *const crate::src::xmltok::ENCODING,
 ) -> ::core::ffi::c_int {
+    let state = &mut *state;
     let handler = match handler {
         PrologHandler::Prolog0 => prolog0,
         PrologHandler::Prolog1 => prolog1,
@@ -1972,14 +1970,14 @@ pub unsafe fn prolog_handler_dispatch(
         PrologHandler::Doctype2 => doctype2,
         PrologHandler::Doctype3 => doctype3,
         PrologHandler::Doctype4 => doctype4,
-        PrologHandler::Doctype5 => return doctype5(&mut *state, tok),
+        PrologHandler::Doctype5 => return doctype5(state, tok),
         PrologHandler::InternalSubset => internalSubset,
         PrologHandler::ExternalSubset0 => externalSubset0,
         PrologHandler::ExternalSubset1 => externalSubset1,
         PrologHandler::Entity0 => entity0,
         PrologHandler::Entity1 => entity1,
         PrologHandler::Entity2 => entity2,
-        PrologHandler::Entity3 => entity3,
+        PrologHandler::Entity3 => return entity3(state, tok),
         PrologHandler::Entity4 => entity4,
         PrologHandler::Entity5 => entity5,
         PrologHandler::Entity6 => entity6,
