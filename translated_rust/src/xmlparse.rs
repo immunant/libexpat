@@ -8119,7 +8119,8 @@ unsafe extern "C" fn doProlog(
                     if pubId.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    normalizePublicId(pubId);
+                    let public_id_len = CStr::from_ptr(pubId).to_bytes_with_nul().len();
+                    normalize_public_id(::core::slice::from_raw_parts_mut(pubId, public_id_len));
                     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                     (*parser).m_doctypePubid = pubId;
                     handleDefault = crate::expat_h::XML_FALSE;
@@ -8801,7 +8802,8 @@ unsafe extern "C" fn doProlog(
                     if tem_0.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    normalizePublicId(tem_0);
+                    let public_id_len = CStr::from_ptr(tem_0).to_bytes_with_nul().len();
+                    normalize_public_id(::core::slice::from_raw_parts_mut(tem_0, public_id_len));
                     (*parser).m_declNotationPublicId = tem_0;
                     (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                     handleDefault = crate::expat_h::XML_FALSE;
@@ -9529,7 +9531,8 @@ unsafe extern "C" fn doProlog(
                     if tem.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
-                    normalizePublicId(tem);
+                    let public_id_len = CStr::from_ptr(tem).to_bytes_with_nul().len();
+                    normalize_public_id(::core::slice::from_raw_parts_mut(tem, public_id_len));
                     (*(*parser).m_declEntity).publicId = tem;
                     (*dtd).pool.start = (*dtd).pool.ptr;
                     if (*parser).m_entityDeclHandler.is_some()
@@ -11475,38 +11478,34 @@ unsafe extern "C" fn setContext(
     return crate::expat_h::XML_TRUE;
 }
 
-unsafe extern "C" fn normalizePublicId(mut publicId: *mut crate::expat_external_h::XML_Char) {
-    let mut p: *mut crate::expat_external_h::XML_Char = publicId;
-    let mut s: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    s = publicId;
-    while *s != 0 {
-        match *s as ::core::ffi::c_int {
+fn normalize_public_id(public_id: &mut [crate::expat_external_h::XML_Char]) {
+    let mut read = 0usize;
+    let mut write = 0usize;
+
+    while read < public_id.len() && public_id[read] != 0 {
+        match public_id[read] as ::core::ffi::c_int {
             32 | 13 | 10 => {
-                if p != publicId
-                    && *p.offset(-1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        != 0x20 as ::core::ffi::c_int
+                if write != 0
+                    && public_id[write - 1] as ::core::ffi::c_int != 0x20 as ::core::ffi::c_int
                 {
-                    let c2rust_fresh70 = p;
-                    p = p.offset(1);
-                    *c2rust_fresh70 = 0x20 as crate::expat_external_h::XML_Char;
+                    public_id[write] = 0x20 as crate::expat_external_h::XML_Char;
+                    write += 1;
                 }
             }
             _ => {
-                let c2rust_fresh71 = p;
-                p = p.offset(1);
-                *c2rust_fresh71 = *s;
+                public_id[write] = public_id[read];
+                write += 1;
             }
         }
-        s = s.offset(1);
+        read += 1;
     }
-    if p != publicId
-        && *p.offset(-1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0x20 as ::core::ffi::c_int
-    {
-        p = p.offset(-1);
+
+    if write != 0 && public_id[write - 1] as ::core::ffi::c_int == 0x20 as ::core::ffi::c_int {
+        write -= 1;
     }
-    *p = '\0' as i32 as crate::expat_external_h::XML_Char;
+    if write < public_id.len() {
+        public_id[write] = '\0' as i32 as crate::expat_external_h::XML_Char;
+    }
 }
 
 unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut DTD {
