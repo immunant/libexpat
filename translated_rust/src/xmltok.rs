@@ -11057,12 +11057,11 @@ pub mod xmltok_impl_c {
                         }
                         _ => {}
                     }
-                    // The translated scanner advances once more after the
-                    // colon branch before it resumes the name scan.
-                    offset += 2;
-                    if offset > input.len() {
-                        return Big2PrologToken::Result(-token, None);
-                    }
+                    // The colon itself has been consumed.  A valid first
+                    // local-name character is consumed by the nested match;
+                    // otherwise the next loop iteration must examine it as
+                    // an NMTOKEN character.  In both cases, do not publish a
+                    // next-token position for the partial-token result above.
                     continue;
                 }
                 34 => {
