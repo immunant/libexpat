@@ -2472,6 +2472,10 @@ pub struct XML_ParserStruct {
     // Bindings remain here while they are reachable from a tag or inherited
     // namespace chain.  Moving a node to the free stack transfers this owner.
     m_activeBindings: Vec<BindingStorage>,
+    // Binding IDs are assigned when a free storage slot becomes active.  They
+    // let binding chains survive removal from this growable owner without
+    // storing an intrusive address in each binding node.
+    m_nextBindingId: usize,
     pub m_attsSize: ::core::ffi::c_int,
     pub m_nSpecifiedAtts: ::core::ffi::c_int,
     pub m_idAttIndex: ::core::ffi::c_int,
@@ -2495,6 +2499,14 @@ pub struct XML_ParserStruct {
     pub m_useForeignDTD: crate::expat_h::XML_Bool,
     pub m_paramEntityParsing: crate::expat_h::XML_ParamEntityParsing,
     pub m_reenter: crate::expat_h::XML_Bool,
+}
+
+impl XML_ParserStruct {
+    fn binding_index(&self, id: BindingId) -> Option<usize> {
+        self.m_activeBindings
+            .iter()
+            .position(|storage| storage.id == id)
+    }
 }
 
 struct ProtocolEncodingName {
@@ -3002,12 +3014,16 @@ pub struct NS_ATT {
 }
 
 pub type BINDING = binding;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+struct BindingId(usize);
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct binding {
     pub prefix: *mut prefix,
-    pub nextTagBinding: *mut binding,
+    nextTagBinding: Option<BindingId>,
     pub prevPrefixBinding: *mut binding,
     // A binding only needs its namespace-declaration attribute's stable DTD
     // pool name when it is unwound.  Retaining that location avoids keeping a
@@ -3234,6 +3250,7 @@ struct BindingStorage {
     // A one-element vector supplies a stable address to the legacy binding
     // chains without placing that address in parser state.
     binding: Vec<BINDING>,
+    id: BindingId,
     // URI contents are Rust-owned.  The opaque callback below preserves the
     // configured allocator's allocation/reallocation/free sequence.
     uri: Vec<crate::expat_external_h::XML_Char>,
@@ -3321,7 +3338,7 @@ impl BindingStorage {
         uri.resize(uri_capacity, 0);
         binding.push(BINDING {
             prefix: ::core::ptr::null_mut(),
-            nextTagBinding: ::core::ptr::null_mut(),
+            nextTagBinding: None,
             prevPrefixBinding: ::core::ptr::null_mut(),
             attId: None,
             uri: uri.as_mut_ptr(),
@@ -3330,6 +3347,7 @@ impl BindingStorage {
         });
         Some(Self {
             binding,
+            id: BindingId(0),
             uri,
             binding_backing: Some(binding_backing),
             uri_backing: Some(uri_backing),
@@ -4841,6 +4859,7 @@ fn initial_parser_struct(
         m_inheritedBindings: None,
         m_freeBindingList: FreeBindingList::empty(),
         m_activeBindings: Vec::new(),
+        m_nextBindingId: 1,
         m_attsSize: 0,
         m_nSpecifiedAtts: 0,
         m_idAttIndex: 0,
@@ -5377,7 +5396,12 @@ unsafe extern "C" fn moveToFreeBindingList(
 ) {
     while !bindings.is_null() {
         let mut b: *mut BINDING = bindings;
-        bindings = (*bindings).nextTagBinding as *mut BINDING;
+        bindings = (*bindings)
+            .nextTagBinding
+            .and_then(|id| parser.binding_index(id))
+            .map_or(::core::ptr::null_mut(), |index| {
+                parser.m_activeBindings[index].binding.as_ptr().cast_mut()
+            });
         let Some(index) = parser
             .m_activeBindings
             .iter()
@@ -5980,8 +6004,13 @@ unsafe extern "C" fn destroyBindings(
 ) {
     while !bindings.is_null() {
         let b = bindings;
-        bindings = (*b).nextTagBinding as *mut BINDING;
         let parser_state = &mut *parser;
+        bindings = (*b)
+            .nextTagBinding
+            .and_then(|id| parser_state.binding_index(id))
+            .map_or(::core::ptr::null_mut(), |index| {
+                parser_state.m_activeBindings[index].binding.as_ptr().cast_mut()
+            });
         let Some(index) = parser_state
             .m_activeBindings
             .iter()
@@ -9648,9 +9677,17 @@ unsafe extern "C" fn doContent(
                                     callback.invoke(handler_arg!(parser), prefix_name);
                                 }
                             }
-                            (*tag_0).bindings = (*(*tag_0).bindings).nextTagBinding as *mut BINDING;
-                            (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
                             let parser_state = &mut *parser;
+                            (*tag_0).bindings = (*b)
+                                .nextTagBinding
+                                .and_then(|id| parser_state.binding_index(id))
+                                .map_or(::core::ptr::null_mut(), |index| {
+                                    parser_state.m_activeBindings[index]
+                                        .binding
+                                        .as_ptr()
+                                        .cast_mut()
+                                });
+                            (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
                             let Some(index) = parser_state
                                 .m_activeBindings
                                 .iter()
@@ -9956,9 +9993,17 @@ unsafe extern "C" fn freeBindings(
                 callback.invoke(handler_arg!(parser), prefix_name);
             }
         }
-        bindings = (*bindings).nextTagBinding as *mut BINDING;
-        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
         let parser_state = &mut *parser;
+        bindings = (*b)
+            .nextTagBinding
+            .and_then(|id| parser_state.binding_index(id))
+            .map_or(::core::ptr::null_mut(), |index| {
+                parser_state.m_activeBindings[index]
+                    .binding
+                    .as_ptr()
+                    .cast_mut()
+            });
+        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
         let Some(index) = parser_state
             .m_activeBindings
             .iter()
@@ -10795,19 +10840,37 @@ unsafe extern "C" fn storeAtts(
             0 as crate::expat_external_h::XML_Char;
         i += 2 as ::core::ffi::c_int;
     }
-    binding = *bindingsPtr;
-    while !binding.is_null() {
-        let binding_ref = &*binding;
-        let Some(attribute_name) = binding_ref.attId else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    {
+        let parser_ref = &*parser;
+        let binding = *bindingsPtr;
+        let mut binding_id = if binding.is_null() {
+            None
+        } else {
+            parser_ref
+                .m_activeBindings
+                .iter()
+                .find(|storage| storage.binding.as_ptr() == binding)
+                .map(|storage| storage.id)
         };
-        let binding_name = pool_string_pointer!(&dtd.pool, attribute_name);
-        if binding_name.is_null() {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        while let Some(id) = binding_id {
+            let Some(index) = parser_ref.binding_index(id) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let binding_ref = parser_ref.m_activeBindings[index]
+                .binding
+                .first()
+                .expect("binding storage has one binding");
+            let Some(attribute_name) = binding_ref.attId else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let binding_name = pool_string_pointer!(&dtd.pool, attribute_name);
+            if binding_name.is_null() {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
+            *(binding_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
+                0 as crate::expat_external_h::XML_Char;
+            binding_id = binding_ref.nextTagBinding;
         }
-        *(binding_name as *mut crate::expat_external_h::XML_Char).offset(-1 as isize) =
-            0 as crate::expat_external_h::XML_Char;
-        binding = binding_ref.nextTagBinding as *mut BINDING;
     }
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
@@ -11021,6 +11084,23 @@ unsafe extern "C" fn addBinding(
     if len > crate::limits_h::INT_MAX - EXPAND_SPARE {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
+    let next_binding = *bindingsPtr;
+    let nextTagBinding = if next_binding.is_null() {
+        None
+    } else {
+        let Some(storage) = parser
+            .m_activeBindings
+            .iter()
+            .find(|storage| storage.binding.as_ptr() == next_binding)
+        else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        Some(storage.id)
+    };
+    let binding_id = BindingId(parser.m_nextBindingId);
+    let Some(next_binding_id) = parser.m_nextBindingId.checked_add(1) else {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    };
     let uri_capacity = (len + EXPAND_SPARE) as usize;
     if parser.m_activeBindings.try_reserve(1).is_err()
         || parser.m_freeBindingList.bindings.try_reserve(1).is_err()
@@ -11041,12 +11121,13 @@ unsafe extern "C" fn addBinding(
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     parser.m_activeBindings.push(storage);
-    let b = &mut *parser
+    parser.m_nextBindingId = next_binding_id;
+    let storage = parser
         .m_activeBindings
         .last_mut()
-        .expect("reserved binding storage")
-        .binding
-        .as_mut_ptr();
+        .expect("reserved binding storage");
+    storage.id = binding_id;
+    let b = &mut *storage.binding.as_mut_ptr();
 
     b.uriLen = len;
     ::core::ptr::copy_nonoverlapping(uri.as_ptr().cast(), b.uri, uri.len());
@@ -11065,7 +11146,7 @@ unsafe extern "C" fn addBinding(
     } else {
         prefix.binding = b;
     }
-    b.nextTagBinding = *bindingsPtr;
+    b.nextTagBinding = nextTagBinding;
     *bindingsPtr = b;
     if attribute_name.is_some() && parser.m_startNamespaceDeclHandler {
         let callback = START_NAMESPACE_DECL_HANDLERS
