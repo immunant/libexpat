@@ -1267,9 +1267,7 @@ impl StartElementCallback
 }
 
 static START_ELEMENT_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn StartElementCallback>>,
-    >,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn StartElementCallback>>>,
 > = std::sync::OnceLock::new();
 
 trait CharacterDataCallback: Send + Sync {
@@ -1444,9 +1442,7 @@ impl UnknownEncodingCallback
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an unknown-encoding callback is installed.
 static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingCallback>>,
-    >,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingCallback>>>,
 > = std::sync::OnceLock::new();
 
 #[derive(Copy, Clone)]
@@ -3109,8 +3105,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldNotStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler = None;
     let mut oldExternalEntityRefHandler: crate::expat_h::XML_ExternalEntityRefHandler = None;
     let mut oldSkippedEntityHandler: crate::expat_h::XML_SkippedEntityHandler = None;
-    let mut oldUnknownEncodingHandler: Option<std::sync::Arc<dyn UnknownEncodingCallback>> =
-        None;
+    let mut oldUnknownEncodingHandler: Option<std::sync::Arc<dyn UnknownEncodingCallback>> = None;
     let mut oldUnknownEncodingHandlerData: *mut ::core::ffi::c_void =
         ::core::ptr::null_mut::<::core::ffi::c_void>();
     let mut oldElementDeclHandler: crate::expat_h::XML_ElementDeclHandler = None;
@@ -3673,10 +3668,7 @@ pub unsafe extern "C" fn XML_SetElementHandler(
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     match start {
         Some(callback) => {
-            handlers.insert(
-                parser as usize,
-                std::sync::Arc::new(callback),
-            );
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
         }
         None => {
             handlers.remove(&(parser as usize));
@@ -3705,10 +3697,7 @@ pub unsafe extern "C" fn XML_SetStartElementHandler(
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         match start {
             Some(callback) => {
-                handlers.insert(
-                    parser as usize,
-                    std::sync::Arc::new(callback),
-                );
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
             }
             None => {
                 handlers.remove(&(parser as usize));
@@ -5914,8 +5903,7 @@ unsafe extern "C" fn doContent(
                             callback.invoke(
                                 (*parser).m_handlerArg,
                                 (*tag).name.str,
-                                (*parser).m_atts
-                                    as *mut *const crate::expat_external_h::XML_Char,
+                                (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
                             );
                         }
                     } else if (*parser).m_defaultHandler.is_some() {
@@ -5977,8 +5965,7 @@ unsafe extern "C" fn doContent(
                             callback.invoke(
                                 (*parser).m_handlerArg,
                                 name_0.str,
-                                (*parser).m_atts
-                                    as *mut *const crate::expat_external_h::XML_Char,
+                                (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
                             );
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
@@ -7253,11 +7240,7 @@ unsafe extern "C" fn doCdataSection(
                         (*parser).m_handlerArg
                     );
                 } else if false && (*parser).m_characterDataHandler {
-                    callCharacterDataHandler(
-                        parser,
-                        (*parser).m_dataBuf,
-                        0 as ::core::ffi::c_int,
-                    );
+                    callCharacterDataHandler(parser, (*parser).m_dataBuf, 0 as ::core::ffi::c_int);
                 } else if (*parser).m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
                 }
@@ -7721,12 +7704,13 @@ unsafe extern "C" fn handleUnknownEncoding(
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .get(&(parser as usize))
             .cloned();
-        if callback.is_some_and(|callback| callback.invoke(
-            (*parser).m_unknownEncodingHandlerData,
-            encodingName,
-            &raw mut info,
-        ) != 0)
-        {
+        if callback.is_some_and(|callback| {
+            callback.invoke(
+                (*parser).m_unknownEncodingHandlerData,
+                encodingName,
+                &raw mut info,
+            ) != 0
+        }) {
             let mut enc: *mut crate::src::xmltok::ENCODING =
                 ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
             (*parser).m_unknownEncodingMem = expat_malloc(
@@ -8848,33 +8832,39 @@ unsafe extern "C" fn doProlog(
                                                 if (*parser).m_entityDeclHandler {
                                                     *eventEndPP = s;
                                                     let callback = ENTITY_DECL_HANDLERS
-                                                        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                        .get_or_init(|| {
+                                                            std::sync::Mutex::new(
+                                                                std::collections::HashMap::new(),
+                                                            )
+                                                        })
                                                         .lock()
-                                                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                        .unwrap_or_else(|poisoned| {
+                                                            poisoned.into_inner()
+                                                        })
                                                         .get(&(parser as usize))
                                                         .cloned();
                                                     if let Some(callback) = callback {
                                                         callback.invoke(
-                                                        (*parser).m_handlerArg,
-                                                        (*(*parser).m_declEntity).name,
-                                                        (*(*parser).m_declEntity).is_param
-                                                            as ::core::ffi::c_int,
-                                                        (*(*parser).m_declEntity).textPtr,
-                                                        (*(*parser).m_declEntity).textLen,
-                                                        (*parser).m_curBase,
-                                                        ::core::ptr::null::<
-                                                            crate::expat_external_h::XML_Char,
-                                                        >(
-                                                        ),
-                                                        ::core::ptr::null::<
-                                                            crate::expat_external_h::XML_Char,
-                                                        >(
-                                                        ),
-                                                        ::core::ptr::null::<
-                                                            crate::expat_external_h::XML_Char,
-                                                        >(
-                                                        ),
-                                                    );
+                                                            (*parser).m_handlerArg,
+                                                            (*(*parser).m_declEntity).name,
+                                                            (*(*parser).m_declEntity).is_param
+                                                                as ::core::ffi::c_int,
+                                                            (*(*parser).m_declEntity).textPtr,
+                                                            (*(*parser).m_declEntity).textLen,
+                                                            (*parser).m_curBase,
+                                                            ::core::ptr::null::<
+                                                                crate::expat_external_h::XML_Char,
+                                                            >(
+                                                            ),
+                                                            ::core::ptr::null::<
+                                                                crate::expat_external_h::XML_Char,
+                                                            >(
+                                                            ),
+                                                            ::core::ptr::null::<
+                                                                crate::expat_external_h::XML_Char,
+                                                            >(
+                                                            ),
+                                                        );
                                                     }
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
@@ -8950,28 +8940,34 @@ unsafe extern "C" fn doProlog(
                                         {
                                             *eventEndPP = s;
                                             let callback = ENTITY_DECL_HANDLERS
-                                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                                                 .get(&(parser as usize))
                                                 .cloned();
                                             if let Some(callback) = callback {
                                                 callback.invoke(
-                                                (*parser).m_handlerArg,
-                                                (*(*parser).m_declEntity).name,
-                                                (*(*parser).m_declEntity).is_param
-                                                    as ::core::ffi::c_int,
-                                                ::core::ptr::null::<
-                                                    crate::expat_external_h::XML_Char,
-                                                >(),
-                                                0 as ::core::ffi::c_int,
-                                                (*(*parser).m_declEntity).base,
-                                                (*(*parser).m_declEntity).systemId,
-                                                (*(*parser).m_declEntity).publicId,
-                                                ::core::ptr::null::<
-                                                    crate::expat_external_h::XML_Char,
-                                                >(),
-                                            );
+                                                    (*parser).m_handlerArg,
+                                                    (*(*parser).m_declEntity).name,
+                                                    (*(*parser).m_declEntity).is_param
+                                                        as ::core::ffi::c_int,
+                                                    ::core::ptr::null::<
+                                                        crate::expat_external_h::XML_Char,
+                                                    >(
+                                                    ),
+                                                    0 as ::core::ffi::c_int,
+                                                    (*(*parser).m_declEntity).base,
+                                                    (*(*parser).m_declEntity).systemId,
+                                                    (*(*parser).m_declEntity).publicId,
+                                                    ::core::ptr::null::<
+                                                        crate::expat_external_h::XML_Char,
+                                                    >(
+                                                    ),
+                                                );
                                             }
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
@@ -9003,26 +8999,32 @@ unsafe extern "C" fn doProlog(
                                             } else if (*parser).m_entityDeclHandler {
                                                 *eventEndPP = s;
                                                 let callback = ENTITY_DECL_HANDLERS
-                                                    .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                    .get_or_init(|| {
+                                                        std::sync::Mutex::new(
+                                                            std::collections::HashMap::new(),
+                                                        )
+                                                    })
                                                     .lock()
-                                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                    .unwrap_or_else(|poisoned| {
+                                                        poisoned.into_inner()
+                                                    })
                                                     .get(&(parser as usize))
                                                     .cloned();
                                                 if let Some(callback) = callback {
                                                     callback.invoke(
-                                                    (*parser).m_handlerArg,
-                                                    (*(*parser).m_declEntity).name,
-                                                    0 as ::core::ffi::c_int,
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    ),
-                                                    0 as ::core::ffi::c_int,
-                                                    (*(*parser).m_declEntity).base,
-                                                    (*(*parser).m_declEntity).systemId,
-                                                    (*(*parser).m_declEntity).publicId,
-                                                    (*(*parser).m_declEntity).notation,
-                                                );
+                                                        (*parser).m_handlerArg,
+                                                        (*(*parser).m_declEntity).name,
+                                                        0 as ::core::ffi::c_int,
+                                                        ::core::ptr::null::<
+                                                            crate::expat_external_h::XML_Char,
+                                                        >(
+                                                        ),
+                                                        0 as ::core::ffi::c_int,
+                                                        (*(*parser).m_declEntity).base,
+                                                        (*(*parser).m_declEntity).systemId,
+                                                        (*(*parser).m_declEntity).publicId,
+                                                        (*(*parser).m_declEntity).notation,
+                                                    );
                                                 }
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
@@ -11949,10 +11951,7 @@ unsafe extern "C" fn dtdCopy(
             ) as *mut ATTRIBUTE_ID;
             new_att.isCdata = old_att.isCdata;
             if !old_att.value.is_null() {
-                new_att.value = poolCopyString(
-                    &raw mut new_dtd.pool,
-                    old_att.value,
-                );
+                new_att.value = poolCopyString(&raw mut new_dtd.pool, old_att.value);
                 if new_att.value.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
