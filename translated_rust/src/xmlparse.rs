@@ -10534,8 +10534,18 @@ pub extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
 pub unsafe extern "C" fn XML_ExpatVersionInfo_ffi() -> crate::expat_h::XML_Expat_Version {
     XML_ExpatVersionInfo()
 }
-pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
-    static mut features: [crate::expat_h::XML_Feature; 11] = [
+// The public API returns a process-lifetime pointer to this immutable table.
+// Keeping it in static storage preserves that lifetime without a mutable
+// static access in the getter.
+#[repr(transparent)]
+struct StaticFeatureList([crate::expat_h::XML_Feature; 11]);
+
+// Every name in this one table points at immutable string-literal storage (or
+// is null for the sentinel), so sharing the table does not permit mutation or
+// dereference of foreign memory.
+unsafe impl Sync for StaticFeatureList {}
+
+static XML_FEATURE_LIST: StaticFeatureList = StaticFeatureList([
         crate::expat_h::XML_Feature {
     feature:  crate::expat_h::XML_FEATURE_SIZEOF_XML_CHAR,
     name:  b"sizeof(XML_Char)\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
@@ -10593,8 +10603,10 @@ pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feat
     name:  ::core::ptr::null:: <crate::expat_external_h::XML_LChar>(),
     value:  0 as ::core::ffi::c_long,
 },
-    ];
-    return &raw const features as *const crate::expat_h::XML_Feature;
+]);
+
+pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
+    XML_FEATURE_LIST.0.as_ptr()
 }
 #[export_name = "XML_GetFeatureList"]
 
