@@ -221,42 +221,109 @@ pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
 pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
 pub const ALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -(1 as ::core::ffi::c_int);
 pub const REALLOC_ALWAYS_SUCCEED: ::core::ffi::c_int = -(1 as ::core::ffi::c_int);
-unsafe extern "C" fn nsalloc_setup() {
+const NSALLOC_TESTS_FILE: &[u8] = b"/root/work/expat/tests/nsalloc_tests.c\0";
+
+fn bytes_as_c_char_ptr(bytes: &[u8]) -> *const ::core::ffi::c_char {
+    bytes.as_ptr().cast::<::core::ffi::c_char>()
+}
+
+fn ffi_call0<R>(function: unsafe extern "C" fn() -> R) -> R {
+    unsafe { function() }
+}
+
+fn ffi_call1<A, R>(function: unsafe extern "C" fn(A) -> R, a: A) -> R {
+    unsafe { function(a) }
+}
+
+fn ffi_call2<A, B, R>(function: unsafe extern "C" fn(A, B) -> R, a: A, b: B) -> R {
+    unsafe { function(a, b) }
+}
+
+fn ffi_call3<A, B, C, R>(function: unsafe extern "C" fn(A, B, C) -> R, a: A, b: B, c: C) -> R {
+    unsafe { function(a, b, c) }
+}
+
+fn ffi_call4<A, B, C, D, R>(
+    function: unsafe extern "C" fn(A, B, C, D) -> R,
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+) -> R {
+    unsafe { function(a, b, c, d) }
+}
+
+fn current_parser() -> XML_Parser {
+    unsafe { g_parser }
+}
+
+fn set_current_parser(parser: XML_Parser) {
     unsafe {
-        let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
-            malloc_fcn: Some(
-                duff_allocator as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void,
-            ),
-            realloc_fcn: Some(
-                duff_reallocator
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-            free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
-        };
-        let mut ns_sep: [XML_Char; 2] = [' ' as i32 as XML_Char, '\0' as i32 as XML_Char];
-        g_allocation_count = ALLOC_ALWAYS_SUCCEED;
-        g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
-        g_parser = XML_ParserCreate_MM(
-            ::core::ptr::null::<XML_Char>(),
-            &raw mut memsuite,
-            &raw mut ns_sep as *mut XML_Char,
-        );
-        if g_parser.is_null() {
-            _fail(
-                b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                67 as ::core::ffi::c_int,
-                b"Parser not created\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+        g_parser = parser;
     }
 }
-unsafe extern "C" fn nsalloc_teardown() {
+
+fn set_allocation_count(count: ::core::ffi::c_int) {
     unsafe {
-        basic_teardown();
+        g_allocation_count = count;
     }
+}
+
+fn set_reallocation_count(count: ::core::ffi::c_int) {
+    unsafe {
+        g_reallocation_count = count;
+    }
+}
+
+fn set_test_info(name: &[u8], line: ::core::ffi::c_int) {
+    ffi_call3(
+        _check_set_test_info,
+        bytes_as_c_char_ptr(name),
+        bytes_as_c_char_ptr(NSALLOC_TESTS_FILE),
+        line,
+    );
+}
+
+fn fail_test(line: ::core::ffi::c_int, msg: &[u8]) -> ! {
+    ffi_call3(
+        _fail,
+        bytes_as_c_char_ptr(NSALLOC_TESTS_FILE),
+        line,
+        bytes_as_c_char_ptr(msg),
+    )
+}
+
+fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
+    ffi_call1(strlen, text) as ::core::ffi::c_int
+}
+
+fn reset_nsalloc_fixture() {
+    nsalloc_teardown();
+    nsalloc_setup();
+}
+
+extern "C" fn nsalloc_setup() {
+    let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(duff_allocator),
+        realloc_fcn: Some(duff_reallocator),
+        free_fcn: Some(free),
+    };
+    let mut ns_sep: [XML_Char; 2] = [' ' as i32 as XML_Char, '\0' as i32 as XML_Char];
+    set_allocation_count(ALLOC_ALWAYS_SUCCEED);
+    set_reallocation_count(REALLOC_ALWAYS_SUCCEED);
+    set_current_parser(ffi_call3(
+        XML_ParserCreate_MM,
+        ::core::ptr::null::<XML_Char>(),
+        &raw mut memsuite as *mut XML_Memory_Handling_Suite as *const XML_Memory_Handling_Suite,
+        &raw mut ns_sep as *mut XML_Char as *const XML_Char,
+    ));
+    if current_parser().is_null() {
+        fail_test(67 as ::core::ffi::c_int, b"Parser not created\0");
+    }
+}
+
+extern "C" fn nsalloc_teardown() {
+    ffi_call0(basic_teardown);
 }
 unsafe extern "C" fn test_nsalloc_xmlns() {
     unsafe {
@@ -1175,159 +1242,128 @@ unsafe extern "C" fn test_nsalloc_long_context() {
         }
     }
 }
-unsafe extern "C" fn context_realloc_test(mut text: *const ::core::ffi::c_char) {
-    unsafe {
-        let mut options: [ExtOption; 3] = [
-            ExtOption {
-                system_id: b"foo\0".as_ptr() as *const XML_Char,
-                parse_text: b"<!ELEMENT e EMPTY>\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            ExtOption {
-                system_id: b"bar\0".as_ptr() as *const XML_Char,
-                parse_text: b"<e/>\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            ExtOption {
-                system_id: ::core::ptr::null::<XML_Char>(),
-                parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
-            },
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        let max_realloc_count: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_realloc_count {
-            g_reallocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut options as *mut ExtOption as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_optioner
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            nsalloc_teardown();
-            nsalloc_setup();
-            i += 1;
+fn context_realloc_test(text: *const ::core::ffi::c_char) {
+    let mut options: [ExtOption; 3] = [
+        ExtOption {
+            system_id: b"foo\0".as_ptr() as *const XML_Char,
+            parse_text: b"<!ELEMENT e EMPTY>\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        ExtOption {
+            system_id: b"bar\0".as_ptr() as *const XML_Char,
+            parse_text: b"<e/>\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        ExtOption {
+            system_id: ::core::ptr::null::<XML_Char>(),
+            parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
+        },
+    ];
+    let max_realloc_count: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
+    let mut i: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    while i < max_realloc_count {
+        set_reallocation_count(i);
+        ffi_call2(
+            XML_SetUserData,
+            current_parser(),
+            &raw mut options as *mut ExtOption as *mut ::core::ffi::c_void,
+        );
+        ffi_call2(
+            XML_SetParamEntityParsing,
+            current_parser(),
+            XML_PARAM_ENTITY_PARSING_ALWAYS,
+        );
+        ffi_call2(
+            XML_SetExternalEntityRefHandler,
+            current_parser(),
+            Some(external_entity_optioner),
+        );
+        if ffi_call4(
+            _XML_Parse_SINGLE_BYTES,
+            current_parser(),
+            text,
+            c_string_len(text),
+            XML_TRUE as ::core::ffi::c_int,
+        ) as ::core::ffi::c_uint
+            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
         }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                957 as ::core::ffi::c_int,
-                b"Parsing worked despite failing reallocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if i == max_realloc_count {
-            _fail(
-                b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                959 as ::core::ffi::c_int,
-                b"Parsing failed even at max reallocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+        reset_nsalloc_fixture();
+        i += 1;
+    }
+    if i == 0 as ::core::ffi::c_int {
+        fail_test(
+            957 as ::core::ffi::c_int,
+            b"Parsing worked despite failing reallocations\0",
+        );
+    } else if i == max_realloc_count {
+        fail_test(
+            959 as ::core::ffi::c_int,
+            b"Parsing failed even at max reallocation count\0",
+        );
     }
 }
-unsafe extern "C" fn test_nsalloc_realloc_long_context() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nsalloc_realloc_long_context\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            962 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKL'>\n&en;</doc>\0"
+extern "C" fn test_nsalloc_realloc_long_context() {
+    set_test_info(
+        b"test_nsalloc_realloc_long_context\0",
+        962 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKL'>\n&en;</doc>\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        context_realloc_test(text);
-    }
+    context_realloc_test(text);
 }
-unsafe extern "C" fn test_nsalloc_realloc_long_context_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nsalloc_realloc_long_context_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            993 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJK'>\n&en;</doc>\0"
+extern "C" fn test_nsalloc_realloc_long_context_2() {
+    set_test_info(
+        b"test_nsalloc_realloc_long_context_2\0",
+        993 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJK'>\n&en;</doc>\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        context_realloc_test(text);
-    }
+    context_realloc_test(text);
 }
-unsafe extern "C" fn test_nsalloc_realloc_long_context_3() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nsalloc_realloc_long_context_3\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1024 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGH'>\n&en;</doc>\0"
+extern "C" fn test_nsalloc_realloc_long_context_3() {
+    set_test_info(
+        b"test_nsalloc_realloc_long_context_3\0",
+        1024 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGH'>\n&en;</doc>\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        context_realloc_test(text);
-    }
+    context_realloc_test(text);
 }
-unsafe extern "C" fn test_nsalloc_realloc_long_context_4() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nsalloc_realloc_long_context_4\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1055 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO'>\n&en;</doc>\0"
+extern "C" fn test_nsalloc_realloc_long_context_4() {
+    set_test_info(
+        b"test_nsalloc_realloc_long_context_4\0",
+        1055 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO'>\n&en;</doc>\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        context_realloc_test(text);
-    }
+    context_realloc_test(text);
 }
-unsafe extern "C" fn test_nsalloc_realloc_long_context_5() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nsalloc_realloc_long_context_5\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1086 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABC'>\n&en;</doc>\0"
+extern "C" fn test_nsalloc_realloc_long_context_5() {
+    set_test_info(
+        b"test_nsalloc_realloc_long_context_5\0",
+        1086 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABC'>\n&en;</doc>\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        context_realloc_test(text);
-    }
+    context_realloc_test(text);
 }
-unsafe extern "C" fn test_nsalloc_realloc_long_context_6() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nsalloc_realloc_long_context_6\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1117 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOP'>\n&en;</doc>\0"
+extern "C" fn test_nsalloc_realloc_long_context_6() {
+    set_test_info(
+        b"test_nsalloc_realloc_long_context_6\0",
+        1117 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOP'>\n&en;</doc>\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        context_realloc_test(text);
-    }
+    context_realloc_test(text);
 }
-unsafe extern "C" fn test_nsalloc_realloc_long_context_7() {
-    unsafe {
-        _check_set_test_info(
-            b"test_nsalloc_realloc_long_context_7\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/nsalloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1147 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLM'>\n&en;</doc>\0"
+extern "C" fn test_nsalloc_realloc_long_context_7() {
+    set_test_info(
+        b"test_nsalloc_realloc_long_context_7\0",
+        1147 as ::core::ffi::c_int,
+    );
+    let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM 'foo' [\n  <!ENTITY en SYSTEM 'bar'>\n]>\n<doc xmlns='http://example.org/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLM'>\n&en;</doc>\0"
             .as_ptr() as *const ::core::ffi::c_char;
-        context_realloc_test(text);
-    }
+    context_realloc_test(text);
 }
 unsafe extern "C" fn test_nsalloc_realloc_long_ge_name() {
     unsafe {
