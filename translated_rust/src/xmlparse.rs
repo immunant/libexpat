@@ -1477,12 +1477,18 @@ pub enum HandlerArg {
     Parser,
 }
 
+macro_rules! callback_context_pointer {
+    ($context:expr) => {{
+        ($context).map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr)
+    }};
+}
+
 macro_rules! handler_arg {
     ($parser:expr) => {{
         let parser: *mut XML_ParserStruct = $parser;
         let parser_ref = &*parser;
         match parser_ref.m_handlerArg {
-            HandlerArg::UserData => parser_ref.m_userData,
+            HandlerArg::UserData => callback_context_pointer!(parser_ref.m_userData),
             HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
         }
     }};
@@ -1492,7 +1498,7 @@ macro_rules! handler_arg_from_state {
     ($parser:expr) => {{
         let parser: &XML_ParserStruct = &*$parser;
         match parser.m_handlerArg {
-            HandlerArg::UserData => parser.m_userData,
+            HandlerArg::UserData => callback_context_pointer!(parser.m_userData),
             HandlerArg::Parser => std::ptr::from_ref(&*parser).cast_mut().cast(),
         }
     }};
@@ -2257,7 +2263,10 @@ enum DeclaredEntity {
 
 #[repr(C)]
 pub struct XML_ParserStruct {
-    pub m_userData: *mut ::core::ffi::c_void,
+    // User data is a private, non-dereferenceable foreign token.  `None`
+    // preserves the C null context, and the non-null pointer is materialized
+    // only at the callback boundary.
+    m_userData: Option<::core::ptr::NonNull<::core::ffi::c_void>>,
     // The callback context is represented by its semantic source; no foreign
     // pointer is retained in parser state.
     pub m_handlerArg: HandlerArg,
@@ -4025,7 +4034,7 @@ fn initial_parser_struct(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> XML_ParserStruct {
     XML_ParserStruct {
-        m_userData: crate::__stddef_null_h::NULL,
+        m_userData: None,
         m_handlerArg: HandlerArg::UserData,
         m_buffer: InputBuffer::empty(),
         m_mem: memory_suite,
@@ -4394,7 +4403,7 @@ fn parser_init(
     parser.m_initEncoding.initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
     parser.m_initEncoding.selected_encoding = None;
     parser.m_encoding = EncodingState::Initial;
-    parser.m_userData = crate::__stddef_null_h::NULL;
+    parser.m_userData = None;
     parser.m_handlerArg = HandlerArg::UserData;
     parser.m_startElementHandler = false;
     START_ELEMENT_HANDLERS
@@ -4822,7 +4831,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldEntityDeclHandler: Option<std::sync::Arc<dyn EntityDeclCallback>> = None;
     let mut oldXmlDeclHandler: Option<std::sync::Arc<dyn XmlDeclCallback>> = None;
     let mut oldDeclElementType: Option<PoolStringRef> = None;
-    let mut oldUserData: *mut ::core::ffi::c_void = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut oldUserData = None;
     let mut oldHandlerArg = HandlerArg::UserData;
     let mut oldDefaultExpandInternalEntities: crate::expat_h::XML_Bool = 0;
     let mut oldExternalEntityRefHandlerArg: Option<ExternalEntityRefHandlerArgRegistration> =
@@ -5579,11 +5588,7 @@ pub unsafe extern "C" fn XML_SetUserData(
     if parser.is_null() {
         return;
     }
-    if (*parser).m_handlerArg == HandlerArg::UserData {
-        (*parser).m_userData = p;
-    } else {
-        (*parser).m_userData = p;
-    };
+    (*parser).m_userData = ::core::ptr::NonNull::new(p);
 }
 #[export_name = "XML_SetUserData"]
 
@@ -11601,7 +11606,7 @@ unsafe extern "C" fn doProlog(
                                                     (
                                                         doctype_name,
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => parser_ref.m_userData,
+                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref.m_userData),
                                                             HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
                                                         },
                                                         doctype_sysid,
@@ -11766,7 +11771,7 @@ unsafe extern "C" fn doProlog(
                                                     (
                                                         doctype_name,
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => parser_ref.m_userData,
+                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref.m_userData),
                                                             HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
                                                         },
                                                         doctype_sysid,
@@ -12995,7 +13000,7 @@ unsafe extern "C" fn doProlog(
                                                     let parser_ref = &*parser;
                                                     (
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => parser_ref.m_userData,
+                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref.m_userData),
                                                             HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
                                                         },
                                                         parser_ref.m_declNotationName
@@ -13066,7 +13071,7 @@ unsafe extern "C" fn doProlog(
                                                     let parser_ref = &*parser;
                                                     (
                                                         match parser_ref.m_handlerArg {
-                                                            HandlerArg::UserData => parser_ref.m_userData,
+                                                            HandlerArg::UserData => callback_context_pointer!(parser_ref.m_userData),
                                                             HandlerArg::Parser => std::ptr::from_ref(parser_ref).cast_mut().cast(),
                                                         },
                                                         parser_ref.m_declNotationName
