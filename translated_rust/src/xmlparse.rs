@@ -8696,7 +8696,7 @@ fn parser_reset_impl(
         environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0),
         encoding_name,
     );
-    dtd.inspect(|dtd| unsafe { dtdReset(dtd, parser) });
+    dtd.inspect(|dtd| dtdReset(dtd, parser));
     return crate::expat_h::XML_TRUE;
 }
 
@@ -25474,10 +25474,8 @@ fn hash_table_destroy_owned(table: &mut HASH_TABLE) {
     table.used = 0;
 }
 
-/// Resets a parser-owned DTD.  The typed references originate from the
-/// parser's validated ownership facade; this remains unsafe while those
-/// state types carry raw ABI fields.
-unsafe fn dtdReset(p: &mut DTD, parser: &mut XML_ParserStruct) {
+/// Resets a parser-owned DTD through its typed ownership facade.
+fn dtdReset(p: &mut DTD, parser: &mut XML_ParserStruct) {
     if let Some(slots) = p.elementTypes.v.as_mut() {
         for entry in slots.entries.iter_mut().flatten() {
             let Some(element) = entry.element_mut() else {
