@@ -1,4 +1,5 @@
 use ::c2rust_bitfields;
+use ::std::os::unix::ffi::OsStrExt;
 
 pub mod siphash_h {
 
@@ -2039,27 +2040,19 @@ static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     '\0' as i32 as crate::expat_external_h::XML_Char,
 ];
 
-unsafe extern "C" fn ENTROPY_DEBUG(
-    mut label: *const ::core::ffi::c_char,
-    mut entropy: ::core::ffi::c_ulong,
-) -> ::core::ffi::c_ulong {
-    if getDebugLevel(
-        b"EXPAT_ENTROPY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-        0 as ::core::ffi::c_ulong,
-    ) >= 1 as ::core::ffi::c_ulong
+fn ENTROPY_DEBUG(label: &str, entropy: ::core::ffi::c_ulong) -> ::core::ffi::c_ulong {
+    if getDebugLevel("EXPAT_ENTROPY_DEBUG", 0 as ::core::ffi::c_ulong) >= 1 as ::core::ffi::c_ulong
     {
-        crate::stdlib::fprintf(
-            crate::stdlib::stderr,
-            b"expat: Entropy: %s --> 0x%0*lx (%lu bytes)\n\0".as_ptr()
-                as *const ::core::ffi::c_char,
+        let size = ::core::mem::size_of::<::core::ffi::c_ulong>();
+        eprintln!(
+            "expat: Entropy: {} --> 0x{:0width$x} ({} bytes)",
             label,
-            ::core::mem::size_of::<::core::ffi::c_ulong>() as ::core::ffi::c_int
-                * 2 as ::core::ffi::c_int,
             entropy,
-            ::core::mem::size_of::<::core::ffi::c_ulong>() as ::core::ffi::c_ulong,
+            size,
+            width = size * 2
         );
     }
-    return entropy;
+    entropy
 }
 
 unsafe extern "C" fn generate_hash_secret_salt(
@@ -2070,10 +2063,7 @@ unsafe extern "C" fn generate_hash_secret_salt(
         &raw mut entropy as *mut ::core::ffi::c_void,
         ::core::mem::size_of::<::core::ffi::c_ulong>() as crate::__stddef_size_t_h::size_t,
     );
-    return ENTROPY_DEBUG(
-        b"arc4random_buf\0".as_ptr() as *const ::core::ffi::c_char,
-        entropy,
-    );
+    return ENTROPY_DEBUG("arc4random_buf", entropy);
 }
 
 unsafe extern "C" fn callProcessor(
@@ -2299,10 +2289,8 @@ unsafe extern "C" fn parserCreate(
         ::core::mem::size_of::<MALLOC_TRACKER>() as crate::__stddef_size_t_h::size_t,
     );
     if parentParser.is_null() {
-        (*parser).m_alloc_tracker.debugLevel = getDebugLevel(
-            b"EXPAT_MALLOC_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-            0 as ::core::ffi::c_ulong,
-        );
+        (*parser).m_alloc_tracker.debugLevel =
+            getDebugLevel("EXPAT_MALLOC_DEBUG", 0 as ::core::ffi::c_ulong);
         (*parser).m_alloc_tracker.maximumAmplificationFactor =
             crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
         (*parser).m_alloc_tracker.activationThresholdBytes =
@@ -2562,10 +2550,8 @@ unsafe extern "C" fn parserInit(
         0 as ::core::ffi::c_int,
         ::core::mem::size_of::<ACCOUNTING>() as crate::__stddef_size_t_h::size_t,
     );
-    (*parser).m_accounting.debugLevel = getDebugLevel(
-        b"EXPAT_ACCOUNTING_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-        0 as ::core::ffi::c_ulong,
-    );
+    (*parser).m_accounting.debugLevel =
+        getDebugLevel("EXPAT_ACCOUNTING_DEBUG", 0 as ::core::ffi::c_ulong);
     (*parser).m_accounting.maximumAmplificationFactor =
         crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
     (*parser).m_accounting.activationThresholdBytes =
@@ -2576,10 +2562,8 @@ unsafe extern "C" fn parserInit(
         0 as ::core::ffi::c_int,
         ::core::mem::size_of::<ENTITY_STATS>() as crate::__stddef_size_t_h::size_t,
     );
-    (*parser).m_entity_stats.debugLevel = getDebugLevel(
-        b"EXPAT_ENTITY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
-        0 as ::core::ffi::c_ulong,
-    );
+    (*parser).m_entity_stats.debugLevel =
+        getDebugLevel("EXPAT_ENTITY_DEBUG", 0 as ::core::ffi::c_ulong);
 }
 
 unsafe extern "C" fn moveToFreeBindingList(
@@ -13232,25 +13216,55 @@ pub unsafe extern "C" fn unsignedCharToPrintable_ffi(
 ) -> *const ::core::ffi::c_char {
     unsignedCharToPrintable(c)
 }
-unsafe extern "C" fn getDebugLevel(
-    mut variableName: *const ::core::ffi::c_char,
-    mut defaultDebugLevel: ::core::ffi::c_ulong,
+fn parseDebugLevel(value: &[u8]) -> Option<::core::ffi::c_ulong> {
+    let mut index = 0usize;
+    while matches!(
+        value.get(index),
+        Some(b' ' | b'\t' | b'\n' | b'\r' | 0x0b | 0x0c)
+    ) {
+        index += 1;
+    }
+
+    let negative = match value.get(index) {
+        Some(b'+') => {
+            index += 1;
+            false
+        }
+        Some(b'-') => {
+            index += 1;
+            true
+        }
+        _ => false,
+    };
+
+    let mut parsed_any = false;
+    let mut parsed = 0 as ::core::ffi::c_ulong;
+    while let Some(byte) = value.get(index) {
+        let Some(digit) = byte.checked_sub(b'0').filter(|digit| *digit <= 9) else {
+            break;
+        };
+        parsed_any = true;
+        parsed = parsed.checked_mul(10)?;
+        parsed = parsed.checked_add(digit as ::core::ffi::c_ulong)?;
+        index += 1;
+    }
+
+    if !parsed_any || index != value.len() {
+        return None;
+    }
+
+    Some(if negative {
+        (0 as ::core::ffi::c_ulong).wrapping_sub(parsed)
+    } else {
+        parsed
+    })
+}
+
+fn getDebugLevel(
+    variableName: &str,
+    defaultDebugLevel: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_ulong {
-    let valueOrNull: *const ::core::ffi::c_char = crate::stdlib::getenv(variableName);
-    if valueOrNull.is_null() {
-        return defaultDebugLevel;
-    }
-    let value: *const ::core::ffi::c_char = valueOrNull;
-    *crate::stdlib::__errno_location() = 0 as ::core::ffi::c_int;
-    let mut afterValue: *mut ::core::ffi::c_char = ::core::ptr::null_mut::<::core::ffi::c_char>();
-    let mut debugLevel: ::core::ffi::c_ulong =
-        crate::stdlib::strtoul(value, &raw mut afterValue, 10 as ::core::ffi::c_int);
-    if *crate::stdlib::__errno_location() != 0 as ::core::ffi::c_int
-        || afterValue == value as *mut ::core::ffi::c_char
-        || *afterValue.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int != '\0' as i32
-    {
-        *crate::stdlib::__errno_location() = 0 as ::core::ffi::c_int;
-        return defaultDebugLevel;
-    }
-    return debugLevel;
+    ::std::env::var_os(variableName)
+        .and_then(|value| parseDebugLevel(value.as_bytes()))
+        .unwrap_or(defaultDebugLevel)
 }
