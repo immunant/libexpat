@@ -2775,6 +2775,25 @@ enum ParserAllocationAction {
     Free(::core::ffi::c_int),
 }
 
+/// Opaque Expat allocator token for Rust-owned parser storage.  The token is
+/// driven only through typed allocation actions; it never exposes or
+/// dereferences the allocator's storage.
+struct AllocationBacking {
+    actions: Box<dyn FnMut(ParserAllocationAction) -> bool>,
+}
+
+impl AllocationBacking {
+    fn apply(&mut self, action: ParserAllocationAction) -> bool {
+        (self.actions)(action)
+    }
+
+    fn into_free_backing(mut self) -> Box<dyn FnMut(::core::ffi::c_int)> {
+        Box::new(move |source_line| {
+            self.apply(ParserAllocationAction::Free(source_line));
+        })
+    }
+}
+
 // Namespace-attribute duplicate detection is a parser-owned scratch table.
 // Its allocation token remains opaque so the configured Expat allocator sees
 // the same allocation, growth, and release sequence as the original table.
@@ -2815,40 +2834,8 @@ fn scratch_allocation_backing(
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>> {
-    let allocation = unsafe { expat_malloc(std::ptr::from_mut(parser), size, source_line) };
-    if allocation.is_null() {
-        return None;
-    }
-    let mut allocation = allocation;
-    Some(Box::new(move |parser, action| match action {
-        ParserAllocationAction::Grow { size, source_line } => {
-            let reallocated = unsafe { expat_realloc(parser, allocation, size, source_line) };
-            if reallocated.is_null() {
-                false
-            } else {
-                allocation = reallocated;
-                true
-            }
-        }
-        ParserAllocationAction::Replace {
-            size,
-            allocation_source_line,
-            free_source_line,
-        } => {
-            let replacement = unsafe { expat_malloc(parser, size, allocation_source_line) };
-            if replacement.is_null() {
-                false
-            } else {
-                unsafe { expat_free(parser, allocation, free_source_line) };
-                allocation = replacement;
-                true
-            }
-        }
-        ParserAllocationAction::Free(source_line) => {
-            unsafe { expat_free(parser, allocation, source_line) };
-            true
-        }
-    }))
+    let mut backing = unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }?;
+    Some(Box::new(move |_parser, action| backing.apply(action)))
 }
 
 impl AttributeStorage {
@@ -6296,7 +6283,8 @@ unsafe fn parser_create_ownership_facade(
             (INIT_DATA_BUF_SIZE as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
             1462 as ::core::ffi::c_int,
-        ) {
+        )
+        .map(AllocationBacking::into_free_backing) {
             Some(backing) => backing,
             None => {
                 let mut backing = parser.m_atts.backing.take();
@@ -6859,7 +6847,8 @@ unsafe fn parser_initialize_from_cstr(
             .to_bytes_with_nul()
             .len()
             .checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
-        let backing = allocation_backing(parser_handle, allocation_size, 8456)?;
+        let backing = allocation_backing(parser_handle, allocation_size, 8456)
+            .map(AllocationBacking::into_free_backing)?;
         protocol_encoding_name_from_cstr(encoding_name, backing)
     });
     parser_init(
@@ -16026,6 +16015,7 @@ fn parser_allocation_backing(
     source_line: ::core::ffi::c_int,
 ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
     unsafe { allocation_backing(std::ptr::from_mut(parser), size, source_line) }
+        .map(AllocationBacking::into_free_backing)
 }
 
 /// Acquires the observable Expat allocation paired with the typed Rust owner
@@ -23046,7 +23036,9 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
             ::core::mem::offset_of!(DTD, allocation),
             7500 as ::core::ffi::c_int,
         )
-    }) else {
+    })
+    .map(AllocationBacking::into_free_backing)
+    else {
         return None;
     };
     let mut dtd = DTD {
@@ -23660,14 +23652,43 @@ unsafe fn allocation_backing(
     parser: crate::expat_h::XML_Parser,
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
-) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
+) -> Option<AllocationBacking> {
     let allocation = expat_malloc(parser, size, source_line);
     if allocation.is_null() {
         return None;
     }
-    Some(Box::new(move |free_source_line| {
-        expat_free(parser, allocation, free_source_line);
-    }))
+    let mut allocation = allocation;
+    Some(AllocationBacking {
+        actions: Box::new(move |action| match action {
+            ParserAllocationAction::Grow { size, source_line } => {
+                let reallocated = expat_realloc(parser, allocation, size, source_line);
+                if reallocated.is_null() {
+                    false
+                } else {
+                    allocation = reallocated;
+                    true
+                }
+            }
+            ParserAllocationAction::Replace {
+                size,
+                allocation_source_line,
+                free_source_line,
+            } => {
+                let replacement = expat_malloc(parser, size, allocation_source_line);
+                if replacement.is_null() {
+                    false
+                } else {
+                    expat_free(parser, allocation, free_source_line);
+                    allocation = replacement;
+                    true
+                }
+            }
+            ParserAllocationAction::Free(source_line) => {
+                expat_free(parser, allocation, source_line);
+                true
+            }
+        }),
+    })
 }
 
 fn internal_entity_storage_new(
@@ -24136,6 +24157,7 @@ unsafe fn hash_table_allocator(parser: crate::expat_h::XML_Parser) -> HashTableA
     HashTableAllocator {
         allocate: std::sync::Arc::new(move |size, source_line| unsafe {
             allocation_backing(parser, size, source_line)
+                .map(AllocationBacking::into_free_backing)
         }),
     }
 }
