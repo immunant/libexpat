@@ -6427,6 +6427,17 @@ unsafe fn call_processor_impl(
                     result
                 }
             }
+        } else if matches!(parser.m_processor, ProcessorState::InternalEntity) {
+            // Internal-entity expansion has no caller-buffer cursor: it
+            // operates on the DTD-owned replacement text selected by the
+            // active entity record.  Dispatch it directly from this checked
+            // state machine instead of rebuilding the legacy raw processor
+            // arguments solely to discard them in `internalEntityProcessor`.
+            // It never consumes the caller's buffer, so retain its checked
+            // offset rather than later validating an address that a callback
+            // may have invalidated by relocating that buffer.
+            checked_next_offset = Some(next);
+            internalEntityProcessor(parser)
         } else if matches!(parser.m_processor, ProcessorState::Error) {
             // The error processor never consumes input or changes the cursor:
             // it only returns the parser's stored error.  Keep that terminal
@@ -6457,7 +6468,9 @@ unsafe fn call_processor_impl(
                 ProcessorState::Epilog => {
                     unreachable!("epilog dispatch is handled with checked offsets")
                 }
-                ProcessorState::InternalEntity => internalEntityProcessor,
+                ProcessorState::InternalEntity => {
+                    unreachable!("internal entity processing is dispatched without raw cursors")
+                }
                 ProcessorState::Error => {
                     unreachable!("error dispatch is handled without a raw cursor adapter")
                 }
@@ -20825,13 +20838,15 @@ unsafe fn update_active_internal_entity(
     Some(result)
 }
 
-unsafe extern "C" fn internalEntityProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    _s: *const ::core::ffi::c_char,
-    _end: *const ::core::ffi::c_char,
-    _nextPtr: *mut *const ::core::ffi::c_char,
+/// Processes the active DTD-owned internal-entity replacement text.
+///
+/// `call_processor_impl` has already selected `ProcessorState::InternalEntity`
+/// and verified its live parser-buffer range before invoking this transition.
+/// This processor intentionally has no input cursor: its own retained entity
+/// text is the only source it may scan.
+unsafe fn internalEntityProcessor(
+    parser_state: &mut XML_ParserStruct,
 ) -> crate::expat_h::XML_Error {
-    let parser_state = &mut *parser;
     let Some(open_entity_index) = parser_state.m_openInternalEntities else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
