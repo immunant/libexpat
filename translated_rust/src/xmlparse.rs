@@ -2717,6 +2717,25 @@ static XML_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn XmlDeclCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// An XML-declaration callback prepared from the ABI callback value.
+///
+/// The parser only observes whether a callback is installed; the callable
+/// value remains in the boundary registry.
+struct XmlDeclHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn XmlDeclCallback>>,
+}
+
+fn xml_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> XmlDeclHandlerRegistration
+where
+    Callback: XmlDeclCallback + 'static,
+{
+    XmlDeclHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 /// Invoke an XML-declaration callback using the parser's pool-owned strings.
 ///
 /// The pool references identify NUL-terminated XML character sequences.  They
@@ -10121,33 +10140,38 @@ pub unsafe extern "C" fn XML_SetEntityDeclHandler_ffi(
     let registration = entity_decl_handler_registration(handler);
     set_entity_decl_handler(parser, parser_key, registration)
 }
-pub unsafe extern "C" fn XML_SetXmlDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_XmlDeclHandler,
+fn set_xml_decl_handler(
+    parser: &mut XML_ParserStruct,
+    parser_key: usize,
+    registration: XmlDeclHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_xmlDeclHandler = handler.is_some();
-        let mut handlers = XML_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_xmlDeclHandler = registration.callback.is_some();
+    let mut handlers = XML_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_key, callback);
+        }
+        None => {
+            handlers.remove(&parser_key);
         }
     }
 }
 #[export_name = "XML_SetXmlDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetXmlDeclHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_XmlDeclHandler,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_XmlDeclHandler,
 ) {
-    XML_SetXmlDeclHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_key = parser.addr();
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    let registration = xml_decl_handler_registration(handler);
+    set_xml_decl_handler(parser, parser_key, registration)
 }
 /// The parser state needed to update parameter-entity parsing mode.
 ///
