@@ -5027,7 +5027,10 @@ unsafe extern "C" fn externalEntityInitProcessor2(
                 XML_ACCOUNT_DIRECT,
             ) == 0
             {
-                accountingOnAbort(parser);
+                accountingOnAbort(&*getRootParserOf(
+                    parser,
+                    ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                ));
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
             if next == end && (*parser).m_parsingStatus.finalBuffer == 0 {
@@ -5210,7 +5213,10 @@ unsafe extern "C" fn doContent(
             account,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingOnAbort(&*getRootParserOf(
+                parser,
+                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+            ));
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         *eventEndPP = next;
@@ -6942,7 +6948,10 @@ unsafe extern "C" fn doCdataSection(
             enc, s, end, &raw mut next
         );
         if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
-            accountingOnAbort(parser);
+            accountingOnAbort(&*getRootParserOf(
+                parser,
+                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+            ));
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         *eventEndPP = next;
@@ -7160,7 +7169,10 @@ unsafe extern "C" fn doIgnoreSection(
         XML_ACCOUNT_DIRECT,
     ) == 0
     {
-        accountingOnAbort(parser);
+        accountingOnAbort(&*getRootParserOf(
+            parser,
+            ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+        ));
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     *eventEndPP = next;
@@ -7262,7 +7274,10 @@ unsafe extern "C" fn processXmlDecl(
         XML_ACCOUNT_DIRECT,
     ) == 0
     {
-        accountingOnAbort(parser);
+        accountingOnAbort(&*getRootParserOf(
+            parser,
+            ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+        ));
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     if if (*parser).m_ns as ::core::ffi::c_int != 0 {
@@ -7620,7 +7635,10 @@ unsafe extern "C" fn entityValueInitProcessor(
                 XML_ACCOUNT_DIRECT,
             ) == 0
             {
-                accountingOnAbort(parser);
+                accountingOnAbort(&*getRootParserOf(
+                    parser,
+                    ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                ));
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
             *nextPtr = next;
@@ -7668,7 +7686,10 @@ unsafe extern "C" fn externalParEntProcessor(
             XML_ACCOUNT_DIRECT,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingOnAbort(&*getRootParserOf(
+                parser,
+                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+            ));
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
@@ -7974,7 +7995,10 @@ unsafe extern "C" fn doProlog(
                     account,
                 ) == 0
                 {
-                    accountingOnAbort(parser);
+                    accountingOnAbort(&*getRootParserOf(
+                        parser,
+                        ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+                    ));
                     return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
                 }
             }
@@ -9498,7 +9522,10 @@ unsafe extern "C" fn epilogProcessor(
             XML_ACCOUNT_DIRECT,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingOnAbort(&*getRootParserOf(
+                parser,
+                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+            ));
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         (*parser).m_eventEndPtr = next;
@@ -9920,7 +9947,10 @@ unsafe extern "C" fn appendAttributeValue(
                 .expect("non-null function pointer")(enc, ptr, end, &raw mut next);
         if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
         {
-            accountingOnAbort(parser);
+            accountingOnAbort(&*getRootParserOf(
+                parser,
+                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+            ));
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         let mut c2rust_current_block_70: u64;
@@ -10193,7 +10223,10 @@ unsafe extern "C" fn storeEntityValue(
             account,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingOnAbort(&*getRootParserOf(
+                parser,
+                ::core::ptr::null_mut::<::core::ffi::c_uint>(),
+            ));
             result = crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             break;
         } else {
@@ -12630,105 +12663,71 @@ fn accountingReportStats(rootParser: &XML_ParserStruct, epilog: &str) {
     );
 }
 
-unsafe extern "C" fn accountingOnAbort(mut originParser: crate::expat_h::XML_Parser) {
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
-    accountingReportStats(&*rootParser, " ABORTING\n");
+fn accountingOnAbort(rootParser: &XML_ParserStruct) {
+    accountingReportStats(rootParser, " ABORTING\n");
 }
 
-unsafe extern "C" fn accountingReportDiff(
-    mut rootParser: crate::expat_h::XML_Parser,
-    mut levelsAwayFromRootParser: ::core::ffi::c_uint,
-    mut before: *const ::core::ffi::c_char,
-    mut after: *const ::core::ffi::c_char,
-    mut bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
-    mut source_line: ::core::ffi::c_int,
-    mut account: XML_Account,
-) {
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8513 as ::core::ffi::c_uint,
-                b"void accountingReportDiff(XML_Parser, unsigned int, const char *, const char *, ptrdiff_t, int, enum XML_Account)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
+struct PrintableByte(u8);
+
+impl ::core::fmt::Display for PrintableByte {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        match self.0 {
+            0 => f.write_str("\\0"),
+            b'\t' => f.write_str("\\t"),
+            b'\n' => f.write_str("\\n"),
+            b'\r' => f.write_str("\\r"),
+            b'"' => f.write_str("\\\""),
+            b'\\' => f.write_str("\\\\"),
+            0x20..=0x7e => write!(f, "{}", self.0 as char),
+            byte => write!(f, "\\x{:X}", byte),
         }
-    };
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b" (+%6ld bytes %s|%u, xmlparse.c:%d) %*s\"\0".as_ptr() as *const ::core::ffi::c_char,
+    }
+}
+
+fn accountingReportDiff(
+    rootParser: &XML_ParserStruct,
+    levelsAwayFromRootParser: ::core::ffi::c_uint,
+    accounted_bytes: &[::core::ffi::c_char],
+    bytesMore: crate::__stddef_ptrdiff_t_h::ptrdiff_t,
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+) {
+    if !rootParser.m_parentParser.is_null() {
+        ::std::process::abort();
+    }
+    eprint!(
+        " (+{:6} bytes {}|{}, xmlparse.c:{}) {:>10}\"",
         bytesMore,
         if account as ::core::ffi::c_uint
             == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            b"DIR\0".as_ptr() as *const ::core::ffi::c_char
+            "DIR"
         } else {
-            b"EXP\0".as_ptr() as *const ::core::ffi::c_char
+            "EXP"
         },
         levelsAwayFromRootParser,
         source_line,
-        10 as ::core::ffi::c_int,
-        b"\0".as_ptr() as *const ::core::ffi::c_char,
+        "",
     );
-    let ellipis: [::core::ffi::c_char; 5] =
-        ::core::mem::transmute::<[u8; 5], [::core::ffi::c_char; 5]>(*b"[..]\0");
-    let ellipsisLength: crate::__stddef_size_t_h::size_t =
-        (::core::mem::size_of::<[::core::ffi::c_char; 5]>() as crate::__stddef_size_t_h::size_t)
-            .wrapping_sub(1 as crate::__stddef_size_t_h::size_t);
-    let contextLength: ::core::ffi::c_uint = 10 as ::core::ffi::c_uint;
-    let mut walker: *const ::core::ffi::c_char = before;
-    if (*rootParser).m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
-        || after.offset_from(before) as crate::__stddef_ptrdiff_t_h::ptrdiff_t
-            <= (contextLength as crate::__stddef_size_t_h::size_t)
-                .wrapping_add(ellipsisLength)
-                .wrapping_add(contextLength as crate::__stddef_size_t_h::size_t)
-                as crate::__stddef_ptrdiff_t_h::ptrdiff_t
+
+    let ellipsis = "[..]";
+    let contextLength = 10usize;
+    if rootParser.m_accounting.debugLevel >= 3 as ::core::ffi::c_ulong
+        || accounted_bytes.len() <= contextLength + ellipsis.len() + contextLength
     {
-        while walker < after {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+        for byte in accounted_bytes {
+            eprint!("{}", PrintableByte(*byte as u8));
         }
     } else {
-        while walker < before.offset(contextLength as isize) {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+        for byte in &accounted_bytes[..contextLength] {
+            eprint!("{}", PrintableByte(*byte as u8));
         }
-        crate::stdlib::fprintf(
-            crate::stdlib::stderr,
-            &raw const ellipis as *const ::core::ffi::c_char,
-        );
-        walker = after.offset(-(contextLength as isize));
-        while walker < after {
-            crate::stdlib::fprintf(
-                crate::stdlib::stderr,
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                unsignedCharToPrintable(
-                    *walker.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                ),
-            );
-            walker = walker.offset(1);
+        eprint!("{}", ellipsis);
+        for byte in &accounted_bytes[accounted_bytes.len() - contextLength..] {
+            eprint!("{}", PrintableByte(*byte as u8));
         }
     }
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"\"\n\0".as_ptr() as *const ::core::ffi::c_char,
-    );
+    eprintln!("\"");
 }
 
 unsafe extern "C" fn accountingDiffTolerated(
@@ -12797,11 +12796,12 @@ unsafe extern "C" fn accountingDiffTolerated(
             as ::core::ffi::c_int as crate::expat_h::XML_Bool;
     if (*rootParser).m_accounting.debugLevel >= 2 as ::core::ffi::c_ulong {
         accountingReportStats(&*rootParser, "");
+        let accounted_bytes =
+            ::core::slice::from_raw_parts(before, bytesMore as crate::__stddef_size_t_h::size_t);
         accountingReportDiff(
-            rootParser,
+            &*rootParser,
             levelsAwayFromRootParser,
-            before,
-            after,
+            accounted_bytes,
             bytesMore,
             source_line,
             account,
@@ -12839,48 +12839,47 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
 ) -> ::core::ffi::c_ulonglong {
     testingAccountingGetCountBytesIndirect(unsafe { parser.as_mut() })
 }
-unsafe extern "C" fn entityTrackingReportStats(
-    mut rootParser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut action: *const ::core::ffi::c_char,
-    mut sourceLine: ::core::ffi::c_int,
+fn entityTrackingReportStats(
+    rootParser: &XML_ParserStruct,
+    entity: &ENTITY,
+    entityName: &CStr,
+    action: &str,
+    sourceLine: ::core::ffi::c_int,
 ) {
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8617 as ::core::ffi::c_uint,
-                b"void entityTrackingReportStats(XML_Parser, ENTITY *, const char *, int)\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    if (*rootParser).m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
+    if !rootParser.m_parentParser.is_null() {
+        ::std::process::abort();
+    }
+    if rootParser.m_entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
-    let entityName: *const ::core::ffi::c_char = (*entity).name as *const ::core::ffi::c_char;
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"expat: Entities(%p): Count %9u, depth %2u/%2u %*s%s%s; %s length %d (xmlparse.c:%d)\n\0"
-            .as_ptr() as *const ::core::ffi::c_char,
-        rootParser as *mut ::core::ffi::c_void,
-        (*rootParser).m_entity_stats.countEverOpened,
-        (*rootParser).m_entity_stats.currentDepth,
-        (*rootParser).m_entity_stats.maximumDepthSeen,
-        ((*rootParser).m_entity_stats.currentDepth as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-            * 2 as ::core::ffi::c_int,
-        b"\0".as_ptr() as *const ::core::ffi::c_char,
-        if (*entity).is_param as ::core::ffi::c_int != 0 {
-            b"%\0".as_ptr() as *const ::core::ffi::c_char
-        } else {
-            b"&\0".as_ptr() as *const ::core::ffi::c_char
-        },
-        entityName,
-        action,
-        (*entity).textLen,
-        sourceLine,
+    let mut stderr_lock = ::std::io::stderr().lock();
+    let indent_width = (rootParser.m_entity_stats.currentDepth as ::core::ffi::c_int
+        - 1 as ::core::ffi::c_int)
+        * 2 as ::core::ffi::c_int;
+    let _ = ::std::io::Write::write_fmt(
+        &mut stderr_lock,
+        format_args!(
+            "expat: Entities({:p}): Count {:9}, depth {:2}/{:2} {:width$}{}",
+            rootParser as *const XML_ParserStruct,
+            rootParser.m_entity_stats.countEverOpened,
+            rootParser.m_entity_stats.currentDepth,
+            rootParser.m_entity_stats.maximumDepthSeen,
+            "",
+            if entity.is_param as ::core::ffi::c_int != 0 {
+                "%"
+            } else {
+                "&"
+            },
+            width = indent_width as usize,
+        ),
+    );
+    let _ = ::std::io::Write::write_all(&mut stderr_lock, entityName.to_bytes());
+    let _ = ::std::io::Write::write_fmt(
+        &mut stderr_lock,
+        format_args!(
+            "; {} length {} (xmlparse.c:{})\n",
+            action, entity.textLen, sourceLine,
+        ),
     );
 }
 
@@ -12914,10 +12913,12 @@ unsafe extern "C" fn entityTrackingOnOpen(
             .maximumDepthSeen
             .wrapping_add(1);
     }
+    let entity_ref = &*entity;
     entityTrackingReportStats(
-        rootParser,
-        entity,
-        b"OPEN \0".as_ptr() as *const ::core::ffi::c_char,
+        &*rootParser,
+        entity_ref,
+        CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char),
+        "OPEN ",
         sourceLine,
     );
 }
@@ -12942,10 +12943,12 @@ unsafe extern "C" fn entityTrackingOnClose(
             );
         }
     };
+    let entity_ref = &*entity;
     entityTrackingReportStats(
-        rootParser,
-        entity,
-        b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+        &*rootParser,
+        entity_ref,
+        CStr::from_ptr(entity_ref.name as *const ::core::ffi::c_char),
+        "CLOSE",
         sourceLine,
     );
     (*rootParser).m_entity_stats.currentDepth =
