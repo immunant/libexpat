@@ -2141,7 +2141,11 @@ pub struct DTD {
     pub paramEntities: HASH_TABLE,
     pub defaultPrefix: PREFIX,
     pub in_eldecl: crate::expat_h::XML_Bool,
-    pub scaffold: *mut CONTENT_SCAFFOLD,
+    // The content-model graph is shared when a child parser inherits its
+    // parent's DTD.  Its nodes are ordinary indexed Rust storage; `backing`
+    // below is retained only to preserve the observable allocation schedule
+    // of the configured Expat memory suite.
+    scaffold: std::sync::Arc<std::sync::Mutex<ScaffoldStorage>>,
     pub contentStringLen: ::core::ffi::c_uint,
     pub scaffSize: ::core::ffi::c_uint,
     pub scaffCount: ::core::ffi::c_uint,
@@ -2162,6 +2166,33 @@ pub struct CONTENT_SCAFFOLD {
     pub lastchild: ::core::ffi::c_int,
     pub childcnt: ::core::ffi::c_int,
     pub nextsib: ::core::ffi::c_int,
+}
+
+// `backing` is deliberately opaque: content-model nodes live in `nodes`, but
+// Expat's custom allocator still sees the same malloc/realloc/free sequence
+// (and can still inject allocation failure).  Its captured allocation is
+// never dereferenced or exposed to DTD state.
+struct ScaffoldStorage {
+    nodes: Vec<CONTENT_SCAFFOLD>,
+    backing: Option<Box<dyn FnMut(ScaffoldAllocationAction) -> bool>>,
+}
+
+enum ScaffoldAllocationAction {
+    Grow(usize),
+    Free(::core::ffi::c_int),
+}
+
+impl ScaffoldStorage {
+    fn empty() -> Self {
+        Self {
+            nodes: Vec::new(),
+            backing: None,
+        }
+    }
+}
+
+fn empty_scaffold() -> std::sync::Arc<std::sync::Mutex<ScaffoldStorage>> {
+    std::sync::Arc::new(std::sync::Mutex::new(ScaffoldStorage::empty()))
 }
 #[repr(C)]
 
@@ -10803,8 +10834,14 @@ unsafe extern "C" fn doProlog(
                                             }
                                             scaff_index[level] = myindex;
                                             (*dtd).scaffLevel += 1;
-                                            (*(*dtd).scaffold.offset(myindex as isize)).type_0 =
-                                                crate::expat_h::XML_CTYPE_SEQ;
+                                            let mut scaffold = (*dtd)
+                                                .scaffold
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                            let Some(node) = scaffold.nodes.get_mut(myindex as usize) else {
+                                                return crate::expat_h::XML_ERROR_SYNTAX;
+                                            };
+                                            node.type_0 = crate::expat_h::XML_CTYPE_SEQ;
                                             if (*parser).m_elementDeclHandler {
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
@@ -10859,14 +10896,19 @@ unsafe extern "C" fn doProlog(
                                                     None => return crate::expat_h::XML_ERROR_SYNTAX,
                                                 }
                                             };
-                                            if (*(*dtd).scaffold.offset(parent_index as isize))
-                                                .type_0 as ::core::ffi::c_uint
+                                            let mut scaffold = (*dtd)
+                                                .scaffold
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                            let Some(parent) = scaffold.nodes.get_mut(parent_index as usize) else {
+                                                return crate::expat_h::XML_ERROR_SYNTAX;
+                                            };
+                                            if parent.type_0 as ::core::ffi::c_uint
                                                 != crate::expat_h::XML_CTYPE_MIXED
                                                     as ::core::ffi::c_int
                                                     as ::core::ffi::c_uint
                                             {
-                                                (*(*dtd).scaffold.offset(parent_index as isize))
-                                                    .type_0 = crate::expat_h::XML_CTYPE_CHOICE;
+                                                parent.type_0 = crate::expat_h::XML_CTYPE_CHOICE;
                                                 if (*parser).m_elementDeclHandler {
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
@@ -11121,8 +11163,14 @@ unsafe extern "C" fn doProlog(
                                                     None => return crate::expat_h::XML_ERROR_SYNTAX,
                                                 }
                                             };
-                                            (*(*dtd).scaffold.offset(parent_index as isize)).type_0 =
-                                                crate::expat_h::XML_CTYPE_MIXED;
+                                            let mut scaffold = (*dtd)
+                                                .scaffold
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                            let Some(parent) = scaffold.nodes.get_mut(parent_index as usize) else {
+                                                return crate::expat_h::XML_ERROR_SYNTAX;
+                                            };
+                                            parent.type_0 = crate::expat_h::XML_CTYPE_MIXED;
                                             if (*parser).m_elementDeclHandler {
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
@@ -11283,9 +11331,17 @@ unsafe extern "C" fn doProlog(
                         if myindex_0 < 0 as ::core::ffi::c_int {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        (*(*dtd).scaffold.offset(myindex_0 as isize)).type_0 =
-                            crate::expat_h::XML_CTYPE_NAME;
-                        (*(*dtd).scaffold.offset(myindex_0 as isize)).quant = quant;
+                        {
+                            let mut scaffold = (*dtd)
+                                .scaffold
+                                .lock()
+                                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                            let Some(node) = scaffold.nodes.get_mut(myindex_0 as usize) else {
+                                return crate::expat_h::XML_ERROR_SYNTAX;
+                            };
+                            node.type_0 = crate::expat_h::XML_CTYPE_NAME;
+                            node.quant = quant;
+                        }
                         el = getElementType(parser, enc, s, nxt);
                         if el.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -11293,7 +11349,16 @@ unsafe extern "C" fn doProlog(
                         let name_2 = (*el).named.name;
                         let name_ref = pool_string_ref(&raw const (*dtd).pool, name_2)
                             .expect("element type table entries always have a DTD pool name");
-                        (*(*dtd).scaffold.offset(myindex_0 as isize)).name = Some(name_ref);
+                        {
+                            let mut scaffold = (*dtd)
+                                .scaffold
+                                .lock()
+                                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                            let Some(node) = scaffold.nodes.get_mut(myindex_0 as usize) else {
+                                return crate::expat_h::XML_ERROR_SYNTAX;
+                            };
+                            node.name = Some(name_ref);
+                        }
                         nameLen = 0 as crate::__stddef_size_t_h::size_t;
                         loop {
                             let c2rust_fresh5 = nameLen;
@@ -11332,7 +11397,16 @@ unsafe extern "C" fn doProlog(
                             None => return crate::expat_h::XML_ERROR_SYNTAX,
                         }
                     };
-                    (*(*dtd).scaffold.offset(parent_index as isize)).quant = quant;
+                    {
+                        let mut scaffold = (*dtd)
+                            .scaffold
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner());
+                        let Some(parent) = scaffold.nodes.get_mut(parent_index as usize) else {
+                            return crate::expat_h::XML_ERROR_SYNTAX;
+                        };
+                        parent.quant = quant;
+                    }
                     if (*dtd).scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
                             let mut model: *mut crate::expat_h::XML_Content = build_model(parser);
@@ -13176,7 +13250,7 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
         &raw mut (*p).scaffIndex,
         std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
     );
-    (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
+    ::core::ptr::write(&raw mut (*p).scaffold, empty_scaffold());
     (*p).scaffLevel = 0 as ::core::ffi::c_int;
     (*p).scaffSize = 0 as ::core::ffi::c_uint;
     (*p).scaffCount = 0 as ::core::ffi::c_uint;
@@ -13222,12 +13296,17 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_P
     (*p).defaultPrefix.binding = ::core::ptr::null_mut::<BINDING>();
     (*p).in_eldecl = crate::expat_h::XML_FALSE;
     (*p).scaffIndex = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    expat_free(
-        parser,
-        (*p).scaffold as *mut ::core::ffi::c_void,
-        7558 as ::core::ffi::c_int,
-    );
-    (*p).scaffold = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
+    let backing = {
+        let mut scaffold = (*p)
+            .scaffold
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        scaffold.nodes.clear();
+        scaffold.backing.take()
+    };
+    if let Some(mut backing) = backing {
+        backing(ScaffoldAllocationAction::Free(7558 as ::core::ffi::c_int));
+    }
     (*p).scaffLevel = 0 as ::core::ffi::c_int;
     (*p).scaffSize = 0 as ::core::ffi::c_uint;
     (*p).scaffCount = 0 as ::core::ffi::c_uint;
@@ -13272,13 +13351,19 @@ unsafe extern "C" fn dtdDestroy(
     poolDestroy(&raw mut (*p).pool);
     poolDestroy(&raw mut (*p).entityValuePool);
     if isDocEntity != 0 {
-        expat_free(
-            parser,
-            (*p).scaffold as *mut ::core::ffi::c_void,
-            7593 as ::core::ffi::c_int,
-        );
+        let backing = {
+            let mut scaffold = (*p)
+                .scaffold
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            scaffold.backing.take()
+        };
+        if let Some(mut backing) = backing {
+            backing(ScaffoldAllocationAction::Free(7593 as ::core::ffi::c_int));
+        }
     }
     ::core::ptr::drop_in_place(&raw mut (*p).scaffIndex);
+    ::core::ptr::drop_in_place(&raw mut (*p).scaffold);
     expat_free(
         parser,
         p as *mut ::core::ffi::c_void,
@@ -13502,7 +13587,7 @@ unsafe extern "C" fn dtdCopy(
     new_dtd.hasParamEntityRefs = old_dtd.hasParamEntityRefs;
     new_dtd.standalone = old_dtd.standalone;
     new_dtd.in_eldecl = old_dtd.in_eldecl;
-    new_dtd.scaffold = old_dtd.scaffold;
+    new_dtd.scaffold = old_dtd.scaffold.clone();
     new_dtd.contentStringLen = old_dtd.contentStringLen;
     new_dtd.scaffSize = old_dtd.scaffSize;
     new_dtd.scaffLevel = old_dtd.scaffLevel;
@@ -14272,8 +14357,6 @@ unsafe extern "C" fn nextScaffoldPart(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
     let dtd: *mut DTD = (*parser).m_dtd;
-    let mut me: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-    let mut next: ::core::ffi::c_int = 0;
     {
         let mut scaff_index = (*dtd)
             .scaffIndex
@@ -14292,42 +14375,65 @@ unsafe extern "C" fn nextScaffoldPart(
     if (*dtd).scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
         return -1 as ::core::ffi::c_int;
     }
+    let mut scaffold = (*dtd)
+        .scaffold
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     if (*dtd).scaffCount >= (*dtd).scaffSize {
-        let mut temp: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-        if !(*dtd).scaffold.is_null() {
+        let new_size = if scaffold.backing.is_some() {
             if (*dtd).scaffSize > crate::limits_h::UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
                 return -1 as ::core::ffi::c_int;
             }
-            temp = expat_realloc(
-                parser,
-                (*dtd).scaffold as *mut ::core::ffi::c_void,
-                ((*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
-                    as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()),
-                8261 as ::core::ffi::c_int,
-            ) as *mut CONTENT_SCAFFOLD;
-            if temp.is_null() {
+            (*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
+        } else {
+            INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint
+        };
+        let additional = (new_size as usize).saturating_sub(scaffold.nodes.len());
+        if scaffold.nodes.try_reserve_exact(additional).is_err() {
+            return -1 as ::core::ffi::c_int;
+        }
+        let allocation_size = (new_size as crate::__stddef_size_t_h::size_t)
+            .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>());
+        if let Some(backing) = scaffold.backing.as_mut() {
+            if !backing(ScaffoldAllocationAction::Grow(allocation_size)) {
                 return -1 as ::core::ffi::c_int;
             }
-            (*dtd).scaffSize = (*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
         } else {
-            temp = expat_malloc(
+            let allocation = expat_malloc(
                 parser,
                 (32 as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()),
                 8266 as ::core::ffi::c_int,
-            ) as *mut CONTENT_SCAFFOLD;
-            if temp.is_null() {
+            );
+            if allocation.is_null() {
                 return -1 as ::core::ffi::c_int;
             }
-            (*dtd).scaffSize = INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint;
+            let mut allocation = allocation;
+            scaffold.backing = Some(Box::new(move |action| match action {
+                ScaffoldAllocationAction::Grow(size) => {
+                    let reallocated = expat_realloc(
+                        parser,
+                        allocation,
+                        size,
+                        8261 as ::core::ffi::c_int,
+                    );
+                    if reallocated.is_null() {
+                        false
+                    } else {
+                        allocation = reallocated;
+                        true
+                    }
+                }
+                ScaffoldAllocationAction::Free(source_line) => {
+                    expat_free(parser, allocation, source_line);
+                    true
+                }
+            }));
         }
-        (*dtd).scaffold = temp;
+        (*dtd).scaffSize = new_size;
     }
-    let c2rust_fresh13 = (*dtd).scaffCount;
+    let next = (*dtd).scaffCount as ::core::ffi::c_int;
     (*dtd).scaffCount = (*dtd).scaffCount.wrapping_add(1);
-    next = c2rust_fresh13 as ::core::ffi::c_int;
-    me = (*dtd).scaffold.offset(next as isize);
     if (*dtd).scaffLevel != 0 {
         let parent_index = {
             let scaff_index = (*dtd)
@@ -14339,21 +14445,39 @@ unsafe extern "C" fn nextScaffoldPart(
                 None => return -1 as ::core::ffi::c_int,
             }
         };
-        let mut parent: *mut CONTENT_SCAFFOLD =
-            (*dtd).scaffold.offset(parent_index as isize);
-        if (*parent).lastchild != 0 {
-            (*(*dtd).scaffold.offset((*parent).lastchild as isize)).nextsib = next;
+        let Some(parent) = scaffold.nodes.get(parent_index as usize) else {
+            return -1 as ::core::ffi::c_int;
+        };
+        let last_child = parent.lastchild;
+        if last_child != 0 {
+            let Some(last_child) = scaffold.nodes.get_mut(last_child as usize) else {
+                return -1 as ::core::ffi::c_int;
+            };
+            last_child.nextsib = next;
         }
-        if (*parent).childcnt == 0 {
-            (*parent).firstchild = next;
+        let Some(parent) = scaffold.nodes.get_mut(parent_index as usize) else {
+            return -1 as ::core::ffi::c_int;
+        };
+        if parent.childcnt == 0 {
+            parent.firstchild = next;
         }
-        (*parent).lastchild = next;
-        (*parent).childcnt += 1;
+        parent.lastchild = next;
+        parent.childcnt += 1;
     }
-    (*me).nextsib = 0 as ::core::ffi::c_int;
-    (*me).childcnt = (*me).nextsib;
-    (*me).lastchild = (*me).childcnt;
-    (*me).firstchild = (*me).lastchild;
+    let node = CONTENT_SCAFFOLD {
+        type_0: crate::expat_h::XML_CTYPE_EMPTY,
+        quant: crate::expat_h::XML_CQUANT_NONE,
+        name: None,
+        firstchild: 0,
+        lastchild: 0,
+        childcnt: 0,
+        nextsib: 0,
+    };
+    if let Some(slot) = scaffold.nodes.get_mut(next as usize) {
+        *slot = node;
+    } else {
+        scaffold.nodes.push(node);
+    }
     return next;
 }
 
@@ -14389,6 +14513,10 @@ unsafe extern "C" fn build_model(
     if ret.is_null() {
         return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
     }
+    let scaffold = dtd
+        .scaffold
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut dest: *mut crate::expat_h::XML_Content = ret;
     let destLimit: *mut crate::expat_h::XML_Content = ret.offset(dtd.scaffCount as isize);
     let mut jobDest: *mut crate::expat_h::XML_Content = ret;
@@ -14398,8 +14526,12 @@ unsafe extern "C" fn build_model(
     (*c2rust_fresh10).numchildren = 0 as ::core::ffi::c_uint;
     while dest < destLimit {
         let src_node: ::core::ffi::c_int = (*dest).numchildren as ::core::ffi::c_int;
-        (*dest).type_0 = (*dtd.scaffold.offset(src_node as isize)).type_0;
-        (*dest).quant = (*dtd.scaffold.offset(src_node as isize)).quant;
+        let Some(source) = scaffold.nodes.get(src_node as usize) else {
+            (*parser).m_mem.free_fcn.expect("non-null function pointer")(ret as *mut ::core::ffi::c_void);
+            return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+        };
+        (*dest).type_0 = source.type_0;
+        (*dest).quant = source.quant;
         if (*dest).type_0 as ::core::ffi::c_uint
             == crate::expat_h::XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
         {
@@ -14408,7 +14540,7 @@ unsafe extern "C" fn build_model(
             (*dest).name = str;
             // A name content node is populated from ELEMENT_TYPE.name when it
             // is scaffolded; non-name nodes never enter this branch.
-            let name_ref = (*dtd.scaffold.offset(src_node as isize))
+            let name_ref = source
                 .name
                 .expect("name content scaffold must have a pool name");
             src = pool_string_pointer(&raw const dtd.pool, name_ref);
@@ -14431,17 +14563,20 @@ unsafe extern "C" fn build_model(
             let mut i: ::core::ffi::c_uint = 0;
             let mut cn: ::core::ffi::c_int = 0;
             (*dest).name = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-            (*dest).numchildren =
-                (*dtd.scaffold.offset(src_node as isize)).childcnt as ::core::ffi::c_uint;
+            (*dest).numchildren = source.childcnt as ::core::ffi::c_uint;
             (*dest).children = jobDest;
             i = 0 as ::core::ffi::c_uint;
-            cn = (*dtd.scaffold.offset(src_node as isize)).firstchild;
+            cn = source.firstchild;
             while i < (*dest).numchildren {
                 let c2rust_fresh12 = jobDest;
                 jobDest = jobDest.offset(1);
                 (*c2rust_fresh12).numchildren = cn as ::core::ffi::c_uint;
                 i = i.wrapping_add(1);
-                cn = (*dtd.scaffold.offset(cn as isize)).nextsib;
+                let Some(child) = scaffold.nodes.get(cn as usize) else {
+                    (*parser).m_mem.free_fcn.expect("non-null function pointer")(ret as *mut ::core::ffi::c_void);
+                    return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+                };
+                cn = child.nextsib;
             }
         }
         dest = dest.offset(1);
