@@ -326,6 +326,74 @@ fn remaining_c_ushorts(
     ((end as usize).wrapping_sub(ptr as usize)) / ::core::mem::size_of::<::core::ffi::c_ushort>()
 }
 
+fn remaining_const_c_chars(
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> usize {
+    (end as usize).wrapping_sub(ptr as usize)
+}
+
+fn c_char_distance(
+    start: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    ::core::ffi::c_int::try_from((end as usize).wrapping_sub(start as usize))
+        .expect("pointer distance should fit in c_int")
+}
+
+fn normal_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
+    let normal = ref_from_ptr(enc as *const normal_encoding);
+    normal.type_0[read_c_char(ptr) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+}
+
+fn little2_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
+    let high = read_c_char(add_const_c_char(ptr, 1));
+    if high as ::core::ffi::c_int == 0 {
+        normal_byte_type(enc, ptr)
+    } else {
+        unicode_byte_type(high, read_c_char(ptr))
+    }
+}
+
+fn big2_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
+    let high = read_c_char(ptr);
+    let low = read_c_char(add_const_c_char(ptr, 1));
+    if high as ::core::ffi::c_int == 0 {
+        let normal = ref_from_ptr(enc as *const normal_encoding);
+        normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+    } else {
+        unicode_byte_type(high, low)
+    }
+}
+
+fn line_number(pos: *mut POSITION) -> XML_Size {
+    unsafe { read_copy(::core::ptr::addr_of!((*pos).lineNumber)) }
+}
+
+fn set_line_number(pos: *mut POSITION, value: XML_Size) {
+    unsafe {
+        write_copy(::core::ptr::addr_of_mut!((*pos).lineNumber), value);
+    }
+}
+
+fn column_number(pos: *mut POSITION) -> XML_Size {
+    unsafe { read_copy(::core::ptr::addr_of!((*pos).columnNumber)) }
+}
+
+fn set_column_number(pos: *mut POSITION, value: XML_Size) {
+    unsafe {
+        write_copy(::core::ptr::addr_of_mut!((*pos).columnNumber), value);
+    }
+}
+
+fn increment_line_number(pos: *mut POSITION) {
+    set_line_number(pos, line_number(pos).wrapping_add(1));
+}
+
+fn increment_column_number(pos: *mut POSITION) {
+    set_column_number(pos, column_number(pos).wrapping_add(1));
+}
+
 fn encoding_min_bytes_per_char(enc: *const ENCODING) -> isize {
     unsafe { read_copy(::core::ptr::addr_of!((*enc).minBytesPerChar)) as isize }
 }
@@ -4677,101 +4745,70 @@ extern "C" fn normal_nameMatchesAscii(
     }
     (ptr1 == end1) as ::core::ffi::c_int
 }
-unsafe extern "C" fn normal_nameLength(
-    mut enc: *const ENCODING,
+extern "C" fn normal_nameLength(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut start: *const ::core::ffi::c_char = ptr;
-        loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                _ => {
-                    return ptr.offset_from(start) as ::core::ffi::c_long as ::core::ffi::c_int;
-                }
-            }
+    let start = ptr;
+    loop {
+        match normal_byte_type(enc, ptr) {
+            5 => ptr = ptr.wrapping_add(2),
+            6 => ptr = ptr.wrapping_add(3),
+            7 => ptr = ptr.wrapping_add(4),
+            29 | 22 | 23 | 24 | 25 | 26 | 27 => ptr = ptr.wrapping_add(1),
+            _ => return c_char_distance(start, ptr),
         }
     }
 }
-unsafe extern "C" fn normal_skipS(
-    mut enc: *const ENCODING,
+extern "C" fn normal_skipS(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
 ) -> *const ::core::ffi::c_char {
-    unsafe {
-        loop {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                10 | 9 | 21 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr,
-            }
+    loop {
+        match normal_byte_type(enc, ptr) {
+            10 | 9 | 21 => ptr = ptr.wrapping_add(1),
+            _ => return ptr,
         }
     }
 }
-unsafe extern "C" fn normal_updatePosition(
-    mut enc: *const ENCODING,
+extern "C" fn normal_updatePosition(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pos: *mut POSITION,
+    end: *const ::core::ffi::c_char,
+    pos: *mut POSITION,
 ) {
-    unsafe {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+    while remaining_const_c_chars(ptr, end) >= 1 {
+        match normal_byte_type(enc, ptr) {
+            5 => {
+                ptr = ptr.wrapping_add(2);
+                increment_column_number(pos);
+            }
+            6 => {
+                ptr = ptr.wrapping_add(3);
+                increment_column_number(pos);
+            }
+            7 => {
+                ptr = ptr.wrapping_add(4);
+                increment_column_number(pos);
+            }
+            10 => {
+                set_column_number(pos, 0 as XML_Size);
+                increment_line_number(pos);
+                ptr = ptr.wrapping_add(1);
+            }
+            9 => {
+                increment_line_number(pos);
+                ptr = ptr.wrapping_add(1);
+                if remaining_const_c_chars(ptr, end) >= 1
+                    && normal_byte_type(enc, ptr) == BT_LF as ::core::ffi::c_int
+                {
+                    ptr = ptr.wrapping_add(1);
                 }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                10 => {
-                    (*pos).columnNumber = 0 as XML_Size;
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                }
-                9 => {
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                        && (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                            == BT_LF as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    }
-                    (*pos).columnNumber = 0 as XML_Size;
-                }
-                _ => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
+                set_column_number(pos, 0 as XML_Size);
+            }
+            _ => {
+                ptr = ptr.wrapping_add(1);
+                increment_column_number(pos);
             }
         }
     }
@@ -9200,133 +9237,70 @@ extern "C" fn little2_nameMatchesAscii(
     }
     (ptr1 == end1) as ::core::ffi::c_int
 }
-unsafe extern "C" fn little2_nameLength(
-    mut enc: *const ENCODING,
+extern "C" fn little2_nameLength(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut start: *const ::core::ffi::c_char = ptr;
-        loop {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => {
-                    return ptr.offset_from(start) as ::core::ffi::c_long as ::core::ffi::c_int;
-                }
-            }
+    let start = ptr;
+    loop {
+        match little2_byte_type(enc, ptr) {
+            5 => ptr = ptr.wrapping_add(2),
+            6 => ptr = ptr.wrapping_add(3),
+            7 => ptr = ptr.wrapping_add(4),
+            29 | 22 | 23 | 24 | 25 | 26 | 27 => ptr = ptr.wrapping_add(2),
+            _ => return c_char_distance(start, ptr),
         }
     }
 }
-unsafe extern "C" fn little2_skipS(
-    mut enc: *const ENCODING,
+extern "C" fn little2_skipS(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
 ) -> *const ::core::ffi::c_char {
-    unsafe {
-        loop {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                10 | 9 | 21 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr,
-            }
+    loop {
+        match little2_byte_type(enc, ptr) {
+            10 | 9 | 21 => ptr = ptr.wrapping_add(2),
+            _ => return ptr,
         }
     }
 }
-unsafe extern "C" fn little2_updatePosition(
-    mut enc: *const ENCODING,
+extern "C" fn little2_updatePosition(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pos: *mut POSITION,
+    end: *const ::core::ffi::c_char,
+    pos: *mut POSITION,
 ) {
-    unsafe {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+    while remaining_const_c_chars(ptr, end) >= 2 {
+        match little2_byte_type(enc, ptr) {
+            5 => {
+                ptr = ptr.wrapping_add(2);
+                increment_column_number(pos);
+            }
+            6 => {
+                ptr = ptr.wrapping_add(3);
+                increment_column_number(pos);
+            }
+            7 => {
+                ptr = ptr.wrapping_add(4);
+                increment_column_number(pos);
+            }
+            10 => {
+                set_column_number(pos, 0 as XML_Size);
+                increment_line_number(pos);
+                ptr = ptr.wrapping_add(2);
+            }
+            9 => {
+                increment_line_number(pos);
+                ptr = ptr.wrapping_add(2);
+                if remaining_const_c_chars(ptr, end) >= 2
+                    && little2_byte_type(enc, ptr) == BT_LF as ::core::ffi::c_int
+                {
+                    ptr = ptr.wrapping_add(2);
                 }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                10 => {
-                    (*pos).columnNumber = 0 as XML_Size;
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                9 => {
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                        && (if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr as ::core::ffi::c_uchar as usize]
-                                as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(1 as ::core::ffi::c_int as isize),
-                                *ptr.offset(0 as ::core::ffi::c_int as isize),
-                            )
-                        }) == BT_LF as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    }
-                    (*pos).columnNumber = 0 as XML_Size;
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
+                set_column_number(pos, 0 as XML_Size);
+            }
+            _ => {
+                ptr = ptr.wrapping_add(2);
+                increment_column_number(pos);
             }
         }
     }
@@ -13819,137 +13793,70 @@ extern "C" fn big2_nameMatchesAscii(
     }
     (ptr1 == end1) as ::core::ffi::c_int
 }
-unsafe extern "C" fn big2_nameLength(
-    mut enc: *const ENCODING,
+extern "C" fn big2_nameLength(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut start: *const ::core::ffi::c_char = ptr;
-        loop {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                29 | 22 | 23 | 24 | 25 | 26 | 27 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => {
-                    return ptr.offset_from(start) as ::core::ffi::c_long as ::core::ffi::c_int;
-                }
-            }
+    let start = ptr;
+    loop {
+        match big2_byte_type(enc, ptr) {
+            5 => ptr = ptr.wrapping_add(2),
+            6 => ptr = ptr.wrapping_add(3),
+            7 => ptr = ptr.wrapping_add(4),
+            29 | 22 | 23 | 24 | 25 | 26 | 27 => ptr = ptr.wrapping_add(2),
+            _ => return c_char_distance(start, ptr),
         }
     }
 }
-unsafe extern "C" fn big2_skipS(
-    mut enc: *const ENCODING,
+extern "C" fn big2_skipS(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
 ) -> *const ::core::ffi::c_char {
-    unsafe {
-        loop {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                10 | 9 | 21 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                _ => return ptr,
-            }
+    loop {
+        match big2_byte_type(enc, ptr) {
+            10 | 9 | 21 => ptr = ptr.wrapping_add(2),
+            _ => return ptr,
         }
     }
 }
-unsafe extern "C" fn big2_updatePosition(
-    mut enc: *const ENCODING,
+extern "C" fn big2_updatePosition(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pos: *mut POSITION,
+    end: *const ::core::ffi::c_char,
+    pos: *mut POSITION,
 ) {
-    unsafe {
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+    while remaining_const_c_chars(ptr, end) >= 2 {
+        match big2_byte_type(enc, ptr) {
+            5 => {
+                ptr = ptr.wrapping_add(2);
+                increment_column_number(pos);
+            }
+            6 => {
+                ptr = ptr.wrapping_add(3);
+                increment_column_number(pos);
+            }
+            7 => {
+                ptr = ptr.wrapping_add(4);
+                increment_column_number(pos);
+            }
+            10 => {
+                set_column_number(pos, 0 as XML_Size);
+                increment_line_number(pos);
+                ptr = ptr.wrapping_add(2);
+            }
+            9 => {
+                increment_line_number(pos);
+                ptr = ptr.wrapping_add(2);
+                if remaining_const_c_chars(ptr, end) >= 2
+                    && big2_byte_type(enc, ptr) == BT_LF as ::core::ffi::c_int
+                {
+                    ptr = ptr.wrapping_add(2);
                 }
-                6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
-                10 => {
-                    (*pos).columnNumber = 0 as XML_Size;
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
-                9 => {
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if end.offset_from(ptr) as ::core::ffi::c_long
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                            as ::core::ffi::c_long
-                        && (if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(
-                                *ptr.offset(0 as ::core::ffi::c_int as isize),
-                                *ptr.offset(1 as ::core::ffi::c_int as isize),
-                            )
-                        }) == BT_LF as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    }
-                    (*pos).columnNumber = 0 as XML_Size;
-                }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
-                }
+                set_column_number(pos, 0 as XML_Size);
+            }
+            _ => {
+                ptr = ptr.wrapping_add(2);
+                increment_column_number(pos);
             }
         }
     }
