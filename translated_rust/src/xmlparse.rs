@@ -2027,13 +2027,40 @@ pub struct STRING_POOL {
     // custom-allocator token, so the configured Expat allocator observes the
     // same block allocation, reallocation, and release lifecycle.
     storage: StringPoolStorage,
-    pub end: *const crate::expat_external_h::XML_Char,
     pub ptr: *mut crate::expat_external_h::XML_Char,
     pub start: *mut crate::expat_external_h::XML_Char,
     pub parser: crate::expat_h::XML_Parser,
     // Active blocks grow only at the head.  This count lets pool clients use
     // a stable ordinal from the tail without retaining a pointer into a block.
     pub blockCount: usize,
+}
+
+impl STRING_POOL {
+    // `start` can advance after a string is committed.  Find its containing
+    // owned slab instead of retaining a second raw cursor for that slab's
+    // end.
+    fn remaining_capacity(&self) -> Option<usize> {
+        if self.start.is_null() {
+            return Some(0);
+        }
+        let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
+        let start_address = self.start.addr();
+        self.storage.active.iter().find_map(|block| {
+            let block_start = block.chars.as_ptr().addr();
+            let byte_offset = start_address.checked_sub(block_start)?;
+            let capacity_bytes = block.chars.len().checked_mul(char_size)?;
+            if byte_offset <= capacity_bytes && byte_offset % char_size == 0 {
+                block.chars.len().checked_sub(byte_offset / char_size)
+            } else {
+                None
+            }
+        })
+    }
+
+    fn is_full(&self) -> bool {
+        self.remaining_capacity()
+            .is_none_or(|capacity| self.ptr == self.start.wrapping_add(capacity))
+    }
 }
 
 struct StringPoolStorage {
@@ -3143,7 +3170,6 @@ fn empty_string_pool() -> STRING_POOL {
             active: Vec::new(),
             free: Vec::new(),
         },
-        end: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
         ptr: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
         start: ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>(),
         parser: ::core::ptr::null_mut::<XML_ParserStruct>(),
@@ -8118,8 +8144,7 @@ unsafe extern "C" fn storeAtts(
                 j_0 = 0 as ::core::ffi::c_uint;
                 while j_0 < (*b).uriLen as ::core::ffi::c_uint {
                     let c: crate::expat_external_h::XML_Char = *(*b).uri.offset(j_0 as isize);
-                    if if (*parser).m_tempPool.ptr
-                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                    if if (*parser).m_tempPool.is_full()
                         && poolGrow(&raw mut (*parser).m_tempPool) == 0
                     {
                         0 as ::core::ffi::c_int
@@ -8154,8 +8179,7 @@ unsafe extern "C" fn storeAtts(
                         .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
                 );
                 loop {
-                    if if (*parser).m_tempPool.ptr
-                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                    if if (*parser).m_tempPool.is_full()
                         && poolGrow(&raw mut (*parser).m_tempPool) == 0
                     {
                         0 as ::core::ffi::c_int
@@ -8221,8 +8245,7 @@ unsafe extern "C" fn storeAtts(
                     *parser_ref.m_tempPool.ptr.offset(-1 as isize) = parser_ref.m_namespaceSeparator;
                     s = (*(*b).prefix).name;
                     loop {
-                        if if parser_ref.m_tempPool.ptr
-                            == parser_ref.m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                        if if parser_ref.m_tempPool.is_full()
                             && poolGrow(&raw mut parser_ref.m_tempPool) == 0
                         {
                             0 as ::core::ffi::c_int
@@ -10195,8 +10218,7 @@ unsafe extern "C" fn doProlog(
                                                             as ::core::ffi::c_int
                                                             == 0x4f as ::core::ffi::c_int
                                                 {
-                                                    if (if (*parser).m_tempPool.ptr
-                                                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                                                    if (if (*parser).m_tempPool.is_full()
                                                         && poolGrow(&raw mut (*parser).m_tempPool)
                                                             == 0
                                                     {
@@ -10209,9 +10231,7 @@ unsafe extern "C" fn doProlog(
                                                         *c2rust_fresh1 = 0x29 as crate::expat_external_h::XML_Char;
                                                         1 as ::core::ffi::c_int
                                                     }) == 0
-                                                        || (if (*parser).m_tempPool.ptr
-                                                            == (*parser).m_tempPool.end
-                                                                as *mut crate::expat_external_h::XML_Char
+                                                        || (if (*parser).m_tempPool.is_full()
                                                             && poolGrow(
                                                                 &raw mut (*parser).m_tempPool,
                                                             ) == 0
@@ -10298,8 +10318,7 @@ unsafe extern "C" fn doProlog(
                                                             as ::core::ffi::c_int
                                                             == 0x4f as ::core::ffi::c_int
                                                 {
-                                                    if (if (*parser).m_tempPool.ptr
-                                                        == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                                                    if (if (*parser).m_tempPool.is_full()
                                                         && poolGrow(&raw mut (*parser).m_tempPool)
                                                             == 0
                                                     {
@@ -10312,9 +10331,7 @@ unsafe extern "C" fn doProlog(
                                                         *c2rust_fresh3 = 0x29 as crate::expat_external_h::XML_Char;
                                                         1 as ::core::ffi::c_int
                                                     }) == 0
-                                                        || (if (*parser).m_tempPool.ptr
-                                                            == (*parser).m_tempPool.end
-                                                                as *mut crate::expat_external_h::XML_Char
+                                                        || (if (*parser).m_tempPool.is_full()
                                                             && poolGrow(
                                                                 &raw mut (*parser).m_tempPool,
                                                             ) == 0
@@ -12043,7 +12060,7 @@ unsafe extern "C" fn storeAttributeValue(
     {
         (*pool).ptr = (*pool).ptr.offset(-1);
     }
-    if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
+    if if (*pool).is_full()
         && poolGrow(pool) == 0
     {
         0 as ::core::ffi::c_int
@@ -12099,7 +12116,7 @@ unsafe fn pool_append_char(
     pool: *mut STRING_POOL,
     value: crate::expat_external_h::XML_Char,
 ) -> bool {
-    if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char && poolGrow(pool) == 0 {
+    if (*pool).is_full() && poolGrow(pool) == 0 {
         return false;
     }
 
@@ -12511,8 +12528,7 @@ unsafe extern "C" fn storeEntityValue(
                                 if i >= n {
                                     break 's_340;
                                 }
-                                if (*pool).end
-                                    == (*pool).ptr as *const crate::expat_external_h::XML_Char
+                                if (*pool).is_full()
                                     && poolGrow(pool) == 0
                                 {
                                     result = crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -12548,7 +12564,7 @@ unsafe extern "C" fn storeEntityValue(
                         break '_endEntityValue;
                     }
                 }
-                if (*pool).end == (*pool).ptr as *const crate::expat_external_h::XML_Char
+                if (*pool).is_full()
                     && poolGrow(pool) == 0
                 {
                     result = crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -12962,7 +12978,7 @@ unsafe extern "C" fn setElementTypePrefix(
                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
             s = (*elementType).named.name;
             while s != name {
-                if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
+                if if (*dtd).pool.is_full()
                     && poolGrow(&raw mut (*dtd).pool) == 0
                 {
                     0 as ::core::ffi::c_int
@@ -12977,7 +12993,7 @@ unsafe extern "C" fn setElementTypePrefix(
                 }
                 s = s.offset(1);
             }
-            if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
+            if if (*dtd).pool.is_full()
                 && poolGrow(&raw mut (*dtd).pool) == 0
             {
                 0 as ::core::ffi::c_int
@@ -13112,7 +13128,7 @@ unsafe fn pool_append_context_char(
     pool: &mut STRING_POOL,
     ch: crate::expat_external_h::XML_Char,
 ) -> bool {
-    if pool.ptr == pool.end as *mut crate::expat_external_h::XML_Char && poolGrow(pool) == 0 {
+    if pool.is_full() && poolGrow(pool) == 0 {
         return false;
     }
     let slot = pool.ptr;
@@ -13608,7 +13624,7 @@ unsafe extern "C" fn dtdCopy(
             break;
         }
         let old_a = &*old_a;
-        if if new_dtd.pool.ptr == new_dtd.pool.end as *mut crate::expat_external_h::XML_Char
+        if if new_dtd.pool.is_full()
             && poolGrow(&raw mut new_dtd.pool) == 0
         {
             0 as ::core::ffi::c_int
@@ -14346,7 +14362,6 @@ unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::exp
     );
     pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    pool.end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     pool.parser = parser;
     pool.blockCount = 0;
 }
@@ -14357,7 +14372,6 @@ unsafe extern "C" fn poolClear(mut pool: *mut STRING_POOL) {
     pool.blockCount = 0;
     pool.start = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     pool.ptr = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    pool.end = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
 }
 
 unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
@@ -14380,13 +14394,19 @@ unsafe extern "C" fn poolAppend(
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
     loop {
+        let output_end = {
+            let pool_ref = &*pool;
+            pool_ref
+                .start
+                .wrapping_add(pool_ref.remaining_capacity().unwrap_or(0))
+        };
         let convert_res: crate::src::xmltok::XML_Convert_Result =
             crate::src::xmltok::convert_to_utf8(
                 enc,
                 &raw mut ptr,
                 end,
                 &raw mut (*pool).ptr as *mut *mut ::core::ffi::c_char,
-                (*pool).end as *const ::core::ffi::c_char,
+                output_end as *const ::core::ffi::c_char,
             );
         if convert_res as ::core::ffi::c_uint
             == crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
@@ -14409,7 +14429,7 @@ unsafe extern "C" fn poolCopyString(
     mut s: *const crate::expat_external_h::XML_Char,
 ) -> *const crate::expat_external_h::XML_Char {
     loop {
-        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
+        if if (*pool).is_full()
             && poolGrow(pool) == 0
         {
             0 as ::core::ffi::c_int
@@ -14443,7 +14463,7 @@ unsafe extern "C" fn poolCopyStringN(
         return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     }
     while n > 0 as ::core::ffi::c_int {
-        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
+        if if (*pool).is_full()
             && poolGrow(pool) == 0
         {
             0 as ::core::ffi::c_int
@@ -14469,7 +14489,7 @@ unsafe extern "C" fn poolAppendString(
     mut s: *const crate::expat_external_h::XML_Char,
 ) -> *const crate::expat_external_h::XML_Char {
     while *s != 0 {
-        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
+        if if (*pool).is_full()
             && poolGrow(pool) == 0
         {
             0 as ::core::ffi::c_int
@@ -14496,7 +14516,7 @@ unsafe extern "C" fn poolStoreString(
     if poolAppend(pool, enc, ptr, end).is_null() {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char && poolGrow(pool) == 0 {
+    if (*pool).is_full() && poolGrow(pool) == 0 {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
     let c2rust_fresh9 = (*pool).ptr;
@@ -14539,16 +14559,17 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     if let Some(mut free_block) = pool.storage.free.pop() {
         if pool.start.is_null() {
             let start = free_block.chars.as_mut_ptr();
-            let block_size = free_block.chars.len();
             pool.storage.active.push(free_block);
             pool.blockCount = pool.storage.active.len();
             pool.start = start;
-            pool.end = start.wrapping_add(block_size);
             pool.ptr = start;
             return crate::expat_h::XML_TRUE;
         }
 
-        let active_capacity = pool.end.addr().wrapping_sub(pool.start.addr()) / char_size;
+        let Some(active_capacity) = pool.remaining_capacity() else {
+            pool.storage.free.push(free_block);
+            return crate::expat_h::XML_FALSE;
+        };
         if active_capacity < free_block.chars.len() {
             let source = pool.start;
             let pointer_offset = pool.ptr.addr().wrapping_sub(source.addr()) / char_size;
@@ -14566,7 +14587,6 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
             let source_offset = source.addr().wrapping_sub(
                 pool.storage.active[source_index].chars.as_ptr().addr(),
             ) / char_size;
-            let block_size = free_block.chars.len();
             pool.storage.active.push(free_block);
             let destination_index = pool.storage.active.len() - 1;
             let (older_blocks, destination) = pool.storage.active.split_at_mut(destination_index);
@@ -14577,7 +14597,6 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
             pool.blockCount = pool.storage.active.len();
             pool.ptr = start.wrapping_add(pointer_offset);
             pool.start = start;
-            pool.end = start.wrapping_add(block_size);
             return crate::expat_h::XML_TRUE;
         }
         pool.storage.free.push(free_block);
@@ -14611,19 +14630,19 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
             if !(block.backing)(StringPoolAllocationAction::Grow(bytes_to_allocate)) {
                 pool.ptr = resized_start.wrapping_add(pointer_offset);
                 pool.start = resized_start;
-                pool.end = resized_start.wrapping_add(block.chars.len());
                 return crate::expat_h::XML_FALSE;
             }
             block.chars.resize(block_size, 0);
             let start = block.chars.as_mut_ptr();
             pool.ptr = start.wrapping_add(pointer_offset);
             pool.start = start;
-            pool.end = start.wrapping_add(block_size);
             return crate::expat_h::XML_TRUE;
         }
     }
 
-    let capacity = pool.end.addr().wrapping_sub(pool.start.addr()) / char_size;
+    let Some(capacity) = pool.remaining_capacity() else {
+        return crate::expat_h::XML_FALSE;
+    };
     let pointer_offset = pool.ptr.addr().wrapping_sub(pool.start.addr()) / char_size;
     let mut block_size = match ::core::ffi::c_int::try_from(capacity) {
         Ok(capacity) => capacity,
@@ -14699,7 +14718,6 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     pool.blockCount = pool.storage.active.len();
     pool.ptr = start.wrapping_add(pointer_offset);
     pool.start = start;
-    pool.end = start.wrapping_add(block_size as usize);
     crate::expat_h::XML_TRUE
 }
 
