@@ -3984,9 +3984,10 @@ pub struct HashTableSlots {
     backing: Box<dyn FnMut(::core::ffi::c_int)>,
 }
 
+#[derive(Clone)]
 struct HashTableAllocator {
-    allocate: Box<
-        dyn FnMut(
+    allocate: std::sync::Arc<
+        dyn Fn(
             crate::__stddef_size_t_h::size_t,
             ::core::ffi::c_int,
         ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>>,
@@ -3995,7 +3996,7 @@ struct HashTableAllocator {
 
 impl HashTableAllocator {
     fn allocate(
-        &mut self,
+        &self,
         size: crate::__stddef_size_t_h::size_t,
         source_line: ::core::ffi::c_int,
     ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
@@ -21312,15 +21313,19 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
         scaffIndex: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         allocation: Some(allocation),
     };
+    // All hash tables in one DTD use the same parser allocation route.  Build
+    // that route once at the raw-handle boundary, then clone its safe factory
+    // into each table instead of repeating unsafe setup for every table.
+    let hash_table_allocator = unsafe { hash_table_allocator(parser) };
     unsafe {
         poolInit(&raw mut dtd.pool, parser);
         poolInit(&raw mut dtd.entityValuePool, parser);
-        hashTableInit(&mut dtd.generalEntities, parser);
-        hashTableInit(&mut dtd.elementTypes, parser);
-        hashTableInit(&mut dtd.attributeIds, parser);
-        hashTableInit(&mut dtd.prefixes, parser);
-        hashTableInit(&mut dtd.paramEntities, parser);
     }
+    hash_table_init(&mut dtd.generalEntities, hash_table_allocator.clone());
+    hash_table_init(&mut dtd.elementTypes, hash_table_allocator.clone());
+    hash_table_init(&mut dtd.attributeIds, hash_table_allocator.clone());
+    hash_table_init(&mut dtd.prefixes, hash_table_allocator.clone());
+    hash_table_init(&mut dtd.paramEntities, hash_table_allocator);
     Some(std::sync::Arc::new(SharedDtd::new(dtd)))
 }
 
@@ -22454,16 +22459,23 @@ unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
     }
 }
 
-unsafe fn hashTableInit(table: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
+/// Captures the parser's existing allocator route once for all hash tables in
+/// one DTD.  The returned factory only creates opaque allocation tokens; it
+/// never dereferences the parser handle retained by those tokens.
+unsafe fn hash_table_allocator(parser: crate::expat_h::XML_Parser) -> HashTableAllocator {
+    HashTableAllocator {
+        allocate: std::sync::Arc::new(move |size, source_line| unsafe {
+            allocation_backing(parser, size, source_line)
+        }),
+    }
+}
+
+fn hash_table_init(table: &mut HASH_TABLE, allocator: HashTableAllocator) {
     table.power = 0;
     table.size = 0;
     table.used = 0;
     table.v = None;
-    table.allocator = Some(HashTableAllocator {
-        allocate: Box::new(move |size, source_line| {
-            allocation_backing(parser, size, source_line)
-        }),
-    });
+    table.allocator = Some(allocator);
 }
 
 unsafe extern "C" fn hashTableIterInit<'a>(
