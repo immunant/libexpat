@@ -8575,61 +8575,72 @@ unsafe extern "C" fn storeAtts(
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
     let eventEnd = parser_event_end!(parser);
-    n = match (*enc).getAtts {
-        crate::src::xmltok::AttributeScanner::Normal => crate::src::xmltok::normal_getAtts(
-            enc,
-            attStr,
-            eventEnd,
-            (*parser).m_attsSize,
-            (*parser).m_atts.records.as_mut_ptr(),
-        ),
-        crate::src::xmltok::AttributeScanner::Little2 => crate::src::xmltok::little2_getAtts(
-            enc,
-            attStr,
-            eventEnd,
-            (*parser).m_attsSize,
-            (*parser).m_atts.records.as_mut_ptr(),
-        ),
-        crate::src::xmltok::AttributeScanner::Big2 => {
-            let source_len = eventEnd.offset_from(attStr);
-            if source_len < 0 {
-                0
-            } else {
-                let source =
-                    ::core::slice::from_raw_parts(attStr.cast::<u8>(), source_len as usize);
-                let byte_types = &(*(enc as *const crate::src::xmltok::normal_encoding)).type_0;
-                crate::src::xmltok::big2_getAtts(byte_types, source, |action| {
-                    let attribute = match action {
-                        crate::src::xmltok::Big2AttributeAction::Name { attribute, .. }
-                        | crate::src::xmltok::Big2AttributeAction::ValueStart {
-                            attribute, ..
+    n = {
+        // Keep the scanner's output borrow local: all scanner variants fill
+        // the same owned attribute storage before later parser work can grow
+        // it or invoke a callback.
+        let parser_ref = &mut *parser;
+        let atts_size = parser_ref.m_attsSize;
+        let records = &mut parser_ref.m_atts.records;
+        match (*enc).getAtts {
+            crate::src::xmltok::AttributeScanner::Normal => crate::src::xmltok::normal_getAtts(
+                enc,
+                attStr,
+                eventEnd,
+                atts_size,
+                records.as_mut_ptr(),
+            ),
+            crate::src::xmltok::AttributeScanner::Little2 => {
+                crate::src::xmltok::little2_getAtts(
+                    enc,
+                    attStr,
+                    eventEnd,
+                    atts_size,
+                    records.as_mut_ptr(),
+                )
+            }
+            crate::src::xmltok::AttributeScanner::Big2 => {
+                let source_len = eventEnd.offset_from(attStr);
+                if source_len < 0 {
+                    0
+                } else {
+                    let source =
+                        ::core::slice::from_raw_parts(attStr.cast::<u8>(), source_len as usize);
+                    let byte_types =
+                        &(*(enc as *const crate::src::xmltok::normal_encoding)).type_0;
+                    crate::src::xmltok::big2_getAtts(byte_types, source, |action| {
+                        let attribute = match action {
+                            crate::src::xmltok::Big2AttributeAction::Name { attribute, .. }
+                            | crate::src::xmltok::Big2AttributeAction::ValueStart {
+                                attribute, ..
+                            }
+                            | crate::src::xmltok::Big2AttributeAction::ValueEnd { attribute, .. }
+                            | crate::src::xmltok::Big2AttributeAction::Normalized {
+                                attribute, ..
+                            } => attribute,
+                        };
+                        if attribute < 0 || attribute >= atts_size {
+                            return;
                         }
-                        | crate::src::xmltok::Big2AttributeAction::ValueEnd { attribute, .. }
-                        | crate::src::xmltok::Big2AttributeAction::Normalized {
-                            attribute, ..
-                        } => attribute,
-                    };
-                    if attribute < 0 || attribute >= (*parser).m_attsSize {
-                        return;
-                    }
-                    let Some(slot) = (&mut (*parser).m_atts.records).get_mut(attribute as usize) else {
-                        return;
-                    };
-                    match action {
-                        crate::src::xmltok::Big2AttributeAction::Name { offset, .. } => {
-                            slot.name = attStr.add(offset);
+                        let Some(slot) = records.get_mut(attribute as usize) else {
+                            return;
+                        };
+                        match action {
+                            crate::src::xmltok::Big2AttributeAction::Name { offset, .. } => {
+                                slot.name = attStr.add(offset);
+                            }
+                            crate::src::xmltok::Big2AttributeAction::ValueStart { offset, .. } => {
+                                slot.valuePtr = attStr.add(offset);
+                            }
+                            crate::src::xmltok::Big2AttributeAction::ValueEnd { offset, .. } => {
+                                slot.valueEnd = attStr.add(offset);
+                            }
+                            crate::src::xmltok::Big2AttributeAction::Normalized { value, .. } => {
+                                slot.normalized = value;
+                            }
                         }
-                        crate::src::xmltok::Big2AttributeAction::ValueStart { offset, .. } => {
-                            slot.valuePtr = attStr.add(offset);
-                        }
-                        crate::src::xmltok::Big2AttributeAction::ValueEnd { offset, .. } => {
-                            slot.valueEnd = attStr.add(offset);
-                        }
-                        crate::src::xmltok::Big2AttributeAction::Normalized { value, .. } => {
-                            slot.normalized = value;
-                        }
-                    }
-                })
+                    })
+                }
             }
         }
     };
@@ -10592,6 +10603,41 @@ unsafe extern "C" fn doProlog(
     let parser_key = parser as *mut XML_ParserStruct as usize;
     let dtd: *mut DTD = parser.m_dtd;
     let dtd_pool: *mut STRING_POOL = &raw mut (*dtd).pool;
+    let parser_handle: crate::expat_h::XML_Parser = parser;
+    let dtd_handle = dtd;
+    // The declaration cursor stores a pool key instead of an address into a
+    // hash-table slot.  Resolve that key only while the current prolog token
+    // is being handled; a later table growth cannot leave parser state with a
+    // stale slot address.
+    let resolve_declared_entity = move |declaration: DeclaredEntity| {
+        let dtd = &mut *dtd_handle;
+        let (is_parameter, name) = match declaration {
+            DeclaredEntity::General(name) => (
+                false,
+                dtd.pool
+                    .chars_from(name)
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            ),
+            DeclaredEntity::Parameter(name) => (
+                true,
+                dtd.pool
+                    .chars_from(name)
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            ),
+            DeclaredEntity::ExternalSubset => (true, externalSubsetName.as_ptr()),
+        };
+        if name.is_null() {
+            None
+        } else {
+            let table = if is_parameter {
+                &raw mut dtd.paramEntities
+            } else {
+                &raw mut dtd.generalEntities
+            };
+            let entity = lookup(parser_handle, table, name as KEY, 0) as *mut ENTITY;
+            (!entity.is_null()).then_some(entity)
+        }
+    };
     let mut active_parser_encoding = match parser.m_encoding {
         EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
             Some(index) if index < 7 => {
@@ -11640,13 +11686,7 @@ unsafe extern "C" fn doProlog(
                                                     XML_ACCOUNT_NONE,
                                                 );
                                             if let Some(declaration) = (*parser).m_declEntity {
-                                                let Some(entity) = declared_entity_lookup(
-                                                    parser,
-                                                    dtd,
-                                                    declaration,
-                                                    (&raw const externalSubsetName)
-                                                        .cast::<crate::expat_external_h::XML_Char>(),
-                                                ) else {
+                                                let Some(entity) = resolve_declared_entity(declaration) else {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
                                                 let dtd_ref = &mut *dtd;
@@ -11798,13 +11838,7 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let Some(entity) = declared_entity_lookup(
-                                                parser,
-                                                dtd,
-                                                declaration,
-                                                (&raw const externalSubsetName)
-                                                    .cast::<crate::expat_external_h::XML_Char>(),
-                                            ) else {
+                                            let Some(entity) = resolve_declared_entity(declaration) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             set_event_end!(parser, parser_events, eventEndPP, s);
@@ -11890,13 +11924,7 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            let Some(entity) = declared_entity_lookup(
-                                                parser,
-                                                dtd,
-                                                declaration,
-                                                (&raw const externalSubsetName)
-                                                    .cast::<crate::expat_external_h::XML_Char>(),
-                                            ) else {
+                                            let Some(entity) = resolve_declared_entity(declaration) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             let notation_pointer =
@@ -13002,13 +13030,7 @@ unsafe extern "C" fn doProlog(
                                 let declaration = (*parser)
                                     .m_declEntity
                                     .expect("entity declaration must be set");
-                                let Some(entity) = declared_entity_lookup(
-                                    parser,
-                                    dtd,
-                                    declaration,
-                                    (&raw const externalSubsetName)
-                                        .cast::<crate::expat_external_h::XML_Char>(),
-                                ) else {
+                                let Some(entity) = resolve_declared_entity(declaration) else {
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
                                 let system_id = poolStoreString(
@@ -13167,13 +13189,7 @@ unsafe extern "C" fn doProlog(
                 let declaration = (*parser)
                     .m_declEntity
                     .expect("entity declaration must be set");
-                let Some(entity) = declared_entity_lookup(
-                    parser,
-                    dtd,
-                    declaration,
-                    (&raw const externalSubsetName)
-                        .cast::<crate::expat_external_h::XML_Char>(),
-                ) else {
+                let Some(entity) = resolve_declared_entity(declaration) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
                 let mut tem: *mut crate::expat_external_h::XML_Char = poolStoreString(
@@ -16013,42 +16029,6 @@ unsafe extern "C" fn lookup(
         Some(NamedAllocation { bytes, backing });
     table.used = table.used.wrapping_add(1);
     return entry;
-}
-
-/// Resolves the parser's declaration cursor immediately before accessing its
-/// entity record.  The cursor itself contains only a DTD-pool key, so table
-/// growth cannot leave parser state pointing into moved slot storage.
-unsafe fn declared_entity_lookup(
-    parser: crate::expat_h::XML_Parser,
-    dtd: *mut DTD,
-    declaration: DeclaredEntity,
-    external_subset_name: *const crate::expat_external_h::XML_Char,
-) -> Option<*mut ENTITY> {
-    let (table, name) = match declaration {
-        DeclaredEntity::General(name) => (
-            &raw mut (*dtd).generalEntities,
-            (*dtd)
-                .pool
-                .chars_from(name)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-        ),
-        DeclaredEntity::Parameter(name) => (
-            &raw mut (*dtd).paramEntities,
-            (*dtd)
-                .pool
-                .chars_from(name)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-        ),
-        DeclaredEntity::ExternalSubset => (
-            &raw mut (*dtd).paramEntities,
-            external_subset_name,
-        ),
-    };
-    if name.is_null() {
-        return None;
-    }
-    let entity = lookup(parser, table, name as KEY, 0) as *mut ENTITY;
-    (!entity.is_null()).then_some(entity)
 }
 
 unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
