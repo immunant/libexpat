@@ -5798,7 +5798,9 @@ unsafe extern "C" fn externalEntityInitProcessor(
 /// `Initial` deliberately consults `INIT_ENCODING.selected_encoding` on each
 /// dispatch.  The initial scanner updates that safe index itself, so there is
 /// no second pointer-synchronisation step after a BOM or leading byte scan.
-unsafe fn parser_encoding(mut parser: crate::expat_h::XML_Parser) -> *const crate::src::xmltok::ENCODING {
+unsafe fn parser_encoding(
+    mut parser: crate::expat_h::XML_Parser,
+) -> *const crate::src::xmltok::ENCODING {
     let parser = &*parser;
     match parser.m_encoding {
         EncodingState::Initial => match parser.m_initEncoding.selected_encoding {
@@ -6553,8 +6555,7 @@ unsafe extern "C" fn doContent(
                     }
                 }
                 crate::src::xmltok::XML_TOK_CHAR_REF => {
-                    let mut n: ::core::ffi::c_int =
-                        (*enc).charRefNumber.decode(enc, s);
+                    let mut n: ::core::ffi::c_int = (*enc).charRefNumber.decode(enc, s);
                     if n < 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                     }
@@ -6895,9 +6896,7 @@ unsafe extern "C" fn storeAtts(
             (*currAtt).name,
             (*currAtt)
                 .name
-                .offset(
-                    crate::src::xmltok::name_length(enc, (*currAtt).name) as isize,
-                ),
+                .offset(crate::src::xmltok::name_length(enc, (*currAtt).name) as isize),
         );
         if attId.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -8066,7 +8065,8 @@ unsafe extern "C" fn processXmlDecl(
                 &raw mut (*parser).m_temp2Pool,
                 encoding,
                 encodingName,
-                encodingName.offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
+                encodingName
+                    .offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
             );
             if storedEncName.is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -8120,7 +8120,8 @@ unsafe extern "C" fn processXmlDecl(
                     &raw mut (*parser).m_temp2Pool,
                     encoding,
                     encodingName,
-                    encodingName.offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
+                    encodingName
+                        .offset(crate::src::xmltok::name_length(encoding, encodingName) as isize),
                 );
                 if storedEncName.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -10893,8 +10894,7 @@ unsafe extern "C" fn appendAttributeValue(
                 crate::src::xmltok::XML_TOK_CHAR_REF => {
                     let mut buf: [crate::expat_external_h::XML_Char; 4] = [0; 4];
                     let mut i: ::core::ffi::c_int = 0;
-                    let mut n: ::core::ffi::c_int =
-                        (*enc).charRefNumber.decode(enc, ptr);
+                    let mut n: ::core::ffi::c_int = (*enc).charRefNumber.decode(enc, ptr);
                     if n < 0 as ::core::ffi::c_int {
                         if enc == parser_encoding(parser) {
                             (*parser).m_eventPtr = ptr;

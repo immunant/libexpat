@@ -619,14 +619,24 @@ pub mod xmltok_impl_c {
                 2 => match normal.invalid2 {
                     Invalid2Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
                     Invalid2Checker::Utf8 => return utf8_invalid2(input),
-                    Invalid2Checker::Unknown => Some(unknown_isInvalid as unsafe extern "C" fn(_, _) -> _),
+                    Invalid2Checker::Unknown => {
+                        Some(unknown_isInvalid as unsafe extern "C" fn(_, _) -> _)
+                    }
                 },
                 3 => match normal.invalid3 {
                     Invalid3Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
                     Invalid3Checker::Utf8 => return utf8_invalid3(input),
-                    Invalid3Checker::Unknown => Some(unknown_isInvalid as unsafe extern "C" fn(_, _) -> _),
+                    Invalid3Checker::Unknown => {
+                        Some(unknown_isInvalid as unsafe extern "C" fn(_, _) -> _)
+                    }
                 },
-                4 => normal.isInvalid4,
+                4 => match normal.invalid4 {
+                    Invalid4Checker::Never => return false,
+                    Invalid4Checker::Utf8 => return utf8_invalid4(input),
+                    Invalid4Checker::Unknown => {
+                        Some(unknown_isInvalid as unsafe extern "C" fn(_, _) -> _)
+                    }
+                },
                 _ => unreachable!(),
             },
             NormalCharCheck::NameStart => match width {
@@ -702,11 +712,19 @@ pub mod xmltok_impl_c {
                         if end.offset_from(ptr) < 4 as isize {
                             return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
                         }
-                        if (*(enc as *const normal_encoding))
-                            .isInvalid4
-                            .expect("non-null function pointer")(enc, ptr)
-                            != 0
-                        {
+                        let normal = &*(enc as *const normal_encoding);
+                        let invalid = match normal.invalid4 {
+                            Invalid4Checker::Never => false,
+                            Invalid4Checker::Utf8 => {
+                                utf8_invalid4(::core::slice::from_raw_parts(ptr.cast::<u8>(), 4))
+                            }
+                            Invalid4Checker::Unknown => {
+                                let predicate =
+                                    unknown_isInvalid as unsafe extern "C" fn(_, _) -> _;
+                                predicate(enc, ptr) != 0
+                            }
+                        };
+                        if invalid {
                             *nextTokPtr = ptr;
                             return crate::src::xmltok::XML_TOK_INVALID_1;
                         }
@@ -2569,11 +2587,18 @@ pub mod xmltok_impl_c {
                     if end.offset_from(ptr) < 4 as isize {
                         return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    let normal = &*(enc as *const normal_encoding);
+                    let invalid = match normal.invalid4 {
+                        Invalid4Checker::Never => false,
+                        Invalid4Checker::Utf8 => {
+                            utf8_invalid4(::core::slice::from_raw_parts(ptr.cast::<u8>(), 4))
+                        }
+                        Invalid4Checker::Unknown => {
+                            let predicate = unknown_isInvalid as unsafe extern "C" fn(_, _) -> _;
+                            predicate(enc, ptr) != 0
+                        }
+                    };
+                    if invalid {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -3226,11 +3251,18 @@ pub mod xmltok_impl_c {
                     if end.offset_from(ptr) < 4 as isize {
                         return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
                     }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                    {
+                    let normal = &*(enc as *const normal_encoding);
+                    let invalid = match normal.invalid4 {
+                        Invalid4Checker::Never => false,
+                        Invalid4Checker::Utf8 => {
+                            utf8_invalid4(::core::slice::from_raw_parts(ptr.cast::<u8>(), 4))
+                        }
+                        Invalid4Checker::Unknown => {
+                            let predicate = unknown_isInvalid as unsafe extern "C" fn(_, _) -> _;
+                            predicate(enc, ptr) != 0
+                        }
+                    };
+                    if invalid {
                         *nextTokPtr = ptr;
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -10605,18 +10637,20 @@ pub mod xmltok_impl_c {
     }
 
     use crate::src::xmltok::checkCharRefNumber;
+    use crate::src::xmltok::isNever;
     use crate::src::xmltok::nametab_h::namePages;
     use crate::src::xmltok::nametab_h::namingBitmap;
     use crate::src::xmltok::nametab_h::nmstrtPages;
     use crate::src::xmltok::normal_encoding;
     use crate::src::xmltok::unicode_byte_type;
-    use crate::src::xmltok::isNever;
+    use crate::src::xmltok::unknown_isInvalid;
     use crate::src::xmltok::utf8_invalid2;
     use crate::src::xmltok::utf8_invalid3;
+    use crate::src::xmltok::utf8_invalid4;
     use crate::src::xmltok::utf8_isInvalid3;
     use crate::src::xmltok::Invalid2Checker;
     use crate::src::xmltok::Invalid3Checker;
-    use crate::src::xmltok::unknown_isInvalid;
+    use crate::src::xmltok::Invalid4Checker;
 }
 
 pub mod xmltok_ns_c {
@@ -12089,12 +12123,7 @@ pub struct normal_encoding {
     >,
     pub invalid2: Invalid2Checker,
     pub invalid3: Invalid3Checker,
-    pub isInvalid4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub invalid4: Invalid4Checker,
 }
 
 #[derive(Copy, Clone)]
@@ -12106,6 +12135,13 @@ pub enum Invalid2Checker {
 
 #[derive(Copy, Clone)]
 pub enum Invalid3Checker {
+    Never,
+    Utf8,
+    Unknown,
+}
+
+#[derive(Copy, Clone)]
+pub enum Invalid4Checker {
     Never,
     Utf8,
     Unknown,
@@ -12291,45 +12327,17 @@ unsafe extern "C" fn utf8_isInvalid3(
     utf8_invalid3(::core::slice::from_raw_parts(p.cast::<u8>(), 3)) as ::core::ffi::c_int
 }
 
-unsafe extern "C" fn utf8_isInvalid4(
-    _enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return (*(p as *const ::core::ffi::c_uchar).offset(3 as isize) as ::core::ffi::c_int
-        & 0x80 as ::core::ffi::c_int
-        == 0 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(3 as isize) as ::core::ffi::c_int
-            & 0xc0 as ::core::ffi::c_int
-            == 0xc0 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(2 as isize) as ::core::ffi::c_int
-            & 0x80 as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        || *(p as *const ::core::ffi::c_uchar).offset(2 as isize) as ::core::ffi::c_int
-            & 0xc0 as ::core::ffi::c_int
-            == 0xc0 as ::core::ffi::c_int
-        || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-            == 0xf0 as ::core::ffi::c_int
-        {
-            ((*(p as *const ::core::ffi::c_uchar).offset(1 as isize) as ::core::ffi::c_int)
-                < 0x90 as ::core::ffi::c_int
-                || *(p as *const ::core::ffi::c_uchar).offset(1 as isize) as ::core::ffi::c_int
-                    & 0xc0 as ::core::ffi::c_int
-                    == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-        } else {
-            (*(p as *const ::core::ffi::c_uchar).offset(1 as isize) as ::core::ffi::c_int
-                & 0x80 as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                    == 0xf4 as ::core::ffi::c_int
-                {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1 as isize) as ::core::ffi::c_int
-                        > 0x8f as ::core::ffi::c_int) as ::core::ffi::c_int
-                } else {
-                    (*(p as *const ::core::ffi::c_uchar).offset(1 as isize) as ::core::ffi::c_int
-                        & 0xc0 as ::core::ffi::c_int
-                        == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-                }) != 0) as ::core::ffi::c_int
-        }) != 0) as ::core::ffi::c_int;
+fn utf8_invalid4(input: &[u8]) -> bool {
+    let [first, second, third, fourth, ..] = input else {
+        return true;
+    };
+    *fourth & 0xc0 != 0x80
+        || *third & 0xc0 != 0x80
+        || match *first {
+            0xf0 => *second < 0x90 || *second & 0xc0 != 0x80,
+            0xf4 => *second > 0x8f || *second & 0xc0 != 0x80,
+            _ => *second & 0xc0 != 0x80,
+        }
 }
 pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
     mut from: *const ::core::ffi::c_char,
@@ -12857,13 +12865,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
     ),
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    invalid4: Invalid4Checker::Utf8,
 };
 
 static mut utf8_encoding: normal_encoding = normal_encoding {
@@ -13194,13 +13196,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
     ),
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    invalid4: Invalid4Checker::Utf8,
 };
 
 static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
@@ -13531,13 +13527,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     ),
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    invalid4: Invalid4Checker::Utf8,
 };
 
 static mut internal_utf8_encoding: normal_encoding = normal_encoding {
@@ -13868,13 +13858,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
     ),
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
-    isInvalid4: Some(
-        utf8_isInvalid4
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    invalid4: Invalid4Checker::Utf8,
 };
 
 unsafe extern "C" fn latin1_toUtf8(
@@ -14230,7 +14214,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 static mut latin1_encoding: normal_encoding = normal_encoding {
@@ -14525,7 +14509,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 unsafe extern "C" fn ascii_toUtf8(
@@ -14841,7 +14825,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 static mut ascii_encoding: normal_encoding = normal_encoding {
@@ -15136,7 +15120,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 fn unicode_byte_type(hi: ::core::ffi::c_char, lo: ::core::ffi::c_char) -> ::core::ffi::c_int {
@@ -15696,7 +15680,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 static mut little2_encoding: normal_encoding = normal_encoding {
@@ -15991,7 +15975,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
@@ -16286,7 +16270,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 static mut internal_little2_encoding: normal_encoding = normal_encoding {
@@ -16581,7 +16565,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 static mut big2_encoding_ns: normal_encoding = normal_encoding {
@@ -16876,7 +16860,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 static mut big2_encoding: normal_encoding = normal_encoding {
@@ -17171,7 +17155,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
     isNmstrt4: None,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
-    isInvalid4: None,
+    invalid4: Invalid4Checker::Never,
 };
 
 unsafe extern "C" fn streqci(
@@ -17988,7 +17972,7 @@ fn install_unknown_name_checks(encoding: &mut unknown_encoding) {
     encoding.normal.isNmstrt4 = Some(unknown_isNmstrt);
     encoding.normal.invalid2 = Invalid2Checker::Unknown;
     encoding.normal.invalid3 = Invalid3Checker::Unknown;
-    encoding.normal.isInvalid4 = Some(unknown_isInvalid);
+    encoding.normal.invalid4 = Invalid4Checker::Unknown;
 }
 
 pub unsafe extern "C" fn XmlInitUnknownEncoding(
