@@ -22937,13 +22937,21 @@ pub fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
 pub unsafe extern "C" fn XmlSizeOfUnknownEncoding_ffi() -> ::core::ffi::c_int {
     XmlSizeOfUnknownEncoding()
 }
-unsafe extern "C" fn unknown_isName(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
+fn unknown_convert_char(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    unsafe {
+        let uenc = enc as *const unknown_encoding;
+        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p)
+    }
+}
+
+extern "C" fn unknown_isName(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    let c = unknown_convert_char(enc, p);
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return 0 as ::core::ffi::c_int;
     }
@@ -22957,13 +22965,11 @@ unsafe extern "C" fn unknown_isName(
         as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn unknown_isNmstrt(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn unknown_isNmstrt(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let c = unknown_convert_char(enc, p);
     if c & !(0xffff as ::core::ffi::c_int) != 0 {
         return 0 as ::core::ffi::c_int;
     }
@@ -22977,13 +22983,11 @@ unsafe extern "C" fn unknown_isNmstrt(
         as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn unknown_isInvalid(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn unknown_isInvalid(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    let mut c: ::core::ffi::c_int =
-        (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
+    let c = unknown_convert_char(enc, p);
     return (c & !(0xffff as ::core::ffi::c_int) != 0
         || checkCharRefNumber(c) < 0 as ::core::ffi::c_int) as ::core::ffi::c_int;
 }
