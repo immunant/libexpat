@@ -11778,6 +11778,66 @@ fn key_len(s: &::core::ffi::CStr) -> crate::__stddef_size_t_h::size_t {
     s.to_bytes().len() as crate::__stddef_size_t_h::size_t
 }
 
+macro_rules! cstr_from_key {
+    ($ptr:expr) => {
+        unsafe { ::core::ffi::CStr::from_ptr($ptr) }
+    };
+}
+
+macro_rules! named_slots {
+    ($ptr:expr, $size:expr) => {
+        unsafe { ::core::slice::from_raw_parts($ptr, $size) }
+    };
+}
+
+macro_rules! named_slots_mut {
+    ($ptr:expr, $size:expr) => {
+        unsafe { ::core::slice::from_raw_parts_mut($ptr, $size) }
+    };
+}
+
+macro_rules! named_name {
+    ($ptr:expr) => {
+        unsafe { (*$ptr).name }
+    };
+}
+
+macro_rules! named_mut {
+    ($ptr:expr) => {
+        unsafe { &mut *$ptr }
+    };
+}
+
+macro_rules! hash_secret_salt {
+    ($parser:expr) => {
+        unsafe { get_hash_secret_salt($parser) }
+    };
+}
+
+macro_rules! expat_alloc_zeroed {
+    ($parser:expr, $size:expr, $line:expr, $ty:ty) => {{
+        let ptr = unsafe { expat_malloc($parser, $size, $line) } as *mut $ty;
+        if !ptr.is_null() {
+            unsafe {
+                crate::stdlib::memset(
+                    ptr as *mut ::core::ffi::c_void,
+                    0 as ::core::ffi::c_int,
+                    $size,
+                );
+            }
+        }
+        ptr
+    }};
+}
+
+macro_rules! expat_free_ptr {
+    ($parser:expr, $ptr:expr, $line:expr) => {
+        unsafe {
+            expat_free($parser, $ptr as *mut ::core::ffi::c_void, $line);
+        }
+    };
+}
+
 fn hash(mut parser: crate::expat_h::XML_Parser, mut s: KEY) -> ::core::ffi::c_ulong {
     let mut state: crate::siphash_h::siphash = crate::siphash_h::siphash {
         v0: 0,
@@ -11790,12 +11850,9 @@ fn hash(mut parser: crate::expat_h::XML_Parser, mut s: KEY) -> ::core::ffi::c_ul
     };
     let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
     key.k[0] = 0 as crate::stdlib::uint64_t;
-    key.k[1] = unsafe { get_hash_secret_salt(parser) } as crate::stdlib::uint64_t;
+    key.k[1] = hash_secret_salt!(parser) as crate::stdlib::uint64_t;
     sip24_init(&mut state, &key);
-    sip24_update(
-        &mut state,
-        unsafe { ::core::ffi::CStr::from_ptr(s) }.to_bytes(),
-    );
+    sip24_update(&mut state, cstr_from_key!(s).to_bytes());
     return sip24_final(&mut state) as ::core::ffi::c_ulong;
 }
 
@@ -11816,18 +11873,10 @@ fn lookup(
         tsize = table
             .size
             .wrapping_mul(::core::mem::size_of::<*mut NAMED>() as crate::__stddef_size_t_h::size_t);
-        table.v = unsafe { expat_malloc(table.parser, tsize, 7845 as ::core::ffi::c_int) }
-            as *mut *mut NAMED;
+        table.v = expat_alloc_zeroed!(table.parser, tsize, 7845 as ::core::ffi::c_int, *mut NAMED);
         if table.v.is_null() {
             table.size = 0 as crate::__stddef_size_t_h::size_t;
             return ::core::ptr::null_mut::<NAMED>();
-        }
-        unsafe {
-            crate::stdlib::memset(
-                table.v as *mut ::core::ffi::c_void,
-                0 as ::core::ffi::c_int,
-                tsize,
-            );
         }
         i = (hash(parser, name)
             & (table.size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
@@ -11837,14 +11886,12 @@ fn lookup(
         let mut mask: ::core::ffi::c_ulong =
             (table.size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
-        let slots = unsafe { ::core::slice::from_raw_parts(table.v, table.size) };
+        let slots = named_slots!(table.v, table.size);
         i = (h & mask) as crate::__stddef_size_t_h::size_t;
         while !slots[i as usize].is_null() {
             let named = slots[i as usize];
-            if key_eq(unsafe { ::core::ffi::CStr::from_ptr(name) }, unsafe {
-                ::core::ffi::CStr::from_ptr((*named).name)
-            }) != 0
-            {
+            let named_key = named_name!(named);
+            if key_eq(cstr_from_key!(name), cstr_from_key!(named_key)) != 0 {
                 return named;
             }
             if step == 0 {
@@ -11889,25 +11936,21 @@ fn lookup(
             let mut tsize_0: crate::__stddef_size_t_h::size_t = newSize.wrapping_mul(
                 ::core::mem::size_of::<*mut NAMED>() as crate::__stddef_size_t_h::size_t,
             );
-            let mut newV: *mut *mut NAMED =
-                unsafe { expat_malloc(table.parser, tsize_0, 7885 as ::core::ffi::c_int) }
-                    as *mut *mut NAMED;
+            let mut newV: *mut *mut NAMED = expat_alloc_zeroed!(
+                table.parser,
+                tsize_0,
+                7885 as ::core::ffi::c_int,
+                *mut NAMED
+            );
             if newV.is_null() {
                 return ::core::ptr::null_mut::<NAMED>();
             }
-            unsafe {
-                crate::stdlib::memset(
-                    newV as *mut ::core::ffi::c_void,
-                    0 as ::core::ffi::c_int,
-                    tsize_0,
-                );
-            }
-            let new_slots = unsafe { ::core::slice::from_raw_parts_mut(newV, newSize) };
+            let new_slots = named_slots_mut!(newV, newSize);
             i = 0 as crate::__stddef_size_t_h::size_t;
             while i < table.size {
                 if !slots[i as usize].is_null() {
                     let named = slots[i as usize];
-                    let mut newHash: ::core::ffi::c_ulong = hash(parser, unsafe { (*named).name });
+                    let mut newHash: ::core::ffi::c_ulong = hash(parser, named_name!(named));
                     let mut j: crate::__stddef_size_t_h::size_t = newHash
                         as crate::__stddef_size_t_h::size_t
                         & newMask as crate::__stddef_size_t_h::size_t;
@@ -11932,17 +11975,11 @@ fn lookup(
                 }
                 i = i.wrapping_add(1);
             }
-            unsafe {
-                expat_free(
-                    table.parser,
-                    table.v as *mut ::core::ffi::c_void,
-                    7901 as ::core::ffi::c_int,
-                );
-            }
+            expat_free_ptr!(table.parser, table.v, 7901 as ::core::ffi::c_int);
             table.v = newV;
             table.power = newPower;
             table.size = newSize;
-            let slots = unsafe { ::core::slice::from_raw_parts(table.v, table.size) };
+            let slots = named_slots!(table.v, table.size);
             i = (h & newMask) as crate::__stddef_size_t_h::size_t;
             step = 0 as ::core::ffi::c_uchar;
             while !slots[i as usize].is_null() {
@@ -11964,28 +12001,22 @@ fn lookup(
         }
     }
     let parser_for_alloc = table.parser;
-    let new_entry =
-        unsafe { expat_malloc(parser_for_alloc, createSize, 7914 as ::core::ffi::c_int) }
-            as *mut NAMED;
+    let new_entry = expat_alloc_zeroed!(
+        parser_for_alloc,
+        createSize,
+        7914 as ::core::ffi::c_int,
+        NAMED
+    );
     if new_entry.is_null() {
         return ::core::ptr::null_mut::<NAMED>();
     }
-    unsafe {
-        crate::stdlib::memset(
-            new_entry as *mut ::core::ffi::c_void,
-            0 as ::core::ffi::c_int,
-            createSize,
-        );
-    }
     let result = {
-        let slots = unsafe { ::core::slice::from_raw_parts_mut(table.v, table.size) };
+        let slots = named_slots_mut!(table.v, table.size);
         let entry = slots
             .get_mut(i as usize)
             .expect("hash table index in bounds");
         *entry = new_entry;
-        unsafe {
-            (**entry).name = name;
-        }
+        named_mut!(new_entry).name = name;
         *entry
     };
     table.used = table.used.wrapping_add(1);
@@ -11994,15 +12025,9 @@ fn lookup(
 
 fn hashTableClear(table: &mut HASH_TABLE) {
     let parser = table.parser;
-    let slots = unsafe { ::core::slice::from_raw_parts_mut(table.v, table.size) };
+    let slots = named_slots_mut!(table.v, table.size);
     for slot in slots.iter_mut() {
-        unsafe {
-            expat_free(
-                parser,
-                *slot as *mut ::core::ffi::c_void,
-                7927 as ::core::ffi::c_int,
-            );
-        }
+        expat_free_ptr!(parser, *slot, 7927 as ::core::ffi::c_int);
         *slot = ::core::ptr::null_mut::<NAMED>();
     }
     table.used = 0 as crate::__stddef_size_t_h::size_t;
@@ -12010,23 +12035,11 @@ fn hashTableClear(table: &mut HASH_TABLE) {
 
 fn hashTableDestroy(table: &mut HASH_TABLE) {
     let parser = table.parser;
-    let slots = unsafe { ::core::slice::from_raw_parts(table.v, table.size) };
+    let slots = named_slots!(table.v, table.size);
     for slot in slots.iter() {
-        unsafe {
-            expat_free(
-                parser,
-                *slot as *mut ::core::ffi::c_void,
-                7937 as ::core::ffi::c_int,
-            );
-        }
+        expat_free_ptr!(parser, *slot, 7937 as ::core::ffi::c_int);
     }
-    unsafe {
-        expat_free(
-            parser,
-            table.v as *mut ::core::ffi::c_void,
-            7938 as ::core::ffi::c_int,
-        );
-    }
+    expat_free_ptr!(parser, table.v, 7938 as ::core::ffi::c_int);
 }
 
 fn hashTableInit(p: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
@@ -12044,7 +12057,7 @@ fn hashTableIterInit(iter: &mut HASH_TABLE_ITER, table: &HASH_TABLE) {
 }
 
 fn hashTableIterNext(iter: &mut HASH_TABLE_ITER) -> *mut NAMED {
-    let entries = unsafe { ::core::slice::from_raw_parts(iter.entries, iter.size) };
+    let entries = named_slots!(iter.entries, iter.size);
     while iter.index != iter.size {
         let index = iter.index;
         iter.index = iter.index.wrapping_add(1);
