@@ -6903,7 +6903,10 @@ unsafe extern "C" fn doProlog(
                         if pubId.is_null() {
                             return XML_ERROR_NO_MEMORY;
                         }
-                        normalizePublicId(pubId);
+                        let pub_id_len = ::core::ffi::CStr::from_ptr(pubId.cast_const())
+                            .to_bytes_with_nul()
+                            .len();
+                        normalizePublicId(::core::slice::from_raw_parts_mut(pubId, pub_id_len));
                         (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                         (*parser).m_doctypePubid = pubId;
                         handleDefault = XML_FALSE;
@@ -7560,7 +7563,10 @@ unsafe extern "C" fn doProlog(
                         if tem_0.is_null() {
                             return XML_ERROR_NO_MEMORY;
                         }
-                        normalizePublicId(tem_0);
+                        let public_id_len = ::core::ffi::CStr::from_ptr(tem_0.cast_const())
+                            .to_bytes_with_nul()
+                            .len();
+                        normalizePublicId(::core::slice::from_raw_parts_mut(tem_0, public_id_len));
                         (*parser).m_declNotationPublicId = tem_0;
                         (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
                         handleDefault = XML_FALSE;
@@ -8228,7 +8234,10 @@ unsafe extern "C" fn doProlog(
                         if tem.is_null() {
                             return XML_ERROR_NO_MEMORY;
                         }
-                        normalizePublicId(tem);
+                        let public_id_len = ::core::ffi::CStr::from_ptr(tem.cast_const())
+                            .to_bytes_with_nul()
+                            .len();
+                        normalizePublicId(::core::slice::from_raw_parts_mut(tem, public_id_len));
                         (*(*parser).m_declEntity).publicId = tem;
                         (*dtd).pool.start = (*dtd).pool.ptr;
                         if (*parser).m_entityDeclHandler.is_some()
@@ -9278,8 +9287,7 @@ unsafe extern "C" fn callStoreEntityValue(
         return result;
     }
 }
-fn normalizeLines(s: *mut XML_Char) {
-    let buffer = xml_char_slice_with_nul_mut(s);
+fn normalizeLines(buffer: &mut [XML_Char]) {
     let Some(first_cr) = buffer[..buffer.len() - 1]
         .iter()
         .position(|&ch| ch as ::core::ffi::c_int == 0xd as ::core::ffi::c_int)
@@ -9338,7 +9346,10 @@ unsafe extern "C" fn reportProcessingInstruction(
         if data.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        normalizeLines(data);
+        let data_len = ::core::ffi::CStr::from_ptr(data.cast_const())
+            .to_bytes_with_nul()
+            .len();
+        normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
         (*parser)
             .m_processingInstructionHandler
             .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
@@ -9369,7 +9380,10 @@ unsafe extern "C" fn reportComment(
         if data.is_null() {
             return 0 as ::core::ffi::c_int;
         }
-        normalizeLines(data);
+        let data_len = ::core::ffi::CStr::from_ptr(data.cast_const())
+            .to_bytes_with_nul()
+            .len();
+        normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
         (*parser)
             .m_commentHandler
             .expect("non-null function pointer")((*parser).m_handlerArg, data);
@@ -10011,8 +10025,7 @@ unsafe extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_
         return XML_TRUE;
     }
 }
-fn normalizePublicId(publicId: *mut XML_Char) {
-    let buffer = xml_char_slice_with_nul_mut(publicId);
+fn normalizePublicId(buffer: &mut [XML_Char]) {
     let mut write = 0usize;
 
     for read in 0..buffer.len() - 1 {
@@ -10439,15 +10452,6 @@ fn key_bytes<'a>(key: KEY) -> &'a [u8] {
 fn xml_char_slice_with_nul<'a>(ptr: *const XML_Char) -> &'a [XML_Char] {
     let len = unsafe { ::core::ffi::CStr::from_ptr(ptr).to_bytes_with_nul().len() };
     ptr_slice(ptr, len)
-}
-
-fn xml_char_slice_with_nul_mut<'a>(ptr: *mut XML_Char) -> &'a mut [XML_Char] {
-    let len = unsafe {
-        ::core::ffi::CStr::from_ptr(ptr.cast_const())
-            .to_bytes_with_nul()
-            .len()
-    };
-    ptr_slice_mut(ptr, len)
 }
 
 fn expat_malloc_ptr<T>(parser: XML_Parser, size: size_t, line: ::core::ffi::c_int) -> *mut T {
