@@ -518,9 +518,9 @@ pub type XML_ParamEntityParsing = ::core::ffi::c_uint;
 pub const XML_PARAM_ENTITY_PARSING_ALWAYS: XML_ParamEntityParsing = 2;
 pub const XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: XML_ParamEntityParsing = 1;
 pub const XML_PARAM_ENTITY_PARSING_NEVER: XML_ParamEntityParsing = 0;
-pub type tcase_setup_function = Option<unsafe extern "C" fn() -> ()>;
-pub type tcase_teardown_function = Option<unsafe extern "C" fn() -> ()>;
-pub type tcase_test_function = Option<unsafe extern "C" fn() -> ()>;
+pub type tcase_setup_function = Option<extern "C" fn() -> ()>;
+pub type tcase_teardown_function = Option<extern "C" fn() -> ()>;
+pub type tcase_test_function = Option<extern "C" fn() -> ()>;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Suite {
@@ -598,7 +598,7 @@ pub const DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
     (1 as ::core::ffi::c_ulong) << 14 as ::core::ffi::c_int;
 pub const DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG: ::core::ffi::c_ulong =
     (1 as ::core::ffi::c_ulong) << 15 as ::core::ffi::c_int;
-unsafe extern "C" fn alloc_setup() {
+extern "C" fn alloc_setup() {
     unsafe {
         let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
             malloc_fcn: Some(
@@ -629,12 +629,12 @@ unsafe extern "C" fn alloc_setup() {
         }
     }
 }
-unsafe extern "C" fn alloc_teardown() {
+extern "C" fn alloc_teardown() {
     unsafe {
         basic_teardown();
     }
 }
-unsafe extern "C" fn test_alloc_parse_xdecl() {
+extern "C" fn test_alloc_parse_xdecl() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_xdecl\0".as_ptr() as *const ::core::ffi::c_char,
@@ -692,7 +692,7 @@ unsafe extern "C" fn test_alloc_parse_xdecl() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_xdecl_2() {
+extern "C" fn test_alloc_parse_xdecl_2() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_xdecl_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -761,7 +761,7 @@ unsafe extern "C" fn test_alloc_parse_xdecl_2() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_pi() {
+extern "C" fn test_alloc_parse_pi() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_pi\0".as_ptr() as *const ::core::ffi::c_char,
@@ -818,7 +818,7 @@ unsafe extern "C" fn test_alloc_parse_pi() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_pi_2() {
+extern "C" fn test_alloc_parse_pi_2() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_pi_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -875,7 +875,7 @@ unsafe extern "C" fn test_alloc_parse_pi_2() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_pi_3() {
+extern "C" fn test_alloc_parse_pi_3() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_pi_3\0".as_ptr() as *const ::core::ffi::c_char,
@@ -931,7 +931,7 @@ unsafe extern "C" fn test_alloc_parse_pi_3() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_comment() {
+extern "C" fn test_alloc_parse_comment() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_comment\0".as_ptr() as *const ::core::ffi::c_char,
@@ -983,7 +983,7 @@ unsafe extern "C" fn test_alloc_parse_comment() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_comment_2() {
+extern "C" fn test_alloc_parse_comment_2() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_comment_2\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1035,7 +1035,7 @@ unsafe extern "C" fn test_alloc_parse_comment_2() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_create_external_parser() {
+extern "C" fn test_alloc_create_external_parser() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_create_external_parser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1083,7 +1083,7 @@ unsafe extern "C" fn test_alloc_create_external_parser() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_run_external_parser() {
+extern "C" fn test_alloc_run_external_parser() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_run_external_parser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1148,7 +1148,7 @@ unsafe extern "C" fn test_alloc_run_external_parser() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_dtd_copy_default_atts() {
+extern "C" fn test_alloc_dtd_copy_default_atts() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_dtd_copy_default_atts\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1189,7 +1189,7 @@ unsafe extern "C" fn test_alloc_dtd_copy_default_atts() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_external_entity() {
+extern "C" fn test_alloc_external_entity() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_external_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1254,7 +1254,7 @@ unsafe extern "C" fn test_alloc_external_entity() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_ext_entity_set_encoding() {
+extern "C" fn test_alloc_ext_entity_set_encoding() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_ext_entity_set_encoding\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1313,7 +1313,7 @@ unsafe extern "C" fn test_alloc_ext_entity_set_encoding() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_internal_entity() {
+extern "C" fn test_alloc_internal_entity() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1370,7 +1370,7 @@ unsafe extern "C" fn test_alloc_internal_entity() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parameter_entity() {
+extern "C" fn test_alloc_parameter_entity() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parameter_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1418,7 +1418,7 @@ unsafe extern "C" fn test_alloc_parameter_entity() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_dtd_default_handling() {
+extern "C" fn test_alloc_dtd_default_handling() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_dtd_default_handling\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1629,7 +1629,7 @@ unsafe extern "C" fn test_alloc_dtd_default_handling() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_explicit_encoding() {
+extern "C" fn test_alloc_explicit_encoding() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_explicit_encoding\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1665,7 +1665,7 @@ unsafe extern "C" fn test_alloc_explicit_encoding() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_set_base() {
+extern "C" fn test_alloc_set_base() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_set_base\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1700,7 +1700,7 @@ unsafe extern "C" fn test_alloc_set_base() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_buffer() {
+extern "C" fn test_alloc_realloc_buffer() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_buffer\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1764,7 +1764,7 @@ unsafe extern "C" fn test_alloc_realloc_buffer() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_ext_entity_realloc_buffer() {
+extern "C" fn test_alloc_ext_entity_realloc_buffer() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_ext_entity_realloc_buffer\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1821,7 +1821,7 @@ unsafe extern "C" fn test_alloc_ext_entity_realloc_buffer() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_many_attributes() {
+extern "C" fn test_alloc_realloc_many_attributes() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_many_attributes\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1866,7 +1866,7 @@ unsafe extern "C" fn test_alloc_realloc_many_attributes() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_public_entity_value() {
+extern "C" fn test_alloc_public_entity_value() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_public_entity_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -1961,7 +1961,7 @@ unsafe extern "C" fn test_alloc_public_entity_value() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_subst_public_entity_value() {
+extern "C" fn test_alloc_realloc_subst_public_entity_value() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_subst_public_entity_value\0".as_ptr()
@@ -2033,7 +2033,7 @@ unsafe extern "C" fn test_alloc_realloc_subst_public_entity_value() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_public_doctype() {
+extern "C" fn test_alloc_parse_public_doctype() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_public_doctype\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2106,7 +2106,7 @@ unsafe extern "C" fn test_alloc_parse_public_doctype() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_parse_public_doctype_long_name() {
+extern "C" fn test_alloc_parse_public_doctype_long_name() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_parse_public_doctype_long_name\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2169,7 +2169,7 @@ unsafe extern "C" fn test_alloc_parse_public_doctype_long_name() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_set_foreign_dtd() {
+extern "C" fn test_alloc_set_foreign_dtd() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_set_foreign_dtd\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2245,7 +2245,7 @@ unsafe extern "C" fn test_alloc_set_foreign_dtd() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_attribute_enum_value() {
+extern "C" fn test_alloc_attribute_enum_value() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2329,7 +2329,7 @@ unsafe extern "C" fn test_alloc_attribute_enum_value() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_attribute_enum_value() {
+extern "C" fn test_alloc_realloc_attribute_enum_value() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2413,7 +2413,7 @@ unsafe extern "C" fn test_alloc_realloc_attribute_enum_value() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_implied_attribute() {
+extern "C" fn test_alloc_realloc_implied_attribute() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_implied_attribute\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2473,7 +2473,7 @@ unsafe extern "C" fn test_alloc_realloc_implied_attribute() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_default_attribute() {
+extern "C" fn test_alloc_realloc_default_attribute() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_default_attribute\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2533,7 +2533,7 @@ unsafe extern "C" fn test_alloc_realloc_default_attribute() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_notation() {
+extern "C" fn test_alloc_notation() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_notation\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2619,7 +2619,7 @@ unsafe extern "C" fn test_alloc_notation() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_public_notation() {
+extern "C" fn test_alloc_public_notation() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_public_notation\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2686,7 +2686,7 @@ unsafe extern "C" fn test_alloc_public_notation() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_system_notation() {
+extern "C" fn test_alloc_system_notation() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_system_notation\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2753,7 +2753,7 @@ unsafe extern "C" fn test_alloc_system_notation() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_nested_groups() {
+extern "C" fn test_alloc_nested_groups() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2836,7 +2836,7 @@ unsafe extern "C" fn test_alloc_nested_groups() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_nested_groups() {
+extern "C" fn test_alloc_realloc_nested_groups() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_nested_groups\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2919,7 +2919,7 @@ unsafe extern "C" fn test_alloc_realloc_nested_groups() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_large_group() {
+extern "C" fn test_alloc_large_group() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_large_group\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2984,7 +2984,7 @@ unsafe extern "C" fn test_alloc_large_group() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_group_choice() {
+extern "C" fn test_alloc_realloc_group_choice() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_group_choice\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3049,7 +3049,7 @@ unsafe extern "C" fn test_alloc_realloc_group_choice() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_pi_in_epilog() {
+extern "C" fn test_alloc_pi_in_epilog() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_pi_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3115,7 +3115,7 @@ unsafe extern "C" fn test_alloc_pi_in_epilog() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_comment_in_epilog() {
+extern "C" fn test_alloc_comment_in_epilog() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_comment_in_epilog\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3177,7 +3177,7 @@ unsafe extern "C" fn test_alloc_comment_in_epilog() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_long_attribute_value() {
+extern "C" fn test_alloc_realloc_long_attribute_value() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_long_attribute_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3223,7 +3223,7 @@ unsafe extern "C" fn test_alloc_realloc_long_attribute_value() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_attribute_whitespace() {
+extern "C" fn test_alloc_attribute_whitespace() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_attribute_whitespace\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3269,7 +3269,7 @@ unsafe extern "C" fn test_alloc_attribute_whitespace() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_attribute_predefined_entity() {
+extern "C" fn test_alloc_attribute_predefined_entity() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_attribute_predefined_entity\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3315,7 +3315,7 @@ unsafe extern "C" fn test_alloc_attribute_predefined_entity() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_long_attr_default_with_char_ref() {
+extern "C" fn test_alloc_long_attr_default_with_char_ref() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_long_attr_default_with_char_ref\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3361,7 +3361,7 @@ unsafe extern "C" fn test_alloc_long_attr_default_with_char_ref() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_long_attr_value() {
+extern "C" fn test_alloc_long_attr_value() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_long_attr_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3407,7 +3407,7 @@ unsafe extern "C" fn test_alloc_long_attr_value() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_nested_entities() {
+extern "C" fn test_alloc_nested_entities() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_nested_entities\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3450,7 +3450,7 @@ unsafe extern "C" fn test_alloc_nested_entities() {
         );
     }
 }
-unsafe extern "C" fn test_alloc_realloc_param_entity_newline() {
+extern "C" fn test_alloc_realloc_param_entity_newline() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_param_entity_newline\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3521,7 +3521,7 @@ unsafe extern "C" fn test_alloc_realloc_param_entity_newline() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_ce_extends_pe() {
+extern "C" fn test_alloc_realloc_ce_extends_pe() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_ce_extends_pe\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3592,7 +3592,7 @@ unsafe extern "C" fn test_alloc_realloc_ce_extends_pe() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_realloc_attributes() {
+extern "C" fn test_alloc_realloc_attributes() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_realloc_attributes\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3638,7 +3638,7 @@ unsafe extern "C" fn test_alloc_realloc_attributes() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_long_doc_name() {
+extern "C" fn test_alloc_long_doc_name() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_long_doc_name\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3683,7 +3683,7 @@ unsafe extern "C" fn test_alloc_long_doc_name() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_long_base() {
+extern "C" fn test_alloc_long_base() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_long_base\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3757,7 +3757,7 @@ unsafe extern "C" fn test_alloc_long_base() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_long_public_id() {
+extern "C" fn test_alloc_long_public_id() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_long_public_id\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3822,7 +3822,7 @@ unsafe extern "C" fn test_alloc_long_public_id() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_long_entity_value() {
+extern "C" fn test_alloc_long_entity_value() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_long_entity_value\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3887,7 +3887,7 @@ unsafe extern "C" fn test_alloc_long_entity_value() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_long_notation() {
+extern "C" fn test_alloc_long_notation() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_long_notation\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3964,7 +3964,7 @@ unsafe extern "C" fn test_alloc_long_notation() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail() {
+extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_reset_after_external_entity_parser_create_fail\0".as_ptr()
@@ -4015,7 +4015,7 @@ unsafe extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail()
         XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
     }
 }
-unsafe extern "C" fn sizeRecordedFor(mut ptr: *mut ::core::ffi::c_void) -> size_t {
+extern "C" fn sizeRecordedFor(mut ptr: *mut ::core::ffi::c_void) -> size_t {
     unsafe {
         return *((ptr as *mut ::core::ffi::c_char)
             .offset(-(EXPAT_MALLOC_PADDING as isize))
@@ -4023,7 +4023,7 @@ unsafe extern "C" fn sizeRecordedFor(mut ptr: *mut ::core::ffi::c_void) -> size_
             as *mut size_t);
     }
 }
-unsafe extern "C" fn test_alloc_tracker_size_recorded() {
+extern "C" fn test_alloc_tracker_size_recorded() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_tracker_size_recorded\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4129,7 +4129,7 @@ unsafe extern "C" fn test_alloc_tracker_size_recorded() {
         }
     }
 }
-unsafe extern "C" fn test_alloc_tracker_pointer_alignment() {
+extern "C" fn test_alloc_tracker_pointer_alignment() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_tracker_pointer_alignment\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4164,7 +4164,7 @@ unsafe extern "C" fn test_alloc_tracker_pointer_alignment() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
+extern "C" fn test_alloc_tracker_maximum_amplification() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_tracker_maximum_amplification\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4236,7 +4236,7 @@ unsafe extern "C" fn test_alloc_tracker_maximum_amplification() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_alloc_tracker_threshold() {
+extern "C" fn test_alloc_tracker_threshold() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_tracker_threshold\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4277,7 +4277,7 @@ unsafe extern "C" fn test_alloc_tracker_threshold() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_alloc_tracker_getbuffer_unlimited() {
+extern "C" fn test_alloc_tracker_getbuffer_unlimited() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_tracker_getbuffer_unlimited\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4315,7 +4315,7 @@ unsafe extern "C" fn test_alloc_tracker_getbuffer_unlimited() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_alloc_tracker_api() {
+extern "C" fn test_alloc_tracker_api() {
     unsafe {
         _check_set_test_info(
             b"test_alloc_tracker_api\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4472,7 +4472,7 @@ unsafe extern "C" fn test_alloc_tracker_api() {
         XML_ParserFree(parserWithoutParent);
     }
 }
-unsafe extern "C" fn test_mem_api_cycle() {
+extern "C" fn test_mem_api_cycle() {
     unsafe {
         _check_set_test_info(
             b"test_mem_api_cycle\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4502,7 +4502,7 @@ unsafe extern "C" fn test_mem_api_cycle() {
         XML_ParserFree(parser);
     }
 }
-unsafe extern "C" fn test_mem_api_unlimited() {
+extern "C" fn test_mem_api_unlimited() {
     unsafe {
         _check_set_test_info(
             b"test_mem_api_unlimited\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4549,255 +4549,242 @@ pub unsafe extern "C" fn make_alloc_test_case(mut s: *mut Suite) {
         suite_add_tcase(s, tc_alloc);
         tcase_add_checked_fixture(
             tc_alloc,
-            Some(alloc_setup as unsafe extern "C" fn() -> ()),
-            Some(alloc_teardown as unsafe extern "C" fn() -> ()),
+            Some(alloc_setup as extern "C" fn() -> ()),
+            Some(alloc_teardown as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_parse_xdecl as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parse_xdecl as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_parse_xdecl_2 as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parse_xdecl_2 as extern "C" fn() -> ()),
+        );
+        tcase_add_test(tc_alloc, Some(test_alloc_parse_pi as extern "C" fn() -> ()));
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_parse_pi_2 as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_parse_pi as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parse_pi_3 as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_parse_pi_2 as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parse_comment as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_parse_pi_3 as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_parse_comment as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_parse_comment_2 as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parse_comment_2 as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_create_external_parser as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_create_external_parser as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_run_external_parser as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_run_external_parser as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_dtd_copy_default_atts as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_dtd_copy_default_atts as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_external_entity as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_external_entity as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_ext_entity_set_encoding as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_ext_entity_set_encoding as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_internal_entity as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_internal_entity as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_parameter_entity as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parameter_entity as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_dtd_default_handling as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_dtd_default_handling as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_explicit_encoding as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_explicit_encoding as extern "C" fn() -> ()),
         );
+        tcase_add_test(tc_alloc, Some(test_alloc_set_base as extern "C" fn() -> ()));
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_set_base as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_realloc_buffer as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_buffer as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_ext_entity_realloc_buffer as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_ext_entity_realloc_buffer as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_realloc_many_attributes as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_many_attributes as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_public_entity_value as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_public_entity_value as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_realloc_subst_public_entity_value as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_subst_public_entity_value as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_parse_public_doctype as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parse_public_doctype as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_parse_public_doctype_long_name as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_parse_public_doctype_long_name as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_set_foreign_dtd as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_set_foreign_dtd as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_attribute_enum_value as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_attribute_enum_value as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_realloc_attribute_enum_value as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_attribute_enum_value as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_realloc_implied_attribute as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_implied_attribute as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_realloc_default_attribute as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_default_attribute as extern "C" fn() -> ()),
+        );
+        tcase_add_test__if_xml_ge(tc_alloc, Some(test_alloc_notation as extern "C" fn() -> ()));
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_public_notation as extern "C" fn() -> ()),
+        );
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_system_notation as extern "C" fn() -> ()),
+        );
+        tcase_add_test__ifdef_xml_dtd(
+            tc_alloc,
+            Some(test_alloc_nested_groups as extern "C" fn() -> ()),
+        );
+        tcase_add_test__ifdef_xml_dtd(
+            tc_alloc,
+            Some(test_alloc_realloc_nested_groups as extern "C" fn() -> ()),
+        );
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_large_group as extern "C" fn() -> ()),
+        );
+        tcase_add_test__ifdef_xml_dtd(
+            tc_alloc,
+            Some(test_alloc_realloc_group_choice as extern "C" fn() -> ()),
+        );
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_pi_in_epilog as extern "C" fn() -> ()),
+        );
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_comment_in_epilog as extern "C" fn() -> ()),
+        );
+        tcase_add_test__ifdef_xml_dtd(
+            tc_alloc,
+            Some(test_alloc_realloc_long_attribute_value as extern "C" fn() -> ()),
+        );
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_attribute_whitespace as extern "C" fn() -> ()),
+        );
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_attribute_predefined_entity as extern "C" fn() -> ()),
+        );
+        tcase_add_test(
+            tc_alloc,
+            Some(test_alloc_long_attr_default_with_char_ref as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_notation as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_public_notation as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_system_notation as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_long_attr_value as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_nested_groups as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_nested_entities as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_realloc_nested_groups as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_large_group as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_param_entity_newline as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_realloc_group_choice as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_pi_in_epilog as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_comment_in_epilog as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_ce_extends_pe as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
-            Some(test_alloc_realloc_long_attribute_value as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_realloc_attributes as extern "C" fn() -> ()),
         );
         tcase_add_test(
             tc_alloc,
-            Some(test_alloc_attribute_whitespace as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_attribute_predefined_entity as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_long_attr_default_with_char_ref as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_long_doc_name as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_long_attr_value as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test__ifdef_xml_dtd(
-            tc_alloc,
-            Some(test_alloc_nested_entities as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test__ifdef_xml_dtd(
-            tc_alloc,
-            Some(test_alloc_realloc_param_entity_newline as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test__ifdef_xml_dtd(
-            tc_alloc,
-            Some(test_alloc_realloc_ce_extends_pe as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test__ifdef_xml_dtd(
-            tc_alloc,
-            Some(test_alloc_realloc_attributes as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_alloc_long_doc_name as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_long_base as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_long_base as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_long_public_id as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_long_public_id as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_long_entity_value as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_long_entity_value as unsafe extern "C" fn() -> ()),
-        );
-        tcase_add_test__if_xml_ge(
-            tc_alloc,
-            Some(test_alloc_long_notation as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_long_notation as extern "C" fn() -> ()),
         );
         tcase_add_test__ifdef_xml_dtd(
             tc_alloc,
             Some(
-                test_alloc_reset_after_external_entity_parser_create_fail
-                    as unsafe extern "C" fn() -> (),
+                test_alloc_reset_after_external_entity_parser_create_fail as extern "C" fn() -> (),
             ),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_tracker_size_recorded as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_tracker_size_recorded as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_tracker_pointer_alignment as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_tracker_pointer_alignment as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_tracker_maximum_amplification as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_tracker_maximum_amplification as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_tracker_threshold as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_tracker_threshold as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_tracker_getbuffer_unlimited as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_tracker_getbuffer_unlimited as extern "C" fn() -> ()),
         );
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_alloc_tracker_api as unsafe extern "C" fn() -> ()),
+            Some(test_alloc_tracker_api as extern "C" fn() -> ()),
         );
-        tcase_add_test(
-            tc_alloc,
-            Some(test_mem_api_cycle as unsafe extern "C" fn() -> ()),
-        );
+        tcase_add_test(tc_alloc, Some(test_mem_api_cycle as extern "C" fn() -> ()));
         tcase_add_test__if_xml_ge(
             tc_alloc,
-            Some(test_mem_api_unlimited as unsafe extern "C" fn() -> ()),
+            Some(test_mem_api_unlimited as extern "C" fn() -> ()),
         );
     }
 }
