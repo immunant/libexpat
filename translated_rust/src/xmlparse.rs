@@ -3171,6 +3171,36 @@ fn entity_ref<'a>(entity: *const ENTITY) -> Option<&'a ENTITY> {
     entity_ref_from_raw!(entity)
 }
 
+macro_rules! dtd_ref_from_raw {
+    ($dtd:expr) => {
+        if $dtd.is_null() {
+            None
+        } else {
+            Some(unsafe { &*$dtd })
+        }
+    };
+}
+
+macro_rules! dtd_mut_from_raw {
+    ($dtd:expr) => {
+        if $dtd.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut *$dtd })
+        }
+    };
+}
+
+#[inline]
+fn dtd_ref<'a>(dtd: *const DTD) -> Option<&'a DTD> {
+    dtd_ref_from_raw!(dtd)
+}
+
+#[inline]
+fn dtd_mut<'a>(dtd: *mut DTD) -> Option<&'a mut DTD> {
+    dtd_mut_from_raw!(dtd)
+}
+
 macro_rules! uint_mut_from_raw {
     ($ptr:expr) => {
         if $ptr.is_null() {
@@ -12496,235 +12526,236 @@ fn poolGrow(pool: &mut STRING_POOL) -> crate::expat_h::XML_Bool {
     return crate::expat_h::XML_TRUE;
 }
 
-unsafe extern "C" fn nextScaffoldPart(
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut me: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-    let mut next: ::core::ffi::c_int = 0;
-    if (*dtd).scaffIndex.is_null() {
-        (*dtd).scaffIndex = expat_malloc(
+fn nextScaffoldPart(mut parser: crate::expat_h::XML_Parser) -> ::core::ffi::c_int {
+    let parser_state = parser_ref(parser).expect("non-null parser");
+    let group_size = parser_state.m_groupSize as usize;
+    let dtd = dtd_mut(parser_state.m_dtd).expect("non-null DTD");
+    let next: ::core::ffi::c_int;
+
+    if dtd.scaffIndex.is_null() {
+        dtd.scaffIndex = unsafe_expr!(expat_malloc(
             parser,
-            ((*parser).m_groupSize as crate::__stddef_size_t_h::size_t)
+            (group_size as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<::core::ffi::c_int>()
                     as crate::__stddef_size_t_h::size_t),
             8232 as ::core::ffi::c_int,
-        ) as *mut ::core::ffi::c_int;
-        if (*dtd).scaffIndex.is_null() {
+        )) as *mut ::core::ffi::c_int;
+        if dtd.scaffIndex.is_null() {
             return -1 as ::core::ffi::c_int;
         }
-        *(*dtd).scaffIndex.offset(0 as ::core::ffi::c_int as isize) = 0 as ::core::ffi::c_int;
+        let scaff_index = unsafe_expr!(::core::slice::from_raw_parts_mut(
+            dtd.scaffIndex,
+            group_size
+        ));
+        scaff_index[0] = 0 as ::core::ffi::c_int;
     }
-    if (*dtd).scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
+    if dtd.scaffCount > crate::limits_h::INT_MAX as ::core::ffi::c_uint {
         return -1 as ::core::ffi::c_int;
     }
-    if (*dtd).scaffCount >= (*dtd).scaffSize {
-        let mut temp: *mut CONTENT_SCAFFOLD = ::core::ptr::null_mut::<CONTENT_SCAFFOLD>();
-        if !(*dtd).scaffold.is_null() {
-            if (*dtd).scaffSize > crate::limits_h::UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
+    if dtd.scaffCount >= dtd.scaffSize {
+        let temp: *mut CONTENT_SCAFFOLD;
+        if !dtd.scaffold.is_null() {
+            if dtd.scaffSize > crate::limits_h::UINT_MAX.wrapping_div(2 as ::core::ffi::c_uint) {
                 return -1 as ::core::ffi::c_int;
             }
-            temp = expat_realloc(
+            temp = unsafe_expr!(expat_realloc(
                 parser,
-                (*dtd).scaffold as *mut ::core::ffi::c_void,
-                ((*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
+                dtd.scaffold as *mut ::core::ffi::c_void,
+                (dtd.scaffSize.wrapping_mul(2 as ::core::ffi::c_uint)
                     as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()
                         as crate::__stddef_size_t_h::size_t),
                 8261 as ::core::ffi::c_int,
-            ) as *mut CONTENT_SCAFFOLD;
+            )) as *mut CONTENT_SCAFFOLD;
             if temp.is_null() {
                 return -1 as ::core::ffi::c_int;
             }
-            (*dtd).scaffSize = (*dtd).scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
+            dtd.scaffSize = dtd.scaffSize.wrapping_mul(2 as ::core::ffi::c_uint);
         } else {
-            temp = expat_malloc(
+            temp = unsafe_expr!(expat_malloc(
                 parser,
                 (32 as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<CONTENT_SCAFFOLD>()
                         as crate::__stddef_size_t_h::size_t),
                 8266 as ::core::ffi::c_int,
-            ) as *mut CONTENT_SCAFFOLD;
+            )) as *mut CONTENT_SCAFFOLD;
             if temp.is_null() {
                 return -1 as ::core::ffi::c_int;
             }
-            (*dtd).scaffSize = INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint;
+            dtd.scaffSize = INIT_SCAFFOLD_ELEMENTS as ::core::ffi::c_uint;
         }
-        (*dtd).scaffold = temp;
+        dtd.scaffold = temp;
     }
-    let c2rust_fresh14 = (*dtd).scaffCount;
-    (*dtd).scaffCount = (*dtd).scaffCount.wrapping_add(1);
+    let c2rust_fresh14 = dtd.scaffCount;
+    dtd.scaffCount = dtd.scaffCount.wrapping_add(1);
     next = c2rust_fresh14 as ::core::ffi::c_int;
-    me = (*dtd).scaffold.offset(next as isize) as *mut CONTENT_SCAFFOLD;
-    if (*dtd).scaffLevel != 0 {
-        let mut parent: *mut CONTENT_SCAFFOLD = (*dtd).scaffold.offset(
-            *(*dtd)
-                .scaffIndex
-                .offset(((*dtd).scaffLevel - 1 as ::core::ffi::c_int) as isize)
-                as isize,
-        ) as *mut CONTENT_SCAFFOLD;
-        if (*parent).lastchild != 0 {
-            (*(*dtd).scaffold.offset((*parent).lastchild as isize)).nextsib = next;
+
+    let scaffold = unsafe_expr!(::core::slice::from_raw_parts_mut(
+        dtd.scaffold,
+        dtd.scaffSize as usize
+    ));
+    if dtd.scaffLevel != 0 {
+        let scaff_index = unsafe_expr!(::core::slice::from_raw_parts(dtd.scaffIndex, group_size,));
+        let parent_index =
+            scaff_index[(dtd.scaffLevel - 1 as ::core::ffi::c_int) as usize] as usize;
+        let parent_lastchild = scaffold[parent_index].lastchild;
+        if parent_lastchild != 0 {
+            scaffold[parent_lastchild as usize].nextsib = next;
         }
-        if (*parent).childcnt == 0 {
-            (*parent).firstchild = next;
+        if scaffold[parent_index].childcnt == 0 {
+            scaffold[parent_index].firstchild = next;
         }
-        (*parent).lastchild = next;
-        (*parent).childcnt += 1;
+        scaffold[parent_index].lastchild = next;
+        scaffold[parent_index].childcnt += 1;
     }
-    (*me).nextsib = 0 as ::core::ffi::c_int;
-    (*me).childcnt = (*me).nextsib;
-    (*me).lastchild = (*me).childcnt;
-    (*me).firstchild = (*me).lastchild;
+
+    let me = &mut scaffold[next as usize];
+    me.nextsib = 0 as ::core::ffi::c_int;
+    me.childcnt = me.nextsib;
+    me.lastchild = me.childcnt;
+    me.firstchild = me.lastchild;
     return next;
 }
 
-unsafe extern "C" fn build_model(
-    mut parser: crate::expat_h::XML_Parser,
-) -> *mut crate::expat_h::XML_Content {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut ret: *mut crate::expat_h::XML_Content =
-        ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
-    let mut str: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    if ((*dtd).scaffCount as usize)
+fn build_model(mut parser: crate::expat_h::XML_Parser) -> *mut crate::expat_h::XML_Content {
+    let parser_state = parser_ref(parser).expect("non-null parser");
+    let dtd = dtd_ref(parser_state.m_dtd).expect("non-null DTD");
+
+    if (dtd.scaffCount as usize)
         .wrapping_mul(::core::mem::size_of::<crate::expat_h::XML_Content>() as usize)
         > (crate::stdlib::SIZE_MAX as usize).wrapping_sub(
-            ((*dtd).contentStringLen as usize)
+            (dtd.contentStringLen as usize)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize),
         )
     {
         return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
     }
-    let allocsize: crate::__stddef_size_t_h::size_t = ((*dtd).scaffCount
+    let allocsize: crate::__stddef_size_t_h::size_t = (dtd.scaffCount
         as crate::__stddef_size_t_h::size_t)
         .wrapping_mul(::core::mem::size_of::<crate::expat_h::XML_Content>()
             as crate::__stddef_size_t_h::size_t)
         .wrapping_add(
-            ((*dtd).contentStringLen as crate::__stddef_size_t_h::size_t)
+            (dtd.contentStringLen as crate::__stddef_size_t_h::size_t)
                 .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                     as crate::__stddef_size_t_h::size_t),
         );
-    ret = (*parser)
+
+    let ret = unsafe_expr!(parser_state
         .m_mem
         .malloc_fcn
-        .expect("non-null function pointer")(allocsize)
+        .expect("non-null function pointer")(allocsize))
         as *mut crate::expat_h::XML_Content;
     if ret.is_null() {
         return ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
     }
-    let mut dest: *mut crate::expat_h::XML_Content = ret;
-    let destLimit: *mut crate::expat_h::XML_Content =
-        ret.offset((*dtd).scaffCount as isize) as *mut crate::expat_h::XML_Content;
-    let mut jobDest: *mut crate::expat_h::XML_Content = ret;
-    str = ret.offset((*dtd).scaffCount as isize) as *mut crate::expat_h::XML_Content
-        as *mut crate::expat_external_h::XML_Char;
-    let c2rust_fresh11 = jobDest;
-    jobDest = jobDest.offset(1);
-    (*c2rust_fresh11).numchildren = 0 as ::core::ffi::c_uint;
-    while dest < destLimit {
-        let src_node: ::core::ffi::c_int = (*dest).numchildren as ::core::ffi::c_int;
-        (*dest).type_0 = (*(*dtd).scaffold.offset(src_node as isize)).type_0;
-        (*dest).quant = (*(*dtd).scaffold.offset(src_node as isize)).quant;
-        if (*dest).type_0 as ::core::ffi::c_uint
+
+    let nodes = unsafe_expr!(::core::slice::from_raw_parts_mut(
+        ret,
+        dtd.scaffCount as usize
+    ));
+    let scaffold = unsafe_expr!(::core::slice::from_raw_parts(
+        dtd.scaffold,
+        dtd.scaffCount as usize,
+    ));
+    let mut str =
+        unsafe_expr!(ret.add(dtd.scaffCount as usize)) as *mut crate::expat_external_h::XML_Char;
+    let mut job_dest_index = 1usize;
+    nodes[0].numchildren = 0 as ::core::ffi::c_uint;
+
+    for dest_index in 0..nodes.len() {
+        let src_node: usize = nodes[dest_index].numchildren as usize;
+        nodes[dest_index].type_0 = scaffold[src_node].type_0;
+        nodes[dest_index].quant = scaffold[src_node].quant;
+        if nodes[dest_index].type_0 as ::core::ffi::c_uint
             == crate::expat_h::XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            let mut src: *const crate::expat_external_h::XML_Char =
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            (*dest).name = str;
-            src = (*(*dtd).scaffold.offset(src_node as isize)).name;
+            let mut src = scaffold[src_node].name;
+            nodes[dest_index].name = str;
             loop {
-                let c2rust_fresh12 = str;
-                str = str.offset(1);
-                *c2rust_fresh12 = *src;
-                if *src == 0 {
+                let ch = unsafe_expr!(*src);
+                unsafe_expr!(*str = ch);
+                str = str.wrapping_add(1);
+                if ch == 0 {
                     break;
                 }
-                src = src.offset(1);
+                src = src.wrapping_add(1);
             }
-            (*dest).numchildren = 0 as ::core::ffi::c_uint;
-            (*dest).children = ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
+            nodes[dest_index].numchildren = 0 as ::core::ffi::c_uint;
+            nodes[dest_index].children = ::core::ptr::null_mut::<crate::expat_h::XML_Content>();
         } else {
-            let mut i: ::core::ffi::c_uint = 0;
-            let mut cn: ::core::ffi::c_int = 0;
-            (*dest).name = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-            (*dest).numchildren =
-                (*(*dtd).scaffold.offset(src_node as isize)).childcnt as ::core::ffi::c_uint;
-            (*dest).children = jobDest;
-            i = 0 as ::core::ffi::c_uint;
-            cn = (*(*dtd).scaffold.offset(src_node as isize)).firstchild;
-            while i < (*dest).numchildren {
-                let c2rust_fresh13 = jobDest;
-                jobDest = jobDest.offset(1);
-                (*c2rust_fresh13).numchildren = cn as ::core::ffi::c_uint;
-                i = i.wrapping_add(1);
-                cn = (*(*dtd).scaffold.offset(cn as isize)).nextsib;
+            let mut cn = scaffold[src_node].firstchild;
+            nodes[dest_index].name = ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+            nodes[dest_index].numchildren = scaffold[src_node].childcnt as ::core::ffi::c_uint;
+            nodes[dest_index].children = unsafe_expr!(ret.add(job_dest_index));
+            let child_count = nodes[dest_index].numchildren as usize;
+            for _ in 0..child_count {
+                nodes[job_dest_index].numchildren = cn as ::core::ffi::c_uint;
+                job_dest_index += 1;
+                cn = scaffold[cn as usize].nextsib;
             }
         }
-        dest = dest.offset(1);
     }
     return ret;
 }
 
-unsafe extern "C" fn getElementType(
+fn getElementType(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut ELEMENT_TYPE {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut name: *const crate::expat_external_h::XML_Char =
-        poolStoreString(&mut (*dtd).pool, enc, ptr, end);
-    let mut ret: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+    let dtd_ptr = parser_ref(parser).expect("non-null parser").m_dtd;
+    let dtd = dtd_mut(dtd_ptr).expect("non-null DTD");
+    let name: *const crate::expat_external_h::XML_Char =
+        poolStoreString(&mut dtd.pool, enc, ptr, end);
     if name.is_null() {
         return ::core::ptr::null_mut::<ELEMENT_TYPE>();
     }
-    ret = lookup(
+
+    let ret = lookup(
         parser,
-        &mut (*dtd).elementTypes,
+        &mut dtd.elementTypes,
         name as KEY,
         ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
     ) as *mut ELEMENT_TYPE;
     if ret.is_null() {
         return ::core::ptr::null_mut::<ELEMENT_TYPE>();
     }
-    if (*ret).name != name {
-        (*dtd).pool.ptr = (*dtd).pool.start;
+    if unsafe_expr!((*ret).name) != name {
+        dtd.pool.ptr = dtd.pool.start;
     } else {
-        (*dtd).pool.start = (*dtd).pool.ptr;
-        if setElementTypePrefix(parser, ret) == 0 {
+        dtd.pool.start = dtd.pool.ptr;
+        if unsafe_expr!(setElementTypePrefix(parser, ret)) == 0 {
             return ::core::ptr::null_mut::<ELEMENT_TYPE>();
         }
     }
     return ret;
 }
 
-unsafe extern "C" fn copyString(
+fn copyString(
     mut s: *const crate::expat_external_h::XML_Char,
     mut parser: crate::expat_h::XML_Parser,
 ) -> *mut crate::expat_external_h::XML_Char {
     let mut charsRequired: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    let mut result: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    while *s.offset(charsRequired as isize) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
+    while unsafe_expr!(*s.add(charsRequired)) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
         charsRequired = charsRequired.wrapping_add(1);
     }
     charsRequired = charsRequired.wrapping_add(1);
-    result = expat_malloc(
+    let result = unsafe_expr!(expat_malloc(
         parser,
         charsRequired.wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
             as crate::__stddef_size_t_h::size_t),
         8456 as ::core::ffi::c_int,
-    ) as *mut crate::expat_external_h::XML_Char;
+    )) as *mut crate::expat_external_h::XML_Char;
     if result.is_null() {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    crate::stdlib::memcpy(
+    unsafe_expr!(crate::stdlib::memcpy(
         result as *mut ::core::ffi::c_void,
         s as *const ::core::ffi::c_void,
         charsRequired.wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
             as crate::__stddef_size_t_h::size_t),
-    );
+    ));
     return result;
 }
 
