@@ -10857,6 +10857,10 @@ unsafe extern "C" fn processXmlDecl(
 ) -> crate::expat_h::XML_Error {
     let encoding = parser_encoding(parser);
     let mut encodingName: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    // `parse_xml_decl_with_info` gives this bounded endpoint along with the
+    // name start.  Keep it so pool copies never have to rescan the raw token.
+    let mut encodingNameEnd: *const ::core::ffi::c_char =
+        ::core::ptr::null::<::core::ffi::c_char>();
     let mut storedEncName: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     let mut newEncoding: *const crate::src::xmltok::ENCODING =
@@ -10914,6 +10918,10 @@ unsafe extern "C" fn processXmlDecl(
                     .encoding_name
                     .as_ref()
                     .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
+                encodingNameEnd = declaration
+                    .encoding_name
+                    .as_ref()
+                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.end));
                 if let Some(range) = declaration.encoding_name {
                     newEncoding = match crate::src::xmltok::xml_decl_encoding(
                         encoding_info,
@@ -10969,9 +10977,7 @@ unsafe extern "C" fn processXmlDecl(
                     &raw mut parser_state.m_temp2Pool,
                     encoding,
                     encodingName,
-                    encodingName.wrapping_add(
-                        crate::src::xmltok::name_length(encoding, encodingName) as usize,
-                    ),
+                    encodingNameEnd,
                 );
                 if storedEncName.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -11040,9 +11046,7 @@ unsafe extern "C" fn processXmlDecl(
                     &raw mut parser_state.m_temp2Pool,
                     encoding,
                     encodingName,
-                    encodingName.wrapping_add(
-                        crate::src::xmltok::name_length(encoding, encodingName) as usize,
-                    ),
+                    encodingNameEnd,
                 );
                 if storedEncName.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
