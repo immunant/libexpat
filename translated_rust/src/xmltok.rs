@@ -13360,7 +13360,7 @@ pub mod xmltok_ns_c {
         }
         return encodings()[i as usize];
     }
-    pub unsafe extern "C" fn XmlParseXmlDecl(
+    pub extern "C" fn XmlParseXmlDecl(
         mut isGeneralTextEntity: ::core::ffi::c_int,
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -13372,27 +13372,49 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        return doParseXmlDecl(
-            Some(
-                findEncoding
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::xmltok::ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        );
+        unsafe {
+            return doParseXmlDecl(
+                Some(
+                    findEncoding
+                        as unsafe extern "C" fn(
+                            *const crate::src::xmltok::ENCODING,
+                            *const ::core::ffi::c_char,
+                            *const ::core::ffi::c_char,
+                        )
+                            -> *const crate::src::xmltok::ENCODING,
+                ),
+                isGeneralTextEntity,
+                enc,
+                ptr,
+                end,
+                &mut *badPtr,
+                if versionPtr.is_null() {
+                    None
+                } else {
+                    Some(&mut *versionPtr)
+                },
+                if versionEndPtr.is_null() {
+                    None
+                } else {
+                    Some(&mut *versionEndPtr)
+                },
+                if encodingName.is_null() {
+                    None
+                } else {
+                    Some(&mut *encodingName)
+                },
+                if encoding.is_null() {
+                    None
+                } else {
+                    Some(&mut *encoding)
+                },
+                if standalone.is_null() {
+                    None
+                } else {
+                    Some(&mut *standalone)
+                },
+            );
+        }
     }
     #[export_name = "XmlParseXmlDecl"]
 
@@ -13586,7 +13608,7 @@ pub mod xmltok_ns_c {
         }
         return encodings_ns()[i as usize];
     }
-    pub unsafe extern "C" fn XmlParseXmlDeclNS(
+    pub extern "C" fn XmlParseXmlDeclNS(
         mut isGeneralTextEntity: ::core::ffi::c_int,
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -13598,27 +13620,49 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        return doParseXmlDecl(
-            Some(
-                findEncodingNS
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::xmltok::ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        );
+        unsafe {
+            return doParseXmlDecl(
+                Some(
+                    findEncodingNS
+                        as unsafe extern "C" fn(
+                            *const crate::src::xmltok::ENCODING,
+                            *const ::core::ffi::c_char,
+                            *const ::core::ffi::c_char,
+                        )
+                            -> *const crate::src::xmltok::ENCODING,
+                ),
+                isGeneralTextEntity,
+                enc,
+                ptr,
+                end,
+                &mut *badPtr,
+                if versionPtr.is_null() {
+                    None
+                } else {
+                    Some(&mut *versionPtr)
+                },
+                if versionEndPtr.is_null() {
+                    None
+                } else {
+                    Some(&mut *versionEndPtr)
+                },
+                if encodingName.is_null() {
+                    None
+                } else {
+                    Some(&mut *encodingName)
+                },
+                if encoding.is_null() {
+                    None
+                } else {
+                    Some(&mut *encoding)
+                },
+                if standalone.is_null() {
+                    None
+                } else {
+                    Some(&mut *standalone)
+                },
+            );
+        }
     }
     #[export_name = "XmlParseXmlDeclNS"]
 
@@ -21876,25 +21920,127 @@ extern "C" fn initUpdatePosition(
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }
 
-unsafe extern "C" fn toAscii(
+enum XmlDeclEncodingAction {
+    MinBytes,
+    ToAscii {
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+    },
+    NameMatchesAscii {
+        name: *const ::core::ffi::c_char,
+        name_end: *const ::core::ffi::c_char,
+        ascii: *const ::core::ffi::c_char,
+    },
+    FindEncoding {
+        finder: unsafe extern "C" fn(
+            *const crate::src::xmltok::ENCODING,
+            *const ::core::ffi::c_char,
+            *const ::core::ffi::c_char,
+        ) -> *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+    },
+}
+
+enum XmlDeclEncodingResult {
+    Int(::core::ffi::c_int),
+    Encoding(*const crate::src::xmltok::ENCODING),
+}
+
+fn xml_decl_encoding_action(
     mut enc: *const crate::src::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
+    action: XmlDeclEncodingAction,
+) -> XmlDeclEncodingResult {
+    unsafe {
+        match action {
+            XmlDeclEncodingAction::MinBytes => XmlDeclEncodingResult::Int((*enc).minBytesPerChar),
+            XmlDeclEncodingAction::ToAscii { mut ptr, end } => {
+                let mut buf: [::core::ffi::c_char; 1] = [0; 1];
+                let mut p = buf.as_mut_ptr();
+                let to_lim = p.wrapping_add(1);
+                (*enc).utf8Convert.expect("non-null function pointer")(
+                    enc,
+                    &raw mut ptr,
+                    end,
+                    &raw mut p,
+                    to_lim,
+                );
+                XmlDeclEncodingResult::Int(if p == buf.as_mut_ptr() {
+                    -1 as ::core::ffi::c_int
+                } else {
+                    buf[0] as ::core::ffi::c_int
+                })
+            }
+            XmlDeclEncodingAction::NameMatchesAscii {
+                name,
+                name_end,
+                ascii,
+            } => XmlDeclEncodingResult::Int((*enc)
+                .nameMatchesAscii
+                .expect("non-null function pointer")(
+                enc, name, name_end, ascii
+            )),
+            XmlDeclEncodingAction::FindEncoding { finder, ptr, end } => {
+                XmlDeclEncodingResult::Encoding(finder(enc, ptr, end))
+            }
+        }
+    }
+}
+
+fn xml_decl_min_bytes(enc: *const crate::src::xmltok::ENCODING) -> ::core::ffi::c_int {
+    match xml_decl_encoding_action(enc, XmlDeclEncodingAction::MinBytes) {
+        XmlDeclEncodingResult::Int(value) => value,
+        XmlDeclEncodingResult::Encoding(_) => unreachable!(),
+    }
+}
+
+fn toAscii(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut buf: [::core::ffi::c_char; 1] = [0; 1];
-    let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-    (*enc).utf8Convert.expect("non-null function pointer")(
+    match xml_decl_encoding_action(enc, XmlDeclEncodingAction::ToAscii { ptr, end }) {
+        XmlDeclEncodingResult::Int(value) => value,
+        XmlDeclEncodingResult::Encoding(_) => unreachable!(),
+    }
+}
+
+fn xml_decl_name_matches_ascii(
+    enc: *const crate::src::xmltok::ENCODING,
+    name: *const ::core::ffi::c_char,
+    name_end: *const ::core::ffi::c_char,
+    ascii: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    match xml_decl_encoding_action(
         enc,
-        &raw mut ptr,
-        end,
-        &raw mut p,
-        p.offset(1 as ::core::ffi::c_int as isize),
-    );
-    if p == &raw mut buf as *mut ::core::ffi::c_char {
-        return -1 as ::core::ffi::c_int;
-    } else {
-        return buf[0 as ::core::ffi::c_int as usize] as ::core::ffi::c_int;
-    };
+        XmlDeclEncodingAction::NameMatchesAscii {
+            name,
+            name_end,
+            ascii,
+        },
+    ) {
+        XmlDeclEncodingResult::Int(value) => value,
+        XmlDeclEncodingResult::Encoding(_) => unreachable!(),
+    }
+}
+
+fn xml_decl_find_encoding(
+    enc: *const crate::src::xmltok::ENCODING,
+    finder: unsafe extern "C" fn(
+        *const crate::src::xmltok::ENCODING,
+        *const ::core::ffi::c_char,
+        *const ::core::ffi::c_char,
+    ) -> *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> *const crate::src::xmltok::ENCODING {
+    match xml_decl_encoding_action(
+        enc,
+        XmlDeclEncodingAction::FindEncoding { finder, ptr, end },
+    ) {
+        XmlDeclEncodingResult::Encoding(encoding) => encoding,
+        XmlDeclEncodingResult::Int(_) => unreachable!(),
+    }
 }
 
 extern "C" fn isSpace(mut c: ::core::ffi::c_int) -> ::core::ffi::c_int {
@@ -21905,17 +22051,18 @@ extern "C" fn isSpace(mut c: ::core::ffi::c_int) -> ::core::ffi::c_int {
     return 0 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn parsePseudoAttribute(
+fn parsePseudoAttribute(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut namePtr: *mut *const ::core::ffi::c_char,
-    mut nameEndPtr: *mut *const ::core::ffi::c_char,
-    mut valPtr: *mut *const ::core::ffi::c_char,
-    mut nextTokPtr: *mut *const ::core::ffi::c_char,
+    namePtr: &mut *const ::core::ffi::c_char,
+    nameEndPtr: &mut *const ::core::ffi::c_char,
+    valPtr: &mut *const ::core::ffi::c_char,
+    nextTokPtr: &mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let mut c: ::core::ffi::c_int = 0;
     let mut open: ::core::ffi::c_char = 0;
+    let min_bytes = xml_decl_min_bytes(enc) as isize;
     if ptr == end {
         *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
         return 1 as ::core::ffi::c_int;
@@ -21925,7 +22072,7 @@ unsafe extern "C" fn parsePseudoAttribute(
         return 0 as ::core::ffi::c_int;
     }
     loop {
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(min_bytes);
         if !(isSpace(toAscii(enc, ptr, end)) != 0) {
             break;
         }
@@ -21947,7 +22094,7 @@ unsafe extern "C" fn parsePseudoAttribute(
         } else if isSpace(c) != 0 {
             *nameEndPtr = ptr;
             loop {
-                ptr = ptr.offset((*enc).minBytesPerChar as isize);
+                ptr = ptr.wrapping_offset(min_bytes);
                 c = toAscii(enc, ptr, end);
                 if !(isSpace(c) != 0) {
                     break;
@@ -21959,17 +22106,17 @@ unsafe extern "C" fn parsePseudoAttribute(
             }
             break;
         } else {
-            ptr = ptr.offset((*enc).minBytesPerChar as isize);
+            ptr = ptr.wrapping_offset(min_bytes);
         }
     }
     if ptr == *namePtr {
         *nextTokPtr = ptr;
         return 0 as ::core::ffi::c_int;
     }
-    ptr = ptr.offset((*enc).minBytesPerChar as isize);
+    ptr = ptr.wrapping_offset(min_bytes);
     c = toAscii(enc, ptr, end);
     while isSpace(c) != 0 {
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(min_bytes);
         c = toAscii(enc, ptr, end);
     }
     if c != crate::ascii_h::ASCII_QUOT && c != crate::ascii_h::ASCII_APOS {
@@ -21977,7 +22124,7 @@ unsafe extern "C" fn parsePseudoAttribute(
         return 0 as ::core::ffi::c_int;
     }
     open = c as ::core::ffi::c_char;
-    ptr = ptr.offset((*enc).minBytesPerChar as isize);
+    ptr = ptr.wrapping_offset(min_bytes);
     *valPtr = ptr;
     loop {
         c = toAscii(enc, ptr, end);
@@ -21994,9 +22141,9 @@ unsafe extern "C" fn parsePseudoAttribute(
             *nextTokPtr = ptr;
             return 0 as ::core::ffi::c_int;
         }
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(min_bytes);
     }
-    *nextTokPtr = ptr.offset((*enc).minBytesPerChar as isize);
+    *nextTokPtr = ptr.wrapping_offset(min_bytes);
     return 1 as ::core::ffi::c_int;
 }
 
@@ -22050,7 +22197,7 @@ static KW_no: [::core::ffi::c_char; 3] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-unsafe extern "C" fn doParseXmlDecl(
+fn doParseXmlDecl(
     mut encodingFinder: Option<
         unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
@@ -22062,60 +22209,38 @@ unsafe extern "C" fn doParseXmlDecl(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut badPtr: *mut *const ::core::ffi::c_char,
-    mut versionPtr: *mut *const ::core::ffi::c_char,
-    mut versionEndPtr: *mut *const ::core::ffi::c_char,
-    mut encodingName: *mut *const ::core::ffi::c_char,
-    mut encoding: *mut *const crate::src::xmltok::ENCODING,
-    mut standalone: *mut ::core::ffi::c_int,
+    badPtr: &mut *const ::core::ffi::c_char,
+    versionPtr: Option<&mut *const ::core::ffi::c_char>,
+    versionEndPtr: Option<&mut *const ::core::ffi::c_char>,
+    encodingName: Option<&mut *const ::core::ffi::c_char>,
+    encoding: Option<&mut *const crate::src::xmltok::ENCODING>,
+    mut standalone: Option<&mut ::core::ffi::c_int>,
 ) -> ::core::ffi::c_int {
     let mut val: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut name: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut nameEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    ptr = ptr.offset((5 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize);
-    end = end.offset(-((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize));
-    if parsePseudoAttribute(
-        enc,
-        ptr,
-        end,
-        &raw mut name,
-        &raw mut nameEnd,
-        &raw mut val,
-        &raw mut ptr,
-    ) == 0
+    let min_bytes = xml_decl_min_bytes(enc);
+    ptr = ptr.wrapping_offset((5 as ::core::ffi::c_int * min_bytes) as isize);
+    end = end.wrapping_offset(-((2 as ::core::ffi::c_int * min_bytes) as isize));
+    if parsePseudoAttribute(enc, ptr, end, &mut name, &mut nameEnd, &mut val, &mut ptr) == 0
         || name.is_null()
     {
         *badPtr = ptr;
         return 0 as ::core::ffi::c_int;
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        name,
-        nameEnd,
-        KW_version.as_ptr(),
-    ) == 0
-    {
+    if xml_decl_name_matches_ascii(enc, name, nameEnd, KW_version.as_ptr()) == 0 {
         if isGeneralTextEntity == 0 {
             *badPtr = name;
             return 0 as ::core::ffi::c_int;
         }
     } else {
-        if !versionPtr.is_null() {
+        if let Some(versionPtr) = versionPtr {
             *versionPtr = val;
         }
-        if !versionEndPtr.is_null() {
+        if let Some(versionEndPtr) = versionEndPtr {
             *versionEndPtr = ptr;
         }
-        if parsePseudoAttribute(
-            enc,
-            ptr,
-            end,
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
+        if parsePseudoAttribute(enc, ptr, end, &mut name, &mut nameEnd, &mut val, &mut ptr) == 0 {
             *badPtr = ptr;
             return 0 as ::core::ffi::c_int;
         }
@@ -22127,13 +22252,7 @@ unsafe extern "C" fn doParseXmlDecl(
             return 1 as ::core::ffi::c_int;
         }
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        name,
-        nameEnd,
-        KW_encoding.as_ptr(),
-    ) != 0
-    {
+    if xml_decl_name_matches_ascii(enc, name, nameEnd, KW_encoding.as_ptr()) != 0 {
         let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
         if !(crate::ascii_h::ASCII_a_1 <= c && c <= crate::ascii_h::ASCII_z)
             && !(crate::ascii_h::ASCII_A <= c && c <= crate::ascii_h::ASCII_Z)
@@ -22141,26 +22260,18 @@ unsafe extern "C" fn doParseXmlDecl(
             *badPtr = val;
             return 0 as ::core::ffi::c_int;
         }
-        if !encodingName.is_null() {
+        if let Some(encodingName) = encodingName {
             *encodingName = val;
         }
-        if !encoding.is_null() {
-            *encoding = encodingFinder.expect("non-null function pointer")(
+        if let Some(encoding) = encoding {
+            *encoding = xml_decl_find_encoding(
                 enc,
+                encodingFinder.expect("non-null function pointer"),
                 val,
-                ptr.offset(-((*enc).minBytesPerChar as isize)),
+                ptr.wrapping_offset(-(min_bytes as isize)),
             );
         }
-        if parsePseudoAttribute(
-            enc,
-            ptr,
-            end,
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
+        if parsePseudoAttribute(enc, ptr, end, &mut name, &mut nameEnd, &mut val, &mut ptr) == 0 {
             *badPtr = ptr;
             return 0 as ::core::ffi::c_int;
         }
@@ -22168,43 +22279,38 @@ unsafe extern "C" fn doParseXmlDecl(
             return 1 as ::core::ffi::c_int;
         }
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        name,
-        nameEnd,
-        KW_standalone.as_ptr(),
-    ) == 0
+    if xml_decl_name_matches_ascii(enc, name, nameEnd, KW_standalone.as_ptr()) == 0
         || isGeneralTextEntity != 0
     {
         *badPtr = name;
         return 0 as ::core::ffi::c_int;
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+    if xml_decl_name_matches_ascii(
         enc,
         val,
-        ptr.offset(-((*enc).minBytesPerChar as isize)),
+        ptr.wrapping_offset(-(min_bytes as isize)),
         KW_yes.as_ptr(),
     ) != 0
     {
-        if !standalone.is_null() {
-            *standalone = 1 as ::core::ffi::c_int;
+        if let Some(standalone) = standalone.as_mut() {
+            **standalone = 1 as ::core::ffi::c_int;
         }
-    } else if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+    } else if xml_decl_name_matches_ascii(
         enc,
         val,
-        ptr.offset(-((*enc).minBytesPerChar as isize)),
+        ptr.wrapping_offset(-(min_bytes as isize)),
         KW_no.as_ptr(),
     ) != 0
     {
-        if !standalone.is_null() {
-            *standalone = 0 as ::core::ffi::c_int;
+        if let Some(standalone) = standalone.as_mut() {
+            **standalone = 0 as ::core::ffi::c_int;
         }
     } else {
         *badPtr = val;
         return 0 as ::core::ffi::c_int;
     }
     while isSpace(toAscii(enc, ptr, end)) != 0 {
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(min_bytes as isize);
     }
     if ptr != end {
         *badPtr = ptr;
