@@ -2500,9 +2500,7 @@ unsafe extern "C" fn parserInit(
                 *mut *const ::core::ffi::c_char,
             ) -> crate::expat_h::XML_Error,
     );
-    crate::src::xmlrole::XmlPrologStateInit(
-        &raw mut (*parser).m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
-    );
+    crate::src::xmlrole::XmlPrologStateInit(&mut (*parser).m_prologState);
     if !encodingName.is_null() {
         (*parser).m_protocolEncodingName = copyString(encodingName, parser);
     }
@@ -2893,9 +2891,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         );
     } else {
         (*parser).m_isParamEntity = crate::expat_h::XML_TRUE;
-        crate::src::xmlrole::XmlPrologStateInitExternalEntity(
-            &raw mut (*parser).m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
-        );
+        crate::src::xmlrole::XmlPrologStateInitExternalEntity(&mut (*parser).m_prologState);
         (*parser).m_processor = Some(
             externalParEntInitProcessor
                 as unsafe extern "C" fn(
@@ -5729,11 +5725,7 @@ unsafe extern "C" fn doContent(
                         .expect("non-null function pointer")(
                         (*parser).m_handlerArg,
                         &raw mut buf as *mut crate::expat_external_h::XML_Char,
-                        crate::src::xmltok::XmlUtf8Encode(
-                            n,
-                            &raw mut buf as *mut crate::expat_external_h::XML_Char
-                                as *mut ::core::ffi::c_char,
-                        ),
+                        crate::src::xmltok::XmlUtf8Encode(n, &mut buf),
                     );
                 } else if (*parser).m_defaultHandler.is_some() {
                     reportDefault(parser, enc, s, next);
@@ -9955,11 +9947,7 @@ unsafe extern "C" fn appendAttributeValue(
                 {
                     c2rust_current_block_70 = 18038362259723567392;
                 } else {
-                    n = crate::src::xmltok::XmlUtf8Encode(
-                        n,
-                        &raw mut buf as *mut crate::expat_external_h::XML_Char
-                            as *mut ::core::ffi::c_char,
-                    );
+                    n = crate::src::xmltok::XmlUtf8Encode(n, &mut buf);
                     i = 0 as ::core::ffi::c_int;
                     while i < n {
                         if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
@@ -10320,11 +10308,7 @@ unsafe extern "C" fn storeEntityValue(
                         result = crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                         break;
                     } else {
-                        n = crate::src::xmltok::XmlUtf8Encode(
-                            n,
-                            &raw mut buf as *mut crate::expat_external_h::XML_Char
-                                as *mut ::core::ffi::c_char,
-                        );
+                        n = crate::src::xmltok::XmlUtf8Encode(n, &mut buf);
                         i = 0 as ::core::ffi::c_int;
                         while i < n {
                             if (*pool).end

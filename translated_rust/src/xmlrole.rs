@@ -3760,7 +3760,7 @@ unsafe extern "C" fn declClose(
     return common(state, tok);
 }
 
-unsafe extern "C" fn error(
+extern "C" fn error(
     mut state: *mut crate::src::xmlrole::PROLOG_STATE,
     mut tok: ::core::ffi::c_int,
     mut ptr: *const ::core::ffi::c_char,
@@ -3798,8 +3798,8 @@ unsafe extern "C" fn common(
         >;
     return crate::src::xmlrole::XML_ROLE_ERROR as ::core::ffi::c_int;
 }
-pub unsafe extern "C" fn XmlPrologStateInit(mut state: *mut crate::src::xmlrole::PROLOG_STATE) {
-    (*state).handler = Some(
+pub fn XmlPrologStateInit(state: &mut crate::src::xmlrole::PROLOG_STATE) {
+    state.handler = Some(
         prolog0
             as unsafe extern "C" fn(
                 *mut crate::src::xmlrole::PROLOG_STATE,
@@ -3818,19 +3818,17 @@ pub unsafe extern "C" fn XmlPrologStateInit(mut state: *mut crate::src::xmlrole:
                 *const crate::src::xmltok::ENCODING,
             ) -> ::core::ffi::c_int,
         >;
-    (*state).documentEntity = 1 as ::core::ffi::c_int;
-    (*state).includeLevel = 0 as ::core::ffi::c_uint;
-    (*state).inEntityValue = 0 as ::core::ffi::c_int;
+    state.documentEntity = 1 as ::core::ffi::c_int;
+    state.includeLevel = 0 as ::core::ffi::c_uint;
+    state.inEntityValue = 0 as ::core::ffi::c_int;
 }
 #[export_name = "XmlPrologStateInit"]
 
 pub unsafe extern "C" fn XmlPrologStateInit_ffi(mut state: *mut crate::src::xmlrole::PROLOG_STATE) {
-    XmlPrologStateInit(state)
+    XmlPrologStateInit(&mut *state)
 }
-pub unsafe extern "C" fn XmlPrologStateInitExternalEntity(
-    mut state: *mut crate::src::xmlrole::PROLOG_STATE,
-) {
-    (*state).handler = Some(
+pub fn XmlPrologStateInitExternalEntity(state: &mut crate::src::xmlrole::PROLOG_STATE) {
+    state.handler = Some(
         externalSubset0
             as unsafe extern "C" fn(
                 *mut crate::src::xmlrole::PROLOG_STATE,
@@ -3849,13 +3847,13 @@ pub unsafe extern "C" fn XmlPrologStateInitExternalEntity(
                 *const crate::src::xmltok::ENCODING,
             ) -> ::core::ffi::c_int,
         >;
-    (*state).documentEntity = 0 as ::core::ffi::c_int;
-    (*state).includeLevel = 0 as ::core::ffi::c_uint;
+    state.documentEntity = 0 as ::core::ffi::c_int;
+    state.includeLevel = 0 as ::core::ffi::c_uint;
 }
 #[export_name = "XmlPrologStateInitExternalEntity"]
 
 pub unsafe extern "C" fn XmlPrologStateInitExternalEntity_ffi(
     mut state: *mut crate::src::xmlrole::PROLOG_STATE,
 ) {
-    XmlPrologStateInitExternalEntity(state)
+    XmlPrologStateInitExternalEntity(&mut *state)
 }

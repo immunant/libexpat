@@ -19622,7 +19622,7 @@ static ascii_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-unsafe extern "C" fn unicode_byte_type(
+extern "C" fn unicode_byte_type(
     mut hi: ::core::ffi::c_char,
     mut lo: ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
@@ -22904,50 +22904,41 @@ extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi:
     }
     return result;
 }
-pub unsafe extern "C" fn XmlUtf8Encode(
+pub fn XmlUtf8Encode(
     mut c: ::core::ffi::c_int,
-    mut buf: *mut ::core::ffi::c_char,
+    buf: &mut [::core::ffi::c_char],
 ) -> ::core::ffi::c_int {
     if c < 0 as ::core::ffi::c_int {
         return 0 as ::core::ffi::c_int;
     }
     if c < min2 as ::core::ffi::c_int {
-        *buf.offset(0 as ::core::ffi::c_int as isize) =
-            (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[0] = (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 1 as ::core::ffi::c_int;
     }
     if c < min3 as ::core::ffi::c_int {
-        *buf.offset(0 as ::core::ffi::c_int as isize) = (c >> 6 as ::core::ffi::c_int
-            | UTF8_cval2 as ::core::ffi::c_int)
+        buf[0] = (c >> 6 as ::core::ffi::c_int | UTF8_cval2 as ::core::ffi::c_int)
             as ::core::ffi::c_char;
-        *buf.offset(1 as ::core::ffi::c_int as isize) =
+        buf[1] =
             (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 2 as ::core::ffi::c_int;
     }
     if c < min4 as ::core::ffi::c_int {
-        *buf.offset(0 as ::core::ffi::c_int as isize) = (c >> 12 as ::core::ffi::c_int
-            | UTF8_cval3 as ::core::ffi::c_int)
+        buf[0] = (c >> 12 as ::core::ffi::c_int | UTF8_cval3 as ::core::ffi::c_int)
             as ::core::ffi::c_char;
-        *buf.offset(1 as ::core::ffi::c_int as isize) = (c >> 6 as ::core::ffi::c_int
-            & 0x3f as ::core::ffi::c_int
-            | 0x80 as ::core::ffi::c_int)
-            as ::core::ffi::c_char;
-        *buf.offset(2 as ::core::ffi::c_int as isize) =
+        buf[1] = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+            | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[2] =
             (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 3 as ::core::ffi::c_int;
     }
     if c < 0x110000 as ::core::ffi::c_int {
-        *buf.offset(0 as ::core::ffi::c_int as isize) = (c >> 18 as ::core::ffi::c_int
-            | UTF8_cval4 as ::core::ffi::c_int)
+        buf[0] = (c >> 18 as ::core::ffi::c_int | UTF8_cval4 as ::core::ffi::c_int)
             as ::core::ffi::c_char;
-        *buf.offset(1 as ::core::ffi::c_int as isize) =
-            (c >> 12 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-        *buf.offset(2 as ::core::ffi::c_int as isize) = (c >> 6 as ::core::ffi::c_int
-            & 0x3f as ::core::ffi::c_int
-            | 0x80 as ::core::ffi::c_int)
-            as ::core::ffi::c_char;
-        *buf.offset(3 as ::core::ffi::c_int as isize) =
+        buf[1] = (c >> 12 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+            | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[2] = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+            | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[3] =
             (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
         return 4 as ::core::ffi::c_int;
     }
@@ -22959,26 +22950,24 @@ pub unsafe extern "C" fn XmlUtf8Encode_ffi(
     mut c: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    XmlUtf8Encode(c, buf)
+    XmlUtf8Encode(c, ::core::slice::from_raw_parts_mut(buf, 4))
 }
-pub unsafe extern "C" fn XmlUtf16Encode(
+pub fn XmlUtf16Encode(
     mut charNum: ::core::ffi::c_int,
-    mut buf: *mut ::core::ffi::c_ushort,
+    buf: &mut [::core::ffi::c_ushort],
 ) -> ::core::ffi::c_int {
     if charNum < 0 as ::core::ffi::c_int {
         return 0 as ::core::ffi::c_int;
     }
     if charNum < 0x10000 as ::core::ffi::c_int {
-        *buf.offset(0 as ::core::ffi::c_int as isize) = charNum as ::core::ffi::c_ushort;
+        buf[0] = charNum as ::core::ffi::c_ushort;
         return 1 as ::core::ffi::c_int;
     }
     if charNum < 0x110000 as ::core::ffi::c_int {
         charNum -= 0x10000 as ::core::ffi::c_int;
-        *buf.offset(0 as ::core::ffi::c_int as isize) = ((charNum >> 10 as ::core::ffi::c_int)
-            + 0xd800 as ::core::ffi::c_int)
+        buf[0] = ((charNum >> 10 as ::core::ffi::c_int) + 0xd800 as ::core::ffi::c_int)
             as ::core::ffi::c_ushort;
-        *buf.offset(1 as ::core::ffi::c_int as isize) = ((charNum & 0x3ff as ::core::ffi::c_int)
-            + 0xdc00 as ::core::ffi::c_int)
+        buf[1] = ((charNum & 0x3ff as ::core::ffi::c_int) + 0xdc00 as ::core::ffi::c_int)
             as ::core::ffi::c_ushort;
         return 2 as ::core::ffi::c_int;
     }
@@ -22990,7 +22979,7 @@ pub unsafe extern "C" fn XmlUtf16Encode_ffi(
     mut charNum: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_ushort,
 ) -> ::core::ffi::c_int {
-    XmlUtf16Encode(charNum, buf)
+    XmlUtf16Encode(charNum, ::core::slice::from_raw_parts_mut(buf, 2))
 }
 pub extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
     return ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int;
@@ -23075,7 +23064,7 @@ unsafe extern "C" fn unknown_toUtf8(
         if n == 0 as ::core::ffi::c_int {
             let mut c: ::core::ffi::c_int =
                 (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP);
-            n = XmlUtf8Encode(c, &raw mut buf as *mut ::core::ffi::c_char);
+            n = XmlUtf8Encode(c, &mut buf);
             if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
                 return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
             }
@@ -23232,13 +23221,8 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                 (*e).normal.type_0[i as usize] =
                     crate::xmltok_impl_h::BT_OTHER as ::core::ffi::c_int as ::core::ffi::c_uchar;
             }
-            (*e).utf8[i as usize][0 as ::core::ffi::c_int as usize] = XmlUtf8Encode(
-                c,
-                (&raw mut *(&raw mut (*e).utf8 as *mut [::core::ffi::c_char; 4]).offset(i as isize)
-                    as *mut ::core::ffi::c_char)
-                    .offset(1 as ::core::ffi::c_int as isize),
-            )
-                as ::core::ffi::c_char;
+            (*e).utf8[i as usize][0 as ::core::ffi::c_int as usize] =
+                XmlUtf8Encode(c, &mut (*e).utf8[i as usize][1..]) as ::core::ffi::c_char;
             (*e).utf16[i as usize] = c as ::core::ffi::c_ushort;
         }
         i += 1;
