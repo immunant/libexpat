@@ -7957,6 +7957,29 @@ pub mod xmltok_impl_c {
         result.token
     }
 
+    // The parser owns its input buffer, so CDATA tokenization can use a
+    // checked slice and return an offset rather than exchanging raw cursors.
+    // Keep the C-callable scanner above for the fixed tokenizer table.
+    pub(crate) fn cdata_token(
+        normal: &normal_encoding,
+        input: &[u8],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        match normal.enc.scanners[2] {
+            crate::src::xmltok::Scanner::NormalCdataSection => {
+                normal_cdata_section_tok(input, &normal.type_0, normal.enc.isUtf8 != 0)
+            }
+            crate::src::xmltok::Scanner::Little2CdataSection => {
+                let result = little2_cdata_section_tok_impl(normal, input);
+                (result.token, result.next)
+            }
+            crate::src::xmltok::Scanner::Big2CdataSection => {
+                let result = big2_cdata_section_tok_impl(normal, input);
+                (result.token, result.next)
+            }
+            _ => (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
+        }
+    }
+
     pub unsafe extern "C" fn big2_scanEndTag(
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,

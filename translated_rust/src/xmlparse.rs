@@ -2224,7 +2224,10 @@ impl RootParserState {
 // but is allocated and released in the same growth/free order as the C
 // buffer it replaces.
 struct InputBuffer {
-    bytes: Option<Vec<::core::ffi::c_char>>,
+    // Input is byte-oriented throughout the tokenizer.  Keeping it as bytes
+    // makes bounded scanner windows ordinary Rust slices; C-facing APIs cast
+    // the storage address only at their boundary.
+    bytes: Option<Vec<u8>>,
     release: Option<Box<dyn FnMut()>>,
 }
 
@@ -2234,6 +2237,14 @@ impl InputBuffer {
             bytes: None,
             release: None,
         }
+    }
+
+    fn window_from_addresses(&self, start: usize, end: usize) -> Option<&[u8]> {
+        let bytes = self.bytes.as_deref()?;
+        let base = bytes.as_ptr().addr();
+        let start = start.checked_sub(base)?;
+        let end = end.checked_sub(base)?;
+        (start <= end && end <= bytes.len()).then(|| &bytes[start..end])
     }
 }
 
@@ -2501,7 +2512,10 @@ macro_rules! parser_event_start {
                 .m_buffer
                 .bytes
                 .as_ref()
-                .and_then(|bytes| (offset <= bytes.len()).then(|| bytes.as_ptr().wrapping_add(offset)))
+                .and_then(|bytes| {
+                    (offset <= bytes.len())
+                        .then(|| bytes.as_ptr().wrapping_add(offset).cast())
+                })
         })
     }};
 }
@@ -2524,7 +2538,8 @@ macro_rules! parser_event_end {
                 .m_eventEndPtr
                 .and_then(|offset| {
                     parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-                        (offset <= bytes.len()).then(|| bytes.as_ptr().wrapping_add(offset))
+                        (offset <= bytes.len())
+                            .then(|| bytes.as_ptr().wrapping_add(offset).cast())
                     })
                 })
                 .unwrap_or(::core::ptr::null::<::core::ffi::c_char>())
@@ -6704,7 +6719,8 @@ unsafe fn parse_buffer_impl(
             .as_ref()
             .unwrap()
             .as_ptr()
-            .wrapping_add(parser_ref.m_bufferPtr.unwrap());
+            .wrapping_add(parser_ref.m_bufferPtr.unwrap())
+            .cast();
         parser_ref.m_positionPtr = parser_ref.m_bufferPtr;
         parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_add(len as usize);
         let parse_end = parser_ref
@@ -6713,7 +6729,8 @@ unsafe fn parse_buffer_impl(
             .as_ref()
             .unwrap()
             .as_ptr()
-            .wrapping_add(parser_ref.m_bufferEnd);
+            .wrapping_add(parser_ref.m_bufferEnd)
+            .cast();
         parser_ref.m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
         parser_ref.m_parsingStatus.finalBuffer = is_final as crate::expat_h::XML_Bool;
         (start, parse_end)
@@ -6768,8 +6785,8 @@ unsafe fn parse_buffer_impl(
         crate::src::xmltok::initUpdatePosition(
             (*encoding).updatePosition,
             encoding,
-            buffer.as_ptr().wrapping_add(position_cursor),
-            buffer.as_ptr().wrapping_add(buffer_cursor),
+            buffer.as_ptr().wrapping_add(position_cursor).cast(),
+            buffer.as_ptr().wrapping_add(buffer_cursor).cast(),
             &raw mut parser_ref.m_position,
         );
     }
@@ -7021,14 +7038,16 @@ pub unsafe extern "C" fn XML_ResumeParser(
             .as_ref()
             .unwrap()
             .as_ptr()
-            .wrapping_add(parser_ref.m_bufferPtr.unwrap());
+            .wrapping_add(parser_ref.m_bufferPtr.unwrap())
+            .cast();
         let parse_end = parser_ref
             .m_buffer
             .bytes
             .as_ref()
             .unwrap()
             .as_ptr()
-            .wrapping_add(parser_ref.m_bufferEnd);
+            .wrapping_add(parser_ref.m_bufferEnd)
+            .cast();
         (start, parse_end)
     };
     let mut processed_to = start;
@@ -7077,8 +7096,8 @@ pub unsafe extern "C" fn XML_ResumeParser(
         crate::src::xmltok::initUpdatePosition(
             (*encoding).updatePosition,
             encoding,
-            buffer.as_ptr().wrapping_add(position_cursor),
-            buffer.as_ptr().wrapping_add(buffer_cursor),
+            buffer.as_ptr().wrapping_add(position_cursor).cast(),
+            buffer.as_ptr().wrapping_add(buffer_cursor).cast(),
             &raw mut parser_ref.m_position,
         );
     }
@@ -7196,7 +7215,7 @@ pub unsafe extern "C" fn XML_GetInputContext(
         if !size.is_null() {
             *size = (*parser).m_bufferEnd as ::core::ffi::c_int;
         }
-        return bytes.as_ptr();
+        return bytes.as_ptr().cast();
     }
     return ::core::ptr::null::<::core::ffi::c_char>();
 }
@@ -7226,8 +7245,8 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(
                 crate::src::xmltok::initUpdatePosition(
                     (*parser_encoding(parser)).updatePosition,
                     parser_encoding(parser),
-                    bytes.as_ptr().wrapping_add(position_cursor),
-                    bytes.as_ptr().wrapping_add(event_cursor),
+                    bytes.as_ptr().wrapping_add(position_cursor).cast(),
+                    bytes.as_ptr().wrapping_add(event_cursor).cast(),
                     &raw mut (*parser).m_position,
                 );
                 (*parser).m_positionPtr = Some(event_cursor);
@@ -7263,8 +7282,8 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
                 crate::src::xmltok::initUpdatePosition(
                     (*parser_encoding(parser)).updatePosition,
                     parser_encoding(parser),
-                    bytes.as_ptr().wrapping_add(position_cursor),
-                    bytes.as_ptr().wrapping_add(event_cursor),
+                    bytes.as_ptr().wrapping_add(position_cursor).cast(),
+                    bytes.as_ptr().wrapping_add(event_cursor).cast(),
                     &raw mut (*parser).m_position,
                 );
                 (*parser).m_positionPtr = Some(event_cursor);
@@ -10224,9 +10243,10 @@ unsafe extern "C" fn doCdataSection(
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
     // `enc` is selected before entering this processor and remains valid for
-    // this token.  Borrow it once so the loop does not repeatedly dereference
-    // the same validated encoding pointer.
-    let enc = &*enc;
+    // this token.  All in-tree encodings are stored as `normal_encoding`
+    // records whose leading member is the public `ENCODING` view.
+    let enc_ptr = enc;
+    let enc = &*(enc_ptr as *const crate::src::xmltok::normal_encoding);
     let parser_handle = parser;
     let mut s: *const ::core::ffi::c_char = *startPtr;
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
@@ -10245,15 +10265,12 @@ unsafe extern "C" fn doCdataSection(
         }
         error
     };
-    let parser_events = ::core::ptr::eq(enc, parser_encoding(parser_handle));
+    let parser_events = ::core::ptr::eq(enc_ptr, parser_encoding(parser_handle));
     let mut eventPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     if !parser_events {
-        // The active entity is selected before this token.  Borrow parser
-        // state only long enough to fetch that pointer; callbacks below may
-        // re-enter and therefore must not overlap a parser borrow.
         let open_entity = (&mut *parser_handle).m_openInternalEntities;
         if open_entity.is_null() {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -10261,9 +10278,6 @@ unsafe extern "C" fn doCdataSection(
         eventPP = &raw mut (*open_entity).internalEventPtr;
         eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
     }
-    // Keep a distinct copied handle in the cursor closure.  This lets the
-    // compiler see each later parser borrow as a separate, callback-safe
-    // access rather than extending it for the closure's lifetime.
     let event_parser = parser_handle;
     let parser_event_start_ptr = eventPP;
     let mut update_event_start = |start: *const ::core::ffi::c_char| {
@@ -10275,9 +10289,26 @@ unsafe extern "C" fn doCdataSection(
     };
     update_event_start(s);
     loop {
-        let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int =
-            enc.scanners[2 as usize].scan(enc, s, end, &raw mut next);
+        // Form the token window from parser-owned storage, validate both
+        // cursor addresses against that storage, and drop the borrow before
+        // any callback.  CDATA sections are parsed from a parser input buffer
+        // (never an internal replacement-text entity).  External entity
+        // cursors retain their established boundary scanner path.
+        let (tok, mut next) = if parser_events {
+            let input = match (&*parser_handle)
+                .m_buffer
+                .window_from_addresses(s.addr(), end.addr())
+            {
+                Some(input) => input,
+                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            };
+            let (tok, next_offset) = crate::src::xmltok::xmltok_impl_c::cdata_token(enc, input);
+            (tok, next_offset.map_or(s, |offset| s.wrapping_add(offset)))
+        } else {
+            let mut next = s;
+            let tok = enc.enc.scanners[2].scan(enc_ptr, s, end, &raw mut next);
+            (tok, next)
+        };
         if accountingDiffTolerated(parser_handle, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
             accountingOnAbort(parser_handle);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
@@ -10296,7 +10327,7 @@ unsafe extern "C" fn doCdataSection(
                         .expect("installed end CDATA handler");
                     callback.invoke(handler_arg!(parser_handle));
                 } else if handler_flags.default {
-                    reportDefault(parser_handle, enc, s, next);
+                    reportDefault(parser_handle, enc_ptr, s, next);
                 }
                 if cdata_parsing_state(&*parser_handle).parsing as ::core::ffi::c_uint
                     == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -10320,7 +10351,7 @@ unsafe extern "C" fn doCdataSection(
                         0xa as crate::expat_external_h::XML_Char;
                     callCharacterDataHandler(parser_handle, &raw const c, 1 as ::core::ffi::c_int);
                 } else if handler_flags.default {
-                    reportDefault(parser_handle, enc, s, next);
+                    reportDefault(parser_handle, enc_ptr, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_CHARS => {
@@ -10331,7 +10362,7 @@ unsafe extern "C" fn doCdataSection(
                     .get(&(parser_handle as usize))
                     .cloned();
                 if let Some(charDataHandler) = charDataHandler {
-                    if enc.isUtf8 == 0 {
+                    if enc.enc.isUtf8 == 0 {
                         let (data_start, data_end, data_capacity) = {
                             let parser = &mut *parser_handle;
                             let data_start = parser.m_dataBuf.chars.as_mut_ptr();
@@ -10345,7 +10376,7 @@ unsafe extern "C" fn doCdataSection(
                             let mut dataPtr: *mut ICHAR = data_start;
                             let convert_res: crate::src::xmltok::XML_Convert_Result =
                                 crate::src::xmltok::convert_to_utf8(
-                                    enc,
+                                    enc_ptr,
                                     &raw mut s,
                                     next,
                                     &raw mut dataPtr,
@@ -10392,7 +10423,7 @@ unsafe extern "C" fn doCdataSection(
                         );
                     }
                 } else if handler_flags.default {
-                    reportDefault(parser_handle, enc, s, next);
+                    reportDefault(parser_handle, enc_ptr, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_INVALID => {
