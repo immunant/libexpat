@@ -8353,6 +8353,99 @@ macro_rules! store_entity_value_from_unsafe_context {
     }};
 }
 
+macro_rules! do_ignore_section_from_unsafe_context {
+    ($parser:expr, $enc:expr, $startPtr:expr, $end:expr, $nextPtr:expr, $haveMore:expr $(,)?) => {{
+        let parser = $parser;
+        let enc = $enc;
+        let startPtr = $startPtr;
+        let end = $end;
+        let nextPtr = $nextPtr;
+        let haveMore = $haveMore;
+
+        'do_ignore_section: {
+            let mut next: *const ::core::ffi::c_char = *startPtr;
+            let mut s: *const ::core::ffi::c_char = *startPtr;
+            let mut eventPP: *mut *const ::core::ffi::c_char =
+                ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+            let mut eventEndPP: *mut *const ::core::ffi::c_char =
+                ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+            if enc == (*parser).m_encoding {
+                eventPP = &raw mut (*parser).m_eventPtr;
+                *eventPP = s;
+                eventEndPP = &raw mut (*parser).m_eventEndPtr;
+            } else {
+                eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
+                eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
+            }
+            *eventPP = s;
+            *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
+            let tok =
+                (*enc).scanners[3 as ::core::ffi::c_int as usize]
+                    .expect("non-null function pointer")(enc, s, end, &raw mut next);
+            let mut accounting_levels: ::core::ffi::c_uint = 0;
+            let accounting_root =
+                root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
+            if accountingDiffTolerated(
+                &mut *accounting_root,
+                accounting_levels,
+                parser == accounting_root,
+                tok,
+                || {
+                    ::core::slice::from_raw_parts(
+                        s as *const ::core::ffi::c_uchar,
+                        byte_offset(next, s) as usize,
+                    )
+                },
+                4778 as ::core::ffi::c_int,
+                XML_ACCOUNT_DIRECT,
+            ) == 0
+            {
+                accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
+                break 'do_ignore_section crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+            }
+            *eventEndPP = next;
+            match tok {
+                crate::src::xmltok::XML_TOK_IGNORE_SECT => {
+                    if (*parser).m_defaultHandler.is_some() {
+                        reportDefault(parser, enc, s, next);
+                    }
+                    *startPtr = next;
+                    *nextPtr = next;
+                    if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                        == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+                    {
+                        break 'do_ignore_section crate::expat_h::XML_ERROR_ABORTED;
+                    } else {
+                        break 'do_ignore_section crate::expat_h::XML_ERROR_NONE;
+                    }
+                }
+                crate::src::xmltok::XML_TOK_INVALID => {
+                    *eventPP = next;
+                    break 'do_ignore_section crate::expat_h::XML_ERROR_INVALID_TOKEN;
+                }
+                crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
+                    if haveMore != 0 {
+                        *nextPtr = s;
+                        break 'do_ignore_section crate::expat_h::XML_ERROR_NONE;
+                    }
+                    break 'do_ignore_section crate::expat_h::XML_ERROR_PARTIAL_CHAR;
+                }
+                crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
+                    if haveMore != 0 {
+                        *nextPtr = s;
+                        break 'do_ignore_section crate::expat_h::XML_ERROR_NONE;
+                    }
+                    break 'do_ignore_section crate::expat_h::XML_ERROR_SYNTAX;
+                }
+                _ => {
+                    *eventPP = next;
+                    break 'do_ignore_section crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
+            }
+        }
+    }};
+}
+
 fn parser_processor_impl(
     kind: ParserProcessorKind,
     parser: crate::expat_h::XML_Parser,
@@ -9216,7 +9309,7 @@ fn parser_processor_impl(
                             as crate::expat_h::XML_Bool,
                         XML_ACCOUNT_DIRECT,
                     ),
-                    SectionProcessorKind::Ignore => doIgnoreSection(
+                    SectionProcessorKind::Ignore => do_ignore_section_from_unsafe_context!(
                         parser,
                         (*parser).m_encoding,
                         &raw mut start,
@@ -9504,99 +9597,6 @@ extern "C" fn ignoreSectionProcessor(
     endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     section_processor_impl(SectionProcessorKind::Ignore, parser, start, end, endPtr)
-}
-
-unsafe extern "C" fn doIgnoreSection(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut startPtr: *mut *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-    mut haveMore: crate::expat_h::XML_Bool,
-) -> crate::expat_h::XML_Error {
-    let mut next: *const ::core::ffi::c_char = *startPtr;
-    let mut tok: ::core::ffi::c_int = 0;
-    let mut s: *const ::core::ffi::c_char = *startPtr;
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    let mut eventEndPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
-    if enc == (*parser).m_encoding {
-        eventPP = &raw mut (*parser).m_eventPtr;
-        *eventPP = s;
-        eventEndPP = &raw mut (*parser).m_eventEndPtr;
-    } else {
-        eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-        eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
-    }
-    *eventPP = s;
-    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    tok = (*enc).scanners[3 as ::core::ffi::c_int as usize].expect("non-null function pointer")(
-        enc,
-        s,
-        end,
-        &raw mut next,
-    );
-    let mut accounting_levels: ::core::ffi::c_uint = 0;
-    let accounting_root =
-        root_parser_of!(parser, &raw mut accounting_levels) as crate::expat_h::XML_Parser;
-    if accountingDiffTolerated(
-        &mut *accounting_root,
-        accounting_levels,
-        parser == accounting_root,
-        tok,
-        || {
-            ::core::slice::from_raw_parts(
-                s as *const ::core::ffi::c_uchar,
-                byte_offset(next, s) as usize,
-            )
-        },
-        4778 as ::core::ffi::c_int,
-        XML_ACCOUNT_DIRECT,
-    ) == 0
-    {
-        accountingReportStats(&*accounting_root, ACCOUNTING_ABORTING_EPILOG);
-        return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-    }
-    *eventEndPP = next;
-    match tok {
-        crate::src::xmltok::XML_TOK_IGNORE_SECT => {
-            if (*parser).m_defaultHandler.is_some() {
-                reportDefault(parser, enc, s, next);
-            }
-            *startPtr = next;
-            *nextPtr = next;
-            if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                return crate::expat_h::XML_ERROR_ABORTED;
-            } else {
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-        }
-        crate::src::xmltok::XML_TOK_INVALID => {
-            *eventPP = next;
-            return crate::expat_h::XML_ERROR_INVALID_TOKEN;
-        }
-        crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
-            if haveMore != 0 {
-                *nextPtr = s;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
-        }
-        crate::src::xmltok::XML_TOK_PARTIAL | crate::src::xmltok::XML_TOK_NONE => {
-            if haveMore != 0 {
-                *nextPtr = s;
-                return crate::expat_h::XML_ERROR_NONE;
-            }
-            return crate::expat_h::XML_ERROR_SYNTAX;
-        }
-        _ => {
-            *eventPP = next;
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        }
-    };
 }
 
 fn initialize_encoding(
@@ -11134,7 +11134,14 @@ unsafe extern "C" fn doProlog(
                     reportDefault(parser, enc, s, next);
                 }
                 handleDefault = crate::expat_h::XML_FALSE;
-                result_3 = doIgnoreSection(parser, enc, &raw mut next, end, nextPtr, haveMore);
+                result_3 = do_ignore_section_from_unsafe_context!(
+                    parser,
+                    enc,
+                    &raw mut next,
+                    end,
+                    nextPtr,
+                    haveMore
+                );
                 if result_3 as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
