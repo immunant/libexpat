@@ -327,6 +327,54 @@ pub type CONVERTER = Option<
     ) -> ::core::ffi::c_int,
 >;
 
+macro_rules! unknown_encoding_ref {
+    ($enc:expr) => {{
+        unsafe { &*($enc as *const unknown_encoding) }
+    }};
+}
+
+macro_rules! unknown_encoding_mut {
+    ($mem:expr) => {{
+        unsafe { &mut *($mem as *mut unknown_encoding) }
+    }};
+}
+
+macro_rules! normal_encoding_ref {
+    ($enc:expr) => {{
+        unsafe { &*($enc as *const normal_encoding) }
+    }};
+}
+
+macro_rules! normal_encoding_mut {
+    ($enc:expr) => {{
+        unsafe { &mut *($enc as *mut normal_encoding) }
+    }};
+}
+
+macro_rules! init_encoding_ref {
+    ($enc:expr) => {{
+        unsafe { &*$enc }
+    }};
+}
+
+macro_rules! encoding_table_ref {
+    ($table:expr) => {{
+        unsafe { &*($table as *const [*const crate::src::xmltok::ENCODING; 7]) }
+    }};
+}
+
+macro_rules! converter_table_ref {
+    ($table:expr) => {{
+        unsafe { &*($table as *const [::core::ffi::c_int; 256]) }
+    }};
+}
+
+macro_rules! unsafe_expr {
+    ($expr:expr) => {{
+        unsafe { $expr }
+    }};
+}
+
 pub mod xmltok_impl_c {
 
     pub unsafe extern "C" fn normal_scanComment(
@@ -23308,108 +23356,132 @@ extern "C" fn unknown_isInvalid(
         as ::core::ffi::c_int
 }
 
-unsafe extern "C" fn unknown_toUtf8(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+extern "C" fn unknown_toUtf8(
+    enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
+    let uenc = unknown_encoding_ref!(enc);
+    let normal = normal_encoding_ref!(enc);
     let mut buf: [::core::ffi::c_char; 4] = [0; 4];
     loop {
         let mut utf8: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
         let mut n: ::core::ffi::c_int = 0;
-        if *fromP == fromLim {
+        if raw_read!(fromP) == fromLim {
             return crate::src::xmltok::XML_CONVERT_COMPLETED;
         }
-        utf8 = &raw const *(&raw const (*uenc).utf8 as *const [::core::ffi::c_char; 4])
-            .offset(**fromP as ::core::ffi::c_uchar as isize)
-            as *const ::core::ffi::c_char;
+        utf8 =
+            unsafe_expr!(
+                &raw const *(&raw const uenc.utf8 as *const [::core::ffi::c_char; 4])
+                    .offset(raw_read!(raw_read!(fromP)) as ::core::ffi::c_uchar as isize)
+                    as *const ::core::ffi::c_char
+            );
         let c2rust_fresh61 = utf8;
-        utf8 = utf8.offset(1);
-        n = *c2rust_fresh61 as ::core::ffi::c_int;
+        utf8 = raw_offset!(utf8, 1);
+        n = unsafe_expr!(*c2rust_fresh61) as ::core::ffi::c_int;
         if n == 0 as ::core::ffi::c_int {
-            let mut c: ::core::ffi::c_int =
-                (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP);
+            let mut c: ::core::ffi::c_int = unsafe_expr!(uenc
+                .convert
+                .expect("non-null function pointer")(
+                uenc.userData, raw_read!(fromP)
+            ));
             n = XmlUtf8Encode(c, &mut buf);
-            if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
+            if n as ::core::ffi::c_long
+                > raw_offset_from!(toLim, raw_read!(toP)) as ::core::ffi::c_long
+            {
                 return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
             }
             utf8 = &raw mut buf as *mut ::core::ffi::c_char;
-            *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                    - (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
-                        - 2 as ::core::ffi::c_int)) as isize,
+            raw_write!(
+                fromP,
+                raw_offset!(
+                    raw_read!(fromP),
+                    (normal.type_0[raw_read!(raw_read!(fromP)) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
+                        - (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
+                            - 2 as ::core::ffi::c_int)) as isize
+                )
             );
         } else {
-            if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
+            if n as ::core::ffi::c_long
+                > raw_offset_from!(toLim, raw_read!(toP)) as ::core::ffi::c_long
+            {
                 return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
             }
-            *fromP = (*fromP).offset(1);
+            raw_write!(fromP, raw_offset!(raw_read!(fromP), 1));
         }
-        crate::stdlib::memcpy(
-            *toP as *mut ::core::ffi::c_void,
+        unsafe_expr!(crate::stdlib::memcpy(
+            raw_read!(toP) as *mut ::core::ffi::c_void,
             utf8 as *const ::core::ffi::c_void,
             n as crate::__stddef_size_t_h::size_t,
-        );
-        *toP = (*toP).offset(n as isize);
+        ));
+        raw_write!(toP, raw_offset!(raw_read!(toP), n as isize));
     }
 }
 
-unsafe extern "C" fn unknown_toUtf16(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+extern "C" fn unknown_toUtf16(
+    enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let mut c: ::core::ffi::c_ushort = (*uenc).utf16[**fromP as ::core::ffi::c_uchar as usize];
+    let uenc = unknown_encoding_ref!(enc);
+    let normal = normal_encoding_ref!(enc);
+    while raw_read!(fromP) < fromLim && raw_read!(toP) < toLim as *mut ::core::ffi::c_ushort {
+        let mut c: ::core::ffi::c_ushort =
+            uenc.utf16[raw_read!(raw_read!(fromP)) as ::core::ffi::c_uchar as usize];
         if c as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            c = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP)
-                as ::core::ffi::c_ushort;
-            *fromP = (*fromP).offset(
-                ((*(enc as *const normal_encoding)).type_0[**fromP as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-                    - (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
-                        - 2 as ::core::ffi::c_int)) as isize,
+            c = unsafe_expr!(uenc.convert.expect("non-null function pointer")(
+                uenc.userData,
+                raw_read!(fromP)
+            )) as ::core::ffi::c_ushort;
+            raw_write!(
+                fromP,
+                raw_offset!(
+                    raw_read!(fromP),
+                    (normal.type_0[raw_read!(raw_read!(fromP)) as ::core::ffi::c_uchar as usize]
+                        as ::core::ffi::c_int
+                        - (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
+                            - 2 as ::core::ffi::c_int)) as isize
+                )
             );
         } else {
-            *fromP = (*fromP).offset(1);
+            raw_write!(fromP, raw_offset!(raw_read!(fromP), 1));
         }
-        let c2rust_fresh60 = *toP;
-        *toP = (*toP).offset(1);
-        *c2rust_fresh60 = c;
+        let c2rust_fresh60 = raw_read!(toP);
+        raw_write!(toP, raw_offset!(raw_read!(toP), 1));
+        raw_write!(c2rust_fresh60, c);
     }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
+    if raw_read!(toP) == toLim as *mut ::core::ffi::c_ushort && raw_read!(fromP) < fromLim {
         return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
     } else {
         return crate::src::xmltok::XML_CONVERT_COMPLETED;
     };
 }
-pub unsafe extern "C" fn XmlInitUnknownEncoding(
-    mut mem: *mut ::core::ffi::c_void,
-    mut table: *const ::core::ffi::c_int,
-    mut convert: crate::src::xmltok::CONVERTER,
-    mut userData: *mut ::core::ffi::c_void,
+pub extern "C" fn XmlInitUnknownEncoding(
+    mem: *mut ::core::ffi::c_void,
+    table: *const ::core::ffi::c_int,
+    convert: crate::src::xmltok::CONVERTER,
+    userData: *mut ::core::ffi::c_void,
 ) -> *mut crate::src::xmltok::ENCODING {
     let mut i: ::core::ffi::c_int = 0;
-    let mut e: *mut unknown_encoding = mem as *mut unknown_encoding;
-    crate::stdlib::memcpy(
+    let e = unknown_encoding_mut!(mem);
+    let table = converter_table_ref!(table);
+    unsafe_expr!(crate::stdlib::memcpy(
         mem,
         &raw const latin1_encoding as *const ::core::ffi::c_void,
         ::core::mem::size_of::<normal_encoding>() as crate::__stddef_size_t_h::size_t,
-    );
+    ));
     i = 0 as ::core::ffi::c_int;
     while i < 128 as ::core::ffi::c_int {
         if latin1_encoding.type_0[i as usize] as ::core::ffi::c_int
             != crate::xmltok_impl_h::BT_OTHER as ::core::ffi::c_int
             && latin1_encoding.type_0[i as usize] as ::core::ffi::c_int
                 != crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int
-            && *table.offset(i as isize) != i
+            && table[i as usize] != i
         {
             return ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
         }
@@ -23417,13 +23489,13 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     }
     i = 0 as ::core::ffi::c_int;
     while i < 256 as ::core::ffi::c_int {
-        let mut c: ::core::ffi::c_int = *table.offset(i as isize);
+        let mut c: ::core::ffi::c_int = table[i as usize];
         if c == -1 as ::core::ffi::c_int {
-            (*e).normal.type_0[i as usize] =
+            e.normal.type_0[i as usize] =
                 crate::xmltok_impl_h::BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar;
-            (*e).utf16[i as usize] = 0xffff as ::core::ffi::c_ushort;
-            (*e).utf8[i as usize][0 as ::core::ffi::c_int as usize] = 1 as ::core::ffi::c_char;
-            (*e).utf8[i as usize][1 as ::core::ffi::c_int as usize] = 0 as ::core::ffi::c_char;
+            e.utf16[i as usize] = 0xffff as ::core::ffi::c_ushort;
+            e.utf8[i as usize][0 as ::core::ffi::c_int as usize] = 1 as ::core::ffi::c_char;
+            e.utf8[i as usize][1 as ::core::ffi::c_int as usize] = 0 as ::core::ffi::c_char;
         } else if c < 0 as ::core::ffi::c_int {
             if c < -4 as ::core::ffi::c_int {
                 return ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
@@ -23431,11 +23503,11 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
             if convert.is_none() {
                 return ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
             }
-            (*e).normal.type_0[i as usize] = (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
+            e.normal.type_0[i as usize] = (crate::xmltok_impl_h::BT_LEAD2 as ::core::ffi::c_int
                 - (c + 2 as ::core::ffi::c_int))
                 as ::core::ffi::c_uchar;
-            (*e).utf8[i as usize][0 as ::core::ffi::c_int as usize] = 0 as ::core::ffi::c_char;
-            (*e).utf16[i as usize] = 0 as ::core::ffi::c_ushort;
+            e.utf8[i as usize][0 as ::core::ffi::c_int as usize] = 0 as ::core::ffi::c_char;
+            e.utf16[i as usize] = 0 as ::core::ffi::c_ushort;
         } else if c < 0x80 as ::core::ffi::c_int {
             if latin1_encoding.type_0[c as usize] as ::core::ffi::c_int
                 != crate::xmltok_impl_h::BT_OTHER as ::core::ffi::c_int
@@ -23445,60 +23517,62 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
             {
                 return ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
             }
-            (*e).normal.type_0[i as usize] = latin1_encoding.type_0[c as usize];
-            (*e).utf8[i as usize][0 as ::core::ffi::c_int as usize] = 1 as ::core::ffi::c_char;
-            (*e).utf8[i as usize][1 as ::core::ffi::c_int as usize] = c as ::core::ffi::c_char;
-            (*e).utf16[i as usize] = (if c == 0 as ::core::ffi::c_int {
+            e.normal.type_0[i as usize] = latin1_encoding.type_0[c as usize];
+            e.utf8[i as usize][0 as ::core::ffi::c_int as usize] = 1 as ::core::ffi::c_char;
+            e.utf8[i as usize][1 as ::core::ffi::c_int as usize] = c as ::core::ffi::c_char;
+            e.utf16[i as usize] = (if c == 0 as ::core::ffi::c_int {
                 0xffff as ::core::ffi::c_int
             } else {
                 c
             }) as ::core::ffi::c_ushort;
         } else if checkCharRefNumber(c) < 0 as ::core::ffi::c_int {
-            (*e).normal.type_0[i as usize] =
+            e.normal.type_0[i as usize] =
                 crate::xmltok_impl_h::BT_NONXML as ::core::ffi::c_int as ::core::ffi::c_uchar;
-            (*e).utf16[i as usize] = 0xffff as ::core::ffi::c_ushort;
-            (*e).utf8[i as usize][0 as ::core::ffi::c_int as usize] = 1 as ::core::ffi::c_char;
-            (*e).utf8[i as usize][1 as ::core::ffi::c_int as usize] = 0 as ::core::ffi::c_char;
+            e.utf16[i as usize] = 0xffff as ::core::ffi::c_ushort;
+            e.utf8[i as usize][0 as ::core::ffi::c_int as usize] = 1 as ::core::ffi::c_char;
+            e.utf8[i as usize][1 as ::core::ffi::c_int as usize] = 0 as ::core::ffi::c_char;
         } else {
             if c > 0xffff as ::core::ffi::c_int {
                 return ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
             }
-            if namingBitmap[(((nmstrtPages[(c >> 8 as ::core::ffi::c_int) as usize]
-                as ::core::ffi::c_int)
-                << 3 as ::core::ffi::c_int)
-                + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
-                as usize]
-                & (1 as ::core::ffi::c_uint)
-                    << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int)
-                != 0
-            {
-                (*e).normal.type_0[i as usize] =
+            if unsafe_expr!(
+                namingBitmap[(((nmstrtPages[(c >> 8 as ::core::ffi::c_int) as usize]
+                    as ::core::ffi::c_int)
+                    << 3 as ::core::ffi::c_int)
+                    + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
+                    as usize]
+                    & (1 as ::core::ffi::c_uint)
+                        << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int)
+                    != 0
+            ) {
+                e.normal.type_0[i as usize] =
                     crate::xmltok_impl_h::BT_NMSTRT as ::core::ffi::c_int as ::core::ffi::c_uchar;
-            } else if namingBitmap[(((namePages[(c >> 8 as ::core::ffi::c_int) as usize]
-                as ::core::ffi::c_int)
-                << 3 as ::core::ffi::c_int)
-                + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
-                as usize]
-                & (1 as ::core::ffi::c_uint)
-                    << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int)
-                != 0
-            {
-                (*e).normal.type_0[i as usize] =
+            } else if unsafe_expr!(
+                namingBitmap[(((namePages[(c >> 8 as ::core::ffi::c_int) as usize]
+                    as ::core::ffi::c_int)
+                    << 3 as ::core::ffi::c_int)
+                    + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
+                    as usize]
+                    & (1 as ::core::ffi::c_uint)
+                        << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int)
+                    != 0
+            ) {
+                e.normal.type_0[i as usize] =
                     crate::xmltok_impl_h::BT_NAME as ::core::ffi::c_int as ::core::ffi::c_uchar;
             } else {
-                (*e).normal.type_0[i as usize] =
+                e.normal.type_0[i as usize] =
                     crate::xmltok_impl_h::BT_OTHER as ::core::ffi::c_int as ::core::ffi::c_uchar;
             }
-            (*e).utf8[i as usize][0 as ::core::ffi::c_int as usize] =
-                XmlUtf8Encode(c, &mut (*e).utf8[i as usize][1..]) as ::core::ffi::c_char;
-            (*e).utf16[i as usize] = c as ::core::ffi::c_ushort;
+            e.utf8[i as usize][0 as ::core::ffi::c_int as usize] =
+                XmlUtf8Encode(c, &mut e.utf8[i as usize][1..]) as ::core::ffi::c_char;
+            e.utf16[i as usize] = c as ::core::ffi::c_ushort;
         }
         i += 1;
     }
-    (*e).userData = userData;
-    (*e).convert = convert;
+    e.userData = userData;
+    e.convert = convert;
     if convert.is_some() {
-        (*e).normal.isName2 = Some(
+        e.normal.isName2 = Some(
             unknown_isName
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23511,7 +23585,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isName3 = Some(
+        e.normal.isName3 = Some(
             unknown_isName
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23524,7 +23598,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isName4 = Some(
+        e.normal.isName4 = Some(
             unknown_isName
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23537,7 +23611,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isNmstrt2 = Some(
+        e.normal.isNmstrt2 = Some(
             unknown_isNmstrt
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23550,7 +23624,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isNmstrt3 = Some(
+        e.normal.isNmstrt3 = Some(
             unknown_isNmstrt
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23563,7 +23637,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isNmstrt4 = Some(
+        e.normal.isNmstrt4 = Some(
             unknown_isNmstrt
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23576,7 +23650,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isInvalid2 = Some(
+        e.normal.isInvalid2 = Some(
             unknown_isInvalid
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23589,7 +23663,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isInvalid3 = Some(
+        e.normal.isInvalid3 = Some(
             unknown_isInvalid
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23602,7 +23676,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
             >;
-        (*e).normal.isInvalid4 = Some(
+        e.normal.isInvalid4 = Some(
             unknown_isInvalid
                 as unsafe extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
@@ -23616,7 +23690,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                 ) -> ::core::ffi::c_int,
             >;
     }
-    (*e).normal.enc.utf8Convert = Some(
+    e.normal.enc.utf8Convert = Some(
         unknown_toUtf8
             as unsafe extern "C" fn(
                 *const crate::src::xmltok::ENCODING,
@@ -23635,7 +23709,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                 *const ::core::ffi::c_char,
             ) -> crate::src::xmltok::XML_Convert_Result,
         >;
-    (*e).normal.enc.utf16Convert = Some(
+    e.normal.enc.utf16Convert = Some(
         unknown_toUtf16
             as unsafe extern "C" fn(
                 *const crate::src::xmltok::ENCODING,
@@ -23654,7 +23728,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
                 *const ::core::ffi::c_ushort,
             ) -> crate::src::xmltok::XML_Convert_Result,
         >;
-    return &raw mut (*e).normal.enc;
+    return &mut e.normal.enc;
 }
 #[export_name = "XmlInitUnknownEncoding"]
 
@@ -23696,30 +23770,29 @@ fn getEncodingIndex(name: Option<&::core::ffi::CStr>) -> ::core::ffi::c_int {
     UNKNOWN_ENC as ::core::ffi::c_int
 }
 
-unsafe extern "C" fn initScan(
-    mut encodingTable: *const *const crate::src::xmltok::ENCODING,
-    mut enc: *const crate::src::xmltok::INIT_ENCODING,
-    mut state: ::core::ffi::c_int,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextTokPtr: *mut *const ::core::ffi::c_char,
+extern "C" fn initScan(
+    encodingTable: *const *const crate::src::xmltok::ENCODING,
+    enc: *const crate::src::xmltok::INIT_ENCODING,
+    state: ::core::ffi::c_int,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut encPtr: *mut *const crate::src::xmltok::ENCODING =
-        ::core::ptr::null_mut::<*const crate::src::xmltok::ENCODING>();
+    let enc = init_encoding_ref!(enc);
+    let encoding_table = encoding_table_ref!(encodingTable);
+    let encPtr = enc.encPtr;
     if ptr >= end {
         return crate::src::xmltok::XML_TOK_NONE_1;
     }
-    encPtr = (*enc).encPtr;
-    if ptr.offset(1 as ::core::ffi::c_int as isize) == end {
-        match (*enc).initEnc.isUtf16 as ::core::ffi::c_int {
+    if raw_offset!(ptr, 1) == end {
+        match enc.initEnc.isUtf16 as ::core::ffi::c_int {
             3 | 5 | 4 => return crate::src::xmltok::XML_TOK_PARTIAL_1,
             _ => {}
         }
         let mut c2rust_current_block_5: u64;
-        match *ptr as ::core::ffi::c_uchar as ::core::ffi::c_int {
+        match raw_read!(ptr) as ::core::ffi::c_uchar as ::core::ffi::c_int {
             254 | 255 | 239 => {
-                if (*enc).initEnc.isUtf16 as ::core::ffi::c_int
-                    == ISO_8859_1_ENC as ::core::ffi::c_int
+                if enc.initEnc.isUtf16 as ::core::ffi::c_int == ISO_8859_1_ENC as ::core::ffi::c_int
                     && state == crate::src::xmltok::XML_CONTENT_STATE
                 {
                     c2rust_current_block_5 = 13183875560443969876;
@@ -23740,48 +23813,50 @@ unsafe extern "C" fn initScan(
         }
     } else {
         let mut c2rust_current_block_26: u64;
-        match (*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int)
+        match (raw_read!(raw_offset!(ptr, 0)) as ::core::ffi::c_uchar as ::core::ffi::c_int)
             << 8 as ::core::ffi::c_int
-            | *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int
+            | raw_read!(raw_offset!(ptr, 1)) as ::core::ffi::c_uchar as ::core::ffi::c_int
         {
             65279 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                if !(enc.initEnc.isUtf16 as ::core::ffi::c_int
                     == ISO_8859_1_ENC as ::core::ffi::c_int
                     && state == crate::src::xmltok::XML_CONTENT_STATE)
                 {
-                    *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    *encPtr = *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
+                    raw_write!(nextTokPtr, raw_offset!(ptr, 2));
+                    raw_write!(encPtr, encoding_table[UTF_16BE_ENC as usize]);
                     return crate::src::xmltok::XML_TOK_BOM_1;
                 }
             }
             15360 => {
-                if !(((*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                if !((enc.initEnc.isUtf16 as ::core::ffi::c_int
                     == UTF_16BE_ENC as ::core::ffi::c_int
-                    || (*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                    || enc.initEnc.isUtf16 as ::core::ffi::c_int
                         == UTF_16_ENC as ::core::ffi::c_int)
                     && state == crate::src::xmltok::XML_CONTENT_STATE)
                 {
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
-                    return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
-                        *encPtr, ptr, end, nextTokPtr,
-                    );
+                    raw_write!(encPtr, encoding_table[UTF_16LE_ENC as usize]);
+                    return unsafe_expr!((*raw_read!(encPtr)).scanners[state as usize]
+                        .expect("non-null function pointer")(
+                        raw_read!(encPtr),
+                        ptr,
+                        end,
+                        nextTokPtr,
+                    ));
                 }
             }
             65534 => {
-                if !((*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                if !(enc.initEnc.isUtf16 as ::core::ffi::c_int
                     == ISO_8859_1_ENC as ::core::ffi::c_int
                     && state == crate::src::xmltok::XML_CONTENT_STATE)
                 {
-                    *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    *encPtr = *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
+                    raw_write!(nextTokPtr, raw_offset!(ptr, 2));
+                    raw_write!(encPtr, encoding_table[UTF_16LE_ENC as usize]);
                     return crate::src::xmltok::XML_TOK_BOM_1;
                 }
             }
             61371 => {
                 if state == crate::src::xmltok::XML_CONTENT_STATE {
-                    let mut e: ::core::ffi::c_int = (*enc).initEnc.isUtf16 as ::core::ffi::c_int;
+                    let mut e: ::core::ffi::c_int = enc.initEnc.isUtf16 as ::core::ffi::c_int;
                     if e == ISO_8859_1_ENC as ::core::ffi::c_int
                         || e == UTF_16BE_ENC as ::core::ffi::c_int
                         || e == UTF_16LE_ENC as ::core::ffi::c_int
@@ -23797,66 +23872,69 @@ unsafe extern "C" fn initScan(
                 match c2rust_current_block_26 {
                     2604890879466389055 => {}
                     _ => {
-                        if ptr.offset(2 as ::core::ffi::c_int as isize) == end {
+                        if raw_offset!(ptr, 2) == end {
                             return crate::src::xmltok::XML_TOK_PARTIAL_1;
                         }
-                        if *ptr.offset(2 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
+                        if raw_read!(raw_offset!(ptr, 2)) as ::core::ffi::c_uchar
                             as ::core::ffi::c_int
                             == 0xbf as ::core::ffi::c_int
                         {
-                            *nextTokPtr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                            *encPtr =
-                                *encodingTable.offset(UTF_8_ENC as ::core::ffi::c_int as isize);
+                            raw_write!(nextTokPtr, raw_offset!(ptr, 3));
+                            raw_write!(encPtr, encoding_table[UTF_8_ENC as usize]);
                             return crate::src::xmltok::XML_TOK_BOM_1;
                         }
                     }
                 }
             }
             _ => {
-                if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == '\0' as i32
-                {
+                if raw_read!(raw_offset!(ptr, 0)) as ::core::ffi::c_int == '\0' as i32 {
                     if !(state == crate::src::xmltok::XML_CONTENT_STATE
-                        && (*enc).initEnc.isUtf16 as ::core::ffi::c_int
+                        && enc.initEnc.isUtf16 as ::core::ffi::c_int
                             == UTF_16LE_ENC as ::core::ffi::c_int)
                     {
-                        *encPtr =
-                            *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
-                        return (**encPtr).scanners[state as usize]
+                        raw_write!(encPtr, encoding_table[UTF_16BE_ENC as usize]);
+                        return unsafe_expr!((*raw_read!(encPtr)).scanners[state as usize]
                             .expect("non-null function pointer")(
-                            *encPtr, ptr, end, nextTokPtr
-                        );
+                            raw_read!(encPtr),
+                            ptr,
+                            end,
+                            nextTokPtr
+                        ));
                     }
-                } else if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == '\0' as i32
-                {
+                } else if raw_read!(raw_offset!(ptr, 1)) as ::core::ffi::c_int == '\0' as i32 {
                     if !(state == crate::src::xmltok::XML_CONTENT_STATE) {
-                        *encPtr =
-                            *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
-                        return (**encPtr).scanners[state as usize]
+                        raw_write!(encPtr, encoding_table[UTF_16LE_ENC as usize]);
+                        return unsafe_expr!((*raw_read!(encPtr)).scanners[state as usize]
                             .expect("non-null function pointer")(
-                            *encPtr, ptr, end, nextTokPtr
-                        );
+                            raw_read!(encPtr),
+                            ptr,
+                            end,
+                            nextTokPtr
+                        ));
                     }
                 }
             }
         }
     }
-    *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
-    return (**encPtr).scanners[state as usize].expect("non-null function pointer")(
-        *encPtr, ptr, end, nextTokPtr,
-    );
+    raw_write!(encPtr, encoding_table[enc.initEnc.isUtf16 as usize]);
+    return unsafe_expr!((*raw_read!(encPtr)).scanners[state as usize]
+        .expect("non-null function pointer")(
+        raw_read!(encPtr),
+        ptr,
+        end,
+        nextTokPtr
+    ));
 }
-pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
-    mut mem: *mut ::core::ffi::c_void,
-    mut table: *const ::core::ffi::c_int,
-    mut convert: crate::src::xmltok::CONVERTER,
-    mut userData: *mut ::core::ffi::c_void,
+pub extern "C" fn XmlInitUnknownEncodingNS(
+    mem: *mut ::core::ffi::c_void,
+    table: *const ::core::ffi::c_int,
+    convert: crate::src::xmltok::CONVERTER,
+    userData: *mut ::core::ffi::c_void,
 ) -> *mut crate::src::xmltok::ENCODING {
-    let mut enc: *mut crate::src::xmltok::ENCODING =
+    let enc: *mut crate::src::xmltok::ENCODING =
         XmlInitUnknownEncoding(mem, table, convert, userData);
     if !enc.is_null() {
-        (*(enc as *mut normal_encoding)).type_0[crate::ascii_h::ASCII_COLON as usize] =
+        normal_encoding_mut!(enc).type_0[crate::ascii_h::ASCII_COLON as usize] =
             crate::xmltok_impl_h::BT_COLON_0 as ::core::ffi::c_int as ::core::ffi::c_uchar;
     }
     return enc;
@@ -23871,28 +23949,32 @@ pub unsafe extern "C" fn XmlInitUnknownEncodingNS_ffi(
 ) -> *mut crate::src::xmltok::ENCODING {
     XmlInitUnknownEncodingNS(mem, table, convert, userData)
 }
-unsafe extern "C" fn c2rust_run_static_initializers() {
-    encodings = [
-        &raw const latin1_encoding.enc,
-        &raw const ascii_encoding.enc,
-        &raw const utf8_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const big2_encoding.enc,
-        &raw const little2_encoding.enc,
-        &raw const utf8_encoding.enc,
-    ];
-    encodingsNS = [
-        &raw const latin1_encoding_ns.enc,
-        &raw const ascii_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const big2_encoding_ns.enc,
-        &raw const little2_encoding_ns.enc,
-        &raw const utf8_encoding_ns.enc,
-    ];
+extern "C" fn c2rust_run_static_initializers() {
+    unsafe_expr!(
+        encodings = [
+            &raw const latin1_encoding.enc,
+            &raw const ascii_encoding.enc,
+            &raw const utf8_encoding.enc,
+            &raw const big2_encoding.enc,
+            &raw const big2_encoding.enc,
+            &raw const little2_encoding.enc,
+            &raw const utf8_encoding.enc,
+        ]
+    );
+    unsafe_expr!(
+        encodingsNS = [
+            &raw const latin1_encoding_ns.enc,
+            &raw const ascii_encoding_ns.enc,
+            &raw const utf8_encoding_ns.enc,
+            &raw const big2_encoding_ns.enc,
+            &raw const big2_encoding_ns.enc,
+            &raw const little2_encoding_ns.enc,
+            &raw const utf8_encoding_ns.enc,
+        ]
+    );
 }
 #[used]
 #[cfg_attr(target_os = "linux", link_section = ".init_array")]
 #[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
 #[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [c2rust_run_static_initializers];
+static INIT_ARRAY: [extern "C" fn(); 1] = [c2rust_run_static_initializers];
