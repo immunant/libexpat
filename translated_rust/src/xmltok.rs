@@ -323,21 +323,34 @@ impl Scanner {
                         kind,
                         width,
                         enc,
-                        ptr.add(offset),
+                        ptr.wrapping_add(offset),
                         &input[offset..],
                     )
                 });
-            return match action {
+            let (token, next) = match action {
                 xmltok_impl_c::NormalPrologAction::Token(token, next) => {
-                    if token >= crate::src::xmltok::XML_TOK_INVALID_1
-                        || token == -crate::src::xmltok::XML_TOK_PROLOG_S_1
-                    {
-                        *next_tok_ptr = ptr.add(next);
-                    }
-                    token
+                    let next = (token >= crate::src::xmltok::XML_TOK_INVALID_1
+                        || token == -crate::src::xmltok::XML_TOK_PROLOG_S_1)
+                        .then_some(next);
+                    (token, next)
                 }
                 xmltok_impl_c::NormalPrologAction::Literal(open, start) => {
-                    xmltok_impl_c::normal_scanLit(open, enc, ptr.add(start), end, next_tok_ptr)
+                    let (token, next) = xmltok_impl_c::normal_scan_lit_impl(
+                        open,
+                        normal,
+                        &input[start..],
+                        |offset, width| {
+                            xmltok_impl_c::normal_char_check(
+                                normal,
+                                xmltok_impl_c::NormalCharCheck::Invalid,
+                                width,
+                                enc,
+                                ptr.wrapping_add(start + offset),
+                                &input[start + offset..],
+                            )
+                        },
+                    );
+                    (token, next.map(|offset| start + offset))
                 }
                 xmltok_impl_c::NormalPrologAction::Declaration(start) => {
                     match xmltok_impl_c::normal_scan_decl_impl(&normal.type_0, &input[start..]) {
@@ -352,38 +365,37 @@ impl Scanner {
                                         xmltok_impl_c::NormalCharCheck::Invalid,
                                         width,
                                         enc,
-                                        ptr.add(comment_start + offset),
+                                        ptr.wrapping_add(comment_start + offset),
                                         &input[comment_start + offset..],
                                     )
                                 },
                             );
-                            if let Some(next) = next {
-                                *next_tok_ptr = ptr.add(comment_start + next);
-                            }
-                            token
+                            (token, next.map(|offset| comment_start + offset))
                         }
                         xmltok_impl_c::NormalScanDeclAction::Token(token, next) => {
-                            if let Some(offset) = next {
-                                *next_tok_ptr = ptr.add(start + offset);
-                            }
-                            token
+                            (token, next.map(|offset| start + offset))
                         }
                     }
                 }
                 xmltok_impl_c::NormalPrologAction::ProcessingInstruction(start) => {
                     let (token, next) = xmltok_impl_c::normal_scan_pi_impl(normal, &input[start..]);
-                    if let Some(next) = next {
-                        *next_tok_ptr = ptr.add(start + next);
-                    }
-                    token
+                    (token, next.map(|offset| start + offset))
                 }
                 xmltok_impl_c::NormalPrologAction::Percent(start) => {
-                    xmltok_impl_c::normal_scanPercent(enc, ptr.add(start), end, next_tok_ptr)
+                    let (token, next) =
+                        xmltok_impl_c::normal_scan_percent_impl(normal, &input[start..]);
+                    (token, next.map(|offset| start + offset))
                 }
                 xmltok_impl_c::NormalPrologAction::PoundName(start) => {
-                    xmltok_impl_c::normal_scanPoundName(enc, ptr.add(start), end, next_tok_ptr)
+                    let (token, next) =
+                        xmltok_impl_c::normal_scan_pound_name_impl(normal, &input[start..]);
+                    (token, next.map(|offset| start + offset))
                 }
             };
+            if let Some(offset) = next {
+                *next_tok_ptr = ptr.wrapping_add(offset);
+            }
+            return token;
         }
         if let Self::Big2Prolog = self {
             if ptr >= end {
@@ -394,7 +406,7 @@ impl Scanner {
             let encoding = &*(enc as *const normal_encoding);
             let (token, next) = xmltok_impl_c::big2_prologTok(encoding, input);
             if let Some(offset) = next {
-                *next_tok_ptr = ptr.add(offset);
+                *next_tok_ptr = ptr.wrapping_add(offset);
             }
             return token;
         }
@@ -768,6 +780,25 @@ pub fn unregister_unknown_encoding_converter(storage_id: usize) {
 
 pub mod xmltok_impl_c {
 
+    /// The normal tokenizer accepts its bounded input as either C chars at a
+    /// pointer adapter or bytes at a slice-based caller.  Both representations
+    /// describe the same octets.
+    pub(super) trait XmlTokenByte: Copy {
+        fn token_byte(self) -> u8;
+    }
+
+    impl XmlTokenByte for i8 {
+        fn token_byte(self) -> u8 {
+            self as u8
+        }
+    }
+
+    impl XmlTokenByte for u8 {
+        fn token_byte(self) -> u8 {
+            self
+        }
+    }
+
     pub(super) enum NormalCharCheck {
         Invalid,
         NameStart,
@@ -1015,30 +1046,30 @@ pub mod xmltok_impl_c {
         1
     }
 
-    fn normal_byte_type(
+    fn normal_byte_type<T: XmlTokenByte>(
         enc: &normal_encoding,
-        input: &[::core::ffi::c_char],
+        input: &[T],
         offset: usize,
     ) -> ::core::ffi::c_int {
-        enc.type_0[input[offset] as u8 as usize] as ::core::ffi::c_int
+        enc.type_0[input[offset].token_byte() as usize] as ::core::ffi::c_int
     }
 
-    fn normal_utf8_invalid(input: &[::core::ffi::c_char], offset: usize, width: usize) -> bool {
+    fn normal_utf8_invalid<T: XmlTokenByte>(input: &[T], offset: usize, width: usize) -> bool {
         let bytes = &input[offset..offset + width];
-        let b0 = bytes[0] as u8;
-        let b1 = bytes[1] as u8;
+        let b0 = bytes[0].token_byte();
+        let b1 = bytes[1].token_byte();
         match width {
             2 => b0 < 0xc2 || b1 & 0xc0 != 0x80,
             3 => {
-                let b2 = bytes[2] as u8;
+                let b2 = bytes[2].token_byte();
                 b2 & 0xc0 != 0x80
                     || (b0 == 0xef && b1 == 0xbf && b2 > 0xbd)
                     || (b0 == 0xe0 && (b1 < 0xa0 || b1 & 0xc0 == 0xc0))
                     || (b0 != 0xe0 && (b1 & 0xc0 != 0x80 || (b0 == 0xed && b1 > 0x9f)))
             }
             4 => {
-                let b2 = bytes[2] as u8;
-                let b3 = bytes[3] as u8;
+                let b2 = bytes[2].token_byte();
+                let b3 = bytes[3].token_byte();
                 b2 & 0xc0 != 0x80
                     || b3 & 0xc0 != 0x80
                     || (b0 == 0xf0 && (b1 < 0x90 || b1 & 0xc0 == 0xc0))
@@ -1048,8 +1079,8 @@ pub mod xmltok_impl_c {
         }
     }
 
-    fn normal_utf8_name_char(
-        input: &[::core::ffi::c_char],
+    fn normal_utf8_name_char<T: XmlTokenByte>(
+        input: &[T],
         offset: usize,
         width: usize,
         pages: &[::core::ffi::c_uchar; 256],
@@ -1057,8 +1088,8 @@ pub mod xmltok_impl_c {
         if width == 4 {
             return false;
         }
-        let b0 = input[offset] as u8;
-        let b1 = input[offset + 1] as u8;
+        let b0 = input[offset].token_byte();
+        let b1 = input[offset + 1].token_byte();
         let bitmap_index = if width == 2 {
             pages[((b0 >> 2) & 7) as usize] as usize * 8
                 + ((b0 & 3) as usize) * 2
@@ -1066,9 +1097,11 @@ pub mod xmltok_impl_c {
         } else {
             pages[(((b0 & 0x0f) << 4) + (b1 >> 2 & 0x0f)) as usize] as usize * 8
                 + ((b1 & 3) as usize) * 2
-                + ((input[offset + 2] as u8 >> 5) & 1) as usize
+                + ((input[offset + 2].token_byte() >> 5) & 1) as usize
         };
-        namingBitmap[bitmap_index] & (1 << ((input[offset + width - 1] as u8) & 0x1f)) != 0
+        namingBitmap[bitmap_index]
+            & (1 << (input[offset + width - 1].token_byte() & 0x1f))
+            != 0
     }
 
     fn normal_pi_utf8_invalid(input: &[u8], offset: usize, width: usize) -> bool {
@@ -2546,9 +2579,9 @@ pub mod xmltok_impl_c {
         }
     }
 
-    fn normal_scan_percent_impl(
+    pub(super) fn normal_scan_percent_impl<T: XmlTokenByte>(
         enc: &normal_encoding,
-        input: &[::core::ffi::c_char],
+        input: &[T],
     ) -> (::core::ffi::c_int, Option<usize>) {
         if input.is_empty() {
             return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
@@ -2613,7 +2646,7 @@ pub mod xmltok_impl_c {
         if input_len <= 0 {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
+        let input = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize) };
         let normal = unsafe { &*(enc as *const normal_encoding) };
         let (token, next) = normal_scan_percent_impl(normal, input);
         if let Some(offset) = next {
@@ -2622,9 +2655,9 @@ pub mod xmltok_impl_c {
         token
     }
 
-    fn normal_scan_pound_name_impl(
+    pub(super) fn normal_scan_pound_name_impl<T: XmlTokenByte>(
         enc: &normal_encoding,
-        input: &[::core::ffi::c_char],
+        input: &[T],
     ) -> (::core::ffi::c_int, Option<usize>) {
         if input.is_empty() {
             return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
@@ -2685,7 +2718,7 @@ pub mod xmltok_impl_c {
         if input_len <= 0 {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
+        let input = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize) };
         let normal = unsafe { &*(enc as *const normal_encoding) };
         let (token, next) = normal_scan_pound_name_impl(normal, input);
         if let Some(offset) = next {
@@ -2696,7 +2729,7 @@ pub mod xmltok_impl_c {
 
     /// Scans a normal-encoding literal using offsets within a bounded input
     /// slice.  The pointer adapter below owns the raw cursor contract.
-    fn normal_scan_lit_impl(
+    pub(super) fn normal_scan_lit_impl(
         open: ::core::ffi::c_int,
         enc: &normal_encoding,
         input: &[u8],
