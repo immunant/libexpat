@@ -372,8 +372,8 @@ fn public_id_bad_offset(
             }
         };
         let valid = match byte_type as ::core::ffi::c_int {
-            25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
-            | 30 | 19 | 23 => true,
+            25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33 | 30
+            | 19 | 23 => true,
             21 => character != Some(b'\t'),
             26 | 22 if character.is_some_and(|byte| byte & !0x7f == 0) => true,
             _ => matches!(character, Some(b'$' | b'@')),
@@ -728,7 +728,11 @@ pub mod xmltok_impl_c {
         return 1 as ::core::ffi::c_int;
     }
 
-    fn normal_byte_type(enc: &normal_encoding, input: &[::core::ffi::c_char], offset: usize) -> ::core::ffi::c_int {
+    fn normal_byte_type(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+        offset: usize,
+    ) -> ::core::ffi::c_int {
         enc.type_0[input[offset] as u8 as usize] as ::core::ffi::c_int
     }
 
@@ -780,15 +784,31 @@ pub mod xmltok_impl_c {
         namingBitmap[bitmap_index] & (1 << ((input[offset + width - 1] as u8) & 0x1f)) != 0
     }
 
-    fn normal_pi_target_token(input: &[::core::ffi::c_char], target: usize, terminator: usize) -> Option<::core::ffi::c_int> {
+    fn normal_pi_target_token(
+        input: &[::core::ffi::c_char],
+        target: usize,
+        terminator: usize,
+    ) -> Option<::core::ffi::c_int> {
         if terminator - target != 3 {
             return Some(crate::src::xmltok::XML_TOK_PI_1);
         }
         let mut upper = false;
         for (offset, lower, upper_case) in [
-            (0, crate::ascii_h::ASCII_x_1 as u8, crate::ascii_h::ASCII_X_1 as u8),
-            (1, crate::ascii_h::ASCII_m_1 as u8, crate::ascii_h::ASCII_M_1 as u8),
-            (2, crate::ascii_h::ASCII_l_1 as u8, crate::ascii_h::ASCII_L_1 as u8),
+            (
+                0,
+                crate::ascii_h::ASCII_x_1 as u8,
+                crate::ascii_h::ASCII_X_1 as u8,
+            ),
+            (
+                1,
+                crate::ascii_h::ASCII_m_1 as u8,
+                crate::ascii_h::ASCII_M_1 as u8,
+            ),
+            (
+                2,
+                crate::ascii_h::ASCII_l_1 as u8,
+                crate::ascii_h::ASCII_L_1 as u8,
+            ),
         ] {
             match input[target + offset] as u8 {
                 value if value == lower => {}
@@ -796,10 +816,17 @@ pub mod xmltok_impl_c {
                 _ => return Some(crate::src::xmltok::XML_TOK_PI_1),
             }
         }
-        if upper { None } else { Some(crate::src::xmltok::XML_TOK_XML_DECL_1) }
+        if upper {
+            None
+        } else {
+            Some(crate::src::xmltok::XML_TOK_XML_DECL_1)
+        }
     }
 
-    fn normal_scan_pi_impl(enc: &normal_encoding, input: &[::core::ffi::c_char]) -> (::core::ffi::c_int, Option<usize>) {
+    fn normal_scan_pi_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
         if input.is_empty() {
             return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
         }
@@ -813,7 +840,8 @@ pub mod xmltok_impl_c {
                 if input.len() < width {
                     return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                 }
-                if enc.enc.isUtf8 == 0 || normal_utf8_invalid(input, offset, width)
+                if enc.enc.isUtf8 == 0
+                    || normal_utf8_invalid(input, offset, width)
                     || !normal_utf8_name_char(input, offset, width, &nmstrtPages)
                 {
                     return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
@@ -832,7 +860,8 @@ pub mod xmltok_impl_c {
                     if input.len() - offset < width {
                         return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                     }
-                    if enc.enc.isUtf8 == 0 || normal_utf8_invalid(input, offset, width)
+                    if enc.enc.isUtf8 == 0
+                        || normal_utf8_invalid(input, offset, width)
                         || !normal_utf8_name_char(input, offset, width, &namePages)
                     {
                         return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
@@ -851,12 +880,15 @@ pub mod xmltok_impl_c {
                                 if input.len() - offset < width {
                                     return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
                                 }
-                                if enc.enc.isUtf8 != 0 && normal_utf8_invalid(input, offset, width) {
+                                if enc.enc.isUtf8 != 0 && normal_utf8_invalid(input, offset, width)
+                                {
                                     return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
                                 }
                                 offset += width;
                             }
-                            0 | 1 | 8 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+                            0 | 1 | 8 => {
+                                return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset))
+                            }
                             15 => {
                                 offset += 1;
                                 if offset == input.len() {
@@ -3992,10 +4024,8 @@ pub mod xmltok_impl_c {
         if span_len < 2 {
             return 1;
         }
-        let contents = ::core::slice::from_raw_parts(
-            ptr.add(1).cast::<u8>(),
-            (span_len - 2) as usize,
-        );
+        let contents =
+            ::core::slice::from_raw_parts(ptr.add(1).cast::<u8>(), (span_len - 2) as usize);
         let byte_types = &(*(enc as *const normal_encoding)).type_0;
         if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
             contents,
@@ -7760,10 +7790,8 @@ pub mod xmltok_impl_c {
         if span_len < 4 {
             return 1;
         }
-        let contents = ::core::slice::from_raw_parts(
-            ptr.add(2).cast::<u8>(),
-            (span_len - 4) as usize,
-        );
+        let contents =
+            ::core::slice::from_raw_parts(ptr.add(2).cast::<u8>(), (span_len - 4) as usize);
         let byte_types = &(*(enc as *const normal_encoding)).type_0;
         if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
             contents,
@@ -10224,7 +10252,11 @@ pub mod xmltok_impl_c {
         ScanRef,
     }
 
-    fn big2_char_type(enc: &normal_encoding, input: &[::core::ffi::c_char], at: usize) -> ::core::ffi::c_int {
+    fn big2_char_type(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+        at: usize,
+    ) -> ::core::ffi::c_int {
         if input[at] == 0 {
             enc.type_0[input[at + 1] as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
         } else {
@@ -10250,26 +10282,48 @@ pub mod xmltok_impl_c {
             9 => {
                 ptr += 2;
                 if end - ptr < 2 {
-                    return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_TRAILING_CR_1, None);
+                    return Big2ContentToken::Result(
+                        crate::src::xmltok::XML_TOK_TRAILING_CR_1,
+                        None,
+                    );
                 }
-                if big2_char_type(enc, input, ptr) == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int {
+                if big2_char_type(enc, input, ptr)
+                    == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
+                {
                     ptr += 2;
                 }
-                return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_DATA_NEWLINE_1, Some(ptr));
+                return Big2ContentToken::Result(
+                    crate::src::xmltok::XML_TOK_DATA_NEWLINE_1,
+                    Some(ptr),
+                );
             }
-            10 => return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_DATA_NEWLINE_1, Some(2)),
+            10 => {
+                return Big2ContentToken::Result(
+                    crate::src::xmltok::XML_TOK_DATA_NEWLINE_1,
+                    Some(2),
+                )
+            }
             4 => {
                 ptr += 2;
                 if end - ptr < 2 {
-                    return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_TRAILING_RSQB_1, None);
+                    return Big2ContentToken::Result(
+                        crate::src::xmltok::XML_TOK_TRAILING_RSQB_1,
+                        None,
+                    );
                 }
                 if input[ptr] == 0 && input[ptr + 1] == 0x5d {
                     ptr += 2;
                     if end - ptr < 2 {
-                        return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_TRAILING_RSQB_1, None);
+                        return Big2ContentToken::Result(
+                            crate::src::xmltok::XML_TOK_TRAILING_RSQB_1,
+                            None,
+                        );
                     }
                     if input[ptr] == 0 && input[ptr + 1] == 0x3e {
-                        return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr));
+                        return Big2ContentToken::Result(
+                            crate::src::xmltok::XML_TOK_INVALID_1,
+                            Some(ptr),
+                        );
                     }
                     ptr -= 2;
                 }
@@ -10277,17 +10331,25 @@ pub mod xmltok_impl_c {
             5 => ptr += 2,
             6 => {
                 if end < 3 {
-                    return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
+                    return Big2ContentToken::Result(
+                        crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        None,
+                    );
                 }
                 ptr += 3;
             }
             7 => {
                 if end < 4 {
-                    return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
+                    return Big2ContentToken::Result(
+                        crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        None,
+                    );
                 }
                 ptr += 4;
             }
-            0 | 1 | 8 => return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
+            0 | 1 | 8 => {
+                return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_INVALID_1, Some(0))
+            }
             _ => ptr += 2,
         }
         while end - ptr >= 2 {
@@ -10298,14 +10360,20 @@ pub mod xmltok_impl_c {
                 }
                 6 => {
                     if end - ptr < 3 {
-                        return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_DATA_CHARS_1, Some(ptr));
+                        return Big2ContentToken::Result(
+                            crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                            Some(ptr),
+                        );
                     }
                     ptr += 3;
                     break;
                 }
                 7 => {
                     if end - ptr < 4 {
-                        return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_DATA_CHARS_1, Some(ptr));
+                        return Big2ContentToken::Result(
+                            crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                            Some(ptr),
+                        );
                     }
                     ptr += 4;
                     break;
@@ -10320,7 +10388,10 @@ pub mod xmltok_impl_c {
                             ptr += 2;
                             break;
                         }
-                        return Big2ContentToken::Result(crate::src::xmltok::XML_TOK_INVALID_1, Some(ptr + 4));
+                        return Big2ContentToken::Result(
+                            crate::src::xmltok::XML_TOK_INVALID_1,
+                            Some(ptr + 4),
+                        );
                     }
                 }
                 3 | 2 | 0 | 1 | 8 | 9 | 10 | 4 => {}
@@ -10767,9 +10838,8 @@ pub mod xmltok_impl_c {
         }
 
         let token_at = |offset| big2_byte_type(enc, input, offset);
-        let invalid = |offset| {
-            Big2PrologToken::Result(crate::src::xmltok::XML_TOK_INVALID_1, Some(offset))
-        };
+        let invalid =
+            |offset| Big2PrologToken::Result(crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
 
         let mut offset = 0;
         let mut token;
@@ -10891,10 +10961,7 @@ pub mod xmltok_impl_c {
                 );
             }
             31 => {
-                return Big2PrologToken::Result(
-                    crate::src::xmltok::XML_TOK_OPEN_PAREN_1,
-                    Some(2),
-                );
+                return Big2PrologToken::Result(crate::src::xmltok::XML_TOK_OPEN_PAREN_1, Some(2));
             }
             32 => {
                 offset = 2;
@@ -10917,10 +10984,9 @@ pub mod xmltok_impl_c {
                         crate::src::xmltok::XML_TOK_CLOSE_PAREN_PLUS_1,
                         Some(4),
                     ),
-                    9 | 10 | 21 | 11 | 35 | 36 | 32 => Big2PrologToken::Result(
-                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_1,
-                        Some(2),
-                    ),
+                    9 | 10 | 21 | 11 | 35 | 36 | 32 => {
+                        Big2PrologToken::Result(crate::src::xmltok::XML_TOK_CLOSE_PAREN_1, Some(2))
+                    }
                     _ => invalid(offset),
                 };
             }
@@ -11400,10 +11466,8 @@ pub mod xmltok_impl_c {
         if span_len < 4 {
             return 1;
         }
-        let contents = ::core::slice::from_raw_parts(
-            ptr.add(2).cast::<u8>(),
-            (span_len - 4) as usize,
-        );
+        let contents =
+            ::core::slice::from_raw_parts(ptr.add(2).cast::<u8>(), (span_len - 4) as usize);
         let byte_types = &(*(enc as *const normal_encoding)).type_0;
         if let Some(offset) = crate::src::xmltok::public_id_bad_offset(
             contents,
@@ -11905,82 +11969,13 @@ pub mod xmltok_impl_c {
             }
         }
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     use crate::src::xmltok::checkCharRefNumber;
     use crate::src::xmltok::nametab_h::namePages;
     use crate::src::xmltok::nametab_h::namingBitmap;
     use crate::src::xmltok::nametab_h::nmstrtPages;
     use crate::src::xmltok::normal_encoding;
     use crate::src::xmltok::unicode_byte_type;
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
 }
 
 pub mod xmltok_ns_c {
@@ -12353,14 +12348,10 @@ pub mod xmltok_ns_c {
     use crate::src::xmltok::internal_utf8_encoding;
     use crate::src::xmltok::internal_utf8_encoding_ns;
     use crate::src::xmltok::streqci;
-    
-    
+
     use crate::src::xmltok::KW_UTF_16;
-    
-    
+
     use crate::src::xmltok::UNKNOWN_ENC;
-    
-    
 }
 
 pub mod nametab_h {
@@ -16839,10 +16830,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
     isInvalid4: None,
 };
 
-fn unicode_byte_type(
-    hi: ::core::ffi::c_char,
-    lo: ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+fn unicode_byte_type(hi: ::core::ffi::c_char, lo: ::core::ffi::c_char) -> ::core::ffi::c_int {
     match hi as ::core::ffi::c_uchar as ::core::ffi::c_int {
         216 | 217 | 218 | 219 => return crate::xmltok_impl_h::BT_LEAD4 as ::core::ffi::c_int,
         220 | 221 | 222 | 223 => return crate::xmltok_impl_h::BT_TRAIL as ::core::ffi::c_int,
@@ -19199,9 +19187,7 @@ pub(crate) unsafe fn initUpdatePosition(
         crate::src::xmltok::PositionUpdater::Init => {
             normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos)
         }
-        crate::src::xmltok::PositionUpdater::Normal => {
-            normal_updatePosition(_enc, ptr, end, pos)
-        }
+        crate::src::xmltok::PositionUpdater::Normal => normal_updatePosition(_enc, ptr, end, pos),
         crate::src::xmltok::PositionUpdater::Little2 => {
             crate::src::xmltok::xmltok_impl_c::little2_updatePosition(_enc, ptr, end, pos)
         }
@@ -20184,9 +20170,7 @@ unsafe extern "C" fn initScan(
                         *encPtr =
                             *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
                         return (**encPtr).scanners[state as usize]
-                            .scan(
-                            *encPtr, ptr, end, nextTokPtr
-                        );
+                            .scan(*encPtr, ptr, end, nextTokPtr);
                     }
                 }
                 65534 => {
@@ -20232,9 +20216,7 @@ unsafe extern "C" fn initScan(
                             *encPtr =
                                 *encodingTable.offset(UTF_16BE_ENC as ::core::ffi::c_int as isize);
                             return (**encPtr).scanners[state as usize]
-                                .scan(
-                                *encPtr, ptr, end, nextTokPtr,
-                            );
+                                .scan(*encPtr, ptr, end, nextTokPtr);
                         }
                     } else if *ptr.offset(1 as isize) as ::core::ffi::c_int
                         == '\0' as ::core::ffi::c_int
@@ -20243,9 +20225,7 @@ unsafe extern "C" fn initScan(
                             *encPtr =
                                 *encodingTable.offset(UTF_16LE_ENC as ::core::ffi::c_int as isize);
                             return (**encPtr).scanners[state as usize]
-                                .scan(
-                                *encPtr, ptr, end, nextTokPtr,
-                            );
+                                .scan(*encPtr, ptr, end, nextTokPtr);
                         }
                     }
                 }
@@ -20253,9 +20233,7 @@ unsafe extern "C" fn initScan(
         }
     }
     *encPtr = *encodingTable.offset((*enc).initEnc.isUtf16 as ::core::ffi::c_int as isize);
-    return (**encPtr).scanners[state as usize].scan(
-        *encPtr, ptr, end, nextTokPtr,
-    );
+    return (**encPtr).scanners[state as usize].scan(*encPtr, ptr, end, nextTokPtr);
 }
 pub unsafe extern "C" fn XmlInitUnknownEncodingNS(
     mut mem: *mut ::core::ffi::c_void,

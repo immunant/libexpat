@@ -552,10 +552,8 @@ static DEFAULT_VALUE_KEYWORDS: [Keyword; 3] = [
     (TokenName::Fixed, &KW_FIXED),
 ];
 
-static EMPTY_ANY_KEYWORDS: [Keyword; 2] = [
-    (TokenName::Empty, &KW_EMPTY),
-    (TokenName::Any, &KW_ANY),
-];
+static EMPTY_ANY_KEYWORDS: [Keyword; 2] =
+    [(TokenName::Empty, &KW_EMPTY), (TokenName::Any, &KW_ANY)];
 
 static PCDATA_KEYWORDS: [Keyword; 1] = [(TokenName::Pcdata, &KW_PCDATA)];
 
@@ -574,9 +572,10 @@ fn classify_token_name(
     min_bytes_per_char: ::core::ffi::c_int,
 ) -> TokenName {
     let (offset, keywords): (::core::ffi::c_int, &[Keyword]) = match (handler, tok) {
-        (PrologHandler::Prolog0 | PrologHandler::Prolog1, crate::src::xmltok::XML_TOK_DECL_OPEN) => {
-            (2, &DOCTYPE_KEYWORDS)
-        }
+        (
+            PrologHandler::Prolog0 | PrologHandler::Prolog1,
+            crate::src::xmltok::XML_TOK_DECL_OPEN,
+        ) => (2, &DOCTYPE_KEYWORDS),
         (
             PrologHandler::InternalSubset
             | PrologHandler::ExternalSubset0
@@ -590,9 +589,7 @@ fn classify_token_name(
             | PrologHandler::Notation1,
             crate::src::xmltok::XML_TOK_NAME,
         ) => (0, &SYSTEM_PUBLIC_KEYWORDS),
-        (PrologHandler::Entity5, crate::src::xmltok::XML_TOK_NAME) => {
-            (0, &NDATA_KEYWORDS)
-        }
+        (PrologHandler::Entity5, crate::src::xmltok::XML_TOK_NAME) => (0, &NDATA_KEYWORDS),
         (PrologHandler::Attlist2, crate::src::xmltok::XML_TOK_NAME) => {
             (0, &ATTRIBUTE_TYPE_KEYWORDS)
         }
@@ -600,9 +597,7 @@ fn classify_token_name(
             (1, &DEFAULT_VALUE_KEYWORDS)
         }
         (PrologHandler::Element1, crate::src::xmltok::XML_TOK_NAME) => (0, &EMPTY_ANY_KEYWORDS),
-        (PrologHandler::Element2, crate::src::xmltok::XML_TOK_POUND_NAME) => {
-            (1, &PCDATA_KEYWORDS)
-        }
+        (PrologHandler::Element2, crate::src::xmltok::XML_TOK_POUND_NAME) => (1, &PCDATA_KEYWORDS),
         (PrologHandler::CondSect0, crate::src::xmltok::XML_TOK_NAME) => {
             (0, &CONDITIONAL_SECTION_KEYWORDS)
         }
@@ -946,8 +941,7 @@ fn externalSubset1(
         }
         crate::src::xmltok::XML_TOK_COND_SECT_CLOSE => {
             if state.includeLevel != 0 as ::core::ffi::c_uint {
-                state.includeLevel =
-                    state.includeLevel.wrapping_sub(1 as ::core::ffi::c_uint);
+                state.includeLevel = state.includeLevel.wrapping_sub(1 as ::core::ffi::c_uint);
                 return crate::src::xmlrole::XML_ROLE_NONE as ::core::ffi::c_int;
             }
         }
@@ -1553,14 +1547,12 @@ fn element1(
         crate::src::xmltok::XML_TOK_NAME => {
             if name == TokenName::Empty {
                 state.handler = Some(PrologHandler::DeclClose);
-                state.role_none =
-                    crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
+                state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
                 return crate::src::xmlrole::XML_ROLE_CONTENT_EMPTY as ::core::ffi::c_int;
             }
             if name == TokenName::Any {
                 state.handler = Some(PrologHandler::DeclClose);
-                state.role_none =
-                    crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
+                state.role_none = crate::src::xmlrole::XML_ROLE_ELEMENT_NONE as ::core::ffi::c_int;
                 return crate::src::xmlrole::XML_ROLE_CONTENT_ANY as ::core::ffi::c_int;
             }
         }

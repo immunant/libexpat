@@ -1,4 +1,3 @@
-
 pub mod siphash_h {
 
     pub unsafe extern "C" fn sip_tokey(
@@ -911,8 +910,6 @@ pub mod siphash_h {
         }
         return 1 as ::core::ffi::c_int;
     }
-    
-    
 }
 
 pub use crate::__stddef_null_h::NULL;
@@ -1119,11 +1116,11 @@ pub use crate::stdbool_h::true_0;
 pub use crate::stdlib::uint64_t;
 pub use crate::stdlib::SIZE_MAX;
 
-pub use crate::src::xmlrole::prolog_state;
-pub use crate::src::xmlrole::C2Rust_Unnamed_0;
-pub use crate::src::xmlrole::prolog_state_init;
 pub use crate::src::xmlrole::prolog_handler_dispatch;
+pub use crate::src::xmlrole::prolog_state;
+pub use crate::src::xmlrole::prolog_state_init;
 pub use crate::src::xmlrole::prolog_state_init_external_entity;
+pub use crate::src::xmlrole::C2Rust_Unnamed_0;
 pub use crate::src::xmlrole::PROLOG_STATE;
 pub use crate::src::xmlrole::XML_ROLE_ATTLIST_ELEMENT_NAME;
 pub use crate::src::xmlrole::XML_ROLE_ATTLIST_NONE;
@@ -3006,9 +3003,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         (*parser).m_processor = ProcessorState::ExternalEntityInit;
     } else {
         (*parser).m_isParamEntity = crate::expat_h::XML_TRUE;
-        crate::src::xmlrole::prolog_state_init_external_entity(
-            &mut (*parser).m_prologState,
-        );
+        crate::src::xmlrole::prolog_state_init_external_entity(&mut (*parser).m_prologState);
         (*parser).m_processor = ProcessorState::ExternalParEntInit;
     }
     return parser;
@@ -5025,9 +5020,11 @@ unsafe extern "C" fn externalEntityInitProcessor2(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = start;
-    let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[1 as usize]
-        .scan(
-        (*parser).m_encoding, start, end, &raw mut next
+    let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[1 as usize].scan(
+        (*parser).m_encoding,
+        start,
+        end,
+        &raw mut next,
     );
     match tok {
         crate::src::xmltok::XML_TOK_BOM => {
@@ -5184,10 +5181,8 @@ unsafe extern "C" fn doContent(
     *eventPP = s;
     loop {
         let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int = (*enc).scanners[1 as usize]
-        .scan(
-            enc, s, end, &raw mut next
-        );
+        let mut tok: ::core::ffi::c_int =
+            (*enc).scanners[1 as usize].scan(enc, s, end, &raw mut next);
         let mut accountAfter: *const ::core::ffi::c_char = if tok
             == crate::src::xmltok::XML_TOK_TRAILING_RSQB
             || tok == crate::src::xmltok::XML_TOK_TRAILING_CR
@@ -6849,10 +6844,8 @@ unsafe extern "C" fn doCdataSection(
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
     loop {
         let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int = (*enc).scanners[2 as usize]
-            .scan(
-            enc, s, end, &raw mut next
-        );
+        let mut tok: ::core::ffi::c_int =
+            (*enc).scanners[2 as usize].scan(enc, s, end, &raw mut next);
         if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
             accountingOnAbort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
@@ -7590,12 +7583,7 @@ unsafe extern "C" fn entityValueProcessor(
     let mut enc: *const crate::src::xmltok::ENCODING = (*parser).m_encoding;
     let mut tok: ::core::ffi::c_int = 0;
     loop {
-        tok = (*enc).scanners[0 as usize].scan(
-            enc,
-            start,
-            end,
-            &raw mut next,
-        );
+        tok = (*enc).scanners[0 as usize].scan(enc, start, end, &raw mut next);
         if tok <= 0 as ::core::ffi::c_int {
             if (*parser).m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
@@ -7635,9 +7623,11 @@ unsafe extern "C" fn prologProcessor(
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = s;
-    let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[0 as usize]
-        .scan(
-        (*parser).m_encoding, s, end, &raw mut next
+    let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[0 as usize].scan(
+        (*parser).m_encoding,
+        s,
+        end,
+        &raw mut next,
     );
     return doProlog(
         parser,
@@ -7967,7 +7957,11 @@ unsafe extern "C" fn doProlog(
                                                     crate::expat_external_h::XML_Char,
                                                 >();
                                             if crate::src::xmltok::check_public_id(
-                                                (*enc).isPublicId, enc, s, next, eventPP,
+                                                (*enc).isPublicId,
+                                                enc,
+                                                s,
+                                                next,
+                                                eventPP,
                                             ) == 0
                                             {
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
@@ -8752,7 +8746,11 @@ unsafe extern "C" fn doProlog(
                                     }
                                     21 => {
                                         if crate::src::xmltok::check_public_id(
-                                            (*enc).isPublicId, enc, s, next, eventPP,
+                                            (*enc).isPublicId,
+                                            enc,
+                                            s,
+                                            next,
+                                            eventPP,
                                         ) == 0
                                         {
                                             return crate::expat_h::XML_ERROR_PUBLICID;
@@ -9346,7 +9344,11 @@ unsafe extern "C" fn doProlog(
                                     }
                                 }
                                 if crate::src::xmltok::check_public_id(
-                                    (*enc).isPublicId, enc, s, next, eventPP,
+                                    (*enc).isPublicId,
+                                    enc,
+                                    s,
+                                    next,
+                                    eventPP,
                                 ) == 0
                                 {
                                     return crate::expat_h::XML_ERROR_PUBLICID;
@@ -9502,12 +9504,7 @@ unsafe extern "C" fn doProlog(
             _ => {}
         }
         s = next;
-        tok = (*enc).scanners[0 as usize].scan(
-            enc,
-            s,
-            end,
-            &raw mut next,
-        );
+        tok = (*enc).scanners[0 as usize].scan(enc, s, end, &raw mut next);
     }
 }
 
@@ -9521,9 +9518,11 @@ unsafe extern "C" fn epilogProcessor(
     (*parser).m_eventPtr = s;
     loop {
         let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[0 as usize]
-            .scan(
-            (*parser).m_encoding, s, end, &raw mut next
+        let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners[0 as usize].scan(
+            (*parser).m_encoding,
+            s,
+            end,
+            &raw mut next,
         );
         if accountingDiffTolerated(
             parser,
@@ -9706,12 +9705,12 @@ unsafe extern "C" fn internalEntityProcessor(
         next = textStart;
         if (*entity).is_param != 0 {
             let mut tok: ::core::ffi::c_int = (*(*parser).m_internalEncoding).scanners[0 as usize]
-                                .scan(
-                (*parser).m_internalEncoding,
-                textStart,
-                textEnd,
-                &raw mut next,
-            );
+                .scan(
+                    (*parser).m_internalEncoding,
+                    textStart,
+                    textEnd,
+                    &raw mut next,
+                );
             result = doProlog(
                 parser,
                 (*parser).m_internalEncoding,
