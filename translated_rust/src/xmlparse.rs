@@ -16040,17 +16040,14 @@ unsafe fn getAttributeId(
     id as *mut ATTRIBUTE_ID
 }
 
-// The string pool owns the resulting context.  Keep the raw-pointer work for
-// filling that pool here, where the pool's `ptr..end` invariant is checked
-// before every write.
-unsafe fn pool_append_context_char(
+// The string pool owns the resulting context.  Its cursor invariant is
+// checked before every write, so appending a single owned XML character needs
+// no raw access.
+fn pool_append_context_char(
     pool: &mut STRING_POOL,
     ch: crate::expat_external_h::XML_Char,
 ) -> bool {
-    if pool.is_full() && poolGrow(pool) == 0 {
-        return false;
-    }
-    pool.write_cursor(ch)
+    pool_append_char(pool, ch)
 }
 
 unsafe fn pool_append_context_chars(
@@ -16083,15 +16080,22 @@ unsafe fn pool_append_context_c_string(
     true
 }
 
+// Hash-table slots own their entries in table order.  Context construction
+// only needs that stable iteration order; it does not need the C-style raw
+// iterator cursor used by older table clients.
+fn hash_table_entries(table: &HASH_TABLE) -> impl Iterator<Item = &NamedAllocation> {
+    table
+        .v
+        .as_ref()
+        .into_iter()
+        .flat_map(|slots| slots.entries.iter().filter_map(Option::as_ref))
+}
+
 unsafe extern "C" fn getContext(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *const crate::expat_external_h::XML_Char {
     let parser = &mut *parser;
     let dtd = &mut *parser_dtd_ptr!(parser);
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        table: None,
-        next: 0 as crate::__stddef_size_t_h::size_t,
-    };
     let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
     if !dtd.defaultPrefix.binding.is_null() {
         if !pool_append_context_char(
@@ -16110,14 +16114,8 @@ unsafe extern "C" fn getContext(
         }
         needSep = crate::expat_h::XML_TRUE;
     }
-    let table = &dtd.prefixes;
-    hashTableIterInit(&raw mut iter, table);
-    loop {
-        let prefix = hashTableIterNext(&raw mut iter) as *mut PREFIX;
-        if prefix.is_null() {
-            break;
-        }
-        let prefix = &*prefix;
+    for entry in hash_table_entries(&dtd.prefixes) {
+        let prefix = &*(entry.bytes.as_ptr() as *const PREFIX);
         if prefix.binding.is_null() {
             continue;
         }
@@ -16148,14 +16146,8 @@ unsafe extern "C" fn getContext(
         }
         needSep = crate::expat_h::XML_TRUE;
     }
-    let table = &dtd.generalEntities;
-    hashTableIterInit(&raw mut iter, table);
-    loop {
-        let e = hashTableIterNext(&raw mut iter) as *mut ENTITY;
-        if e.is_null() {
-            break;
-        }
-        let e = &*e;
+    for entry in hash_table_entries(&dtd.generalEntities) {
+        let e = &*(entry.bytes.as_ptr() as *const ENTITY);
         if e.open == 0 {
             continue;
         }
