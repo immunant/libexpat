@@ -207,7 +207,11 @@ pub struct ATTRIBUTE {
     /// attribute scanner.  Keeping this as an offset prevents the scanner's
     /// transient input address from escaping into parser scratch state.
     pub name: usize,
-    pub valuePtr: *const ::core::ffi::c_char,
+    /// Offset of the attribute value's first byte within the start-tag token
+    /// passed to the scanner.  Keeping this as an offset prevents the
+    /// scanner's transient input address from escaping into parser scratch
+    /// state.
+    pub valueStart: usize,
     /// Offset of the attribute value's exclusive end within the start-tag
     /// token passed to the scanner.  Like `name`, this keeps the scanner's
     /// transient input address out of parser scratch state.
@@ -577,6 +581,15 @@ pub enum AttributeScanner {
 pub(crate) enum AttributeSource<'a> {
     Bytes(&'a [u8]),
     Chars(&'a [::core::ffi::c_char]),
+}
+
+impl AttributeSource<'_> {
+    pub(crate) fn len(&self) -> usize {
+        match self {
+            Self::Bytes(bytes) => bytes.len(),
+            Self::Chars(chars) => chars.len(),
+        }
+    }
 }
 
 impl AttributeScanner {
@@ -10626,21 +10639,14 @@ pub mod xmltok_impl_c {
     }
 
     /// Fills parser-owned attribute records from one already-validated
-    /// start-tag slice.  The raw values retained in `ATTRIBUTE` are offsets
-    /// translated back to pointers into `source`, whose lifetime is bounded
-    /// by the parser's current token processing.
+    /// start-tag slice.  `ATTRIBUTE` retains only offsets, so the scanner's
+    /// transient input address cannot escape into parser scratch state.
     pub(crate) fn scan_atts(
         scanner: crate::src::xmltok::AttributeScanner,
         byte_types: &[::core::ffi::c_uchar; 256],
         source: crate::src::xmltok::AttributeSource<'_>,
         attributes: &mut [crate::src::xmltok::ATTRIBUTE],
     ) -> ::core::ffi::c_int {
-        let source_start = match &source {
-            crate::src::xmltok::AttributeSource::Bytes(bytes) => {
-                bytes.as_ptr().cast::<::core::ffi::c_char>()
-            }
-            crate::src::xmltok::AttributeSource::Chars(chars) => chars.as_ptr(),
-        };
         // The token scanners operate on unsigned byte values.  Entity text is
         // already a checked `XML_Char` slice, so convert its signed storage
         // values without changing their byte representation rather than
@@ -10663,9 +10669,7 @@ pub mod xmltok_impl_c {
             };
             match update {
                 AttributeUpdate::Name(offset) => slot.name = offset,
-                AttributeUpdate::ValueStart(offset) => {
-                    slot.valuePtr = source_start.wrapping_add(offset)
-                }
+                AttributeUpdate::ValueStart(offset) => slot.valueStart = offset,
                 AttributeUpdate::ValueEnd(offset) => {
                     slot.valueEnd = offset
                 }

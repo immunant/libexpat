@@ -2144,7 +2144,7 @@ impl AttributeStorage {
     fn blank_record() -> crate::src::xmltok::ATTRIBUTE {
         crate::src::xmltok::ATTRIBUTE {
             name: 0,
-            valuePtr: ::core::ptr::null(),
+            valueStart: 0,
             valueEnd: 0,
             normalized: 0,
         }
@@ -9475,6 +9475,7 @@ unsafe extern "C" fn storeAtts(
         }
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
+    let att_token_len;
     n = {
         // `attEnd` is the tokenizer's end cursor for this exact start-tag.
         // Rebuild the scanner input from the owning parser/entity slice only
@@ -9524,6 +9525,7 @@ unsafe extern "C" fn storeAtts(
         };
         // Keep the scanner's output borrow local: it fills the owned records
         // before later parser work can grow them or invoke a callback.
+        att_token_len = source.len();
         let parser_ref = &mut *parser;
         let records = &mut parser_ref.m_atts.records;
         (*enc).getAtts.scan(
@@ -9642,7 +9644,15 @@ unsafe extern "C" fn storeAtts(
         // The scanner has completed before the name/value view is formed.
         // Copy this record before its storage is reused by `appAtts`.
         let currAtt = (&(*parser).m_atts.records)[i as usize];
+        if currAtt.name > att_token_len
+            || currAtt.valueStart > currAtt.valueEnd
+            || currAtt.valueEnd > att_token_len
+        {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        }
         let name = attStr.add(currAtt.name);
+        let value_start = attStr.wrapping_add(currAtt.valueStart);
+        let value_end = attStr.wrapping_add(currAtt.valueEnd);
         let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
             parser,
             enc,
@@ -9706,8 +9716,8 @@ unsafe extern "C" fn storeAtts(
                 parser,
                 enc,
                 isCdata,
-                currAtt.valuePtr,
-                attStr.wrapping_add(currAtt.valueEnd),
+                value_start,
+                value_end,
                 &raw mut (*parser).m_tempPool,
                 account,
             );
@@ -9726,8 +9736,8 @@ unsafe extern "C" fn storeAtts(
             appAtts[attIndex as usize] = poolStoreString(
                 &raw mut (*parser).m_tempPool,
                 enc,
-                currAtt.valuePtr,
-                attStr.wrapping_add(currAtt.valueEnd),
+                value_start,
+                value_end,
             );
             if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
