@@ -2353,6 +2353,63 @@ impl AttributeStorage {
     }
 }
 
+/// Grows the owned attribute-record storage while preserving the configured
+/// allocator's observable backing allocation.  The caller rescans the token
+/// when this reports `true`, because growth replaces the scanner's record
+/// slice with freshly initialized entries.
+fn ensure_attribute_capacity(
+    parser: &mut XML_ParserStruct,
+    scanned_attributes: ::core::ffi::c_int,
+    default_attributes: ::core::ffi::c_int,
+) -> Result<bool, crate::expat_h::XML_Error> {
+    if scanned_attributes > crate::limits_h::INT_MAX - default_attributes {
+        return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+    }
+    if scanned_attributes + default_attributes <= parser.m_attsSize {
+        return Ok(false);
+    }
+
+    let old_atts_size = parser.m_attsSize;
+    if default_attributes > crate::limits_h::INT_MAX - INIT_ATTS_SIZE
+        || scanned_attributes
+            > crate::limits_h::INT_MAX - (default_attributes + INIT_ATTS_SIZE)
+    {
+        return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+    }
+    let new_atts_size = scanned_attributes + default_attributes + INIT_ATTS_SIZE;
+    let new_capacity = new_atts_size as usize;
+    if AttributeStorage::callback_slots(new_capacity).is_none() {
+        return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+    }
+    let Some(allocation_size) =
+        new_capacity.checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())
+    else {
+        return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+    };
+    if parser
+        .m_atts
+        .records
+        .try_reserve_exact(new_capacity - parser.m_atts.records.len())
+        .is_err()
+    {
+        return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+    }
+    let mut backing = parser.m_atts.backing.take();
+    let grew = backing.as_mut().is_some_and(|backing| {
+        backing(parser, AttributeAllocationAction::Grow(allocation_size))
+    });
+    parser.m_atts.backing = backing;
+    if !grew {
+        return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+    }
+    parser
+        .m_atts
+        .records
+        .resize_with(new_capacity, AttributeStorage::blank_record);
+    parser.m_attsSize = new_atts_size;
+    Ok(scanned_attributes > old_atts_size)
+}
+
 // Tag names are retained either in the tag's Rust-owned conversion buffer or
 // in the temporary string pool.  Resolve their terminated XML character view
 // before namespace expansion so the expansion can use checked slices rather
@@ -11615,7 +11672,7 @@ impl NamespaceTagNameUpdate {
 }
 
 unsafe fn storeAtts(
-    mut parser: crate::expat_h::XML_Parser,
+    parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
     parser_events: bool,
     mut attStr: *const ::core::ffi::c_char,
@@ -11626,7 +11683,11 @@ unsafe fn storeAtts(
     mut account: XML_Account,
     appAtts: &mut Vec<*const crate::expat_external_h::XML_Char>,
 ) -> crate::expat_h::XML_Error {
-    let dtd = &mut *parser_dtd_ptr!(parser);
+    let parser_ptr = std::ptr::from_mut(parser);
+    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let dtd = &mut *dtd_owner.value.get();
     let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     let mut nDefaultAtts: ::core::ffi::c_int = 0;
     let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
@@ -11644,7 +11705,7 @@ unsafe fn storeAtts(
         chars
     };
     elementType = lookup(
-        parser,
+        parser_ptr,
         &raw mut dtd.elementTypes,
         tag_name.as_ptr() as KEY,
         0 as crate::__stddef_size_t_h::size_t,
@@ -11657,7 +11718,7 @@ unsafe fn storeAtts(
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         elementType = lookup(
-            parser,
+            parser_ptr,
             &raw mut dtd.elementTypes,
             name as KEY,
             ::core::mem::size_of::<ELEMENT_TYPE>(),
@@ -11665,8 +11726,8 @@ unsafe fn storeAtts(
         if elementType.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if (*parser).m_ns as ::core::ffi::c_int != 0 {
-            let salt = (*parser)
+        if parser.m_ns as ::core::ffi::c_int != 0 {
+            let salt = parser
                 .m_root
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -11704,51 +11765,11 @@ unsafe fn storeAtts(
             records,
         )
     };
-    if n > crate::limits_h::INT_MAX - nDefaultAtts {
-        return crate::expat_h::XML_ERROR_NO_MEMORY;
-    }
-    if n + nDefaultAtts > (*parser).m_attsSize {
-        let oldAttsSize: ::core::ffi::c_int = (*parser).m_attsSize;
-        if nDefaultAtts > crate::limits_h::INT_MAX - INIT_ATTS_SIZE
-            || n > crate::limits_h::INT_MAX - (nDefaultAtts + INIT_ATTS_SIZE)
-        {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        let new_atts_size = n + nDefaultAtts + INIT_ATTS_SIZE;
-        let new_capacity = new_atts_size as usize;
-        if AttributeStorage::callback_slots(new_capacity).is_none() {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        let Some(allocation_size) =
-            new_capacity.checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())
-        else {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        };
-        if (*parser)
-            .m_atts
-            .records
-            .try_reserve_exact(new_capacity - (*parser).m_atts.records.len())
-            .is_err()
-        {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        let mut backing = (*parser).m_atts.backing.take();
-        let grew = backing.as_mut().is_some_and(|backing| {
-            backing(
-                &mut *parser,
-                AttributeAllocationAction::Grow(allocation_size),
-            )
-        });
-        (*parser).m_atts.backing = backing;
-        if !grew {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        (*parser)
-            .m_atts
-            .records
-            .resize_with(new_capacity, AttributeStorage::blank_record);
-        (*parser).m_attsSize = new_atts_size;
-        if n > oldAttsSize {
+    let rescan_after_growth = match ensure_attribute_capacity(parser, n, nDefaultAtts) {
+        Ok(rescan) => rescan,
+        Err(error) => return error,
+    };
+    if rescan_after_growth {
             let parser_ref = &mut *parser;
             let Some(source) = attribute_token_source(
                 parser_events,
@@ -11766,17 +11787,16 @@ unsafe fn storeAtts(
                 source,
                 &mut parser_ref.m_atts.records,
             );
-        }
     }
     // The opaque backing allocation preserves the configured allocator's
     // observable sequence.  Scanner records and the callback's terminated
     // name/value vector have distinct Rust storage: treating one as the
     // other would create an aliased slice with an unrelated element type.
-    if (*parser).m_attsSize <= 0 || (*parser).m_atts.records.len() != (*parser).m_attsSize as usize
+    if parser.m_attsSize <= 0 || parser.m_atts.records.len() != parser.m_attsSize as usize
     {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
-    let app_atts_len = AttributeStorage::callback_slots((*parser).m_attsSize as usize)
+    let app_atts_len = AttributeStorage::callback_slots(parser.m_attsSize as usize)
         .expect("validated attribute storage capacity");
     appAtts.clear();
     if appAtts.try_reserve_exact(app_atts_len).is_err() {
@@ -11787,7 +11807,7 @@ unsafe fn storeAtts(
     while i < n {
         // The scanner has completed before the name/value view is formed.
         // Copy this record before its storage is reused by `appAtts`.
-        let currAtt = (&(*parser).m_atts.records)[i as usize];
+        let currAtt = parser.m_atts.records[i as usize];
         if currAtt.name > att_token_len
             || currAtt.valueStart > currAtt.valueEnd
             || currAtt.valueEnd > att_token_len
@@ -11918,7 +11938,12 @@ unsafe fn storeAtts(
             (*parser).m_tempPool.commit();
         } else {
             appAtts[attIndex as usize] =
-                poolStoreString(&raw mut (*parser).m_tempPool, enc, value_start, value_end);
+                poolStoreString(
+                    &raw mut (*parser).m_tempPool,
+                    enc,
+                    value_start,
+                    value_end,
+                );
             if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
@@ -12224,7 +12249,7 @@ unsafe fn storeAtts(
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
                 let id = lookup(
-                    parser,
+                    parser_ptr,
                     &raw mut dtd.attributeIds,
                     appAtts[i as usize] as KEY,
                     0 as crate::__stddef_size_t_h::size_t,
@@ -12522,7 +12547,7 @@ unsafe fn storeAtts(
         if n > crate::limits_h::INT_MAX - EXPAND_SPARE {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let parser_state = &mut *parser;
+        let parser_state = &mut *parser_ptr;
         if !parser_state.m_activeBindings[binding_index].replace_uri(
             (n + EXPAND_SPARE) as usize,
             4270 as ::core::ffi::c_int,
@@ -12541,7 +12566,7 @@ unsafe fn storeAtts(
     };
     let namespace_separator = (*parser).m_namespaceSeparator;
     {
-        let parser_state = &mut *parser;
+        let parser_state = &mut *parser_ptr;
         let uri = &mut parser_state.m_activeBindings[binding_index].uri;
         let Some(destination) = uri.get_mut(uri_start..uri_end) else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
