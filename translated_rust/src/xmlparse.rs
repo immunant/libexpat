@@ -2732,10 +2732,27 @@ static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
 
 #[derive(Clone)]
 struct UnknownEncodingHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn UnknownEncodingCallback>>,
     // The context belongs to the foreign caller.  This opaque container keeps
     // its address out of parser state and is only materialized for callback
     // dispatch.
     context: CallbackContextRegistration,
+}
+
+/// Prepares the typed callback adapter kept in the boundary registry.  Parser
+/// mutation is deliberately separate so exported callers only need to create
+/// this owned registration and dispatch it to the parser-side setter.
+fn unknown_encoding_handler_registration<Callback>(
+    handler: Option<Callback>,
+    context: CallbackContextRegistration,
+) -> UnknownEncodingHandlerRegistration
+where
+    Callback: UnknownEncodingCallback + 'static,
+{
+    UnknownEncodingHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        context,
+    }
 }
 
 static UNKNOWN_ENCODING_HANDLER_ARGS: std::sync::OnceLock<
@@ -9928,36 +9945,31 @@ pub unsafe extern "C" fn XML_SetSkippedEntityHandler_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_skipped_entity_handler(parser, parser_address, registration)
 }
-/// Updates unknown-encoding callback registrations for an already validated
-/// parser.  The foreign context remains in an opaque boundary adapter and is
-/// only materialized at callback dispatch.
-pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
-    parser: crate::expat_h::XML_Parser,
-    handler: crate::expat_h::XML_UnknownEncodingHandler,
-    data: *mut ::core::ffi::c_void,
+/// Installs an owned unknown-encoding callback registration for a parser that
+/// has already been validated by the ABI boundary.
+fn set_unknown_encoding_handler(
+    parser: &mut XML_ParserStruct,
+    parser_key: usize,
+    registration: UnknownEncodingHandlerRegistration,
 ) {
-    if parser.is_null() || !parser.is_aligned() {
-        return;
-    }
-    let parser = &mut *parser;
-    let parser_key = std::ptr::from_ref(parser).addr();
-    parser.m_unknownEncodingHandler = handler.is_some();
+    parser.m_unknownEncodingHandler = registration.callback.is_some();
     let mut handlers = UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(callback) = handler {
-        handlers.insert(parser_key, std::sync::Arc::new(callback));
-        let registration = UnknownEncodingHandlerRegistration {
-            context: CallbackContextRegistration {
-                context: std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(data)),
-            },
-        };
+    if let Some(callback) = registration.callback {
+        handlers.insert(parser_key, callback);
         UNKNOWN_ENCODING_HANDLER_ARGS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser_key, registration);
+            .insert(
+                parser_key,
+                UnknownEncodingHandlerRegistration {
+                    callback: None,
+                    context: registration.context,
+                },
+            );
     } else {
         handlers.remove(&parser_key);
         UNKNOWN_ENCODING_HANDLER_ARGS
@@ -9970,11 +9982,22 @@ pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
 #[export_name = "XML_SetUnknownEncodingHandler"]
 
 pub unsafe extern "C" fn XML_SetUnknownEncodingHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_UnknownEncodingHandler,
-    mut data: *mut ::core::ffi::c_void,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_UnknownEncodingHandler,
+    data: *mut ::core::ffi::c_void,
 ) {
-    XML_SetUnknownEncodingHandler(parser, handler, data)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_key = parser.addr();
+    let registration = unknown_encoding_handler_registration(
+        handler,
+        CallbackContextRegistration {
+            context: std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(data)),
+        },
+    );
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_unknown_encoding_handler(parser, parser_key, registration)
 }
 fn set_element_decl_handler(
     parser: &mut XML_ParserStruct,
