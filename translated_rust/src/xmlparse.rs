@@ -15354,6 +15354,61 @@ fn prolog_quoted_token_contents(
     (content_start <= content_end).then(|| &token[content_start..content_end])
 }
 
+/// Scans the remaining prolog input after resolving the cursor range through
+/// its parser- or entity-owned storage.  `doProlog` only advances within one
+/// of these two windows, so this keeps the tokenizer's slice construction at
+/// the checked ownership boundary rather than returning to its raw-cursor
+/// adapter between tokens.
+fn scan_prolog_window(
+    parser: &mut XML_ParserStruct,
+    dtd: &DTD,
+    parser_events: bool,
+    encoding: &crate::src::xmltok::ENCODING,
+    start_address: usize,
+    end_address: usize,
+) -> Option<crate::src::xmltok::ScannerResult> {
+    let scanner = encoding.scanners[0];
+    let scan = if matches!(
+        scanner,
+        crate::src::xmltok::Scanner::InitProlog | crate::src::xmltok::Scanner::InitPrologNS
+    ) {
+        // Before declaration handling switches `doProlog` to a normal table,
+        // it deliberately retains the initial scanner even after that scanner
+        // has selected an encoding.  Preserve that state-machine boundary.
+        let input = parser
+            .m_buffer
+            .window_from_addresses(start_address, end_address)?;
+        crate::src::xmltok::ScannerContext::initial(
+            scanner,
+            &mut parser.m_initEncoding,
+            bytemuck::cast_slice(input),
+        )
+        .scan()
+    } else {
+        let input = event_raw_name_source(
+            parser,
+            dtd,
+            parser_events,
+            start_address,
+            end_address,
+        )?;
+        let normal_encoding = if parser_events {
+            current_parser_normal_encoding(parser)?
+        } else {
+            *crate::src::xmltok::internal_utf8_normal_encoding(matches!(
+                parser.m_internalEncoding,
+                InternalEncoding::Utf8Ns
+            ))
+        };
+        crate::src::xmltok::ScannerContext::normal(scanner, &normal_encoding, input.chars())
+            .scan()
+    };
+
+    scan.next
+        .is_none_or(|offset| offset <= end_address.checked_sub(start_address).unwrap_or(0))
+        .then_some(scan)
+}
+
 unsafe fn doProlog(
     parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -18449,7 +18504,16 @@ unsafe fn doProlog(
             _ => {}
         }
         s = next;
-        let scan = scanner_context_from_raw(encoding.scanners[0 as usize], enc, s, end).scan();
+        let Some(scan) = scan_prolog_window(
+            parser,
+            dtd,
+            parser_events,
+            &encoding,
+            s.addr(),
+            end.addr(),
+        ) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
         tok = scan.token;
         if let Some(offset) = scan.next {
             next = s.wrapping_add(offset);
