@@ -10729,19 +10729,23 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplificatio
         maximumAmplificationFactor,
     )
 }
-pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold(
-    mut parser: crate::expat_h::XML_Parser,
-    mut activationThresholdBytes: ::core::ffi::c_ulonglong,
+/// Updates the amplification threshold for a validated root parser.
+///
+/// Child parsers share their root accounting state and therefore retain the
+/// threshold selected by their parent.
+fn set_billion_laughs_activation_threshold_impl(
+    parser: &XML_ParserStruct,
+    activation_threshold_bytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || (*parser).m_parentParser.is_some() {
+    if parser.m_parentParser.is_some() {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser)
+    parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .accounting
-        .activationThresholdBytes = activationThresholdBytes;
+        .activationThresholdBytes = activation_threshold_bytes;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetBillionLaughsAttackProtectionActivationThreshold"]
@@ -10750,7 +10754,11 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetBillionLaughsAttackProtectionActivationThreshold(parser, activationThresholdBytes)
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_FALSE;
+    }
+    let parser = unsafe { parser.as_ref() }.expect("non-null parser was checked");
+    set_billion_laughs_activation_threshold_impl(parser, activationThresholdBytes)
 }
 /// Sets the allocation tracker's maximum amplification for a validated root
 /// parser.  Child parsers share their root allocation state and must not
