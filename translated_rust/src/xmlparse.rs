@@ -6180,14 +6180,15 @@ fn ENTROPY_DEBUG(label: &str, entropy: ::core::ffi::c_ulong) -> ::core::ffi::c_u
     entropy
 }
 
-unsafe extern "C" fn generate_hash_secret_salt(
-    _parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_ulong {
+/// Produces the process-local hash salt without exposing temporary entropy
+/// storage to the C ABI.  Expat's original `arc4random_buf` path cannot
+/// report failure, so an unavailable operating-system entropy source is a
+/// non-recoverable initialization failure as well.
+fn generate_hash_secret_salt() -> ::core::ffi::c_ulong {
     let mut entropy: ::core::ffi::c_ulong = 0;
-    crate::stdlib::arc4random_buf(
-        &raw mut entropy as *mut ::core::ffi::c_void,
-        ::core::mem::size_of::<::core::ffi::c_ulong>(),
-    );
+    if getrandom::fill(bytemuck::bytes_of_mut(&mut entropy)).is_err() {
+        std::process::abort();
+    }
     return ENTROPY_DEBUG("arc4random_buf", entropy);
 }
 
@@ -9308,16 +9309,22 @@ unsafe fn XML_Parse(
                 .m_root
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .hash_secret_salt = generate_hash_secret_salt(parser as *mut XML_ParserStruct);
+                .hash_secret_salt = generate_hash_secret_salt();
         }
-        if parser.m_ns != 0
-            && setContext(
-                parser as *mut XML_ParserStruct,
-                &raw const implicitContext as *const crate::expat_external_h::XML_Char,
-            ) == 0
-        {
-            parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-            return crate::expat_h::XML_STATUS_ERROR;
+        if parser.m_ns != 0 {
+            let context_set = parser.m_dtd.clone().is_some_and(|dtd_owner| {
+                dtd_owner.inspect(|dtd| {
+                    set_context_impl(
+                        parser,
+                        dtd,
+                        bytemuck::cast_slice(&implicitContext[..implicitContext.len() - 1]),
+                    ) != 0
+                })
+            });
+            if !context_set {
+                parser.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
+                return crate::expat_h::XML_STATUS_ERROR;
+            }
         }
     }
 
