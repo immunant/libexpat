@@ -3854,10 +3854,13 @@ unsafe fn tag_storage_new(
     })
 }
 
-unsafe fn release_tag_storage(parser: crate::expat_h::XML_Parser, mut storage: TagStorage) {
-    let tag = storage.tag.as_mut_ptr();
-    (*tag).buffer.release(1942 as ::core::ffi::c_int);
-    destroyBindings((*tag).bindings, parser);
+fn release_tag_storage(active_bindings: &mut Vec<BindingStorage>, mut storage: TagStorage) {
+    let tag = storage
+        .tag
+        .first_mut()
+        .expect("tag storage always contains its allocated tag");
+    tag.buffer.release(1942 as ::core::ffi::c_int);
+    destroy_bindings(active_bindings, tag.bindings);
     if let Some(mut backing) = storage.backing.take() {
         backing(1944 as ::core::ffi::c_int);
     }
@@ -6673,21 +6676,21 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
 ) -> crate::expat_h::XML_Parser {
     XML_ExternalEntityParserCreate(oldParser, context, encodingName)
 }
-unsafe fn destroyBindings(
+fn destroy_bindings(
+    active_bindings: &mut Vec<BindingStorage>,
     mut bindings: Option<BindingId>,
-    mut parser: crate::expat_h::XML_Parser,
 ) {
     while let Some(binding_id) = bindings {
-        let parser_state = &mut *parser;
-        let Some(index) = parser_state.binding_index(binding_id) else {
+        let Some(index) = active_bindings.iter().position(|storage| storage.id == binding_id)
+        else {
             std::process::abort();
         };
-        bindings = parser_state.m_activeBindings[index]
+        bindings = active_bindings[index]
             .binding
             .first()
             .expect("binding storage has one binding")
             .nextTagBinding;
-        parser_state.m_activeBindings.swap_remove(index).release();
+        active_bindings.swap_remove(index).release();
     }
 }
 pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) {
@@ -6814,11 +6817,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .remove(&parser_key);
     let active_tags = std::mem::take(&mut parser.m_activeTags);
     for storage in active_tags.into_iter().rev() {
-        release_tag_storage(parser as *mut XML_ParserStruct, storage);
+        release_tag_storage(&mut parser.m_activeBindings, storage);
     }
     let free_tags = std::mem::take(&mut parser.m_freeTagList.tags);
     for storage in free_tags.into_iter().rev() {
-        release_tag_storage(parser as *mut XML_ParserStruct, storage);
+        release_tag_storage(&mut parser.m_activeBindings, storage);
     }
     let active_internal_entities = std::mem::take(&mut parser.m_activeInternalEntities);
     for storage in active_internal_entities.into_iter().rev() {
@@ -6852,7 +6855,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .m_inheritedBindings
         .and_then(|index| parser.m_activeBindings.get(index))
         .map(|storage| storage.id);
-    destroyBindings(inherited_bindings, parser as *mut XML_ParserStruct);
+    destroy_bindings(&mut parser.m_activeBindings, inherited_bindings);
     poolDestroy(&mut parser.m_tempPool);
     poolDestroy(&mut parser.m_temp2Pool);
     if let Some(protocol_encoding_name) = parser.m_protocolEncodingName.take() {
