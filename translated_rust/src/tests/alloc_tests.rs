@@ -798,6 +798,48 @@ fn set_comment_handler(handler: XML_CommentHandler) {
     alloc_test_action(AllocTestAction::SetCommentHandler(handler));
 }
 
+fn init_dummy_handler_flags() {
+    ffi_call!(init_dummy_handlers);
+}
+
+fn dummy_handler_flags() -> ::core::ffi::c_ulong {
+    ffi_call!(get_dummy_handler_flags)
+}
+
+fn set_doctype_decl_handler(start: XML_StartDoctypeDeclHandler, end: XML_EndDoctypeDeclHandler) {
+    ffi_call!(XML_SetDoctypeDeclHandler, current_parser(), start, end);
+}
+
+fn set_entity_decl_handler(handler: XML_EntityDeclHandler) {
+    ffi_call!(XML_SetEntityDeclHandler, current_parser(), handler);
+}
+
+fn set_notation_decl_handler(handler: XML_NotationDeclHandler) {
+    ffi_call!(XML_SetNotationDeclHandler, current_parser(), handler);
+}
+
+fn run_alloc_failure_retry_loop(
+    text: &CStr,
+    max_alloc_count: ::core::ffi::c_int,
+    mut configure_parser: impl FnMut(),
+) -> ::core::ffi::c_int {
+    let mut i = 0;
+    while i < max_alloc_count {
+        set_allocation_count(i);
+        configure_parser();
+        if parse_single_bytes(text, XML_TRUE as ::core::ffi::c_int) as ::core::ffi::c_uint
+            != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            break;
+        }
+        alloc_teardown();
+        alloc_setup();
+        i += 1;
+    }
+
+    i
+}
+
 fn run_alloc_failure_parse_test(
     test_name: &'static CStr,
     test_line: ::core::ffi::c_int,
@@ -1607,98 +1649,37 @@ extern "C" fn test_alloc_realloc_many_attributes() {
     }
 }
 extern "C" fn test_alloc_public_entity_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_public_entity_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            683 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_public_entity_value\0"),
+        683 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc></doc>\n\0");
+    let mut dtd_text = c_char_array(*b"<!ELEMENT doc EMPTY>\n<!ENTITY % e1 PUBLIC 'foo' 'bar.ent'>\n<!ENTITY % ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP '%e1;'>\n%e1;\n\0");
+    let max_alloc_count = 50 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        init_dummy_handler_flags();
+        set_user_data(dtd_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_public));
+        set_entity_decl_handler(Some(dummy_entity_decl_handler));
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            728 as ::core::ffi::c_int,
+            c_str(b"Parsing worked despite failing allocation\0"),
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc></doc>\n\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut dtd_text: [::core::ffi::c_char; 1109] = ::core::mem::transmute::<
-            [u8; 1109],
-            [::core::ffi::c_char; 1109],
-        >(
-            *b"<!ELEMENT doc EMPTY>\n<!ENTITY % e1 PUBLIC 'foo' 'bar.ent'>\n<!ENTITY % ThisIsAStupidlyLongParameterNameIntendedToTriggerPoolGrowth12345ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP '%e1;'>\n%e1;\n\0",
+    }
+    if i == max_alloc_count {
+        fail_alloc_test(
+            730 as ::core::ffi::c_int,
+            c_str(b"Parsing failed at max allocation count\0"),
         );
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 50 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            init_dummy_handlers();
-            XML_SetUserData(
-                g_parser,
-                &raw mut dtd_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_public
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            XML_SetEntityDeclHandler(
-                g_parser,
-                Some(
-                    dummy_entity_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                728 as ::core::ffi::c_int,
-                b"Parsing worked despite failing allocation\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                730 as ::core::ffi::c_int,
-                b"Parsing failed at max allocation count\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags() != DUMMY_ENTITY_DECL_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                732 as ::core::ffi::c_int,
-                b"Entity declaration handler not called\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if dummy_handler_flags() != DUMMY_ENTITY_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            732 as ::core::ffi::c_int,
+            c_str(b"Entity declaration handler not called\0"),
+        );
     }
 }
 extern "C" fn test_alloc_realloc_subst_public_entity_value() {
@@ -1774,139 +1755,64 @@ extern "C" fn test_alloc_realloc_subst_public_entity_value() {
     }
 }
 extern "C" fn test_alloc_parse_public_doctype() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_parse_public_doctype\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            798 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_parse_public_doctype\0"),
+        798 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/' 'test'>\n<doc></doc>\0");
+    let max_alloc_count = 25 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        init_dummy_handler_flags();
+        set_doctype_decl_handler(
+            Some(dummy_start_doctype_decl_handler),
+            Some(dummy_end_doctype_decl_handler),
         );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/' 'test'>\n<doc></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            init_dummy_handlers();
-            XML_SetDoctypeDeclHandler(
-                g_parser,
-                Some(
-                    dummy_start_doctype_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-                Some(
-                    dummy_end_doctype_decl_handler
-                        as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                837 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                839 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags()
-            != DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG | DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                843 as ::core::ffi::c_int,
-                b"Doctype handler functions not called\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            837 as ::core::ffi::c_int,
+            c_str(b"Parse succeeded despite failing allocator\0"),
+        );
+    }
+    if i == max_alloc_count {
+        fail_alloc_test(
+            839 as ::core::ffi::c_int,
+            c_str(b"Parse failed at maximum allocation count\0"),
+        );
+    }
+    if dummy_handler_flags()
+        != DUMMY_START_DOCTYPE_DECL_HANDLER_FLAG | DUMMY_END_DOCTYPE_DECL_HANDLER_FLAG
+    {
+        fail_alloc_test(
+            843 as ::core::ffi::c_int,
+            c_str(b"Doctype handler functions not called\0"),
+        );
     }
 }
 extern "C" fn test_alloc_parse_public_doctype_long_name() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_parse_public_doctype_long_name\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            847 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_parse_public_doctype_long_name\0"),
+        847 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC 'http://example.com/foo' 'ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOP'>\n<doc></doc>\0");
+    let max_alloc_count = 25 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        set_doctype_decl_handler(
+            Some(dummy_start_doctype_decl_handler),
+            Some(dummy_end_doctype_decl_handler),
         );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE doc PUBLIC 'http://example.com/foo' 'ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOPABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNOP'>\n<doc></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 25 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetDoctypeDeclHandler(
-                g_parser,
-                Some(
-                    dummy_start_doctype_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                        ) -> (),
-                ),
-                Some(
-                    dummy_end_doctype_decl_handler
-                        as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                885 as ::core::ffi::c_int,
-                b"Parse succeeded despite failing allocator\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                887 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            885 as ::core::ffi::c_int,
+            c_str(b"Parse succeeded despite failing allocator\0"),
+        );
+    }
+    if i == max_alloc_count {
+        fail_alloc_test(
+            887 as ::core::ffi::c_int,
+            c_str(b"Parse failed at maximum allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_set_foreign_dtd() {
@@ -2244,223 +2150,91 @@ extern "C" fn test_alloc_realloc_default_attribute() {
     }
 }
 extern "C" fn test_alloc_notation() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_notation\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1109 as ::core::ffi::c_int,
+    set_alloc_test_info(c_str(b"test_alloc_notation\0"), 1109 as ::core::ffi::c_int);
+    let text = c_str(b"<!DOCTYPE doc [\n<!NOTATION ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP SYSTEM 'http://example.org/n'>\n<!ENTITY e SYSTEM 'http://example.org/e' NDATA ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0");
+    let max_alloc_count = 20 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        init_dummy_handler_flags();
+        set_notation_decl_handler(Some(dummy_notation_decl_handler));
+        set_entity_decl_handler(Some(dummy_entity_decl_handler));
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            1167 as ::core::ffi::c_int,
+            c_str(b"Parse succeeded despite allocation failures\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!NOTATION ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP SYSTEM 'http://example.org/n'>\n<!ENTITY e SYSTEM 'http://example.org/e' NDATA ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            init_dummy_handlers();
-            XML_SetNotationDeclHandler(
-                g_parser,
-                Some(
-                    dummy_notation_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            XML_SetEntityDeclHandler(
-                g_parser,
-                Some(
-                    dummy_entity_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                            *const XML_Char,
-                            ::core::ffi::c_int,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1167 as ::core::ffi::c_int,
-                b"Parse succeeded despite allocation failures\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1169 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags()
-            != DUMMY_ENTITY_DECL_HANDLER_FLAG | DUMMY_NOTATION_DECL_HANDLER_FLAG
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1172 as ::core::ffi::c_int,
-                b"Entity declaration handler not called\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if i == max_alloc_count {
+        fail_alloc_test(
+            1169 as ::core::ffi::c_int,
+            c_str(b"Parse failed at maximum allocation count\0"),
+        );
+    }
+    if dummy_handler_flags() != DUMMY_ENTITY_DECL_HANDLER_FLAG | DUMMY_NOTATION_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            1172 as ::core::ffi::c_int,
+            c_str(b"Entity declaration handler not called\0"),
+        );
     }
 }
 extern "C" fn test_alloc_public_notation() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_public_notation\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1177 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_public_notation\0"),
+        1177 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<!DOCTYPE doc [\n<!NOTATION note PUBLIC 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/' 'foo'>\n<!ENTITY e SYSTEM 'http://example.com/e' NDATA note>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0");
+    let max_alloc_count = 20 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        init_dummy_handler_flags();
+        set_notation_decl_handler(Some(dummy_notation_decl_handler));
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            1217 as ::core::ffi::c_int,
+            c_str(b"Parse succeeded despite allocation failures\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!NOTATION note PUBLIC 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/' 'foo'>\n<!ENTITY e SYSTEM 'http://example.com/e' NDATA note>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            init_dummy_handlers();
-            XML_SetNotationDeclHandler(
-                g_parser,
-                Some(
-                    dummy_notation_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1217 as ::core::ffi::c_int,
-                b"Parse succeeded despite allocation failures\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1219 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags() != DUMMY_NOTATION_DECL_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1221 as ::core::ffi::c_int,
-                b"Notation handler not called\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if i == max_alloc_count {
+        fail_alloc_test(
+            1219 as ::core::ffi::c_int,
+            c_str(b"Parse failed at maximum allocation count\0"),
+        );
+    }
+    if dummy_handler_flags() != DUMMY_NOTATION_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            1221 as ::core::ffi::c_int,
+            c_str(b"Notation handler not called\0"),
+        );
     }
 }
 extern "C" fn test_alloc_system_notation() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_system_notation\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1226 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_system_notation\0"),
+        1226 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<!DOCTYPE doc [\n<!NOTATION note SYSTEM 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/'>\n<!ENTITY e SYSTEM 'http://example.com/e' NDATA note>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0");
+    let max_alloc_count = 20 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        init_dummy_handler_flags();
+        set_notation_decl_handler(Some(dummy_notation_decl_handler));
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            1266 as ::core::ffi::c_int,
+            c_str(b"Parse succeeded despite allocation failures\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!NOTATION note SYSTEM 'http://example.com/a/long/enough/name/to/trigger/pool/growth/zz/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/ABCDEFGHIJKLMNO/'>\n<!ENTITY e SYSTEM 'http://example.com/e' NDATA note>\n<!ELEMENT doc EMPTY>\n]>\n<doc/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 20 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            init_dummy_handlers();
-            XML_SetNotationDeclHandler(
-                g_parser,
-                Some(
-                    dummy_notation_decl_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1266 as ::core::ffi::c_int,
-                b"Parse succeeded despite allocation failures\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1268 as ::core::ffi::c_int,
-                b"Parse failed at maximum allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if get_dummy_handler_flags() != DUMMY_NOTATION_DECL_HANDLER_FLAG {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1270 as ::core::ffi::c_int,
-                b"Notation handler not called\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+    if i == max_alloc_count {
+        fail_alloc_test(
+            1268 as ::core::ffi::c_int,
+            c_str(b"Parse failed at maximum allocation count\0"),
+        );
+    }
+    if dummy_handler_flags() != DUMMY_NOTATION_DECL_HANDLER_FLAG {
+        fail_alloc_test(
+            1270 as ::core::ffi::c_int,
+            c_str(b"Notation handler not called\0"),
+        );
     }
 }
 extern "C" fn test_alloc_nested_groups() {
@@ -3437,68 +3211,28 @@ extern "C" fn test_alloc_long_base() {
     }
 }
 extern "C" fn test_alloc_long_public_id() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_long_public_id\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1912 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_long_public_id\0"),
+        1912 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<!DOCTYPE doc [\n  <!ENTITY e PUBLIC 'LongPublicIDThatShouldResultInAnInternalStringPoolGrowingAtASpecificMomentKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB' 'bar'>\n]>\n<doc>&e;</doc>\0");
+    let mut entity_text = c_char_array(*b"Hello world\0");
+    let max_alloc_count = 40 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        set_user_data(entity_text.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_alloc));
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            1953 as ::core::ffi::c_int,
+            c_str(b"Parsing worked despite failing allocations\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY e PUBLIC 'LongPublicIDThatShouldResultInAnInternalStringPoolGrowingAtASpecificMomentKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB' 'bar'>\n]>\n<doc>&e;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut entity_text: [::core::ffi::c_char; 12] =
-            ::core::mem::transmute::<[u8; 12], [::core::ffi::c_char; 12]>(*b"Hello world\0");
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut entity_text as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_alloc
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1953 as ::core::ffi::c_int,
-                b"Parsing worked despite failing allocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1955 as ::core::ffi::c_int,
-                b"Parsing failed even at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            1955 as ::core::ffi::c_int,
+            c_str(b"Parsing failed even at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_long_entity_value() {
@@ -3567,80 +3301,41 @@ extern "C" fn test_alloc_long_entity_value() {
     }
 }
 extern "C" fn test_alloc_long_notation() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_long_notation\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2007 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_long_notation\0"),
+        2007 as ::core::ffi::c_int,
+    );
+    let text = c_str(b"<!DOCTYPE doc [\n  <!NOTATION note SYSTEM 'ALongNotationNameThatShouldProvokeStringPoolGrowthWhileCallingAnExternalEntityParserUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB'>\n  <!ENTITY e1 SYSTEM 'foo' NDATA ALongNotationNameThatShouldProvokeStringPoolGrowthWhileCallingAnExternalEntityParserUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB>\n  <!ENTITY e2 SYSTEM 'bar'>\n]>\n<doc>&e2;</doc>\0");
+    let mut options = [
+        ExtOption {
+            system_id: c_str(b"foo\0").as_ptr(),
+            parse_text: c_str(b"Entity Foo\0").as_ptr(),
+        },
+        ExtOption {
+            system_id: c_str(b"bar\0").as_ptr(),
+            parse_text: c_str(b"Entity Bar\0").as_ptr(),
+        },
+        ExtOption {
+            system_id: ::core::ptr::null::<XML_Char>(),
+            parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
+        },
+    ];
+    let max_alloc_count = 40 as ::core::ffi::c_int;
+    let i = run_alloc_failure_retry_loop(text, max_alloc_count, || {
+        set_user_data(options.as_mut_ptr().cast());
+        set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        set_external_entity_ref_handler(Some(external_entity_optioner));
+    });
+    if i == 0 as ::core::ffi::c_int {
+        fail_alloc_test(
+            2070 as ::core::ffi::c_int,
+            c_str(b"Parsing worked despite failing allocations\0"),
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!NOTATION note SYSTEM 'ALongNotationNameThatShouldProvokeStringPoolGrowthWhileCallingAnExternalEntityParserUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB'>\n  <!ENTITY e1 SYSTEM 'foo' NDATA ALongNotationNameThatShouldProvokeStringPoolGrowthWhileCallingAnExternalEntityParserUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB>\n  <!ENTITY e2 SYSTEM 'bar'>\n]>\n<doc>&e2;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut options: [ExtOption; 3] = [
-            ExtOption {
-                system_id: b"foo\0".as_ptr() as *const XML_Char,
-                parse_text: b"Entity Foo\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            ExtOption {
-                system_id: b"bar\0".as_ptr() as *const XML_Char,
-                parse_text: b"Entity Bar\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            ExtOption {
-                system_id: ::core::ptr::null::<XML_Char>(),
-                parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
-            },
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        let max_alloc_count: ::core::ffi::c_int = 40 as ::core::ffi::c_int;
-        i = 0 as ::core::ffi::c_int;
-        while i < max_alloc_count {
-            g_allocation_count = i;
-            XML_SetUserData(
-                g_parser,
-                &raw mut options as *mut ExtOption as *mut ::core::ffi::c_void,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_optioner
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                break;
-            }
-            alloc_teardown();
-            alloc_setup();
-            i += 1;
-        }
-        if i == 0 as ::core::ffi::c_int {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2070 as ::core::ffi::c_int,
-                b"Parsing worked despite failing allocations\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if i == max_alloc_count {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2072 as ::core::ffi::c_int,
-                b"Parsing failed even at max allocation count\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
+    } else if i == max_alloc_count {
+        fail_alloc_test(
+            2072 as ::core::ffi::c_int,
+            c_str(b"Parsing failed even at max allocation count\0"),
+        );
     }
 }
 extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail() {
