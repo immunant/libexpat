@@ -1,4 +1,4 @@
-use ::c2rust_bitfields;
+use c2rust_bitfields;
 
 pub mod siphash_h {
     const SIPHASH_BUFFER_SIZE: usize = 8;
@@ -3219,6 +3219,13 @@ fn expect_parser_mut<'a>(parser: crate::expat_h::XML_Parser) -> &'a mut XML_Pars
 }
 
 #[inline]
+fn parser_mem(
+    parser: crate::expat_h::XML_Parser,
+) -> Option<&'static crate::expat_h::XML_Memory_Handling_Suite> {
+    parser_ref(parser).map(|parser| &parser.m_mem)
+}
+
+#[inline]
 fn set_processor(parser: crate::expat_h::XML_Parser, processor: Processor) {
     expect_parser_mut(parser).m_processor = Some(processor);
 }
@@ -3245,6 +3252,16 @@ fn entity_mut<'a>(entity: *mut ENTITY) -> Option<&'a mut ENTITY> {
     } else {
         Some(helper_unsafe!(&mut *entity))
     }
+}
+
+macro_rules! open_internal_entity_ref_from_raw {
+    ($entity:expr) => {
+        if $entity.is_null() {
+            None
+        } else {
+            Some(unsafe { &*$entity })
+        }
+    };
 }
 
 macro_rules! dtd_ref_from_raw {
@@ -4793,17 +4810,13 @@ pub unsafe extern "C" fn XML_FreeContentModel_ffi(
 ) {
     XML_FreeContentModel(parser, model)
 }
-pub unsafe extern "C" fn XML_MemMalloc(
+pub extern "C" fn XML_MemMalloc(
     mut parser: crate::expat_h::XML_Parser,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    if parser.is_null() {
-        return crate::__stddef_null_h::NULL;
-    }
-    return (*parser)
-        .m_mem
-        .malloc_fcn
-        .expect("non-null function pointer")(size);
+    parser_mem(parser)
+        .map(|mem| helper_unsafe!(mem.malloc_fcn.expect("non-null function pointer")(size)))
+        .unwrap_or(crate::__stddef_null_h::NULL)
 }
 #[export_name = "XML_MemMalloc"]
 
@@ -4813,18 +4826,18 @@ pub unsafe extern "C" fn XML_MemMalloc_ffi(
 ) -> *mut ::core::ffi::c_void {
     XML_MemMalloc(parser, size)
 }
-pub unsafe extern "C" fn XML_MemRealloc(
+pub extern "C" fn XML_MemRealloc(
     mut parser: crate::expat_h::XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    if parser.is_null() {
-        return crate::__stddef_null_h::NULL;
-    }
-    return (*parser)
-        .m_mem
-        .realloc_fcn
-        .expect("non-null function pointer")(ptr, size);
+    parser_mem(parser)
+        .map(|mem| {
+            helper_unsafe!(mem.realloc_fcn.expect("non-null function pointer")(
+                ptr, size
+            ))
+        })
+        .unwrap_or(crate::__stddef_null_h::NULL)
 }
 #[export_name = "XML_MemRealloc"]
 
@@ -4835,14 +4848,13 @@ pub unsafe extern "C" fn XML_MemRealloc_ffi(
 ) -> *mut ::core::ffi::c_void {
     XML_MemRealloc(parser, ptr, size)
 }
-pub unsafe extern "C" fn XML_MemFree(
+pub extern "C" fn XML_MemFree(
     mut parser: crate::expat_h::XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
 ) {
-    if parser.is_null() {
-        return;
+    if let Some(mem) = parser_mem(parser) {
+        helper_unsafe!(mem.free_fcn.expect("non-null function pointer")(ptr));
     }
-    (*parser).m_mem.free_fcn.expect("non-null function pointer")(ptr);
 }
 #[export_name = "XML_MemFree"]
 
@@ -4852,26 +4864,28 @@ pub unsafe extern "C" fn XML_MemFree_ffi(
 ) {
     XML_MemFree(parser, ptr)
 }
-pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Parser) {
-    if parser.is_null() {
+pub extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Parser) {
+    let Some(parser_ref) = parser_ref(parser) else {
+        return;
+    };
+    if parser_ref.m_defaultHandler.is_none() {
         return;
     }
-    if (*parser).m_defaultHandler.is_some() {
-        if !(*parser).m_openInternalEntities.is_null() {
-            reportDefault(
-                parser,
-                (*parser).m_internalEncoding,
-                (*(*parser).m_openInternalEntities).internalEventPtr,
-                (*(*parser).m_openInternalEntities).internalEventEndPtr,
-            );
-        } else {
-            reportDefault(
-                parser,
-                (*parser).m_encoding,
-                (*parser).m_eventPtr,
-                (*parser).m_eventEndPtr,
-            );
-        }
+    if let Some(open_entity) = open_internal_entity_ref_from_raw!(parser_ref.m_openInternalEntities)
+    {
+        helper_unsafe!(reportDefault(
+            parser,
+            parser_ref.m_internalEncoding,
+            open_entity.internalEventPtr,
+            open_entity.internalEventEndPtr,
+        ));
+    } else {
+        helper_unsafe!(reportDefault(
+            parser,
+            parser_ref.m_encoding,
+            parser_ref.m_eventPtr,
+            parser_ref.m_eventEndPtr,
+        ));
     }
 }
 #[export_name = "XML_DefaultCurrent"]
@@ -10797,10 +10811,7 @@ fn normalizeLines(s: &mut [crate::expat_external_h::XML_Char]) {
         .iter()
         .position(|&ch| ch == 0)
         .expect("normalizeLines requires a NUL-terminated buffer");
-    let Some(mut read) = s[..nul_pos]
-        .iter()
-        .position(|&ch| ch == carriage_return)
-    else {
+    let Some(mut read) = s[..nul_pos].iter().position(|&ch| ch == carriage_return) else {
         return;
     };
     let mut write = read;
