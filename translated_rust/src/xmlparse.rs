@@ -20170,7 +20170,7 @@ unsafe fn storeEntityValue(
                 match tok {
                     crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF => {
                         if parser.m_isParamEntity as ::core::ffi::c_int != 0
-                            || enc_ptr != parser_encoding(parser)
+                            || enc_ptr != std::ptr::from_ref(current_parser_encoding(parser))
                         {
                             let mut name: *const crate::expat_external_h::XML_Char =
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -20210,7 +20210,7 @@ unsafe fn storeEntityValue(
                                 };
                                 if entity.open as ::core::ffi::c_int != 0 || is_current_declaration
                                 {
-                                    if enc_ptr == parser_encoding(parser) {
+                                    if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
                                         set_parser_event_start!(&mut *parser, entityTextPtr);
                                     }
                                     result = crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
@@ -20345,7 +20345,7 @@ unsafe fn storeEntityValue(
                             break '_endEntityValue;
                         };
                         if n < 0 as ::core::ffi::c_int {
-                            if enc_ptr == parser_encoding(parser) {
+                            if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
                                 set_parser_event_start!(&mut *parser, entityTextPtr);
                             }
                             result = crate::expat_h::XML_ERROR_BAD_CHAR_REF;
@@ -20366,21 +20366,21 @@ unsafe fn storeEntityValue(
                         }
                     }
                     crate::src::xmltok::XML_TOK_PARTIAL => {
-                        if enc_ptr == parser_encoding(parser) {
+                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
                             set_parser_event_start!(&mut *parser, entityTextPtr);
                         }
                         result = crate::expat_h::XML_ERROR_INVALID_TOKEN;
                         break '_endEntityValue;
                     }
                     crate::src::xmltok::XML_TOK_INVALID => {
-                        if enc_ptr == parser_encoding(parser) {
+                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
                             set_parser_event_start!(&mut *parser, next);
                         }
                         result = crate::expat_h::XML_ERROR_INVALID_TOKEN;
                         break '_endEntityValue;
                     }
                     _ => {
-                        if enc_ptr == parser_encoding(parser) {
+                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
                             set_parser_event_start!(&mut *parser, entityTextPtr);
                         }
                         result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
