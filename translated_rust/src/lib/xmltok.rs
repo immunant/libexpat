@@ -125,33 +125,24 @@ pub struct INIT_ENCODING {
 pub struct normal_encoding {
     pub enc: ENCODING,
     pub type_0: [::core::ffi::c_uchar; 256],
-    pub isName2: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isName3: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isName4: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt2: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt3: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isNmstrt4: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid2: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid3: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
-    pub isInvalid4: Option<
-        unsafe extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int,
-    >,
+    pub isName2:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isName3:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isName4:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isNmstrt2:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isNmstrt3:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isNmstrt4:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isInvalid2:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isInvalid3:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
+    pub isInvalid4:
+        Option<extern "C" fn(*const ENCODING, *const ::core::ffi::c_char) -> ::core::ffi::c_int>,
 }
 pub const BT_MALFORM: C2Rust_Unnamed_3 = 1;
 pub const BT_NONXML: C2Rust_Unnamed_3 = 0;
@@ -286,255 +277,105 @@ pub const XML_TOK_PREFIXED_NAME: ::core::ffi::c_int = 41;
 pub const XML_TOK_IGNORE_SECT: ::core::ffi::c_int = 42 as ::core::ffi::c_int;
 pub const XML_PROLOG_STATE: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
 pub const XML_CONTENT_STATE: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
-unsafe extern "C" fn isNever(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+fn read_c_char_bytes<const N: usize>(p: *const ::core::ffi::c_char) -> [u8; N] {
+    let mut bytes = [0_u8; N];
     unsafe {
-        return 0 as ::core::ffi::c_int;
+        ::core::ptr::copy_nonoverlapping(p.cast::<u8>(), bytes.as_mut_ptr(), N);
     }
+    bytes
 }
-unsafe extern "C" fn utf8_isName2(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    unsafe {
-        return (namingBitmap[(((namePages[(*(p as *const ::core::ffi::c_uchar)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 2 as ::core::ffi::c_int
-            & 7 as ::core::ffi::c_int) as usize]
-            as ::core::ffi::c_int)
-            << 3 as ::core::ffi::c_int)
-            + ((*(p as *const ::core::ffi::c_uchar).offset(0 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 3 as ::core::ffi::c_int)
-                << 1 as ::core::ffi::c_int)
-            + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                >> 5 as ::core::ffi::c_int
-                & 1 as ::core::ffi::c_int)) as usize]
-            & (1 as ::core::ffi::c_uint)
-                << (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
-    }
+extern "C" fn isNever(_enc: *const ENCODING, _p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
+    0
 }
-unsafe extern "C" fn utf8_isName3(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn utf8_isName2(
+    _enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return (namingBitmap[(((namePages[(((*(p as *const ::core::ffi::c_uchar)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0xf as ::core::ffi::c_int)
-            << 4 as ::core::ffi::c_int)
-            + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                >> 2 as ::core::ffi::c_int
-                & 0xf as ::core::ffi::c_int)) as usize]
-            as ::core::ffi::c_int)
-            << 3 as ::core::ffi::c_int)
-            + ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 3 as ::core::ffi::c_int)
-                << 1 as ::core::ffi::c_int)
-            + (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                >> 5 as ::core::ffi::c_int
-                & 1 as ::core::ffi::c_int)) as usize]
-            & (1 as ::core::ffi::c_uint)
-                << (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
-    }
+    let [first, second] = read_c_char_bytes::<2>(p);
+    let page = namePages[((first >> 2) & 7) as usize] as usize;
+    let bitmap_index = (page << 3) + (((first as usize & 3) << 1) + (((second >> 5) & 1) as usize));
+    ((namingBitmap[bitmap_index] & (1_u32 << (second & 0x1f))) != 0) as ::core::ffi::c_int
 }
-unsafe extern "C" fn utf8_isNmstrt2(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn utf8_isName3(
+    _enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return (namingBitmap[(((nmstrtPages[(*(p as *const ::core::ffi::c_uchar)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            >> 2 as ::core::ffi::c_int
-            & 7 as ::core::ffi::c_int) as usize]
-            as ::core::ffi::c_int)
-            << 3 as ::core::ffi::c_int)
-            + ((*(p as *const ::core::ffi::c_uchar).offset(0 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 3 as ::core::ffi::c_int)
-                << 1 as ::core::ffi::c_int)
-            + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                >> 5 as ::core::ffi::c_int
-                & 1 as ::core::ffi::c_int)) as usize]
-            & (1 as ::core::ffi::c_uint)
-                << (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
-    }
+    let [first, second, third] = read_c_char_bytes::<3>(p);
+    let page =
+        namePages[((((first & 0xf) as usize) << 4) + (((second >> 2) & 0xf) as usize))] as usize;
+    let bitmap_index =
+        (page << 3) + ((((second & 3) as usize) << 1) + (((third >> 5) & 1) as usize));
+    ((namingBitmap[bitmap_index] & (1_u32 << (third & 0x1f))) != 0) as ::core::ffi::c_int
 }
-unsafe extern "C" fn utf8_isNmstrt3(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn utf8_isNmstrt2(
+    _enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return (namingBitmap[(((nmstrtPages[(((*(p as *const ::core::ffi::c_uchar)
-            .offset(0 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0xf as ::core::ffi::c_int)
-            << 4 as ::core::ffi::c_int)
-            + (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                >> 2 as ::core::ffi::c_int
-                & 0xf as ::core::ffi::c_int)) as usize]
-            as ::core::ffi::c_int)
-            << 3 as ::core::ffi::c_int)
-            + ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 3 as ::core::ffi::c_int)
-                << 1 as ::core::ffi::c_int)
-            + (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                >> 5 as ::core::ffi::c_int
-                & 1 as ::core::ffi::c_int)) as usize]
-            & (1 as ::core::ffi::c_uint)
-                << (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0x1f as ::core::ffi::c_int)) as ::core::ffi::c_int;
-    }
+    let [first, second] = read_c_char_bytes::<2>(p);
+    let page = nmstrtPages[((first >> 2) & 7) as usize] as usize;
+    let bitmap_index = (page << 3) + (((first as usize & 3) << 1) + (((second >> 5) & 1) as usize));
+    ((namingBitmap[bitmap_index] & (1_u32 << (second & 0x1f))) != 0) as ::core::ffi::c_int
 }
-unsafe extern "C" fn utf8_isInvalid2(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn utf8_isNmstrt3(
+    _enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return ((*(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int)
-            < 0xc2 as ::core::ffi::c_int
-            || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x80 as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0xc0 as ::core::ffi::c_int
-                == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int;
-    }
+    let [first, second, third] = read_c_char_bytes::<3>(p);
+    let page =
+        nmstrtPages[((((first & 0xf) as usize) << 4) + (((second >> 2) & 0xf) as usize))] as usize;
+    let bitmap_index =
+        (page << 3) + ((((second & 3) as usize) << 1) + (((third >> 5) & 1) as usize));
+    ((namingBitmap[bitmap_index] & (1_u32 << (third & 0x1f))) != 0) as ::core::ffi::c_int
 }
-unsafe extern "C" fn utf8_isInvalid3(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn utf8_isInvalid2(
+    _enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0x80 as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-            || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                == 0xef as ::core::ffi::c_int
-                && *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == 0xbf as ::core::ffi::c_int
-            {
-                (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    > 0xbd as ::core::ffi::c_int) as ::core::ffi::c_int
+    let [first, second] = read_c_char_bytes::<2>(p);
+    (first < 0xc2 || second & 0x80 == 0 || second & 0xc0 == 0xc0) as ::core::ffi::c_int
+}
+extern "C" fn utf8_isInvalid3(
+    _enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    let [first, second, third] = read_c_char_bytes::<3>(p);
+    let invalid_third = third & 0x80 == 0
+        || if first == 0xef && second == 0xbf {
+            third > 0xbd
+        } else {
+            third & 0xc0 == 0xc0
+        };
+    let invalid_second = if first == 0xe0 {
+        second < 0xa0 || second & 0xc0 == 0xc0
+    } else {
+        second & 0x80 == 0
+            || if first == 0xed {
+                second > 0x9f
             } else {
-                (*(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0xc0 as ::core::ffi::c_int
-                    == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-            }) != 0
-            || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                == 0xe0 as ::core::ffi::c_int
-            {
-                ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int)
-                    < 0xa0 as ::core::ffi::c_int
-                    || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        & 0xc0 as ::core::ffi::c_int
-                        == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
-            } else {
-                (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0x80 as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                        == 0xed as ::core::ffi::c_int
-                    {
-                        (*(p as *const ::core::ffi::c_uchar)
-                            .offset(1 as ::core::ffi::c_int as isize)
-                            as ::core::ffi::c_int
-                            > 0x9f as ::core::ffi::c_int)
-                            as ::core::ffi::c_int
-                    } else {
-                        (*(p as *const ::core::ffi::c_uchar)
-                            .offset(1 as ::core::ffi::c_int as isize)
-                            as ::core::ffi::c_int
-                            & 0xc0 as ::core::ffi::c_int
-                            == 0xc0 as ::core::ffi::c_int)
-                            as ::core::ffi::c_int
-                    }) != 0) as ::core::ffi::c_int
-            }) != 0) as ::core::ffi::c_int;
-    }
+                second & 0xc0 == 0xc0
+            }
+    };
+    (invalid_third || invalid_second) as ::core::ffi::c_int
 }
-unsafe extern "C" fn utf8_isInvalid4(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+
+extern "C" fn utf8_isInvalid4(
+    _enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return (*(p as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_int
-            & 0x80 as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-            || *(p as *const ::core::ffi::c_uchar).offset(3 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0xc0 as ::core::ffi::c_int
-                == 0xc0 as ::core::ffi::c_int
-            || *(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0x80 as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            || *(p as *const ::core::ffi::c_uchar).offset(2 as ::core::ffi::c_int as isize)
-                as ::core::ffi::c_int
-                & 0xc0 as ::core::ffi::c_int
-                == 0xc0 as ::core::ffi::c_int
-            || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                == 0xf0 as ::core::ffi::c_int
-            {
-                ((*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int)
-                    < 0x90 as ::core::ffi::c_int
-                    || *(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        & 0xc0 as ::core::ffi::c_int
-                        == 0xc0 as ::core::ffi::c_int) as ::core::ffi::c_int
+    let [first, second, third, fourth] = read_c_char_bytes::<4>(p);
+    let invalid_fourth = fourth & 0x80 == 0 || fourth & 0xc0 == 0xc0;
+    let invalid_third = third & 0x80 == 0 || third & 0xc0 == 0xc0;
+    let invalid_second = if first == 0xf0 {
+        second < 0x90 || second & 0xc0 == 0xc0
+    } else {
+        second & 0x80 == 0
+            || if first == 0xf4 {
+                second > 0x8f
             } else {
-                (*(p as *const ::core::ffi::c_uchar).offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    & 0x80 as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    || (if *(p as *const ::core::ffi::c_uchar) as ::core::ffi::c_int
-                        == 0xf4 as ::core::ffi::c_int
-                    {
-                        (*(p as *const ::core::ffi::c_uchar)
-                            .offset(1 as ::core::ffi::c_int as isize)
-                            as ::core::ffi::c_int
-                            > 0x8f as ::core::ffi::c_int)
-                            as ::core::ffi::c_int
-                    } else {
-                        (*(p as *const ::core::ffi::c_uchar)
-                            .offset(1 as ::core::ffi::c_int as isize)
-                            as ::core::ffi::c_int
-                            & 0xc0 as ::core::ffi::c_int
-                            == 0xc0 as ::core::ffi::c_int)
-                            as ::core::ffi::c_int
-                    }) != 0) as ::core::ffi::c_int
-            }) != 0) as ::core::ffi::c_int;
-    }
+                second & 0xc0 == 0xc0
+            }
+    };
+    (invalid_fourth || invalid_third || invalid_second) as ::core::ffi::c_int
 }
 unsafe extern "C" fn normal_scanComment(
     mut enc: *const ENCODING,
@@ -14604,69 +14445,15 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         ],
-        isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName2: Some(utf8_isName2),
+        isName3: Some(utf8_isName3),
+        isName4: Some(isNever),
+        isNmstrt2: Some(utf8_isNmstrt2),
+        isNmstrt3: Some(utf8_isNmstrt3),
+        isNmstrt4: Some(isNever),
+        isInvalid2: Some(utf8_isInvalid2),
+        isInvalid3: Some(utf8_isInvalid3),
+        isInvalid4: Some(utf8_isInvalid4),
     }
 };
 static mut utf8_encoding: normal_encoding = unsafe {
@@ -15077,69 +14864,15 @@ static mut utf8_encoding: normal_encoding = unsafe {
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         ],
-        isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName2: Some(utf8_isName2),
+        isName3: Some(utf8_isName3),
+        isName4: Some(isNever),
+        isNmstrt2: Some(utf8_isNmstrt2),
+        isNmstrt3: Some(utf8_isNmstrt3),
+        isNmstrt4: Some(isNever),
+        isInvalid2: Some(utf8_isInvalid2),
+        isInvalid3: Some(utf8_isInvalid3),
+        isInvalid4: Some(utf8_isInvalid4),
     }
 };
 pub const true_0: ::core::ffi::c_int = 1 as ::core::ffi::c_int;
@@ -15552,69 +15285,15 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         ],
-        isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName2: Some(utf8_isName2),
+        isName3: Some(utf8_isName3),
+        isName4: Some(isNever),
+        isNmstrt2: Some(utf8_isNmstrt2),
+        isNmstrt3: Some(utf8_isNmstrt3),
+        isNmstrt4: Some(isNever),
+        isInvalid2: Some(utf8_isInvalid2),
+        isInvalid3: Some(utf8_isInvalid3),
+        isInvalid4: Some(utf8_isInvalid4),
     }
 };
 pub const NULL: *mut ::core::ffi::c_void =
@@ -16084,69 +15763,15 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
             BT_MALFORM as ::core::ffi::c_int as ::core::ffi::c_uchar,
         ],
-        isName2: Some(
-            utf8_isName2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName3: Some(
-            utf8_isName3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isName4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt2: Some(
-            utf8_isNmstrt2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt3: Some(
-            utf8_isNmstrt3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isNmstrt4: Some(
-            isNever
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid2: Some(
-            utf8_isInvalid2
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid3: Some(
-            utf8_isInvalid3
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
-        isInvalid4: Some(
-            utf8_isInvalid4
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        isName2: Some(utf8_isName2),
+        isName3: Some(utf8_isName3),
+        isName4: Some(isNever),
+        isNmstrt2: Some(utf8_isNmstrt2),
+        isNmstrt3: Some(utf8_isNmstrt3),
+        isNmstrt4: Some(isNever),
+        isInvalid2: Some(utf8_isInvalid2),
+        isInvalid3: Some(utf8_isInvalid3),
+        isInvalid4: Some(utf8_isInvalid4),
     }
 };
 unsafe extern "C" fn latin1_toUtf8(
@@ -21279,60 +20904,46 @@ pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
         return ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn unknown_isName(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+fn unknown_code_point(enc: *const ENCODING, p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     unsafe {
-        let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-        let mut c: ::core::ffi::c_int =
-            (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
-        if c & !(0xffff as ::core::ffi::c_int) != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        return (namingBitmap[(((namePages[(c >> 8 as ::core::ffi::c_int) as usize]
-            as ::core::ffi::c_int)
-            << 3 as ::core::ffi::c_int)
-            + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
-            as usize]
-            & (1 as ::core::ffi::c_uint)
-                << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
-            as ::core::ffi::c_int;
+        let unknown_encoding = &*(enc as *const unknown_encoding);
+        unknown_encoding.convert.expect("non-null function pointer")(unknown_encoding.userData, p)
     }
 }
-unsafe extern "C" fn unknown_isNmstrt(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn unknown_isName(
+    enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-        let mut c: ::core::ffi::c_int =
-            (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
-        if c & !(0xffff as ::core::ffi::c_int) != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        return (namingBitmap[(((nmstrtPages[(c >> 8 as ::core::ffi::c_int) as usize]
-            as ::core::ffi::c_int)
-            << 3 as ::core::ffi::c_int)
-            + ((c & 0xff as ::core::ffi::c_int) >> 5 as ::core::ffi::c_int))
-            as usize]
-            & (1 as ::core::ffi::c_uint)
-                << (c & 0xff as ::core::ffi::c_int & 0x1f as ::core::ffi::c_int))
-            as ::core::ffi::c_int;
+    let code_point = unknown_code_point(enc, p);
+    if code_point & !(0xffff as ::core::ffi::c_int) != 0 {
+        return 0;
     }
+    let page = namePages[(code_point >> 8) as usize] as usize;
+    let bitmap_index = (page << 3) + (((code_point & 0xff) >> 5) as usize);
+    ((namingBitmap[bitmap_index] & (1 as ::core::ffi::c_uint) << (code_point & 0x1f)) != 0)
+        as ::core::ffi::c_int
 }
-unsafe extern "C" fn unknown_isInvalid(
-    mut enc: *const ENCODING,
-    mut p: *const ::core::ffi::c_char,
+extern "C" fn unknown_isNmstrt(
+    enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-        let mut c: ::core::ffi::c_int =
-            (*uenc).convert.expect("non-null function pointer")((*uenc).userData, p);
-        return (c & !(0xffff as ::core::ffi::c_int) != 0
-            || checkCharRefNumber(c) < 0 as ::core::ffi::c_int)
-            as ::core::ffi::c_int;
+    let code_point = unknown_code_point(enc, p);
+    if code_point & !(0xffff as ::core::ffi::c_int) != 0 {
+        return 0;
     }
+    let page = nmstrtPages[(code_point >> 8) as usize] as usize;
+    let bitmap_index = (page << 3) + (((code_point & 0xff) >> 5) as usize);
+    ((namingBitmap[bitmap_index] & (1 as ::core::ffi::c_uint) << (code_point & 0x1f)) != 0)
+        as ::core::ffi::c_int
+}
+
+extern "C" fn unknown_isInvalid(
+    enc: *const ENCODING,
+    p: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    let code_point = unknown_code_point(enc, p);
+    (code_point & !(0xffff as ::core::ffi::c_int) != 0
+        || checkCharRefNumber(code_point) < 0 as ::core::ffi::c_int) as ::core::ffi::c_int
 }
 unsafe extern "C" fn unknown_toUtf8(
     mut enc: *const ENCODING,
@@ -21537,123 +21148,15 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
         (*e).userData = userData;
         (*e).convert = convert;
         if convert.is_some() {
-            (*e).normal.isName2 = Some(
-                unknown_isName
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isName3 = Some(
-                unknown_isName
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isName4 = Some(
-                unknown_isName
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isNmstrt2 = Some(
-                unknown_isNmstrt
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isNmstrt3 = Some(
-                unknown_isNmstrt
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isNmstrt4 = Some(
-                unknown_isNmstrt
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isInvalid2 = Some(
-                unknown_isInvalid
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isInvalid3 = Some(
-                unknown_isInvalid
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
-            (*e).normal.isInvalid4 = Some(
-                unknown_isInvalid
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-                >;
+            (*e).normal.isName2 = Some(unknown_isName);
+            (*e).normal.isName3 = Some(unknown_isName);
+            (*e).normal.isName4 = Some(unknown_isName);
+            (*e).normal.isNmstrt2 = Some(unknown_isNmstrt);
+            (*e).normal.isNmstrt3 = Some(unknown_isNmstrt);
+            (*e).normal.isNmstrt4 = Some(unknown_isNmstrt);
+            (*e).normal.isInvalid2 = Some(unknown_isInvalid);
+            (*e).normal.isInvalid3 = Some(unknown_isInvalid);
+            (*e).normal.isInvalid4 = Some(unknown_isInvalid);
         }
         (*e).normal.enc.utf8Convert = Some(
             unknown_toUtf8
@@ -22298,7 +21801,7 @@ pub unsafe extern "C" fn XmlParseXmlDeclNS(
         );
     }
 }
-static mut namingBitmap: [::core::ffi::c_uint; 320] = [
+static namingBitmap: [::core::ffi::c_uint; 320] = [
     0 as ::core::ffi::c_int as ::core::ffi::c_uint,
     0 as ::core::ffi::c_int as ::core::ffi::c_uint,
     0 as ::core::ffi::c_int as ::core::ffi::c_uint,
@@ -22620,7 +22123,7 @@ static mut namingBitmap: [::core::ffi::c_uint; 320] = [
     0xffffffff as ::core::ffi::c_uint,
     0x77ffffff as ::core::ffi::c_int as ::core::ffi::c_uint,
 ];
-static mut nmstrtPages: [::core::ffi::c_uchar; 256] = [
+static nmstrtPages: [::core::ffi::c_uchar; 256] = [
     0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
     0x3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
     0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
@@ -22878,7 +22381,7 @@ static mut nmstrtPages: [::core::ffi::c_uchar; 256] = [
     0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
     0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
 ];
-static mut namePages: [::core::ffi::c_uchar; 256] = [
+static namePages: [::core::ffi::c_uchar; 256] = [
     0x19 as ::core::ffi::c_int as ::core::ffi::c_uchar,
     0x3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
     0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
