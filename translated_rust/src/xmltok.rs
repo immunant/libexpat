@@ -4235,55 +4235,23 @@ pub mod xmltok_impl_c {
 
     pub unsafe extern "C" fn little2_checkPiTarget(
         _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut tokPtr: *mut ::core::ffi::c_int,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        tokPtr: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         *tokPtr = crate::src::xmltok::XML_TOK_PI_1;
-        if end.offset_from(ptr) != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as isize {
+        if end.offset_from(ptr) != 6 {
             return 1 as ::core::ffi::c_int;
         }
-        match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            *ptr.offset(0 as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_x_1 => {}
-            crate::ascii_h::ASCII_X_1 => {
-                upper = 1 as ::core::ffi::c_int;
+
+        let input = ::core::slice::from_raw_parts(ptr, 6);
+        match little2_pi_target_token(input, 0, 6) {
+            Some(token) => {
+                *tokPtr = token;
+                1
             }
-            _ => return 1 as ::core::ffi::c_int,
+            None => 0,
         }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            *ptr.offset(0 as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_m_1 => {}
-            crate::ascii_h::ASCII_M_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            *ptr.offset(0 as isize) as ::core::ffi::c_int
-        } else {
-            -1 as ::core::ffi::c_int
-        } {
-            crate::ascii_h::ASCII_l_1 => {}
-            crate::ascii_h::ASCII_L_1 => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = crate::src::xmltok::XML_TOK_XML_DECL_1;
-        return 1 as ::core::ffi::c_int;
     }
 
     fn little2_pi_target_token(
