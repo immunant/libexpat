@@ -11665,10 +11665,15 @@ unsafe fn storeAtts(
         if elementType.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if (*parser).m_ns as ::core::ffi::c_int != 0
-            && setElementTypePrefix(parser, elementType) == 0
-        {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
+        if (*parser).m_ns as ::core::ffi::c_int != 0 {
+            let salt = (*parser)
+                .m_root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .hash_secret_salt;
+            if set_element_type_prefix_impl(dtd, salt, name_ref).is_none() {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            }
         }
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
@@ -12431,7 +12436,7 @@ unsafe fn storeAtts(
     if (*parser).m_ns == 0 {
         return crate::expat_h::XML_ERROR_NONE;
     }
-    let (binding, local_part_offset) = if (*elementType).hasPrefix != 0 {
+    let (binding_index, local_part_offset) = if (*elementType).hasPrefix != 0 {
         let Some(binding_id) = active_binding_id_for_prefix(
             &(*parser).m_activeBindings,
             BindingPrefix::Named((*elementType).prefix),
@@ -12452,13 +12457,7 @@ unsafe fn storeAtts(
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        (
-            (&(*parser).m_activeBindings)[binding_index]
-                .binding
-                .as_ptr()
-                .cast_mut(),
-            colon + 1,
-        )
+        (binding_index, colon + 1)
     } else {
         let Some(binding_id) =
             active_binding_id_for_prefix(&(*parser).m_activeBindings, BindingPrefix::Default)
@@ -12468,27 +12467,16 @@ unsafe fn storeAtts(
         let Some(binding_index) = (*parser).binding_index(binding_id) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        (
-            (&(*parser).m_activeBindings)[binding_index]
-                .binding
-                .as_ptr()
-                .cast_mut(),
-            0,
-        )
+        (binding_index, 0)
     };
 
-    let (binding_index, uri_len, uri_alloc, binding_prefix) = {
+    let (uri_len, uri_alloc, binding_prefix) = {
         let parser_state = &mut *parser;
-        let Some(binding_index) = parser_state
-            .m_activeBindings
-            .iter()
-            .position(|storage| storage.binding.as_ptr() == binding)
-        else {
+        let Some(storage) = parser_state.m_activeBindings.get_mut(binding_index) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let binding_ref = parser_state.m_activeBindings[binding_index].binding_mut();
+        let binding_ref = storage.binding_mut();
         (
-            binding_index,
             binding_ref.uriLen,
             binding_ref.uriAlloc,
             binding_ref.prefix,
