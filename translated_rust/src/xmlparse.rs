@@ -11447,8 +11447,15 @@ unsafe fn doContent(
                     } else if handlers.default {
                         report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
-                    result_2 =
-                        doCdataSection(parser, enc, &mut next, end, nextPtr, haveMore, account);
+                    result_2 = doCdataSection(
+                        parser,
+                        enc,
+                        &mut next,
+                        end,
+                        next_ptr,
+                        haveMore,
+                        account,
+                    );
                     if result_2 as ::core::ffi::c_uint
                         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                             as ::core::ffi::c_uint
@@ -13157,14 +13164,22 @@ unsafe extern "C" fn cdataSectionProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let encoding = current_parser_encoding(&*parser);
+    if parser.is_null() || endPtr.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    // Convert the processor ABI values once at this boundary.  The CDATA
+    // adapter only needs ordinary parser and out-cursor references after this
+    // point, so it cannot repeat either raw dereference while handling tokens.
+    let parser_state = &mut *parser;
+    let end_ptr = &mut *endPtr;
+    let encoding = current_parser_encoding(parser_state);
     let mut result: crate::expat_h::XML_Error = doCdataSection(
-        parser,
+        parser_state,
         std::ptr::from_ref(encoding),
         &mut start,
         end,
-        endPtr,
-        ((&*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+        end_ptr,
+        (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         XML_ACCOUNT_DIRECT,
     );
@@ -13173,7 +13188,7 @@ unsafe extern "C" fn cdataSectionProcessor(
     {
         return result;
     }
-    match cdata_processor_continuation(&mut *parser, !start.is_null()) {
+    match cdata_processor_continuation(parser_state, !start.is_null()) {
         CdataProcessorContinuation::Complete => result,
         CdataProcessorContinuation::ExternalEntityContent => {
             externalEntityContentProcessor(parser, start, end, endPtr)
@@ -13369,18 +13384,17 @@ fn content_advance_event_start_to_end(
 // and conversion stay here because they are the only operations that still
 // need C pointers.
 unsafe extern "C" fn doCdataSection(
-    parser: crate::expat_h::XML_Parser,
+    parser_state: &mut XML_ParserStruct,
     enc: *const crate::src::xmltok::ENCODING,
     startPtr: &mut *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
+    nextPtr: &mut *const ::core::ffi::c_char,
     haveMore: crate::expat_h::XML_Bool,
     account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    if parser.is_null() || enc.is_null() || (*startPtr).is_null() || end.is_null() {
+    if enc.is_null() || (*startPtr).is_null() || end.is_null() {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
-    let parser_state = &mut *parser;
     let start = *startPtr;
     // `enc` is either the selected parser table or the fixed UTF-8 internal
     // entity table.  Resolve that identity through parser-owned tables rather
@@ -13452,14 +13466,15 @@ unsafe extern "C" fn doCdataSection(
     let mut dispatch = |parser_state: &mut XML_ParserStruct,
                         event: CdataCallbackEvent|
      -> Result<(), crate::expat_h::XML_Error> {
-        let Some(chars) = dispatch_cdata_callback(parser.addr(), parser_state, &normal, event)? else {
+        let parser_ptr = std::ptr::from_mut(parser_state);
+        let Some(chars) = dispatch_cdata_callback(parser_ptr.addr(), parser_state, &normal, event)? else {
             return Ok(());
         };
         // `reportDefault` must retain the original encoding-table address
         // to distinguish parser input from replacement text.  This is the
         // only callback path that cannot yet use the typed adapter above.
         reportDefault(
-            parser,
+            parser_ptr,
             enc,
             chars.as_ptr(),
             chars.as_ptr().wrapping_add(chars.len()),
