@@ -22081,7 +22081,7 @@ fn internal_entity_processor_impl(
 /// Applies the post-scan state change for the attribute entity at the top of
 /// the expansion stack.  The entity table owns the record, so resolve it by
 /// its stable pool key for each update instead of carrying a raw table-record
-/// address across `appendAttributeValue` (which may grow parser storage).
+/// address across `append_attribute_value_impl` (which may grow parser storage).
 fn update_attribute_entity(
     parser: &mut XML_ParserStruct,
     entity_name: PoolStringRef,
@@ -22858,29 +22858,6 @@ fn append_attribute_value_impl(
         .filter(|offset| *offset <= input.len())
         .unwrap_or(cursor);
     (error, offset)
-}
-
-/// Legacy boundary retained while callers use the checked slice implementation.
-unsafe fn appendAttributeValue(
-    parser: &mut XML_ParserStruct,
-    enc: &crate::src::xmltok::normal_encoding,
-    isCdata: crate::expat_h::XML_Bool,
-    input: &[::core::ffi::c_char],
-    cursor: usize,
-    parser_event_start: Option<usize>,
-    pool: &mut AttributeValuePool<'_>,
-    account: XML_Account,
-) -> (crate::expat_h::XML_Error, usize) {
-    append_attribute_value_impl(
-        parser,
-        enc,
-        isCdata,
-        input,
-        cursor,
-        parser_event_start,
-        pool,
-        account,
-    )
 }
 
 /// Accounts for one already-bounded attribute-value token.  This is the same
