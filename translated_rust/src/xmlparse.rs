@@ -27278,7 +27278,7 @@ fn dispatch_content_model(request: ContentModelDispatchRequest<'_>) -> bool {
     // `ContentModelDispatchRequest` is assembled only from the parser's
     // checked declaration state.  Its exclusive borrows keep the parser and
     // DTD alive while the lower-level ABI model registration completes.
-    unsafe { build_model_and_dispatch(request) }
+    build_model_and_dispatch(request)
 }
 
 /// Resolves a registered content model at the callback boundary and invokes
@@ -27300,7 +27300,7 @@ fn dispatch_element_decl_callback(
 /// Builds the ABI-owned declaration model and hands it to the installed
 /// element-declaration callback.  The model is registered before dispatch so
 /// XML_FreeContentModel remains valid even during a re-entrant callback.
-unsafe fn build_model_and_dispatch(request: ContentModelDispatchRequest<'_>) -> bool {
+fn build_model_and_dispatch(request: ContentModelDispatchRequest<'_>) -> bool {
     let ContentModelDispatchRequest {
         parser,
         dtd,
