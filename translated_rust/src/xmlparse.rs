@@ -2473,7 +2473,6 @@ pub struct NAMED {
 pub type KEY = *const crate::expat_external_h::XML_Char;
 
 pub type ATTRIBUTE_ID = attribute_id;
-#[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct ELEMENT_TYPE {
@@ -2493,10 +2492,20 @@ pub struct ELEMENT_TYPE {
     pub idAtt: Option<PoolStringRef>,
     pub nDefaultAtts: ::core::ffi::c_int,
     pub allocDefaultAtts: ::core::ffi::c_int,
-    // The storage remains allocated and released through the parser's
-    // configured allocator.  NonNull makes its nullable ownership state
-    // explicit without changing that allocator pairing.
-    pub defaultAtts: Option<std::ptr::NonNull<DEFAULT_ATTRIBUTE>>,
+    // The records are owned values. Their opaque backing token preserves the
+    // parser's configured malloc/realloc/free sequence without retaining a
+    // dereferenceable allocation pointer in DTD state.
+    defaultAtts: Option<Box<DefaultAttributeStorage>>,
+}
+
+struct DefaultAttributeStorage {
+    values: Vec<DEFAULT_ATTRIBUTE>,
+    backing: Box<dyn FnMut(DefaultAttributeAllocationAction) -> bool>,
+}
+
+enum DefaultAttributeAllocationAction {
+    Grow(crate::__stddef_size_t_h::size_t),
+    Free(::core::ffi::c_int),
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -8349,11 +8358,13 @@ unsafe extern "C" fn storeAtts(
                 let mut j: ::core::ffi::c_int = 0;
                 j = 0 as ::core::ffi::c_int;
                 while j < nDefaultAtts {
-                    let default_att = &*(*elementType)
+                    let default_att = (*elementType)
                         .defaultAtts
+                        .as_ref()
                         .expect("default attribute storage must exist for a non-empty list")
-                        .as_ptr()
-                        .offset(j as isize);
+                        .values
+                        .get(j as usize)
+                        .expect("default attribute count must match stored values");
                     let default_name = default_att.id.map_or(::core::ptr::null(), |name| {
                         (*dtd)
                             .pool
@@ -8361,12 +8372,14 @@ unsafe extern "C" fn storeAtts(
                             .map_or(::core::ptr::null(), |chars| chars.as_ptr())
                     });
                     if default_name == (*attId).name {
-                        isCdata = (*(*elementType)
+                        isCdata = (*elementType)
                             .defaultAtts
+                            .as_ref()
                             .expect("default attribute storage must exist for a non-empty list")
-                            .as_ptr()
-                            .offset(j as isize))
-                        .isCdata;
+                            .values
+                            .get(j as usize)
+                            .expect("default attribute count must match stored values")
+                            .isCdata;
                         break;
                     } else {
                         j += 1;
@@ -8450,11 +8463,13 @@ unsafe extern "C" fn storeAtts(
     }
     i = 0 as ::core::ffi::c_int;
     while i < nDefaultAtts {
-        let da = &*(*elementType)
+        let da = (*elementType)
             .defaultAtts
+            .as_ref()
             .expect("default attribute storage must exist for a non-empty list")
-            .as_ptr()
-            .offset(i as isize);
+            .values
+            .get(i as usize)
+            .expect("default attribute count must match stored values");
         let Some(id_name_ref) = da.id else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
@@ -13473,7 +13488,6 @@ unsafe fn defineAttribute(
     value: Option<PoolStringRef>,
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    let mut att: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
     if type_0.is_null() || attId.is_null() || parser.is_null() || (*parser).m_dtd.is_null() {
         return 0 as ::core::ffi::c_int;
     }
@@ -13485,11 +13499,13 @@ unsafe fn defineAttribute(
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
         while i < type_0.nDefaultAtts {
-            if (*type_0
+            if type_0
                 .defaultAtts
+                .as_ref()
                 .expect("default attribute storage must exist for a non-empty list")
-                .as_ptr()
-                .offset(i as isize))
+                .values
+                .get(i as usize)
+                .expect("default attribute count must match stored values")
                 .id
                 == Some(att_name)
             {
@@ -13503,54 +13519,47 @@ unsafe fn defineAttribute(
     }
     if type_0.nDefaultAtts == type_0.allocDefaultAtts {
         if type_0.allocDefaultAtts == 0 as ::core::ffi::c_int {
-            type_0.allocDefaultAtts = 8 as ::core::ffi::c_int;
-            type_0.defaultAtts = std::ptr::NonNull::new(
-                expat_malloc(
-                    parser,
-                    (type_0.allocDefaultAtts as crate::__stddef_size_t_h::size_t)
-                        .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
-                    7182 as ::core::ffi::c_int,
-                ) as *mut DEFAULT_ATTRIBUTE,
-            );
-            if type_0.defaultAtts.is_none() {
-                type_0.allocDefaultAtts = 0 as ::core::ffi::c_int;
+            let Some(storage) = default_attribute_storage_new(parser, 8, 7182) else {
                 return 0 as ::core::ffi::c_int;
-            }
+            };
+            type_0.defaultAtts = Some(storage);
+            type_0.allocDefaultAtts = 8 as ::core::ffi::c_int;
         } else {
-            let mut temp: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
             if type_0.allocDefaultAtts > crate::limits_h::INT_MAX / 2 as ::core::ffi::c_int {
                 return 0 as ::core::ffi::c_int;
             }
             let mut count: ::core::ffi::c_int =
                 type_0.allocDefaultAtts * 2 as ::core::ffi::c_int;
-            temp = expat_realloc(
-                parser,
-                type_0
-                    .defaultAtts
-                    .expect("default attribute storage must exist before growing")
-                    .as_ptr() as *mut ::core::ffi::c_void,
-                (count as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
-                7208 as ::core::ffi::c_int,
-            ) as *mut DEFAULT_ATTRIBUTE;
-            if temp.is_null() {
+            let Some(allocation_size) = (count as usize)
+                .checked_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>())
+            else {
+                return 0 as ::core::ffi::c_int;
+            };
+            let storage = type_0
+                .defaultAtts
+                .as_mut()
+                .expect("default attribute storage must exist before growing");
+            if storage
+                .values
+                .try_reserve_exact((count as usize).saturating_sub(storage.values.len()))
+                .is_err()
+                || !(storage.backing)(DefaultAttributeAllocationAction::Grow(allocation_size))
+            {
                 return 0 as ::core::ffi::c_int;
             }
             type_0.allocDefaultAtts = count;
-            type_0.defaultAtts = Some(
-                std::ptr::NonNull::new(temp)
-                    .expect("a successful realloc must return a non-null allocation"),
-            );
         }
     }
-    att = type_0
+    type_0
         .defaultAtts
+        .as_mut()
         .expect("default attribute storage must exist after allocation")
-        .as_ptr()
-        .offset(type_0.nDefaultAtts as isize);
-    (*att).id = Some(att_name);
-    (*att).value = value;
-    (*att).isCdata = isCdata;
+        .values
+        .push(DEFAULT_ATTRIBUTE {
+            id: Some(att_name),
+            isCdata,
+            value,
+        });
     if isCdata == 0 {
         (*attId).maybeTokenized = crate::expat_h::XML_TRUE;
     }
@@ -14128,7 +14137,7 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
     return p;
 }
 
-unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_Parser) {
+unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut _parser: crate::expat_h::XML_Parser) {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
         table: None,
         next: 0 as crate::__stddef_size_t_h::size_t,
@@ -14140,15 +14149,8 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_P
         if e.is_null() {
             break;
         }
-        if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
-            let defaultAtts = (*e)
-                .defaultAtts
-                .expect("default attribute storage must exist for a non-zero capacity");
-            expat_free(
-                parser,
-                defaultAtts.as_ptr() as *mut ::core::ffi::c_void,
-                7539 as ::core::ffi::c_int,
-            );
+        if let Some(mut default_atts) = (*e).defaultAtts.take() {
+            (default_atts.backing)(DefaultAttributeAllocationAction::Free(7539));
         }
     }
     hashTableClear(&raw mut (*p).generalEntities);
@@ -14199,15 +14201,8 @@ unsafe extern "C" fn dtdDestroy(
         if e.is_null() {
             break;
         }
-        if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
-            let defaultAtts = (*e)
-                .defaultAtts
-                .expect("default attribute storage must exist for a non-zero capacity");
-            expat_free(
-                parser,
-                defaultAtts.as_ptr() as *mut ::core::ffi::c_void,
-                7580 as ::core::ffi::c_int,
-            );
+        if let Some(mut default_atts) = (*e).defaultAtts.take() {
+            (default_atts.backing)(DefaultAttributeAllocationAction::Free(7580));
         }
     }
     hashTableDestroy(&raw mut (*p).generalEntities);
@@ -14352,17 +14347,14 @@ unsafe extern "C" fn dtdCopy(
         }
         let new_e = &mut *new_e;
         if old_e.nDefaultAtts != 0 {
-            new_e.defaultAtts = std::ptr::NonNull::new(
-                expat_malloc(
-                    parser,
-                    (old_e.nDefaultAtts as crate::__stddef_size_t_h::size_t)
-                        .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
-                    7683 as ::core::ffi::c_int,
-                ) as *mut DEFAULT_ATTRIBUTE,
-            );
-            if new_e.defaultAtts.is_none() {
+            let Some(storage) = default_attribute_storage_new(
+                parser,
+                old_e.nDefaultAtts as usize,
+                7683,
+            ) else {
                 return 0 as ::core::ffi::c_int;
-            }
+            };
+            new_e.defaultAtts = Some(storage);
         }
         if let Some(old_id_att) = old_e.idAtt {
             let old_id_att = pool_string_pointer(&raw const old_dtd.pool, old_id_att);
@@ -14383,8 +14375,6 @@ unsafe extern "C" fn dtdCopy(
                 return 0 as ::core::ffi::c_int;
             }
         }
-        new_e.nDefaultAtts = old_e.nDefaultAtts;
-        new_e.allocDefaultAtts = new_e.nDefaultAtts;
         if old_e.hasPrefix != 0 {
             let old_prefix_name = pool_string_pointer(&raw const old_dtd.pool, old_e.prefix);
             if old_prefix_name.is_null() {
@@ -14407,17 +14397,14 @@ unsafe extern "C" fn dtdCopy(
             new_e.hasPrefix = crate::expat_h::XML_TRUE;
         }
         let mut i = 0 as ::core::ffi::c_int;
-        while i < new_e.nDefaultAtts {
-            let old_att = &*old_e
+        while i < old_e.nDefaultAtts {
+            let old_att = old_e
                 .defaultAtts
+                .as_ref()
                 .expect("default attribute storage must exist for a non-empty list")
-                .as_ptr()
-                .offset(i as isize);
-            let new_att = &mut *new_e
-                .defaultAtts
-                .expect("default attribute storage must exist for a non-empty list")
-                .as_ptr()
-                .offset(i as isize);
+                .values
+                .get(i as usize)
+                .expect("default attribute count must match stored values");
             let Some(old_id_name) = old_att.id else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -14440,9 +14427,7 @@ unsafe extern "C" fn dtdCopy(
             let Some(new_id_name) = pool_string_ref(&raw const new_dtd.pool, (*new_id).name, false) else {
                 return 0 as ::core::ffi::c_int;
             };
-            new_att.id = Some(new_id_name);
-            new_att.isCdata = old_att.isCdata;
-            if let Some(value) = old_att.value {
+            let value = if let Some(value) = old_att.value {
                 let Some(old_value) = old_dtd.pool.chars_from(value) else {
                     return 0 as ::core::ffi::c_int;
                 };
@@ -14461,12 +14446,24 @@ unsafe extern "C" fn dtdCopy(
                 ) else {
                     return 0 as ::core::ffi::c_int;
                 };
-                new_att.value = Some(copied_value);
+                Some(copied_value)
             } else {
-                new_att.value = None;
-            }
+                None
+            };
+            new_e
+                .defaultAtts
+                .as_mut()
+                .expect("default attribute storage must exist for a non-empty list")
+                .values
+                .push(DEFAULT_ATTRIBUTE {
+                    id: Some(new_id_name),
+                    isCdata: old_att.isCdata,
+                    value,
+                });
             i += 1;
         }
+        new_e.nDefaultAtts = old_e.nDefaultAtts;
+        new_e.allocDefaultAtts = old_e.nDefaultAtts;
     }
     if copyEntityTable(
         oldParser,
@@ -14696,6 +14693,40 @@ unsafe fn allocation_backing(
     Some(Box::new(move |free_source_line| {
         expat_free(parser, allocation, free_source_line);
     }))
+}
+
+unsafe fn default_attribute_storage_new(
+    parser: crate::expat_h::XML_Parser,
+    capacity: usize,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<DefaultAttributeStorage>> {
+    let allocation_size = capacity.checked_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>())?;
+    let mut allocation = expat_malloc(parser, allocation_size, source_line);
+    if allocation.is_null() {
+        return None;
+    }
+    let mut backing: Box<dyn FnMut(DefaultAttributeAllocationAction) -> bool> =
+        Box::new(move |action| match action {
+            DefaultAttributeAllocationAction::Grow(size) => {
+                let reallocated = expat_realloc(parser, allocation, size, 7208);
+                if reallocated.is_null() {
+                    false
+                } else {
+                    allocation = reallocated;
+                    true
+                }
+            }
+            DefaultAttributeAllocationAction::Free(free_source_line) => {
+                expat_free(parser, allocation, free_source_line);
+                true
+            }
+        });
+    let mut values = Vec::new();
+    if values.try_reserve_exact(capacity).is_err() {
+        backing(DefaultAttributeAllocationAction::Free(source_line));
+        return None;
+    }
+    Some(Box::new(DefaultAttributeStorage { values, backing }))
 }
 
 fn hash_table_allocation_backing(
