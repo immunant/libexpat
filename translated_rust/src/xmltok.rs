@@ -910,29 +910,6 @@ pub mod xmltok_impl_c {
         NormalScanDeclAction::Token(crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    pub unsafe extern "C" fn normal_scanDecl(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        match normal_scan_decl_impl(&normal.type_0, input) {
-            NormalScanDeclAction::Comment => normal_scanComment(enc, ptr.add(1), end, nextTokPtr),
-            NormalScanDeclAction::Token(token, next) => {
-                if let Some(offset) = next {
-                    *nextTokPtr = ptr.add(offset);
-                }
-                token
-            }
-        }
-    }
-
     pub fn normal_checkPiTarget(
         target: &[u8],
         token: &mut ::core::ffi::c_int,
@@ -3197,7 +3174,17 @@ pub mod xmltok_impl_c {
                 normal_scanLit(open, enc, ptr.add(start), end, nextTokPtr)
             }
             NormalPrologAction::Declaration(start) => {
-                normal_scanDecl(enc, ptr.add(start), end, nextTokPtr)
+                match normal_scan_decl_impl(&normal.type_0, &input[start..]) {
+                    NormalScanDeclAction::Comment => {
+                        normal_scanComment(enc, ptr.add(start + 1), end, nextTokPtr)
+                    }
+                    NormalScanDeclAction::Token(token, next) => {
+                        if let Some(offset) = next {
+                            *nextTokPtr = ptr.add(start + offset);
+                        }
+                        token
+                    }
+                }
             }
             NormalPrologAction::ProcessingInstruction(start) => {
                 let (token, next) = normal_scan_pi_impl(normal, &input[start..]);
@@ -12076,7 +12063,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanComment;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanDecl;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanHexCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
