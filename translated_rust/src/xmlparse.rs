@@ -4235,10 +4235,10 @@ struct ProtocolEncodingName {
 }
 
 struct UnknownEncodingMemory {
-    // The tokenizer initializer writes an `unknown_encoding` into this
-    // pre-reserved slot.  We retain the slot without exposing its address in
-    // parser state; it stays stable until the adapter is released.
-    storage: Vec<::core::mem::MaybeUninit<crate::src::xmltok::unknown_encoding>>,
+    // The tokenizer initializer returns a fully initialized owned value.  A
+    // pre-reserved one-element vector supplies its stable registry address
+    // without retaining uninitialized typed storage in parser state.
+    storage: Vec<crate::src::xmltok::unknown_encoding>,
     // Expat still observes the allocation and matching free through its
     // configured allocator, even though Rust owns the typed tokenizer bytes.
     backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
@@ -4246,16 +4246,11 @@ struct UnknownEncodingMemory {
 }
 
 impl UnknownEncodingMemory {
-    /// The callback result is retained only after its tokenizer state has
-    /// been written into the reserved slot.  `info` is that initialization
-    /// marker, so observing it permits a reference to the owned value without
-    /// exposing the slot address to parser code.
+    /// The callback result is retained only after its initialized tokenizer
+    /// state and callback record have both been installed.
     fn initialized_encoding(&self) -> Option<&crate::src::xmltok::unknown_encoding> {
         self.info.as_ref()?;
-        let storage = self.storage.first()?;
-        // `handle_unknown_encoding` writes this one reserved slot before it
-        // stores `info`.  The vector is never reallocated after that point.
-        Some(unsafe { storage.assume_init_ref() })
+        self.storage.first()
     }
 }
 
@@ -17606,42 +17601,31 @@ fn handle_unknown_encoding(
                 release_unknown_encoding_info(&info);
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             };
-            let mut storage = Vec::new();
+            let mut storage: Vec<crate::src::xmltok::unknown_encoding> = Vec::new();
             if storage.try_reserve_exact(1).is_err() {
                 backing(4963 as ::core::ffi::c_int);
                 release_unknown_encoding_info(&info);
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
-            // Keep the caller-observable allocation, but also materialize the
-            // one safe slot that will receive the initialized tokenizer state.
-            storage.push(::core::mem::MaybeUninit::uninit());
-            parser.m_unknownEncodingMem = Some(UnknownEncodingMemory {
-                storage,
-                backing: Some(backing),
-                info: None,
-            });
+            // Reserve the sole slot before deriving its stable registry key.
+            // The initializer returns an owned value, and the subsequent one
+            // push cannot reallocate this reserved storage.
+            let storage_id = storage.as_ptr().addr();
             let converter = unknown_encoding_converter(&info);
-            let storage = parser
-                .m_unknownEncodingMem
-                .as_mut()
-                .expect("unknown encoding storage is installed")
-                .storage
-                .first_mut()
-                .expect("unknown encoding storage has one reserved slot");
             let encoding = crate::src::xmltok::initialize_unknown_encoding_state(
                 &info.map,
                 converter,
-                storage.as_mut_ptr().addr(),
+                storage_id,
                 info.data.addr(),
                 parser.m_ns != 0,
             );
             if let Some(encoding) = encoding {
-                storage.write(encoding);
-                parser
-                    .m_unknownEncodingMem
-                    .as_mut()
-                    .expect("unknown encoding storage is installed")
-                    .info = Some(info);
+                storage.push(encoding);
+                parser.m_unknownEncodingMem = Some(UnknownEncodingMemory {
+                    storage,
+                    backing: Some(backing),
+                    info: Some(info),
+                });
                 parser.m_encoding = EncodingState::Unknown;
                 return crate::expat_h::XML_ERROR_NONE;
             }
