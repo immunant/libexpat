@@ -2599,13 +2599,14 @@ macro_rules! parser_event_start {
 }
 
 macro_rules! set_event_end {
-    ($parser:expr, $parser_events:expr, $internal_start:expr, $internal_end:expr, $end:expr) => {
+    ($parser:expr, $parser_events:expr, $internal_start:expr, $internal_window:expr, $internal_end:expr, $end:expr) => {
         if $parser_events {
             set_parser_event_end!($parser, $end);
         } else {
-            *$internal_end = (!$internal_start.is_null())
-                .then(|| ($end).addr().checked_sub($internal_start.addr()))
-                .flatten();
+            *$internal_end = ($internal_start).and_then(|start| {
+                internal_event_offset($internal_window, ($end).addr())
+                    .and_then(|end| end.checked_sub(start))
+            });
         }
     };
 }
@@ -2628,11 +2629,11 @@ macro_rules! parser_event_end {
 }
 
 macro_rules! set_event_start {
-    ($parser:expr, $parser_events:expr, $event_start:expr, $start:expr) => {
+    ($parser:expr, $parser_events:expr, $event_start:expr, $internal_window:expr, $start:expr) => {
         if $parser_events {
             set_parser_event_start!(&mut *$parser, $start);
         } else {
-            *$event_start = $start;
+            *$event_start = internal_event_offset($internal_window, ($start).addr());
         }
     };
 }
@@ -3419,12 +3420,28 @@ fn entity_text_chars(
     }
 }
 
+// Internal-entity events are locations in the entity's replacement text, not
+// addresses into its growable pool.  This representation remains valid when a
+// callback grows that pool and moves its backing allocation.
+fn internal_event_offset(window: Option<(usize, usize)>, address: usize) -> Option<usize> {
+    let (start, len) = window?;
+    address.checked_sub(start).filter(|offset| *offset <= len)
+}
+
+fn event_text_window(dtd: &DTD, entity: &OPEN_INTERNAL_ENTITY) -> Option<(usize, usize)> {
+    let text = entity_text_chars(dtd, entity.eventText, entity.eventTextLen)?;
+    Some((text.as_ptr().addr(), text.len()))
+}
+
 pub type OPEN_INTERNAL_ENTITY = open_internal_entity;
 #[derive(Copy, Clone)]
 #[repr(C)]
 
 pub struct open_internal_entity {
-    pub internalEventPtr: *const ::core::ffi::c_char,
+    // The event start is an offset in `eventText`; `None` preserves the old
+    // null cursor.  Do not retain an address into a pool that callbacks may
+    // grow or relocate.
+    pub internalEventPtr: Option<usize>,
     // The end of an internal-entity default event is measured from its start.
     // This event-local offset stays valid when its pool storage moves.
     pub internalEventEndPtr: Option<usize>,
@@ -7549,16 +7566,31 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
                 .and_then(|index| parser_state.m_activeInternalEntities.get(index))
         };
         if let Some(open_entity) = open_entity {
+            let (event_start, event_end) = {
+                let parser_state = &*parser;
+                let event = parser_state.m_dtd.as_ref().and_then(|dtd| {
+                    let text = entity_text_chars(
+                        &*dtd.value.get(),
+                        open_entity.node().eventText,
+                        open_entity.node().eventTextLen,
+                    )?;
+                    let start = open_entity.node().internalEventPtr?;
+                    let end = open_entity
+                        .node()
+                        .internalEventEndPtr
+                        .and_then(|len| start.checked_add(len))?;
+                    text.get(start..end)
+                });
+                event.map_or(
+                    (::core::ptr::null(), ::core::ptr::null()),
+                    |event| (event.as_ptr(), event.as_ptr().wrapping_add(event.len())),
+                )
+            };
             reportDefault(
                 parser,
                 internal_encoding((*parser).m_internalEncoding) as *const _,
-                open_entity.node().internalEventPtr,
-                open_entity
-                    .node()
-                    .internalEventEndPtr
-                    .map_or(::core::ptr::null(), |offset| {
-                        open_entity.node().internalEventPtr.wrapping_add(offset)
-                    }),
+                event_start,
+                event_end,
             );
         } else {
             reportDefault(
@@ -8228,10 +8260,10 @@ unsafe extern "C" fn doContent(
 ) -> crate::expat_h::XML_Error {
     let dtd = parser_dtd_ptr!(parser);
     let parser_events = enc == parser_encoding(parser);
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let internal_event_start = std::cell::Cell::new(::core::ptr::null::<::core::ffi::c_char>());
+    let internal_event_start = std::cell::Cell::new(None);
+    let mut internal_event_window = None;
     if !parser_events {
         let open_entity = {
             let parser_state = &mut *parser;
@@ -8246,8 +8278,16 @@ unsafe extern "C" fn doContent(
                     .node_mut(),
             )
         };
-        eventPP = &raw mut (*open_entity).internalEventPtr;
-        eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
+        let open_entity = &mut *open_entity;
+        let Some(window) = event_text_window(
+            &*dtd,
+            open_entity,
+        ) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        internal_event_window = Some(window);
+        eventPP = &raw mut open_entity.internalEventPtr;
+        eventEndPP = &raw mut open_entity.internalEventEndPtr;
     }
     let event_parser = parser;
     let parser_event_start_ptr = eventPP;
@@ -8255,8 +8295,9 @@ unsafe extern "C" fn doContent(
         if parser_events {
             set_parser_event_start!(&mut *event_parser, start);
         } else {
-            *parser_event_start_ptr = start;
-            internal_event_start.set(start);
+            let offset = internal_event_offset(internal_event_window, start.addr());
+            *parser_event_start_ptr = offset;
+            internal_event_start.set(offset);
         }
     };
     update_event_start(s);
@@ -8288,7 +8329,14 @@ unsafe extern "C" fn doContent(
             accountingOnAbort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
-        set_event_end!(parser, parser_events, internal_event_start.get(), eventEndPP, next);
+        set_event_end!(
+            parser,
+            parser_events,
+            internal_event_start.get(),
+            internal_event_window,
+            eventEndPP,
+            next
+        );
         's_1235: {
             match tok {
                 crate::src::xmltok::XML_TOK_TRAILING_CR => {
@@ -8296,7 +8344,14 @@ unsafe extern "C" fn doContent(
                         *nextPtr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
-                    set_event_end!(parser, parser_events, internal_event_start.get(), eventEndPP, end);
+                    set_event_end!(
+                        parser,
+                        parser_events,
+                        internal_event_start.get(),
+                        internal_event_window,
+                        eventEndPP,
+                        end
+                    );
                     if (*parser).m_characterDataHandler {
                         let mut c: crate::expat_external_h::XML_Char =
                             0xa as crate::expat_external_h::XML_Char;
@@ -8781,10 +8836,11 @@ unsafe extern "C" fn doContent(
                                             .filter(|offset| *offset <= bytes.len())
                                     });
                             } else {
-                                *eventPP = (*eventEndPP).map_or(
-                                    ::core::ptr::null(),
-                                    |offset| internal_event_start.get().wrapping_add(offset),
-                                );
+                                *eventPP = (*eventEndPP).and_then(|offset| {
+                                    internal_event_start
+                                        .get()
+                                        .and_then(|start| start.checked_add(offset))
+                                });
                                 internal_event_start.set(*eventPP);
                             }
                         }
@@ -9144,7 +9200,14 @@ unsafe extern "C" fn doContent(
                                         &raw mut dataPtr_0,
                                         data_end,
                                     );
-                                set_event_end!(parser, parser_events, internal_event_start.get(), eventEndPP, s);
+                                set_event_end!(
+                                    parser,
+                                    parser_events,
+                                    internal_event_start.get(),
+                                    internal_event_window,
+                                    eventEndPP,
+                                    s
+                                );
                                 let data_len = match dataPtr_0
                                     .addr()
                                     .checked_sub(data_start.addr())
@@ -10609,15 +10672,15 @@ unsafe extern "C" fn doCdataSection(
         .m_buffer
         .window_from_addresses(s.addr(), end.addr())
         .is_some();
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut internal_event_text: Option<(
         EntityTextRef,
         ::core::ffi::c_int,
         std::sync::Arc<SharedDtd>,
     )> = None;
-    let internal_event_start = std::cell::Cell::new(::core::ptr::null::<::core::ffi::c_char>());
+    let internal_event_start = std::cell::Cell::new(None);
+    let mut internal_event_window = None;
     if !parser_events {
         let open_entity = {
             let parser_state = &mut *parser_handle;
@@ -10636,6 +10699,11 @@ unsafe extern "C" fn doCdataSection(
                 open_entity.node().eventTextLen,
                 dtd,
             ));
+            let (text_ref, text_len, dtd) = internal_event_text.as_ref().expect("internal event text was set");
+            let Some(text) = entity_text_chars(&*dtd.value.get(), *text_ref, *text_len) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            internal_event_window = Some((text.as_ptr().addr(), text.len()));
             std::ptr::from_mut(open_entity.node_mut())
         };
         eventPP = &raw mut (*open_entity).internalEventPtr;
@@ -10647,8 +10715,9 @@ unsafe extern "C" fn doCdataSection(
         if parser_events {
             set_parser_event_start!(&mut *event_parser, start);
         } else {
-            *parser_event_start_ptr = start;
-            internal_event_start.set(start);
+            let offset = internal_event_offset(internal_event_window, start.addr());
+            *parser_event_start_ptr = offset;
+            internal_event_start.set(offset);
         }
     };
     update_event_start(s);
@@ -10696,6 +10765,7 @@ unsafe extern "C" fn doCdataSection(
             &mut *parser_handle,
             parser_events,
             internal_event_start.get(),
+            internal_event_window,
             eventEndPP,
             next
         );
@@ -10793,6 +10863,7 @@ unsafe extern "C" fn doCdataSection(
                                 &mut *parser_handle,
                                 parser_events,
                                 internal_event_start.get(),
+                                internal_event_window,
                                 eventEndPP,
                                 next
                             );
@@ -10926,10 +10997,10 @@ unsafe extern "C" fn doIgnoreSection(
     let mut tok: ::core::ffi::c_int = 0;
     let mut s: *const ::core::ffi::c_char = *startPtr;
     let parser_events = enc == parser_encoding(parser);
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let mut internal_event_start = s;
+    let mut internal_event_start = None;
+    let mut internal_event_window = None;
     if !parser_events {
         let open_entity = {
             let parser_state = &mut *parser;
@@ -10944,10 +11015,20 @@ unsafe extern "C" fn doIgnoreSection(
                     .node_mut(),
             )
         };
-        eventPP = &raw mut (*open_entity).internalEventPtr;
-        eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
+        let open_entity = &mut *open_entity;
+        let dtd = (&*parser)
+            .m_dtd
+            .as_ref()
+            .expect("internal entity parsing requires a DTD");
+        let Some(window) = event_text_window(&*dtd.value.get(), open_entity) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        internal_event_window = Some(window);
+        eventPP = &raw mut open_entity.internalEventPtr;
+        eventEndPP = &raw mut open_entity.internalEventEndPtr;
     }
-    set_event_start!(parser, parser_events, eventPP, s);
+    set_event_start!(parser, parser_events, eventPP, internal_event_window, s);
+    internal_event_start = internal_event_offset(internal_event_window, s.addr());
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
     tok = (*enc).scanners[3 as usize].scan(enc, s, end, &raw mut next);
     if accountingDiffTolerated(
@@ -10962,7 +11043,14 @@ unsafe extern "C" fn doIgnoreSection(
         accountingOnAbort(parser);
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
-    set_event_end!(parser, parser_events, internal_event_start, eventEndPP, next);
+    set_event_end!(
+        parser,
+        parser_events,
+        internal_event_start,
+        internal_event_window,
+        eventEndPP,
+        next
+    );
     match tok {
         crate::src::xmltok::XML_TOK_IGNORE_SECT => {
             if (*parser).m_defaultHandler {
@@ -10979,7 +11067,7 @@ unsafe extern "C" fn doIgnoreSection(
             }
         }
         crate::src::xmltok::XML_TOK_INVALID => {
-            set_event_start!(parser, parser_events, eventPP, next);
+            set_event_start!(parser, parser_events, eventPP, internal_event_window, next);
             return crate::expat_h::XML_ERROR_INVALID_TOKEN;
         }
         crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
@@ -10997,7 +11085,7 @@ unsafe extern "C" fn doIgnoreSection(
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
         _ => {
-            set_event_start!(parser, parser_events, eventPP, next);
+            set_event_start!(parser, parser_events, eventPP, internal_event_window, next);
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
     };
@@ -11811,15 +11899,13 @@ unsafe extern "C" fn doProlog(
             .cast(),
     };
     let parser_events = enc == active_parser_encoding;
-    let mut eventPP: *mut *const ::core::ffi::c_char =
-        ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
     let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let mut internal_event_start = s;
+    let mut internal_event_start = None;
+    let mut internal_event_window = None;
     let mut parser_event_ptr = s;
     let mut quant: crate::expat_h::XML_Content_Quant = crate::expat_h::XML_CQUANT_NONE;
-    if parser_events {
-        eventPP = &raw mut parser_event_ptr;
-    } else {
+    if !parser_events {
         let open_entity = {
             let parser_state = &mut *parser;
             let open_entity_index = parser_state
@@ -11833,15 +11919,30 @@ unsafe extern "C" fn doProlog(
                     .node_mut(),
             )
         };
-        eventPP = &raw mut (*open_entity).internalEventPtr;
-        eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
+        let open_entity = &mut *open_entity;
+        let Some(window) = event_text_window(
+            &*dtd,
+            open_entity,
+        ) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        internal_event_window = Some(window);
+        eventPP = &raw mut open_entity.internalEventPtr;
+        eventEndPP = &raw mut open_entity.internalEventEndPtr;
     }
     loop {
         let mut role: ::core::ffi::c_int = 0;
         let mut handleDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
-        internal_event_start = s;
-        set_event_start!(parser, parser_events, eventPP, s);
-        set_event_end!(parser, parser_events, internal_event_start, eventEndPP, next);
+        internal_event_start = internal_event_offset(internal_event_window, s.addr());
+        set_event_start!(parser, parser_events, eventPP, internal_event_window, s);
+        set_event_end!(
+            parser,
+            parser_events,
+            internal_event_start,
+            internal_event_window,
+            eventEndPP,
+            next
+        );
         if tok <= 0 as ::core::ffi::c_int {
             if haveMore as ::core::ffi::c_int != 0 && tok != crate::src::xmltok::XML_TOK_INVALID {
                 *nextPtr = s;
@@ -11849,7 +11950,7 @@ unsafe extern "C" fn doProlog(
             }
             match tok {
                 crate::src::xmltok::XML_TOK_INVALID => {
-                    set_event_start!(parser, parser_events, eventPP, next);
+                    set_event_start!(parser, parser_events, eventPP, internal_event_window, next);
                     return crate::expat_h::XML_ERROR_INVALID_TOKEN;
                 }
                 crate::src::xmltok::XML_TOK_PARTIAL => {
@@ -12139,10 +12240,13 @@ unsafe extern "C" fn doProlog(
                                                     crate::src::xmltok::big2_isPublicId
                                                 }
                                             };
-                                            if is_public_id(enc, s, next, eventPP) == 0
+                                            let mut bad_ptr = s;
+                                            if is_public_id(enc, s, next, &raw mut bad_ptr) == 0
                                             {
                                                 if parser_events {
                                                     set_parser_event_start!(parser, parser_event_ptr);
+                                                } else {
+                                                    set_event_start!(parser, false, eventPP, internal_event_window, bad_ptr);
                                                 }
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             }
@@ -12592,7 +12696,7 @@ unsafe extern "C" fn doProlog(
                                                         Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
-                                                set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
@@ -12790,7 +12894,7 @@ unsafe extern "C" fn doProlog(
                                                         Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
-                                                set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
@@ -12913,7 +13017,7 @@ unsafe extern "C" fn doProlog(
                                                 (*entity).textLen = text_len;
                                                 dtd_ref.entityValuePool.commit();
                                                 if (*parser).m_entityDeclHandler {
-                                                    set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                                    set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                                     let callback = ENTITY_DECL_HANDLERS
                                                         .get_or_init(|| {
                                                             std::sync::Mutex::new(
@@ -13047,7 +13151,7 @@ unsafe extern "C" fn doProlog(
                                             let Some(entity) = resolve_declared_entity(declaration) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                             let callback = ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -13204,7 +13308,7 @@ unsafe extern "C" fn doProlog(
                                                 },
                                             );
                                             if let Some(callback) = callback {
-                                                set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                                 callback.invoke(
                                                     handler_arg,
                                                     entity_name,
@@ -13215,7 +13319,7 @@ unsafe extern "C" fn doProlog(
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             } else if (*parser).m_entityDeclHandler {
-                                                set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                                 let callback = ENTITY_DECL_HANDLERS
                                                     .get_or_init(|| {
                                                         std::sync::Mutex::new(
@@ -13411,10 +13515,13 @@ unsafe extern "C" fn doProlog(
                                                 crate::src::xmltok::big2_isPublicId
                                             }
                                         };
-                                        if is_public_id(enc, s, next, eventPP) == 0
+                                        let mut bad_ptr = s;
+                                        if is_public_id(enc, s, next, &raw mut bad_ptr) == 0
                                         {
                                             if parser_events {
                                                 set_parser_event_start!(parser, parser_event_ptr);
+                                            } else {
+                                                set_event_start!(parser, false, eventPP, internal_event_window, bad_ptr);
                                             }
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
@@ -13453,7 +13560,7 @@ unsafe extern "C" fn doProlog(
                                             if systemId.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                             let callback = NOTATION_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -13524,7 +13631,7 @@ unsafe extern "C" fn doProlog(
                                         if (*parser).m_declNotationPublicId.is_some()
                                             && (*parser).m_notationDeclHandler
                                         {
-                                            set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                             let callback = NOTATION_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -14095,7 +14202,7 @@ unsafe extern "C" fn doProlog(
                                                         as ::core::ffi::c_int
                                                 })
                                                     as crate::expat_h::XML_Content_Type;
-                                                set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                                                set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                                                 callElementDeclHandler(
                                                     parser,
                                                     (*dtd)
@@ -14252,10 +14359,13 @@ unsafe extern "C" fn doProlog(
                                         crate::src::xmltok::big2_isPublicId
                                     }
                                 };
-                                if is_public_id(enc, s, next, eventPP) == 0
+                                let mut bad_ptr = s;
+                                if is_public_id(enc, s, next, &raw mut bad_ptr) == 0
                                 {
                                     if parser_events {
                                         set_parser_event_start!(parser, parser_event_ptr);
+                                    } else {
+                                        set_event_start!(parser, false, eventPP, internal_event_window, bad_ptr);
                                     }
                                     return crate::expat_h::XML_ERROR_PUBLICID;
                                 }
@@ -14402,7 +14512,7 @@ unsafe extern "C" fn doProlog(
                             if model.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
-                            set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+                            set_event_end!(parser, parser_events, internal_event_start, internal_event_window, eventEndPP, s);
                             callElementDeclHandler(
                                 parser,
                                 (*dtd)
@@ -14781,7 +14891,7 @@ unsafe extern "C" fn processEntity(
         open_entity.type_0 = type_0;
         open_entity.startTagLevel = parser_state.m_tagLevel;
         open_entity.betweenDecl = betweenDecl;
-        open_entity.internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
+        open_entity.internalEventPtr = None;
         open_entity.internalEventEndPtr = None;
         open_entity.eventText = entity.textPtr;
         open_entity.eventTextLen = entity.textLen;
@@ -15939,10 +16049,10 @@ unsafe extern "C" fn reportDefault(
         let mut convert_res: crate::src::xmltok::XML_Convert_Result =
             crate::src::xmltok::XML_CONVERT_COMPLETED;
         let parser_events = enc == parser_encoding(parser);
-        let mut eventPP: *mut *const ::core::ffi::c_char =
-            ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
+        let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
         let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-        let internal_event_start = s;
+        let mut internal_event_start = None;
+        let mut internal_event_window = None;
         if !parser_events {
             let open_entity = {
                 let parser_state = &mut *parser;
@@ -15957,8 +16067,18 @@ unsafe extern "C" fn reportDefault(
                         .node_mut(),
                 )
             };
-            eventPP = &raw mut (*open_entity).internalEventPtr;
-            eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
+            let open_entity = &mut *open_entity;
+            let dtd = (&*parser)
+                .m_dtd
+                .as_ref()
+                .expect("internal entity default reporting requires a DTD");
+            let Some(window) = event_text_window(&*dtd.value.get(), open_entity) else {
+                return;
+            };
+            internal_event_window = Some(window);
+            internal_event_start = internal_event_offset(internal_event_window, s.addr());
+            eventPP = &raw mut open_entity.internalEventPtr;
+            eventEndPP = &raw mut open_entity.internalEventEndPtr;
         }
         let (data_start, data_end) = {
             let parser_ref = &mut *parser;
@@ -15974,7 +16094,14 @@ unsafe extern "C" fn reportDefault(
                 &raw mut dataPtr,
                 data_end,
             );
-            set_event_end!(parser, parser_events, internal_event_start, eventEndPP, s);
+            set_event_end!(
+                parser,
+                parser_events,
+                internal_event_start,
+                internal_event_window,
+                eventEndPP,
+                s
+            );
             let callback = DEFAULT_HANDLERS
                 .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                 .lock()
@@ -15987,7 +16114,7 @@ unsafe extern "C" fn reportDefault(
                 data_start,
                 dataPtr.offset_from(data_start) as ::core::ffi::c_int,
             );
-            set_event_start!(parser, parser_events, eventPP, s);
+            set_event_start!(parser, parser_events, eventPP, internal_event_window, s);
             if !(convert_res as ::core::ffi::c_uint
                 != crate::src::xmltok::XML_CONVERT_COMPLETED as ::core::ffi::c_int
                     as ::core::ffi::c_uint
@@ -17359,7 +17486,7 @@ fn internal_entity_storage_new(
         return None;
     }
     node.push(OPEN_INTERNAL_ENTITY {
-        internalEventPtr: ::core::ptr::null(),
+        internalEventPtr: None,
         internalEventEndPtr: None,
         eventText: EntityTextRef {
             pool: EntityTextPool::Dtd,
