@@ -2164,7 +2164,6 @@ pub struct TAG_NAME {
     // an offset rather than a pointer lets that buffer move during
     // `storeRawNames` without leaving a stale interior pointer behind.
     pub localPart: Option<usize>,
-    pub prefix: *const crate::expat_external_h::XML_Char,
     pub strLen: ::core::ffi::c_int,
     pub uriLen: ::core::ffi::c_int,
     pub prefixLen: ::core::ffi::c_int,
@@ -7217,7 +7216,6 @@ unsafe extern "C" fn doContent(
                     (*tag).parent = (*parser).m_tagStack as *mut tag;
                     (*parser).m_tagStack = tag;
                     (*tag).name.localPart = None;
-                    (*tag).name.prefix = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     (*tag).rawName = s.offset((*enc).minBytesPerChar as isize);
                     (*tag).rawNameLength = crate::src::xmltok::name_length(enc, (*tag).rawName);
                     (*parser).m_tagLevel += 1;
@@ -7316,7 +7314,6 @@ unsafe extern "C" fn doContent(
                     let mut name_0: TAG_NAME = TAG_NAME {
                         str: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
                         localPart: None,
-                        prefix: ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
                         strLen: 0,
                         uriLen: 0,
                         prefixLen: 0,
@@ -7449,19 +7446,29 @@ unsafe extern "C" fn doContent(
                                     uri = uri.offset(1);
                                     *c2rust_fresh19 = *c2rust_fresh18;
                                 }
-                                prefix = (*tag_0).name.prefix;
                                 if (*parser).m_ns_triplets as ::core::ffi::c_int != 0
-                                    && !prefix.is_null()
+                                    && (*tag_0).name.prefixLen != 0
                                 {
+                                    // The tag buffer remains owned by the parser's configured
+                                    // allocator for the tag's complete lifetime.  Its original
+                                    // converted name supplies the prefix, so no interior pointer
+                                    // has to be retained in TAG_NAME.
+                                    prefix = (*tag_0).bufEnd
+                                        as *const crate::expat_external_h::XML_Char;
                                     let c2rust_fresh20 = uri;
                                     uri = uri.offset(1);
                                     *c2rust_fresh20 = (*parser).m_namespaceSeparator;
-                                    while *prefix != 0 {
+                                    // `prefixLen` includes the terminating NUL.  The source
+                                    // buffer also holds the local part after the colon, so use
+                                    // the recorded bound rather than searching for a NUL there.
+                                    let mut prefix_remaining = (*tag_0).name.prefixLen - 1;
+                                    while prefix_remaining != 0 {
                                         let c2rust_fresh21 = prefix;
                                         prefix = prefix.offset(1);
                                         let c2rust_fresh22 = uri;
                                         uri = uri.offset(1);
                                         *c2rust_fresh22 = *c2rust_fresh21;
+                                        prefix_remaining -= 1;
                                     }
                                 }
                                 *uri = '\0' as crate::expat_external_h::XML_Char;
@@ -8348,7 +8355,6 @@ unsafe extern "C" fn storeAtts(
     }
     (*tagNamePtr).localPart = Some(localPartOffset);
     (*tagNamePtr).uriLen = (*binding).uriLen;
-    (*tagNamePtr).prefix = (*(*binding).prefix).name;
     (*tagNamePtr).prefixLen = prefixLen;
     i = 0 as ::core::ffi::c_int;
     loop {
