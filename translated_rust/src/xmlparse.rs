@@ -5781,6 +5781,22 @@ unsafe extern "C" fn externalEntityInitProcessor(
     return externalEntityInitProcessor2(parser, start, end, endPtr);
 }
 
+unsafe fn syncInitialEncodingSelection(mut parser: crate::expat_h::XML_Parser) {
+    let parser = &mut *parser;
+    let Some(index) = crate::src::xmltok::take_initial_encoding_selection(&mut parser.m_initEncoding)
+    else {
+        return;
+    };
+    if index >= 7 {
+        return;
+    }
+    parser.m_encoding = if parser.m_ns != 0 {
+        crate::src::xmltok::encodingsNS[index]
+    } else {
+        crate::src::xmltok::encodings[index]
+    };
+}
+
 unsafe extern "C" fn externalEntityInitProcessor2(
     mut parser: crate::expat_h::XML_Parser,
     mut start: *const ::core::ffi::c_char,
@@ -5794,6 +5810,7 @@ unsafe extern "C" fn externalEntityInitProcessor2(
         end,
         &raw mut next,
     );
+    syncInitialEncodingSelection(parser);
     match tok {
         crate::src::xmltok::XML_TOK_BOM => {
             if accountingDiffTolerated(
@@ -8242,6 +8259,7 @@ unsafe extern "C" fn entityValueInitProcessor(
             end,
             &raw mut next,
         );
+        syncInitialEncodingSelection(parser);
         (*parser).m_eventEndPtr = next;
         if tok <= 0 as ::core::ffi::c_int {
             if (*parser).m_parsingStatus.finalBuffer == 0
@@ -8324,6 +8342,7 @@ unsafe extern "C" fn externalParEntProcessor(
         end,
         &raw mut next,
     );
+    syncInitialEncodingSelection(parser);
     if tok <= 0 as ::core::ffi::c_int {
         if (*parser).m_parsingStatus.finalBuffer == 0 && tok != crate::src::xmltok::XML_TOK_INVALID
         {
@@ -8358,6 +8377,7 @@ unsafe extern "C" fn externalParEntProcessor(
             end,
             &raw mut next,
         );
+        syncInitialEncodingSelection(parser);
     }
     (*parser).m_processor = ProcessorState::Prolog;
     return doProlog(
@@ -8432,6 +8452,7 @@ unsafe extern "C" fn prologProcessor(
         end,
         &raw mut next,
     );
+    syncInitialEncodingSelection(parser);
     return doProlog(
         parser,
         (*parser).m_encoding,

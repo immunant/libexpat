@@ -556,7 +556,11 @@ pub unsafe fn convert_to_utf8(
 
 pub struct INIT_ENCODING {
     pub initEnc: crate::src::xmltok::ENCODING,
-    pub encPtr: *mut *const crate::src::xmltok::ENCODING,
+    selected_encoding: Option<usize>,
+}
+
+pub fn take_initial_encoding_selection(initial_encoding: &mut INIT_ENCODING) -> Option<usize> {
+    initial_encoding.selected_encoding.take()
 }
 
 pub type CONVERTER = Option<
@@ -10590,7 +10594,7 @@ pub mod xmltok_ns_c {
         (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] =
             crate::src::xmltok::Scanner::InitContent;
         (*p).initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
-        (*p).encPtr = encPtr;
+        (*p).selected_encoding = None;
         *encPtr = &raw mut (*p).initEnc;
         return 1 as ::core::ffi::c_int;
     }
@@ -10771,7 +10775,7 @@ pub mod xmltok_ns_c {
         (*p).initEnc.scanners[crate::src::xmltok::XML_CONTENT_STATE as usize] =
             crate::src::xmltok::Scanner::InitContentNS;
         (*p).initEnc.updatePosition = crate::src::xmltok::PositionUpdater::Init;
-        (*p).encPtr = encPtr;
+        (*p).selected_encoding = None;
         *encPtr = &raw mut (*p).initEnc;
         return 1 as ::core::ffi::c_int;
     }
@@ -18329,7 +18333,7 @@ unsafe extern "C" fn initScan(
         InitScanState::Prolog
     };
     let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-    let initial_encoding = &*enc;
+    let initial_encoding = &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING);
     match init_scan_action(initial_encoding.initEnc.isUtf16, state, input) {
         InitScanAction::None => crate::src::xmltok::XML_TOK_NONE_1,
         InitScanAction::Partial => crate::src::xmltok::XML_TOK_PARTIAL_1,
@@ -18338,12 +18342,12 @@ unsafe extern "C" fn initScan(
             consumed,
         } => {
             *nextTokPtr = ptr.add(consumed);
-            *initial_encoding.encPtr = *encodingTable.add(encoding_index);
+            initial_encoding.selected_encoding = Some(encoding_index);
             crate::src::xmltok::XML_TOK_BOM_1
         }
         InitScanAction::Scan { encoding_index } => {
             let selected_encoding = *encodingTable.add(encoding_index);
-            *initial_encoding.encPtr = selected_encoding;
+            initial_encoding.selected_encoding = Some(encoding_index);
             (*selected_encoding).scanners[state.scanner_index()].scan(
                 selected_encoding,
                 ptr,
