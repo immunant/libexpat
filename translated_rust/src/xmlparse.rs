@@ -24081,21 +24081,6 @@ fn get_context(parser: &mut XML_ParserStruct) -> Option<PoolStringRef> {
     parser.m_tempPool.start_ref(true)
 }
 
-unsafe extern "C" fn setContext(
-    parser: crate::expat_h::XML_Parser,
-    context: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || context.is_null() {
-        return crate::expat_h::XML_FALSE;
-    }
-    let context = ::core::ffi::CStr::from_ptr(context).to_bytes();
-    let parser = &mut *parser;
-    let Some(dtd_owner) = parser.m_dtd.clone() else {
-        return crate::expat_h::XML_FALSE;
-    };
-    set_context_impl(parser, &mut *dtd_owner.value.get(), context)
-}
-
 /// Restores the parser state encoded by `getContext` from a bounded C-string
 /// payload.  Raw parser and C-string conversion stay at the caller boundary;
 /// this implementation only handles owned parser state and checked slices.
