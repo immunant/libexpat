@@ -41,29 +41,43 @@ pub mod siphash_h {
         }
     }
 
-    pub unsafe extern "C" fn sip24_init(
-        mut H: *mut crate::siphash_h::siphash,
-        mut key: *const crate::siphash_h::sipkey,
-    ) -> *mut crate::siphash_h::siphash {
-        (*H).v0 = ((0x736f6d65 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+    /// Initializes a SipHash state from an already-borrowed key.  The state
+    /// remains an ABI-shaped DTO, but initialization itself has no need to
+    /// retain or derive a raw cursor.
+    pub fn sip24_init_state(state: &mut crate::siphash_h::siphash, key: &crate::siphash_h::sipkey) {
+        state.v0 = ((0x736f6d65 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x70736575 as crate::stdlib::uint64_t)
-            ^ (*key).k[0 as usize];
-        (*H).v1 = ((0x646f7261 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+            ^ key.k[0 as usize];
+        state.v1 = ((0x646f7261 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x6e646f6d as crate::stdlib::uint64_t)
-            ^ (*key).k[1 as usize];
-        (*H).v2 = ((0x6c796765 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+            ^ key.k[1 as usize];
+        state.v2 = ((0x6c796765 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x6e657261 as crate::stdlib::uint64_t)
-            ^ (*key).k[0 as usize];
-        (*H).v3 = ((0x74656462 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
+            ^ key.k[0 as usize];
+        state.v3 = ((0x74656462 as ::core::ffi::c_uint as crate::stdlib::uint64_t)
             << 32 as ::core::ffi::c_int
             | 0x79746573 as crate::stdlib::uint64_t)
-            ^ (*key).k[1 as usize];
-        (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-        (*H).c = 0 as crate::stdlib::uint64_t;
-        return H;
+            ^ key.k[1 as usize];
+        state.p = state.buf.as_mut_ptr();
+        state.c = 0 as crate::stdlib::uint64_t;
+    }
+
+    /// Raw ABI adapter retained for the translated SipHash helpers.  Internal
+    /// callers use `sip24_init_state` directly once they own the state/key.
+    pub unsafe extern "C" fn sip24_init(
+        H: *mut crate::siphash_h::siphash,
+        key: *const crate::siphash_h::sipkey,
+    ) -> *mut crate::siphash_h::siphash {
+        if H.is_null() || key.is_null() {
+            return H;
+        }
+        let state = &mut *H;
+        let key = &*key;
+        sip24_init_state(state, key);
+        H
     }
 
     pub unsafe extern "C" fn sip24_update(
@@ -11305,7 +11319,7 @@ unsafe extern "C" fn storeAtts(
                 let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey {
                     k: [0, get_hash_secret_salt(parser) as crate::stdlib::uint64_t],
                 };
-                sip24_init(&raw mut sip_state, &raw mut sip_key);
+                crate::src::xmlparse::siphash_h::sip24_init_state(&mut sip_state, &sip_key);
                 if dtd
                     .pool
                     .set_marker_before(attribute_name, 0 as crate::expat_external_h::XML_Char)
@@ -20251,7 +20265,7 @@ unsafe extern "C" fn hash(
     let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey {
         k: [0, get_hash_secret_salt(parser) as crate::stdlib::uint64_t],
     };
-    sip24_init(&raw mut state, &raw mut key);
+    crate::src::xmlparse::siphash_h::sip24_init_state(&mut state, &key);
     sip24_update(
         &raw mut state,
         s as *const ::core::ffi::c_void,
