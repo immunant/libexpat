@@ -80,7 +80,7 @@ pub struct encoding {
         ) -> ::core::ffi::c_int,
     >,
     pub utf8Convert: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *mut *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -89,7 +89,7 @@ pub struct encoding {
         ) -> XML_Convert_Result,
     >,
     pub utf16Convert: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *mut *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -829,7 +829,7 @@ fn encoding_utf8_convert(
 ) -> XML_Convert_Result {
     let utf8_convert =
         with_ref(enc, |encoding| encoding.utf8Convert).expect("non-null function pointer");
-    unsafe { utf8_convert(enc, from_p, from_lim, to_p, to_lim) }
+    utf8_convert(enc, from_p, from_lim, to_p, to_lim)
 }
 
 fn encoding_table_ptr() -> *const *const ENCODING {
@@ -845,9 +845,12 @@ fn update_position_with_utf8(
     end: *const ::core::ffi::c_char,
     pos: *mut POSITION,
 ) {
-    unsafe {
-        normal_updatePosition(::core::ptr::addr_of!(utf8_encoding.enc), ptr, end, pos);
-    }
+    normal_updatePosition(
+        read_encoding_table_entry(encoding_table_ptr(), UTF_8_ENC as usize),
+        ptr,
+        end,
+        pos,
+    );
 }
 
 fn call_unknown_converter(
@@ -13307,26 +13310,8 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                utf8_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                utf8_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(utf8_toUtf8),
+            utf16Convert: Some(utf8_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 1 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -13726,26 +13711,8 @@ static mut utf8_encoding: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                utf8_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                utf8_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(utf8_toUtf8),
+            utf16Convert: Some(utf8_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 1 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -14147,26 +14114,8 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                utf8_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                utf8_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(utf8_toUtf8),
+            utf16Convert: Some(utf8_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 1 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -14625,26 +14574,8 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                utf8_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                utf8_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(utf8_toUtf8),
+            utf16Convert: Some(utf8_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 1 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -15114,26 +15045,8 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                latin1_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                latin1_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(latin1_toUtf8),
+            utf16Convert: Some(latin1_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -15533,26 +15446,8 @@ static mut latin1_encoding: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                latin1_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                latin1_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(latin1_toUtf8),
+            utf16Convert: Some(latin1_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -15976,26 +15871,8 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                ascii_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                latin1_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(ascii_toUtf8),
+            utf16Convert: Some(latin1_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 1 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -16395,26 +16272,8 @@ static mut ascii_encoding: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                ascii_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                latin1_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(ascii_toUtf8),
+            utf16Convert: Some(latin1_toUtf16),
             minBytesPerChar: 1 as ::core::ffi::c_int,
             isUtf8: 1 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -17105,26 +16964,8 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                little2_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                little2_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(little2_toUtf8),
+            utf16Convert: Some(little2_toUtf16),
             minBytesPerChar: 2 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 1 as ::core::ffi::c_char,
@@ -17524,26 +17365,8 @@ static mut little2_encoding: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                little2_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                little2_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(little2_toUtf8),
+            utf16Convert: Some(little2_toUtf16),
             minBytesPerChar: 2 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 1 as ::core::ffi::c_char,
@@ -17943,26 +17766,8 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                little2_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                little2_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(little2_toUtf8),
+            utf16Convert: Some(little2_toUtf16),
             minBytesPerChar: 2 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 1 as ::core::ffi::c_char,
@@ -18362,26 +18167,8 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                little2_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                little2_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(little2_toUtf8),
+            utf16Convert: Some(little2_toUtf16),
             minBytesPerChar: 2 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 1 as ::core::ffi::c_char,
@@ -18781,26 +18568,8 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                big2_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                big2_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(big2_toUtf8),
+            utf16Convert: Some(big2_toUtf16),
             minBytesPerChar: 2 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -19200,26 +18969,8 @@ static mut big2_encoding: normal_encoding = unsafe {
                         *mut *const ::core::ffi::c_char,
                     ) -> ::core::ffi::c_int,
             ),
-            utf8Convert: Some(
-                big2_toUtf8
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    ) -> XML_Convert_Result,
-            ),
-            utf16Convert: Some(
-                big2_toUtf16
-                    as unsafe extern "C" fn(
-                        *const ENCODING,
-                        *mut *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                        *mut *mut ::core::ffi::c_ushort,
-                        *const ::core::ffi::c_ushort,
-                    ) -> XML_Convert_Result,
-            ),
+            utf8Convert: Some(big2_toUtf8),
+            utf16Convert: Some(big2_toUtf16),
             minBytesPerChar: 2 as ::core::ffi::c_int,
             isUtf8: 0 as ::core::ffi::c_char,
             isUtf16: 0 as ::core::ffi::c_char,
@@ -20131,44 +19882,8 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
             (*e).normal.isInvalid3 = Some(unknown_isInvalid);
             (*e).normal.isInvalid4 = Some(unknown_isInvalid);
         }
-        (*e).normal.enc.utf8Convert = Some(
-            unknown_toUtf8
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> XML_Convert_Result,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> XML_Convert_Result,
-            >;
-        (*e).normal.enc.utf16Convert = Some(
-            unknown_toUtf16
-                as unsafe extern "C" fn(
-                    *const ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> XML_Convert_Result,
-        )
-            as Option<
-                unsafe extern "C" fn(
-                    *const ENCODING,
-                    *mut *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *mut ::core::ffi::c_ushort,
-                    *const ::core::ffi::c_ushort,
-                ) -> XML_Convert_Result,
-            >;
+        (*e).normal.enc.utf8Convert = Some(unknown_toUtf8);
+        (*e).normal.enc.utf16Convert = Some(unknown_toUtf16);
         return &raw mut (*e).normal.enc;
     }
 }

@@ -619,7 +619,7 @@ pub struct encoding {
         ) -> ::core::ffi::c_int,
     >,
     pub updatePosition: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -635,7 +635,7 @@ pub struct encoding {
         ) -> ::core::ffi::c_int,
     >,
     pub utf8Convert: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *mut *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -644,7 +644,7 @@ pub struct encoding {
         ) -> XML_Convert_Result,
     >,
     pub utf16Convert: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const ENCODING,
             *mut *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
@@ -10800,10 +10800,8 @@ fn call_utf8_convert(
     to_ptr: *mut *mut ::core::ffi::c_char,
     to_end: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    unsafe {
-        (*enc).utf8Convert.expect("non-null function pointer")(enc, from_ptr, end, to_ptr, to_end)
-            as XML_Convert_Result
-    }
+    ptr_ref(enc).utf8Convert.expect("non-null function pointer")(enc, from_ptr, end, to_ptr, to_end)
+        as XML_Convert_Result
 }
 
 fn xml_char_len(start: *const XML_Char, end: *const XML_Char) -> usize {
