@@ -9625,6 +9625,30 @@ fn current_parser_normal_encoding(
     }
 }
 
+// Prolog tokens from the document buffer use the parser's selected normal
+// encoding.  Tokens supplied while expanding an internal entity are retained
+// as the parser's internal UTF-8 XML_Char text, so validate those with the
+// corresponding internal table rather than reinterpreting their cursor as a
+// normal_encoding prefix.
+fn prolog_public_id_byte_types(
+    parser: &XML_ParserStruct,
+    parser_events: bool,
+) -> [::core::ffi::c_uchar; 256] {
+    if parser_events {
+        current_parser_normal_encoding(parser)
+            .map(|encoding| encoding.type_0)
+            // Before the initial scanner has selected a complete table, XML
+            // defaults to UTF-8.  Public identifiers cannot change that
+            // choice, so this is the same table the initial tokenizer uses.
+            .unwrap_or_else(|| {
+                crate::src::xmltok::internal_utf8_normal_encoding(parser.m_ns != 0).type_0
+            })
+    } else {
+        crate::src::xmltok::internal_utf8_normal_encoding(parser.m_ns != 0)
+            .type_0
+    }
+}
+
 unsafe fn parser_encoding(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *const crate::src::xmltok::ENCODING {
@@ -16848,24 +16872,19 @@ unsafe extern "C" fn doProlog(
                                             crate::src::xmltok::PublicIdChecker::Little2
                                             | crate::src::xmltok::PublicIdChecker::Big2 => 2,
                                         };
-                                        let public_id_length = next.offset_from(s);
-                                        let bad_offset =
-                                            if public_id_length < (2 * public_id_width) as isize {
-                                                None
-                                            } else {
-                                                let quoted = ::core::slice::from_raw_parts(
-                                                    s.cast::<u8>(),
-                                                    public_id_length as usize,
-                                                );
-                                                let byte_types = &(*(enc
-                                                    as *const crate::src::xmltok::normal_encoding))
-                                                    .type_0;
-                                                crate::src::xmltok::quoted_public_id_bad_offset(
-                                                    quoted,
-                                                    byte_types,
-                                                    public_id_checker,
-                                                )
-                                            };
+                                        let byte_types =
+                                            prolog_public_id_byte_types(parser, parser_events);
+                                        let bad_offset = if token_bytes.len()
+                                            < 2 * public_id_width
+                                        {
+                                            None
+                                        } else {
+                                            crate::src::xmltok::quoted_public_id_bad_offset(
+                                                &token_bytes,
+                                                &byte_types,
+                                                public_id_checker,
+                                            )
+                                        };
                                         if let Some(bad_offset) = bad_offset {
                                             let bad_ptr = s.wrapping_add(bad_offset);
                                             if parser_events {
@@ -17762,24 +17781,17 @@ unsafe extern "C" fn doProlog(
                                     crate::src::xmltok::PublicIdChecker::Little2
                                     | crate::src::xmltok::PublicIdChecker::Big2 => 2,
                                 };
-                                let public_id_length = next.offset_from(s);
-                                let bad_offset =
-                                    if public_id_length < (2 * public_id_width) as isize {
-                                        None
-                                    } else {
-                                        let quoted = ::core::slice::from_raw_parts(
-                                            s.cast::<u8>(),
-                                            public_id_length as usize,
-                                        );
-                                        let byte_types = &(*(enc
-                                            as *const crate::src::xmltok::normal_encoding))
-                                            .type_0;
-                                        crate::src::xmltok::quoted_public_id_bad_offset(
-                                            quoted,
-                                            byte_types,
-                                            public_id_checker,
-                                        )
-                                    };
+                                let byte_types =
+                                    prolog_public_id_byte_types(parser, parser_events);
+                                let bad_offset = if token_bytes.len() < 2 * public_id_width {
+                                    None
+                                } else {
+                                    crate::src::xmltok::quoted_public_id_bad_offset(
+                                        &token_bytes,
+                                        &byte_types,
+                                        public_id_checker,
+                                    )
+                                };
                                 if let Some(bad_offset) = bad_offset {
                                     let bad_ptr = s.wrapping_add(bad_offset);
                                     if parser_events {
