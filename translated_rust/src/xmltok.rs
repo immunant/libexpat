@@ -275,11 +275,11 @@ pub struct encoding {
         ) -> ::core::ffi::c_int,
     >,
     pub updatePosition: Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *const crate::src::xmltok::ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
-            *mut crate::src::xmltok::POSITION,
+            &mut crate::src::xmltok::POSITION,
         ) -> (),
     >,
     pub isPublicId: Option<
@@ -1219,9 +1219,8 @@ pub mod xmltok_impl_c {
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
-        mut pos: *mut crate::src::xmltok::POSITION,
+        pos: &mut crate::src::xmltok::POSITION,
     ) {
-        let pos = super::position_mut(pos);
         while super::byte_distance(ptr, end)
             >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
         {
@@ -2126,9 +2125,8 @@ pub mod xmltok_impl_c {
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
-        mut pos: *mut crate::src::xmltok::POSITION,
+        pos: &mut crate::src::xmltok::POSITION,
     ) {
-        let pos = super::position_mut(pos);
         while super::byte_distance(ptr, end)
             >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
         {
@@ -2724,9 +2722,8 @@ pub mod xmltok_impl_c {
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
-        mut pos: *mut crate::src::xmltok::POSITION,
+        pos: &mut crate::src::xmltok::POSITION,
     ) {
-        let pos = super::position_mut(pos);
         while super::byte_distance(ptr, end)
             >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
         {
@@ -2953,19 +2950,19 @@ pub mod xmltok_ns_c {
             as crate::src::xmltok::SCANNER;
         p.initEnc.updatePosition = Some(
             initUpdatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         )
             as Option<
-                unsafe extern "C" fn(
+                extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
             >;
         p.encPtr = encPtr;
@@ -3174,19 +3171,19 @@ pub mod xmltok_ns_c {
             as crate::src::xmltok::SCANNER;
         p.initEnc.updatePosition = Some(
             initUpdatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         )
             as Option<
-                unsafe extern "C" fn(
+                extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
             >;
         p.encPtr = encPtr;
@@ -7103,12 +7100,6 @@ fn normal_byte_type(
     normal_encoding_ref(enc).type_0[byte as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
 }
 
-fn position_mut<'a>(
-    pos: *mut crate::src::xmltok::POSITION,
-) -> &'a mut crate::src::xmltok::POSITION {
-    unsafe { &mut *pos }
-}
-
 fn convert_raw_from_bytes<T, F>(
     fromP: *mut *const ::core::ffi::c_char,
     fromLim: *const ::core::ffi::c_char,
@@ -7563,11 +7554,11 @@ static utf8_encoding_ns: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -7981,11 +7972,11 @@ static utf8_encoding: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -8399,11 +8390,11 @@ static internal_utf8_encoding_ns: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -8817,11 +8808,11 @@ static internal_utf8_encoding: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -9306,11 +9297,11 @@ static latin1_encoding_ns: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -9724,11 +9715,11 @@ static latin1_encoding: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -10166,11 +10157,11 @@ static ascii_encoding_ns: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -10584,11 +10575,11 @@ static ascii_encoding: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             normal_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -11232,11 +11223,11 @@ static little2_encoding_ns: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             little2_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -11650,11 +11641,11 @@ static little2_encoding: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             little2_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -12068,11 +12059,11 @@ static internal_little2_encoding_ns: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             little2_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -12486,11 +12477,11 @@ static internal_little2_encoding: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             little2_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -12904,11 +12895,11 @@ static big2_encoding_ns: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             big2_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -13322,11 +13313,11 @@ static big2_encoding: normal_encoding = normal_encoding {
         ),
         updatePosition: Some(
             big2_updatePosition
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const crate::src::xmltok::ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
-                    *mut crate::src::xmltok::POSITION,
+                    &mut crate::src::xmltok::POSITION,
                 ) -> (),
         ),
         isPublicId: Some(
@@ -13670,7 +13661,7 @@ extern "C" fn initUpdatePosition(
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut pos: *mut crate::src::xmltok::POSITION,
+    pos: &mut crate::src::xmltok::POSITION,
 ) {
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }

@@ -3836,7 +3836,7 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
         (*parser).m_encoding,
         (*parser).m_positionPtr,
         (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
+        &mut (*parser).m_position,
     );
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
@@ -4116,7 +4116,7 @@ pub unsafe extern "C" fn XML_ResumeParser_ffi(
         (*parser).m_encoding,
         (*parser).m_positionPtr,
         (*parser).m_bufferPtr,
-        &raw mut (*parser).m_position,
+        &mut (*parser).m_position,
     );
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
@@ -4259,7 +4259,7 @@ fn update_position_to_event(parser: &mut XML_ParserStruct) {
                 parser.m_encoding,
                 parser.m_positionPtr,
                 parser.m_eventPtr,
-                &raw mut parser.m_position,
+                &mut parser.m_position,
             );
         }
         parser.m_positionPtr = parser.m_eventPtr;
