@@ -1448,6 +1448,16 @@ where
 // Start-namespace and processing-instruction handlers use the same C callback
 // ABI: an opaque user context followed by two XML character pointers.
 
+/// A checked, transient view of a comment callback invocation.
+///
+/// Both references originate in parser-owned state and remain valid only for
+/// the duration of the callback.  Keeping them together makes the callback
+/// boundary independent of the parser's raw C representation.
+struct CommentCallbackInvocation<'a> {
+    parser: &'a XML_ParserStruct,
+    data: &'a [crate::expat_external_h::XML_Char],
+}
+
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a comment callback is installed.
 trait CommentCallback: Send + Sync + std::any::Any {}
@@ -1460,8 +1470,25 @@ impl CommentCallback
 {
 }
 
+/// Owns the erased C callback representation while parser dispatch works with
+/// a checked comment event.
+struct CommentCallbackAdapter {
+    callback: std::sync::Arc<dyn std::any::Any + Send + Sync>,
+}
+
+impl CommentCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: CommentCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
+}
+
 static COMMENT_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn CommentCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<CommentCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 /// A comment-handler registration prepared from the ABI callback value.
@@ -1469,7 +1496,7 @@ static COMMENT_HANDLERS: std::sync::OnceLock<
 /// The parser implementation stores only this typed registry entry and its
 /// opaque address key; it never retains the C callback representation itself.
 struct CommentHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn CommentCallback>>,
+    callback: Option<std::sync::Arc<CommentCallbackAdapter>>,
 }
 
 fn comment_handler_registration<Callback>(
@@ -1479,7 +1506,7 @@ where
     Callback: CommentCallback + 'static,
 {
     CommentHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(CommentCallbackAdapter::new(callback))),
     }
 }
 
@@ -1840,6 +1867,27 @@ macro_rules! handler_arg_from_state {
     }};
 }
 
+impl CommentCallbackAdapter {
+    fn invoke(&self, invocation: CommentCallbackInvocation<'_>) {
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return;
+        };
+        // `invocation` guarantees the data pointer is a live, terminated
+        // parser-owned XML-character sequence for this call.
+        unsafe {
+            callback(
+                handler_arg_from_state!(invocation.parser),
+                invocation.data.as_ptr(),
+            )
+        }
+    }
+}
+
 impl CharacterDataCallbackAdapter {
     fn new<Callback>(callback: Callback) -> Self
     where
@@ -2176,19 +2224,11 @@ fn dispatch_processing_instruction_callback(
 
 /// Invokes a comment callback with a terminated parser-owned snapshot.
 fn dispatch_comment_callback(
-    callback: &dyn CommentCallback,
+    callback: &CommentCallbackAdapter,
     parser: &XML_ParserStruct,
     data: &[crate::expat_external_h::XML_Char],
 ) {
-    let Some(callback) = (callback as &dyn std::any::Any).downcast_ref::<
-        unsafe extern "C" fn(
-            *mut ::core::ffi::c_void,
-            *const crate::expat_external_h::XML_Char,
-        ),
-    >() else {
-        return;
-    };
-    unsafe { callback(handler_arg_from_state!(parser), data.as_ptr()) }
+    callback.invoke(CommentCallbackInvocation { parser, data });
 }
 
 fn dispatch_character_data_slice(
@@ -8585,7 +8625,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldProcessingInstructionHandler = false;
     let mut oldProcessingInstructionCallback: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>> = None;
     let mut oldCommentHandler = false;
-    let mut oldCommentCallback: Option<std::sync::Arc<dyn CommentCallback>> = None;
+    let mut oldCommentCallback: Option<std::sync::Arc<CommentCallbackAdapter>> = None;
     let mut oldStartCdataSectionHandler = false;
     let mut oldStartCdataSectionCallback: Option<std::sync::Arc<CdataSectionCallbackAdapter>> =
         None;
@@ -24092,7 +24132,7 @@ fn report_processing_instruction_token(
 /// pool reference instead of an interior pointer lets conversion and registry
 /// lookup remain entirely safe.
 struct CommentCallbackEvent {
-    callback: Option<std::sync::Arc<dyn CommentCallback>>,
+    callback: Option<std::sync::Arc<CommentCallbackAdapter>>,
     data: PoolStringRef,
 }
 
