@@ -25878,37 +25878,6 @@ fn hash_table_init(table: &mut HASH_TABLE, allocator: HashTableAllocator) {
     table.allocator = Some(allocator);
 }
 
-fn hashTableIterInit<'a>(iter: &mut HASH_TABLE_ITER<'a>, table: &'a HASH_TABLE) {
-    iter.table = Some(table);
-    iter.next = 0 as crate::__stddef_size_t_h::size_t;
-}
-
-unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut NAMED {
-    let iter = &mut *iter;
-    let table = match iter.table {
-        Some(table) => table,
-        None => return ::core::ptr::null_mut::<NAMED>(),
-    };
-    while iter.next < table.size {
-        let index = iter.next;
-        iter.next += 1;
-        let tem = table
-            .v
-            .as_ref()
-            .and_then(|slots| slots.entries.get(index))
-            .and_then(|entry| entry.as_ref());
-        if let Some(tem) = tem {
-            return match &tem.record {
-                NamedRecord::Prefix(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
-                NamedRecord::Attribute(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
-                NamedRecord::Element(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
-                NamedRecord::Entity(record) => std::ptr::from_ref(record.as_ref()).cast_mut().cast(),
-            };
-        }
-    }
-    return ::core::ptr::null_mut::<NAMED>();
-}
-
 // Pool strings live in Rust slabs whose allocator backing remains observable
 // through the configured Expat memory suite.  This conversion records only a
 // checked tail-relative block ordinal and character offset; it never transfers
