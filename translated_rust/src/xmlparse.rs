@@ -8577,17 +8577,23 @@ pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::X
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg_ffi(mut parser: crate::expat_h::XML_Parser) {
     XML_UseParserAsHandlerArg(parser)
 }
-pub unsafe extern "C" fn XML_UseForeignDTD(
-    mut parser: crate::expat_h::XML_Parser,
-    mut useDTD: crate::expat_h::XML_Bool,
+/// The parser state needed to configure use of an external DTD.
+///
+/// The exported wrapper validates the opaque parser handle before making this
+/// scoped view, keeping the feature-state policy independent of raw handles.
+struct ForeignDtdSettings<'a> {
+    parsing: ::core::ffi::c_uint,
+    use_foreign_dtd: &'a mut crate::expat_h::XML_Bool,
+}
+
+fn XML_UseForeignDTD(
+    settings: ForeignDtdSettings<'_>,
+    useDTD: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
-    if parser.is_null() {
-        return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
-    }
-    if parserBusy(parser) != 0 {
+    if matches!(settings.parsing, 1 | 3) {
         return crate::expat_h::XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
     }
-    (*parser).m_useForeignDTD = useDTD;
+    *settings.use_foreign_dtd = useDTD;
     return crate::expat_h::XML_ERROR_NONE;
 }
 #[export_name = "XML_UseForeignDTD"]
@@ -8596,7 +8602,17 @@ pub unsafe extern "C" fn XML_UseForeignDTD_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut useDTD: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Error {
-    XML_UseForeignDTD(parser, useDTD)
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    XML_UseForeignDTD(
+        ForeignDtdSettings {
+            parsing: parser.m_parsingStatus.parsing as ::core::ffi::c_uint,
+            use_foreign_dtd: &mut parser.m_useForeignDTD,
+        },
+        useDTD,
+    )
 }
 struct ReturnNSTripletSettings<'a> {
     parsing: ::core::ffi::c_uint,
