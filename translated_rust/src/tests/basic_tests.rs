@@ -1605,6 +1605,13 @@ fn parser_set_param_entity_parsing(parsing: XML_ParamEntityParsing) -> ::core::f
     ffi_call2(XML_SetParamEntityParsing, current_parser(), parsing)
 }
 
+fn parser_set_param_entity_parsing_for(
+    parser: XML_Parser,
+    parsing: XML_ParamEntityParsing,
+) -> ::core::ffi::c_int {
+    ffi_call2(XML_SetParamEntityParsing, parser, parsing)
+}
+
 fn parser_use_foreign_dtd(use_dtd: XML_Bool) -> XML_Error {
     ffi_call2(XML_UseForeignDTD, current_parser(), use_dtd)
 }
@@ -1650,6 +1657,10 @@ fn parse_single_bytes_c_string_for(
         c_string_len(text),
         XML_TRUE as ::core::ffi::c_int,
     )
+}
+
+fn parser_reset_for(parser: XML_Parser) {
+    ffi_call2(XML_ParserReset, parser, ::core::ptr::null::<XML_Char>());
 }
 
 fn parser_set_external_entity_ref_handler_for(
@@ -2018,6 +2029,19 @@ fn parser_free(parser: XML_Parser) {
     ffi_call1(XML_ParserFree, parser);
 }
 
+fn parser_error_code_for(parser: XML_Parser) -> XML_Error {
+    ffi_call1(XML_GetErrorCode, parser)
+}
+
+fn external_entity_parser_create(parent: XML_Parser) -> XML_Parser {
+    ffi_call3(
+        XML_ExternalEntityParserCreate,
+        parent,
+        ::core::ptr::null::<XML_Char>(),
+        ::core::ptr::null::<XML_Char>(),
+    )
+}
+
 fn parser_parse_for(
     parser: XML_Parser,
     text: *const ::core::ffi::c_char,
@@ -2089,6 +2113,17 @@ fn create_parser_or_fail(line: ::core::ffi::c_int) -> XML_Parser {
     let parser = parser_create();
     if parser.is_null() {
         fail_test(line, b"check failed: parser != NULL\0");
+    }
+    parser
+}
+
+fn create_external_entity_parser_or_fail(
+    parent: XML_Parser,
+    line: ::core::ffi::c_int,
+) -> XML_Parser {
+    let parser = external_entity_parser_create(parent);
+    if parser.is_null() {
+        fail_test(line, b"check failed: ext_parser != NULL\0");
     }
     parser
 }
@@ -4215,329 +4250,216 @@ extern "C" fn test_not_standalone_handler_accept() {
     );
 }
 extern "C" fn test_entity_start_tag_level_greater_than_one() {
-    unsafe {
-        _check_set_test_info(
-            b"test_entity_start_tag_level_greater_than_one\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1195 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_entity_start_tag_level_greater_than_one\0",
+        1195 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE t1 [\n  <!ENTITY e1 'hello'>\n]>\n<t1>\n  <t2>&e1;</t2>\n</t1>\n\0",
+    );
+    let parser = create_parser_or_fail(1206 as ::core::ffi::c_int);
+    let status = parse_single_bytes_c_string_for(parser, text);
+    if status as ::core::ffi::c_uint != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint {
+        fail_test(
+            1206 as ::core::ffi::c_int,
+            b"check failed: _XML_Parse_SINGLE_BYTES(parser, text, (int)strlen(text), XML_TRUE) == XML_STATUS_OK\0",
         );
-        let text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE t1 [\n  <!ENTITY e1 'hello'>\n]>\n<t1>\n  <t2>&e1;</t2>\n</t1>\n\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if !(_XML_Parse_SINGLE_BYTES(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
-        {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                1206 as ::core::ffi::c_int,
-                b"check failed: _XML_Parse_SINGLE_BYTES(parser, text, (int)strlen(text), XML_TRUE) == XML_STATUS_OK\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parser);
     }
+    parser_free(parser);
 }
 extern "C" fn test_wfc_no_recursive_entity_refs() {
-    unsafe {
-        _check_set_test_info(
-            b"test_wfc_no_recursive_entity_refs\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1211 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ENTITY entity '&#38;entity;'>\n]>\n<doc>&entity;</doc>\0"
-                .as_ptr() as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_RECURSIVE_ENTITY_REF,
-            b"Parser did not report recursive entity reference.\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1218 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(
+        b"test_wfc_no_recursive_entity_refs\0",
+        1211 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ENTITY entity '&#38;entity;'>\n]>\n<doc>&entity;</doc>\0",
+    );
+    expect_failure(
+        text,
+        XML_ERROR_RECURSIVE_ENTITY_REF,
+        b"Parser did not report recursive entity reference.\0",
+        1218 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_no_indirectly_recursive_entity_refs() {
-    unsafe {
-        _check_set_test_info(
-            b"test_no_indirectly_recursive_entity_refs\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1222 as ::core::ffi::c_int,
-        );
-        let cases: [TestCase_0; 3] = [
-            TestCase_0 {
-                doc: b"<!DOCTYPE a [\n  <!ENTITY e1 '&e2;'>\n  <!ENTITY e2 '&e1;'>\n]><a>&e2;</a>\n\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-                usesParameterEntities: false_0 != 0,
-            },
-            TestCase_0 {
-                doc: b"<!DOCTYPE a [\n  <!ENTITY e1 '&e2;'>\n  <!ENTITY e2 '&e1;'>\n]><a k1='&e2;' />\n\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-                usesParameterEntities: false_0 != 0,
-            },
-            TestCase_0 {
-                doc: b"<!DOCTYPE doc [\n  <!ENTITY % p1 '&#37;p2;'>\n  <!ENTITY % p2 '&#37;p1;'>\n  <!ENTITY % define_g \"<!ENTITY g '&#37;p2;'>\">\n  %define_g;\n]>\n<doc/>\n\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-                usesParameterEntities: true_0 != 0,
-            },
-        ];
-        let reset_or_not: [XML_Bool; 2] = [XML_TRUE, XML_FALSE];
-        let mut i: size_t = 0 as size_t;
-        while i
-            < (::core::mem::size_of::<[TestCase_0; 3]>() as usize)
-                .wrapping_div(::core::mem::size_of::<TestCase_0>() as usize)
-        {
-            let mut j: size_t = 0 as size_t;
-            while j
-                < (::core::mem::size_of::<[XML_Bool; 2]>() as usize)
-                    .wrapping_div(::core::mem::size_of::<XML_Bool>() as usize)
+    set_test_info(
+        b"test_no_indirectly_recursive_entity_refs\0",
+        1222 as ::core::ffi::c_int,
+    );
+    let cases = [
+        TestCase_0 {
+            doc: bytes_as_c_char_ptr(
+                b"<!DOCTYPE a [\n  <!ENTITY e1 '&e2;'>\n  <!ENTITY e2 '&e1;'>\n]><a>&e2;</a>\n\0",
+            ),
+            usesParameterEntities: false_0 != 0,
+        },
+        TestCase_0 {
+            doc: bytes_as_c_char_ptr(
+                b"<!DOCTYPE a [\n  <!ENTITY e1 '&e2;'>\n  <!ENTITY e2 '&e1;'>\n]><a k1='&e2;' />\n\0",
+            ),
+            usesParameterEntities: false_0 != 0,
+        },
+        TestCase_0 {
+            doc: bytes_as_c_char_ptr(
+                b"<!DOCTYPE doc [\n  <!ENTITY % p1 '&#37;p2;'>\n  <!ENTITY % p2 '&#37;p1;'>\n  <!ENTITY % define_g \"<!ENTITY g '&#37;p2;'>\">\n  %define_g;\n]>\n<doc/>\n\0",
+            ),
+            usesParameterEntities: true_0 != 0,
+        },
+    ];
+    let reset_or_not = [XML_TRUE, XML_FALSE];
+
+    for (i, case) in cases.iter().enumerate() {
+        for (j, &reset_wanted) in reset_or_not.iter().enumerate() {
+            set_subtest_message(&format!(
+                "[{i},reset={j}] {}",
+                c_str_from_ptr(case.doc).to_string_lossy()
+            ));
+
+            let parser = create_parser_or_fail(1278 as ::core::ffi::c_int);
+            if case.usesParameterEntities
+                && parser_set_param_entity_parsing_for(parser, XML_PARAM_ENTITY_PARSING_ALWAYS)
+                    != 1 as ::core::ffi::c_int
             {
-                let reset_wanted: XML_Bool = reset_or_not[j as usize];
-                let doc: *const ::core::ffi::c_char = cases[i as usize].doc;
-                let usesParameterEntities: bool = cases[i as usize].usesParameterEntities;
-                set_subtest(
-                    b"[%i,reset=%i] %s\0".as_ptr() as *const ::core::ffi::c_char,
-                    i as ::core::ffi::c_int,
-                    j as ::core::ffi::c_int,
-                    doc,
+                fail_test(
+                    1278 as ::core::ffi::c_int,
+                    b"check failed: XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS) == 1\0",
                 );
-                let rejection_expected: bool = true_0 != 0;
-                let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-                if usesParameterEntities {
-                    if !(XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS)
-                        == 1 as ::core::ffi::c_int)
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            1278 as ::core::ffi::c_int,
-                            b"check failed: XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS) == 1\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    }
-                }
-                let status: XML_Status = _XML_Parse_SINGLE_BYTES(
-                    parser,
-                    doc,
-                    strlen(doc) as ::core::ffi::c_int,
-                    XML_TRUE as ::core::ffi::c_int,
-                ) as XML_Status;
-                if rejection_expected {
-                    if !(status as ::core::ffi::c_uint
-                        == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint)
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            1289 as ::core::ffi::c_int,
-                            b"check failed: status == XML_STATUS_ERROR\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                    if !(XML_GetErrorCode(parser) as ::core::ffi::c_uint
-                        == XML_ERROR_RECURSIVE_ENTITY_REF as ::core::ffi::c_int
-                            as ::core::ffi::c_uint)
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            1290 as ::core::ffi::c_int,
-                            b"check failed: XML_GetErrorCode(parser) == XML_ERROR_RECURSIVE_ENTITY_REF\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    }
-                } else if !(status as ::core::ffi::c_uint
-                    == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
-                {
-                    _fail(
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        1292 as ::core::ffi::c_int,
-                        b"check failed: status == XML_STATUS_OK\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                    );
-                }
-                if reset_wanted != 0 {
-                    XML_ParserReset(parser, ::core::ptr::null::<XML_Char>());
-                }
-                XML_ParserFree(parser);
-                j = j.wrapping_add(1);
             }
-            i = i.wrapping_add(1);
+
+            let status = parse_single_bytes_c_string_for(parser, case.doc);
+            if status as ::core::ffi::c_uint
+                != XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                fail_test(
+                    1289 as ::core::ffi::c_int,
+                    b"check failed: status == XML_STATUS_ERROR\0",
+                );
+            }
+            if parser_error_code_for(parser) as ::core::ffi::c_uint
+                != XML_ERROR_RECURSIVE_ENTITY_REF as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                fail_test(
+                    1290 as ::core::ffi::c_int,
+                    b"check failed: XML_GetErrorCode(parser) == XML_ERROR_RECURSIVE_ENTITY_REF\0",
+                );
+            }
+
+            if reset_wanted != 0 {
+                parser_reset_for(parser);
+            }
+            parser_free(parser);
         }
     }
 }
 extern "C" fn test_recursive_external_parameter_entity_2() {
-    unsafe {
-        _check_set_test_info(
-            b"test_recursive_external_parameter_entity_2\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1309 as ::core::ffi::c_int,
-        );
-        let mut cases: [TestCase; 4] = [
-            TestCase {
-                doc: b"<!ENTITY % p1 '%p1;'>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedStatus: XML_STATUS_ERROR,
-            },
-            TestCase {
-                doc: b"<!ENTITY % p1 '%p1;'><!ENTITY % p1 'first declaration wins'>\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                expectedStatus: XML_STATUS_ERROR,
-            },
-            TestCase {
-                doc: b"<!ENTITY % p1 'first declaration wins'><!ENTITY % p1 '%p1;'>\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                expectedStatus: XML_STATUS_OK,
-            },
-            TestCase {
-                doc: b"<!ENTITY % p1 '&#37;p1;'>\0".as_ptr() as *const ::core::ffi::c_char,
-                expectedStatus: XML_STATUS_OK,
-            },
-        ];
-        let mut i: size_t = 0 as size_t;
-        while i
-            < (::core::mem::size_of::<[TestCase; 4]>() as usize)
-                .wrapping_div(::core::mem::size_of::<TestCase>() as usize)
-        {
-            let doc: *const ::core::ffi::c_char = cases[i as usize].doc;
-            let expectedStatus: XML_Status = cases[i as usize].expectedStatus;
-            set_subtest(b"%s\0".as_ptr() as *const ::core::ffi::c_char, doc);
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1332 as ::core::ffi::c_int,
-                    b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            let mut ext_parser: XML_Parser = XML_ExternalEntityParserCreate(
-                parser,
-                ::core::ptr::null::<XML_Char>(),
-                ::core::ptr::null::<XML_Char>(),
+    set_test_info(
+        b"test_recursive_external_parameter_entity_2\0",
+        1309 as ::core::ffi::c_int,
+    );
+    let cases = [
+        TestCase {
+            doc: bytes_as_c_char_ptr(b"<!ENTITY % p1 '%p1;'>\0"),
+            expectedStatus: XML_STATUS_ERROR,
+        },
+        TestCase {
+            doc: bytes_as_c_char_ptr(
+                b"<!ENTITY % p1 '%p1;'><!ENTITY % p1 'first declaration wins'>\0",
+            ),
+            expectedStatus: XML_STATUS_ERROR,
+        },
+        TestCase {
+            doc: bytes_as_c_char_ptr(
+                b"<!ENTITY % p1 'first declaration wins'><!ENTITY % p1 '%p1;'>\0",
+            ),
+            expectedStatus: XML_STATUS_OK,
+        },
+        TestCase {
+            doc: bytes_as_c_char_ptr(b"<!ENTITY % p1 '&#37;p1;'>\0"),
+            expectedStatus: XML_STATUS_OK,
+        },
+    ];
+
+    for case in cases {
+        set_subtest_message(&c_str_from_ptr(case.doc).to_string_lossy());
+        let parser = create_parser_or_fail(1332 as ::core::ffi::c_int);
+        let ext_parser = create_external_entity_parser_or_fail(parser, 1335 as ::core::ffi::c_int);
+        let actual_status = parse_single_bytes_c_string_for(ext_parser, case.doc);
+
+        if actual_status as ::core::ffi::c_uint != case.expectedStatus as ::core::ffi::c_uint {
+            fail_test(
+                1340 as ::core::ffi::c_int,
+                b"check failed: actualStatus == expectedStatus\0",
             );
-            if ext_parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1335 as ::core::ffi::c_int,
-                    b"check failed: ext_parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            let actualStatus: XML_Status = _XML_Parse_SINGLE_BYTES(
-                ext_parser,
-                doc,
-                strlen(doc) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as XML_Status;
-            if !(actualStatus as ::core::ffi::c_uint == expectedStatus as ::core::ffi::c_uint) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1340 as ::core::ffi::c_int,
-                    b"check failed: actualStatus == expectedStatus\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if actualStatus as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                if !(XML_GetErrorCode(ext_parser) as ::core::ffi::c_uint
-                    == XML_ERROR_RECURSIVE_ENTITY_REF as ::core::ffi::c_int as ::core::ffi::c_uint)
-                {
-                    _fail(
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        1343 as ::core::ffi::c_int,
-                        b"check failed: XML_GetErrorCode(ext_parser) == XML_ERROR_RECURSIVE_ENTITY_REF\0"
-                            .as_ptr() as *const ::core::ffi::c_char,
-                    );
-                }
-            }
-            XML_ParserFree(ext_parser);
-            XML_ParserFree(parser);
-            i = i.wrapping_add(1);
         }
+        if actual_status as ::core::ffi::c_uint
+            != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+            && parser_error_code_for(ext_parser) as ::core::ffi::c_uint
+                != XML_ERROR_RECURSIVE_ENTITY_REF as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            fail_test(
+                1343 as ::core::ffi::c_int,
+                b"check failed: XML_GetErrorCode(ext_parser) == XML_ERROR_RECURSIVE_ENTITY_REF\0",
+            );
+        }
+
+        parser_free(ext_parser);
+        parser_free(parser);
     }
 }
 extern "C" fn test_ext_entity_invalid_parse() {
-    unsafe {
-        _check_set_test_info(
-            b"test_ext_entity_invalid_parse\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1353 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_ext_entity_invalid_parse\0",
+        1353 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0",
+    );
+    let faults = [
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<\0"),
+            fail_text: bytes_as_c_char_ptr(b"Incomplete element declaration not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<\xE2\x82\0"),
+            fail_text: bytes_as_c_char_ptr(b"Incomplete character not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_PARTIAL_CHAR,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<tag>\xE2\x82\0"),
+            fail_text: bytes_as_c_char_ptr(b"Incomplete character in CDATA not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_PARTIAL_CHAR,
+        },
+    ];
+
+    for fault in faults.iter() {
+        set_subtest_message(&format!(
+            "\"{}\"",
+            c_str_from_ptr(fault.parse_text).to_string_lossy()
+        ));
+        parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        parser_set_external_entity_ref_handler(Some(
+            external_entity_faulter
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                ) -> ::core::ffi::c_int,
+        ));
+        parser_set_user_data(fault as *const ExtFaults as *mut ::core::ffi::c_void);
+        expect_failure(
+            text,
+            XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+            b"Parser did not report external entity error\0",
+            1374 as ::core::ffi::c_int,
         );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let faults: [ExtFaults; 4] = [
-            ext_faults {
-                parse_text: b"<\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Incomplete element declaration not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            ext_faults {
-                parse_text: b"<\xE2\x82\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Incomplete character not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_PARTIAL_CHAR,
-            },
-            ext_faults {
-                parse_text: b"<tag>\xE2\x82\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Incomplete character in CDATA not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_PARTIAL_CHAR,
-            },
-            ext_faults {
-                parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_NONE,
-            },
-        ];
-        let mut fault: *const ExtFaults = &raw const faults as *const ExtFaults;
-        while !(*fault).parse_text.is_null() {
-            set_subtest(
-                b"\"%s\"\0".as_ptr() as *const ::core::ffi::c_char,
-                (*fault).parse_text,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_faulter
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            XML_SetUserData(g_parser, fault as *mut ::core::ffi::c_void);
-            _expect_failure(
-                text,
-                XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-                b"Parser did not report external entity error\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1374 as ::core::ffi::c_int,
-            );
-            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            fault = fault.offset(1);
-        }
+        parser_reset();
     }
 }
 extern "C" fn test_dtd_default_handling() {
