@@ -609,6 +609,32 @@ fn alloc_tests_file() -> &'static CStr {
     c_str(b"/root/work/expat/tests/alloc_tests.c\0")
 }
 
+macro_rules! ffi_call {
+    ($function:path $(, $arg:expr)* $(,)?) => {{
+        unsafe { $function($($arg),*) }
+    }};
+}
+
+macro_rules! unsafe_global_get {
+    ($name:ident) => {{
+        unsafe { $name }
+    }};
+}
+
+macro_rules! unsafe_global_set {
+    ($name:ident, $value:expr) => {{
+        unsafe {
+            $name = $value;
+        }
+    }};
+}
+
+macro_rules! unsafe_read_unaligned {
+    ($ptr:expr) => {{
+        unsafe { ($ptr).read_unaligned() }
+    }};
+}
+
 enum AllocTestAction {
     SetInfo(&'static CStr, ::core::ffi::c_int),
     SetCurrentParser(XML_Parser),
@@ -622,35 +648,42 @@ enum AllocTestAction {
 }
 
 fn alloc_test_action(action: AllocTestAction) {
-    unsafe {
-        match action {
-            AllocTestAction::SetInfo(test_name, line) => {
-                _check_set_test_info(test_name.as_ptr(), alloc_tests_file().as_ptr(), line);
-            }
-            AllocTestAction::SetCurrentParser(parser) => {
-                g_parser = parser;
-            }
-            AllocTestAction::SetAllocationCount(count) => {
-                g_allocation_count = count;
-            }
-            AllocTestAction::SetReallocationCount(count) => {
-                g_reallocation_count = count;
-            }
-            AllocTestAction::SetXmlDeclHandler(handler) => {
-                XML_SetXmlDeclHandler(g_parser, handler);
-            }
-            AllocTestAction::SetUnknownEncodingHandler(handler) => {
-                XML_SetUnknownEncodingHandler(g_parser, handler, NULL);
-            }
-            AllocTestAction::SetProcessingInstructionHandler(handler) => {
-                XML_SetProcessingInstructionHandler(g_parser, handler);
-            }
-            AllocTestAction::SetCommentHandler(handler) => {
-                XML_SetCommentHandler(g_parser, handler);
-            }
-            AllocTestAction::Teardown => {
-                basic_teardown();
-            }
+    match action {
+        AllocTestAction::SetInfo(test_name, line) => {
+            ffi_call!(
+                _check_set_test_info,
+                test_name.as_ptr(),
+                alloc_tests_file().as_ptr(),
+                line
+            );
+        }
+        AllocTestAction::SetCurrentParser(parser) => {
+            unsafe_global_set!(g_parser, parser);
+        }
+        AllocTestAction::SetAllocationCount(count) => {
+            unsafe_global_set!(g_allocation_count, count);
+        }
+        AllocTestAction::SetReallocationCount(count) => {
+            unsafe_global_set!(g_reallocation_count, count);
+        }
+        AllocTestAction::SetXmlDeclHandler(handler) => {
+            let parser = unsafe_global_get!(g_parser);
+            ffi_call!(XML_SetXmlDeclHandler, parser, handler);
+        }
+        AllocTestAction::SetUnknownEncodingHandler(handler) => {
+            let parser = unsafe_global_get!(g_parser);
+            ffi_call!(XML_SetUnknownEncodingHandler, parser, handler, NULL);
+        }
+        AllocTestAction::SetProcessingInstructionHandler(handler) => {
+            let parser = unsafe_global_get!(g_parser);
+            ffi_call!(XML_SetProcessingInstructionHandler, parser, handler);
+        }
+        AllocTestAction::SetCommentHandler(handler) => {
+            let parser = unsafe_global_get!(g_parser);
+            ffi_call!(XML_SetCommentHandler, parser, handler);
+        }
+        AllocTestAction::Teardown => {
+            ffi_call!(basic_teardown);
         }
     }
 }
@@ -660,9 +693,7 @@ fn set_alloc_test_info(test_name: &'static CStr, line: ::core::ffi::c_int) {
 }
 
 fn fail_alloc_test(line: ::core::ffi::c_int, message: &'static CStr) -> ! {
-    unsafe {
-        _fail(alloc_tests_file().as_ptr(), line, message.as_ptr());
-    }
+    ffi_call!(_fail, alloc_tests_file().as_ptr(), line, message.as_ptr())
 }
 
 fn set_current_parser(parser: XML_Parser) {
@@ -684,13 +715,12 @@ fn create_alloc_parser() -> XML_Parser {
         free_fcn: Some(free),
     };
 
-    unsafe {
-        XML_ParserCreate_MM(
-            ::core::ptr::null::<XML_Char>(),
-            &raw mut memsuite,
-            ::core::ptr::null::<XML_Char>(),
-        )
-    }
+    ffi_call!(
+        XML_ParserCreate_MM,
+        ::core::ptr::null::<XML_Char>(),
+        &raw mut memsuite,
+        ::core::ptr::null::<XML_Char>(),
+    )
 }
 
 fn parser_text_len(text: &CStr) -> ::core::ffi::c_int {
@@ -698,7 +728,14 @@ fn parser_text_len(text: &CStr) -> ::core::ffi::c_int {
 }
 
 fn parse_single_bytes(text: &CStr, is_final: ::core::ffi::c_int) -> XML_Status {
-    unsafe { _XML_Parse_SINGLE_BYTES(g_parser, text.as_ptr(), parser_text_len(text), is_final) }
+    let parser = unsafe_global_get!(g_parser);
+    ffi_call!(
+        _XML_Parse_SINGLE_BYTES,
+        parser,
+        text.as_ptr(),
+        parser_text_len(text),
+        is_final,
+    )
 }
 
 fn set_xml_decl_handler(handler: XML_XmlDeclHandler) {
@@ -3829,530 +3866,509 @@ extern "C" fn test_alloc_reset_after_external_entity_parser_create_fail() {
     }
 }
 extern "C" fn sizeRecordedFor(mut ptr: *mut ::core::ffi::c_void) -> size_t {
-    unsafe {
-        return *((ptr as *mut ::core::ffi::c_char)
-            .offset(-(EXPAT_MALLOC_PADDING as isize))
-            .offset(-(::core::mem::size_of::<size_t>() as usize as isize))
-            as *mut size_t);
-    }
+    let header = ptr
+        .cast::<u8>()
+        .wrapping_sub(EXPAT_MALLOC_PADDING + ::core::mem::size_of::<size_t>())
+        .cast::<size_t>();
+    unsafe_read_unaligned!(header)
 }
 extern "C" fn test_alloc_tracker_size_recorded() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_tracker_size_recorded\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2101 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_tracker_size_recorded\0"),
+        2101 as ::core::ffi::c_int,
+    );
+    let mut memsuite = XML_Memory_Handling_Suite {
+        malloc_fcn: Some(malloc),
+        realloc_fcn: Some(realloc),
+        free_fcn: Some(free),
+    };
+    for &use_mem_suite in &[true_0 != 0, false_0 != 0] {
+        ffi_call!(
+            set_subtest,
+            b"useMemSuite=%d\0".as_ptr() as *const ::core::ffi::c_char,
+            use_mem_suite as ::core::ffi::c_int,
         );
-        let mut memsuite: XML_Memory_Handling_Suite = XML_Memory_Handling_Suite {
-            malloc_fcn: Some(malloc as unsafe extern "C" fn(size_t) -> *mut ::core::ffi::c_void),
-            realloc_fcn: Some(
-                realloc
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            ),
-            free_fcn: Some(free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
-        };
-        let mut values: [bool; 2] = [true_0 != 0, false_0 != 0];
-        let mut i: size_t = 0 as size_t;
-        while i
-            < (::core::mem::size_of::<[bool; 2]>() as usize)
-                .wrapping_div(::core::mem::size_of::<bool>() as usize)
-        {
-            let useMemSuite: bool = values[i as usize];
-            set_subtest(
-                b"useMemSuite=%d\0".as_ptr() as *const ::core::ffi::c_char,
-                useMemSuite as ::core::ffi::c_int,
-            );
-            let mut parser: XML_Parser = if useMemSuite as ::core::ffi::c_int != 0 {
-                XML_ParserCreate_MM(
-                    ::core::ptr::null::<XML_Char>(),
-                    &raw mut memsuite,
-                    b"|\0".as_ptr() as *const XML_Char,
-                )
-            } else {
-                XML_ParserCreate(::core::ptr::null::<XML_Char>())
-            };
-            let mut ptr: *mut ::core::ffi::c_void =
-                expat_malloc(parser, 10 as size_t, -(1 as ::core::ffi::c_int));
-            if ptr.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2115 as ::core::ffi::c_int,
-                    b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if !(sizeRecordedFor(ptr) == 10 as size_t) {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2116 as ::core::ffi::c_int,
-                    b"check failed: sizeRecordedFor(ptr) == 10\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if !expat_realloc(
-                parser,
-                ptr,
-                (18446744073709551615 as size_t).wrapping_div(2 as size_t),
-                -(1 as ::core::ffi::c_int),
+        let mut parser = if use_mem_suite {
+            ffi_call!(
+                XML_ParserCreate_MM,
+                ::core::ptr::null::<XML_Char>(),
+                &raw mut memsuite,
+                b"|\0".as_ptr() as *const XML_Char,
             )
-            .is_null()
-            {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2118 as ::core::ffi::c_int,
-                    b"check failed: expat_realloc(parser, ptr, SIZE_MAX / 2, -1) == NULL\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if !(sizeRecordedFor(ptr) == 10 as size_t) {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2120 as ::core::ffi::c_int,
-                    b"check failed: sizeRecordedFor(ptr) == 10\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            ptr = expat_realloc(parser, ptr, 20 as size_t, -(1 as ::core::ffi::c_int));
-            if ptr.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2124 as ::core::ffi::c_int,
-                    b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if !(sizeRecordedFor(ptr) == 20 as size_t) {
-                _fail(
-                    b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    2125 as ::core::ffi::c_int,
-                    b"check failed: sizeRecordedFor(ptr) == 20\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            expat_free(parser, ptr, -(1 as ::core::ffi::c_int));
-            XML_ParserFree(parser);
-            i = i.wrapping_add(1);
+        } else {
+            ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>())
+        };
+        let mut ptr = ffi_call!(
+            expat_malloc,
+            parser,
+            10 as size_t,
+            -(1 as ::core::ffi::c_int)
+        );
+        if ptr.is_null() {
+            fail_alloc_test(
+                2115 as ::core::ffi::c_int,
+                c_str(b"check failed: ptr != NULL\0"),
+            );
         }
+        if sizeRecordedFor(ptr) != 10 as size_t {
+            fail_alloc_test(
+                2116 as ::core::ffi::c_int,
+                c_str(b"check failed: sizeRecordedFor(ptr) == 10\0"),
+            );
+        }
+        if !ffi_call!(
+            expat_realloc,
+            parser,
+            ptr,
+            size_t::MAX.wrapping_div(2 as size_t),
+            -(1 as ::core::ffi::c_int),
+        )
+        .is_null()
+        {
+            fail_alloc_test(
+                2118 as ::core::ffi::c_int,
+                c_str(b"check failed: expat_realloc(parser, ptr, SIZE_MAX / 2, -1) == NULL\0"),
+            );
+        }
+        if sizeRecordedFor(ptr) != 10 as size_t {
+            fail_alloc_test(
+                2120 as ::core::ffi::c_int,
+                c_str(b"check failed: sizeRecordedFor(ptr) == 10\0"),
+            );
+        }
+        ptr = ffi_call!(
+            expat_realloc,
+            parser,
+            ptr,
+            20 as size_t,
+            -(1 as ::core::ffi::c_int)
+        );
+        if ptr.is_null() {
+            fail_alloc_test(
+                2124 as ::core::ffi::c_int,
+                c_str(b"check failed: ptr != NULL\0"),
+            );
+        }
+        if sizeRecordedFor(ptr) != 20 as size_t {
+            fail_alloc_test(
+                2125 as ::core::ffi::c_int,
+                c_str(b"check failed: sizeRecordedFor(ptr) == 20\0"),
+            );
+        }
+        ffi_call!(expat_free, parser, ptr, -(1 as ::core::ffi::c_int));
+        ffi_call!(XML_ParserFree, parser);
     }
 }
 extern "C" fn test_alloc_tracker_pointer_alignment() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_tracker_pointer_alignment\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2135 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_tracker_pointer_alignment\0"),
+        2135 as ::core::ffi::c_int,
+    );
+    let mut parser = ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>());
+    if ::core::mem::size_of::<::core::ffi::c_longlong>() < ::core::mem::size_of::<size_t>() {
+        fail_alloc_test(
+            2138 as ::core::ffi::c_int,
+            c_str(b"check failed: sizeof(long long) >= sizeof(size_t)\0"),
         );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if !(::core::mem::size_of::<::core::ffi::c_longlong>() as usize
-            >= ::core::mem::size_of::<size_t>() as usize)
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2138 as ::core::ffi::c_int,
-                b"check failed: sizeof(long long) >= sizeof(size_t)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        let ptr: *mut ::core::ffi::c_longlong = expat_malloc(
-            parser,
-            (4 as size_t).wrapping_mul(::core::mem::size_of::<::core::ffi::c_longlong>() as size_t),
-            -(1 as ::core::ffi::c_int),
-        ) as *mut ::core::ffi::c_longlong;
-        *ptr.offset(0 as ::core::ffi::c_int as isize) = 0 as ::core::ffi::c_longlong;
-        *ptr.offset(1 as ::core::ffi::c_int as isize) = 1 as ::core::ffi::c_longlong;
-        *ptr.offset(2 as ::core::ffi::c_int as isize) = 2 as ::core::ffi::c_longlong;
-        *ptr.offset(3 as ::core::ffi::c_int as isize) = 3 as ::core::ffi::c_longlong;
-        expat_free(
-            parser,
-            ptr as *mut ::core::ffi::c_void,
-            -(1 as ::core::ffi::c_int),
-        );
-        XML_ParserFree(parser);
     }
+    let ptr = ffi_call!(
+        expat_malloc,
+        parser,
+        (4 as size_t).wrapping_mul(::core::mem::size_of::<::core::ffi::c_longlong>() as size_t),
+        -(1 as ::core::ffi::c_int),
+    ) as *mut ::core::ffi::c_longlong;
+    let values: [::core::ffi::c_longlong; 4] = [0, 1, 2, 3];
+    ffi_call!(
+        memcpy,
+        ptr.cast::<::core::ffi::c_void>(),
+        values.as_ptr().cast::<::core::ffi::c_void>(),
+        ::core::mem::size_of_val(&values),
+    );
+    ffi_call!(
+        expat_free,
+        parser,
+        ptr.cast::<::core::ffi::c_void>(),
+        -(1 as ::core::ffi::c_int),
+    );
+    ffi_call!(XML_ParserFree, parser);
 }
 extern "C" fn test_alloc_tracker_maximum_amplification() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_tracker_maximum_amplification\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2151 as ::core::ffi::c_int,
-        );
-        if g_reparseDeferralEnabledDefault as ::core::ffi::c_int == XML_TRUE as ::core::ffi::c_int {
-            return;
-        }
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let chunk: *const ::core::ffi::c_char = b"<e>\0".as_ptr() as *const ::core::ffi::c_char;
-        if !(_XML_Parse_SINGLE_BYTES(
-            parser,
-            chunk,
-            strlen(chunk) as ::core::ffi::c_int,
-            0 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint)
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                2162 as ::core::ffi::c_int,
-                b"check failed: _XML_Parse_SINGLE_BYTES(parser, chunk, (int)strlen(chunk), XML_FALSE) == XML_STATUS_OK\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !(XML_SetAllocTrackerActivationThreshold(parser, 0 as ::core::ffi::c_ulonglong)
-            as ::core::ffi::c_int
-            == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2166 as ::core::ffi::c_int,
-                b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !expat_malloc(parser, 1000 as size_t, -(1 as ::core::ffi::c_int)).is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2169 as ::core::ffi::c_int,
-                b"check failed: expat_malloc(parser, 1000, -1) == NULL\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if !(XML_SetAllocTrackerMaximumAmplification(parser, 3000.0f32) as ::core::ffi::c_int
-            == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                2174 as ::core::ffi::c_int,
-                b"check failed: XML_SetAllocTrackerMaximumAmplification(parser, 3000.0f) == XML_TRUE\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let ptr: *mut ::core::ffi::c_void =
-            expat_malloc(parser, 1000 as size_t, -(1 as ::core::ffi::c_int))
-                as *mut ::core::ffi::c_void;
-        if ptr.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2177 as ::core::ffi::c_int,
-                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        expat_free(parser, ptr, -(1 as ::core::ffi::c_int));
-        XML_ParserFree(parser);
+    set_alloc_test_info(
+        c_str(b"test_alloc_tracker_maximum_amplification\0"),
+        2151 as ::core::ffi::c_int,
+    );
+    if unsafe_global_get!(g_reparseDeferralEnabledDefault) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        return;
     }
+    let mut parser = ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>());
+    let chunk = b"<e>\0".as_ptr() as *const ::core::ffi::c_char;
+    let chunk_len = ffi_call!(strlen, chunk) as ::core::ffi::c_int;
+    if ffi_call!(
+        _XML_Parse_SINGLE_BYTES,
+        parser,
+        chunk,
+        chunk_len,
+        XML_FALSE as ::core::ffi::c_int,
+    ) as ::core::ffi::c_uint
+        != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        fail_alloc_test(
+            2162 as ::core::ffi::c_int,
+            c_str(b"check failed: _XML_Parse_SINGLE_BYTES(parser, chunk, (int)strlen(chunk), XML_FALSE) == XML_STATUS_OK\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerActivationThreshold,
+        parser,
+        0 as ::core::ffi::c_ulonglong
+    ) as ::core::ffi::c_int
+        != XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2166 as ::core::ffi::c_int,
+            c_str(b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"),
+        );
+    }
+    if !ffi_call!(
+        expat_malloc,
+        parser,
+        1000 as size_t,
+        -(1 as ::core::ffi::c_int)
+    )
+    .is_null()
+    {
+        fail_alloc_test(
+            2169 as ::core::ffi::c_int,
+            c_str(b"check failed: expat_malloc(parser, 1000, -1) == NULL\0"),
+        );
+    }
+    if ffi_call!(XML_SetAllocTrackerMaximumAmplification, parser, 3000.0f32) as ::core::ffi::c_int
+        != XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2174 as ::core::ffi::c_int,
+            c_str(b"check failed: XML_SetAllocTrackerMaximumAmplification(parser, 3000.0f) == XML_TRUE\0"),
+        );
+    }
+    let ptr = ffi_call!(
+        expat_malloc,
+        parser,
+        1000 as size_t,
+        -(1 as ::core::ffi::c_int)
+    );
+    if ptr.is_null() {
+        fail_alloc_test(
+            2177 as ::core::ffi::c_int,
+            c_str(b"check failed: ptr != NULL\0"),
+        );
+    }
+    ffi_call!(expat_free, parser, ptr, -(1 as ::core::ffi::c_int));
+    ffi_call!(XML_ParserFree, parser);
 }
 extern "C" fn test_alloc_tracker_threshold() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_tracker_threshold\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2185 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_tracker_threshold\0"),
+        2185 as ::core::ffi::c_int,
+    );
+    let mut parser = ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>());
+    let ptr = ffi_call!(
+        expat_malloc,
+        parser,
+        1000 as size_t,
+        -(1 as ::core::ffi::c_int)
+    );
+    if ptr.is_null() {
+        fail_alloc_test(
+            2191 as ::core::ffi::c_int,
+            c_str(b"check failed: ptr != NULL\0"),
         );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let ptr: *mut ::core::ffi::c_void =
-            expat_malloc(parser, 1000 as size_t, -(1 as ::core::ffi::c_int))
-                as *mut ::core::ffi::c_void;
-        if ptr.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2191 as ::core::ffi::c_int,
-                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        expat_free(parser, ptr, -(1 as ::core::ffi::c_int));
-        if !(XML_SetAllocTrackerActivationThreshold(parser, 999 as ::core::ffi::c_ulonglong)
-            as ::core::ffi::c_int
-            == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2195 as ::core::ffi::c_int,
-                b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 999) == XML_TRUE\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !expat_malloc(parser, 1000 as size_t, -(1 as ::core::ffi::c_int)).is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2196 as ::core::ffi::c_int,
-                b"check failed: expat_malloc(parser, 1000, -1) == NULL\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parser);
     }
+    ffi_call!(expat_free, parser, ptr, -(1 as ::core::ffi::c_int));
+    if ffi_call!(
+        XML_SetAllocTrackerActivationThreshold,
+        parser,
+        999 as ::core::ffi::c_ulonglong
+    ) as ::core::ffi::c_int
+        != XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2195 as ::core::ffi::c_int,
+            c_str(
+                b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 999) == XML_TRUE\0",
+            ),
+        );
+    }
+    if !ffi_call!(
+        expat_malloc,
+        parser,
+        1000 as size_t,
+        -(1 as ::core::ffi::c_int)
+    )
+    .is_null()
+    {
+        fail_alloc_test(
+            2196 as ::core::ffi::c_int,
+            c_str(b"check failed: expat_malloc(parser, 1000, -1) == NULL\0"),
+        );
+    }
+    ffi_call!(XML_ParserFree, parser);
 }
 extern "C" fn test_alloc_tracker_getbuffer_unlimited() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_tracker_getbuffer_unlimited\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2203 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_tracker_getbuffer_unlimited\0"),
+        2203 as ::core::ffi::c_int,
+    );
+    let mut parser = ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>());
+    if ffi_call!(
+        XML_SetAllocTrackerActivationThreshold,
+        parser,
+        0 as ::core::ffi::c_ulonglong
+    ) as ::core::ffi::c_int
+        != XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2208 as ::core::ffi::c_int,
+            c_str(b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"),
         );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if !(XML_SetAllocTrackerActivationThreshold(parser, 0 as ::core::ffi::c_ulonglong)
-            as ::core::ffi::c_int
-            == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2208 as ::core::ffi::c_int,
-                b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !expat_malloc(parser, 1000 as size_t, -(1 as ::core::ffi::c_int)).is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2211 as ::core::ffi::c_int,
-                b"check failed: expat_malloc(parser, 1000, -1) == NULL\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_GetBuffer(parser, 1000 as ::core::ffi::c_int).is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2214 as ::core::ffi::c_int,
-                b"check failed: XML_GetBuffer(parser, 1000) != NULL\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parser);
     }
+    if !ffi_call!(
+        expat_malloc,
+        parser,
+        1000 as size_t,
+        -(1 as ::core::ffi::c_int)
+    )
+    .is_null()
+    {
+        fail_alloc_test(
+            2211 as ::core::ffi::c_int,
+            c_str(b"check failed: expat_malloc(parser, 1000, -1) == NULL\0"),
+        );
+    }
+    if ffi_call!(XML_GetBuffer, parser, 1000 as ::core::ffi::c_int).is_null() {
+        fail_alloc_test(
+            2214 as ::core::ffi::c_int,
+            c_str(b"check failed: XML_GetBuffer(parser, 1000) != NULL\0"),
+        );
+    }
+    ffi_call!(XML_ParserFree, parser);
 }
 extern "C" fn test_alloc_tracker_api() {
-    unsafe {
-        _check_set_test_info(
-            b"test_alloc_tracker_api\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2220 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_alloc_tracker_api\0"),
+        2220 as ::core::ffi::c_int,
+    );
+    let mut parserWithoutParent = ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>());
+    let mut parserWithParent = ffi_call!(
+        XML_ExternalEntityParserCreate,
+        parserWithoutParent,
+        b"entity123\0".as_ptr() as *const XML_Char,
+        ::core::ptr::null::<XML_Char>(),
+    );
+    if parserWithoutParent.is_null() {
+        fail_alloc_test(
+            2225 as ::core::ffi::c_int,
+            c_str(b"parserWithoutParent is NULL\0"),
         );
-        let mut parserWithoutParent: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let mut parserWithParent: XML_Parser = XML_ExternalEntityParserCreate(
-            parserWithoutParent,
-            b"entity123\0".as_ptr() as *const XML_Char,
-            ::core::ptr::null::<XML_Char>(),
-        );
-        if parserWithoutParent.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2225 as ::core::ffi::c_int,
-                b"parserWithoutParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if parserWithParent.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2227 as ::core::ffi::c_int,
-                b"parserWithParent is NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(
-            ::core::ptr::null_mut::<XML_ParserStruct>(),
-            123.0f32,
-        ) as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2232 as ::core::ffi::c_int,
-                b"Call with NULL parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(parserWithParent, 123.0f32) as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2235 as ::core::ffi::c_int,
-                b"Call with non-root parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, ::core::f32::NAN)
-            as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2238 as ::core::ffi::c_int,
-                b"Call with NaN limit is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, -1.0f32)
-            as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2241 as ::core::ffi::c_int,
-                b"Call with negative limit is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, 0.9f32)
-            as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2244 as ::core::ffi::c_int,
-                b"Call with positive limit <1.0 is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, 1.0f32)
-            as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2249 as ::core::ffi::c_int,
-                b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, 123456.789f32)
-            as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2252 as ::core::ffi::c_int,
-                b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerMaximumAmplification(parserWithoutParent, ::core::f32::INFINITY)
-            as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2255 as ::core::ffi::c_int,
-                b"Call with positive limit >=1.0 is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerActivationThreshold(
-            ::core::ptr::null_mut::<XML_ParserStruct>(),
-            123 as ::core::ffi::c_ulonglong,
-        ) as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2259 as ::core::ffi::c_int,
-                b"Call with NULL parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerActivationThreshold(parserWithParent, 123 as ::core::ffi::c_ulonglong)
-            as ::core::ffi::c_int
-            == XML_TRUE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2261 as ::core::ffi::c_int,
-                b"Call with non-root parser is NOT supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        if XML_SetAllocTrackerActivationThreshold(
-            parserWithoutParent,
-            123 as ::core::ffi::c_ulonglong,
-        ) as ::core::ffi::c_int
-            == XML_FALSE as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2266 as ::core::ffi::c_int,
-                b"Call with non-NULL parentless parser is supposed to succeed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-        XML_ParserFree(parserWithParent);
-        XML_ParserFree(parserWithoutParent);
     }
+    if parserWithParent.is_null() {
+        fail_alloc_test(
+            2227 as ::core::ffi::c_int,
+            c_str(b"parserWithParent is NULL\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+        123.0f32,
+    ) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2232 as ::core::ffi::c_int,
+            c_str(b"Call with NULL parser is NOT supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        parserWithParent,
+        123.0f32
+    ) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2235 as ::core::ffi::c_int,
+            c_str(b"Call with non-root parser is NOT supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        parserWithoutParent,
+        ::core::f32::NAN
+    ) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2238 as ::core::ffi::c_int,
+            c_str(b"Call with NaN limit is NOT supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        parserWithoutParent,
+        -1.0f32
+    ) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2241 as ::core::ffi::c_int,
+            c_str(b"Call with negative limit is NOT supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        parserWithoutParent,
+        0.9f32
+    ) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2244 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit <1.0 is NOT supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        parserWithoutParent,
+        1.0f32
+    ) as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2249 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit >=1.0 is supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        parserWithoutParent,
+        123456.789f32
+    ) as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2252 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit >=1.0 is supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerMaximumAmplification,
+        parserWithoutParent,
+        ::core::f32::INFINITY,
+    ) as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2255 as ::core::ffi::c_int,
+            c_str(b"Call with positive limit >=1.0 is supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerActivationThreshold,
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+        123 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2259 as ::core::ffi::c_int,
+            c_str(b"Call with NULL parser is NOT supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerActivationThreshold,
+        parserWithParent,
+        123 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2261 as ::core::ffi::c_int,
+            c_str(b"Call with non-root parser is NOT supposed to succeed\0"),
+        );
+    }
+    if ffi_call!(
+        XML_SetAllocTrackerActivationThreshold,
+        parserWithoutParent,
+        123 as ::core::ffi::c_ulonglong,
+    ) as ::core::ffi::c_int
+        == XML_FALSE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2266 as ::core::ffi::c_int,
+            c_str(b"Call with non-NULL parentless parser is supposed to succeed\0"),
+        );
+    }
+    ffi_call!(XML_ParserFree, parserWithParent);
+    ffi_call!(XML_ParserFree, parserWithoutParent);
 }
 extern "C" fn test_mem_api_cycle() {
-    unsafe {
-        _check_set_test_info(
-            b"test_mem_api_cycle\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2274 as ::core::ffi::c_int,
+    set_alloc_test_info(c_str(b"test_mem_api_cycle\0"), 2274 as ::core::ffi::c_int);
+    let mut parser = ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>());
+    let mut ptr = ffi_call!(XML_MemMalloc, parser, 10 as size_t);
+    if ptr.is_null() {
+        fail_alloc_test(
+            2279 as ::core::ffi::c_int,
+            c_str(b"check failed: ptr != NULL\0"),
         );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        let mut ptr: *mut ::core::ffi::c_void = XML_MemMalloc(parser, 10 as size_t);
-        if ptr.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2279 as ::core::ffi::c_int,
-                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        memset(ptr, 'x' as i32, 10 as size_t);
-        ptr = XML_MemRealloc(parser, ptr, 20 as size_t);
-        if ptr.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2284 as ::core::ffi::c_int,
-                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        memset(ptr, 'y' as i32, 20 as size_t);
-        XML_MemFree(parser, ptr);
-        XML_ParserFree(parser);
     }
+    ffi_call!(memset, ptr, 'x' as i32, 10 as size_t);
+    ptr = ffi_call!(XML_MemRealloc, parser, ptr, 20 as size_t);
+    if ptr.is_null() {
+        fail_alloc_test(
+            2284 as ::core::ffi::c_int,
+            c_str(b"check failed: ptr != NULL\0"),
+        );
+    }
+    ffi_call!(memset, ptr, 'y' as i32, 20 as size_t);
+    ffi_call!(XML_MemFree, parser, ptr);
+    ffi_call!(XML_ParserFree, parser);
 }
 extern "C" fn test_mem_api_unlimited() {
-    unsafe {
-        _check_set_test_info(
-            b"test_mem_api_unlimited\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2293 as ::core::ffi::c_int,
+    set_alloc_test_info(
+        c_str(b"test_mem_api_unlimited\0"),
+        2293 as ::core::ffi::c_int,
+    );
+    let mut parser = ffi_call!(XML_ParserCreate, ::core::ptr::null::<XML_Char>());
+    if ffi_call!(
+        XML_SetAllocTrackerActivationThreshold,
+        parser,
+        0 as ::core::ffi::c_ulonglong
+    ) as ::core::ffi::c_int
+        != XML_TRUE as ::core::ffi::c_int
+    {
+        fail_alloc_test(
+            2297 as ::core::ffi::c_int,
+            c_str(b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"),
         );
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if !(XML_SetAllocTrackerActivationThreshold(parser, 0 as ::core::ffi::c_ulonglong)
-            as ::core::ffi::c_int
-            == 1 as ::core::ffi::c_int as XML_Bool as ::core::ffi::c_int)
-        {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2297 as ::core::ffi::c_int,
-                b"check failed: XML_SetAllocTrackerActivationThreshold(parser, 0) == XML_TRUE\0"
-                    .as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut ptr: *mut ::core::ffi::c_void = XML_MemMalloc(parser, 1000 as size_t);
-        if ptr.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2302 as ::core::ffi::c_int,
-                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        ptr = XML_MemRealloc(parser, ptr, 2000 as size_t);
-        if ptr.is_null() {
-            _fail(
-                b"/root/work/expat/tests/alloc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2306 as ::core::ffi::c_int,
-                b"check failed: ptr != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        XML_MemFree(parser, ptr);
-        XML_ParserFree(parser);
     }
+    let mut ptr = ffi_call!(XML_MemMalloc, parser, 1000 as size_t);
+    if ptr.is_null() {
+        fail_alloc_test(
+            2302 as ::core::ffi::c_int,
+            c_str(b"check failed: ptr != NULL\0"),
+        );
+    }
+    ptr = ffi_call!(XML_MemRealloc, parser, ptr, 2000 as size_t);
+    if ptr.is_null() {
+        fail_alloc_test(
+            2306 as ::core::ffi::c_int,
+            c_str(b"check failed: ptr != NULL\0"),
+        );
+    }
+    ffi_call!(XML_MemFree, parser, ptr);
+    ffi_call!(XML_ParserFree, parser);
 }
 #[no_mangle]
 pub unsafe extern "C" fn make_alloc_test_case(mut s: *mut Suite) {
