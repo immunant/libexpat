@@ -18545,7 +18545,35 @@ unsafe fn appendAttributeValue(
                     }
                 }
                 crate::src::xmltok::XML_TOK_DATA_CHARS => {
-                    if poolAppend(pool, enc_ptr, ptr, next).is_null() {
+                    // The literal scanner has already bounded this token in
+                    // `input`, so preserve its slice range while copying into
+                    // the pool instead of rebuilding raw conversion cursors.
+                    let Some(data) = input.get(cursor..scanned_next_offset) else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    };
+                    let unknown_encoding = match enc.enc.utf8Convert {
+                        crate::src::xmltok::Utf8Converter::Unknown => parser
+                            .m_unknownEncodingMem
+                            .as_ref()
+                            .and_then(UnknownEncodingMemory::initialized_encoding)
+                            .copied(),
+                        _ => None,
+                    };
+                    if matches!(
+                        enc.enc.utf8Convert,
+                        crate::src::xmltok::Utf8Converter::Unknown
+                    ) && unknown_encoding.is_none()
+                    {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    }
+                    if pool_append_source(
+                        pool,
+                        &enc.enc,
+                        unknown_encoding.as_ref(),
+                        bytemuck::cast_slice(data),
+                    )
+                    .is_none()
+                    {
                         return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                     }
                     break 's_350;
@@ -19836,15 +19864,17 @@ fn raw_name_bytes(source: RawNameSource<'_>) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-/// Appends a bounded tokenizer name to a string pool without recreating raw
+/// Appends a bounded tokenizer token to a string pool without recreating raw
 /// cursor pairs.  The input and output windows remain checked slices through
-/// every conversion/growth iteration.
-fn pool_store_name_source(
+/// every conversion/growth iteration.  Unlike `pool_store_name_source`, this
+/// does not append a terminator: callers use it for character data as well as
+/// retained names.
+fn pool_append_source(
     pool: &mut STRING_POOL,
     enc: &crate::src::xmltok::ENCODING,
     unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
     input: &[u8],
-) -> Option<PoolStringRef> {
+) -> Option<()> {
     if pool.start.is_none() && poolGrow(pool) == 0 {
         return None;
     }
@@ -19875,15 +19905,30 @@ fn pool_store_name_source(
         if result == crate::src::xmltok::XML_CONVERT_COMPLETED
             || result == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
         {
-            if !pool_append_char(pool, 0) {
-                return None;
-            }
-            return pool.start_ref(true);
+            return Some(());
+        }
+        if consumed == 0 && written == 0 {
+            return None;
         }
         if poolGrow(pool) == 0 {
             return None;
         }
     }
+}
+
+/// Appends a bounded tokenizer name to a string pool, including the
+/// terminating XML NUL retained by name-bearing pool records.
+fn pool_store_name_source(
+    pool: &mut STRING_POOL,
+    enc: &crate::src::xmltok::ENCODING,
+    unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
+    input: &[u8],
+) -> Option<PoolStringRef> {
+    pool_append_source(pool, enc, unknown_encoding, input)?;
+    if !pool_append_char(pool, 0) {
+        return None;
+    }
+    pool.start_ref(true)
 }
 
 /// Produces a second checked pool handle within the same retained string.
