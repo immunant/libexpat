@@ -2869,7 +2869,10 @@ pub struct binding {
 #[repr(C)]
 
 pub struct attribute_id {
-    pub name: *mut crate::expat_external_h::XML_Char,
+    // Attribute records use the same leading hash-table header as every
+    // other named record.  Keeping that one header avoids a duplicate raw
+    // name field while preserving the allocation layout expected by lookup.
+    pub named: NAMED,
     pub prefix: *mut PREFIX,
     pub maybeTokenized: crate::expat_h::XML_Bool,
     pub xmlns: crate::expat_h::XML_Bool,
@@ -3123,7 +3126,11 @@ struct NamedAllocation {
 #[repr(C)]
 
 pub struct NAMED {
-    pub name: KEY,
+    // The leading status character of an attribute name is updated while
+    // storing attributes, so the shared header retains a mutable view.
+    // Callers that only inspect a key continue to receive the usual shared
+    // pointer coercion.
+    pub name: *mut crate::expat_external_h::XML_Char,
 }
 
 pub type KEY = *const crate::expat_external_h::XML_Char;
@@ -9326,16 +9333,16 @@ unsafe extern "C" fn storeAtts(
         if attId.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if *(*attId).name.offset(-1 as isize) != 0 {
+        if *(*attId).named.name.offset(-1 as isize) != 0 {
             if enc == parser_encoding(parser) {
                 set_parser_event_start!(&mut *parser, currAtt.name);
             }
             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
         }
-        *(*attId).name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
+        *(*attId).named.name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
         let c2rust_fresh23 = attIndex;
         attIndex = attIndex + 1;
-        appAtts[c2rust_fresh23 as usize] = (*attId).name;
+        appAtts[c2rust_fresh23 as usize] = (*attId).named.name;
         if currAtt.normalized == 0 {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             let mut isCdata: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
@@ -9356,7 +9363,7 @@ unsafe extern "C" fn storeAtts(
                             .chars_from(name)
                             .map_or(::core::ptr::null(), |chars| chars.as_ptr())
                     });
-                    if default_name == (*attId).name {
+                    if default_name == (*attId).named.name {
                         isCdata = (*elementType)
                             .defaultAtts
                             .as_ref()
@@ -9419,7 +9426,7 @@ unsafe extern "C" fn storeAtts(
             } else {
                 attIndex += 1;
                 nPrefixes += 1;
-                *(*attId).name.offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
+                *(*attId).named.name.offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
             }
         } else {
             attIndex += 1;
@@ -9474,7 +9481,7 @@ unsafe extern "C" fn storeAtts(
         if id.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if *(*id).name.offset(-1 as isize) == 0 && da.value.is_some() {
+        if *(*id).named.name.offset(-1 as isize) == 0 && da.value.is_some() {
             let value_ref = da
                 .value
                 .expect("a present default attribute value has a pool location");
@@ -9493,20 +9500,20 @@ unsafe extern "C" fn storeAtts(
                         return result_1;
                     }
                 } else {
-                    *(*id).name.offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
+                    *(*id).named.name.offset(-1 as isize) = 2 as crate::expat_external_h::XML_Char;
                     nPrefixes += 1;
                     let c2rust_fresh24 = attIndex;
                     attIndex = attIndex + 1;
-                    appAtts[c2rust_fresh24 as usize] = (*id).name;
+                    appAtts[c2rust_fresh24 as usize] = (*id).named.name;
                     let c2rust_fresh25 = attIndex;
                     attIndex = attIndex + 1;
                     appAtts[c2rust_fresh25 as usize] = value;
                 }
             } else {
-                *(*id).name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
+                *(*id).named.name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
                 let c2rust_fresh26 = attIndex;
                 attIndex = attIndex + 1;
-                appAtts[c2rust_fresh26 as usize] = (*id).name;
+                appAtts[c2rust_fresh26 as usize] = (*id).named.name;
                 let c2rust_fresh27 = attIndex;
                 attIndex = attIndex + 1;
                 appAtts[c2rust_fresh27 as usize] = value;
@@ -9829,7 +9836,7 @@ unsafe extern "C" fn storeAtts(
     binding = *bindingsPtr;
     while !binding.is_null() {
         let binding_ref = &*binding;
-        *(*binding_ref.attId).name.offset(-1 as isize) = 0 as crate::expat_external_h::XML_Char;
+        *(*binding_ref.attId).named.name.offset(-1 as isize) = 0 as crate::expat_external_h::XML_Char;
         binding = binding_ref.nextTagBinding as *mut BINDING;
     }
     if (*parser).m_ns == 0 {
@@ -12754,7 +12761,7 @@ unsafe extern "C" fn doProlog(
                                                 if entity.is_null() {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                if (*entity).named.name != name {
+                                                if (*entity).named.name.cast_const() != name {
                                                     (*dtd).pool.rewind();
                                                     (*parser).m_declEntity = None;
                                                 } else {
@@ -12806,7 +12813,7 @@ unsafe extern "C" fn doProlog(
                                             if entity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            if (*entity).named.name != name_0 {
+                                                if (*entity).named.name.cast_const() != name_0 {
                                                 (*dtd).pool.rewind();
                                                 (*parser).m_declEntity = None;
                                             } else {
@@ -15439,7 +15446,7 @@ unsafe fn getAttributeId(
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
     let id = &mut *id;
-    if id.name != name as *mut crate::expat_external_h::XML_Char {
+    if id.named.name != name as *mut crate::expat_external_h::XML_Char {
         dtd.pool.rewind();
     } else {
         dtd.pool.commit();
@@ -15500,7 +15507,7 @@ unsafe fn getAttributeId(
             }
         }
     }
-    let id_name = id.name;
+    let id_name = id.named.name;
     if let Some(retained_name) = retained_name {
         let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
         let name = dtd
@@ -16095,7 +16102,7 @@ unsafe extern "C" fn dtdCopy(
         {
             return 0 as ::core::ffi::c_int;
         }
-        let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.name).0;
+        let name_0 = poolCopyString(&raw mut new_dtd.pool, old_a.named.name).0;
         if name_0.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -16170,7 +16177,7 @@ unsafe extern "C" fn dtdCopy(
             if new_id_att.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            new_e.idAtt = pool_string_ref(&raw const new_dtd.pool, (*new_id_att).name, false);
+            new_e.idAtt = pool_string_ref(&raw const new_dtd.pool, (*new_id_att).named.name, false);
             if new_e.idAtt.is_none() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -16224,7 +16231,7 @@ unsafe extern "C" fn dtdCopy(
             if new_id.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            let Some(new_id_name) = pool_string_ref(&raw const new_dtd.pool, (*new_id).name, false)
+            let Some(new_id_name) = pool_string_ref(&raw const new_dtd.pool, (*new_id).named.name, false)
             else {
                 return 0 as ::core::ffi::c_int;
             };
@@ -16792,7 +16799,7 @@ unsafe extern "C" fn lookup(
     }
     bytes.resize(words, 0);
     let entry = bytes.as_mut_ptr() as *mut NAMED;
-    (*entry).name = name;
+    (*entry).name = name as *mut crate::expat_external_h::XML_Char;
     table.v.as_mut().expect("initialized hash table").entries[i] =
         Some(NamedAllocation { bytes, backing });
     table.used = table.used.wrapping_add(1);
@@ -17668,7 +17675,7 @@ unsafe extern "C" fn getElementType(
     if ret.is_null() {
         return ::core::ptr::null_mut::<ELEMENT_TYPE>();
     }
-    if (*ret).named.name != name {
+    if (*ret).named.name.cast_const() != name {
         (*dtd).pool.rewind();
     } else {
         (*dtd).pool.commit();
