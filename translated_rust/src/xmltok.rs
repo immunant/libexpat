@@ -9774,117 +9774,112 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn big2_ignoreSectionTok(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut level: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        if 2 as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
-            let mut n: crate::__stddef_size_t_h::size_t =
-                end.offset_from(ptr) as crate::__stddef_size_t_h::size_t;
-            if n & (2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                as crate::__stddef_size_t_h::size_t
-                != 0
-            {
-                n &= !(2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                    as crate::__stddef_size_t_h::size_t;
-                end = ptr.offset(n as isize);
-            }
-        }
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-            } {
+    fn big2_ignore_section_tok_impl(
+        enc: &normal_encoding,
+        raw_input: &[::core::ffi::c_char],
+    ) -> Big2ScanOutcome {
+        let input = &raw_input[..raw_input.len() & !1];
+        let mut level: ::core::ffi::c_int = 0;
+        let mut pos = 0;
+
+        while input.len() - pos >= 2 {
+            match big2_byte_type(enc, input, pos) {
                 5 => {
-                    if end.offset_from(ptr) < 2 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - pos < 2 {
+                        return Big2ScanOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
                     }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    pos += 2;
                 }
                 6 => {
-                    if end.offset_from(ptr) < 3 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - pos < 3 {
+                        return Big2ScanOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
                     }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
+                    pos += 3;
                 }
                 7 => {
-                    if end.offset_from(ptr) < 4 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - pos < 4 {
+                        return Big2ScanOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
                     }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
+                    pos += 4;
                 }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                }
+                0 | 1 | 8 => return Big2ScanOutcome::Invalid(pos),
                 2 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr)
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                    {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                    pos += 2;
+                    if input.len() - pos < 2 {
+                        return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
                     }
-                    if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                        && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                            == 0x21 as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                    if input[pos] == 0 && input[pos + 1] == b'!' as ::core::ffi::c_char {
+                        pos += 2;
+                        if input.len() - pos < 2 {
+                            return Big2ScanOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_1,
+                            );
                         }
-                        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0x5b as ::core::ffi::c_int
-                        {
+                        if input[pos] == 0 && input[pos + 1] == b'[' as ::core::ffi::c_char {
                             level += 1;
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                            pos += 2;
                         }
                     }
                 }
                 4 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr)
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                    {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                    pos += 2;
+                    if input.len() - pos < 2 {
+                        return Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1);
                     }
-                    if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                        && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                            == 0x5d as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                    if input[pos] == 0 && input[pos + 1] == b']' as ::core::ffi::c_char {
+                        pos += 2;
+                        if input.len() - pos < 2 {
+                            return Big2ScanOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_1,
+                            );
                         }
-                        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0x3e as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if level == 0 as ::core::ffi::c_int {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_IGNORE_SECT_1;
+                        if input[pos] == 0 && input[pos + 1] == b'>' as ::core::ffi::c_char {
+                            pos += 2;
+                            if level == 0 {
+                                return Big2ScanOutcome::Token(
+                                    crate::src::xmltok::XML_TOK_IGNORE_SECT_1,
+                                    pos,
+                                );
                             }
                             level -= 1;
                         }
                     }
                 }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
+                _ => pos += 2,
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
+    }
+
+    pub unsafe extern "C" fn big2_ignoreSectionTok(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len <= 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let encoding = &*(enc as *const normal_encoding);
+        match big2_ignore_section_tok_impl(encoding, input) {
+            Big2ScanOutcome::Token(token, next) => {
+                *nextTokPtr = ptr.wrapping_add(next);
+                token
+            }
+            Big2ScanOutcome::Partial(token) => token,
+            Big2ScanOutcome::Invalid(at) => {
+                *nextTokPtr = ptr.wrapping_add(at);
+                crate::src::xmltok::XML_TOK_INVALID_1
+            }
+        }
     }
 
     pub unsafe extern "C" fn big2_isPublicId(
