@@ -787,7 +787,7 @@ pub unsafe extern "C" fn UnknownEncodingHandler(
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn dummy_release(mut data: *mut ::core::ffi::c_void) {}
+extern "C" fn dummy_release(_data: *mut ::core::ffi::c_void) {}
 #[no_mangle]
 pub unsafe extern "C" fn UnrecognisedEncodingHandler(
     mut data: *mut ::core::ffi::c_void,
@@ -831,13 +831,11 @@ pub unsafe extern "C" fn unknown_released_encoding_handler(
         return XML_STATUS_ERROR as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn failing_converter(
-    mut data: *mut ::core::ffi::c_void,
-    mut s: *const ::core::ffi::c_char,
+extern "C" fn failing_converter(
+    _data: *mut ::core::ffi::c_void,
+    _s: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        return -(1 as ::core::ffi::c_int);
-    }
+    -(1 as ::core::ffi::c_int)
 }
 unsafe extern "C" fn prefix_converter(
     mut data: *mut ::core::ffi::c_void,
@@ -3454,31 +3452,30 @@ pub unsafe extern "C" fn ext2_accumulate_characters(
         accumulate_characters((*test_data).storage as *mut ::core::ffi::c_void, s, len);
     }
 }
-unsafe extern "C" fn record_call(
-    rec: *mut handler_record_list,
-    mut funcname: *const ::core::ffi::c_char,
+fn record_call(
+    rec: &mut handler_record_list,
+    funcname: *const ::core::ffi::c_char,
     arg: ::core::ffi::c_int,
 ) {
-    unsafe {
-        let max_entries: ::core::ffi::c_int = (::core::mem::size_of::<[handler_record_entry; 50]>()
-            as usize)
-            .wrapping_div(::core::mem::size_of::<handler_record_entry>() as usize)
-            as ::core::ffi::c_int;
-        if !((*rec).count < max_entries) {
+    let max_entries = ::core::ffi::c_int::try_from(rec.entries.len())
+        .expect("handler record capacity should fit into c_int");
+    if !(rec.count < max_entries) {
+        unsafe {
             _fail(
                 b"/root/work/expat/tests/handlers.c\0".as_ptr() as *const ::core::ffi::c_char,
                 1682 as ::core::ffi::c_int,
                 b"check failed: rec->count < max_entries\0".as_ptr() as *const ::core::ffi::c_char,
             );
         }
-        let c2rust_fresh0 = (*rec).count;
-        (*rec).count = (*rec).count + 1;
-        let e: *mut handler_record_entry = (&raw mut (*rec).entries as *mut handler_record_entry)
-            .offset(c2rust_fresh0 as isize)
-            as *mut handler_record_entry;
-        (*e).name = funcname;
-        (*e).arg = arg;
     }
+
+    let entry_index =
+        usize::try_from(rec.count).expect("handler record count should be non-negative");
+    rec.count += 1;
+    rec.entries[entry_index] = handler_record_entry {
+        name: funcname,
+        arg,
+    };
 }
 #[no_mangle]
 pub unsafe extern "C" fn record_default_handler(
@@ -3488,7 +3485,7 @@ pub unsafe extern "C" fn record_default_handler(
 ) {
     unsafe {
         record_call(
-            userData as *mut handler_record_list,
+            &mut *(userData as *mut handler_record_list),
             b"record_default_handler\0".as_ptr() as *const ::core::ffi::c_char,
             len,
         );
@@ -3502,7 +3499,7 @@ pub unsafe extern "C" fn record_cdata_handler(
 ) {
     unsafe {
         record_call(
-            userData as *mut handler_record_list,
+            &mut *(userData as *mut handler_record_list),
             b"record_cdata_handler\0".as_ptr() as *const ::core::ffi::c_char,
             len,
         );
@@ -3517,7 +3514,7 @@ pub unsafe extern "C" fn record_cdata_nodefault_handler(
 ) {
     unsafe {
         record_call(
-            userData as *mut handler_record_list,
+            &mut *(userData as *mut handler_record_list),
             b"record_cdata_nodefault_handler\0".as_ptr() as *const ::core::ffi::c_char,
             len,
         );
@@ -3531,7 +3528,7 @@ pub unsafe extern "C" fn record_skip_handler(
 ) {
     unsafe {
         record_call(
-            userData as *mut handler_record_list,
+            &mut *(userData as *mut handler_record_list),
             b"record_skip_handler\0".as_ptr() as *const ::core::ffi::c_char,
             is_parameter_entity,
         );
