@@ -4434,7 +4434,9 @@ pub unsafe extern "C" fn XML_MemFree_ffi(
 ) {
     XML_MemFree(parser.as_ref(), ptr)
 }
-pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Parser) {
+#[export_name = "XML_DefaultCurrent"]
+
+pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
     if parser.is_null() {
         return;
     }
@@ -4455,11 +4457,6 @@ pub unsafe extern "C" fn XML_DefaultCurrent(mut parser: crate::expat_h::XML_Pars
             );
         }
     }
-}
-#[export_name = "XML_DefaultCurrent"]
-
-pub unsafe extern "C" fn XML_DefaultCurrent_ffi(mut parser: crate::expat_h::XML_Parser) {
-    XML_DefaultCurrent(parser)
 }
 pub extern "C" fn XML_ErrorString(
     mut code: crate::expat_h::XML_Error,
