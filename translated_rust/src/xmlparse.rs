@@ -8350,7 +8350,7 @@ pub unsafe extern "C" fn XML_ExpatVersion() -> *const crate::expat_external_h::X
 pub unsafe extern "C" fn XML_ExpatVersion_ffi() -> *const crate::expat_external_h::XML_LChar {
     XML_ExpatVersion()
 }
-pub unsafe extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
+pub extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
     let mut version: crate::expat_h::XML_Expat_Version = crate::expat_h::XML_Expat_Version {
         major: 0,
         minor: 0,
