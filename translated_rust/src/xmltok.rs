@@ -825,34 +825,6 @@ pub mod xmltok_impl_c {
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    pub unsafe extern "C" fn normal_scanComment(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let (token, next) = normal_scan_comment_impl(&normal.type_0, input, |offset, width| {
-            normal_char_check(
-                normal,
-                NormalCharCheck::Invalid,
-                width,
-                enc,
-                ptr.add(offset),
-                &input[offset..],
-            )
-        });
-        if let Some(offset) = next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        token
-    }
-
     enum NormalScanDeclAction {
         Comment,
         Token(::core::ffi::c_int, Option<usize>),
@@ -3084,7 +3056,25 @@ pub mod xmltok_impl_c {
             NormalPrologAction::Declaration(start) => {
                 match normal_scan_decl_impl(&normal.type_0, &input[start..]) {
                     NormalScanDeclAction::Comment => {
-                        normal_scanComment(enc, ptr.add(start + 1), end, nextTokPtr)
+                        let comment_start = start + 1;
+                        let (token, next) = normal_scan_comment_impl(
+                            &normal.type_0,
+                            &input[comment_start..],
+                            |offset, width| {
+                                normal_char_check(
+                                    normal,
+                                    NormalCharCheck::Invalid,
+                                    width,
+                                    enc,
+                                    ptr.add(comment_start + offset),
+                                    &input[comment_start + offset..],
+                                )
+                            },
+                        );
+                        if let Some(next) = next {
+                            *nextTokPtr = ptr.add(comment_start + next);
+                        }
+                        token
                     }
                     NormalScanDeclAction::Token(token, next) => {
                         if let Some(offset) = next {
@@ -12069,7 +12059,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;
 pub use crate::src::xmltok::xmltok_impl_c::normal_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanComment;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanPercent;
