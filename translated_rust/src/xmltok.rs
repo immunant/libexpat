@@ -12068,104 +12068,114 @@ unsafe extern "C" fn utf8_toUtf8(
     };
 }
 
-unsafe extern "C" fn utf8_toUtf16(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::xmltok::XML_Convert_Result {
-    let mut res: crate::src::xmltok::XML_Convert_Result = crate::src::xmltok::XML_CONVERT_COMPLETED;
-    let mut to: *mut ::core::ffi::c_ushort = *toP;
-    let mut from: *const ::core::ffi::c_char = *fromP;
-    '_after: {
-        while from < fromLim && to < toLim as *mut ::core::ffi::c_ushort {
-            match (*(enc as *const normal_encoding)).type_0[*from as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                5 => {
-                    if fromLim.offset_from(from) < 2 as isize {
-                        res = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-                        break '_after;
-                    } else {
-                        let c2rust_fresh0 = to;
-                        to = to.offset(1);
-                        *c2rust_fresh0 = ((*from.offset(0 as isize) as ::core::ffi::c_int
-                            & 0x1f as ::core::ffi::c_int)
-                            << 6 as ::core::ffi::c_int
-                            | *from.offset(1 as isize) as ::core::ffi::c_int
-                                & 0x3f as ::core::ffi::c_int)
-                            as ::core::ffi::c_ushort;
-                        from = from.offset(2 as ::core::ffi::c_int as isize);
-                    }
+fn utf8_to_utf16(
+    byte_types: &[::core::ffi::c_uchar; 256],
+    input: &[u8],
+    output: &mut [::core::ffi::c_ushort],
+) -> (crate::src::xmltok::XML_Convert_Result, usize, usize) {
+    let mut input_offset = 0;
+    let mut output_offset = 0;
+
+    while input_offset < input.len() && output_offset < output.len() {
+        match byte_types[input[input_offset] as usize] as u32 {
+            crate::xmltok_impl_h::BT_LEAD2 => {
+                if input.len() - input_offset < 2 {
+                    return (
+                        crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE,
+                        input_offset,
+                        output_offset,
+                    );
                 }
-                6 => {
-                    if fromLim.offset_from(from) < 3 as isize {
-                        res = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-                        break '_after;
-                    } else {
-                        let c2rust_fresh1 = to;
-                        to = to.offset(1);
-                        *c2rust_fresh1 = ((*from.offset(0 as isize) as ::core::ffi::c_int
-                            & 0xf as ::core::ffi::c_int)
-                            << 12 as ::core::ffi::c_int
-                            | (*from.offset(1 as isize) as ::core::ffi::c_int
-                                & 0x3f as ::core::ffi::c_int)
-                                << 6 as ::core::ffi::c_int
-                            | *from.offset(2 as isize) as ::core::ffi::c_int
-                                & 0x3f as ::core::ffi::c_int)
-                            as ::core::ffi::c_ushort;
-                        from = from.offset(3 as ::core::ffi::c_int as isize);
-                    }
+                output[output_offset] = (((input[input_offset] & 0x1f) as u16) << 6)
+                    | (input[input_offset + 1] & 0x3f) as u16;
+                input_offset += 2;
+                output_offset += 1;
+            }
+            crate::xmltok_impl_h::BT_LEAD3 => {
+                if input.len() - input_offset < 3 {
+                    return (
+                        crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE,
+                        input_offset,
+                        output_offset,
+                    );
                 }
-                7 => {
-                    let mut n: ::core::ffi::c_ulong = 0;
-                    if toLim.offset_from(to) < 2 as isize {
-                        res = crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-                        break '_after;
-                    } else if fromLim.offset_from(from) < 4 as isize {
-                        res = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-                        break '_after;
-                    } else {
-                        n = ((*from.offset(0 as isize) as ::core::ffi::c_int
-                            & 0x7 as ::core::ffi::c_int)
-                            << 18 as ::core::ffi::c_int
-                            | (*from.offset(1 as isize) as ::core::ffi::c_int
-                                & 0x3f as ::core::ffi::c_int)
-                                << 12 as ::core::ffi::c_int
-                            | (*from.offset(2 as isize) as ::core::ffi::c_int
-                                & 0x3f as ::core::ffi::c_int)
-                                << 6 as ::core::ffi::c_int
-                            | *from.offset(3 as isize) as ::core::ffi::c_int
-                                & 0x3f as ::core::ffi::c_int)
-                            as ::core::ffi::c_ulong;
-                        n = n.wrapping_sub(0x10000 as ::core::ffi::c_ulong);
-                        *to.offset(0 as isize) = (n >> 10 as ::core::ffi::c_int
-                            | 0xd800 as ::core::ffi::c_ulong)
-                            as ::core::ffi::c_ushort;
-                        *to.offset(1 as isize) = (n & 0x3ff as ::core::ffi::c_ulong
-                            | 0xdc00 as ::core::ffi::c_ulong)
-                            as ::core::ffi::c_ushort;
-                        to = to.offset(2 as ::core::ffi::c_int as isize);
-                        from = from.offset(4 as ::core::ffi::c_int as isize);
-                    }
+                output[output_offset] = (((input[input_offset] & 0x0f) as u16) << 12)
+                    | (((input[input_offset + 1] & 0x3f) as u16) << 6)
+                    | (input[input_offset + 2] & 0x3f) as u16;
+                input_offset += 3;
+                output_offset += 1;
+            }
+            crate::xmltok_impl_h::BT_LEAD4 => {
+                if output.len() - output_offset < 2 {
+                    return (
+                        crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED,
+                        input_offset,
+                        output_offset,
+                    );
                 }
-                _ => {
-                    let c2rust_fresh2 = from;
-                    from = from.offset(1);
-                    let c2rust_fresh3 = to;
-                    to = to.offset(1);
-                    *c2rust_fresh3 = *c2rust_fresh2 as ::core::ffi::c_ushort;
+                if input.len() - input_offset < 4 {
+                    return (
+                        crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE,
+                        input_offset,
+                        output_offset,
+                    );
                 }
+                let scalar = (((input[input_offset] & 0x07) as u32) << 18)
+                    | (((input[input_offset + 1] & 0x3f) as u32) << 12)
+                    | (((input[input_offset + 2] & 0x3f) as u32) << 6)
+                    | (input[input_offset + 3] & 0x3f) as u32;
+                let surrogate = scalar.wrapping_sub(0x10000);
+                output[output_offset] = ((surrogate >> 10) | 0xd800) as u16;
+                output[output_offset + 1] = ((surrogate & 0x3ff) | 0xdc00) as u16;
+                input_offset += 4;
+                output_offset += 2;
+            }
+            _ => {
+                output[output_offset] = input[input_offset] as u16;
+                input_offset += 1;
+                output_offset += 1;
             }
         }
-        if from < fromLim {
-            res = crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-        }
     }
-    *fromP = from;
-    *toP = to;
-    return res;
+
+    let result = if input_offset < input.len() {
+        crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED
+    } else {
+        crate::src::xmltok::XML_CONVERT_COMPLETED
+    };
+    (result, input_offset, output_offset)
+}
+
+unsafe extern "C" fn utf8_toUtf16(
+    enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
+) -> crate::src::xmltok::XML_Convert_Result {
+    // The converter contract supplies two ordered, single-allocation windows.
+    // Keep the borrowed slices local so their lifetimes cannot outlive the call.
+    let from = *fromP;
+    let to = *toP;
+    let input_len: usize = fromLim.offset_from(from).try_into().unwrap();
+    let output_len: usize = toLim.offset_from(to).try_into().unwrap();
+    let input_start = if input_len == 0 {
+        ::core::ptr::NonNull::<u8>::dangling().as_ptr()
+    } else {
+        from as *const u8
+    };
+    let output_start = if output_len == 0 {
+        ::core::ptr::NonNull::<::core::ffi::c_ushort>::dangling().as_ptr()
+    } else {
+        to
+    };
+    let input = ::core::slice::from_raw_parts(input_start, input_len);
+    let output = ::core::slice::from_raw_parts_mut(output_start, output_len);
+    let byte_types = &(*(enc as *const normal_encoding)).type_0;
+    let (result, input_offset, output_offset) = utf8_to_utf16(byte_types, input, output);
+    *fromP = from.add(input_offset);
+    *toP = to.add(output_offset);
+    result
 }
 
 static mut utf8_encoding_ns: normal_encoding = normal_encoding {
