@@ -14157,7 +14157,21 @@ unsafe extern "C" fn doProlog(
                 }
             }
         }
-        let predefined_entity_name = {
+        // Resolve the scanner's token once through the parser/entity owner.
+        // The resulting byte copy is used by declaration storage and public
+        // identifier validation below, so those paths never recreate a slice
+        // from the raw processor cursors.  The copy also prevents the view
+        // from surviving a parser mutation or callback re-entry.
+        let encoding = &*enc;
+        let unknown_encoding = match parser.m_encoding {
+            EncodingState::Initial => None,
+            EncodingState::Unknown => parser
+                .m_unknownEncodingMem
+                .as_ref()
+                .and_then(UnknownEncodingMemory::initialized_encoding)
+                .copied(),
+        };
+        let (predefined_entity_name, token_bytes) = {
             let token = if parser_events {
                 let Some(bytes) = parser.m_buffer.window_from_addresses(s.addr(), next.addr()) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -14187,11 +14201,14 @@ unsafe extern "C" fn doProlog(
                 };
                 token
             };
+            let mut token_bytes = Vec::new();
+            if token_bytes.try_reserve_exact(token.len()).is_err() {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            }
+            token_bytes.extend(token.iter().map(|&ch| ch as u8));
             let prolog_state = &mut (*parser).m_prologState;
-            let (min_bytes_per_char, entity_name_matcher) = {
-                let encoding = &*enc;
-                (encoding.minBytesPerChar, encoding.predefinedEntityName)
-            };
+            let (min_bytes_per_char, entity_name_matcher) =
+                (encoding.minBytesPerChar, encoding.predefinedEntityName);
             role = crate::src::xmlrole::prolog_handler_dispatch(
                 prolog_state
                     .handler
@@ -14201,11 +14218,12 @@ unsafe extern "C" fn doProlog(
                 token,
                 min_bytes_per_char,
             );
-            if role == 9 {
+            let predefined_entity_name = if role == 9 {
                 crate::src::xmltok::predefined_entity_name(entity_name_matcher, token)
             } else {
                 0
-            }
+            };
+            (predefined_entity_name, token_bytes)
         };
         match role {
             2 | 1 | 57 => {}
@@ -14252,13 +14270,14 @@ unsafe extern "C" fn doProlog(
                                     }
                                     4 => {
                                         if (*parser).m_startDoctypeDeclHandler {
-                                            let doctype_name = poolStoreString(
-                                                &raw mut (*parser).m_tempPool,
-                                                enc,
-                                                s,
-                                                next,
-                                            );
-                                            if doctype_name.is_null() {
+                                            if pool_store_name_source(
+                                                &mut (*parser).m_tempPool,
+                                                encoding,
+                                                unknown_encoding.as_ref(),
+                                                &token_bytes,
+                                            )
+                                            .is_none()
+                                            {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             let Some(doctype_name) =
@@ -14396,33 +14415,28 @@ unsafe extern "C" fn doProlog(
                                             Some(DeclaredEntity::ExternalSubset);
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                         if (*parser).m_startDoctypeDeclHandler {
-                                            let public_id_checker = (*enc).isPublicId;
+                                            let public_id_checker = encoding.isPublicId;
                                             let public_id_width = match public_id_checker {
                                                 crate::src::xmltok::PublicIdChecker::Normal => 1,
                                                 crate::src::xmltok::PublicIdChecker::Little2
                                                 | crate::src::xmltok::PublicIdChecker::Big2 => 2,
                                             };
-                                            let public_id_length = next.offset_from(s);
-                                            let bad_offset = if public_id_length
-                                                < (2 * public_id_width) as isize
+                                            let bad_offset = if token_bytes.len()
+                                                < 2 * public_id_width
                                             {
                                                 None
                                             } else {
-                                                let quoted = ::core::slice::from_raw_parts(
-                                                    s.cast::<u8>(),
-                                                    public_id_length as usize,
-                                                );
                                                 let byte_types = &(*(enc
                                                     as *const crate::src::xmltok::normal_encoding))
                                                     .type_0;
                                                 crate::src::xmltok::quoted_public_id_bad_offset(
-                                                    quoted,
+                                                    &token_bytes,
                                                     byte_types,
                                                     public_id_checker,
                                                 )
                                             };
                                             if let Some(bad_offset) = bad_offset {
-                                                let bad_ptr = s.add(bad_offset);
+                                                let bad_ptr = s.wrapping_add(bad_offset);
                                                 if parser_events {
                                                     set_parser_event_start!(
                                                         parser,
@@ -14439,13 +14453,21 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             }
-                                            let stored_public_id = poolStoreString(
-                                                &raw mut (*parser).m_tempPool,
-                                                enc,
-                                                s.offset((*enc).minBytesPerChar as isize),
-                                                next.offset(-((*enc).minBytesPerChar as isize)),
-                                            );
-                                            if stored_public_id.is_null() {
+                                            let Some(quoted_public_id) = token_bytes.get(
+                                                public_id_width..token_bytes
+                                                    .len()
+                                                    .saturating_sub(public_id_width),
+                                            ) else {
+                                                return crate::expat_h::XML_ERROR_PUBLICID;
+                                            };
+                                            if pool_store_name_source(
+                                                &mut (*parser).m_tempPool,
+                                                encoding,
+                                                unknown_encoding.as_ref(),
+                                                quoted_public_id,
+                                            )
+                                            .is_none()
+                                            {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             let parser_ref = &mut *parser;
