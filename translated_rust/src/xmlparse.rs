@@ -3672,15 +3672,6 @@ fn new_test_visible_allocation_with_factory(
     Some(TestVisibleAllocation { storage, backing })
 }
 
-fn new_test_visible_allocation(
-    parser: &XML_ParserStruct,
-    size: crate::__stddef_size_t_h::size_t,
-    source_line: ::core::ffi::c_int,
-) -> Option<TestVisibleAllocation> {
-    let factory = AllocationBackingFactory::for_parser(parser);
-    new_test_visible_allocation_with_factory(Some(&factory), size, source_line)
-}
-
 impl ParserAllocatorPolicy {
     fn reserve(
         &self,
@@ -6822,30 +6813,41 @@ fn expat_malloc_record(
 
 /// Allocate a test-visible Expat block for an already-validated parser.
 ///
-/// The parser reference keeps raw-handle validation at the boundary.  The
-/// foreign allocation is an opaque callback token; the XML_TESTING size
-/// prefix and returned payload live in owned, aligned Rust storage.
-pub unsafe fn expat_malloc(
-    parser: &XML_ParserStruct,
+/// The parser-specific allocator route and registry are captured before this
+/// implementation runs.  The foreign allocation is an opaque callback token;
+/// the XML_TESTING size prefix and payload address live in owned, aligned Rust
+/// storage.
+struct ExpatMallocRequest {
+    root: std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    factory: Option<AllocationBackingFactory>,
+}
+
+fn expat_malloc(
+    request: ExpatMallocRequest,
     size: crate::__stddef_size_t_h::size_t,
     sourceLine: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    let Some(mut allocation) = new_test_visible_allocation(parser, size, sourceLine) else {
-        return crate::__stddef_null_h::NULL;
+) -> usize {
+    let Some(mut allocation) = new_test_visible_allocation_with_factory(
+        request.factory.as_ref(),
+        size,
+        sourceLine,
+    ) else {
+        return 0;
     };
-    let payload_ptr = allocation
+    let payload_address = allocation
         .storage
         .chunks
         .as_mut_ptr()
         .cast::<u8>()
         .wrapping_add(TestAllocationStorage::payload_offset())
-        .cast::<::core::ffi::c_void>();
-    std::sync::Arc::clone(&parser.m_root)
+        .addr();
+    request
+        .root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .test_allocations
-        .insert(payload_ptr.addr(), allocation);
-    payload_ptr
+        .insert(payload_address, allocation);
+    payload_address
 }
 #[export_name = "expat_malloc"]
 
@@ -6858,7 +6860,11 @@ pub unsafe extern "C" fn expat_malloc_ffi(
         return crate::__stddef_null_h::NULL;
     }
     let parser = parser.as_ref().expect("non-null parser was checked");
-    expat_malloc(parser, size, sourceLine)
+    let request = ExpatMallocRequest {
+        root: std::sync::Arc::clone(&parser.m_root),
+        factory: parser.m_allocationBackingFactory.clone(),
+    };
+    std::ptr::with_exposed_provenance_mut(expat_malloc(request, size, sourceLine))
 }
 fn expat_free_account(
     parser: &XML_ParserStruct,
