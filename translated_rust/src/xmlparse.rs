@@ -10955,13 +10955,16 @@ unsafe fn doContent(
                             ) else {
                                 return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
                             };
-                            let name = dtd_state
+                            // This temporary entry is rewound before a
+                            // skipped-entity callback can re-enter.  Keep an
+                            // owned, terminated snapshot for that callback.
+                            let Some(callback_name) = dtd_state
                                 .pool
                                 .chars_from(name_ref)
-                                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                            if name.is_null() {
+                                .map(ToOwned::to_owned)
+                            else {
                                 return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-                            }
+                            };
                             let entity = general_entity_mut(dtd_state, name_ref, salt).map(
                                 |entity| {
                                     (
@@ -11009,9 +11012,9 @@ unsafe fn doContent(
                             let restricted = dtd_state.hasParamEntityRefs == 0
                                 || dtd_state.standalone as ::core::ffi::c_int != 0;
                             dtd_state.pool.rewind();
-                            Ok((restricted, entity, name))
+                            Ok((restricted, entity, callback_name))
                         });
-                        let (restricted_entity_declarations, entity, name) = match entity_lookup {
+                        let (restricted_entity_declarations, entity, callback_name) = match entity_lookup {
                             Ok(entity_lookup) => entity_lookup,
                             Err(error) => return error,
                         };
@@ -11034,9 +11037,10 @@ unsafe fn doContent(
                                     .get(&(parser_ptr as usize))
                                     .cloned();
                                 if let Some(callback) = callback {
-                                    callback.invoke(
-                                        handler_arg_from_state!(parser),
-                                        name,
+                                    dispatch_skipped_entity_callback(
+                                        callback.as_ref(),
+                                        parser,
+                                        &callback_name,
                                         0 as ::core::ffi::c_int,
                                     );
                                 }
@@ -11085,9 +11089,10 @@ unsafe fn doContent(
                                         }) else {
                                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                         };
-                                        callback.invoke(
-                                            handler_arg_from_state!(parser),
-                                            entity_name.as_ptr(),
+                                        dispatch_skipped_entity_callback(
+                                            callback.as_ref(),
+                                            parser,
+                                            &entity_name,
                                             0 as ::core::ffi::c_int,
                                         );
                                     }
