@@ -3969,18 +3969,6 @@ impl SharedDtd {
     }
 }
 
-// Resolves the directly-owned shared DTD at an existing raw-parser access
-// site.  The owner is established during parser construction; no raw parent
-// traversal is needed here.
-macro_rules! parser_dtd_ptr {
-    ($parser:expr) => {{
-        (*$parser)
-            .m_dtd
-            .as_ref()
-            .map_or(::core::ptr::null_mut(), |dtd| dtd.value.get())
-    }};
-}
-
 // Keep cursor bookkeeping independent of the legacy processor cursor ABI.
 // Callers validate or derive their byte address at that boundary; parser state
 // retains only a checked offset into its owned input buffer.
@@ -8689,26 +8677,40 @@ pub unsafe extern "C" fn XML_SetBase_ffi(
     });
     xml_set_base_impl(parser, base)
 }
+struct BaseLookup {
+    dtd: Option<std::sync::Arc<SharedDtd>>,
+    base: Option<PoolStringRef>,
+}
+
 unsafe fn xml_get_base_impl(
-    mut parser: crate::expat_h::XML_Parser,
+    lookup: BaseLookup,
 ) -> *const crate::expat_external_h::XML_Char {
-    if parser.is_null() {
-        return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    }
-    let parser = &*parser;
-    let dtd = &*parser_dtd_ptr!(parser);
-    return parser
-        .m_curBase
-        .and_then(|base| dtd.pool.chars_from(base))
-        .map(|chars| chars.as_ptr())
-        .unwrap_or(::core::ptr::null());
+    let Some(dtd) = lookup.dtd.as_ref() else {
+        return ::core::ptr::null();
+    };
+    dtd.inspect(|dtd| {
+        lookup
+            .base
+            .and_then(|base| dtd.pool.chars_from(base))
+            .map(|chars| chars.as_ptr())
+            .unwrap_or(::core::ptr::null())
+    })
 }
 #[export_name = "XML_GetBase"]
 
 pub unsafe extern "C" fn XML_GetBase_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> *const crate::expat_external_h::XML_Char {
-    xml_get_base_impl(parser)
+    if parser.is_null()
+        || parser.addr() % ::core::mem::align_of::<XML_ParserStruct>() != 0
+    {
+        return ::core::ptr::null();
+    }
+    let parser = &*parser;
+    xml_get_base_impl(BaseLookup {
+        dtd: parser.m_dtd.clone(),
+        base: parser.m_curBase,
+    })
 }
 pub unsafe extern "C" fn XML_GetSpecifiedAttributeCount(
     mut parser: crate::expat_h::XML_Parser,
