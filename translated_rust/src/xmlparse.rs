@@ -8816,7 +8816,28 @@ unsafe extern "C" fn doProlog(
                 return contentProcessor(parser, s, end, nextPtr);
             }
             34 => {
-                (*parser).m_declElementType = getElementType(parser, enc, s, next);
+                let name: *const crate::expat_external_h::XML_Char =
+                    poolStoreString(&mut (*dtd).pool, enc, s, next);
+                let mut element_type: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                if !name.is_null() {
+                    element_type = lookup(
+                        parser,
+                        &raw mut (*dtd).elementTypes,
+                        name as KEY,
+                        ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
+                    ) as *mut ELEMENT_TYPE;
+                    if !element_type.is_null() {
+                        if (*element_type).name != name {
+                            (*dtd).pool.ptr = (*dtd).pool.start;
+                        } else {
+                            (*dtd).pool.start = (*dtd).pool.ptr;
+                            if setElementTypePrefix(parser, element_type) == 0 {
+                                element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                            }
+                        }
+                    }
+                }
+                (*parser).m_declElementType = element_type;
                 if (*parser).m_declElementType.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
@@ -9859,7 +9880,30 @@ unsafe extern "C" fn doProlog(
             }
             40 => {
                 if (*parser).m_elementDeclHandler.is_some() {
-                    (*parser).m_declElementType = getElementType(parser, enc, s, next);
+                    let name: *const crate::expat_external_h::XML_Char =
+                        poolStoreString(&mut (*dtd).pool, enc, s, next);
+                    let mut element_type: *mut ELEMENT_TYPE =
+                        ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                    if !name.is_null() {
+                        element_type = lookup(
+                            parser,
+                            &raw mut (*dtd).elementTypes,
+                            name as KEY,
+                            ::core::mem::size_of::<ELEMENT_TYPE>()
+                                as crate::__stddef_size_t_h::size_t,
+                        ) as *mut ELEMENT_TYPE;
+                        if !element_type.is_null() {
+                            if (*element_type).name != name {
+                                (*dtd).pool.ptr = (*dtd).pool.start;
+                            } else {
+                                (*dtd).pool.start = (*dtd).pool.ptr;
+                                if setElementTypePrefix(parser, element_type) == 0 {
+                                    element_type = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                }
+                            }
+                        }
+                    }
+                    (*parser).m_declElementType = element_type;
                     if (*parser).m_declElementType.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -10081,7 +10125,27 @@ unsafe extern "C" fn doProlog(
                     (*(*dtd).scaffold.offset(myindex_0 as isize)).type_0 =
                         crate::expat_h::XML_CTYPE_NAME;
                     (*(*dtd).scaffold.offset(myindex_0 as isize)).quant = quant;
-                    el = getElementType(parser, enc, s, nxt);
+                    let name: *const crate::expat_external_h::XML_Char =
+                        poolStoreString(&mut (*dtd).pool, enc, s, nxt);
+                    if !name.is_null() {
+                        el = lookup(
+                            parser,
+                            &raw mut (*dtd).elementTypes,
+                            name as KEY,
+                            ::core::mem::size_of::<ELEMENT_TYPE>()
+                                as crate::__stddef_size_t_h::size_t,
+                        ) as *mut ELEMENT_TYPE;
+                        if !el.is_null() {
+                            if (*el).name != name {
+                                (*dtd).pool.ptr = (*dtd).pool.start;
+                            } else {
+                                (*dtd).pool.start = (*dtd).pool.ptr;
+                                if setElementTypePrefix(parser, el) == 0 {
+                                    el = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                                }
+                            }
+                        }
+                    }
                     if el.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -12811,39 +12875,6 @@ unsafe extern "C" fn build_model(
             }
         }
         dest = dest.offset(1);
-    }
-    return ret;
-}
-
-unsafe extern "C" fn getElementType(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-) -> *mut ELEMENT_TYPE {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut name: *const crate::expat_external_h::XML_Char =
-        poolStoreString(&mut (*dtd).pool, enc, ptr, end);
-    let mut ret: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    if name.is_null() {
-        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    }
-    ret = lookup(
-        parser,
-        &raw mut (*dtd).elementTypes,
-        name as KEY,
-        ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
-    ) as *mut ELEMENT_TYPE;
-    if ret.is_null() {
-        return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-    }
-    if (*ret).name != name {
-        (*dtd).pool.ptr = (*dtd).pool.start;
-    } else {
-        (*dtd).pool.start = (*dtd).pool.ptr;
-        if setElementTypePrefix(parser, ret) == 0 {
-            return ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        }
     }
     return ret;
 }
