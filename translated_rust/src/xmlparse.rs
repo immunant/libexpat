@@ -25696,7 +25696,7 @@ fn entity_tracking_report_stats(
 }
 
 /// Updates tracking after opening an entity that is already held in the DTD's
-/// typed table.  The only raw-handle form remains for legacy callers below.
+/// typed table.
 fn entity_tracking_on_open(
     parser: &mut XML_ParserStruct,
     entity: &ENTITY,
@@ -25725,93 +25725,6 @@ fn entity_tracking_on_close(
 ) {
     entity_tracking_report_stats(parser, entity, EntityTrackingAction::Close, source_line);
     let mut root = parser
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_sub(1);
-}
-
-/// Resolves the parser-owned DTD and entity record at the legacy raw-handle
-/// boundary, then delegates all reporting to the safe implementation.
-unsafe fn entity_tracking_report_stats_from_handles(
-    root_parser: crate::expat_h::XML_Parser,
-    entity: *mut ENTITY,
-    action: EntityTrackingAction,
-    source_line: ::core::ffi::c_int,
-) {
-    let root_parser_address = root_parser.addr();
-    let Some(root_parser) = root_parser.as_ref() else {
-        return;
-    };
-    let Some(entity) = entity.as_ref() else {
-        return;
-    };
-    let Some(dtd) = root_parser.m_dtd.as_deref() else {
-        return;
-    };
-    let dtd = &*dtd.value.get();
-    let stats = root_parser
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if stats.entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
-        return;
-    }
-    let Some(entity_name) = pool_terminated_chars(&dtd.pool, entity.named.name) else {
-        return;
-    };
-    let Some(entity_name) = entity_name.strip_suffix(&[0]) else {
-        return;
-    };
-    entityTrackingReportStats(EntityTrackingReport {
-        root_parser_address,
-        count_ever_opened: stats.entity_stats.countEverOpened,
-        current_depth: stats.entity_stats.currentDepth,
-        maximum_depth_seen: stats.entity_stats.maximumDepthSeen,
-        is_parameter: entity.is_param != 0,
-        entity_name: bytemuck::cast_slice(entity_name),
-        action,
-        text_length: entity.textLen,
-        source_line,
-    });
-}
-
-unsafe extern "C" fn entityTrackingOnOpen(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut sourceLine: ::core::ffi::c_int,
-) {
-    {
-        let mut root = (*originParser)
-            .m_root
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        root.entity_stats.countEverOpened = root.entity_stats.countEverOpened.wrapping_add(1);
-        root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_add(1);
-        if root.entity_stats.currentDepth > root.entity_stats.maximumDepthSeen {
-            root.entity_stats.maximumDepthSeen = root.entity_stats.maximumDepthSeen.wrapping_add(1);
-        }
-    }
-    entity_tracking_report_stats_from_handles(
-        originParser,
-        entity,
-        EntityTrackingAction::Open,
-        sourceLine,
-    );
-}
-
-unsafe extern "C" fn entityTrackingOnClose(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut sourceLine: ::core::ffi::c_int,
-) {
-    entity_tracking_report_stats_from_handles(
-        originParser,
-        entity,
-        EntityTrackingAction::Close,
-        sourceLine,
-    );
-    let mut root = (*originParser)
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
