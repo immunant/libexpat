@@ -2687,7 +2687,8 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
     };
     XML_SetEncoding(parser.as_mut(), copied_encoding_name)
 }
-pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
+#[export_name = "XML_ExternalEntityParserCreate"]
+pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
     mut oldParser: crate::expat_h::XML_Parser,
     mut context: *const crate::expat_external_h::XML_Char,
     mut encodingName: *const crate::expat_external_h::XML_Char,
@@ -2861,15 +2862,6 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         );
     }
     return parser;
-}
-#[export_name = "XML_ExternalEntityParserCreate"]
-
-pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut context: *const crate::expat_external_h::XML_Char,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    XML_ExternalEntityParserCreate(oldParser, context, encodingName)
 }
 unsafe extern "C" fn destroyBindings(
     mut bindings: *mut BINDING,
@@ -4090,7 +4082,8 @@ pub unsafe extern "C" fn XML_StopParser_ffi(
 ) -> crate::expat_h::XML_Status {
     XML_StopParser(parser.as_mut(), resumable)
 }
-pub unsafe extern "C" fn XML_ResumeParser(
+#[export_name = "XML_ResumeParser"]
+pub unsafe extern "C" fn XML_ResumeParser_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Status {
     let mut result: crate::expat_h::XML_Status = crate::expat_h::XML_STATUS_OK;
@@ -4148,13 +4141,6 @@ pub unsafe extern "C" fn XML_ResumeParser(
     );
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
-}
-#[export_name = "XML_ResumeParser"]
-
-pub unsafe extern "C" fn XML_ResumeParser_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Status {
-    XML_ResumeParser(parser)
 }
 pub fn XML_GetParsingStatus(
     parser: Option<&XML_ParserStruct>,
