@@ -609,7 +609,7 @@ pub mod expat_h {
         Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
 
     pub type XML_DefaultHandler = Option<
-        unsafe extern "C" fn(
+        extern "C" fn(
             *mut ::core::ffi::c_void,
             *const crate::expat_external_h::XML_Char,
             ::core::ffi::c_int,

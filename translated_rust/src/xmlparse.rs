@@ -1576,7 +1576,7 @@ where
 trait DefaultCallback: Send + Sync + std::any::Any {}
 
 impl DefaultCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         ::core::ffi::c_int,
@@ -1870,7 +1870,7 @@ fn default_callback_adapter(
             return;
         };
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 ::core::ffi::c_int,
@@ -1880,9 +1880,7 @@ fn default_callback_adapter(
         };
         // The typed event provides a live parser context and a bounded,
         // parser-owned character slice for this synchronous C callback.
-        unsafe {
-            callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
-        }
+        callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
     });
     std::sync::Arc::new(DefaultCallbackAdapter { callback })
 }
