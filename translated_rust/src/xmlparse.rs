@@ -1476,30 +1476,30 @@ where
 // CDATA callbacks use the same boundary registry as the other handler
 // families. Parser state only records whether one is installed, so an address
 // supplied by C is not retained in the parser object.
-trait EndCdataSectionCallback: Send + Sync {
-    unsafe fn invoke(&self, user_data: *mut ::core::ffi::c_void);
-}
+trait EndCdataSectionCallback: Send + Sync + std::any::Any {}
 
-impl EndCdataSectionCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> () {
-    unsafe fn invoke(&self, user_data: *mut ::core::ffi::c_void) {
-        self(user_data);
-    }
+impl EndCdataSectionCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> () {}
+
+/// Owns an erased C callback representation while exposing only a typed
+/// parser reference to callback dispatch.
+struct CdataSectionCallbackAdapter {
+    callback: std::sync::Arc<dyn std::any::Any + Send + Sync>,
 }
 
 static START_CDATA_SECTION_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<CdataSectionCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 static END_CDATA_SECTION_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<CdataSectionCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 /// Typed CDATA callback registrations prepared at the ABI boundary.  The
 /// parser-side setter only needs these owned adapters and an opaque parser
 /// address key.
 struct CdataSectionHandlers {
-    start: Option<std::sync::Arc<dyn EndCdataSectionCallback>>,
-    end: Option<std::sync::Arc<dyn EndCdataSectionCallback>>,
+    start: Option<std::sync::Arc<CdataSectionCallbackAdapter>>,
+    end: Option<std::sync::Arc<CdataSectionCallbackAdapter>>,
 }
 
 /// An end-CDATA handler registration prepared from the ABI callback value.
@@ -1507,7 +1507,7 @@ struct CdataSectionHandlers {
 /// The parser-side setter retains only this typed registry entry and its
 /// opaque address key; it never retains the C callback representation itself.
 struct EndCdataSectionHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn EndCdataSectionCallback>>,
+    callback: Option<std::sync::Arc<CdataSectionCallbackAdapter>>,
 }
 
 fn end_cdata_section_handler_registration<Callback>(
@@ -1517,7 +1517,26 @@ where
     Callback: EndCdataSectionCallback + 'static,
 {
     EndCdataSectionHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
+            callback: std::sync::Arc::new(callback),
+        })),
+    }
+}
+
+fn cdata_section_handlers<Callback>(
+    start: Option<Callback>,
+    end: Option<Callback>,
+) -> CdataSectionHandlers
+where
+    Callback: EndCdataSectionCallback + 'static,
+{
+    CdataSectionHandlers {
+        start: start.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
+            callback: std::sync::Arc::new(callback),
+        })),
+        end: end.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
+            callback: std::sync::Arc::new(callback),
+        })),
     }
 }
 
@@ -1602,7 +1621,7 @@ static START_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
 // End-doctype has the same callback signature as end-CDATA, but keeps a
 // separate registration namespace because the two handlers are independent.
 static END_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<CdataSectionCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 /// An end-doctype handler registration prepared from the ABI callback value.
@@ -1610,7 +1629,7 @@ static END_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
 /// The parser-side setter retains only this typed registry entry and its
 /// opaque address key; it never retains the C callback representation itself.
 struct EndDoctypeDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn EndCdataSectionCallback>>,
+    callback: Option<std::sync::Arc<CdataSectionCallbackAdapter>>,
 }
 
 fn end_doctype_decl_handler_registration<Callback>(
@@ -1620,7 +1639,25 @@ where
     Callback: EndCdataSectionCallback + 'static,
 {
     EndDoctypeDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
+            callback: std::sync::Arc::new(callback),
+        })),
+    }
+}
+
+fn doctype_decl_handlers<StartCallback, EndCallback>(
+    start: Option<StartCallback>,
+    end: Option<EndCallback>,
+) -> DoctypeDeclHandlers
+where
+    StartCallback: StartDoctypeDeclCallback + 'static,
+    EndCallback: EndCdataSectionCallback + 'static,
+{
+    DoctypeDeclHandlers {
+        start: start.map(|callback| std::sync::Arc::new(callback) as _),
+        end: end.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
+            callback: std::sync::Arc::new(callback),
+        })),
     }
 }
 
@@ -1629,7 +1666,7 @@ where
 /// address key.
 struct DoctypeDeclHandlers {
     start: Option<std::sync::Arc<dyn StartDoctypeDeclCallback>>,
-    end: Option<std::sync::Arc<dyn EndCdataSectionCallback>>,
+    end: Option<std::sync::Arc<CdataSectionCallbackAdapter>>,
 }
 
 // C exposes two handler-context modes: callbacks receive the caller's user
@@ -1751,6 +1788,17 @@ macro_rules! handler_arg_from_state {
     }};
 }
 
+impl CdataSectionCallbackAdapter {
+    fn invoke(&self, parser: &XML_ParserStruct) {
+        let Some(callback) = self.callback.downcast_ref::<
+            unsafe extern "C" fn(*mut ::core::ffi::c_void),
+        >() else {
+            return;
+        };
+        unsafe { callback(handler_arg_from_state!(parser)) }
+    }
+}
+
 /// Stages a start-element event in owned XML-character vectors before making
 /// the one ABI callback.  Attribute pool handles, rather than raw pointers,
 /// survive the parser work leading up to this point; the local pointer array
@@ -1869,10 +1917,10 @@ fn dispatch_end_element_callback(
 /// handler setters, so parser logic can retain a typed parser reference until
 /// this narrow ABI dispatch point.
 fn invoke_cdata_section_callback(
-    callback: &dyn EndCdataSectionCallback,
+    callback: &CdataSectionCallbackAdapter,
     parser: &XML_ParserStruct,
 ) {
-    unsafe { callback.invoke(handler_arg_from_state!(parser)) }
+    callback.invoke(parser)
 }
 
 trait NotStandaloneCallback: Send + Sync + std::any::Any {}
@@ -7923,10 +7971,10 @@ fn xml_external_entity_parser_create_impl(
     let mut oldCommentHandler = false;
     let mut oldCommentCallback: Option<std::sync::Arc<dyn CommentCallback>> = None;
     let mut oldStartCdataSectionHandler = false;
-    let mut oldStartCdataSectionCallback: Option<std::sync::Arc<dyn EndCdataSectionCallback>> =
+    let mut oldStartCdataSectionCallback: Option<std::sync::Arc<CdataSectionCallbackAdapter>> =
         None;
     let mut oldEndCdataSectionHandler = false;
-    let mut oldEndCdataSectionCallback: Option<std::sync::Arc<dyn EndCdataSectionCallback>> = None;
+    let mut oldEndCdataSectionCallback: Option<std::sync::Arc<CdataSectionCallbackAdapter>> = None;
     let mut oldDefaultHandler = false;
     let mut oldDefaultCallback: Option<std::sync::Arc<dyn DefaultCallback>> = None;
     let mut oldUnparsedEntityDeclHandler = false;
@@ -9126,10 +9174,7 @@ pub unsafe extern "C" fn XML_SetCdataSectionHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let handlers = CdataSectionHandlers {
-        start: start.map(|callback| std::sync::Arc::new(callback) as _),
-        end: end.map(|callback| std::sync::Arc::new(callback) as _),
-    };
+    let handlers = cdata_section_handlers(start, end);
     let parser = parser.as_mut().expect("non-null parser was checked");
     XML_SetCdataSectionHandler(
         &mut parser.m_startCdataSectionHandler,
@@ -9150,7 +9195,12 @@ pub unsafe extern "C" fn XML_SetStartCdataSectionHandler(
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         match start {
             Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+                handlers.insert(
+                    parser as usize,
+                    std::sync::Arc::new(CdataSectionCallbackAdapter {
+                        callback: std::sync::Arc::new(callback),
+                    }),
+                );
             }
             None => {
                 handlers.remove(&(parser as usize));
@@ -9306,10 +9356,7 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
-    let handlers = DoctypeDeclHandlers {
-        start: start.map(|callback| std::sync::Arc::new(callback) as _),
-        end: end.map(|callback| std::sync::Arc::new(callback) as _),
-    };
+    let handlers = doctype_decl_handlers(start, end);
     let parser = parser.as_mut().expect("non-null parser was checked");
     XML_SetDoctypeDeclHandler(
         &mut parser.m_startDoctypeDeclHandler,
