@@ -691,11 +691,10 @@ pub struct encoding {
     pub isUtf16: ::core::ffi::c_char,
 }
 
-/// Matches a tokenizer-bounded encoded entity name using the selected fixed encoding.
-pub unsafe fn predefined_entity_name(
-    enc: *const crate::src::xmltok::ENCODING,
-    ptr: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
+/// Matches one bounded encoded entity name using the selected fixed encoding.
+fn predefined_entity_name_bytes(
+    matcher: PredefinedEntityNameMatcher,
+    input: &[u8],
 ) -> ::core::ffi::c_int {
     const PREDEFINED: [(&[u8], ::core::ffi::c_int); 5] = [
         (b"lt", crate::ascii_h::ASCII_LT),
@@ -705,35 +704,62 @@ pub unsafe fn predefined_entity_name(
         (b"apos", crate::ascii_h::ASCII_APOS),
     ];
 
-    let matcher = (*enc).predefinedEntityName;
-    let encoded_name_len = end.offset_from(ptr);
     for &(name, value) in &PREDEFINED {
         let width = match matcher {
             PredefinedEntityNameMatcher::Normal => 1,
             PredefinedEntityNameMatcher::Little2 | PredefinedEntityNameMatcher::Big2 => 2,
         };
-        if encoded_name_len / width as isize != name.len() as isize {
+        if input.len() != name.len() * width {
             continue;
         }
         let matches = match matcher {
-            PredefinedEntityNameMatcher::Normal => name
-                .iter()
-                .enumerate()
-                .all(|(index, &byte)| *ptr.add(index) as u8 == byte),
-            PredefinedEntityNameMatcher::Little2 => {
-                name.iter().enumerate().all(|(index, &byte)| {
-                    *ptr.add(index * 2) as u8 == byte && *ptr.add(index * 2 + 1) == 0
-                })
-            }
-            PredefinedEntityNameMatcher::Big2 => name.iter().enumerate().all(|(index, &byte)| {
-                *ptr.add(index * 2) == 0 && *ptr.add(index * 2 + 1) as u8 == byte
-            }),
+            PredefinedEntityNameMatcher::Normal => input == name,
+            PredefinedEntityNameMatcher::Little2 => input
+                .chunks_exact(2)
+                .zip(name.iter())
+                .all(|(code_unit, &byte)| code_unit == [byte, 0]),
+            PredefinedEntityNameMatcher::Big2 => input
+                .chunks_exact(2)
+                .zip(name.iter())
+                .all(|(code_unit, &byte)| code_unit == [0, byte]),
         };
         if matches {
             return value;
         }
     }
     0
+}
+
+/// Matches a tokenizer-bounded encoded entity name using the selected fixed encoding.
+///
+/// `ptr..end` must be a single, readable input allocation.  An equal pair is
+/// allowed, including a null pair, because it denotes an empty entity name.
+pub unsafe fn predefined_entity_name(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    let matcher = unsafe { (*enc).predefinedEntityName };
+    if ptr == end {
+        return predefined_entity_name_bytes(matcher, &[]);
+    }
+    let encoded_name_len = unsafe { end.offset_from(ptr) };
+    if encoded_name_len <= 0 {
+        return 0;
+    }
+    let width = match matcher {
+        PredefinedEntityNameMatcher::Normal => 1,
+        PredefinedEntityNameMatcher::Little2 | PredefinedEntityNameMatcher::Big2 => 2,
+    };
+    // Keep the original floor division: a dangling UTF-16 byte is not part of
+    // the encoded name.  Only 2-, 3-, and 4-character predefined names exist,
+    // so this also bounds the raw-to-slice conversion to eight bytes.
+    let name_len = encoded_name_len as usize / width;
+    if !(2..=4).contains(&name_len) {
+        return 0;
+    }
+    let input = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), name_len * width) };
+    predefined_entity_name_bytes(matcher, input)
 }
 
 pub unsafe fn convert_to_utf8(
