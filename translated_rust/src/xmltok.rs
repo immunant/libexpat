@@ -318,14 +318,9 @@ impl Scanner {
                             xmltok_impl_c::NormalCharCheck::Name
                         }
                     };
-                    xmltok_impl_c::normal_char_check(
-                        normal,
-                        kind,
-                        width,
-                        enc,
-                        ptr.wrapping_add(offset),
-                        &input[offset..],
-                    )
+                    xmltok_impl_c::normal_char_check(normal, kind, width, &input[offset..], || {
+                        unknown_character_value(enc, ptr.wrapping_add(offset))
+                    })
                 });
             let (token, next) = match action {
                 xmltok_impl_c::NormalPrologAction::Token(token, next) => {
@@ -344,9 +339,8 @@ impl Scanner {
                                 normal,
                                 xmltok_impl_c::NormalCharCheck::Invalid,
                                 width,
-                                enc,
-                                ptr.wrapping_add(start + offset),
                                 &input[start + offset..],
+                                || unknown_character_value(enc, ptr.wrapping_add(start + offset)),
                             )
                         },
                     );
@@ -364,9 +358,13 @@ impl Scanner {
                                         normal,
                                         xmltok_impl_c::NormalCharCheck::Invalid,
                                         width,
-                                        enc,
-                                        ptr.wrapping_add(comment_start + offset),
                                         &input[comment_start + offset..],
+                                        || {
+                                            unknown_character_value(
+                                                enc,
+                                                ptr.wrapping_add(comment_start + offset),
+                                            )
+                                        },
                                     )
                                 },
                             );
@@ -805,13 +803,12 @@ pub mod xmltok_impl_c {
         Name,
     }
 
-    pub(super) unsafe fn normal_char_check(
+    pub(super) fn normal_char_check(
         normal: &normal_encoding,
         kind: NormalCharCheck,
         width: usize,
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
         input: &[u8],
+        unknown_character: impl FnOnce() -> ::core::ffi::c_int,
     ) -> bool {
         let unknown_check = match kind {
             NormalCharCheck::Invalid => match width {
@@ -873,7 +870,7 @@ pub mod xmltok_impl_c {
                 _ => unreachable!(),
             },
         };
-        unknown_check.expect("unknown character check")(unknown_character_value(enc, ptr))
+        unknown_check.expect("unknown character check")(unknown_character())
     }
 
     pub(super) fn normal_scan_comment_impl(
@@ -2368,7 +2365,9 @@ pub mod xmltok_impl_c {
         let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
         let normal = &*(enc as *const normal_encoding);
         let char_check = |kind, offset, width| {
-            normal_char_check(normal, kind, width, enc, ptr.add(offset), &input[offset..])
+            normal_char_check(normal, kind, width, &input[offset..], || {
+                unknown_character_value(enc, ptr.add(offset))
+            })
         };
         let result = normal_scan_lt_with_check(normal, input, &char_check);
         if let Some(next) = result.next {
@@ -2539,9 +2538,8 @@ pub mod xmltok_impl_c {
                 normal,
                 NormalCharCheck::Invalid,
                 width,
-                enc,
-                ptr.add(offset),
                 &input[offset..],
+                || unknown_character_value(enc, ptr.add(offset)),
             )
         }) {
             NormalContentAction::Token(token, next) => {
@@ -2793,9 +2791,8 @@ pub mod xmltok_impl_c {
                 normal,
                 NormalCharCheck::Invalid,
                 width,
-                enc,
-                ptr.add(offset),
                 &input[offset..],
+                || unknown_character_value(enc, ptr.add(offset)),
             )
         });
         if let Some(offset) = next {
