@@ -444,20 +444,6 @@ pub unsafe fn convert_to_utf8(
     }
 }
 
-pub unsafe fn update_position(
-    updater: PositionUpdater,
-    enc: *const crate::src::xmltok::ENCODING,
-    ptr: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    pos: *mut crate::src::xmltok::POSITION,
-) {
-    match updater {
-        PositionUpdater::Init => initUpdatePosition(enc, ptr, end, pos),
-        PositionUpdater::Normal => xmltok_impl_c::normal_updatePosition(enc, ptr, end, pos),
-        PositionUpdater::Little2 => xmltok_impl_c::little2_updatePosition(enc, ptr, end, pos),
-        PositionUpdater::Big2 => xmltok_impl_c::big2_updatePosition(enc, ptr, end, pos),
-    }
-}
 #[derive(Copy, Clone)]
 #[repr(C)]
 
@@ -4385,29 +4371,30 @@ pub mod xmltok_impl_c {
         mut end: *const ::core::ffi::c_char,
         mut pos: *mut crate::src::xmltok::POSITION,
     ) {
+        let pos = &mut *pos;
         while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize {
             match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
                 as ::core::ffi::c_int
             {
                 5 => {
                     ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
                 }
                 6 => {
                     ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
                 }
                 7 => {
                     ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
                 }
                 10 => {
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
+                    pos.columnNumber = 0 as crate::expat_external_h::XML_Size;
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
                     ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
                 }
                 9 => {
-                    (*pos).lineNumber = (*pos).lineNumber.wrapping_add(1);
+                    pos.lineNumber = pos.lineNumber.wrapping_add(1);
                     ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
                     if end.offset_from(ptr)
                         >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize
@@ -4418,11 +4405,11 @@ pub mod xmltok_impl_c {
                     {
                         ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
                     }
-                    (*pos).columnNumber = 0 as crate::expat_external_h::XML_Size;
+                    pos.columnNumber = 0 as crate::expat_external_h::XML_Size;
                 }
                 _ => {
                     ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    (*pos).columnNumber = (*pos).columnNumber.wrapping_add(1);
+                    pos.columnNumber = pos.columnNumber.wrapping_add(1);
                 }
             }
         }
@@ -12663,7 +12650,6 @@ pub mod xmltok_ns_c {
     use crate::src::xmltok::doParseXmlDecl;
     use crate::src::xmltok::getEncodingIndex;
     use crate::src::xmltok::initScan;
-    use crate::src::xmltok::initUpdatePosition;
     use crate::src::xmltok::internal_little2_encoding;
     use crate::src::xmltok::internal_little2_encoding_ns;
     use crate::src::xmltok::internal_utf8_encoding;
@@ -19952,13 +19938,27 @@ unsafe extern "C" fn streqci(
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn initUpdatePosition(
+pub(crate) unsafe fn initUpdatePosition(
+    updater: crate::src::xmltok::PositionUpdater,
     _enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut pos: *mut crate::src::xmltok::POSITION,
 ) {
-    normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
+    match updater {
+        crate::src::xmltok::PositionUpdater::Init => {
+            normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos)
+        }
+        crate::src::xmltok::PositionUpdater::Normal => {
+            normal_updatePosition(_enc, ptr, end, pos)
+        }
+        crate::src::xmltok::PositionUpdater::Little2 => {
+            crate::src::xmltok::xmltok_impl_c::little2_updatePosition(_enc, ptr, end, pos)
+        }
+        crate::src::xmltok::PositionUpdater::Big2 => {
+            crate::src::xmltok::xmltok_impl_c::big2_updatePosition(_enc, ptr, end, pos)
+        }
+    }
 }
 
 unsafe extern "C" fn toAscii(

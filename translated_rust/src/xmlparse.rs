@@ -4001,7 +4001,7 @@ pub unsafe extern "C" fn XML_ParseBuffer(
             _ => {}
         }
     }
-    crate::src::xmltok::update_position(
+    crate::src::xmltok::initUpdatePosition(
         (*(*parser).m_encoding).updatePosition,
         (*parser).m_encoding,
         (*parser).m_positionPtr,
@@ -4287,7 +4287,7 @@ pub unsafe extern "C" fn XML_ResumeParser(
             _ => {}
         }
     }
-    crate::src::xmltok::update_position(
+    crate::src::xmltok::initUpdatePosition(
         (*(*parser).m_encoding).updatePosition,
         (*parser).m_encoding,
         (*parser).m_positionPtr,
@@ -4421,7 +4421,7 @@ pub unsafe extern "C" fn XML_GetCurrentLineNumber(
         return 0 as crate::expat_external_h::XML_Size;
     }
     if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
-        crate::src::xmltok::update_position(
+        crate::src::xmltok::initUpdatePosition(
             (*(*parser).m_encoding).updatePosition,
             (*parser).m_encoding,
             (*parser).m_positionPtr,
@@ -4449,7 +4449,7 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber(
         return 0 as crate::expat_external_h::XML_Size;
     }
     if !(*parser).m_eventPtr.is_null() && (*parser).m_eventPtr >= (*parser).m_positionPtr {
-        crate::src::xmltok::update_position(
+        crate::src::xmltok::initUpdatePosition(
             (*(*parser).m_encoding).updatePosition,
             (*parser).m_encoding,
             (*parser).m_positionPtr,
