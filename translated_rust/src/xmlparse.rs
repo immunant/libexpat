@@ -9497,18 +9497,24 @@ pub unsafe extern "C" fn XML_SetParamEntityParsing_ffi(
 ) -> ::core::ffi::c_int {
     XML_SetParamEntityParsing(parser, peParsing)
 }
-pub unsafe extern "C" fn XML_SetHashSalt(
-    mut parser: crate::expat_h::XML_Parser,
-    mut hash_salt: ::core::ffi::c_ulong,
+/// The subset of parser state needed to configure the shared hash key.
+///
+/// This owned snapshot lets the exported boundary discard its borrowed parser
+/// handle before the configuration logic decides whether it may update state.
+struct HashSaltSettings {
+    parsing: ::core::ffi::c_uint,
+    root: std::sync::Arc<std::sync::Mutex<RootParserState>>,
+}
+
+fn XML_SetHashSalt(
+    settings: HashSaltSettings,
+    hash_salt: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_int {
-    if parser.is_null() {
+    if settings.parsing == 1 || settings.parsing == 3 {
         return 0 as ::core::ffi::c_int;
     }
-    if parserBusy(parser) != 0 {
-        return 0 as ::core::ffi::c_int;
-    }
-    (*parser)
-        .m_root
+    settings
+        .root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt = hash_salt;
@@ -9520,7 +9526,14 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut hash_salt: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_int {
-    XML_SetHashSalt(parser, hash_salt)
+    let Some(parser) = parser.as_mut() else {
+        return 0 as ::core::ffi::c_int;
+    };
+    let settings = HashSaltSettings {
+        parsing: parser.m_parsingStatus.parsing as ::core::ffi::c_uint,
+        root: std::sync::Arc::clone(&parser.m_root),
+    };
+    XML_SetHashSalt(settings, hash_salt)
 }
 /// Parses either a supplied input slice (`XML_Parse`) or the caller-filled
 /// parser buffer (`XML_ParseBuffer`).  The C cursor ABI remains below the
