@@ -3167,7 +3167,7 @@ struct LiveParserAllocationBacking {
 /// their opaque tokens observable, without retaining a parser handle.
 #[derive(Clone)]
 struct ParserAllocatorPolicy {
-    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+    allocator_key: usize,
     root: std::sync::Arc<std::sync::Mutex<RootParserState>>,
     parser_address: usize,
 }
@@ -3212,7 +3212,7 @@ impl AllocationBackingFactory {
     fn for_parser(parser: &XML_ParserStruct) -> Self {
         Self {
             policy: ParserAllocatorPolicy {
-                memory_suite: parser.m_mem,
+                allocator_key: parser.m_allocatorKey,
                 root: std::sync::Arc::clone(&parser.m_root),
                 parser_address: std::ptr::from_ref(parser).addr(),
             },
@@ -3409,11 +3409,12 @@ impl AllocationBacking {
         size: crate::__stddef_size_t_h::size_t,
         source_line: ::core::ffi::c_int,
     ) -> Option<Self> {
+        let memory_suite = allocator_suite(policy.allocator_key)?;
         let bytes = expat_allocation_bytes(size)?;
         if !policy.reserve(bytes, source_line) {
             return None;
         }
-        let malloc = policy.memory_suite.malloc_fcn.expect("non-null function pointer");
+        let malloc = memory_suite.malloc_fcn.expect("non-null function pointer");
         let allocation = malloc(bytes);
         if allocation.is_null() {
             return None;
@@ -3483,8 +3484,7 @@ impl AllocationBacking {
                         .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
                         .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
                         .cast::<::core::ffi::c_void>();
-                    let realloc = policy
-                        .memory_suite
+                    let realloc = memory_suite
                         .realloc_fcn
                         .expect("non-null function pointer");
                     let replacement = realloc(prefix, bytes);
@@ -3526,8 +3526,7 @@ impl AllocationBacking {
                     if !policy.reserve(bytes, allocation_source_line) {
                         return false;
                     }
-                    let malloc = policy
-                        .memory_suite
+                    let malloc = memory_suite
                         .malloc_fcn
                         .expect("non-null function pointer");
                     let replacement = malloc(bytes);
@@ -3562,7 +3561,7 @@ impl AllocationBacking {
                         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
                         .wrapping_add(previous_size);
                     policy.account_free(previous_bytes, free_source_line);
-                    let free = policy.memory_suite.free_fcn.expect("non-null function pointer");
+                    let free = memory_suite.free_fcn.expect("non-null function pointer");
                     free(prefix);
                     allocation = replacement;
                     true
@@ -3585,7 +3584,7 @@ impl AllocationBacking {
                         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
                         .wrapping_add(size);
                     policy.account_free(bytes, source_line);
-                    let free = policy.memory_suite.free_fcn.expect("non-null function pointer");
+                    let free = memory_suite.free_fcn.expect("non-null function pointer");
                     free(prefix);
                     true
                 }
@@ -3834,6 +3833,7 @@ impl DataBuffer {
 // the Expat contract, while the mutex also prevents accidental concurrent
 // mutation through separately-owned child handles.
 struct RootParserState {
+    allocator_suite_key: usize,
     hash_secret_salt: ::core::ffi::c_ulong,
     accounting: ACCOUNTING,
     alloc_tracker: MALLOC_TRACKER,
@@ -3850,6 +3850,55 @@ struct RootParserState {
     public_memory_releases: std::collections::HashMap<usize, Box<dyn FnOnce()>>,
 }
 
+// The C allocator DTO stays at the ABI boundary. Parser state carries only
+// an address key, while this registry owns the copied DTO for the parser's
+// lifetime.
+static ALLOCATOR_SUITES: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<usize, crate::expat_h::XML_Memory_Handling_Suite>,
+    >,
+> = std::sync::OnceLock::new();
+
+fn register_allocator_suite(
+    parser_address: usize,
+    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
+) {
+    ALLOCATOR_SUITES
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(parser_address, memory_suite);
+}
+
+fn allocator_suite(
+    parser_address: usize,
+) -> Option<crate::expat_h::XML_Memory_Handling_Suite> {
+    ALLOCATOR_SUITES.get().and_then(|suites| {
+        suites
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(&parser_address)
+            .copied()
+    })
+}
+
+fn unregister_allocator_suite(parser_address: usize) {
+    if let Some(suites) = ALLOCATOR_SUITES.get() {
+        suites
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&parser_address);
+    }
+}
+
+impl Drop for RootParserState {
+    fn drop(&mut self) {
+        if self.allocator_suite_key != 0 {
+            unregister_allocator_suite(self.allocator_suite_key);
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 struct ExpatAllocation {
     payload_size: crate::__stddef_size_t_h::size_t,
@@ -3858,6 +3907,7 @@ struct ExpatAllocation {
 impl RootParserState {
     fn empty() -> Self {
         Self {
+            allocator_suite_key: 0,
             hash_secret_salt: 0,
             accounting: ACCOUNTING {
                 countBytesDirect: 0,
@@ -3939,18 +3989,15 @@ fn input_buffer_allocation_backing(
     factory: &AllocationBackingFactory,
     size: crate::__stddef_size_t_h::size_t,
 ) -> Option<Box<dyn FnMut()>> {
-    let malloc = factory
-        .policy
-        .memory_suite
+    let memory_suite = allocator_suite(factory.policy.allocator_key)?;
+    let malloc = memory_suite
         .malloc_fcn
         .expect("non-null function pointer");
     let allocation = malloc(size);
     if allocation.is_null() {
         return None;
     }
-    let free = factory
-        .policy
-        .memory_suite
+    let free = memory_suite
         .free_fcn
         .expect("non-null function pointer");
     Some(Box::new(move || free(allocation)))
@@ -4078,7 +4125,7 @@ pub struct XML_ParserStruct {
     // pointer is retained in parser state.
     pub m_handlerArg: HandlerArg,
     m_buffer: InputBuffer,
-    pub m_mem: crate::expat_h::XML_Memory_Handling_Suite,
+    m_allocatorKey: usize,
     // Captured at construction while the raw parser handle is live.  The
     // route creates opaque allocator tokens for Rust-owned storage without
     // propagating that handle through parser implementation code.
@@ -7381,13 +7428,19 @@ fn parser_create_ownership(
     if share_parent_dtd && parent_state.is_none() {
         return None;
     }
-    let mut parser_owner = Box::pin(initial_parser_struct(memory_suite));
+    let mut parser_owner = Box::pin(initial_parser_struct());
     let parser_ptr = std::ptr::from_mut(parser_owner.as_mut().get_mut());
     let Some(storage_backing) = parser_storage_backing(memory_suite) else {
         return None;
     };
     let parser = parser_owner.as_mut().get_mut();
     parser.m_parserStorageBacking = Some(storage_backing);
+    parser.m_allocatorKey = parent
+        .map(|parent| parent.m_allocatorKey)
+        .unwrap_or_else(|| parser_ptr.addr());
+    if parent.is_none() {
+        register_allocator_suite(parser.m_allocatorKey, memory_suite);
+    }
     let root_owner = {
         let alloc_tracker = MALLOC_TRACKER {
             bytesAllocated: 0 as XmlBigCount,
@@ -7425,6 +7478,11 @@ fn parser_create_ownership(
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .alloc_tracker = alloc_tracker;
+            parser
+                .m_root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .allocator_suite_key = parser.m_allocatorKey;
         }
         std::sync::Arc::clone(&parser.m_root)
     };
@@ -7639,14 +7697,12 @@ fn initial_encoding() -> crate::src::xmltok::INIT_ENCODING {
     }
 }
 
-fn initial_parser_struct(
-    memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
-) -> XML_ParserStruct {
+fn initial_parser_struct() -> XML_ParserStruct {
     XML_ParserStruct {
         m_userData: CallbackContext::empty(),
         m_handlerArg: HandlerArg::UserData,
         m_buffer: InputBuffer::empty(),
-        m_mem: memory_suite,
+        m_allocatorKey: 0,
         m_allocationBackingFactory: None,
         m_parserStorageBacking: None,
         m_bufferPtr: None,
@@ -8489,9 +8545,10 @@ fn xml_external_entity_parser_create_impl(
     oldInEntityValue = old.m_prologState.inEntityValue;
     oldns_triplets = old.m_ns_triplets;
     oldReparseDeferralEnabled = old.m_reparseDeferralEnabled;
+    let memory_suite = allocator_suite(old.m_allocatorKey)?;
     let mut parser_owner = match parser_create_ownership(ParserCreationRequest {
         encoding_name,
-        memory_suite: old.m_mem,
+        memory_suite,
         namespace_separator: (old.m_ns != 0).then_some(old.m_namespaceSeparator),
         share_parent_dtd: context.is_none(),
         parent: Some(old),
@@ -10676,7 +10733,7 @@ pub unsafe extern "C" fn XML_StopParser_ffi(
 /// Resume a suspended parser after its opaque handle has been checked at the
 /// FFI boundary.  The processor dispatch still has a legacy raw cursor ABI,
 /// but parser-state bookkeeping stays on this borrowed side of the boundary.
-pub unsafe fn XML_ResumeParser(
+pub fn XML_ResumeParser(
     parser: &mut XML_ParserStruct,
 ) -> crate::expat_h::XML_Status {
     let mut result: crate::expat_h::XML_Status = crate::expat_h::XML_STATUS_OK;
@@ -11131,12 +11188,13 @@ unsafe fn XML_MemMalloc(
     parser: &mut XML_ParserStruct,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    let allocation = parser
-        .m_mem
+    let memory_suite = allocator_suite(parser.m_allocatorKey)
+        .expect("allocator suite is registered while parser is alive");
+    let allocation = memory_suite
         .malloc_fcn
         .expect("non-null function pointer")(size);
     if !allocation.is_null() {
-        let release = parser.m_mem.free_fcn.expect("non-null function pointer");
+        let release = memory_suite.free_fcn.expect("non-null function pointer");
         parser
             .m_root
             .lock()
@@ -11162,12 +11220,13 @@ unsafe fn XML_MemRealloc(
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
 ) -> *mut ::core::ffi::c_void {
-    let allocation = parser
-        .m_mem
+    let memory_suite = allocator_suite(parser.m_allocatorKey)
+        .expect("allocator suite is registered while parser is alive");
+    let allocation = memory_suite
         .realloc_fcn
         .expect("non-null function pointer")(ptr, size);
     if !allocation.is_null() {
-        let release = parser.m_mem.free_fcn.expect("non-null function pointer");
+        let release = memory_suite.free_fcn.expect("non-null function pointer");
         let mut root = parser
             .m_root
             .lock()
@@ -26453,9 +26512,9 @@ fn content_model_allocation_backing(
     parser: &mut XML_ParserStruct,
     size: crate::__stddef_size_t_h::size_t,
 ) -> Option<Box<dyn FnMut()>> {
-    let free = parser.m_mem.free_fcn.expect("non-null function pointer");
-    let allocation = parser
-        .m_mem
+    let memory_suite = allocator_suite(parser.m_allocatorKey)?;
+    let free = memory_suite.free_fcn.expect("non-null function pointer");
+    let allocation = memory_suite
         .malloc_fcn
         .expect("non-null function pointer")(size);
     if allocation.is_null() {
