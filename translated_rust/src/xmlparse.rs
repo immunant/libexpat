@@ -4746,7 +4746,7 @@ pub struct ELEMENT_TYPE {
     // The records are owned values. Their opaque backing token preserves the
     // parser's configured malloc/realloc/free sequence without retaining a
     // dereferenceable allocation pointer in DTD state.
-    defaultAtts: Option<Box<DefaultAttributeStorage>>,
+    defaultAtts: Option<DefaultAttributeStorage>,
 }
 
 struct DefaultAttributeStorage {
@@ -22161,7 +22161,7 @@ fn define_attribute_impl(
     parser: &mut XML_ParserStruct,
     pool: &mut STRING_POOL,
     attribute_ids: &mut HASH_TABLE,
-    new_storage: &mut dyn FnMut(&mut XML_ParserStruct, usize) -> Option<Box<DefaultAttributeStorage>>,
+    new_storage: &mut dyn FnMut(&mut XML_ParserStruct, usize) -> Option<DefaultAttributeStorage>,
 ) -> ::core::ffi::c_int {
     let salt = parser
         .m_root
@@ -22280,7 +22280,7 @@ fn define_declared_attribute(
     is_cdata: crate::expat_h::XML_Bool,
     is_id: crate::expat_h::XML_Bool,
     value: Option<PoolStringRef>,
-    new_storage: &mut dyn FnMut(&mut XML_ParserStruct, usize) -> Option<Box<DefaultAttributeStorage>>,
+    new_storage: &mut dyn FnMut(&mut XML_ParserStruct, usize) -> Option<DefaultAttributeStorage>,
 ) -> bool {
     let salt = parser
         .m_root
@@ -23074,7 +23074,7 @@ fn dtd_destroy_impl(
     p: &mut DTD,
     is_doc_entity: bool,
     parser: &mut XML_ParserStruct,
-    release_default_attributes: &mut dyn FnMut(&mut XML_ParserStruct, Box<DefaultAttributeStorage>),
+    release_default_attributes: &mut dyn FnMut(&mut XML_ParserStruct, DefaultAttributeStorage),
 ) {
     // The shared owner is unwrapped by the parser that owns this DTD.  Release
     // allocator-backed members in the same order as the legacy DTD object.
@@ -23121,7 +23121,7 @@ unsafe fn dtdDestroy(
     parser: &mut XML_ParserStruct,
 ) {
     let mut release_default_attributes = |parser: &mut XML_ParserStruct,
-                                          mut storage: Box<DefaultAttributeStorage>| {
+                                          mut storage: DefaultAttributeStorage| {
         (storage.backing)(parser, DefaultAttributeAllocationAction::Free(7580));
     };
     dtd_destroy_impl(p, is_doc_entity, parser, &mut release_default_attributes);
@@ -23681,7 +23681,7 @@ fn default_attribute_storage_from_live_parser(
     parser: &mut XML_ParserStruct,
     capacity: usize,
     source_line: ::core::ffi::c_int,
-) -> Option<Box<DefaultAttributeStorage>> {
+) -> Option<DefaultAttributeStorage> {
     // `default_attribute_storage_new` is the narrow legacy allocator
     // boundary.  Its only caller obligation is the live parser borrow held
     // above; capacity arithmetic and allocation failure remain checked by
@@ -23693,7 +23693,7 @@ unsafe fn default_attribute_storage_new(
     parser: &mut XML_ParserStruct,
     capacity: usize,
     source_line: ::core::ffi::c_int,
-) -> Option<Box<DefaultAttributeStorage>> {
+) -> Option<DefaultAttributeStorage> {
     let allocation_size = capacity.checked_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>())?;
     let mut allocation = expat_malloc(parser, allocation_size, source_line);
     if allocation.is_null() {
@@ -23721,7 +23721,7 @@ unsafe fn default_attribute_storage_new(
         backing(parser, DefaultAttributeAllocationAction::Free(source_line));
         return None;
     }
-    Some(Box::new(DefaultAttributeStorage { values, backing }))
+    Some(DefaultAttributeStorage { values, backing })
 }
 
 fn hash_table_allocation_backing(
