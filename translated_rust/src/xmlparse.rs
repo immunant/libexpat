@@ -9264,6 +9264,36 @@ fn close_element_epilog_action(parser: &mut XML_ParserStruct) -> bool {
     }
 }
 
+/// Parser-owned state removed when an end tag has matched.
+///
+/// The tag is detached before a callback is dispatched, matching Expat's
+/// re-entry contract: callbacks observe the closed tag as no longer active
+/// and may reuse the free-list storage.
+struct ClosedContentTag {
+    has_end_element_handler: bool,
+    uses_namespaces: bool,
+    uses_ns_triplets: bool,
+    namespace_separator: crate::expat_external_h::XML_Char,
+    storage: TagStorage,
+}
+
+fn close_content_tag(parser: &mut XML_ParserStruct, tag_index: usize) -> ClosedContentTag {
+    parser.m_tagStack = tag_index.checked_sub(1);
+    let has_end_element_handler = parser.m_endElementHandler;
+    let uses_namespaces = parser.m_ns != 0;
+    let uses_ns_triplets = parser.m_ns_triplets != 0;
+    let namespace_separator = parser.m_namespaceSeparator;
+    parser.m_tagLevel -= 1;
+    let storage = parser.m_activeTags.remove(tag_index);
+    ClosedContentTag {
+        has_end_element_handler,
+        uses_namespaces,
+        uses_ns_triplets,
+        namespace_separator,
+        storage,
+    }
+}
+
 unsafe extern "C" fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
@@ -9479,21 +9509,28 @@ unsafe extern "C" fn doContent(
                             3403 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
                         );
-                        if (*parser).m_characterDataHandler {
+                        let (has_character_data_handler, has_default_handler) = {
+                            let parser_state = &*parser;
+                            (
+                                parser_state.m_characterDataHandler,
+                                parser_state.m_defaultHandler,
+                            )
+                        };
+                        if has_character_data_handler {
                             callCharacterDataHandler(
                                 parser,
                                 &raw const ch,
                                 1 as ::core::ffi::c_int,
                             );
-                        } else if (*parser).m_defaultHandler {
+                        } else if has_default_handler {
                             reportDefault(parser, enc, s, next);
                         }
                     } else {
                         name = poolStoreString(
                             &raw mut (*dtd).pool,
                             enc,
-                            s.wrapping_offset((*enc).minBytesPerChar as isize),
-                            next.wrapping_offset(-((*enc).minBytesPerChar as isize)),
+                            s.wrapping_offset(min_bytes_per_char as isize),
+                            next.wrapping_offset(-(min_bytes_per_char as isize)),
                         );
                         if name.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -10005,14 +10042,14 @@ unsafe extern "C" fn doContent(
                             update_event_start(rawName_0);
                             return crate::expat_h::XML_ERROR_TAG_MISMATCH;
                         }
-                        (*parser).m_tagStack = tag_index.checked_sub(1);
-                        let has_end_element_handler = (*parser).m_endElementHandler;
-                        let uses_namespaces = (*parser).m_ns != 0;
-                        let uses_ns_triplets = (*parser).m_ns_triplets != 0;
-                        let namespace_separator = (*parser).m_namespaceSeparator;
+                        let ClosedContentTag {
+                            has_end_element_handler,
+                            uses_namespaces,
+                            uses_ns_triplets,
+                            namespace_separator,
+                            storage: mut tag_storage,
+                        } = close_content_tag(&mut *parser, tag_index);
                         let mut end_element_name = ::core::ptr::null();
-                        (*parser).m_tagLevel -= 1;
-                        let mut tag_storage = (*parser).m_activeTags.remove(tag_index);
                         let tag_0 = tag_storage
                             .tag
                             .first_mut()
