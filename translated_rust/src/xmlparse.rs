@@ -13585,7 +13585,7 @@ unsafe extern "C" fn doIgnoreSection(
     }
     let s = *startPtr;
     let parser_state = &mut *parser;
-    let parser_events = enc == parser_encoding(parser);
+    let parser_events = enc == std::ptr::from_ref(current_parser_encoding(parser_state));
     // Event cursors name either the parser buffer or a live internal-entity
     // slot.  Retain the slot index, rather than an interior pointer to its
     // cursor fields, because callbacks may grow the entity storage.
@@ -13655,24 +13655,17 @@ unsafe extern "C" fn doIgnoreSection(
             IgnoreSectionInput::from_chars(window),
         )
     };
-    let Ok(outcome) = outcome else {
-        cdata_accounting_on_abort(parser_state);
-        return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-    };
-    event_target.set_start(parser_state, internal_event_window, s.addr());
-    let internal_event_start = (!parser_events)
-        .then(|| internal_event_offset(internal_event_window, s.addr()))
-        .flatten();
-    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    let next = s.wrapping_add(outcome.next_offset());
-    event_target.set_end(
+    let result = do_ignore_section_impl(
         parser_state,
-        internal_event_start,
+        outcome,
+        event_target,
         internal_event_window,
-        next.addr(),
+        s.addr(),
     );
-    match outcome {
-        IgnoreSectionOutcome::Closed { .. } => {
+    *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    match result {
+        IgnoreSectionResult::Closed { next_offset } => {
+            let next = s.wrapping_add(next_offset);
             if parser_state.m_defaultHandler {
                 reportDefault(parser, enc, s, next);
             }
@@ -13686,27 +13679,24 @@ unsafe extern "C" fn doIgnoreSection(
                 return crate::expat_h::XML_ERROR_NONE;
             }
         }
-        IgnoreSectionOutcome::Invalid { .. } => {
-            event_target.set_start(parser_state, internal_event_window, next.addr());
-            return crate::expat_h::XML_ERROR_INVALID_TOKEN;
-        }
-        IgnoreSectionOutcome::PartialChar { .. } => {
+        IgnoreSectionResult::Invalid => return crate::expat_h::XML_ERROR_INVALID_TOKEN,
+        IgnoreSectionResult::PartialChar => {
             if haveMore != 0 {
                 *nextPtr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             return crate::expat_h::XML_ERROR_PARTIAL_CHAR;
         }
-        IgnoreSectionOutcome::Partial { .. } => {
+        IgnoreSectionResult::Partial => {
             if haveMore != 0 {
                 *nextPtr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             return crate::expat_h::XML_ERROR_SYNTAX;
         }
-        IgnoreSectionOutcome::Unexpected { .. } => {
-            event_target.set_start(parser_state, internal_event_window, next.addr());
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        IgnoreSectionResult::Unexpected => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+        IgnoreSectionResult::AmplificationLimit => {
+            return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH
         }
     };
 }
@@ -13738,6 +13728,58 @@ enum IgnoreSectionOutcome {
     PartialChar { next: usize },
     Partial { next: usize },
     Unexpected { next: usize, token: ::core::ffi::c_int },
+}
+
+/// The state transition after an ignore-section token has been scanned and
+/// accounted for.  The raw cursor adapter converts the returned offset back
+/// to its C cursor only after this implementation has published event bounds.
+enum IgnoreSectionResult {
+    Closed { next_offset: usize },
+    Invalid,
+    PartialChar,
+    Partial,
+    Unexpected,
+    AmplificationLimit,
+}
+
+/// Applies an already-checked ignore-section scan to parser state.  Scanner
+/// input is deliberately absent from this interface: the borrowed token
+/// window has ended before parser state can be mutated or a callback can
+/// re-enter it.
+fn do_ignore_section_impl(
+    parser: &mut XML_ParserStruct,
+    outcome: Result<IgnoreSectionOutcome, ()>,
+    event_target: EventCursorTarget,
+    internal_event_window: Option<(usize, usize)>,
+    start_address: usize,
+) -> IgnoreSectionResult {
+    let Ok(outcome) = outcome else {
+        cdata_accounting_on_abort(parser);
+        return IgnoreSectionResult::AmplificationLimit;
+    };
+    event_target.set_start(parser, internal_event_window, start_address);
+    let internal_event_start = internal_event_window
+        .and_then(|window| internal_event_offset(Some(window), start_address));
+    let next_address = start_address.wrapping_add(outcome.next_offset());
+    event_target.set_end(
+        parser,
+        internal_event_start,
+        internal_event_window,
+        next_address,
+    );
+    match outcome {
+        IgnoreSectionOutcome::Closed { next } => IgnoreSectionResult::Closed { next_offset: next },
+        IgnoreSectionOutcome::Invalid { .. } => {
+            event_target.set_start(parser, internal_event_window, next_address);
+            IgnoreSectionResult::Invalid
+        }
+        IgnoreSectionOutcome::PartialChar { .. } => IgnoreSectionResult::PartialChar,
+        IgnoreSectionOutcome::Partial { .. } => IgnoreSectionResult::Partial,
+        IgnoreSectionOutcome::Unexpected { .. } => {
+            event_target.set_start(parser, internal_event_window, next_address);
+            IgnoreSectionResult::Unexpected
+        }
+    }
 }
 
 impl IgnoreSectionOutcome {
