@@ -354,6 +354,39 @@ fn matches_ascii_units(
     true
 }
 
+fn check_pi_target_with(
+    mut ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    tok_ptr: *mut ::core::ffi::c_int,
+    unit_size: isize,
+    read_unit: AsciiUnitReader,
+) -> ::core::ffi::c_int {
+    let mut upper = 0 as ::core::ffi::c_int;
+    write_copy(tok_ptr, XML_TOK_PI);
+
+    if remaining_const_c_chars(ptr, end) != unit_size as usize * 3 {
+        return 1 as ::core::ffi::c_int;
+    }
+
+    for &(lower, upper_variant) in &[(ASCII_x, ASCII_X), (ASCII_m, ASCII_M), (ASCII_l, ASCII_L)] {
+        match read_unit(ptr) {
+            value if value == lower => {}
+            value if value == upper_variant => {
+                upper = 1 as ::core::ffi::c_int;
+            }
+            _ => return 1 as ::core::ffi::c_int,
+        }
+        ptr = add_const_c_char(ptr, unit_size);
+    }
+
+    if upper != 0 {
+        return 0 as ::core::ffi::c_int;
+    }
+
+    write_copy(tok_ptr, XML_TOK_XML_DECL);
+    1 as ::core::ffi::c_int
+}
+
 fn predefined_entity_name_with(
     ptr: *const ::core::ffi::c_char,
     end: *const ::core::ffi::c_char,
@@ -1045,49 +1078,13 @@ unsafe extern "C" fn normal_scanDecl(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_checkPiTarget(
-    mut enc: *const ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut tokPtr: *mut ::core::ffi::c_int,
+extern "C" fn normal_checkPiTarget(
+    _enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    tokPtr: *mut ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = XML_TOK_PI;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (1 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            return 1 as ::core::ffi::c_int;
-        }
-        match *ptr as ::core::ffi::c_int {
-            ASCII_x => {}
-            ASCII_X => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            ASCII_m => {}
-            ASCII_M => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        match *ptr as ::core::ffi::c_int {
-            ASCII_l => {}
-            ASCII_L => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = XML_TOK_XML_DECL;
-        return 1 as ::core::ffi::c_int;
-    }
+    check_pi_target_with(ptr, end, tokPtr, 1, read_normal_ascii_unit)
 }
 unsafe extern "C" fn normal_scanPi(
     mut enc: *const ENCODING,
@@ -5209,67 +5206,13 @@ unsafe extern "C" fn little2_scanDecl(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_checkPiTarget(
-    mut enc: *const ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut tokPtr: *mut ::core::ffi::c_int,
+extern "C" fn little2_checkPiTarget(
+    _enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    tokPtr: *mut ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = XML_TOK_PI;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            return 1 as ::core::ffi::c_int;
-        }
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -(1 as ::core::ffi::c_int)
-        } {
-            ASCII_x => {}
-            ASCII_X => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -(1 as ::core::ffi::c_int)
-        } {
-            ASCII_m => {}
-            ASCII_M => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -(1 as ::core::ffi::c_int)
-        } {
-            ASCII_l => {}
-            ASCII_L => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = XML_TOK_XML_DECL;
-        return 1 as ::core::ffi::c_int;
-    }
+    check_pi_target_with(ptr, end, tokPtr, 2, read_little2_ascii_unit)
 }
 unsafe extern "C" fn little2_scanPi(
     mut enc: *const ENCODING,
@@ -9523,67 +9466,13 @@ unsafe extern "C" fn big2_scanDecl(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_checkPiTarget(
-    mut enc: *const ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut tokPtr: *mut ::core::ffi::c_int,
+extern "C" fn big2_checkPiTarget(
+    _enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    tokPtr: *mut ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut upper: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        *tokPtr = XML_TOK_PI;
-        if end.offset_from(ptr) as ::core::ffi::c_long
-            != (2 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            return 1 as ::core::ffi::c_int;
-        }
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -(1 as ::core::ffi::c_int)
-        } {
-            ASCII_x => {}
-            ASCII_X => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -(1 as ::core::ffi::c_int)
-        } {
-            ASCII_m => {}
-            ASCII_M => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-        {
-            *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-        } else {
-            -(1 as ::core::ffi::c_int)
-        } {
-            ASCII_l => {}
-            ASCII_L => {
-                upper = 1 as ::core::ffi::c_int;
-            }
-            _ => return 1 as ::core::ffi::c_int,
-        }
-        if upper != 0 {
-            return 0 as ::core::ffi::c_int;
-        }
-        *tokPtr = XML_TOK_XML_DECL;
-        return 1 as ::core::ffi::c_int;
-    }
+    check_pi_target_with(ptr, end, tokPtr, 2, read_big2_ascii_unit)
 }
 unsafe extern "C" fn big2_scanPi(
     mut enc: *const ENCODING,
