@@ -1121,8 +1121,9 @@ pub use crate::stdlib::SIZE_MAX;
 
 pub use crate::src::xmlrole::prolog_state;
 pub use crate::src::xmlrole::C2Rust_Unnamed_0;
-pub use crate::src::xmlrole::XmlPrologStateInit;
-pub use crate::src::xmlrole::XmlPrologStateInitExternalEntity;
+pub use crate::src::xmlrole::prolog_state_init;
+pub use crate::src::xmlrole::prolog_handler_dispatch;
+pub use crate::src::xmlrole::prolog_state_init_external_entity;
 pub use crate::src::xmlrole::PROLOG_STATE;
 pub use crate::src::xmlrole::XML_ROLE_ATTLIST_ELEMENT_NAME;
 pub use crate::src::xmlrole::XML_ROLE_ATTLIST_NONE;
@@ -2587,9 +2588,7 @@ unsafe extern "C" fn parserInit(
                 *mut *const ::core::ffi::c_char,
             ) -> crate::expat_h::XML_Error,
     );
-    crate::src::xmlrole::XmlPrologStateInit(
-        &raw mut (*parser).m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
-    );
+    crate::src::xmlrole::prolog_state_init(&mut (*parser).m_prologState);
     if !encodingName.is_null() {
         (*parser).m_protocolEncodingName = copyString(encodingName, parser);
     }
@@ -2980,8 +2979,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         );
     } else {
         (*parser).m_isParamEntity = crate::expat_h::XML_TRUE;
-        crate::src::xmlrole::XmlPrologStateInitExternalEntity(
-            &raw mut (*parser).m_prologState as *mut _ as *mut crate::src::xmlrole::prolog_state,
+        crate::src::xmlrole::prolog_state_init_external_entity(
+            &mut (*parser).m_prologState,
         );
         (*parser).m_processor = Some(
             externalParEntInitProcessor
@@ -7926,10 +7925,11 @@ unsafe extern "C" fn doProlog(
                     if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
                         || enc != (*parser).m_encoding
                     {
-                        if (*parser)
-                            .m_prologState
-                            .handler
-                            .expect("non-null function pointer")(
+                        if crate::src::xmlrole::prolog_handler_dispatch(
+                            (*parser)
+                                .m_prologState
+                                .handler
+                                .expect("prolog state must have a handler"),
                             &raw mut (*parser).m_prologState,
                             -4 as ::core::ffi::c_int,
                             end,
@@ -7950,10 +7950,11 @@ unsafe extern "C" fn doProlog(
                 }
             }
         }
-        role = (*parser)
-            .m_prologState
-            .handler
-            .expect("non-null function pointer")(
+        role = crate::src::xmlrole::prolog_handler_dispatch(
+            (*parser)
+                .m_prologState
+                .handler
+                .expect("prolog state must have a handler"),
             &raw mut (*parser).m_prologState,
             tok,
             s,
