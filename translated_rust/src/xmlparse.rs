@@ -9678,6 +9678,26 @@ struct NamespaceDeclHandlerRegistrations {
     end: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>>,
 }
 
+/// A start-namespace handler registration prepared from the ABI callback
+/// value.
+///
+/// Parser state retains only this typed registry entry and its opaque address
+/// key, never the C callback representation itself.
+struct StartNamespaceDeclHandlerRegistration {
+    callback: Option<std::sync::Arc<TwoXmlCharCallback>>,
+}
+
+fn start_namespace_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> StartNamespaceDeclHandlerRegistration
+where
+    Callback: ProcessingInstructionCallback + 'static,
+{
+    StartNamespaceDeclHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 fn namespace_decl_handler_registrations<StartCallback, EndCallback>(
     start: Option<StartCallback>,
     end: Option<EndCallback>,
@@ -9746,33 +9766,38 @@ pub unsafe extern "C" fn XML_SetNamespaceDeclHandler_ffi(
         registrations,
     );
 }
-pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
+fn set_start_namespace_decl_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: StartNamespaceDeclHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_startNamespaceDeclHandler = start.is_some();
-        let mut handlers = START_NAMESPACE_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match start {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_startNamespaceDeclHandler = registration.callback.is_some();
+    let mut handlers = START_NAMESPACE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
 #[export_name = "XML_SetStartNamespaceDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartNamespaceDeclHandler,
+    parser: crate::expat_h::XML_Parser,
+    start: crate::expat_h::XML_StartNamespaceDeclHandler,
 ) {
-    XML_SetStartNamespaceDeclHandler(parser, start)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = start_namespace_decl_handler_registration(start);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_start_namespace_decl_handler(parser, parser_address, registration)
 }
 fn set_end_namespace_decl_handler(
     parser: &mut XML_ParserStruct,
