@@ -9572,7 +9572,7 @@ unsafe extern "C" fn doCdataSection(
     loop {
         let mut next: *const ::core::ffi::c_char = s;
         let mut tok: ::core::ffi::c_int =
-            (*enc).scanners[2 as usize].scan(enc, s, end, &raw mut next);
+            enc.scanners[2 as usize].scan(enc, s, end, &raw mut next);
         if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
             accountingOnAbort(parser);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
@@ -9589,12 +9589,6 @@ unsafe extern "C" fn doCdataSection(
                         .cloned()
                         .expect("installed end CDATA handler");
                     callback.invoke((*parser).m_handlerArg);
-                } else if false && (*parser).m_characterDataHandler {
-                    callCharacterDataHandler(
-                        parser,
-                        (*parser).m_dataBuf.chars.as_ptr(),
-                        0 as ::core::ffi::c_int,
-                    );
                 } else if (*parser).m_defaultHandler {
                     reportDefault(parser, enc, s, next);
                 }
@@ -9625,7 +9619,7 @@ unsafe extern "C" fn doCdataSection(
                     .get(&(parser as usize))
                     .cloned();
                 if let Some(charDataHandler) = charDataHandler {
-                    if (*enc).isUtf8 == 0 {
+                    if enc.isUtf8 == 0 {
                         let (data_start, data_end, data_capacity) = {
                             let parser_ref = &mut *parser;
                             let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
