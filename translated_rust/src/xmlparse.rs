@@ -11726,10 +11726,7 @@ fn sipkey_from_hash_secret_salt(
     }
 }
 
-unsafe extern "C" fn hash(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: KEY,
-) -> ::core::ffi::c_ulong {
+fn hash(hash_secret_salt: ::core::ffi::c_ulong, key: &CStr) -> ::core::ffi::c_ulong {
     let mut state: crate::siphash_h::siphash = crate::siphash_h::siphash {
         v0: 0,
         v1: 0,
@@ -11739,9 +11736,8 @@ unsafe extern "C" fn hash(
         p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
         c: 0,
     };
-    let key = sipkey_from_hash_secret_salt(get_hash_secret_salt(parser));
-    sip24_init(&mut state, &key);
-    let key = CStr::from_ptr(s as *const ::core::ffi::c_char);
+    let sip_key = sipkey_from_hash_secret_salt(hash_secret_salt);
+    sip24_init(&mut state, &sip_key);
     let key_bytes = &key.to_bytes()[..keylen(key)];
     sip24_update(&mut state, key_bytes);
     return sip24_final(&mut state) as ::core::ffi::c_ulong;
@@ -11775,11 +11771,18 @@ unsafe extern "C" fn lookup(
             0 as ::core::ffi::c_int,
             tsize,
         );
-        i = (hash(parser, name)
-            & ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
+        let hash_secret_salt = get_hash_secret_salt(parser);
+        i = (hash(
+            hash_secret_salt,
+            CStr::from_ptr(name as *const ::core::ffi::c_char),
+        ) & ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
             as crate::__stddef_size_t_h::size_t;
     } else {
-        let mut h: ::core::ffi::c_ulong = hash(parser, name);
+        let hash_secret_salt = get_hash_secret_salt(parser);
+        let mut h: ::core::ffi::c_ulong = hash(
+            hash_secret_salt,
+            CStr::from_ptr(name as *const ::core::ffi::c_char),
+        );
         let mut mask: ::core::ffi::c_ulong =
             ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
@@ -11851,8 +11854,12 @@ unsafe extern "C" fn lookup(
             i = 0 as crate::__stddef_size_t_h::size_t;
             while i < (*table).size {
                 if !(*(*table).v.offset(i as isize)).is_null() {
-                    let mut newHash: ::core::ffi::c_ulong =
-                        hash(parser, (**(*table).v.offset(i as isize)).name);
+                    let mut newHash: ::core::ffi::c_ulong = hash(
+                        hash_secret_salt,
+                        CStr::from_ptr(
+                            (**(*table).v.offset(i as isize)).name as *const ::core::ffi::c_char,
+                        ),
+                    );
                     let mut j: crate::__stddef_size_t_h::size_t = newHash
                         as crate::__stddef_size_t_h::size_t
                         & newMask as crate::__stddef_size_t_h::size_t;
