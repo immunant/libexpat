@@ -154,59 +154,36 @@ fn require_non_null<T>(
     NonNull::new(ptr.cast_mut()).unwrap_or_else(|| assert_failed!(assertion, line, function))
 }
 
-#[derive(Copy, Clone)]
-struct StorageHandle(NonNull<StructData>);
+#[derive(Copy, Clone, Eq, PartialEq)]
+struct StorageKey(NonNull<StructData>);
 
-impl StorageHandle {
-    fn new(storage: *mut StructData, line: ::core::ffi::c_uint, function: &'static [u8]) -> Self {
-        Self(require_non_null_mut(
-            storage,
-            b"storage != NULL\0",
-            line,
-            function,
-        ))
-    }
+fn storage_count(storage: &StructData) -> ::core::ffi::c_int {
+    storage.count
+}
 
-    fn key(self) -> NonNull<StructData> {
-        self.0
-    }
+fn storage_max_count(storage: &StructData) -> ::core::ffi::c_int {
+    storage.max_count
+}
 
-    fn count(self) -> ::core::ffi::c_int {
-        unsafe { self.0.as_ref() }.count
-    }
+fn reset_storage(storage: &mut StructData) {
+    storage.count = 0 as ::core::ffi::c_int;
+    storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+}
 
-    fn max_count(self) -> ::core::ffi::c_int {
-        unsafe { self.0.as_ref() }.max_count
-    }
+fn reset_storage_for_init(storage: &mut StructData) {
+    reset_storage(storage);
+    storage.max_count = 0 as ::core::ffi::c_int;
+}
 
-    fn reset(self) {
-        unsafe {
-            let storage = self.0.as_ptr();
-            (*storage).count = 0 as ::core::ffi::c_int;
-            (*storage).entries = ::core::ptr::null_mut::<StructDataEntry>();
-        }
-    }
-
-    fn reset_for_init(self) {
-        self.reset();
-        unsafe {
-            (*self.0.as_ptr()).max_count = 0 as ::core::ffi::c_int;
-        }
-    }
-
-    fn sync(
-        self,
-        count: ::core::ffi::c_int,
-        max_count: ::core::ffi::c_int,
-        entries: *mut StructDataEntry,
-    ) {
-        unsafe {
-            let storage = &mut *self.0.as_ptr();
-            storage.count = count;
-            storage.max_count = max_count;
-            storage.entries = entries;
-        }
-    }
+fn sync_storage_fields(
+    storage: &mut StructData,
+    count: ::core::ffi::c_int,
+    max_count: ::core::ffi::c_int,
+    entries: *mut StructDataEntry,
+) {
+    storage.count = count;
+    storage.max_count = max_count;
+    storage.entries = entries;
 }
 
 struct StructDataModel {
@@ -274,14 +251,14 @@ impl StructDataModel {
             .into_boxed_slice();
     }
 
-    fn sync_storage(&mut self, storage: StorageHandle) {
+    fn sync_storage(&mut self, storage: &mut StructData) {
         self.refresh_c_entries();
         let entries = if self.c_entries.is_empty() {
             ::core::ptr::null_mut::<StructDataEntry>()
         } else {
             self.c_entries.as_mut_ptr()
         };
-        storage.sync(self.count(), self.max_count, entries);
+        sync_storage_fields(storage, self.count(), self.max_count, entries);
     }
 
     fn check_items(&self, expected: &[ExpectedEntry]) -> Result<(), StructDataError> {
@@ -328,7 +305,7 @@ impl StructDataModel {
 }
 
 struct RegistryEntry {
-    storage: NonNull<StructData>,
+    storage: StorageKey,
     model: StructDataModel,
 }
 
@@ -343,22 +320,22 @@ fn with_registry<R>(f: impl FnOnce(&mut Vec<RegistryEntry>) -> R) -> R {
     })
 }
 
-fn registry_index(entries: &[RegistryEntry], storage: NonNull<StructData>) -> Option<usize> {
+fn registry_index(entries: &[RegistryEntry], storage: StorageKey) -> Option<usize> {
     entries.iter().position(|entry| entry.storage == storage)
 }
 
 fn get_or_insert_model<'a>(
     entries: &'a mut Vec<RegistryEntry>,
-    storage: StorageHandle,
+    storage: StorageKey,
+    max_count: ::core::ffi::c_int,
 ) -> &'a mut StructDataModel {
-    let storage_key = storage.key();
-    if let Some(index) = registry_index(entries, storage_key) {
+    if let Some(index) = registry_index(entries, storage) {
         return &mut entries[index].model;
     }
 
     entries.push(RegistryEntry {
-        storage: storage_key,
-        model: StructDataModel::with_max_count(storage.max_count()),
+        storage,
+        model: StructDataModel::with_max_count(max_count),
     });
     &mut entries
         .last_mut()
@@ -366,27 +343,37 @@ fn get_or_insert_model<'a>(
         .model
 }
 
-fn remove_model(entries: &mut Vec<RegistryEntry>, storage: StorageHandle) {
-    let storage_key = storage.key();
-    if let Some(index) = registry_index(entries, storage_key) {
+fn remove_model(entries: &mut Vec<RegistryEntry>, storage: StorageKey) {
+    if let Some(index) = registry_index(entries, storage) {
         entries.remove(index);
     }
 }
 
-fn clear_storage(entries: &mut Vec<RegistryEntry>, storage: StorageHandle) {
-    remove_model(entries, storage);
-    storage.reset();
+fn clear_storage(
+    entries: &mut Vec<RegistryEntry>,
+    storage_key: StorageKey,
+    storage: &mut StructData,
+) {
+    remove_model(entries, storage_key);
+    reset_storage(storage);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn StructData_Init(storage: *mut StructData) {
-    let storage = StorageHandle::new(storage, 73 as ::core::ffi::c_uint, FN_INIT);
+    let mut storage = require_non_null_mut(
+        storage,
+        b"storage != NULL\0",
+        73 as ::core::ffi::c_uint,
+        FN_INIT,
+    );
+    let storage_key = StorageKey(storage);
+    let storage = unsafe { storage.as_mut() };
 
-    with_registry(|registry| remove_model(registry, storage));
-    storage.reset_for_init();
+    with_registry(|registry| remove_model(registry, storage_key));
+    reset_storage_for_init(storage);
     with_registry(|registry| {
         registry.push(RegistryEntry {
-            storage: storage.key(),
+            storage: storage_key,
             model: StructDataModel::new(),
         });
     });
@@ -400,11 +387,18 @@ pub unsafe extern "C" fn StructData_AddItem(
     data1: ::core::ffi::c_int,
     data2: ::core::ffi::c_int,
 ) {
-    let storage = StorageHandle::new(storage, 84 as ::core::ffi::c_uint, FN_ADD_ITEM);
+    let mut storage = require_non_null_mut(
+        storage,
+        b"storage != NULL\0",
+        84 as ::core::ffi::c_uint,
+        FN_ADD_ITEM,
+    );
+    let storage_key = StorageKey(storage);
+    let storage = unsafe { storage.as_mut() };
     let s = clone_c_string_arg!(s, b"s != NULL\0", 85 as ::core::ffi::c_uint, FN_ADD_ITEM);
 
     with_registry(|registry| {
-        let model = get_or_insert_model(registry, storage);
+        let model = get_or_insert_model(registry, storage_key, storage_max_count(storage));
         model.add_item(s, data0, data1, data2);
         model.sync_storage(storage);
     });
@@ -416,12 +410,19 @@ pub unsafe extern "C" fn StructData_CheckItems(
     expected: *const StructDataEntry,
     count: ::core::ffi::c_int,
 ) {
-    let storage = StorageHandle::new(storage, 112 as ::core::ffi::c_uint, FN_CHECK_ITEMS);
+    let mut storage = require_non_null_mut(
+        storage,
+        b"storage != NULL\0",
+        112 as ::core::ffi::c_uint,
+        FN_CHECK_ITEMS,
+    );
+    let storage_key = StorageKey(storage);
+    let storage = unsafe { storage.as_mut() };
 
-    if count != storage.count() {
-        let actual_count = storage.count();
+    if count != storage_count(storage) {
+        let actual_count = storage_count(storage);
 
-        with_registry(|registry| clear_storage(registry, storage));
+        with_registry(|registry| clear_storage(registry, storage_key, storage));
 
         fail_with_string(
             119,
@@ -451,7 +452,7 @@ pub unsafe extern "C" fn StructData_CheckItems(
 
     let result = {
         with_registry(|registry| {
-            let model = get_or_insert_model(registry, storage);
+            let model = get_or_insert_model(registry, storage_key, storage_max_count(storage));
             model.check_items(&expected_entries)
         })
     };
@@ -459,11 +460,11 @@ pub unsafe extern "C" fn StructData_CheckItems(
     match result {
         Ok(()) => {}
         Err(StructDataError::Static { line, msg }) => {
-            with_registry(|registry| clear_storage(registry, storage));
+            with_registry(|registry| clear_storage(registry, storage_key, storage));
             fail_with_static(line, msg)
         }
         Err(StructDataError::Formatted { line, msg }) => {
-            with_registry(|registry| clear_storage(registry, storage));
+            with_registry(|registry| clear_storage(registry, storage_key, storage));
             fail_with_string(line, msg)
         }
     }
@@ -471,6 +472,13 @@ pub unsafe extern "C" fn StructData_CheckItems(
 
 #[no_mangle]
 pub unsafe extern "C" fn StructData_Dispose(storage: *mut StructData) {
-    let storage = StorageHandle::new(storage, 151 as ::core::ffi::c_uint, FN_DISPOSE);
-    with_registry(|registry| clear_storage(registry, storage));
+    let mut storage = require_non_null_mut(
+        storage,
+        b"storage != NULL\0",
+        151 as ::core::ffi::c_uint,
+        FN_DISPOSE,
+    );
+    let storage_key = StorageKey(storage);
+    let storage = unsafe { storage.as_mut() };
+    with_registry(|registry| clear_storage(registry, storage_key, storage));
 }
