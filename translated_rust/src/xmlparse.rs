@@ -5339,6 +5339,41 @@ fn release_parser_storage(parser: &mut XML_ParserStruct, source_line: ::core::ff
     }
 }
 
+/// Roll back the resources that can exist while a parser is being created.
+/// Construction has not exposed the parser or installed user handlers, so the
+/// full public destruction path is unnecessary here.  The owned release
+/// tokens below match the normal destruction order without using a raw parser
+/// handle.
+fn cleanup_failed_parser_construction(parser: &mut XML_ParserStruct) {
+    poolDestroy(&mut parser.m_tempPool);
+    poolDestroy(&mut parser.m_temp2Pool);
+    if let Some(protocol_encoding_name) = parser.m_protocolEncodingName.take() {
+        protocol_encoding_name.release(1992);
+    }
+    if parser.m_isParamEntity == 0 {
+        if let Some(dtd) = parser.m_dtd.take() {
+            // A DTD created during parser construction has not yet received
+            // declarations, pool blocks, or scaffold storage.  Its sole
+            // allocation token can therefore be released directly.  A child
+            // shares its parent's DTD and consequently has more than one
+            // owner, so it leaves that token with the parent.
+            if std::sync::Arc::strong_count(&dtd) == 1 {
+                dtd.inspect(|dtd| {
+                    if let Some(mut allocation) = dtd.allocation.take() {
+                        allocation(7595);
+                    }
+                });
+            }
+        }
+    }
+    let mut atts_backing = parser.m_atts.backing.take();
+    if let Some(backing) = atts_backing.as_mut() {
+        backing(parser, AttributeAllocationAction::Free(2002));
+    }
+    parser.m_dataBuf.release(2011);
+    release_parser_storage(parser, 2016);
+}
+
 pub unsafe fn expat_free(
     parser: crate::expat_h::XML_Parser,
     ptr: *mut ::core::ffi::c_void,
@@ -6139,7 +6174,7 @@ unsafe fn allocate_parser_storage(
         Ok(())
     })();
     if storage_result.is_err() {
-        parser_free_owned(parser);
+        cleanup_failed_parser_construction(parser);
         return None;
     }
     initialize_parser_collections(parser);
@@ -6159,7 +6194,7 @@ unsafe fn allocate_parser_storage(
     pool_init(&mut parser.m_tempPool, string_pool_allocator.clone());
     pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
     if !parser_initialize_from_cstr(parser, encoding_name) {
-        parser_free_owned(parser);
+        cleanup_failed_parser_construction(parser);
         return None;
     }
     if let Some(namespace_separator) = namespace_separator {
