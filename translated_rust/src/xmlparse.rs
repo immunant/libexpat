@@ -1,59 +1,15 @@
 pub mod siphash_h {
 
-    pub unsafe extern "C" fn sip_tokey(
-        mut key: *mut crate::siphash_h::sipkey,
-        mut src: *const ::core::ffi::c_void,
-    ) -> *mut crate::siphash_h::sipkey {
-        (*key).k[0 as usize] = (*(src as *const ::core::ffi::c_uchar).offset(0 as isize)
-            as crate::stdlib::uint64_t)
-            << 0 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(1 as isize) as crate::stdlib::uint64_t)
-                << 8 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(2 as isize) as crate::stdlib::uint64_t)
-                << 16 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(3 as isize) as crate::stdlib::uint64_t)
-                << 24 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(4 as isize) as crate::stdlib::uint64_t)
-                << 32 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(5 as isize) as crate::stdlib::uint64_t)
-                << 40 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(6 as isize) as crate::stdlib::uint64_t)
-                << 48 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar).offset(7 as isize) as crate::stdlib::uint64_t)
-                << 56 as ::core::ffi::c_int;
-        (*key).k[1 as usize] = (*(src as *const ::core::ffi::c_uchar)
-            .offset(8 as ::core::ffi::c_int as isize)
-            .offset(0 as isize) as crate::stdlib::uint64_t)
-            << 0 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(1 as isize) as crate::stdlib::uint64_t)
-                << 8 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(2 as isize) as crate::stdlib::uint64_t)
-                << 16 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(3 as isize) as crate::stdlib::uint64_t)
-                << 24 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(4 as isize) as crate::stdlib::uint64_t)
-                << 32 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(5 as isize) as crate::stdlib::uint64_t)
-                << 40 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(6 as isize) as crate::stdlib::uint64_t)
-                << 48 as ::core::ffi::c_int
-            | (*(src as *const ::core::ffi::c_uchar)
-                .offset(8 as ::core::ffi::c_int as isize)
-                .offset(7 as isize) as crate::stdlib::uint64_t)
-                << 56 as ::core::ffi::c_int;
-        return key;
+    pub fn sip_tokey(
+        key: &mut crate::siphash_h::sipkey,
+        src: &[::core::ffi::c_uchar; 16],
+    ) {
+        key.k[0] = crate::stdlib::uint64_t::from_le_bytes([
+            src[0], src[1], src[2], src[3], src[4], src[5], src[6], src[7],
+        ]);
+        key.k[1] = crate::stdlib::uint64_t::from_le_bytes([
+            src[8], src[9], src[10], src[11], src[12], src[13], src[14], src[15],
+        ]);
     }
 
     pub unsafe extern "C" fn sip_round(
@@ -885,9 +841,8 @@ pub mod siphash_h {
         let mut k: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
         let mut i: crate::__stddef_size_t_h::size_t = 0;
         sip_tokey(
-            &raw mut k,
-            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\0".as_ptr()
-                as *const ::core::ffi::c_char as *const ::core::ffi::c_void,
+            &mut k,
+            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F",
         );
         i = 0 as crate::__stddef_size_t_h::size_t;
         while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() {
