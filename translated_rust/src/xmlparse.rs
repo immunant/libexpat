@@ -2963,6 +2963,37 @@ fn tag_name_chars<'a>(
     terminated_xml_chars(chars)
 }
 
+/// Write a local element name and optional namespace prefix into an already
+/// sized namespace binding.  The local part includes its NUL terminator, which
+/// becomes the namespace separator when a triplet prefix is present.
+fn write_expanded_namespace_name(
+    destination: &mut [crate::expat_external_h::XML_Char],
+    local_part: &[crate::expat_external_h::XML_Char],
+    prefix_name: &[crate::expat_external_h::XML_Char],
+    namespace_separator: crate::expat_external_h::XML_Char,
+) -> bool {
+    let Some(expected_len) = local_part.len().checked_add(prefix_name.len()) else {
+        return false;
+    };
+    if destination.len() != expected_len {
+        return false;
+    }
+    let Some((local_destination, prefix_destination)) =
+        destination.split_at_mut_checked(local_part.len())
+    else {
+        return false;
+    };
+    local_destination.copy_from_slice(local_part);
+    if !prefix_name.is_empty() {
+        let Some(separator) = local_destination.last_mut() else {
+            return false;
+        };
+        *separator = namespace_separator;
+        prefix_destination.copy_from_slice(prefix_name);
+    }
+    true
+}
+
 impl NamespaceAttributeStorage {
     fn empty() -> Self {
         Self {
@@ -12966,7 +12997,6 @@ unsafe fn storeAtts(
     mut account: XML_Account,
     appAtts: &mut Vec<Option<StartElementAttributeValue>>,
 ) -> crate::expat_h::XML_Error {
-    let parser_ptr = std::ptr::from_mut(parser);
     let Some(normal_encoding) = entity_value_normal_encoding(parser, enc.addr()) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
@@ -13744,7 +13774,7 @@ unsafe fn storeAtts(
     } else {
         &[]
     };
-    let local_part = {
+    let local_part_len = {
         let parser_ref = &*parser;
         let Some(tag_name) = tag_input.name_chars(parser_ref) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -13752,13 +13782,12 @@ unsafe fn storeAtts(
         let Some(local_part) = tag_name.get(local_part_offset..) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        local_part
+        match ::core::ffi::c_int::try_from(local_part.len()) {
+            Ok(len) => len,
+            Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
+        }
     };
     let prefix_len = match ::core::ffi::c_int::try_from(prefix_name.len()) {
-        Ok(len) => len,
-        Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
-    };
-    let local_part_len = match ::core::ffi::c_int::try_from(local_part.len()) {
         Ok(len) => len,
         Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
     };
@@ -13772,9 +13801,8 @@ unsafe fn storeAtts(
         if n > crate::limits_h::INT_MAX - EXPAND_SPARE {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let parser_state = &mut *parser_ptr;
         if !replace_active_binding_uri(
-            parser_state,
+            parser,
             binding_index,
             (n + EXPAND_SPARE) as usize,
             4270 as ::core::ffi::c_int,
@@ -13792,26 +13820,68 @@ unsafe fn storeAtts(
         Err(_) => return crate::expat_h::XML_ERROR_NO_MEMORY,
     };
     let namespace_separator = (*parser).m_namespaceSeparator;
-    {
-        let parser_state = &mut *parser_ptr;
-        let uri = &mut parser_state.m_activeBindings[binding_index].uri;
-        let Some(destination) = uri.get_mut(uri_start..uri_end) else {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        };
-        let Some(local_destination) = destination.get_mut(..local_part.len()) else {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
-        };
-        local_destination.copy_from_slice(local_part);
-        if !prefix_name.is_empty() {
-            let Some(separator) = local_destination.last_mut() else {
+    // The name source and namespace URI live in distinct parser owners.  Take
+    // disjoint field borrows here instead of recreating `&mut` from the saved
+    // raw parser address; neither source is relocated by binding growth.
+    let copied = match tag_input {
+        StoreAttsTag::Active(tag_index) => {
+            let (tags, bindings) = (&parser.m_activeTags, &mut parser.m_activeBindings);
+            let Some(tag) = tags.get(tag_index).and_then(|storage| storage.tag.first()) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            *separator = namespace_separator;
-            let Some(prefix_destination) = destination.get_mut(local_part.len()..) else {
+            let TagNameStorage::TagBuffer { offset } = tag.name.str else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(local_part) = tag
+                .buffer
+                .bytes
+                .get(offset..)
+                .and_then(terminated_xml_chars)
+                .and_then(|name| name.get(local_part_offset..))
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(destination) = bindings
+                .get_mut(binding_index)
+                .and_then(|binding| binding.uri.get_mut(uri_start..uri_end))
+            else {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             };
-            prefix_destination.copy_from_slice(prefix_name);
+            write_expanded_namespace_name(
+                destination,
+                local_part,
+                prefix_name,
+                namespace_separator,
+            )
         }
+        StoreAttsTag::Detached(tag_name) => {
+            let TagNameStorage::TempPool(name) = tag_name.str else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let (temp_pool, bindings) = (&parser.m_tempPool, &mut parser.m_activeBindings);
+            let Some(local_part) = temp_pool
+                .chars_from(name)
+                .and_then(terminated_xml_chars)
+                .and_then(|name| name.get(local_part_offset..))
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(destination) = bindings
+                .get_mut(binding_index)
+                .and_then(|binding| binding.uri.get_mut(uri_start..uri_end))
+            else {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            };
+            write_expanded_namespace_name(
+                destination,
+                local_part,
+                prefix_name,
+                namespace_separator,
+            )
+        }
+    };
+    if !copied {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
     *tag_name_update = Some(NamespaceTagNameUpdate {
         local_part: local_part_offset,
