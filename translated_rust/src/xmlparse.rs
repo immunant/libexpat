@@ -6293,48 +6293,7 @@ unsafe fn call_processor_impl(
         // them as offsets through this dispatch instead of rebuilding a raw
         // cursor merely for the common processor epilogue below.
         let mut checked_next_offset = None;
-        ret = if matches!(parser.m_processor, ProcessorState::Content) {
-            let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
-                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-            };
-            let start_tag_level = if parser.m_parentParser.is_some() {
-                1
-            } else {
-                0
-            };
-            // This is the only remaining direct-content entry.  Its cursors
-            // are derived from the live range checked immediately above, and
-            // its result is converted back to a live-buffer offset below.
-            // Keep that small legacy boundary in the already-unsafe
-            // dispatcher instead of making a safe adapter call `doContent`.
-            let encoding = std::ptr::from_ref(current_parser_encoding(parser));
-            let have_more = (parser.m_parsingStatus.finalBuffer == 0)
-                as ::core::ffi::c_int as crate::expat_h::XML_Bool;
-            let mut result = doContent(
-                parser,
-                start_tag_level,
-                normal_encoding,
-                encoding,
-                true,
-                start,
-                end,
-                &mut next_pointer,
-                have_more,
-                XML_ACCOUNT_DIRECT,
-            );
-            if result as ::core::ffi::c_uint
-                == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                let raw_names_stored = match parser.m_dtd.clone() {
-                    Some(dtd_owner) => dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd)),
-                    None => crate::expat_h::XML_FALSE,
-                };
-                if raw_names_stored == 0 {
-                    result = crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-            }
-            result
-        } else if matches!(parser.m_processor, ProcessorState::CdataSection) {
+        ret = if matches!(parser.m_processor, ProcessorState::CdataSection) {
             let result = cdata_section_processor_impl(parser, next, input.end);
             checked_next_offset = Some(result.next_offset);
             result.error
@@ -6503,7 +6462,11 @@ unsafe fn call_processor_impl(
                 ProcessorState::PrologInit => {
                     unreachable!("prolog initialization is dispatched before cursor setup")
                 }
-                ProcessorState::Content => unreachable!("content dispatch is handled above"),
+                // Direct document content and external-entity content use the
+                // same cursor adapter.  It selects the root-versus-child
+                // accounting and tag depth from parser state after the
+                // dispatcher has validated this live-buffer range.
+                ProcessorState::Content => externalEntityContentProcessor,
                 ProcessorState::ExternalEntityInit => {
                     unreachable!("external entity initialization is dispatched before cursor setup")
                 }
@@ -11324,12 +11287,22 @@ unsafe extern "C" fn externalEntityContentProcessor(
     let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
+    // A child parser is processing an external entity, while the root parser
+    // is processing the document entity.  Both use the same content loop;
+    // only its initial tag level and accounting class differ.
+    let is_external_entity = parser_state.m_parentParser.is_some();
+    let start_tag_level = if is_external_entity { 1 } else { 0 };
+    let account = if is_external_entity {
+        XML_ACCOUNT_ENTITY_EXPANSION
+    } else {
+        XML_ACCOUNT_DIRECT
+    };
     let have_more = (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
     let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
     let mut result: crate::expat_h::XML_Error = doContent(
         parser_state,
-        1 as ::core::ffi::c_int,
+        start_tag_level,
         normal_encoding,
         encoding,
         true,
@@ -11337,7 +11310,7 @@ unsafe extern "C" fn externalEntityContentProcessor(
         end,
         next_ptr,
         have_more,
-        XML_ACCOUNT_ENTITY_EXPANSION,
+        account,
     );
     if result as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
