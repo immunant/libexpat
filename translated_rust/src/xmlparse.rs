@@ -2907,6 +2907,14 @@ impl SharedDtd {
             value: std::cell::UnsafeCell::new(value),
         }
     }
+
+    // Parser operations are serialized by Expat's parser API.  Keep the
+    // `UnsafeCell` conversion in this owning facade and make the closure
+    // higher-ranked so no DTD reference can escape it across a callback or a
+    // later parser re-entry.
+    fn inspect<R>(&self, f: impl for<'dtd> FnOnce(&'dtd DTD) -> R) -> R {
+        unsafe { f(&*self.value.get()) }
+    }
 }
 
 // Resolves the directly-owned shared DTD at an existing raw-parser access
@@ -10297,10 +10305,9 @@ unsafe fn doContent(
     // handle is only recovered at the legacy callback/token API boundary;
     // no parser-owned field access below needs to dereference it.
     let parser_ptr = std::ptr::from_mut(parser);
-    let dtd = parser
-        .m_dtd
-        .as_ref()
-        .map_or(::core::ptr::null_mut(), |dtd| dtd.value.get());
+    let Some(dtd) = parser.m_dtd.clone() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     // `doContent` is entered with C cursors, but both possible sources are
     // parser-owned: the parser input buffer or the current entity's retained
     // replacement text.  Resolve that ownership afresh for every scan below.
@@ -10320,7 +10327,7 @@ unsafe fn doContent(
                 .get_mut(open_entity_index)
                 .expect("open internal entity index is live")
                 .node_mut();
-            let Some(window) = event_text_window(&*dtd, open_entity) else {
+            let Some(window) = dtd.inspect(|dtd| event_text_window(dtd, open_entity)) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             (open_entity_index, window)
@@ -10344,20 +10351,16 @@ unsafe fn doContent(
             // The tokenizer reports an offset in this exact bounded view.
             // Recover the C cursor from the slice only after the offset has
             // been checked, rather than advancing the incoming raw cursor.
-            let source = match event_raw_name_source(
-                parser,
-                &*dtd,
-                parser_events,
-                s.addr(),
-                end.addr(),
-            ) {
+            let source = match dtd.inspect(|dtd| {
+                event_raw_name_source(parser, dtd, parser_events, s.addr(), end.addr())
+                    .map(|source| source.bytes().to_vec())
+            }) {
                 Some(source) => source,
                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
             };
             // Copy the bounded scan window before any callback can re-enter.
             // Cursors remain addresses into parser-owned storage, while this
             // snapshot supplies the tokenizer and all local token checks.
-            let source = source.bytes().to_vec();
             let input: &[::core::ffi::c_char] = bytemuck::cast_slice(&source);
             let scan = crate::src::xmltok::ScannerContext::normal(
                 encoding.scanners[1 as usize],
@@ -10546,7 +10549,7 @@ unsafe fn doContent(
                         // boxed typed records, so all declaration inspection
                         // below can stay in ordinary Rust references.
                         let (restricted_entity_declarations, entity, name) = {
-                            let dtd_state = &mut *dtd;
+                            let dtd_state = &mut *dtd.value.get();
                             let Some(entity_name) = content_token_chars_between(
                                 &source,
                                 s.addr(),
@@ -10697,16 +10700,16 @@ unsafe fn doContent(
                                         .get(&(parser_ptr as usize))
                                         .cloned();
                                     if let Some(callback) = callback {
-                                        let entity_name = (&*dtd)
-                                            .pool
-                                            .chars_from(entity_name_ref)
-                                            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                                        if entity_name.is_null() {
+                                        let Some(entity_name) = dtd.inspect(|dtd| {
+                                            dtd.pool
+                                                .chars_from(entity_name_ref)
+                                                .map(ToOwned::to_owned)
+                                        }) else {
                                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                                        }
+                                        };
                                         callback.invoke(
                                             handler_arg_from_state!(parser),
-                                            entity_name,
+                                            entity_name.as_ptr(),
                                             0 as ::core::ffi::c_int,
                                         );
                                     }
@@ -10851,12 +10854,9 @@ unsafe fn doContent(
                     parser.m_activeTags.push(tag_storage);
                     parser.m_tagStack = Some(tag_index);
                     let raw_name = s.wrapping_offset(encoding.minBytesPerChar as isize);
-                    let raw_name_storage = match event_raw_name_storage(
-                        parser,
-                        &*dtd,
-                        parser_events,
-                        raw_name.addr(),
-                    ) {
+                    let raw_name_storage = match dtd.inspect(|dtd| {
+                        event_raw_name_storage(parser, dtd, parser_events, raw_name.addr())
+                    }) {
                         Some(storage) => storage,
                         None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                     };
@@ -11217,14 +11217,16 @@ unsafe fn doContent(
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
                         len = raw_name_len.length;
-                        let (tag_index, names_match) = match content_end_tag_match(
-                            parser,
-                            &*dtd,
-                            startTagLevel,
-                            parser_events,
-                            rawName_0.addr(),
-                            len,
-                        ) {
+                        let (tag_index, names_match) = match dtd.inspect(|dtd| {
+                            content_end_tag_match(
+                                parser,
+                                dtd,
+                                startTagLevel,
+                                parser_events,
+                                rawName_0.addr(),
+                                len,
+                            )
+                        }) {
                             Ok(result) => result,
                             Err(error) => return error,
                         };
