@@ -13473,13 +13473,14 @@ unsafe fn storeAtts(
                     }
                 }
             }
+            let temp_pool = &raw mut parser.m_tempPool;
             result = storeAttributeValue(
                 parser,
                 enc,
                 isCdata,
                 value_start,
                 value_end,
-                &raw mut (*parser).m_tempPool,
+                temp_pool,
                 account,
             );
             if result as u64 != 0 {
@@ -20758,8 +20759,8 @@ fn close_attribute_entity(parser: &mut XML_ParserStruct, entity_name: PoolString
     })
 }
 
-unsafe extern "C" fn storeAttributeValue(
-    mut parser: crate::expat_h::XML_Parser,
+unsafe fn storeAttributeValue(
+    parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut isCdata: crate::expat_h::XML_Bool,
     mut ptr: *const ::core::ffi::c_char,
@@ -20767,7 +20768,6 @@ unsafe extern "C" fn storeAttributeValue(
     mut pool: *mut STRING_POOL,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let parser = &mut *parser;
     // Attribute scanning needs the complete normal-encoding table, not just
     // its ABI-visible `ENCODING` prefix.  The parser owns every table it may
     // select, so resolve this cursor against that owned set before scanning
@@ -20944,16 +20944,7 @@ unsafe extern "C" fn storeAttributeValue(
     {
         pool.discard_last_cursor_char();
     }
-    if if pool.is_full() && poolGrow(pool) == 0 {
-        0 as ::core::ffi::c_int
-    } else {
-        if pool.write_cursor('\0' as crate::expat_external_h::XML_Char) {
-            1 as ::core::ffi::c_int
-        } else {
-            0 as ::core::ffi::c_int
-        }
-    } == 0
-    {
+    if !pool_append_char(pool, '\0' as crate::expat_external_h::XML_Char) {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     return crate::expat_h::XML_ERROR_NONE;
