@@ -10586,7 +10586,7 @@ unsafe fn doContent(
                         // is rewound.  The table owns entity declarations in
                         // boxed typed records, so all declaration inspection
                         // below can stay in ordinary Rust references.
-                        let (restricted_entity_declarations, entity, dtd_pool, name) = {
+                        let (restricted_entity_declarations, entity, name) = {
                             let dtd_state = &mut *dtd;
                             let Some(entity_name) = content_token_chars_between(
                                 &source,
@@ -10635,20 +10635,51 @@ unsafe fn doContent(
                                         entity.open != 0,
                                         entity.notation.is_some(),
                                         entity.textPtr.is_some(),
+                                        entity.base,
+                                        entity.systemId,
+                                        entity.publicId,
+                                    )
+                                },
+                            );
+                            let entity = entity.map(
+                                |(
+                                    entity,
+                                    name,
+                                    is_internal,
+                                    is_open,
+                                    has_notation,
+                                    has_text,
+                                    base,
+                                    system_id,
+                                    public_id,
+                                )| {
+                                    (
+                                        entity,
+                                        name,
+                                        is_internal,
+                                        is_open,
+                                        has_notation,
+                                        has_text,
+                                        external_entity_ref_event_from_names(
+                                            None,
+                                            &dtd_state.pool,
+                                            base,
+                                            system_id,
+                                            public_id,
+                                        ),
                                     )
                                 },
                             );
                             let restricted = dtd_state.hasParamEntityRefs == 0
                                 || dtd_state.standalone as ::core::ffi::c_int != 0;
-                            let dtd_pool = std::ptr::from_ref(&dtd_state.pool);
                             dtd_state.pool.rewind();
-                            (restricted, entity, dtd_pool, name)
+                            (restricted, entity, name)
                         };
                         if restricted_entity_declarations {
-                            let Some((_, _, is_internal, _, _, _)) = entity else {
+                            let Some((_, _, is_internal, _, _, _, _)) = entity.as_ref() else {
                                 return crate::expat_h::XML_ERROR_UNDEFINED_ENTITY;
                             };
-                            if !is_internal {
+                            if !*is_internal {
                                 return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                             }
                         } else if entity.is_none() {
@@ -10674,8 +10705,15 @@ unsafe fn doContent(
                             }
                             break 's_1235;
                         }
-                        let Some((entity, entity_name_ref, _, entity_open, has_notation, has_text)) =
-                            entity
+                        let Some((
+                            entity,
+                            entity_name_ref,
+                            _,
+                            entity_open,
+                            has_notation,
+                            has_text,
+                            mut event,
+                        )) = entity
                         else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
@@ -10763,12 +10801,11 @@ unsafe fn doContent(
                                 .get(&(parser_ptr as usize))
                                 .cloned()
                                 .expect("installed external entity handler");
-                            if invoke_external_entity_ref_handler(
+                            event.context = Some(context_chars);
+                            if dispatch_external_entity_ref_event_handler(
                                 handler.as_ref(),
                                 parser,
-                                Some(&context_chars),
-                                dtd_pool,
-                                entity,
+                                event,
                             ) == 0
                             {
                                 return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
@@ -15991,18 +16028,20 @@ unsafe fn doProlog(
                                                 != 0
                                                 && (*parser).m_externalEntityRefHandler
                                             {
-                                                let Some(entity) = external_subset_entity_mut(
-                                                    dtd,
-                                                    ::core::mem::size_of::<ENTITY>(),
-                                                    hash_salt,
-                                                ) else {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                };
-                                                if (*parser).m_useForeignDTD != 0 {
-                                                    entity.base = (*parser).m_curBase;
-                                                }
-                                                let entity = std::ptr::from_mut(entity);
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                                                let (entity_base, entity_system_id, entity_public_id) = {
+                                                    let Some(entity) = external_subset_entity_mut(
+                                                        dtd,
+                                                        ::core::mem::size_of::<ENTITY>(),
+                                                        hash_salt,
+                                                    ) else {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    };
+                                                    if (*parser).m_useForeignDTD != 0 {
+                                                        entity.base = (*parser).m_curBase;
+                                                    }
+                                                    (entity.base, entity.systemId, entity.publicId)
+                                                };
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                                     .get_or_init(|| {
                                                         std::sync::Mutex::new(
@@ -16016,12 +16055,17 @@ unsafe fn doProlog(
                                                     .get(&parser_key)
                                                     .cloned()
                                                     .expect("installed external entity handler");
-                                                if invoke_external_entity_ref_handler(
+                                                let event = external_entity_ref_event_from_names(
+                                                    None,
+                                                    &dtd.pool,
+                                                    entity_base,
+                                                    entity_system_id,
+                                                    entity_public_id,
+                                                );
+                                                if dispatch_external_entity_ref_event_handler(
                                                     handler.as_ref(),
                                                     parser,
-                                                    None,
-                                                    std::ptr::from_ref(&dtd.pool),
-                                                    entity,
+                                                    event,
                                                 ) == 0
                                                 {
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
@@ -16085,16 +16129,18 @@ unsafe fn doProlog(
                                                 != 0
                                                 && (*parser).m_externalEntityRefHandler
                                             {
-                                                let Some(entity) = external_subset_entity_mut(
-                                                    dtd,
-                                                    ::core::mem::size_of::<ENTITY>(),
-                                                    hash_salt,
-                                                ) else {
-                                                    return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                                };
-                                                entity.base = (*parser).m_curBase;
-                                                let entity_0 = std::ptr::from_mut(entity);
                                                 (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                                                let (entity_base, entity_system_id, entity_public_id) = {
+                                                    let Some(entity) = external_subset_entity_mut(
+                                                        dtd,
+                                                        ::core::mem::size_of::<ENTITY>(),
+                                                        hash_salt,
+                                                    ) else {
+                                                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                                    };
+                                                    entity.base = (*parser).m_curBase;
+                                                    (entity.base, entity.systemId, entity.publicId)
+                                                };
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
                                                     .get_or_init(|| {
                                                         std::sync::Mutex::new(
@@ -16108,12 +16154,17 @@ unsafe fn doProlog(
                                                     .get(&parser_key)
                                                     .cloned()
                                                     .expect("installed external entity handler");
-                                                if invoke_external_entity_ref_handler(
+                                                let event = external_entity_ref_event_from_names(
+                                                    None,
+                                                    &dtd.pool,
+                                                    entity_base,
+                                                    entity_system_id,
+                                                    entity_public_id,
+                                                );
+                                                if dispatch_external_entity_ref_event_handler(
                                                     handler.as_ref(),
                                                     parser,
-                                                    None,
-                                                    std::ptr::from_ref(&dtd.pool),
-                                                    entity_0,
+                                                    event,
                                                 ) == 0
                                                 {
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
@@ -17712,6 +17763,9 @@ unsafe fn doProlog(
                                                     entity.is_internal != 0,
                                                     entity.open != 0,
                                                     entity.textPtr.is_some(),
+                                                    entity.base,
+                                                    entity.systemId,
+                                                    entity.publicId,
                                                 ))
                                             };
                                             if (*parser).m_prologState.documentEntity != 0
@@ -17756,7 +17810,14 @@ unsafe fn doProlog(
                                                 }
                                                 break 's_2375;
                                             }
-                                            let (_, entity_is_open, entity_has_text) = entity_state
+                                            let (
+                                                _,
+                                                entity_is_open,
+                                                entity_has_text,
+                                                entity_base,
+                                                entity_system_id,
+                                                entity_public_id,
+                                            ) = entity_state
                                                 .expect("parameter entity state must be present");
                                             if entity_is_open {
                                                 return crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
@@ -17809,12 +17870,17 @@ unsafe fn doProlog(
                                                     .get(&parser_key)
                                                     .cloned()
                                                     .expect("installed external entity handler");
-                                                if invoke_external_entity_ref_handler(
+                                                let event = external_entity_ref_event_from_names(
+                                                    None,
+                                                    &dtd.pool,
+                                                    entity_base,
+                                                    entity_system_id,
+                                                    entity_public_id,
+                                                );
+                                                if dispatch_external_entity_ref_event_handler(
                                                     handler.as_ref(),
                                                     parser,
-                                                    None,
-                                                    std::ptr::from_ref(&dtd.pool),
-                                                    entity_1,
+                                                    event,
                                                 ) == 0
                                                 {
                                                     entityTrackingOnClose(
@@ -19984,12 +20050,17 @@ unsafe fn storeEntityValue(
                                             .get(&(parser as *mut XML_ParserStruct as usize))
                                             .cloned()
                                             .expect("installed external entity handler");
-                                        if invoke_external_entity_ref_handler(
-                                            handler.as_ref(),
-                                            std::ptr::from_mut(parser),
+                                        let event = external_entity_ref_event_from_names(
                                             None,
-                                            &raw const dtd.pool,
-                                            entity,
+                                            &dtd.pool,
+                                            entity.base,
+                                            entity.systemId,
+                                            entity.publicId,
+                                        );
+                                        if dispatch_external_entity_ref_event_handler(
+                                            handler.as_ref(),
+                                            parser,
+                                            event,
                                         ) == 0
                                         {
                                             entityTrackingOnClose(
@@ -23112,14 +23183,11 @@ fn external_entity_ref_event_from_names(
 
 // The callback boundary consumes the owned event assembled above.  Raw
 // pointers exist only for the duration of the foreign callback itself.
-unsafe fn invoke_external_entity_ref_handler(
+fn dispatch_external_entity_ref_event_handler(
     handler: &dyn ExternalEntityRefCallback,
-    parser: crate::expat_h::XML_Parser,
-    context: Option<&[crate::expat_external_h::XML_Char]>,
-    pool: *const STRING_POOL,
-    entity: *const ENTITY,
+    parser: &XML_ParserStruct,
+    event: ExternalEntityRefEvent,
 ) -> ::core::ffi::c_int {
-    let event = external_entity_ref_event(context, &*pool, &*entity);
     let context = event
         .context
         .as_ref()
@@ -23140,15 +23208,25 @@ unsafe fn invoke_external_entity_ref_handler(
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&std::ptr::from_ref(parser).addr())
         .cloned();
     match callback_arg {
-        Some(arg) => arg
-            .invoke
-            .invoke(handler, context, base, system_id, public_id),
-        None => handler.invoke(parser, context, base, system_id, public_id),
+        Some(arg) => unsafe {
+            arg.invoke
+                .invoke(handler, context, base, system_id, public_id)
+        },
+        None => unsafe {
+            handler.invoke(
+                std::ptr::from_ref(parser).cast_mut(),
+                context,
+                base,
+                system_id,
+                public_id,
+            )
+        },
     }
 }
+
 
 unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::expat_h::XML_Parser) {
     let pool = &mut *pool;
