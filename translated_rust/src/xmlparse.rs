@@ -6903,6 +6903,12 @@ fn parser_reset_impl(
     if parser.m_parentParser.is_some() {
         return crate::expat_h::XML_FALSE;
     }
+    // Every constructed parser owns a DTD.  Keep a shared handle while reset
+    // temporarily borrows the parser so the DTD can be reset through its
+    // owning facade rather than reconstructed from a raw pointer.
+    let Some(dtd) = parser.m_dtd.clone() else {
+        return crate::expat_h::XML_FALSE;
+    };
     let ResetResources {
         unknown_encoding_mem,
         protocol_encoding_name,
@@ -6930,11 +6936,10 @@ fn parser_reset_impl(
     if let Some(protocol_encoding_name) = protocol_encoding_name {
         protocol_encoding_name.release(1691);
     }
-    let parser_handle = std::ptr::from_mut(parser);
     unsafe {
         parser_initialize_from_cstr(parser, encoding_name);
-        dtdReset(parser_dtd_ptr!(parser), parser_handle);
     }
+    dtd.inspect(|dtd| unsafe { dtdReset(dtd, parser) });
     return crate::expat_h::XML_TRUE;
 }
 
@@ -23000,31 +23005,6 @@ fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>
     Some(std::sync::Arc::new(SharedDtd::new(dtd)))
 }
 
-/// Releases the allocator tokens held by records in the element-type table.
-///
-/// # Safety
-///
-/// `table` must be the DTD's element-type table.  Its entries are allocated
-/// by `lookup` with `ELEMENT_TYPE` storage, so their owned word buffers have
-/// the layout and alignment required for `ELEMENT_TYPE`.
-unsafe fn release_element_default_attributes(
-    table: &mut HASH_TABLE,
-    parser: &mut XML_ParserStruct,
-) {
-    let Some(slots) = table.v.as_mut() else {
-        return;
-    };
-
-    for entry in slots.entries.iter_mut().flatten() {
-        let Some(element) = entry.element_mut() else {
-            continue;
-        };
-        if let Some(mut default_atts) = element.defaultAtts.take() {
-            (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7539));
-        }
-    }
-}
-
 /// Clears a table's owned records while preserving its allocation for reuse.
 fn hash_table_clear_owned(table: &mut HASH_TABLE) {
     if let Some(slots) = table.v.as_mut() {
@@ -23049,10 +23029,20 @@ fn hash_table_destroy_owned(table: &mut HASH_TABLE) {
     table.used = 0;
 }
 
-unsafe extern "C" fn dtdReset(p: *mut DTD, parser: crate::expat_h::XML_Parser) {
-    let p = &mut *p;
-    let parser = &mut *parser;
-    release_element_default_attributes(&mut p.elementTypes, parser);
+/// Resets a parser-owned DTD.  The typed references originate from the
+/// parser's validated ownership facade; this remains unsafe while those
+/// state types carry raw ABI fields.
+unsafe fn dtdReset(p: &mut DTD, parser: &mut XML_ParserStruct) {
+    if let Some(slots) = p.elementTypes.v.as_mut() {
+        for entry in slots.entries.iter_mut().flatten() {
+            let Some(element) = entry.element_mut() else {
+                continue;
+            };
+            if let Some(mut default_atts) = element.defaultAtts.take() {
+                (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7539));
+            }
+        }
+    }
     hash_table_clear_owned(&mut p.generalEntities);
     p.paramEntityRead = crate::expat_h::XML_FALSE;
     hash_table_clear_owned(&mut p.paramEntities);
