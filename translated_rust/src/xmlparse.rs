@@ -8620,9 +8620,8 @@ unsafe fn XML_Parse(
         }
         _ => {}
     }
-    let parser_ptr = std::ptr::from_mut(parser);
     parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    if XML_GetBuffer(parser_ptr, len).is_null() {
+    if xml_get_buffer_impl(parser, len).is_none() {
         return crate::expat_h::XML_STATUS_ERROR;
     }
     let Some(end) = parser.m_bufferEnd.checked_add(input.len()) else {
@@ -8818,26 +8817,22 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
     };
     XML_ParseBuffer(parser, len, isFinal)
 }
-pub unsafe extern "C" fn XML_GetBuffer(
-    mut parser: crate::expat_h::XML_Parser,
+unsafe fn xml_get_buffer_impl(
+    parser_ref: &mut XML_ParserStruct,
     mut len: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    if parser.is_null() {
-        return crate::__stddef_null_h::NULL;
-    }
-    let parser_ref = &mut *parser;
+) -> Option<usize> {
     if len < 0 as ::core::ffi::c_int {
         parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-        return crate::__stddef_null_h::NULL;
+        return None;
     }
     match parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint {
         3 => {
             parser_ref.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
-            return crate::__stddef_null_h::NULL;
+            return None;
         }
         2 => {
             parser_ref.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
-            return crate::__stddef_null_h::NULL;
+            return None;
         }
         _ => {}
     }
@@ -8855,14 +8850,14 @@ pub unsafe extern "C" fn XML_GetBuffer(
             as ::core::ffi::c_int;
         if neededSize < 0 as ::core::ffi::c_int {
             parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-            return crate::__stddef_null_h::NULL;
+            return None;
         }
         if keep > crate::stdlib::XML_CONTEXT_BYTES {
             keep = crate::stdlib::XML_CONTEXT_BYTES;
         }
         if keep > crate::limits_h::INT_MAX - neededSize {
             parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-            return crate::__stddef_null_h::NULL;
+            return None;
         }
         neededSize += keep;
         if parser_ref.m_buffer.bytes.is_some()
@@ -8895,7 +8890,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
             }
             if bufferSize <= 0 as ::core::ffi::c_int {
                 parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::__stddef_null_h::NULL;
+                return None;
             }
             let allocation = parser_ref
                 .m_mem
@@ -8905,7 +8900,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
             );
             if allocation.is_null() {
                 parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::__stddef_null_h::NULL;
+                return None;
             }
             let mut new_bytes = Vec::new();
             if new_bytes.try_reserve_exact(bufferSize as usize).is_err() {
@@ -8914,7 +8909,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
                     .free_fcn
                     .expect("non-null function pointer")(allocation);
                 parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
-                return crate::__stddef_null_h::NULL;
+                return None;
             }
             new_bytes.resize(bufferSize as usize, 0);
             if let Some(cursor) = parser_ref.m_bufferPtr {
@@ -8946,14 +8941,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
         parser_ref.m_eventPtr = None;
         parser_ref.m_positionPtr = None;
     }
-    return parser_ref
-        .m_buffer
-        .bytes
-        .as_mut()
-        .unwrap()
-        .as_mut_ptr()
-        .wrapping_add(parser_ref.m_bufferEnd)
-        .cast();
+    Some(parser_ref.m_bufferEnd)
 }
 #[export_name = "XML_GetBuffer"]
 
@@ -8961,7 +8949,18 @@ pub unsafe extern "C" fn XML_GetBuffer_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut len: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
-    XML_GetBuffer(parser, len)
+    let Some(parser) = parser.as_mut() else {
+        return crate::__stddef_null_h::NULL;
+    };
+    let Some(buffer_end) = xml_get_buffer_impl(parser, len) else {
+        return crate::__stddef_null_h::NULL;
+    };
+    parser
+        .m_buffer
+        .bytes
+        .as_mut()
+        .and_then(|bytes| bytes.get_mut(buffer_end..))
+        .map_or(crate::__stddef_null_h::NULL, |bytes| bytes.as_mut_ptr().cast())
 }
 fn trigger_reenter(parser: &mut XML_ParserStruct) {
     parser.m_reenter = crate::expat_h::XML_TRUE;
