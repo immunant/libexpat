@@ -3415,6 +3415,17 @@ impl RawNameSource<'_> {
         }
     }
 
+    /// Returns the byte-preserving view used by the tokenizer's conversion
+    /// routines.  This keeps conversion callers from recreating a slice from
+    /// a pair of C cursors after the owning parser/entity storage has already
+    /// validated the token range.
+    fn bytes(&self) -> &[u8] {
+        match self {
+            Self::Bytes(bytes) => bytes,
+            Self::Chars(chars) => bytemuck::cast_slice(chars),
+        }
+    }
+
     fn same_bytes(&self, other: &Self) -> bool {
         self.len() == other.len()
             && match (self, other) {
@@ -10071,24 +10082,25 @@ unsafe fn doContent(
         s.addr(),
     );
     loop {
-        let (scan, mut next): (
+        let (scan, mut next, source): (
             crate::src::xmltok::ScannerResult,
             *const ::core::ffi::c_char,
+            RawNameSource<'_>,
         ) = {
             // The tokenizer reports an offset in this exact bounded view.
             // Recover the C cursor from the slice only after the offset has
             // been checked, rather than advancing the incoming raw cursor.
-            let input = match event_raw_name_source(
+            let source = match event_raw_name_source(
                 &*parser,
                 &*dtd,
                 parser_events,
                 s.addr(),
                 end.addr(),
             ) {
-                Some(RawNameSource::Bytes(bytes)) => bytemuck::cast_slice(bytes),
-                Some(RawNameSource::Chars(chars)) => chars,
+                Some(source) => source,
                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
             };
+            let input = source.chars();
             let scan = crate::src::xmltok::ScannerContext::normal(
                 encoding.scanners[1 as usize],
                 &normal_encoding,
@@ -10102,7 +10114,7 @@ unsafe fn doContent(
                 },
                 None => s,
             };
-            (scan, next)
+            (scan, next, source)
         };
         let mut tok: ::core::ffi::c_int = scan.token;
         let mut accountAfter: *const ::core::ffi::c_char = if tok
@@ -10407,24 +10419,23 @@ unsafe fn doContent(
                     let mut result_0: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
                     let mut toPtr: *mut crate::expat_external_h::XML_Char =
                         ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                    let tag_lists_have_capacity = {
+                    let mut tag_storage = {
                         // No callback can run while reserving parser-owned tag
-                        // storage, so borrow the parser once for both vectors.
-                        // Keeping this state update in a safe borrow avoids
-                        // repeatedly dereferencing the same parser handle.
+                        // storage or taking a recycled tag.  Borrow the parser
+                        // once for all three operations.
                         let parser_state = &mut *parser;
-                        parser_state.m_freeTagList.tags.try_reserve(1).is_ok()
-                            && parser_state.m_activeTags.try_reserve(1).is_ok()
+                        if !parser_state.m_freeTagList.tags.try_reserve(1).is_ok()
+                            || !parser_state.m_activeTags.try_reserve(1).is_ok()
+                        {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        parser_state.m_freeTagList.tags.pop()
                     };
-                    if !tag_lists_have_capacity {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    if tag_storage.is_none() {
+                        tag_storage = tag_storage_new(parser, 3477 as ::core::ffi::c_int);
                     }
-                    let mut tag_storage = match (*parser).m_freeTagList.tags.pop() {
-                        Some(storage) => storage,
-                        None => match tag_storage_new(parser, 3477 as ::core::ffi::c_int) {
-                            Some(storage) => storage,
-                            None => return crate::expat_h::XML_ERROR_NO_MEMORY,
-                        },
+                    let Some(mut tag_storage) = tag_storage else {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
                     if tag_storage
                         .tag
@@ -10502,7 +10513,7 @@ unsafe fn doContent(
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
                     (*tag).rawNameLength = raw_name_len.length;
-                    (*parser).m_tagLevel += 1;
+                    parser_state.m_tagLevel += 1;
                     let raw_name_length = match usize::try_from((*tag).rawNameLength) {
                         Ok(length) => length,
                         Err(_) => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
@@ -10979,32 +10990,43 @@ unsafe fn doContent(
                     let handlers = content_token_handlers(&*parser);
                     if handlers.character_data {
                         if encoding.isUtf8 == 0 {
-                            let (data_start, data_end, data_capacity) = {
-                                let parser_ref = &mut *parser;
-                                let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
-                                (
-                                    data_start,
-                                    data_start.wrapping_add(parser_ref.m_dataBufEnd),
-                                    parser_ref.m_dataBufEnd,
-                                )
+                            let unknown_encoding = match encoding.utf8Convert {
+                                crate::src::xmltok::Utf8Converter::Unknown => {
+                                    crate::src::xmltok::registered_unknown_encoding(
+                                        normal_encoding.unknown_converter_id,
+                                    )
+                                }
+                                _ => None,
                             };
-                            let mut dataPtr: *mut ICHAR = data_start;
-                            crate::src::xmltok::convert_to_utf8(
-                                enc,
-                                &raw mut s,
-                                end,
-                                &raw mut dataPtr,
-                                data_end,
-                            );
-                            let data_len = match dataPtr
-                                .addr()
-                                .checked_sub(data_start.addr())
-                                .filter(|&len| len <= data_capacity)
-                                .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
+                            if matches!(
+                                encoding.utf8Convert,
+                                crate::src::xmltok::Utf8Converter::Unknown
+                            ) && unknown_encoding.is_none()
                             {
-                                Some(len) => len,
-                                None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            }
+                            let (data_start, data_len) = {
+                                let parser_ref = &mut *parser;
+                                let Some(output) = parser_ref
+                                    .m_dataBuf
+                                    .chars
+                                    .get_mut(..parser_ref.m_dataBufEnd)
+                                else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                };
+                                let (_, _, written) = crate::src::xmltok::convert_to_utf8_slice(
+                                    encoding,
+                                    unknown_encoding.as_ref(),
+                                    source.bytes(),
+                                    bytemuck::cast_slice_mut(output),
+                                );
+                                let Some(data_len) = ::core::ffi::c_int::try_from(written).ok()
+                                else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                };
+                                (output.as_ptr(), data_len)
                             };
+                            drop(source);
                             callCharacterDataHandler(parser, data_start, data_len);
                         } else {
                             let data_len = match end
@@ -11058,25 +11080,59 @@ unsafe fn doContent(
                         .cloned();
                     if let Some(charDataHandler) = charDataHandler {
                         if encoding.isUtf8 == 0 {
-                            let (data_start, data_end, data_capacity) = {
-                                let parser_ref = &mut *parser;
-                                let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
-                                (
-                                    data_start,
-                                    data_start.wrapping_add(parser_ref.m_dataBufEnd),
-                                    parser_ref.m_dataBufEnd,
-                                )
-                            };
+                            // A character-data callback may re-enter and grow
+                            // the parser buffer.  Do not retain the scan's
+                            // source view across it; resolve the bounded token
+                            // afresh for each converted output chunk.
+                            drop(source);
                             loop {
-                                let mut dataPtr_0: *mut ICHAR = data_start;
-                                let convert_res_0: crate::src::xmltok::XML_Convert_Result =
-                                    crate::src::xmltok::convert_to_utf8(
-                                        enc,
-                                        &raw mut s,
-                                        next,
-                                        &raw mut dataPtr_0,
-                                        data_end,
-                                    );
+                                let source = match event_raw_name_source(
+                                    &*parser,
+                                    &*dtd,
+                                    parser_events,
+                                    s.addr(),
+                                    next.addr(),
+                                ) {
+                                    Some(source) => source,
+                                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                };
+                                let unknown_encoding = match encoding.utf8Convert {
+                                    crate::src::xmltok::Utf8Converter::Unknown => {
+                                        crate::src::xmltok::registered_unknown_encoding(
+                                            normal_encoding.unknown_converter_id,
+                                        )
+                                    }
+                                    _ => None,
+                                };
+                                if matches!(
+                                    encoding.utf8Convert,
+                                    crate::src::xmltok::Utf8Converter::Unknown
+                                ) && unknown_encoding.is_none()
+                                {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                }
+                                let (convert_res_0, consumed, written, data_start) = {
+                                    let parser_ref = &mut *parser;
+                                    let Some(output) = parser_ref
+                                        .m_dataBuf
+                                        .chars
+                                        .get_mut(..parser_ref.m_dataBufEnd)
+                                    else {
+                                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                    };
+                                    let (result, consumed, written) =
+                                        crate::src::xmltok::convert_to_utf8_slice(
+                                            encoding,
+                                            unknown_encoding.as_ref(),
+                                            source.bytes(),
+                                            bytemuck::cast_slice_mut(output),
+                                        );
+                                    (result, consumed, written, output.as_ptr())
+                                };
+                                s = match source.chars().get(consumed..) {
+                                    Some(remaining) => remaining.as_ptr(),
+                                    None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                                };
                                 content_update_event_end(
                                     &mut *parser,
                                     event_target,
@@ -11084,12 +11140,7 @@ unsafe fn doContent(
                                     internal_event_window,
                                     s.addr(),
                                 );
-                                let data_len = match dataPtr_0
-                                    .addr()
-                                    .checked_sub(data_start.addr())
-                                    .filter(|&len| len <= data_capacity)
-                                    .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
-                                {
+                                let data_len = match ::core::ffi::c_int::try_from(written).ok() {
                                     Some(len) => len,
                                     None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                                 };

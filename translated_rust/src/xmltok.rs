@@ -1006,7 +1006,7 @@ pub unsafe fn convert_to_utf8(
         // address is the stable registration key installed at initialization.
         // Resolve a typed snapshot from that key rather than casting the
         // prefix pointer to `unknown_encoding`.
-        Utf8Converter::Unknown => registered_unknown_encoding(enc.addr()),
+        Utf8Converter::Unknown => registered_unknown_encoding(Some(enc.addr())),
         _ => None,
     };
     let (result, input_used, output_used) =
@@ -1170,7 +1170,10 @@ fn unknown_encoding_converter(storage_id: usize) -> Option<UnknownEncodingConver
         .and_then(|registration| registration.converter.clone())
 }
 
-fn registered_unknown_encoding(storage_id: usize) -> Option<unknown_encoding> {
+pub(crate) fn registered_unknown_encoding(
+    storage_id: Option<usize>,
+) -> Option<unknown_encoding> {
+    let storage_id = storage_id?;
     UNKNOWN_ENCODING_CONVERTERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
