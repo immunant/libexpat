@@ -603,10 +603,10 @@ pub mod expat_h {
     >;
 
     pub type XML_StartCdataSectionHandler =
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+        Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
 
     pub type XML_EndCdataSectionHandler =
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+        Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
 
     pub type XML_DefaultHandler = Option<
         unsafe extern "C" fn(
@@ -627,7 +627,7 @@ pub mod expat_h {
     >;
 
     pub type XML_EndDoctypeDeclHandler =
-        Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+        Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
 
     pub type XML_EntityDeclHandler = Option<
         unsafe extern "C" fn(

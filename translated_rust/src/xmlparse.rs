@@ -1515,7 +1515,7 @@ where
 // supplied by C is not retained in the parser object.
 trait EndCdataSectionCallback: Send + Sync + std::any::Any {}
 
-impl EndCdataSectionCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> () {}
+impl EndCdataSectionCallback for extern "C" fn(*mut ::core::ffi::c_void) -> () {}
 
 /// Owns an erased C callback representation while exposing only a typed
 /// parser reference to callback dispatch.
@@ -2004,14 +2004,14 @@ where
     let callback = std::sync::Arc::new(callback);
     let callback = std::sync::Arc::new(move |parser: &XML_ParserStruct| {
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any)
-            .downcast_ref::<unsafe extern "C" fn(*mut ::core::ffi::c_void)>()
+            .downcast_ref::<extern "C" fn(*mut ::core::ffi::c_void)>()
         else {
             return;
         };
         // The callback receives only the caller-owned opaque context or the
         // current parser handle, selected by the parser's handler-argument
-        // mode. Both are materialized for this immediate foreign call.
-        unsafe { callback(handler_arg_from_state!(parser)) }
+        // mode. Both are materialized for this immediate C-ABI call.
+        callback(handler_arg_from_state!(parser))
     });
     std::sync::Arc::new(CdataSectionCallbackAdapter { callback })
 }
