@@ -9314,6 +9314,7 @@ unsafe extern "C" fn doContent(
                     }
                     (*tag).name.str = TagNameStorage::TagBuffer { offset: 0 };
                     *toPtr = '\0' as crate::expat_external_h::XML_Char;
+                    let mut app_atts = Vec::new();
                     result_0 = storeAtts(
                         parser,
                         enc,
@@ -9324,6 +9325,7 @@ unsafe extern "C" fn doContent(
                         tag,
                         &raw mut (*tag).bindings,
                         account,
+                        &mut app_atts,
                     );
                     if result_0 as u64 != 0 {
                         return result_0;
@@ -9352,7 +9354,7 @@ unsafe extern "C" fn doContent(
                             callback.invoke(
                                 handler_arg!(parser),
                                 name,
-                                (*parser).m_atts.records.as_mut_ptr().cast(),
+                                app_atts.as_mut_ptr(),
                             );
                         }
                     } else if (*parser).m_defaultHandler {
@@ -9397,6 +9399,7 @@ unsafe extern "C" fn doContent(
                         .chars_from(name_ref)
                         .map_or(::core::ptr::null(), |chars| chars.as_ptr());
                     (*parser).m_tempPool.commit();
+                    let mut app_atts = Vec::new();
                     result_1 = storeAtts(
                         parser,
                         enc,
@@ -9407,6 +9410,7 @@ unsafe extern "C" fn doContent(
                         ::core::ptr::null_mut(),
                         &raw mut bindings,
                         XML_ACCOUNT_NONE,
+                        &mut app_atts,
                     );
                     if result_1 as ::core::ffi::c_uint
                         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
@@ -9437,7 +9441,7 @@ unsafe extern "C" fn doContent(
                             callback.invoke(
                                 handler_arg!(parser),
                                 name_pointer,
-                                (*parser).m_atts.records.as_mut_ptr().cast(),
+                                app_atts.as_mut_ptr(),
                             );
                         }
                         noElmHandlers = crate::expat_h::XML_FALSE;
@@ -10013,6 +10017,7 @@ unsafe extern "C" fn storeAtts(
     mut tagPtr: *mut TAG,
     mut bindingsPtr: *mut *mut BINDING,
     mut account: XML_Account,
+    appAtts: &mut Vec<*const crate::expat_external_h::XML_Char>,
 ) -> crate::expat_h::XML_Error {
     let dtd = &mut *parser_dtd_ptr!(parser);
     let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
@@ -10163,22 +10168,20 @@ unsafe extern "C" fn storeAtts(
         }
     }
     // The opaque backing allocation preserves the configured allocator's
-    // observable sequence.  ATTRIBUTE is pointer-slot aligned, so its owned
-    // allocation can provide the callback's terminated name/value view.
+    // observable sequence.  Scanner records and the callback's terminated
+    // name/value vector have distinct Rust storage: treating one as the
+    // other would create an aliased slice with an unrelated element type.
     if (*parser).m_attsSize <= 0 || (*parser).m_atts.records.len() != (*parser).m_attsSize as usize
     {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
     let app_atts_len = AttributeStorage::callback_slots((*parser).m_attsSize as usize)
         .expect("validated attribute storage capacity");
-    let appAtts = ::core::slice::from_raw_parts_mut(
-        (*parser)
-            .m_atts
-            .records
-            .as_mut_ptr()
-            .cast::<*const crate::expat_external_h::XML_Char>(),
-        app_atts_len,
-    );
+    appAtts.clear();
+    if appAtts.try_reserve_exact(app_atts_len).is_err() {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    }
+    appAtts.resize(app_atts_len, ::core::ptr::null());
     i = 0 as ::core::ffi::c_int;
     while i < n {
         // The scanner has completed before the name/value view is formed.
