@@ -11133,7 +11133,9 @@ unsafe extern "C" fn storeAtts(
         {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
-        let name = attStr.add(currAtt.name);
+        // `currAtt.name` was checked against the complete scanner window
+        // above, so derive this cursor without an unchecked pointer offset.
+        let name = attStr.wrapping_add(currAtt.name);
         let value_start = attStr.wrapping_add(currAtt.valueStart);
         let value_end = attStr.wrapping_add(currAtt.valueEnd);
         // Validate the complete attribute-name suffix against the same token
