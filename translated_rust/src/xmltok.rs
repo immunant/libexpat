@@ -3913,33 +3913,6 @@ pub mod xmltok_impl_c {
         NormalIgnoreSectionOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
     }
 
-    pub unsafe extern "C" fn normal_ignoreSectionTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let context = crate::src::xmltok::ScannerContext::from_raw(
-            crate::src::xmltok::Scanner::NormalIgnoreSection,
-            enc,
-            ptr,
-            end,
-        );
-        let chars = context.chars();
-        let result = context.scan();
-        if let Some(next) = result.next {
-            // `next` is meaningful only inside the scanner's checked input
-            // span.  `get` also admits the one-past-end cursor required by
-            // the tokenizer ABI without manufacturing a pointer by arithmetic.
-            if let Some(cursor) = chars.get(next..) {
-                let cursor: *const ::core::ffi::c_char =
-                    cursor.first().map_or(end, |char_| char_);
-                *nextTokPtr = cursor;
-            }
-        }
-        result.token
-    }
-
     #[derive(Copy, Clone)]
     enum NormalAttributeAction {
         Name {
@@ -12327,7 +12300,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::normal_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_entityValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
