@@ -24382,7 +24382,6 @@ unsafe extern "C" fn getElementType(
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut ELEMENT_TYPE {
-    let parser_handle = parser;
     let Some(parser) = parser.as_mut() else {
         return ::core::ptr::null_mut();
     };
@@ -24409,44 +24408,43 @@ unsafe extern "C" fn getElementType(
             .and_then(UnknownEncodingMemory::initialized_encoding)
             .copied(),
     };
-    if matches!(enc.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
-        && unknown_encoding.is_none()
-    {
-        return ::core::ptr::null_mut();
-    }
     let salt = parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt;
-    let Some(name) = pool_store_name_source(&mut dtd.pool, enc, unknown_encoding.as_ref(), &source)
+    // Keep the complete name insertion, pool transaction, and namespace
+    // prefix update on the typed DTD side.  In particular, this avoids
+    // round-tripping the pool key through the legacy raw `lookup` API after
+    // the input range has already been validated above.
+    let Some(element_name) = get_element_type_from_token(
+        dtd,
+        enc,
+        unknown_encoding.as_ref(),
+        &source,
+        salt,
+    ) else {
+        return ::core::ptr::null_mut();
+    };
+    let Some(element_index) = lookup_existing(
+        &dtd.pool,
+        &dtd.elementTypes,
+        LookupName::Retained(element_name),
+        salt,
+    ) else {
+        return ::core::ptr::null_mut();
+    };
+    let Some(element) = dtd
+        .elementTypes
+        .v
+        .as_mut()
+        .and_then(|storage| storage.entries.get_mut(element_index))
+        .and_then(Option::as_mut)
+        .and_then(NamedAllocation::element_mut)
     else {
         return ::core::ptr::null_mut();
     };
-    let Some((is_new, element_name)) = get_element_type_impl(dtd, salt, name) else {
-        return ::core::ptr::null_mut();
-    };
-    let Some(name_chars) = dtd.pool.chars_from(element_name) else {
-        return ::core::ptr::null_mut();
-    };
-    let element = lookup(
-        parser_handle,
-        &raw mut dtd.elementTypes,
-        name_chars.as_ptr() as KEY,
-        0,
-    ) as *mut ELEMENT_TYPE;
-    if element.is_null() {
-        return ::core::ptr::null_mut();
-    }
-    if is_new {
-        dtd.pool.commit();
-        if setElementTypePrefix(parser_handle, element) == 0 {
-            return ::core::ptr::null_mut();
-        }
-    } else {
-        dtd.pool.rewind();
-    }
-    element
+    std::ptr::from_mut(element)
 }
 
 unsafe fn copyString(
