@@ -11047,16 +11047,51 @@ unsafe fn doContent(
                     else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let name_string = poolStoreString(
-                        &raw mut parser.m_tempPool,
-                        enc,
-                        rawName,
-                        rawName.wrapping_offset(raw_name_len.length as isize),
-                    );
-                    if name_string.is_null() {
-                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    let Ok(raw_name_length) = usize::try_from(raw_name_len.length) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let Some(raw_name_end) = rawName.addr().checked_add(raw_name_length) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    // `rawName` and its measured end are scanner cursors, so
+                    // validate them against this iteration's owned token
+                    // snapshot before appending the retained element name.
+                    // This is the same bounded conversion used by other
+                    // content-name paths and avoids the legacy raw pool
+                    // adapter entirely.
+                    let Some(raw_name_chars) = content_token_chars_between(
+                        &source,
+                        s.addr(),
+                        rawName.addr(),
+                        raw_name_end,
+                    ) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let raw_name_bytes: &[u8] = bytemuck::cast_slice(raw_name_chars);
+                    let unknown_encoding = if raw_name_bytes.is_empty() {
+                        None
+                    } else {
+                        match encoding.utf8Convert {
+                            crate::src::xmltok::Utf8Converter::Unknown => {
+                                crate::src::xmltok::registered_unknown_encoding(Some(enc.addr()))
+                            }
+                            _ => None,
+                        }
+                    };
+                    if matches!(
+                        encoding.utf8Convert,
+                        crate::src::xmltok::Utf8Converter::Unknown
+                    ) && !raw_name_bytes.is_empty()
+                        && unknown_encoding.is_none()
+                    {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     }
-                    let Some(name_ref) = parser.m_tempPool.start_ref(false) else {
+                    let Some(name_ref) = pool_store_name_source(
+                        &mut parser.m_tempPool,
+                        encoding,
+                        unknown_encoding.as_ref(),
+                        raw_name_bytes,
+                    ) else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
                     name_0.str = TagNameStorage::TempPool(name_ref);
