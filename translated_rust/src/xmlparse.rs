@@ -2479,9 +2479,10 @@ pub struct DEFAULT_ATTRIBUTE {
     // until `defineAttribute` initializes the record.
     pub id: Option<PoolStringRef>,
     pub isCdata: crate::expat_h::XML_Bool,
-    // Default values are pool-owned and nullable.  `NonNull` retains the
-    // pointer-sized optional representation without exposing a raw field.
-    pub value: Option<std::ptr::NonNull<crate::expat_external_h::XML_Char>>,
+    // Default values are terminated strings in the DTD pool.  Retain their
+    // checked pool location rather than an address into allocator-owned
+    // storage; this also remains valid if the pool grows.
+    pub value: Option<PoolStringRef>,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -8293,12 +8294,12 @@ unsafe extern "C" fn storeAtts(
     }
     i = 0 as ::core::ffi::c_int;
     while i < nDefaultAtts {
-        let mut da: *const DEFAULT_ATTRIBUTE = (*elementType)
+        let da = &*(*elementType)
             .defaultAtts
             .expect("default attribute storage must exist for a non-empty list")
             .as_ptr()
             .offset(i as isize);
-        let Some(id_name_ref) = (*da).id else {
+        let Some(id_name_ref) = da.id else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
         let id_name = (*dtd)
@@ -8317,11 +8318,17 @@ unsafe extern "C" fn storeAtts(
         if id.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        if *(*id).name.offset(-1 as isize) == 0 && (*da).value.is_some() {
-            let value = (*da)
+        if *(*id).name.offset(-1 as isize) == 0 && da.value.is_some() {
+            let value_ref = da
                 .value
-                .expect("a present default attribute value is non-null")
-                .as_ptr() as *const crate::expat_external_h::XML_Char;
+                .expect("a present default attribute value has a pool location");
+            let value = (*dtd)
+                .pool
+                .chars_from(value_ref)
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+            if value.is_null() {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            }
             if !(*id).prefix.is_null() {
                 if (*id).xmlns != 0 {
                     let mut result_1: crate::expat_h::XML_Error = addBinding(
@@ -10531,9 +10538,7 @@ unsafe extern "C" fn doProlog(
                                                 (*parser).m_declAttributeId,
                                                 (*parser).m_declAttributeIsCdata,
                                                 (*parser).m_declAttributeIsId,
-                                                ::core::ptr::null::<
-                                                    crate::expat_external_h::XML_Char,
-                                                >(),
+                                                None,
                                                 parser,
                                             ) == 0
                                             {
@@ -10647,7 +10652,7 @@ unsafe extern "C" fn doProlog(
                                                 (*parser).m_declAttributeId,
                                                 (*parser).m_declAttributeIsCdata,
                                                 crate::expat_h::XML_FALSE,
-                                                attVal,
+                                                Some(start),
                                                 parser,
                                             ) == 0
                                             {
@@ -13285,12 +13290,12 @@ unsafe extern "C" fn reportDefault(
     };
 }
 
-unsafe extern "C" fn defineAttribute(
+unsafe fn defineAttribute(
     mut type_0: *mut ELEMENT_TYPE,
     mut attId: *mut ATTRIBUTE_ID,
     mut isCdata: crate::expat_h::XML_Bool,
     mut isId: crate::expat_h::XML_Bool,
-    mut value: *const crate::expat_external_h::XML_Char,
+    value: Option<PoolStringRef>,
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
     let mut att: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
@@ -13301,7 +13306,7 @@ unsafe extern "C" fn defineAttribute(
     let Some(att_name) = pool_string_ref(&raw const (*(*parser).m_dtd).pool, (*attId).name, false) else {
         return 0 as ::core::ffi::c_int;
     };
-    if !value.is_null() || isId as ::core::ffi::c_int != 0 {
+    if value.is_some() || isId as ::core::ffi::c_int != 0 {
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
         while i < type_0.nDefaultAtts {
@@ -13369,7 +13374,7 @@ unsafe extern "C" fn defineAttribute(
         .as_ptr()
         .offset(type_0.nDefaultAtts as isize);
     (*att).id = Some(att_name);
-    (*att).value = std::ptr::NonNull::new(value as *mut crate::expat_external_h::XML_Char);
+    (*att).value = value;
     (*att).isCdata = isCdata;
     if isCdata == 0 {
         (*attId).maybeTokenized = crate::expat_h::XML_TRUE;
@@ -14253,15 +14258,25 @@ unsafe extern "C" fn dtdCopy(
             new_att.id = Some(new_id_name);
             new_att.isCdata = old_att.isCdata;
             if let Some(value) = old_att.value {
-                new_att.value = std::ptr::NonNull::new(
-                    poolCopyString(
-                        &raw mut new_dtd.pool,
-                        value.as_ptr() as *const crate::expat_external_h::XML_Char,
-                    ) as *mut crate::expat_external_h::XML_Char,
-                );
-                if new_att.value.is_none() {
+                let Some(old_value) = old_dtd.pool.chars_from(value) else {
                     return 0 as ::core::ffi::c_int;
-                }
+                };
+                let Some(old_value_len) = old_value
+                    .iter()
+                    .position(|&character| character == 0)
+                    .and_then(|length| length.checked_add(1))
+                    .and_then(|length| ::core::ffi::c_int::try_from(length).ok())
+                else {
+                    return 0 as ::core::ffi::c_int;
+                };
+                let Some(copied_value) = poolCopyStringN(
+                    &raw mut new_dtd.pool,
+                    old_value.as_ptr(),
+                    old_value_len,
+                ) else {
+                    return 0 as ::core::ffi::c_int;
+                };
+                new_att.value = Some(copied_value);
             } else {
                 new_att.value = None;
             }
