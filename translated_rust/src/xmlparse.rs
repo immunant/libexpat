@@ -10224,20 +10224,36 @@ pub unsafe extern "C" fn XML_GetParsingStatus_ffi(
     };
     *status = XML_GetParsingStatus(parser.m_parsingStatus);
 }
-pub unsafe extern "C" fn XML_GetErrorCode(
-    mut parser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() {
-        return crate::expat_h::XML_ERROR_INVALID_ARGUMENT;
+/// The error code copied from a validated parser handle.
+///
+/// This deliberately contains only the value exposed by the query, so the
+/// implementation has no dependency on the ABI-shaped parser state.
+struct ErrorCodeState {
+    error_code: crate::expat_h::XML_Error,
+}
+
+fn error_code_state(parser: &XML_ParserStruct) -> ErrorCodeState {
+    ErrorCodeState {
+        error_code: parser.m_errorCode,
     }
-    return (*parser).m_errorCode;
+}
+
+fn XML_GetErrorCode(state: Option<ErrorCodeState>) -> crate::expat_h::XML_Error {
+    state
+        .map(|state| state.error_code)
+        .unwrap_or(crate::expat_h::XML_ERROR_INVALID_ARGUMENT)
 }
 #[export_name = "XML_GetErrorCode"]
 
 pub unsafe extern "C" fn XML_GetErrorCode_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Error {
-    XML_GetErrorCode(parser)
+    if parser.is_null()
+        || parser.addr() % ::core::mem::align_of::<XML_ParserStruct>() != 0
+    {
+        return XML_GetErrorCode(None);
+    }
+    XML_GetErrorCode(Some(error_code_state(&*parser)))
 }
 pub unsafe fn XML_GetCurrentByteIndex(
     parser: Option<&XML_ParserStruct>,
