@@ -8531,93 +8531,99 @@ pub unsafe extern "C" fn XML_StopParser_ffi(
     };
     xml_stop_parser_impl(parser, resumable)
 }
-pub unsafe extern "C" fn XML_ResumeParser(
-    mut parser: crate::expat_h::XML_Parser,
+/// Resume a suspended parser after its opaque handle has been checked at the
+/// FFI boundary.  The processor dispatch still has a legacy raw cursor ABI,
+/// but parser-state bookkeeping stays on this borrowed side of the boundary.
+pub unsafe fn XML_ResumeParser(
+    parser: &mut XML_ParserStruct,
 ) -> crate::expat_h::XML_Status {
     let mut result: crate::expat_h::XML_Status = crate::expat_h::XML_STATUS_OK;
-    if parser.is_null() {
-        return crate::expat_h::XML_STATUS_ERROR;
-    }
     let (start, parse_end) = {
-        let parser_ref = &mut *parser;
-        if parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint
+        if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
             != crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NOT_SUSPENDED;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_NOT_SUSPENDED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
-        parser_ref.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-        let start = parser_ref
+        parser.m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
+        let start = parser
             .m_buffer
             .bytes
             .as_ref()
             .unwrap()
             .as_ptr()
-            .wrapping_add(parser_ref.m_bufferPtr.unwrap())
+            .wrapping_add(parser.m_bufferPtr.unwrap())
             .cast();
-        let parse_end = parser_ref
+        let parse_end = parser
             .m_buffer
             .bytes
             .as_ref()
             .unwrap()
             .as_ptr()
-            .wrapping_add(parser_ref.m_bufferEnd)
+            .wrapping_add(parser.m_bufferEnd)
             .cast();
         (start, parse_end)
     };
     let mut processed_to = start;
-    let error = callProcessor(parser, start, parse_end, &raw mut processed_to);
+    let error = callProcessor(
+        std::ptr::from_mut(parser),
+        start,
+        parse_end,
+        &raw mut processed_to,
+    );
     {
-        let parser_ref = &mut *parser;
-        let buffer_start = parser_ref.m_buffer.bytes.as_ref().unwrap().as_ptr();
+        let buffer_start = parser.m_buffer.bytes.as_ref().unwrap().as_ptr();
         match processed_to.addr().checked_sub(buffer_start.addr()) {
-            Some(cursor) if cursor <= parser_ref.m_bufferEnd => {
-                parser_ref.m_bufferPtr = Some(cursor);
-                parser_ref.m_errorCode = error;
+            Some(cursor) if cursor <= parser.m_bufferEnd => {
+                parser.m_bufferPtr = Some(cursor);
+                parser.m_errorCode = error;
             }
             _ => {
-                parser_ref.m_bufferPtr = None;
-                parser_ref.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                parser.m_bufferPtr = None;
+                parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
         }
-        if parser_ref.m_errorCode as ::core::ffi::c_uint
+        if parser.m_errorCode as ::core::ffi::c_uint
             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
         {
-            parser_ref.m_eventEndPtr = parser_ref.m_eventPtr;
-            parser_ref.m_processor = ProcessorState::Error;
+            parser.m_eventEndPtr = parser.m_eventPtr;
+            parser.m_processor = ProcessorState::Error;
             return crate::expat_h::XML_STATUS_ERROR;
         }
-        match parser_ref.m_parsingStatus.parsing as ::core::ffi::c_uint {
+        match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
                 result = crate::expat_h::XML_STATUS_SUSPENDED;
             }
             0 | 1 => {
-                if parser_ref.m_parsingStatus.finalBuffer != 0 {
-                    parser_ref.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+                if parser.m_parsingStatus.finalBuffer != 0 {
+                    parser.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
                     return result;
                 }
             }
             _ => {}
         }
     }
-    let encoding = &*(parser_encoding(parser) as *const crate::src::xmltok::normal_encoding);
-    let parser_ref = &mut *parser;
-    let buffer = parser_ref.m_buffer.bytes.as_ref().unwrap();
-    let buffer_cursor = parser_ref.m_bufferPtr.unwrap();
-    if let Some(position_cursor) = parser_ref
+    let Some(encoding) = current_parser_normal_encoding(parser) else {
+        parser.m_errorCode = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        parser.m_processor = ProcessorState::Error;
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
+    let buffer = parser.m_buffer.bytes.as_ref().unwrap();
+    let buffer_cursor = parser.m_bufferPtr.unwrap();
+    if let Some(position_cursor) = parser
         .m_positionPtr
         .filter(|position_cursor| *position_cursor <= buffer.len())
     {
         if position_cursor <= buffer_cursor {
             crate::src::xmltok::initUpdatePosition(
                 encoding.enc.updatePosition,
-                encoding,
+                &encoding,
                 &buffer[position_cursor..buffer_cursor],
-                &mut parser_ref.m_position,
+                &mut parser.m_position,
             );
         }
     }
-    parser_ref.m_positionPtr = Some(buffer_cursor);
+    parser.m_positionPtr = Some(buffer_cursor);
     return result;
 }
 #[export_name = "XML_ResumeParser"]
@@ -8625,6 +8631,9 @@ pub unsafe extern "C" fn XML_ResumeParser(
 pub unsafe extern "C" fn XML_ResumeParser_ffi(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Status {
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_STATUS_ERROR;
+    };
     XML_ResumeParser(parser)
 }
 pub unsafe extern "C" fn XML_GetParsingStatus(
