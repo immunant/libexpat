@@ -10710,23 +10710,25 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold
 ) -> crate::expat_h::XML_Bool {
     XML_SetBillionLaughsAttackProtectionActivationThreshold(parser, activationThresholdBytes)
 }
-pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification(
-    mut parser: crate::expat_h::XML_Parser,
-    mut maximumAmplificationFactor: ::core::ffi::c_float,
+/// Sets the allocation tracker's maximum amplification for a validated root
+/// parser.  Child parsers share their root allocation state and must not
+/// independently change this setting.
+fn set_alloc_tracker_maximum_amplification_impl(
+    parser: &mut XML_ParserStruct,
+    maximum_amplification_factor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null()
-        || (*parser).m_parentParser.is_some()
-        || maximumAmplificationFactor.is_nan() as i32 != 0
-        || maximumAmplificationFactor < 1.0f32
+    if parser.m_parentParser.is_some()
+        || maximum_amplification_factor.is_nan()
+        || maximum_amplification_factor < 1.0f32
     {
         return crate::expat_h::XML_FALSE;
     }
-    (*parser)
+    parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .alloc_tracker
-        .maximumAmplificationFactor = maximumAmplificationFactor;
+        .maximumAmplificationFactor = maximum_amplification_factor;
     return crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetAllocTrackerMaximumAmplification"]
@@ -10735,7 +10737,11 @@ pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
-    XML_SetAllocTrackerMaximumAmplification(parser, maximumAmplificationFactor)
+    if parser.is_null() || !parser.is_aligned() {
+        return crate::expat_h::XML_FALSE;
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_alloc_tracker_maximum_amplification_impl(parser, maximumAmplificationFactor)
 }
 /// Sets the allocation tracker activation threshold for a validated root
 /// parser.  Child parsers share their root accounting state and must not
