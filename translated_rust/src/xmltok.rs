@@ -208,7 +208,10 @@ pub struct ATTRIBUTE {
     /// transient input address from escaping into parser scratch state.
     pub name: usize,
     pub valuePtr: *const ::core::ffi::c_char,
-    pub valueEnd: *const ::core::ffi::c_char,
+    /// Offset of the attribute value's exclusive end within the start-tag
+    /// token passed to the scanner.  Like `name`, this keeps the scanner's
+    /// transient input address out of parser scratch state.
+    pub valueEnd: usize,
     pub normalized: ::core::ffi::c_char,
 }
 
@@ -10664,7 +10667,7 @@ pub mod xmltok_impl_c {
                     slot.valuePtr = source_start.wrapping_add(offset)
                 }
                 AttributeUpdate::ValueEnd(offset) => {
-                    slot.valueEnd = source_start.wrapping_add(offset)
+                    slot.valueEnd = offset
                 }
                 AttributeUpdate::Normalized(value) => slot.normalized = value,
             }

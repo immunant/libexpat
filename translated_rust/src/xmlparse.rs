@@ -2145,7 +2145,7 @@ impl AttributeStorage {
         crate::src::xmltok::ATTRIBUTE {
             name: 0,
             valuePtr: ::core::ptr::null(),
-            valueEnd: ::core::ptr::null(),
+            valueEnd: 0,
             normalized: 0,
         }
     }
@@ -9707,7 +9707,7 @@ unsafe extern "C" fn storeAtts(
                 enc,
                 isCdata,
                 currAtt.valuePtr,
-                currAtt.valueEnd,
+                attStr.wrapping_add(currAtt.valueEnd),
                 &raw mut (*parser).m_tempPool,
                 account,
             );
@@ -9727,7 +9727,7 @@ unsafe extern "C" fn storeAtts(
                 &raw mut (*parser).m_tempPool,
                 enc,
                 currAtt.valuePtr,
-                currAtt.valueEnd,
+                attStr.wrapping_add(currAtt.valueEnd),
             );
             if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
