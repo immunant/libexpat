@@ -2419,7 +2419,7 @@ fn dispatch_entity_decl_callback(
 }
 
 impl EntityDeclCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         ::core::ffi::c_int,
@@ -2441,7 +2441,7 @@ fn entity_decl_callback_adapter(
 ) -> std::sync::Arc<dyn for<'a> Fn(EntityDeclCallbackInvocation<'a>) + Send + Sync> {
     std::sync::Arc::new(move |invocation: EntityDeclCallbackInvocation<'_>| {
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 ::core::ffi::c_int,
@@ -2491,19 +2491,17 @@ fn entity_decl_callback_adapter(
         });
         // The invocation holds the parser and DTD pools alive while these
         // synchronous ABI views are passed to the callback.
-        unsafe {
-            callback(
-                handler_arg_from_state!(parser),
-                name,
-                event.is_parameter_entity,
-                value,
-                value_length,
-                base,
-                system_id,
-                public_id,
-                notation,
-            );
-        }
+        callback(
+            handler_arg_from_state!(parser),
+            name,
+            event.is_parameter_entity,
+            value,
+            value_length,
+            base,
+            system_id,
+            public_id,
+            notation,
+        );
     })
 }
 
@@ -11047,8 +11045,23 @@ pub unsafe extern "C" fn XML_SetEntityDeclHandler_ffi(
         return;
     }
     let parser_key = parser.addr();
+    // C callback pointers are callable after this unsafe ABI boundary; the
+    // internal adapter keeps only the safe callable form.  The exported
+    // signature intentionally remains the translated unsafe callback type.
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    configure_entity_decl_handler(parser, parser_key, handler)
+    configure_entity_decl_handler::<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            ::core::ffi::c_int,
+            *const crate::expat_external_h::XML_Char,
+            ::core::ffi::c_int,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+            *const crate::expat_external_h::XML_Char,
+        ),
+    >(parser, parser_key, unsafe { std::mem::transmute(handler) })
 }
 fn set_xml_decl_handler(
     parser: &mut XML_ParserStruct,
