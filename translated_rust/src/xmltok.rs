@@ -14037,7 +14037,9 @@ pub mod xmltok_ns_c {
         let encoding_table = encodings();
         return encoding_table[i as usize];
     }
-    pub unsafe extern "C" fn XmlParseXmlDecl(
+    #[export_name = "XmlParseXmlDecl"]
+
+    pub unsafe extern "C" fn XmlParseXmlDecl_ffi(
         mut isGeneralTextEntity: ::core::ffi::c_int,
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -14049,7 +14051,7 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        return doParseXmlDecl(
+        doParseXmlDecl(
             Some(
                 findEncoding
                     as unsafe extern "C" fn(
@@ -14069,35 +14071,9 @@ pub mod xmltok_ns_c {
             encodingName,
             encoding,
             standalone,
-        );
-    }
-    #[export_name = "XmlParseXmlDecl"]
-
-    pub unsafe extern "C" fn XmlParseXmlDecl_ffi(
-        mut isGeneralTextEntity: ::core::ffi::c_int,
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut badPtr: *mut *const ::core::ffi::c_char,
-        mut versionPtr: *mut *const ::core::ffi::c_char,
-        mut versionEndPtr: *mut *const ::core::ffi::c_char,
-        mut encodingName: *mut *const ::core::ffi::c_char,
-        mut encoding: *mut *const crate::src::xmltok::ENCODING,
-        mut standalone: *mut ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int {
-        XmlParseXmlDecl(
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
         )
     }
+    pub use XmlParseXmlDecl_ffi as XmlParseXmlDecl;
     pub extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_utf8_encoding_ns.enc;
     }
@@ -14265,40 +14241,6 @@ pub mod xmltok_ns_c {
         let encoding_table = encodingsNS();
         return encoding_table[i as usize];
     }
-    pub unsafe extern "C" fn XmlParseXmlDeclNS(
-        mut isGeneralTextEntity: ::core::ffi::c_int,
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut badPtr: *mut *const ::core::ffi::c_char,
-        mut versionPtr: *mut *const ::core::ffi::c_char,
-        mut versionEndPtr: *mut *const ::core::ffi::c_char,
-        mut encodingName: *mut *const ::core::ffi::c_char,
-        mut encoding: *mut *const crate::src::xmltok::ENCODING,
-        mut standalone: *mut ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int {
-        return doParseXmlDecl(
-            Some(
-                findEncodingNS
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::xmltok::ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        );
-    }
     #[export_name = "XmlParseXmlDeclNS"]
 
     pub unsafe extern "C" fn XmlParseXmlDeclNS_ffi(
@@ -14313,7 +14255,16 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        XmlParseXmlDeclNS(
+        doParseXmlDecl(
+            Some(
+                findEncodingNS
+                    as unsafe extern "C" fn(
+                        *const crate::src::xmltok::ENCODING,
+                        *const ::core::ffi::c_char,
+                        *const ::core::ffi::c_char,
+                    )
+                        -> *const crate::src::xmltok::ENCODING,
+            ),
             isGeneralTextEntity,
             enc,
             ptr,
@@ -14353,6 +14304,7 @@ pub mod xmltok_ns_c {
     use crate::src::xmltok::UNKNOWN_ENC;
     use crate::src::xmltok::XML_CONTENT_STATE;
     use crate::src::xmltok::XML_PROLOG_STATE;
+    pub use XmlParseXmlDeclNS_ffi as XmlParseXmlDeclNS;
 }
 
 pub mod nametab_h {
