@@ -10195,17 +10195,28 @@ unsafe extern "C" fn doCdataSection(
     // this token.  Borrow it once so the loop does not repeatedly dereference
     // the same validated encoding pointer.
     let enc = &*enc;
+    let parser_handle = parser;
     let mut s: *const ::core::ffi::c_char = *startPtr;
-    let parser_events = ::core::ptr::eq(enc, parser_encoding(parser));
+    let parser_events = ::core::ptr::eq(enc, parser_encoding(parser_handle));
     let mut eventPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     let mut eventEndPP: *mut *const ::core::ffi::c_char =
         ::core::ptr::null_mut::<*const ::core::ffi::c_char>();
     if !parser_events {
-        eventPP = &raw mut (*(*parser).m_openInternalEntities).internalEventPtr;
-        eventEndPP = &raw mut (*(*parser).m_openInternalEntities).internalEventEndPtr;
+        // The active entity is selected before this token.  Borrow parser
+        // state only long enough to fetch that pointer; callbacks below may
+        // re-enter and therefore must not overlap a parser borrow.
+        let open_entity = (&mut *parser_handle).m_openInternalEntities;
+        if open_entity.is_null() {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        }
+        eventPP = &raw mut (*open_entity).internalEventPtr;
+        eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
     }
-    let event_parser = parser;
+    // Keep a distinct copied handle in the cursor closure.  This lets the
+    // compiler see each later parser borrow as a separate, callback-safe
+    // access rather than extending it for the closure's lifetime.
+    let event_parser = parser_handle;
     let parser_event_start_ptr = eventPP;
     let mut update_event_start = |start: *const ::core::ffi::c_char| {
         if parser_events {
@@ -10220,12 +10231,12 @@ unsafe extern "C" fn doCdataSection(
         let mut next: *const ::core::ffi::c_char = s;
         let mut tok: ::core::ffi::c_int =
             enc.scanners[2 as usize].scan(enc, s, end, &raw mut next);
-        if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
-            accountingOnAbort(parser);
+        if accountingDiffTolerated(parser_handle, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
+            accountingOnAbort(parser_handle);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
-        set_event_end!(parser, parser_events, eventEndPP, next);
-        let handler_flags = cdata_handler_flags(&*parser);
+        set_event_end!(&mut *parser_handle, parser_events, eventEndPP, next);
+        let handler_flags = cdata_handler_flags(&*parser_handle);
         match tok {
             crate::src::xmltok::XML_TOK_CDATA_SECT_CLOSE => {
                 if handler_flags.end {
@@ -10233,16 +10244,16 @@ unsafe extern "C" fn doCdataSection(
                         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                         .lock()
                         .unwrap_or_else(|poisoned| poisoned.into_inner())
-                        .get(&(parser as usize))
+                        .get(&(parser_handle as usize))
                         .cloned()
                         .expect("installed end CDATA handler");
-                    callback.invoke(handler_arg!(parser));
+                    callback.invoke(handler_arg!(parser_handle));
                 } else if handler_flags.default {
-                    reportDefault(parser, enc, s, next);
+                    reportDefault(parser_handle, enc, s, next);
                 }
                 *startPtr = next;
                 *nextPtr = next;
-                if cdata_parsing_state(&*parser).parsing as ::core::ffi::c_uint
+                if cdata_parsing_state(&*parser_handle).parsing as ::core::ffi::c_uint
                     == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     return crate::expat_h::XML_ERROR_ABORTED;
@@ -10254,9 +10265,9 @@ unsafe extern "C" fn doCdataSection(
                 if handler_flags.character_data {
                     let mut c: crate::expat_external_h::XML_Char =
                         0xa as crate::expat_external_h::XML_Char;
-                    callCharacterDataHandler(parser, &raw const c, 1 as ::core::ffi::c_int);
+                    callCharacterDataHandler(parser_handle, &raw const c, 1 as ::core::ffi::c_int);
                 } else if handler_flags.default {
-                    reportDefault(parser, enc, s, next);
+                    reportDefault(parser_handle, enc, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_DATA_CHARS => {
@@ -10264,17 +10275,17 @@ unsafe extern "C" fn doCdataSection(
                     .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .get(&(parser as usize))
+                    .get(&(parser_handle as usize))
                     .cloned();
                 if let Some(charDataHandler) = charDataHandler {
                     if enc.isUtf8 == 0 {
                         let (data_start, data_end, data_capacity) = {
-                            let parser_ref = &mut *parser;
-                            let data_start = parser_ref.m_dataBuf.chars.as_mut_ptr();
+                            let parser = &mut *parser_handle;
+                            let data_start = parser.m_dataBuf.chars.as_mut_ptr();
                             (
                                 data_start,
-                                data_start.wrapping_add(parser_ref.m_dataBufEnd),
-                                parser_ref.m_dataBufEnd,
+                                data_start.wrapping_add(parser.m_dataBufEnd),
+                                parser.m_dataBufEnd,
                             )
                         };
                         loop {
@@ -10287,7 +10298,7 @@ unsafe extern "C" fn doCdataSection(
                                     &raw mut dataPtr,
                                     data_end,
                                 );
-                            set_event_end!(parser, parser_events, eventEndPP, next);
+                            set_event_end!(&mut *parser_handle, parser_events, eventEndPP, next);
                             // The converter is bounded by `data_end`, which is derived from
                             // the Rust-owned scratch buffer.  Validate the returned cursor
                             // before turning its address delta into the callback length.
@@ -10300,7 +10311,7 @@ unsafe extern "C" fn doCdataSection(
                                 None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             charDataHandler.invoke(
-                                handler_arg!(parser),
+                                handler_arg!(parser_handle),
                                 data_start,
                                 data_len,
                             );
@@ -10322,13 +10333,13 @@ unsafe extern "C" fn doCdataSection(
                             None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                         };
                         charDataHandler.invoke(
-                            handler_arg!(parser),
+                            handler_arg!(parser_handle),
                             s as *const crate::expat_external_h::XML_Char,
                             data_len,
                         );
                     }
                 } else if handler_flags.default {
-                    reportDefault(parser, enc, s, next);
+                    reportDefault(parser_handle, enc, s, next);
                 }
             }
             crate::src::xmltok::XML_TOK_INVALID => {
@@ -10354,7 +10365,7 @@ unsafe extern "C" fn doCdataSection(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
         }
-        let parsing_state = cdata_parsing_state(&*parser);
+        let parsing_state = cdata_parsing_state(&*parser_handle);
         match parsing_state.parsing as ::core::ffi::c_uint {
             3 => {
                 update_event_start(next);
