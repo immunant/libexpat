@@ -6202,6 +6202,61 @@ struct ProcessorInput {
     end: usize,
 }
 
+/// Result of running the legacy content processor over a checked live-buffer
+/// range.  The returned cursor is converted back to an offset only after the
+/// processor has returned, because a callback is allowed to relocate the
+/// parser buffer while it runs.
+struct ContentProcessorResult {
+    error: crate::expat_h::XML_Error,
+    next_offset: usize,
+}
+
+/// Invoke the remaining cursor-based content loop from a bounded parser
+/// range.  This is the one place in the processor dispatcher that turns a
+/// live buffer range into legacy C cursors; all callers retain offsets before
+/// and after callbacks.
+fn do_content_from_live_range(
+    parser: &mut XML_ParserStruct,
+    start_tag_level: ::core::ffi::c_int,
+    normal_encoding: crate::src::xmltok::normal_encoding,
+    parser_events: bool,
+    range: std::ops::Range<usize>,
+    account: XML_Account,
+) -> Option<ContentProcessorResult> {
+    let (start, end) = {
+        let bytes = parser.m_buffer.bytes.as_ref()?;
+        bytes.get(range.clone())?;
+        (
+            bytes.as_ptr().wrapping_add(range.start).cast(),
+            bytes.as_ptr().wrapping_add(range.end).cast(),
+        )
+    };
+    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
+    let have_more =
+        (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as crate::expat_h::XML_Bool;
+    let mut next = start;
+    // The range above was obtained from the parser's live owned buffer.  The
+    // legacy content loop may call back into the application, so validate its
+    // returned cursor against the then-live buffer below rather than retaining
+    // the pre-callback borrow or assuming the original allocation survived.
+    let error = unsafe {
+        doContent(
+            parser,
+            start_tag_level,
+            normal_encoding,
+            encoding,
+            parser_events,
+            start,
+            end,
+            &mut next,
+            have_more,
+            account,
+        )
+    };
+    let next_offset = parser.m_buffer.offset_from_address(next.addr())?;
+    Some(ContentProcessorResult { error, next_offset })
+}
+
 /// Runs the parser's current processor against a checked input range.
 ///
 /// The parser can call user handlers while a processor runs, so every parser
@@ -6286,8 +6341,8 @@ unsafe fn call_processor_impl(
         if next > input.end || input.end > bytes.len() {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
         }
-        let start = bytes.as_ptr().wrapping_add(next).cast();
-        let end = bytes.as_ptr().wrapping_add(input.end).cast();
+        let start: *const ::core::ffi::c_char = bytes.as_ptr().wrapping_add(next).cast();
+        let end: *const ::core::ffi::c_char = bytes.as_ptr().wrapping_add(input.end).cast();
         let mut next_pointer = start;
         // CDATA cursor results are already checked buffer offsets.  Keep
         // them as offsets through this dispatch instead of rebuilding a raw
@@ -6297,22 +6352,23 @@ unsafe fn call_processor_impl(
             let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
                 return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
             };
-            let start_tag_level = if parser.m_parentParser.is_some() { 1 } else { 0 };
-            let have_more = (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-                as crate::expat_h::XML_Bool;
-            let encoding = std::ptr::from_ref(current_parser_encoding(parser));
-            let mut result = doContent(
+            let start_tag_level = if parser.m_parentParser.is_some() {
+                1
+            } else {
+                0
+            };
+            let Some(content_result) = do_content_from_live_range(
                 parser,
                 start_tag_level,
                 normal_encoding,
-                encoding,
                 true,
-                start,
-                end,
-                &mut next_pointer,
-                have_more,
+                next..input.end,
                 XML_ACCOUNT_DIRECT,
-            );
+            ) else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
+            checked_next_offset = Some(content_result.next_offset);
+            let mut result = content_result.error;
             if result as ::core::ffi::c_uint
                 == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
             {
@@ -6412,31 +6468,26 @@ unsafe fn call_processor_impl(
                             else {
                                 return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
                             };
-                            let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
-                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
-                            };
-                            let encoding = std::ptr::from_ref(current_parser_encoding(parser));
-                            let mut result = doContent(
-                                parser,
-                                1,
-                                normal_encoding,
-                                encoding,
-                                true,
-                                start.wrapping_add(content_relative_offset),
-                                end,
-                                &mut next_pointer,
-                                (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-                                    as crate::expat_h::XML_Bool,
-                                XML_ACCOUNT_ENTITY_EXPANSION,
-                            );
-                            let Some(processed_offset) = parser
-                                .m_buffer
-                                .offset_from_address(next_pointer.addr())
-                                .filter(|offset| *offset >= content_offset && *offset <= input.end)
+                            let Some(normal_encoding) = current_parser_normal_encoding(parser)
                             else {
                                 return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
                             };
+                            let Some(content_result) = do_content_from_live_range(
+                                parser,
+                                1,
+                                normal_encoding,
+                                true,
+                                content_offset..input.end,
+                                XML_ACCOUNT_ENTITY_EXPANSION,
+                            ) else {
+                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                            };
+                            let processed_offset = content_result.next_offset;
+                            if processed_offset < content_offset || processed_offset > input.end {
+                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                            }
                             checked_next_offset = Some(processed_offset);
+                            let mut result = content_result.error;
                             if result as ::core::ffi::c_uint
                                 == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                                     as ::core::ffi::c_uint
@@ -6499,28 +6550,22 @@ unsafe fn call_processor_impl(
                     let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
                     };
-                    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
-                    let mut result = doContent(
+                    let Some(content_result) = do_content_from_live_range(
                         parser,
                         1,
                         normal_encoding,
-                        encoding,
                         true,
-                        start.wrapping_add(offset),
-                        end,
-                        &mut next_pointer,
-                        (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-                            as crate::expat_h::XML_Bool,
+                        content_offset..input.end,
                         XML_ACCOUNT_ENTITY_EXPANSION,
-                    );
-                    let Some(processed_offset) = parser
-                        .m_buffer
-                        .offset_from_address(next_pointer.addr())
-                        .filter(|offset| *offset >= content_offset && *offset <= input.end)
-                    else {
+                    ) else {
                         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
                     };
+                    let processed_offset = content_result.next_offset;
+                    if processed_offset < content_offset || processed_offset > input.end {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                    }
                     checked_next_offset = Some(processed_offset);
+                    let mut result = content_result.error;
                     if result as ::core::ffi::c_uint
                         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
                             as ::core::ffi::c_uint
