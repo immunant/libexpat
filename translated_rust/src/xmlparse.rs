@@ -4035,6 +4035,7 @@ impl NamedRecord {
             _ => None,
         }
     }
+
 }
 
 impl NamedAllocation {
@@ -15903,71 +15904,36 @@ unsafe extern "C" fn doProlog(
                                         return contentProcessor(parser, s, end, nextPtr);
                                     }
                                     34 => {
-                                        let element = getElementType(parser, enc, s, next);
-                                        if element.is_null() {
+                                        let Some(element_name) = get_element_type_from_token(
+                                            dtd,
+                                            encoding,
+                                            unknown_encoding.as_ref(),
+                                            &token_bytes,
+                                            hash_salt,
+                                        ) else {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                        }
-                                        (*parser).m_declElementType = Some((*element).named.name);
+                                        };
+                                        parser.m_declElementType = Some(element_name);
                                         break '_checkAttListDeclHandler;
                                     }
                                     22 => {
-                                        let mut attribute_name = None;
-                                        let attribute_id = getAttributeId(
+                                        let Some(attribute_name) = get_attribute_id_from_token(
                                             parser,
-                                            enc,
-                                            s,
-                                            next,
-                                            Some(&mut attribute_name),
-                                        );
-                                        if attribute_id.is_null() {
+                                            dtd,
+                                            encoding,
+                                            unknown_encoding.as_ref(),
+                                            &token_bytes,
+                                        ) else {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                        }
-                                        (*parser).m_declAttributeId = attribute_name;
-                                        (*parser).m_declAttributeIsCdata =
+                                        };
+                                        parser.m_declAttributeId = Some(attribute_name);
+                                        parser.m_declAttributeIsCdata =
                                             crate::expat_h::XML_FALSE;
-                                        (*parser).m_declAttributeType = None;
-                                        (*parser).m_declAttributeIsId = crate::expat_h::XML_FALSE;
+                                        parser.m_declAttributeType = None;
+                                        parser.m_declAttributeIsId = crate::expat_h::XML_FALSE;
                                         break '_checkAttListDeclHandler;
                                     }
-                                    23 => {
-                                        (*parser).m_declAttributeIsCdata = crate::expat_h::XML_TRUE;
-                                        (*parser).m_declAttributeType =
-                                            Some(DeclAttributeType::Cdata);
-                                        break '_checkAttListDeclHandler;
-                                    }
-                                    24 => {
-                                        (*parser).m_declAttributeIsId = crate::expat_h::XML_TRUE;
-                                        (*parser).m_declAttributeType = Some(DeclAttributeType::Id);
-                                        break '_checkAttListDeclHandler;
-                                    }
-                                    25 => {
-                                        (*parser).m_declAttributeType =
-                                            Some(DeclAttributeType::IdRef);
-                                        break '_checkAttListDeclHandler;
-                                    }
-                                    26 => {
-                                        (*parser).m_declAttributeType =
-                                            Some(DeclAttributeType::IdRefs);
-                                        break '_checkAttListDeclHandler;
-                                    }
-                                    27 => {
-                                        (*parser).m_declAttributeType =
-                                            Some(DeclAttributeType::Entity);
-                                        break '_checkAttListDeclHandler;
-                                    }
-                                    28 => {
-                                        (*parser).m_declAttributeType =
-                                            Some(DeclAttributeType::Entities);
-                                        break '_checkAttListDeclHandler;
-                                    }
-                                    29 => {
-                                        (*parser).m_declAttributeType =
-                                            Some(DeclAttributeType::NmToken);
-                                        break '_checkAttListDeclHandler;
-                                    }
-                                    30 => {
-                                        (*parser).m_declAttributeType =
-                                            Some(DeclAttributeType::NmTokens);
+                                    23..=30 if apply_attribute_declaration_role(parser, role) => {
                                         break '_checkAttListDeclHandler;
                                     }
                                     31 | 32 => {
@@ -23550,19 +23516,210 @@ fn get_element_type_impl(
     dtd: &mut DTD,
     salt: ::core::ffi::c_ulong,
     name: PoolStringRef,
-) -> Option<bool> {
+) -> Option<(bool, PoolStringRef)> {
     let used_before = dtd.elementTypes.used;
-    let element = lookup_impl(
-        &mut dtd.pool,
-        &mut dtd.elementTypes,
-        LookupName::Retained(name),
-        ::core::mem::size_of::<ELEMENT_TYPE>(),
-        salt,
-    )?;
-    if !matches!(element, NamedRecord::Element(_)) {
+    {
+        let element = lookup_impl(
+            &mut dtd.pool,
+            &mut dtd.elementTypes,
+            LookupName::Retained(name),
+            ::core::mem::size_of::<ELEMENT_TYPE>(),
+            salt,
+        )?;
+        if !matches!(element, NamedRecord::Element(_)) {
+            return None;
+        }
+    }
+    let is_new = dtd.elementTypes.used != used_before;
+    let element_name = if is_new {
+        name
+    } else {
+        let index = lookup_existing(
+            &dtd.pool,
+            &dtd.elementTypes,
+            LookupName::Retained(name),
+            salt,
+        )?;
+        dtd.elementTypes
+            .v
+            .as_ref()?
+            .entries
+            .get(index)?
+            .as_ref()?
+            .key()
+    };
+    Some((is_new, element_name))
+}
+
+/// Records the namespace prefix for a newly declared element without turning
+/// the DTD's typed hash-table entries back into raw `NAMED` pointers.
+fn set_element_type_prefix_impl(
+    dtd: &mut DTD,
+    salt: ::core::ffi::c_ulong,
+    element_name: PoolStringRef,
+) -> Option<()> {
+    let prefix_len = dtd
+        .pool
+        .chars_from(element_name)?
+        .iter()
+        .position(|&character| {
+            character == 0 || character == ':' as crate::expat_external_h::XML_Char
+        })?;
+    if dtd.pool.chars_from(element_name)?.get(prefix_len).copied()
+        != Some(':' as crate::expat_external_h::XML_Char)
+    {
+        return Some(());
+    }
+    for index in 0..prefix_len {
+        // Appending can relocate a pool block, so reacquire the checked
+        // source character rather than retaining a borrow across the write.
+        let character = dtd.pool.chars_from(element_name)?.get(index).copied()?;
+        if !pool_append_char(&mut dtd.pool, character) {
+            return None;
+        }
+    }
+    if !pool_append_char(&mut dtd.pool, 0) {
         return None;
     }
-    Some(dtd.elementTypes.used != used_before)
+    let prefix_start = dtd.pool.start_ref(true)?;
+    {
+        let prefix = lookup_impl(
+            &mut dtd.pool,
+            &mut dtd.prefixes,
+            LookupName::Retained(prefix_start),
+            ::core::mem::size_of::<PREFIX>(),
+            salt,
+        )?;
+        if !matches!(prefix, NamedRecord::Prefix(_)) {
+            return None;
+        }
+    }
+    let prefix_index = lookup_existing(
+        &dtd.pool,
+        &dtd.prefixes,
+        LookupName::Retained(prefix_start),
+        salt,
+    )?;
+    let prefix_name = dtd
+        .prefixes
+        .v
+        .as_ref()?
+        .entries
+        .get(prefix_index)?
+        .as_ref()?
+        .key();
+    if prefix_name == prefix_start {
+        dtd.pool.commit();
+    } else {
+        dtd.pool.rewind();
+    }
+    let element_index = lookup_existing(
+        &dtd.pool,
+        &dtd.elementTypes,
+        LookupName::Retained(element_name),
+        salt,
+    )?;
+    let element = dtd
+        .elementTypes
+        .v
+        .as_mut()?
+        .entries
+        .get_mut(element_index)?
+        .as_mut()?
+        .element_mut()?;
+    element.prefix = prefix_name;
+    element.hasPrefix = crate::expat_h::XML_TRUE;
+    Some(())
+}
+
+/// Stores a bounded element-name token and returns its stable DTD-pool key.
+/// The caller supplies a checked scanner token, so this implementation never
+/// reconstructs a slice from parser cursors.
+fn get_element_type_from_token(
+    dtd: &mut DTD,
+    encoding: &crate::src::xmltok::ENCODING,
+    unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
+    token: &[u8],
+    salt: ::core::ffi::c_ulong,
+) -> Option<PoolStringRef> {
+    if matches!(encoding.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
+        && unknown_encoding.is_none()
+    {
+        return None;
+    }
+    let name = pool_store_name_source(&mut dtd.pool, encoding, unknown_encoding, token)?;
+    let (is_new, element_name) = get_element_type_impl(dtd, salt, name)?;
+    if is_new {
+        dtd.pool.commit();
+        set_element_type_prefix_impl(dtd, salt, element_name)?;
+    } else {
+        dtd.pool.rewind();
+    }
+    Some(element_name)
+}
+
+/// Starts an attribute declaration from a bounded name token.  Its return is
+/// the pool key retained by the DTD; no raw attribute-table address escapes.
+fn get_attribute_id_from_token(
+    parser: &mut XML_ParserStruct,
+    dtd: &mut DTD,
+    encoding: &crate::src::xmltok::ENCODING,
+    unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
+    token: &[u8],
+) -> Option<PoolStringRef> {
+    if matches!(encoding.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
+        && unknown_encoding.is_none()
+    {
+        return None;
+    }
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    if !pool_append_char(&mut dtd.pool, 0) {
+        return None;
+    }
+    let name_start = pool_store_name_source(&mut dtd.pool, encoding, unknown_encoding, token)?;
+    let mut retained_name = None;
+    get_attribute_id_impl(
+        &mut dtd.pool,
+        &mut dtd.attributeIds,
+        &mut dtd.prefixes,
+        parser.m_ns != 0,
+        salt,
+        name_start,
+        Some(&mut retained_name),
+    )?;
+    retained_name
+}
+
+/// Applies the role-machine result for an attribute declaration.  The role
+/// carries no parser cursors, so this portion of prolog processing is fully
+/// safe state mutation.
+fn apply_attribute_declaration_role(
+    parser: &mut XML_ParserStruct,
+    role: ::core::ffi::c_int,
+) -> bool {
+    let attribute_type = match role {
+        23 => DeclAttributeType::Cdata,
+        24 => {
+            parser.m_declAttributeIsId = crate::expat_h::XML_TRUE;
+            DeclAttributeType::Id
+        }
+        25 => DeclAttributeType::IdRef,
+        26 => DeclAttributeType::IdRefs,
+        27 => DeclAttributeType::Entity,
+        28 => DeclAttributeType::Entities,
+        29 => DeclAttributeType::NmToken,
+        30 => DeclAttributeType::NmTokens,
+        _ => return false,
+    };
+    if role == 23 {
+        parser.m_declAttributeIsCdata = crate::expat_h::XML_TRUE;
+    }
+    parser.m_declAttributeType = Some(attribute_type);
+    true
 }
 
 unsafe extern "C" fn getElementType(
@@ -23612,10 +23769,10 @@ unsafe extern "C" fn getElementType(
     else {
         return ::core::ptr::null_mut();
     };
-    let Some(is_new) = get_element_type_impl(dtd, salt, name) else {
+    let Some((is_new, element_name)) = get_element_type_impl(dtd, salt, name) else {
         return ::core::ptr::null_mut();
     };
-    let Some(name_chars) = dtd.pool.chars_from(name) else {
+    let Some(name_chars) = dtd.pool.chars_from(element_name) else {
         return ::core::ptr::null_mut();
     };
     let element = lookup(
