@@ -10839,524 +10839,332 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_prologTok(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut tok: ::core::ffi::c_int = 0;
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
+    enum Big2PrologToken {
+        Result(::core::ffi::c_int, Option<usize>),
+        ScanLit(::core::ffi::c_int, usize),
+        ScanDecl(usize),
+        ScanPi(usize),
+        ScanPercent(usize),
+        ScanPoundName(usize),
+    }
+
+    fn big2_prolog_tok_impl(
+        enc: &normal_encoding,
+        raw_input: &[::core::ffi::c_char],
+    ) -> Big2PrologToken {
+        if raw_input.is_empty() {
+            return Big2PrologToken::Result(crate::src::xmltok::XML_TOK_NONE_1, None);
         }
-        if 2 as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
-            let mut n: crate::__stddef_size_t_h::size_t =
-                end.offset_from(ptr) as crate::__stddef_size_t_h::size_t;
-            if n & (2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                as crate::__stddef_size_t_h::size_t
-                != 0
-            {
-                n &= !(2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                    as crate::__stddef_size_t_h::size_t;
-                if n == 0 as crate::__stddef_size_t_h::size_t {
-                    return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                }
-                end = ptr.offset(n as isize);
+
+        let input = &raw_input[..raw_input.len() & !1];
+        if input.is_empty() {
+            return Big2PrologToken::Result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+
+        let token_at = |offset| big2_byte_type(enc, input, offset);
+        let invalid = |offset| {
+            Big2PrologToken::Result(crate::src::xmltok::XML_TOK_INVALID_1, Some(offset))
+        };
+
+        let mut offset = 0;
+        let mut token;
+        match token_at(offset) {
+            12 => {
+                return Big2PrologToken::ScanLit(
+                    crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int,
+                    2,
+                );
             }
-        }
-        's_584: {
-            'c_51036: {
-                match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
+            13 => {
+                return Big2PrologToken::ScanLit(
+                    crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int,
+                    2,
+                );
+            }
+            2 => {
+                offset = 2;
+                if input.len() - offset < 2 {
+                    return Big2PrologToken::Result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                }
+                match token_at(offset) {
+                    16 => return Big2PrologToken::ScanDecl(4),
+                    15 => return Big2PrologToken::ScanPi(4),
+                    22 | 24 | 29 | 5 | 6 | 7 => {
+                        return Big2PrologToken::Result(
+                            crate::src::xmltok::XML_TOK_INSTANCE_START,
+                            Some(0),
+                        );
+                    }
+                    _ => return invalid(offset),
+                }
+            }
+            9 => {
+                if input.len() == 2 {
+                    return Big2PrologToken::Result(
+                        -crate::src::xmltok::XML_TOK_PROLOG_S_1,
+                        Some(2),
+                    );
+                }
+                offset = 2;
+                loop {
+                    if input.len() - offset < 2 {
+                        break;
+                    }
+                    match token_at(offset) {
+                        21 | 10 | 9 if offset + 2 != input.len() => offset += 2,
+                        21 | 10 => offset += 2,
+                        _ => {
+                            return Big2PrologToken::Result(
+                                crate::src::xmltok::XML_TOK_PROLOG_S_1,
+                                Some(offset),
+                            );
+                        }
+                    }
+                }
+                return Big2PrologToken::Result(
+                    crate::src::xmltok::XML_TOK_PROLOG_S_1,
+                    Some(offset),
+                );
+            }
+            21 | 10 => {
+                offset = 2;
+                loop {
+                    if input.len() - offset < 2 {
+                        break;
+                    }
+                    match token_at(offset) {
+                        21 | 10 | 9 if offset + 2 != input.len() => offset += 2,
+                        21 | 10 => offset += 2,
+                        _ => {
+                            return Big2PrologToken::Result(
+                                crate::src::xmltok::XML_TOK_PROLOG_S_1,
+                                Some(offset),
+                            );
+                        }
+                    }
+                }
+                return Big2PrologToken::Result(
+                    crate::src::xmltok::XML_TOK_PROLOG_S_1,
+                    Some(offset),
+                );
+            }
+            30 => return Big2PrologToken::ScanPercent(2),
+            35 => {
+                return Big2PrologToken::Result(crate::src::xmltok::XML_TOK_COMMA_1, Some(2));
+            }
+            20 => {
+                return Big2PrologToken::Result(
+                    crate::src::xmltok::XML_TOK_OPEN_BRACKET_1,
+                    Some(2),
+                );
+            }
+            4 => {
+                offset = 2;
+                if input.len() - offset < 2 {
+                    return Big2PrologToken::Result(
+                        -crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1,
+                        None,
+                    );
+                }
+                if input[offset] == 0 && input[offset + 1] as u8 == b']' {
+                    if input.len() - offset < 4 {
+                        return Big2PrologToken::Result(
+                            crate::src::xmltok::XML_TOK_PARTIAL_1,
+                            None,
+                        );
+                    }
+                    if input[offset + 2] == 0 && input[offset + 3] as u8 == b'>' {
+                        return Big2PrologToken::Result(
+                            crate::src::xmltok::XML_TOK_COND_SECT_CLOSE_1,
+                            Some(offset + 4),
+                        );
+                    }
+                }
+                return Big2PrologToken::Result(
+                    crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1,
+                    Some(offset),
+                );
+            }
+            31 => {
+                return Big2PrologToken::Result(
+                    crate::src::xmltok::XML_TOK_OPEN_PAREN_1,
+                    Some(2),
+                );
+            }
+            32 => {
+                offset = 2;
+                if input.len() - offset < 2 {
+                    return Big2PrologToken::Result(
+                        -crate::src::xmltok::XML_TOK_CLOSE_PAREN_1,
+                        None,
+                    );
+                }
+                return match token_at(offset) {
+                    33 => Big2PrologToken::Result(
+                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK_1,
+                        Some(4),
+                    ),
+                    15 => Big2PrologToken::Result(
+                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_QUESTION_1,
+                        Some(4),
+                    ),
+                    34 => Big2PrologToken::Result(
+                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_PLUS_1,
+                        Some(4),
+                    ),
+                    9 | 10 | 21 | 11 | 35 | 36 | 32 => Big2PrologToken::Result(
+                        crate::src::xmltok::XML_TOK_CLOSE_PAREN_1,
+                        Some(2),
+                    ),
+                    _ => invalid(offset),
+                };
+            }
+            36 => {
+                return Big2PrologToken::Result(crate::src::xmltok::XML_TOK_OR_1, Some(2));
+            }
+            11 => {
+                return Big2PrologToken::Result(crate::src::xmltok::XML_TOK_DECL_CLOSE_1, Some(2));
+            }
+            19 => return Big2PrologToken::ScanPoundName(2),
+            5 | 6 | 7 => return invalid(0),
+            22 | 24 => {
+                token = crate::src::xmltok::XML_TOK_NAME;
+                offset = 2;
+            }
+            25 | 26 | 27 | 23 => {
+                token = crate::src::xmltok::XML_TOK_NMTOKEN_1;
+                offset = 2;
+            }
+            29 => {
+                if big2_name_char_is_valid(input, 0, &nmstrtPages) {
+                    token = crate::src::xmltok::XML_TOK_NAME;
+                    offset = 2;
+                } else if big2_name_char_is_valid(input, 0, &namePages) {
+                    token = crate::src::xmltok::XML_TOK_NMTOKEN_1;
+                    offset = 2;
                 } else {
-                    unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                } {
-                    12 => {
-                        return big2_scanLit(
-                            crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int,
-                            enc,
-                            ptr.offset(2 as ::core::ffi::c_int as isize),
-                            end,
-                            nextTokPtr,
-                        );
-                    }
-                    13 => {
-                        return big2_scanLit(
-                            crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int,
-                            enc,
-                            ptr.offset(2 as ::core::ffi::c_int as isize),
-                            end,
-                            nextTokPtr,
-                        );
-                    }
-                    2 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                        }
-                        match if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                        } {
-                            16 => {
-                                return big2_scanDecl(
-                                    enc,
-                                    ptr.offset(2 as ::core::ffi::c_int as isize),
-                                    end,
-                                    nextTokPtr,
-                                );
-                            }
-                            15 => {
-                                return big2_scanPi(
-                                    enc,
-                                    ptr.offset(2 as ::core::ffi::c_int as isize),
-                                    end,
-                                    nextTokPtr,
-                                );
-                            }
-                            22 | 24 | 29 | 5 | 6 | 7 => {
-                                *nextTokPtr = ptr.offset(-(2 as ::core::ffi::c_int as isize));
-                                return crate::src::xmltok::XML_TOK_INSTANCE_START;
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    9 => {
-                        if ptr.offset(2 as ::core::ffi::c_int as isize) == end {
-                            *nextTokPtr = end;
-                            return -crate::src::xmltok::XML_TOK_PROLOG_S_1;
-                        }
-                        break 'c_51036;
-                    }
-                    21 | 10 => {
-                        break 'c_51036;
-                    }
-                    30 => {
-                        return big2_scanPercent(
-                            enc,
-                            ptr.offset(2 as ::core::ffi::c_int as isize),
-                            end,
-                            nextTokPtr,
-                        );
-                    }
-                    35 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_COMMA_1;
-                    }
-                    20 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_OPEN_BRACKET_1;
-                    }
-                    4 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return -crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1;
-                        }
-                        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0x5d as ::core::ffi::c_int
-                        {
-                            if !(end.offset_from(ptr)
-                                >= (2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                            {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(0 as isize)
-                                as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr
-                                    .offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as isize)
-                                    as ::core::ffi::c_int
-                                    == 0x3e as ::core::ffi::c_int
-                            {
-                                *nextTokPtr = ptr.offset(
-                                    (2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize,
-                                );
-                                return crate::src::xmltok::XML_TOK_COND_SECT_CLOSE_1;
-                            }
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_CLOSE_BRACKET_1;
-                    }
-                    31 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_OPEN_PAREN_1;
-                    }
-                    32 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return -crate::src::xmltok::XML_TOK_CLOSE_PAREN_1;
-                        }
-                        match if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                        } {
-                            33 => {
-                                *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                return crate::src::xmltok::XML_TOK_CLOSE_PAREN_ASTERISK_1;
-                            }
-                            15 => {
-                                *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                return crate::src::xmltok::XML_TOK_CLOSE_PAREN_QUESTION_1;
-                            }
-                            34 => {
-                                *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                return crate::src::xmltok::XML_TOK_CLOSE_PAREN_PLUS_1;
-                            }
-                            9 | 10 | 21 | 11 | 35 | 36 | 32 => {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_CLOSE_PAREN_1;
-                            }
-                            _ => {}
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    36 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_OR_1;
-                    }
-                    11 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_DECL_CLOSE_1;
-                    }
-                    19 => {
-                        return big2_scanPoundName(
-                            enc,
-                            ptr.offset(2 as ::core::ffi::c_int as isize),
-                            end,
-                            nextTokPtr,
-                        );
-                    }
-                    5 => {
-                        if end.offset_from(ptr) < 2 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    6 => {
-                        if end.offset_from(ptr) < 3 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    7 => {
-                        if end.offset_from(ptr) < 4 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    22 | 24 => {
-                        tok = crate::src::xmltok::XML_TOK_NAME;
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        break 's_584;
-                    }
-                    25 | 26 | 27 | 23 => {
-                        tok = crate::src::xmltok::XML_TOK_NMTOKEN_1;
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        break 's_584;
-                    }
-                    29 => {
-                        if namingBitmap[(((nmstrtPages
-                            [*ptr.offset(0 as isize) as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int)
-                            << 3 as ::core::ffi::c_int)
-                            + (*ptr.offset(1 as isize) as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                >> 5 as ::core::ffi::c_int))
-                            as usize]
-                            & (1 as ::core::ffi::c_uint)
-                                << (*ptr.offset(1 as isize) as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    & 0x1f as ::core::ffi::c_int)
-                            != 0
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            tok = crate::src::xmltok::XML_TOK_NAME;
-                            break 's_584;
-                        } else if namingBitmap[(((namePages
-                            [*ptr.offset(0 as isize) as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int)
-                            << 3 as ::core::ffi::c_int)
-                            + (*ptr.offset(1 as isize) as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                >> 5 as ::core::ffi::c_int))
-                            as usize]
-                            & (1 as ::core::ffi::c_uint)
-                                << (*ptr.offset(1 as isize) as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    & 0x1f as ::core::ffi::c_int)
-                            != 0
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            tok = crate::src::xmltok::XML_TOK_NMTOKEN_1;
-                            break 's_584;
-                        }
-                    }
-                    _ => {}
+                    return invalid(0);
                 }
-                *nextTokPtr = ptr;
-                return crate::src::xmltok::XML_TOK_INVALID_1;
             }
-            loop {
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                if !(end.offset_from(ptr)
-                    >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                {
-                    break;
+            _ => return invalid(0),
+        }
+
+        while input.len() - offset >= 2 {
+            match token_at(offset) {
+                29 => {
+                    if !big2_name_char_is_valid(input, offset, &namePages) {
+                        return invalid(offset);
+                    }
                 }
-                's_167: {
-                    match if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        (*(enc as *const normal_encoding)).type_0[*ptr
-                            .offset(1 as ::core::ffi::c_int as isize)
-                            as ::core::ffi::c_uchar
-                            as usize] as ::core::ffi::c_int
-                    } else {
-                        unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                    } {
-                        21 | 10 => {
-                            break 's_167;
-                        }
-                        9 => {
-                            if ptr.offset(2 as ::core::ffi::c_int as isize) != end {
-                                break 's_167;
+                22 | 24 | 25 | 26 | 27 => {}
+                5 | 6 | 7 => return invalid(offset),
+                11 | 32 | 35 | 36 | 20 | 30 | 21 | 9 | 10 => {
+                    return Big2PrologToken::Result(token, Some(offset));
+                }
+                23 => {
+                    offset += 2;
+                    match token {
+                        crate::src::xmltok::XML_TOK_NAME => {
+                            if input.len() - offset < 2 {
+                                return Big2PrologToken::Result(
+                                    crate::src::xmltok::XML_TOK_PARTIAL_1,
+                                    None,
+                                );
                             }
+                            token = crate::src::xmltok::XML_TOK_PREFIXED_NAME;
+                            match token_at(offset) {
+                                29 if !big2_name_char_is_valid(input, offset, &namePages) => {
+                                    return invalid(offset);
+                                }
+                                29 | 22 | 24 | 25 | 26 | 27 => offset += 2,
+                                5 | 6 | 7 => return invalid(offset),
+                                _ => token = crate::src::xmltok::XML_TOK_NMTOKEN_1,
+                            }
+                        }
+                        crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
+                            token = crate::src::xmltok::XML_TOK_NMTOKEN_1;
                         }
                         _ => {}
                     }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_PROLOG_S_1;
+                    // The translated scanner advances once more after the
+                    // colon branch before it resumes the name scan.
+                    offset += 2;
+                    if offset > input.len() {
+                        return Big2PrologToken::Result(-token, None);
+                    }
+                    continue;
                 }
+                34 => {
+                    if token == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                        return invalid(offset);
+                    }
+                    return Big2PrologToken::Result(
+                        crate::src::xmltok::XML_TOK_NAME_PLUS_1,
+                        Some(offset + 2),
+                    );
+                }
+                33 => {
+                    if token == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                        return invalid(offset);
+                    }
+                    return Big2PrologToken::Result(
+                        crate::src::xmltok::XML_TOK_NAME_ASTERISK_1,
+                        Some(offset + 2),
+                    );
+                }
+                15 => {
+                    if token == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
+                        return invalid(offset);
+                    }
+                    return Big2PrologToken::Result(
+                        crate::src::xmltok::XML_TOK_NAME_QUESTION_1,
+                        Some(offset + 2),
+                    );
+                }
+                _ => return invalid(offset),
             }
-            *nextTokPtr = ptr;
-            return crate::src::xmltok::XML_TOK_PROLOG_S_1;
+            offset += 2;
         }
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            's_968: {
-                match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_uchar
-                        as usize] as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                } {
-                    29 => {
-                        if namingBitmap[(((namePages
-                            [*ptr.offset(0 as isize) as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int)
-                            << 3 as ::core::ffi::c_int)
-                            + (*ptr.offset(1 as isize) as ::core::ffi::c_uchar
-                                as ::core::ffi::c_int
-                                >> 5 as ::core::ffi::c_int))
-                            as usize]
-                            & (1 as ::core::ffi::c_uint)
-                                << (*ptr.offset(1 as isize) as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    & 0x1f as ::core::ffi::c_int)
-                            == 0
-                        {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                    }
-                    22 | 24 | 25 | 26 | 27 => {}
-                    5 => {
-                        if end.offset_from(ptr) < 2 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if false || true {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        break 's_968;
-                    }
-                    6 => {
-                        if end.offset_from(ptr) < 3 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if false || true {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                        break 's_968;
-                    }
-                    7 => {
-                        if end.offset_from(ptr) < 4 as isize {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                        }
-                        if false || true {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                        ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                        break 's_968;
-                    }
-                    11 | 32 | 35 | 36 | 20 | 30 | 21 | 9 | 10 => {
-                        *nextTokPtr = ptr;
-                        return tok;
-                    }
-                    23 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        match tok {
-                            crate::src::xmltok::XML_TOK_NAME => {
-                                if !(end.offset_from(ptr)
-                                    >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                                {
-                                    return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                                }
-                                tok = crate::src::xmltok::XML_TOK_PREFIXED_NAME;
-                                's_880: {
-                                    match if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                        == 0 as ::core::ffi::c_int
-                                    {
-                                        (*(enc as *const normal_encoding)).type_0[*ptr
-                                            .offset(1 as ::core::ffi::c_int as isize)
-                                            as ::core::ffi::c_uchar
-                                            as usize]
-                                            as ::core::ffi::c_int
-                                    } else {
-                                        unicode_byte_type(
-                                            *ptr.offset(0 as isize),
-                                            *ptr.offset(1 as isize),
-                                        )
-                                    } {
-                                        29 => {
-                                            if namingBitmap[(((namePages[*ptr.offset(0 as isize)
-                                                as ::core::ffi::c_uchar
-                                                as usize]
-                                                as ::core::ffi::c_int)
-                                                << 3 as ::core::ffi::c_int)
-                                                + (*ptr.offset(1 as isize) as ::core::ffi::c_uchar
-                                                    as ::core::ffi::c_int
-                                                    >> 5 as ::core::ffi::c_int))
-                                                as usize]
-                                                & (1 as ::core::ffi::c_uint)
-                                                    << (*ptr.offset(1 as isize)
-                                                        as ::core::ffi::c_uchar
-                                                        as ::core::ffi::c_int
-                                                        & 0x1f as ::core::ffi::c_int)
-                                                == 0
-                                            {
-                                                *nextTokPtr = ptr;
-                                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                                            }
-                                        }
-                                        22 | 24 | 25 | 26 | 27 => {}
-                                        5 => {
-                                            if end.offset_from(ptr) < 2 as isize {
-                                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            if false || true {
-                                                *nextTokPtr = ptr;
-                                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                                            }
-                                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                            break 's_880;
-                                        }
-                                        6 => {
-                                            if end.offset_from(ptr) < 3 as isize {
-                                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            if false || true {
-                                                *nextTokPtr = ptr;
-                                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                                            }
-                                            ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                                            break 's_880;
-                                        }
-                                        7 => {
-                                            if end.offset_from(ptr) < 4 as isize {
-                                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                            }
-                                            if false || true {
-                                                *nextTokPtr = ptr;
-                                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                                            }
-                                            ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                                            break 's_880;
-                                        }
-                                        _ => {
-                                            tok = crate::src::xmltok::XML_TOK_NMTOKEN_1;
-                                            break 's_880;
-                                        }
-                                    }
-                                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                }
-                            }
-                            crate::src::xmltok::XML_TOK_PREFIXED_NAME => {
-                                tok = crate::src::xmltok::XML_TOK_NMTOKEN_1;
-                            }
-                            _ => {}
-                        }
-                        break 's_968;
-                    }
-                    34 => {
-                        if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_NAME_PLUS_1;
-                    }
-                    33 => {
-                        if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_NAME_ASTERISK_1;
-                    }
-                    15 => {
-                        if tok == crate::src::xmltok::XML_TOK_NMTOKEN_1 {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_NAME_QUESTION_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
+
+        Big2PrologToken::Result(-token, None)
+    }
+
+    pub unsafe extern "C" fn big2_prologTok(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        if ptr >= end {
+            return crate::src::xmltok::XML_TOK_NONE_1;
+        }
+        let input_len = end.offset_from(ptr) as usize;
+        let input = ::core::slice::from_raw_parts(ptr, input_len);
+        let input = &input[..input.len() & !1];
+        let enc_ref = &*(enc as *const normal_encoding);
+        match big2_prolog_tok_impl(enc_ref, input) {
+            Big2PrologToken::Result(token, next) => {
+                if let Some(offset) = next {
+                    *nextTokPtr = ptr.add(offset);
                 }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                token
+            }
+            Big2PrologToken::ScanLit(open, offset) => {
+                big2_scanLit(open, enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+            }
+            Big2PrologToken::ScanDecl(offset) => {
+                big2_scanDecl(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+            }
+            Big2PrologToken::ScanPi(offset) => {
+                big2_scanPi(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+            }
+            Big2PrologToken::ScanPercent(offset) => {
+                big2_scanPercent(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
+            }
+            Big2PrologToken::ScanPoundName(offset) => {
+                big2_scanPoundName(enc, ptr.add(offset), ptr.add(input.len()), nextTokPtr)
             }
         }
-        return -tok;
     }
 
     pub unsafe extern "C" fn big2_attributeValueTok(
