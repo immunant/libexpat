@@ -8564,38 +8564,39 @@ pub unsafe extern "C" fn XML_GetIdAttributeIndex_ffi(
 ) -> ::core::ffi::c_int {
     XML_GetIdAttributeIndex(parser)
 }
-pub unsafe extern "C" fn XML_SetElementHandler(
-    mut parser: crate::expat_h::XML_Parser,
+/// Updates callback registrations for a live parser held exclusively by the
+/// caller.  The parser state still carries raw-pointer-backed state, so this
+/// remains an unsafe state-carrying implementation boundary.
+pub unsafe fn XML_SetElementHandler(
+    parser: &mut XML_ParserStruct,
     mut start: crate::expat_h::XML_StartElementHandler,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_startElementHandler = start.is_some();
+    let parser_key = parser as *mut XML_ParserStruct as usize;
+    parser.m_startElementHandler = start.is_some();
     let mut handlers = START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     match start {
         Some(callback) => {
-            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            handlers.insert(parser_key, std::sync::Arc::new(callback));
         }
         None => {
-            handlers.remove(&(parser as usize));
+            handlers.remove(&parser_key);
         }
     }
-    (*parser).m_endElementHandler = end.is_some();
+    parser.m_endElementHandler = end.is_some();
     let mut handlers = END_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     match end {
         Some(callback) => {
-            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            handlers.insert(parser_key, std::sync::Arc::new(callback));
         }
         None => {
-            handlers.remove(&(parser as usize));
+            handlers.remove(&parser_key);
         }
     }
 }
@@ -8606,6 +8607,9 @@ pub unsafe extern "C" fn XML_SetElementHandler_ffi(
     mut start: crate::expat_h::XML_StartElementHandler,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
+    let Some(parser) = parser.as_mut() else {
+        return;
+    };
     XML_SetElementHandler(parser, start, end)
 }
 pub unsafe extern "C" fn XML_SetStartElementHandler(
