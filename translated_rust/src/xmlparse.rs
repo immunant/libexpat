@@ -2144,8 +2144,7 @@ pub struct tag {
 #[derive(Copy, Clone)]
 #[repr(C)]
 
-pub union C2Rust_Unnamed_1 {
-    pub raw: *mut ::core::ffi::c_char,
+pub struct C2Rust_Unnamed_1 {
     pub str: *mut crate::expat_external_h::XML_Char,
 }
 #[derive(Copy, Clone)]
@@ -4171,7 +4170,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         tagList = (*tagList).parent as *mut TAG;
         expat_free(
             parser as *mut XML_ParserStruct,
-            (*p).buf.raw as *mut ::core::ffi::c_void,
+            (*p).buf.str as *mut ::core::ffi::c_void,
             1942 as ::core::ffi::c_int,
         );
         destroyBindings((*p).bindings, parser as *mut XML_ParserStruct);
@@ -6330,7 +6329,7 @@ unsafe extern "C" fn storeRawNames(
                 ((*tag).name.strLen + 1 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t,
             );
         let mut rawNameLen: crate::__stddef_size_t_h::size_t = 0;
-        let mut rawNameBuf: *mut ::core::ffi::c_char = (*tag).buf.raw.offset(nameLen as isize);
+        let mut rawNameBuf: *mut ::core::ffi::c_char = (*tag).buf.str.offset(nameLen as isize);
         if (*tag).rawName == rawNameBuf as *const ::core::ffi::c_char {
             break;
         }
@@ -6344,10 +6343,10 @@ unsafe extern "C" fn storeRawNames(
             return crate::expat_h::XML_FALSE;
         }
         bufSize = nameLen.wrapping_add(rawNameLen);
-        if bufSize > (*tag).bufEnd.offset_from((*tag).buf.raw) as crate::__stddef_size_t_h::size_t {
+        if bufSize > (*tag).bufEnd.offset_from((*tag).buf.str) as crate::__stddef_size_t_h::size_t {
             let mut temp: *mut ::core::ffi::c_char = expat_realloc(
                 parser,
-                (*tag).buf.raw as *mut ::core::ffi::c_void,
+                (*tag).buf.str as *mut ::core::ffi::c_void,
                 bufSize,
                 3151 as ::core::ffi::c_int,
             ) as *mut ::core::ffi::c_char;
@@ -6361,7 +6360,7 @@ unsafe extern "C" fn storeRawNames(
                 (*tag).name.localPart = (temp as *mut crate::expat_external_h::XML_Char)
                     .offset((*tag).name.localPart.offset_from((*tag).buf.str) as isize);
             }
-            (*tag).buf.raw = temp;
+            (*tag).buf.str = temp;
             (*tag).bufEnd = temp.offset(bufSize as isize);
             rawNameBuf = temp.offset(nameLen as isize);
         }
@@ -6883,12 +6882,12 @@ unsafe extern "C" fn doContent(
                         if tag.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        (*tag).buf.raw = expat_malloc(
+                        (*tag).buf.str = expat_malloc(
                             parser,
                             32 as crate::__stddef_size_t_h::size_t,
                             3480 as ::core::ffi::c_int,
                         ) as *mut ::core::ffi::c_char;
-                        if (*tag).buf.raw.is_null() {
+                        if (*tag).buf.str.is_null() {
                             expat_free(
                                 parser,
                                 tag as *mut ::core::ffi::c_void,
@@ -6896,7 +6895,7 @@ unsafe extern "C" fn doContent(
                             );
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        (*tag).bufEnd = (*tag).buf.raw.offset(INIT_TAG_BUF_SIZE as isize);
+                        (*tag).bufEnd = (*tag).buf.str.offset(INIT_TAG_BUF_SIZE as isize);
                     }
                     (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
                     (*tag).parent = (*parser).m_tagStack as *mut tag;
@@ -6934,18 +6933,18 @@ unsafe extern "C" fn doContent(
                         } else {
                             if (crate::stdlib::SIZE_MAX as crate::__stddef_size_t_h::size_t)
                                 .wrapping_div(2 as crate::__stddef_size_t_h::size_t)
-                                < (*tag).bufEnd.offset_from((*tag).buf.raw)
+                                < (*tag).bufEnd.offset_from((*tag).buf.str)
                                     as crate::__stddef_size_t_h::size_t
                             {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
                             let bufSize: crate::__stddef_size_t_h::size_t =
-                                ((*tag).bufEnd.offset_from((*tag).buf.raw)
+                                ((*tag).bufEnd.offset_from((*tag).buf.str)
                                     as crate::__stddef_size_t_h::size_t)
                                     .wrapping_mul(2 as crate::__stddef_size_t_h::size_t);
                             let mut temp: *mut ::core::ffi::c_char = expat_realloc(
                                 parser,
-                                (*tag).buf.raw as *mut ::core::ffi::c_void,
+                                (*tag).buf.str as *mut ::core::ffi::c_void,
                                 bufSize,
                                 3514 as ::core::ffi::c_int,
                             )
@@ -6953,7 +6952,7 @@ unsafe extern "C" fn doContent(
                             if temp.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
-                            (*tag).buf.raw = temp;
+                            (*tag).buf.str = temp;
                             (*tag).bufEnd = temp.offset(bufSize as isize);
                             toPtr = (temp as *mut crate::expat_external_h::XML_Char)
                                 .offset(convLen as isize);
