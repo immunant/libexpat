@@ -9253,78 +9253,67 @@ extern "C" fn callStoreEntityValue(
     mut entityTextEnd: *const ::core::ffi::c_char,
     mut account: XML_Account,
 ) -> XML_Error {
-    unsafe {
-        let mut next: *const ::core::ffi::c_char = entityTextPtr;
-        let mut result: XML_Error = XML_ERROR_NONE;
-        loop {
-            if (*parser).m_openValueEntities.is_null() {
-                result = storeEntityValue(parser, enc, next, entityTextEnd, account, &raw mut next);
-            } else {
-                let openEntity: *mut OPEN_INTERNAL_ENTITY = (*parser).m_openValueEntities;
-                if openEntity.is_null() {
-                    return XML_ERROR_UNEXPECTED_STATE;
+    let mut next: *const ::core::ffi::c_char = entityTextPtr;
+    let mut result: XML_Error = XML_ERROR_NONE;
+    loop {
+        let open_entity = ptr_ref(parser).m_openValueEntities;
+        if open_entity.is_null() {
+            result = storeEntityValue(parser, enc, next, entityTextEnd, account, &raw mut next);
+        } else {
+            let entity = ptr_mut(ptr_ref(open_entity).entity);
+            let entity_text_ptr = entity.textPtr as *const ::core::ffi::c_char;
+            let text_start = add_const_c_char(entity_text_ptr, entity.processed as isize);
+            let text_end = add_const_c_char(entity_text_ptr, entity.textLen as isize);
+            let mut next_in_entity = text_start;
+            if entity.hasMore != 0 {
+                result = storeEntityValue(
+                    parser,
+                    ptr_ref(parser).m_internalEncoding,
+                    text_start,
+                    text_end,
+                    XML_ACCOUNT_ENTITY_EXPANSION,
+                    &raw mut next_in_entity,
+                );
+                if result as ::core::ffi::c_uint
+                    != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+                {
+                    break;
                 }
-                let entity: *mut ENTITY = (*openEntity).entity;
-                let textStart: *const ::core::ffi::c_char = ((*entity).textPtr
-                    as *const ::core::ffi::c_char)
-                    .offset((*entity).processed as isize);
-                let textEnd: *const ::core::ffi::c_char =
-                    (*entity).textPtr.offset((*entity).textLen as isize)
-                        as *const ::core::ffi::c_char;
-                let mut nextInEntity: *const ::core::ffi::c_char = textStart;
-                if (*entity).hasMore != 0 {
-                    result = storeEntityValue(
-                        parser,
-                        (*parser).m_internalEncoding,
-                        textStart,
-                        textEnd,
-                        XML_ACCOUNT_ENTITY_EXPANSION,
-                        &raw mut nextInEntity,
-                    );
-                    if result as ::core::ffi::c_uint
-                        != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                    {
-                        break;
-                    }
-                    if textEnd != nextInEntity {
-                        (*entity).processed = nextInEntity
-                            .offset_from((*entity).textPtr as *const ::core::ffi::c_char)
-                            as ::core::ffi::c_long
-                            as ::core::ffi::c_int;
-                        continue;
-                    } else {
-                        (*entity).hasMore = XML_FALSE;
-                        continue;
-                    }
-                } else {
-                    entityTrackingOnClose(&mut *parser, &*entity, 6998 as ::core::ffi::c_int);
-                    if (*parser).m_openValueEntities == openEntity {
-                    } else {
-                        __assert_fail(
-                            b"parser->m_openValueEntities == openEntity\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            b"/root/work/expat/lib/xmlparse.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            7004 as ::core::ffi::c_uint,
-                            b"enum XML_Error callStoreEntityValue(XML_Parser, const ENCODING *, const char *, const char *, enum XML_Account)\0"
-                                .as_ptr() as *const ::core::ffi::c_char,
-                        );
-                    };
-                    (*entity).open = XML_FALSE;
-                    (*parser).m_openValueEntities =
-                        (*(*parser).m_openValueEntities).next as *mut OPEN_INTERNAL_ENTITY;
-                    (*openEntity).next = (*parser).m_freeValueEntities as *mut open_internal_entity;
-                    (*parser).m_freeValueEntities = openEntity;
+                if text_end != next_in_entity {
+                    entity.processed =
+                        (next_in_entity as usize).wrapping_sub(entity_text_ptr as usize)
+                            as ::core::ffi::c_long as ::core::ffi::c_int;
+                    continue;
                 }
+
+                entity.hasMore = XML_FALSE;
+                continue;
             }
-            if result as ::core::ffi::c_uint != 0
-                || (*parser).m_openValueEntities.is_null() && entityTextEnd == next
-            {
-                break;
+
+            entityTrackingOnClose(ptr_mut(parser), entity, 6998 as ::core::ffi::c_int);
+            if ptr_ref(parser).m_openValueEntities != open_entity {
+                xmlparse_assert_fail(
+                    b"parser->m_openValueEntities == openEntity\0",
+                    7004 as ::core::ffi::c_uint,
+                    b"enum XML_Error callStoreEntityValue(XML_Parser, const ENCODING *, const char *, const char *, enum XML_Account)\0",
+                );
             }
+            entity.open = XML_FALSE;
+
+            let parser_ref = ptr_mut(parser);
+            parser_ref.m_openValueEntities = ptr_ref(open_entity).next as *mut OPEN_INTERNAL_ENTITY;
+            ptr_mut(open_entity).next = parser_ref.m_freeValueEntities as *mut open_internal_entity;
+            parser_ref.m_freeValueEntities = open_entity;
         }
-        return result;
+
+        if result as ::core::ffi::c_uint != 0
+            || ptr_ref(parser).m_openValueEntities.is_null() && entityTextEnd == next
+        {
+            break;
+        }
     }
+
+    result
 }
 fn normalizeLines(buffer: &mut [XML_Char]) {
     let Some(first_cr) = buffer[..buffer.len() - 1]
