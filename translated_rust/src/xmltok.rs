@@ -964,68 +964,6 @@ pub fn predefined_entity_name(
     predefined_entity_name_chars(matcher, &input[..name_len * width])
 }
 
-pub unsafe fn convert_to_utf8(
-    enc: *const crate::src::xmltok::ENCODING,
-    from: *mut *const ::core::ffi::c_char,
-    from_lim: *const ::core::ffi::c_char,
-    to: *mut *mut ::core::ffi::c_char,
-    to_lim: *const ::core::ffi::c_char,
-) -> crate::src::xmltok::XML_Convert_Result {
-    let converter = (*enc).utf8Convert;
-    let input_start = *from;
-    let Some(input_len) = from_lim.addr().checked_sub(input_start.addr()) else {
-        // A reversed C cursor cannot describe an input window.  Reject it
-        // before constructing a slice (and before relying on `offset_from`'s
-        // same-allocation precondition).
-        return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-    };
-    // An empty input window is permitted to use null pointers.  In particular,
-    // do not inspect the output cursor or construct a slice in that case.
-    if input_len == 0 {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
-    }
-    if input_start.is_null() {
-        return crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-    }
-
-    let output_start = *to;
-    let Some(output_len) = to_lim.addr().checked_sub(output_start.addr()) else {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    };
-    if output_len != 0 && output_start.is_null() {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    }
-    let input = core::slice::from_raw_parts(input_start.cast::<u8>(), input_len);
-    let output = if output_len == 0 {
-        &mut []
-    } else {
-        core::slice::from_raw_parts_mut(output_start.cast::<u8>(), output_len)
-    };
-    let unknown_encoding = match converter {
-        // Unknown-encoding storage begins with `ENCODING`, so the C cursor's
-        // address is the stable registration key installed at initialization.
-        // Resolve a typed snapshot from that key rather than casting the
-        // prefix pointer to `unknown_encoding`.
-        Utf8Converter::Unknown => registered_unknown_encoding(Some(enc.addr())),
-        _ => None,
-    };
-    let (result, input_used, output_used) =
-        convert_to_utf8_window(converter, unknown_encoding.as_ref(), input, output);
-
-    if input_used != 0 {
-        // `input_used` is produced from `input`, so this derives the next
-        // cursor from a checked slice tail instead of raw pointer arithmetic.
-        *from = input[input_used..].as_ptr().cast::<::core::ffi::c_char>();
-    }
-    if output_used != 0 {
-        // Likewise, `output_used` is bounded by the output slice.
-        *to = output[output_used..]
-            .as_mut_ptr()
-            .cast::<::core::ffi::c_char>();
-    }
-    result
-}
-
 fn convert_to_utf8_window(
     converter: Utf8Converter,
     unknown_encoding: Option<&unknown_encoding>,

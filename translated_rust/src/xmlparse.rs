@@ -19790,9 +19790,36 @@ unsafe fn reportDefault(
         callback.invoke(handler_arg!(parser_handle), data, len);
     };
     if (*enc).isUtf8 == 0 {
+        let Some(input_len) = end.addr().checked_sub(s.addr()) else {
+            return;
+        };
+        // The empty cursor range is permitted to contain null pointers.  Do
+        // not construct a slice for it, matching the former cursor adapter.
+        let input = if input_len == 0 {
+            &[]
+        } else {
+            if s.is_null() {
+                return;
+            }
+            core::slice::from_raw_parts(s.cast::<u8>(), input_len)
+        };
+        let encoding = &*enc;
+        let unknown_encoding = if input_len == 0 {
+            None
+        } else {
+            match encoding.utf8Convert {
+                crate::src::xmltok::Utf8Converter::Unknown => {
+                    crate::src::xmltok::registered_unknown_encoding(Some(enc.addr()))
+                        .expect("unknown encoding must have state")
+                        .into()
+                }
+                _ => None,
+            }
+        };
+        let mut input_offset = 0usize;
         let mut convert_res: crate::src::xmltok::XML_Convert_Result =
             crate::src::xmltok::XML_CONVERT_COMPLETED;
-        let ((event_target, internal_event_window, internal_event_start), (data_start, data_end)) = {
+        let (event_target, internal_event_window, internal_event_start) = {
             let parser_state = &mut *parser;
             let active_parser_encoding = match parser_state.m_encoding {
                 EncodingState::Initial => match parser_state.m_initEncoding.selected_encoding {
@@ -19839,21 +19866,35 @@ unsafe fn reportDefault(
                     internal_event_offset(internal_window, s.addr()),
                 )
             };
-            let data_start = parser_state.m_dataBuf.chars.as_mut_ptr();
-            (
-                event_target,
-                (data_start, data_start.wrapping_add(parser_state.m_dataBufEnd)),
-            )
+            event_target
         };
         loop {
-            let mut dataPtr: *mut ICHAR = data_start;
-            convert_res = crate::src::xmltok::convert_to_utf8(
-                enc,
-                &raw mut s,
-                end,
-                &raw mut dataPtr,
-                data_end,
-            );
+            let (input_used, output_used, data_start) = {
+                let parser_state = &mut *parser;
+                let Some(output) = parser_state
+                    .m_dataBuf
+                    .chars
+                    .get_mut(..parser_state.m_dataBufEnd)
+                else {
+                    return;
+                };
+                let (result, input_used, output_used) =
+                    crate::src::xmltok::convert_to_utf8_slice(
+                        encoding,
+                        unknown_encoding.as_ref(),
+                        &input[input_offset..],
+                        bytemuck::cast_slice_mut(output),
+                    );
+                convert_res = result;
+                (input_used, output_used, output.as_ptr())
+            };
+            if input_used != 0 {
+                let Some(next_offset) = input_offset.checked_add(input_used) else {
+                    return;
+                };
+                input_offset = next_offset;
+                s = input[input_offset..].as_ptr().cast();
+            }
             event_target.set_end(
                 &mut *parser,
                 internal_event_start,
@@ -19862,7 +19903,7 @@ unsafe fn reportDefault(
             );
             report_chunk(
                 data_start,
-                dataPtr.addr().wrapping_sub(data_start.addr()) as ::core::ffi::c_int,
+                output_used as ::core::ffi::c_int,
             );
             event_target.set_start(&mut *parser, internal_event_window, s.addr());
             if !(convert_res as ::core::ffi::c_uint
@@ -22117,6 +22158,39 @@ unsafe extern "C" fn poolAppend(
     if pool.start.is_none() && poolGrow(pool) == 0 {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
+    let Some(input_len) = end.addr().checked_sub(ptr.addr()) else {
+        return pool
+            .start_ref(true)
+            .and_then(|start| pool.chars_from(start))
+            .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _);
+    };
+    // Preserve the C adapter's treatment of an empty null range, while
+    // validating non-empty input before creating its bounded slice.
+    let input = if input_len == 0 {
+        &[]
+    } else {
+        if ptr.is_null() {
+            return pool
+                .start_ref(true)
+                .and_then(|start| pool.chars_from(start))
+                .map_or(::core::ptr::null_mut(), |chars| chars.as_ptr() as *mut _);
+        }
+        core::slice::from_raw_parts(ptr.cast::<u8>(), input_len)
+    };
+    let encoding = &*enc;
+    let unknown_encoding = if input_len == 0 {
+        None
+    } else {
+        match encoding.utf8Convert {
+            crate::src::xmltok::Utf8Converter::Unknown => {
+                crate::src::xmltok::registered_unknown_encoding(Some(enc.addr()))
+                    .expect("unknown encoding must have state")
+                    .into()
+            }
+            _ => None,
+        }
+    };
+    let mut input_offset = 0usize;
     loop {
         let Some(start) = pool.start_ref(true) else {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
@@ -22124,34 +22198,30 @@ unsafe extern "C" fn poolAppend(
         let Some(capacity) = pool.remaining_capacity() else {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
         };
+        let output_offset = pool.ptr_offset;
         let Some(output_chars) = pool
-            .chars_from(start)
-            .and_then(|chars| chars.get(..capacity))
+            .chars_from_mut(start)
+            .and_then(|chars| chars.get_mut(..capacity))
         else {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
         };
-        let Some(output_tail) = output_chars.get(pool.ptr_offset..) else {
+        let Some(output_tail) = output_chars.get_mut(output_offset..) else {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
         };
-        let output_end = output_chars.as_ptr().wrapping_add(output_chars.len());
-        let output_start = output_tail.as_ptr() as *mut crate::expat_external_h::XML_Char;
-        let mut output = output_start.cast::<::core::ffi::c_char>();
-        let convert_res: crate::src::xmltok::XML_Convert_Result =
-            crate::src::xmltok::convert_to_utf8(
-                enc,
-                &raw mut ptr,
-                end,
-                &raw mut output,
-                output_end as *const ::core::ffi::c_char,
-            );
-        let Some(written_bytes) = output.addr().checked_sub(output_start.addr()) else {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-        };
-        let char_size = ::core::mem::size_of::<crate::expat_external_h::XML_Char>();
-        if written_bytes % char_size != 0 {
-            return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+        let (convert_res, input_used, written) = crate::src::xmltok::convert_to_utf8_slice(
+            encoding,
+            unknown_encoding.as_ref(),
+            &input[input_offset..],
+            bytemuck::cast_slice_mut(output_tail),
+        );
+        if input_used != 0 {
+            let Some(next_offset) = input_offset.checked_add(input_used) else {
+                return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
+            };
+            input_offset = next_offset;
+            ptr = input[input_offset..].as_ptr().cast();
         }
-        let Some(cursor) = pool.ptr_offset.checked_add(written_bytes / char_size) else {
+        let Some(cursor) = output_offset.checked_add(written) else {
             return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
         };
         pool.ptr_offset = cursor;
