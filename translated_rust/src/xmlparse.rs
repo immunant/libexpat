@@ -16694,10 +16694,9 @@ unsafe extern "C" fn externalParEntProcessor(
         }
     }
     parser.m_processor = ProcessorState::Prolog;
-    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
     return doProlog(
         parser,
-        encoding,
+        true,
         s,
         end,
         tok,
@@ -16798,10 +16797,9 @@ unsafe extern "C" fn prologProcessor(
     if let Some(offset) = scan.next {
         next = s.wrapping_add(offset);
     }
-    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
     return doProlog(
         parser,
-        encoding,
+        true,
         s,
         end,
         tok,
@@ -16989,7 +16987,7 @@ fn continue_prolog_as_content(
 
 unsafe fn doProlog(
     parser: &mut XML_ParserStruct,
-    mut enc: *const crate::src::xmltok::ENCODING,
+    parser_events: bool,
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut tok: ::core::ffi::c_int,
@@ -17110,7 +17108,11 @@ unsafe fn doProlog(
         .expect("parser processing requires an attached DTD");
     dtd_owner.inspect(|dtd| {
     let mut active_parser_encoding = std::ptr::from_ref(current_parser_encoding(parser));
-    let parser_events = enc == active_parser_encoding;
+    let mut enc = if parser_events {
+        active_parser_encoding
+    } else {
+        internal_encoding(parser.m_internalEncoding)
+    };
     let mut event_target = EventCursorTarget::Parser;
     let mut internal_event_start = None;
     let mut internal_event_window = None;
@@ -19164,7 +19166,7 @@ unsafe fn doProlog(
                                                     crate::expat_h::XML_FALSE as ::core::ffi::c_int
                                                 })
                                                     as crate::expat_h::XML_Bool;
-                                                result_4 = processEntity(
+                                                result_4 = process_entity_impl(
                                                     parser,
                                                     declared_entity_mut(
                                                         dtd,
@@ -20159,7 +20161,12 @@ unsafe extern "C" fn epilogProcessor(
 ///
 /// The caller keeps the DTD borrow scoped to this non-reentrant transition;
 /// the active-entity stacks retain only the declaration's stable pool key.
-unsafe fn processEntity(
+// This transition only operates on parser-owned state and the currently
+// borrowed declaration.  Keep it safe for prolog processing: it neither
+// dereferences nor exposes the raw handles that the parser state carries.
+// The legacy-shaped `processEntity` adapter below remains for call sites that
+// have not yet crossed that boundary.
+fn process_entity_impl(
     parser_state: &mut XML_ParserStruct,
     entity: &mut ENTITY,
     mut betweenDecl: crate::expat_h::XML_Bool,
@@ -20377,6 +20384,15 @@ unsafe fn processEntity(
     return crate::expat_h::XML_ERROR_NONE;
 }
 
+unsafe fn processEntity(
+    parser_state: &mut XML_ParserStruct,
+    entity: &mut ENTITY,
+    betweenDecl: crate::expat_h::XML_Bool,
+    type_0: EntityType,
+) -> crate::expat_h::XML_Error {
+    process_entity_impl(parser_state, entity, betweenDecl, type_0)
+}
+
 // An active entity is re-resolved from its stable frame key before each
 // non-reentrant operation.  No reference into the DTD or table escapes this
 // helper, so callbacks can safely grow parser-owned collections between
@@ -20552,10 +20568,6 @@ unsafe extern "C" fn internalEntityProcessor(
         let mut next = textStart;
         let mut result: crate::expat_h::XML_Error;
         if entity_state.is_parameter {
-            let internal_encoding = crate::src::xmltok::internal_utf8_normal_encoding(matches!(
-                entity_state.internal_encoding,
-                InternalEncoding::Utf8Ns
-            ));
             let Some(scan) = parameter_scan else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
@@ -20565,7 +20577,7 @@ unsafe extern "C" fn internalEntityProcessor(
             }
             result = doProlog(
                 parser_state,
-                &internal_encoding.enc,
+                false,
                 textStart,
                 textEnd,
                 tok,
