@@ -13756,7 +13756,7 @@ fn xml_decl_encoding_action(
     }
 }
 
-fn xml_decl_min_bytes(enc: *const crate::src::xmltok::ENCODING) -> ::core::ffi::c_int {
+pub(crate) fn encoding_min_bytes(enc: *const crate::src::xmltok::ENCODING) -> ::core::ffi::c_int {
     match xml_decl_encoding_action(enc, XmlDeclEncodingAction::MinBytes) {
         XmlDeclEncodingResult::Int(value) => value,
         XmlDeclEncodingResult::Encoding(_) => unreachable!(),
@@ -13776,7 +13776,7 @@ fn toAscii(
     }
 }
 
-fn xml_decl_name_matches_ascii(
+pub(crate) fn encoding_name_matches_ascii(
     enc: *const crate::src::xmltok::ENCODING,
     name: *const ::core::ffi::c_char,
     name_end: *const ::core::ffi::c_char,
@@ -13833,7 +13833,7 @@ fn find_encoding_from_converted_name(
     encodings: &[*const crate::src::xmltok::ENCODING; 7],
 ) -> *const crate::src::xmltok::ENCODING {
     if streqci(name.iter().copied(), KW_UTF_16.iter().copied()) != 0
-        && xml_decl_min_bytes(enc) == 2 as ::core::ffi::c_int
+        && encoding_min_bytes(enc) == 2 as ::core::ffi::c_int
     {
         return enc;
     }
@@ -13863,7 +13863,7 @@ fn parsePseudoAttribute(
 ) -> ::core::ffi::c_int {
     let mut c: ::core::ffi::c_int = 0;
     let mut open: ::core::ffi::c_char = 0;
-    let min_bytes = xml_decl_min_bytes(enc) as isize;
+    let min_bytes = encoding_min_bytes(enc) as isize;
     if ptr == end {
         *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
         return 1 as ::core::ffi::c_int;
@@ -14020,7 +14020,7 @@ fn doParseXmlDecl(
     let mut val: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut name: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut nameEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let min_bytes = xml_decl_min_bytes(enc);
+    let min_bytes = encoding_min_bytes(enc);
     ptr = ptr.wrapping_offset((5 as ::core::ffi::c_int * min_bytes) as isize);
     end = end.wrapping_offset(-((2 as ::core::ffi::c_int * min_bytes) as isize));
     if parsePseudoAttribute(enc, ptr, end, &mut name, &mut nameEnd, &mut val, &mut ptr) == 0
@@ -14029,7 +14029,7 @@ fn doParseXmlDecl(
         *badPtr = ptr;
         return 0 as ::core::ffi::c_int;
     }
-    if xml_decl_name_matches_ascii(enc, name, nameEnd, KW_version.as_ptr()) == 0 {
+    if encoding_name_matches_ascii(enc, name, nameEnd, KW_version.as_ptr()) == 0 {
         if isGeneralTextEntity == 0 {
             *badPtr = name;
             return 0 as ::core::ffi::c_int;
@@ -14053,7 +14053,7 @@ fn doParseXmlDecl(
             return 1 as ::core::ffi::c_int;
         }
     }
-    if xml_decl_name_matches_ascii(enc, name, nameEnd, KW_encoding.as_ptr()) != 0 {
+    if encoding_name_matches_ascii(enc, name, nameEnd, KW_encoding.as_ptr()) != 0 {
         let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
         if !(crate::ascii_h::ASCII_a_1 <= c && c <= crate::ascii_h::ASCII_z)
             && !(crate::ascii_h::ASCII_A <= c && c <= crate::ascii_h::ASCII_Z)
@@ -14080,13 +14080,13 @@ fn doParseXmlDecl(
             return 1 as ::core::ffi::c_int;
         }
     }
-    if xml_decl_name_matches_ascii(enc, name, nameEnd, KW_standalone.as_ptr()) == 0
+    if encoding_name_matches_ascii(enc, name, nameEnd, KW_standalone.as_ptr()) == 0
         || isGeneralTextEntity != 0
     {
         *badPtr = name;
         return 0 as ::core::ffi::c_int;
     }
-    if xml_decl_name_matches_ascii(
+    if encoding_name_matches_ascii(
         enc,
         val,
         ptr.wrapping_offset(-(min_bytes as isize)),
@@ -14096,7 +14096,7 @@ fn doParseXmlDecl(
         if let Some(standalone) = standalone.as_mut() {
             **standalone = 1 as ::core::ffi::c_int;
         }
-    } else if xml_decl_name_matches_ascii(
+    } else if encoding_name_matches_ascii(
         enc,
         val,
         ptr.wrapping_offset(-(min_bytes as isize)),

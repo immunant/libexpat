@@ -462,11 +462,9 @@ fn encoded_name_matches_ascii(
     keyword: &[::core::ffi::c_char],
     offset_chars: ::core::ffi::c_int,
 ) -> bool {
-    unsafe {
-        let ptr = ptr.offset((offset_chars * (*enc).minBytesPerChar) as isize);
-        (*enc).nameMatchesAscii.expect("non-null function pointer")(enc, ptr, end, keyword.as_ptr())
-            != 0
-    }
+    let ptr =
+        ptr.wrapping_offset((offset_chars * crate::src::xmltok::encoding_min_bytes(enc)) as isize);
+    crate::src::xmltok::encoding_name_matches_ascii(enc, ptr, end, keyword.as_ptr()) != 0
 }
 
 extern "C" fn prolog0(
