@@ -1030,7 +1030,7 @@ pub type CONVERTER = Option<
     ) -> ::core::ffi::c_int,
 >;
 
-trait UnknownEncodingConverter: Send + Sync {
+pub(crate) trait UnknownEncodingConverter: Send + Sync {
     fn invoke(&self, input: &[u8]) -> ::core::ffi::c_int;
 }
 
@@ -1067,6 +1067,14 @@ where
     callback.map(|callback| UnknownEncodingConverterRegistration {
         invoke: std::sync::Arc::new(callback),
     })
+}
+
+/// Retains an already-adapted converter without exposing its boundary details
+/// to the tokenizer's stored registration.
+pub(crate) fn unknown_encoding_converter_registration(
+    converter: Option<std::sync::Arc<dyn UnknownEncodingConverter>>,
+) -> Option<UnknownEncodingConverterRegistration> {
+    converter.map(|invoke| UnknownEncodingConverterRegistration { invoke })
 }
 
 // Unknown encodings are initialized in caller-provided storage.  Keep the

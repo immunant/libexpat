@@ -18412,21 +18412,53 @@ fn unknown_encoding_allocation_backing(
     parser_allocation_backing(parser, size, source_line)
 }
 
+/// Owns the converter callback returned from an unknown-encoding handler.
+/// Its only raw ABI interaction is the synchronous foreign call; tokenizer
+/// code receives a bounded byte slice through the resulting registration.
+struct UnknownEncodingConverterCallbackAdapter {
+    invoke: std::sync::Arc<dyn for<'a> Fn(&'a [u8]) -> ::core::ffi::c_int + Send + Sync>,
+}
+
+impl UnknownEncodingConverterCallbackAdapter {
+    /// Captures the callback's opaque data token without exposing either ABI
+    /// value to the tokenizer-facing converter registration.
+    fn from_encoding(info: &crate::expat_h::XML_Encoding) -> Option<Self> {
+        let callback = info.convert?;
+        let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
+        Some(Self {
+            invoke: std::sync::Arc::new(move |input: &[u8]| unsafe {
+                callback(
+                    callback_arg.load(std::sync::atomic::Ordering::Relaxed),
+                    input.as_ptr().cast::<::core::ffi::c_char>(),
+                )
+            }),
+        })
+    }
+
+    /// Converts this narrow callback boundary into the tokenizer's typed
+    /// registration, which can no longer access the foreign ABI values.
+    fn into_registration(
+        self,
+    ) -> Option<crate::src::xmltok::UnknownEncodingConverterRegistration> {
+        crate::src::xmltok::unknown_encoding_converter_registration(Some(std::sync::Arc::new(
+            self,
+        )))
+    }
+}
+
+impl crate::src::xmltok::UnknownEncodingConverter for UnknownEncodingConverterCallbackAdapter {
+    fn invoke(&self, input: &[u8]) -> ::core::ffi::c_int {
+        (self.invoke)(input)
+    }
+}
+
 /// Builds the tokenizer callback adapter from the callback result.  Its raw
-/// data token is captured only for forwarding to the foreign converter.
+/// data token remains confined to the converter callback boundary.
 fn unknown_encoding_converter(
     info: &crate::expat_h::XML_Encoding,
 ) -> Option<crate::src::xmltok::UnknownEncodingConverterRegistration> {
-    let callback_arg = std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(info.data));
-    crate::src::xmltok::unknown_encoding_callback(info.convert.map(|callback| {
-        let callback_arg = callback_arg.clone();
-        move |input: &[u8]| unsafe {
-            callback(
-                callback_arg.load(std::sync::atomic::Ordering::Relaxed),
-                input.as_ptr().cast::<::core::ffi::c_char>(),
-            )
-        }
-    }))
+    UnknownEncodingConverterCallbackAdapter::from_encoding(info)
+        .and_then(UnknownEncodingConverterCallbackAdapter::into_registration)
 }
 
 /// Installs a callback-provided encoding from parser-owned data.
