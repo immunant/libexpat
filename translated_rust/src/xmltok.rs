@@ -498,6 +498,153 @@ pub mod xmltok_impl_c {
         (ptr1 == end1) as ::core::ffi::c_int
     }
 
+    fn c_char_at(ptr: *const ::core::ffi::c_char, offset: usize) -> ::core::ffi::c_int {
+        super::utf8_byte_at(ptr, offset) as ::core::ffi::c_uchar as ::core::ffi::c_char
+            as ::core::ffi::c_int
+    }
+
+    fn encoded_ascii_at(ptr: *const ::core::ffi::c_char, unit: EncodingUnit) -> ::core::ffi::c_int {
+        match unit {
+            EncodingUnit::Normal => c_char_at(ptr, 0),
+            EncodingUnit::Little2 => {
+                if c_char_at(ptr, 1) == 0 {
+                    c_char_at(ptr, 0)
+                } else {
+                    -1 as ::core::ffi::c_int
+                }
+            }
+            EncodingUnit::Big2 => {
+                if c_char_at(ptr, 0) == 0 {
+                    c_char_at(ptr, 1)
+                } else {
+                    -1 as ::core::ffi::c_int
+                }
+            }
+        }
+    }
+
+    fn encoded_unit_count(
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        unit: EncodingUnit,
+    ) -> usize {
+        (end as usize).saturating_sub(ptr as usize) / unit.min_bytes() as usize
+    }
+
+    fn encoded_ascii_matches(
+        ptr: *const ::core::ffi::c_char,
+        unit: EncodingUnit,
+        expected: &[::core::ffi::c_int],
+    ) -> bool {
+        expected.iter().enumerate().all(|(index, &expected)| {
+            let current = ptr.wrapping_offset(index as isize * unit.min_bytes());
+            encoded_ascii_at(current, unit) == expected
+        })
+    }
+
+    fn char_ref_number(
+        mut ptr: *const ::core::ffi::c_char,
+        unit: EncodingUnit,
+    ) -> ::core::ffi::c_int {
+        let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+        let step = unit.min_bytes();
+        ptr = ptr.wrapping_offset(2 as isize * step);
+        if encoded_ascii_at(ptr, unit) == 0x78 as ::core::ffi::c_int {
+            ptr = ptr.wrapping_offset(step);
+            while encoded_ascii_at(ptr, unit) != 0x3b as ::core::ffi::c_int {
+                let c = encoded_ascii_at(ptr, unit);
+                match c {
+                    crate::ascii_h::ASCII_0
+                    | crate::ascii_h::ASCII_1_1
+                    | crate::ascii_h::ASCII_2_1
+                    | crate::ascii_h::ASCII_3_1
+                    | crate::ascii_h::ASCII_4
+                    | crate::ascii_h::ASCII_5
+                    | crate::ascii_h::ASCII_6
+                    | crate::ascii_h::ASCII_7
+                    | crate::ascii_h::ASCII_8_1
+                    | crate::ascii_h::ASCII_9_1 => {
+                        result <<= 4 as ::core::ffi::c_int;
+                        result |= c - crate::ascii_h::ASCII_0;
+                    }
+                    crate::ascii_h::ASCII_A
+                    | crate::ascii_h::ASCII_B_1
+                    | crate::ascii_h::ASCII_C
+                    | crate::ascii_h::ASCII_D
+                    | crate::ascii_h::ASCII_E_1
+                    | crate::ascii_h::ASCII_F_1 => {
+                        result <<= 4 as ::core::ffi::c_int;
+                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_A);
+                    }
+                    crate::ascii_h::ASCII_a_1
+                    | crate::ascii_h::ASCII_b
+                    | crate::ascii_h::ASCII_c_1
+                    | crate::ascii_h::ASCII_d
+                    | crate::ascii_h::ASCII_e_1
+                    | crate::ascii_h::ASCII_f => {
+                        result <<= 4 as ::core::ffi::c_int;
+                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_a_1);
+                    }
+                    _ => {}
+                }
+                if result >= 0x110000 as ::core::ffi::c_int {
+                    return -1 as ::core::ffi::c_int;
+                }
+                ptr = ptr.wrapping_offset(step);
+            }
+        } else {
+            while encoded_ascii_at(ptr, unit) != 0x3b as ::core::ffi::c_int {
+                let c = encoded_ascii_at(ptr, unit);
+                result *= 10 as ::core::ffi::c_int;
+                result += c - crate::ascii_h::ASCII_0;
+                if result >= 0x110000 as ::core::ffi::c_int {
+                    return -1 as ::core::ffi::c_int;
+                }
+                ptr = ptr.wrapping_offset(step);
+            }
+        }
+        super::checkCharRefNumber(result)
+    }
+
+    fn predefined_entity_name(
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        unit: EncodingUnit,
+    ) -> ::core::ffi::c_int {
+        match encoded_unit_count(ptr, end, unit) {
+            2 => {
+                if encoded_ascii_matches(ptr, unit, &[crate::ascii_h::ASCII_l_1, 0x74]) {
+                    crate::ascii_h::ASCII_LT
+                } else if encoded_ascii_matches(ptr, unit, &[crate::ascii_h::ASCII_g_1, 0x74]) {
+                    crate::ascii_h::ASCII_GT
+                } else {
+                    0 as ::core::ffi::c_int
+                }
+            }
+            3 => {
+                if encoded_ascii_matches(ptr, unit, &[0x61, 0x6d, 0x70]) {
+                    crate::ascii_h::ASCII_AMP
+                } else {
+                    0 as ::core::ffi::c_int
+                }
+            }
+            4 => {
+                if encoded_ascii_matches(ptr, unit, &[crate::ascii_h::ASCII_q, 0x75, 0x6f, 0x74]) {
+                    crate::ascii_h::ASCII_QUOT
+                } else if encoded_ascii_matches(
+                    ptr,
+                    unit,
+                    &[crate::ascii_h::ASCII_a_1, 0x70, 0x6f, 0x73],
+                ) {
+                    crate::ascii_h::ASCII_APOS
+                } else {
+                    0 as ::core::ffi::c_int
+                }
+            }
+            _ => 0 as ::core::ffi::c_int,
+        }
+    }
+
     pub unsafe extern "C" fn normal_scanComment(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -4563,127 +4710,19 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_charRefNumber(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
+    pub extern "C" fn normal_charRefNumber(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset((2 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize);
-        if *ptr as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int {
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            while !(*ptr as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int) {
-                let mut c: ::core::ffi::c_int = *ptr as ::core::ffi::c_int;
-                match c {
-                    crate::ascii_h::ASCII_0
-                    | crate::ascii_h::ASCII_1_1
-                    | crate::ascii_h::ASCII_2_1
-                    | crate::ascii_h::ASCII_3_1
-                    | crate::ascii_h::ASCII_4
-                    | crate::ascii_h::ASCII_5
-                    | crate::ascii_h::ASCII_6
-                    | crate::ascii_h::ASCII_7
-                    | crate::ascii_h::ASCII_8_1
-                    | crate::ascii_h::ASCII_9_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result |= c - crate::ascii_h::ASCII_0;
-                    }
-                    crate::ascii_h::ASCII_A
-                    | crate::ascii_h::ASCII_B_1
-                    | crate::ascii_h::ASCII_C
-                    | crate::ascii_h::ASCII_D
-                    | crate::ascii_h::ASCII_E_1
-                    | crate::ascii_h::ASCII_F_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_A);
-                    }
-                    crate::ascii_h::ASCII_a_1
-                    | crate::ascii_h::ASCII_b
-                    | crate::ascii_h::ASCII_c_1
-                    | crate::ascii_h::ASCII_d
-                    | crate::ascii_h::ASCII_e_1
-                    | crate::ascii_h::ASCII_f => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_a_1);
-                    }
-                    _ => {}
-                }
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            }
-        } else {
-            while !(*ptr as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int) {
-                let mut c_0: ::core::ffi::c_int = *ptr as ::core::ffi::c_int;
-                result *= 10 as ::core::ffi::c_int;
-                result += c_0 - crate::ascii_h::ASCII_0;
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-            }
-        }
-        return checkCharRefNumber(result);
+        char_ref_number(ptr, EncodingUnit::Normal)
     }
 
-    pub unsafe extern "C" fn normal_predefinedEntityName(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
+    pub extern "C" fn normal_predefinedEntityName(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        match end.offset_from(ptr) as ::core::ffi::c_long / 1 as ::core::ffi::c_long {
-            2 => {
-                if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x74 as ::core::ffi::c_int
-                {
-                    match *ptr as ::core::ffi::c_int {
-                        crate::ascii_h::ASCII_l_1 => return crate::ascii_h::ASCII_LT,
-                        crate::ascii_h::ASCII_g_1 => return crate::ascii_h::ASCII_GT,
-                        _ => {}
-                    }
-                }
-            }
-            3 => {
-                if *ptr as ::core::ffi::c_int == 0x61 as ::core::ffi::c_int {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if *ptr as ::core::ffi::c_int == 0x6d as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if *ptr as ::core::ffi::c_int == 0x70 as ::core::ffi::c_int {
-                            return crate::ascii_h::ASCII_AMP;
-                        }
-                    }
-                }
-            }
-            4 => match *ptr as ::core::ffi::c_int {
-                crate::ascii_h::ASCII_q => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if *ptr as ::core::ffi::c_int == 0x75 as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if *ptr as ::core::ffi::c_int == 0x6f as ::core::ffi::c_int {
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            if *ptr as ::core::ffi::c_int == 0x74 as ::core::ffi::c_int {
-                                return crate::ascii_h::ASCII_QUOT;
-                            }
-                        }
-                    }
-                }
-                crate::ascii_h::ASCII_a_1 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if *ptr as ::core::ffi::c_int == 0x70 as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if *ptr as ::core::ffi::c_int == 0x6f as ::core::ffi::c_int {
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            if *ptr as ::core::ffi::c_int == 0x73 as ::core::ffi::c_int {
-                                return crate::ascii_h::ASCII_APOS;
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-        return 0 as ::core::ffi::c_int;
+        predefined_entity_name(ptr, end, EncodingUnit::Normal)
     }
 
     pub extern "C" fn normal_nameMatchesAscii(
@@ -8906,217 +8945,19 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_charRefNumber(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
+    pub extern "C" fn little2_charRefNumber(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset((2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize);
-        if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-            && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x78 as ::core::ffi::c_int
-        {
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while !(*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c: ::core::ffi::c_int = if *ptr.offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                };
-                match c {
-                    crate::ascii_h::ASCII_0
-                    | crate::ascii_h::ASCII_1_1
-                    | crate::ascii_h::ASCII_2_1
-                    | crate::ascii_h::ASCII_3_1
-                    | crate::ascii_h::ASCII_4
-                    | crate::ascii_h::ASCII_5
-                    | crate::ascii_h::ASCII_6
-                    | crate::ascii_h::ASCII_7
-                    | crate::ascii_h::ASCII_8_1
-                    | crate::ascii_h::ASCII_9_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result |= c - crate::ascii_h::ASCII_0;
-                    }
-                    crate::ascii_h::ASCII_A
-                    | crate::ascii_h::ASCII_B_1
-                    | crate::ascii_h::ASCII_C
-                    | crate::ascii_h::ASCII_D
-                    | crate::ascii_h::ASCII_E_1
-                    | crate::ascii_h::ASCII_F_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_A);
-                    }
-                    crate::ascii_h::ASCII_a_1
-                    | crate::ascii_h::ASCII_b
-                    | crate::ascii_h::ASCII_c_1
-                    | crate::ascii_h::ASCII_d
-                    | crate::ascii_h::ASCII_e_1
-                    | crate::ascii_h::ASCII_f => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_a_1);
-                    }
-                    _ => {}
-                }
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        } else {
-            while !(*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c_0: ::core::ffi::c_int = if *ptr.offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                };
-                result *= 10 as ::core::ffi::c_int;
-                result += c_0 - crate::ascii_h::ASCII_0;
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        return checkCharRefNumber(result);
+        char_ref_number(ptr, EncodingUnit::Little2)
     }
 
-    pub unsafe extern "C" fn little2_predefinedEntityName(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
+    pub extern "C" fn little2_predefinedEntityName(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        match end.offset_from(ptr) as ::core::ffi::c_long / 2 as ::core::ffi::c_long {
-            2 => {
-                if *ptr
-                    .offset(2 as ::core::ffi::c_int as isize)
-                    .offset(1 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr
-                        .offset(2 as ::core::ffi::c_int as isize)
-                        .offset(0 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        == 0x74 as ::core::ffi::c_int
-                {
-                    match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    } {
-                        crate::ascii_h::ASCII_l_1 => return crate::ascii_h::ASCII_LT,
-                        crate::ascii_h::ASCII_g_1 => return crate::ascii_h::ASCII_GT,
-                        _ => {}
-                    }
-                }
-            }
-            3 => {
-                if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x61 as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                        && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0x6d as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            return crate::ascii_h::ASCII_AMP;
-                        }
-                    }
-                }
-            }
-            4 => {
-                match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                } {
-                    crate::ascii_h::ASCII_q => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0x75 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                        as ::core::ffi::c_int
-                                        == 0x74 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_QUOT;
-                                }
-                            }
-                        }
-                    }
-                    crate::ascii_h::ASCII_a_1 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                        as ::core::ffi::c_int
-                                        == 0x73 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_APOS;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        return 0 as ::core::ffi::c_int;
+        predefined_entity_name(ptr, end, EncodingUnit::Little2)
     }
 
     pub extern "C" fn little2_nameMatchesAscii(
@@ -13403,217 +13244,19 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn big2_charRefNumber(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
+    pub extern "C" fn big2_charRefNumber(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset((2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize);
-        if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == 0 as ::core::ffi::c_int
-            && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x78 as ::core::ffi::c_int
-        {
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while !(*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c: ::core::ffi::c_int = if *ptr.offset(0 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                };
-                match c {
-                    crate::ascii_h::ASCII_0
-                    | crate::ascii_h::ASCII_1_1
-                    | crate::ascii_h::ASCII_2_1
-                    | crate::ascii_h::ASCII_3_1
-                    | crate::ascii_h::ASCII_4
-                    | crate::ascii_h::ASCII_5
-                    | crate::ascii_h::ASCII_6
-                    | crate::ascii_h::ASCII_7
-                    | crate::ascii_h::ASCII_8_1
-                    | crate::ascii_h::ASCII_9_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result |= c - crate::ascii_h::ASCII_0;
-                    }
-                    crate::ascii_h::ASCII_A
-                    | crate::ascii_h::ASCII_B_1
-                    | crate::ascii_h::ASCII_C
-                    | crate::ascii_h::ASCII_D
-                    | crate::ascii_h::ASCII_E_1
-                    | crate::ascii_h::ASCII_F_1 => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_A);
-                    }
-                    crate::ascii_h::ASCII_a_1
-                    | crate::ascii_h::ASCII_b
-                    | crate::ascii_h::ASCII_c_1
-                    | crate::ascii_h::ASCII_d
-                    | crate::ascii_h::ASCII_e_1
-                    | crate::ascii_h::ASCII_f => {
-                        result <<= 4 as ::core::ffi::c_int;
-                        result += 10 as ::core::ffi::c_int + (c - crate::ascii_h::ASCII_a_1);
-                    }
-                    _ => {}
-                }
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        } else {
-            while !(*ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x3b as ::core::ffi::c_int)
-            {
-                let mut c_0: ::core::ffi::c_int = if *ptr.offset(0 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                };
-                result *= 10 as ::core::ffi::c_int;
-                result += c_0 - crate::ascii_h::ASCII_0;
-                if result >= 0x110000 as ::core::ffi::c_int {
-                    return -1 as ::core::ffi::c_int;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        return checkCharRefNumber(result);
+        char_ref_number(ptr, EncodingUnit::Big2)
     }
 
-    pub unsafe extern "C" fn big2_predefinedEntityName(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
+    pub extern "C" fn big2_predefinedEntityName(
+        _enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        match end.offset_from(ptr) as ::core::ffi::c_long / 2 as ::core::ffi::c_long {
-            2 => {
-                if *ptr
-                    .offset(2 as ::core::ffi::c_int as isize)
-                    .offset(0 as ::core::ffi::c_int as isize)
-                    as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr
-                        .offset(2 as ::core::ffi::c_int as isize)
-                        .offset(1 as ::core::ffi::c_int as isize)
-                        as ::core::ffi::c_int
-                        == 0x74 as ::core::ffi::c_int
-                {
-                    match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    } {
-                        crate::ascii_h::ASCII_l_1 => return crate::ascii_h::ASCII_LT,
-                        crate::ascii_h::ASCII_g_1 => return crate::ascii_h::ASCII_GT,
-                        _ => {}
-                    }
-                }
-            }
-            3 => {
-                if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x61 as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                        && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0x6d as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            return crate::ascii_h::ASCII_AMP;
-                        }
-                    }
-                }
-            }
-            4 => {
-                match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                {
-                    *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                } {
-                    crate::ascii_h::ASCII_q => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0x75 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                        as ::core::ffi::c_int
-                                        == 0x74 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_QUOT;
-                                }
-                            }
-                        }
-                    }
-                    crate::ascii_h::ASCII_a_1 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(0 as ::core::ffi::c_int as isize)
-                                    as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(1 as ::core::ffi::c_int as isize)
-                                        as ::core::ffi::c_int
-                                        == 0x73 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_APOS;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        return 0 as ::core::ffi::c_int;
+        predefined_entity_name(ptr, end, EncodingUnit::Big2)
     }
 
     pub extern "C" fn big2_nameMatchesAscii(
