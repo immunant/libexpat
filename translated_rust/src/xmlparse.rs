@@ -1267,6 +1267,25 @@ static START_ELEMENT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn StartElementCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// A start-element handler registration prepared from the ABI callback value.
+///
+/// Parser state retains only this typed registry entry and its opaque address
+/// key, never the C callback representation itself.
+struct StartElementHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn StartElementCallback>>,
+}
+
+fn start_element_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> StartElementHandlerRegistration
+where
+    Callback: StartElementCallback + 'static,
+{
+    StartElementHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 fn start_element_attribute_chars(
     parser: &XML_ParserStruct,
     value: StartElementAttributeValue,
@@ -9026,23 +9045,22 @@ pub unsafe extern "C" fn XML_SetElementHandler_ffi(
     };
     XML_SetElementHandler(parser, start, end)
 }
-pub unsafe extern "C" fn XML_SetStartElementHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartElementHandler,
+fn set_start_element_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: StartElementHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_startElementHandler = start.is_some();
-        let mut handlers = START_ELEMENT_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match start {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_startElementHandler = registration.callback.is_some();
+    let mut handlers = START_ELEMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
@@ -9052,7 +9070,13 @@ pub unsafe extern "C" fn XML_SetStartElementHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut start: crate::expat_h::XML_StartElementHandler,
 ) {
-    XML_SetStartElementHandler(parser, start)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = start_element_handler_registration(start);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_start_element_handler(parser, parser_address, registration)
 }
 fn set_end_element_handler(
     parser: &mut XML_ParserStruct,
