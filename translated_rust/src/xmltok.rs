@@ -4663,49 +4663,48 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_scanHexCharRef(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-            } {
-                25 | 24 => {}
-                _ => {
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                }
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while end.offset_from(ptr)
-                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize
-            {
-                match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                } else {
-                    unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                } {
-                    25 | 24 => {}
-                    18 => {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_CHAR_REF_1;
-                    }
-                    _ => {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+    fn little2_scan_hex_char_ref_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        if input.len() < 2 {
+            return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+
+        match little2_byte_type(&enc.type_0, input, 0) {
+            25 | 24 => {}
+            _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
+        }
+
+        let mut offset = 2;
+        while offset + 2 <= input.len() {
+            match little2_byte_type(&enc.type_0, input, offset) {
+                25 | 24 => offset += 2,
+                18 => return (crate::src::xmltok::XML_TOK_CHAR_REF_1, Some(offset + 2)),
+                _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+
+        (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
+    }
+
+    pub unsafe extern "C" fn little2_scanHexCharRef(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len < 2 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        let (token, next) = little2_scan_hex_char_ref_impl(normal, input);
+        if let Some(offset) = next {
+            *nextTokPtr = ptr.add(offset);
+        }
+        token
     }
 
     pub unsafe extern "C" fn little2_scanCharRef(
