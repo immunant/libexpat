@@ -4677,14 +4677,13 @@ fn expat_heap_increase_tolerable_impl(
     (tolerable, report_total)
 }
 
-unsafe extern "C" fn expat_heap_increase_tolerable(
-    rootParser: crate::expat_h::XML_Parser,
+fn expat_heap_increase_tolerable(
+    root: &std::sync::Arc<std::sync::Mutex<RootParserState>>,
+    parser_address: usize,
     increase: XmlBigCount,
     sourceLine: ::core::ffi::c_int,
 ) -> bool {
-    assert!(!rootParser.is_null());
     assert!(increase > 0 as XmlBigCount);
-    let root = std::sync::Arc::clone(&(*rootParser).m_root);
     let (tolerable, report_total) = {
         let root_parser = root
             .lock()
@@ -4693,8 +4692,8 @@ unsafe extern "C" fn expat_heap_increase_tolerable(
     };
     if let Some(new_total) = report_total {
         expat_heap_stat(
-            &root,
-            rootParser.addr(),
+            root,
+            parser_address,
             '+' as ::core::ffi::c_char,
             increase,
             new_total,
@@ -4730,7 +4729,12 @@ pub unsafe extern "C" fn expat_malloc(
     if allocation_would_overflow {
         return crate::__stddef_null_h::NULL;
     }
-    if !expat_heap_increase_tolerable(parser, bytesToAllocate as XmlBigCount, sourceLine) {
+    if !expat_heap_increase_tolerable(
+        &root,
+        parser.addr(),
+        bytesToAllocate as XmlBigCount,
+        sourceLine,
+    ) {
         return crate::__stddef_null_h::NULL;
     }
     let mallocedPtr: *mut ::core::ffi::c_void =
@@ -5513,15 +5517,6 @@ unsafe extern "C" fn parserCreate(
         ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
             .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
             .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
-    if !parentParser.is_null() {
-        if !expat_heap_increase_tolerable(
-            parentParser,
-            increase as XmlBigCount,
-            1354 as ::core::ffi::c_int,
-        ) {
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
-        }
-    }
     let memory_suite = if memsuite.is_null() {
         crate::expat_h::XML_Memory_Handling_Suite {
             malloc_fcn: Some(crate::stdlib::malloc),
@@ -5538,6 +5533,14 @@ unsafe extern "C" fn parserCreate(
         None
     } else {
         let parent = &*parentParser;
+        if !expat_heap_increase_tolerable(
+            &parent.m_root,
+            parentParser.addr(),
+            increase as XmlBigCount,
+            1354 as ::core::ffi::c_int,
+        ) {
+            return ::core::ptr::null_mut::<XML_ParserStruct>();
+        }
         let inherited_dtd = if share_parent_dtd {
             match parent.m_dtd.as_ref() {
                 Some(dtd) => Some(std::sync::Arc::clone(dtd)),
