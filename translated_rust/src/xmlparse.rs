@@ -9627,12 +9627,12 @@ pub unsafe extern "C" fn XML_SetElementDeclHandler_ffi(
         set_element_decl_handler(parser, parser_key, handler);
     }
 }
-fn set_attlist_decl_handler(
-    parser: &mut XML_ParserStruct,
+fn XML_SetAttlistDeclHandler(
+    handler_enabled: &mut bool,
     parser_key: usize,
     handler: Option<std::sync::Arc<dyn AttlistDeclCallback>>,
 ) {
-    parser.m_attlistDeclHandler = handler.is_some();
+    *handler_enabled = handler.is_some();
     let mut handlers = ATTLIST_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -9643,26 +9643,21 @@ fn set_attlist_decl_handler(
         handlers.remove(&parser_key);
     }
 }
-pub unsafe extern "C" fn XML_SetAttlistDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut attdecl: crate::expat_h::XML_AttlistDeclHandler,
-) {
-    let parser_key = parser as usize;
-    if !parser.is_null() {
-        let parser = &mut *parser;
-        let handler = attdecl.map(|callback| {
-            std::sync::Arc::new(callback) as std::sync::Arc<dyn AttlistDeclCallback>
-        });
-        set_attlist_decl_handler(parser, parser_key, handler);
-    }
-}
 #[export_name = "XML_SetAttlistDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetAttlistDeclHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut attdecl: crate::expat_h::XML_AttlistDeclHandler,
 ) {
-    XML_SetAttlistDeclHandler(parser, attdecl)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_key = parser.addr();
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    let handler = attdecl.map(|callback| {
+        std::sync::Arc::new(callback) as std::sync::Arc<dyn AttlistDeclCallback>
+    });
+    XML_SetAttlistDeclHandler(&mut parser.m_attlistDeclHandler, parser_key, handler)
 }
 pub unsafe extern "C" fn XML_SetEntityDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
