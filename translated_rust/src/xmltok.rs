@@ -8904,32 +8904,6 @@ pub mod xmltok_impl_c {
         Big2ScanOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
     }
 
-    pub unsafe extern "C" fn big2_scanPercent(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let len = end.offset_from(ptr);
-        if len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let len = len as usize;
-        let input = ::core::slice::from_raw_parts(ptr, len);
-        let encoding = &*(enc as *const normal_encoding);
-        match big2_scan_percent_impl(encoding, input) {
-            Big2ScanOutcome::Token(token, next) => {
-                *nextTokPtr = ptr.add(next);
-                token
-            }
-            Big2ScanOutcome::Partial(token) => token,
-            Big2ScanOutcome::Invalid(at) => {
-                *nextTokPtr = ptr.add(at);
-                crate::src::xmltok::XML_TOK_INVALID_1
-            }
-        }
-    }
-
     fn big2_scan_pound_name_impl(
         enc: &normal_encoding,
         input: &[::core::ffi::c_char],
@@ -11578,7 +11552,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanLit;
-pub use crate::src::xmltok::xmltok_impl_c::big2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok;
