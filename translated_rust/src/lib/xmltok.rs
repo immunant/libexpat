@@ -107,7 +107,7 @@ pub const XML_CONVERT_OUTPUT_EXHAUSTED: XML_Convert_Result = 2;
 pub const XML_CONVERT_INPUT_INCOMPLETE: XML_Convert_Result = 1;
 pub const XML_CONVERT_COMPLETED: XML_Convert_Result = 0;
 pub type SCANNER = Option<
-    unsafe extern "C" fn(
+    extern "C" fn(
         *const ENCODING,
         *const ::core::ffi::c_char,
         *const ::core::ffi::c_char,
@@ -787,7 +787,7 @@ fn call_scanner(
     end: *const ::core::ffi::c_char,
     next_tok_ptr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe { scanner.expect("non-null function pointer")(enc, ptr, end, next_tok_ptr) }
+    scanner.expect("non-null function pointer")(enc, ptr, end, next_tok_ptr)
 }
 
 fn dispatch_scanner(
@@ -895,7 +895,7 @@ extern "C" fn utf8_isInvalid4(
     };
     (invalid_fourth || invalid_third || invalid_second) as ::core::ffi::c_int
 }
-unsafe extern "C" fn normal_scanComment(
+extern "C" fn normal_scanComment(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -999,7 +999,7 @@ unsafe extern "C" fn normal_scanComment(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanDecl(
+extern "C" fn normal_scanDecl(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -1086,7 +1086,7 @@ extern "C" fn normal_checkPiTarget(
 ) -> ::core::ffi::c_int {
     check_pi_target_with(ptr, end, tokPtr, 1, read_normal_ascii_unit)
 }
-unsafe extern "C" fn normal_scanPi(
+extern "C" fn normal_scanPi(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -1381,7 +1381,7 @@ unsafe extern "C" fn normal_scanPi(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanCdataSection(
+extern "C" fn normal_scanCdataSection(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -1415,7 +1415,7 @@ unsafe extern "C" fn normal_scanCdataSection(
         return XML_TOK_CDATA_SECT_OPEN;
     }
 }
-unsafe extern "C" fn normal_cdataSectionTok(
+extern "C" fn normal_cdataSectionTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -1586,7 +1586,7 @@ unsafe extern "C" fn normal_cdataSectionTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn normal_scanEndTag(
+extern "C" fn normal_scanEndTag(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -1801,7 +1801,7 @@ unsafe extern "C" fn normal_scanEndTag(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanHexCharRef(
+extern "C" fn normal_scanHexCharRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -1844,7 +1844,7 @@ unsafe extern "C" fn normal_scanHexCharRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanCharRef(
+extern "C" fn normal_scanCharRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -1895,7 +1895,7 @@ unsafe extern "C" fn normal_scanCharRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanRef(
+extern "C" fn normal_scanRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -2090,7 +2090,7 @@ unsafe extern "C" fn normal_scanRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanAtts(
+extern "C" fn normal_scanAtts(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -2616,7 +2616,7 @@ unsafe extern "C" fn normal_scanAtts(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanLt(
+extern "C" fn normal_scanLt(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -3108,7 +3108,7 @@ unsafe extern "C" fn normal_scanLt(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_contentTok(
+extern "C" fn normal_contentTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -3340,7 +3340,7 @@ unsafe extern "C" fn normal_contentTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn normal_scanPercent(
+extern "C" fn normal_scanPercent(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -3531,7 +3531,7 @@ unsafe extern "C" fn normal_scanPercent(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_scanPoundName(
+extern "C" fn normal_scanPoundName(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -3718,7 +3718,7 @@ unsafe extern "C" fn normal_scanPoundName(
         return -XML_TOK_POUND_NAME;
     }
 }
-unsafe extern "C" fn normal_scanLit(
+extern "C" fn normal_scanLit(
     mut open: ::core::ffi::c_int,
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
@@ -3806,7 +3806,7 @@ unsafe extern "C" fn normal_scanLit(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_prologTok(
+extern "C" fn normal_prologTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -4372,7 +4372,7 @@ unsafe extern "C" fn normal_prologTok(
         return -tok;
     }
 }
-unsafe extern "C" fn normal_attributeValueTok(
+extern "C" fn normal_attributeValueTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -4466,7 +4466,7 @@ unsafe extern "C" fn normal_attributeValueTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn normal_entityValueTok(
+extern "C" fn normal_entityValueTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -4565,7 +4565,7 @@ unsafe extern "C" fn normal_entityValueTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn normal_ignoreSectionTok(
+extern "C" fn normal_ignoreSectionTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -4688,7 +4688,7 @@ unsafe extern "C" fn normal_ignoreSectionTok(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn normal_isPublicId(
+extern "C" fn normal_isPublicId(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -4741,7 +4741,7 @@ unsafe extern "C" fn normal_isPublicId(
         return 1 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn normal_getAtts(
+extern "C" fn normal_getAtts(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut attsMax: ::core::ffi::c_int,
@@ -4998,7 +4998,7 @@ extern "C" fn normal_updatePosition(
         }
     }
 }
-unsafe extern "C" fn little2_scanComment(
+extern "C" fn little2_scanComment(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -5099,7 +5099,7 @@ unsafe extern "C" fn little2_scanComment(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanDecl(
+extern "C" fn little2_scanDecl(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -5214,7 +5214,7 @@ extern "C" fn little2_checkPiTarget(
 ) -> ::core::ffi::c_int {
     check_pi_target_with(ptr, end, tokPtr, 2, read_little2_ascii_unit)
 }
-unsafe extern "C" fn little2_scanPi(
+extern "C" fn little2_scanPi(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -5494,7 +5494,7 @@ unsafe extern "C" fn little2_scanPi(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanCdataSection(
+extern "C" fn little2_scanCdataSection(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -5532,7 +5532,7 @@ unsafe extern "C" fn little2_scanCdataSection(
         return XML_TOK_CDATA_SECT_OPEN;
     }
 }
-unsafe extern "C" fn little2_cdataSectionTok(
+extern "C" fn little2_cdataSectionTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -5702,7 +5702,7 @@ unsafe extern "C" fn little2_cdataSectionTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn little2_scanEndTag(
+extern "C" fn little2_scanEndTag(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -5919,7 +5919,7 @@ unsafe extern "C" fn little2_scanEndTag(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanHexCharRef(
+extern "C" fn little2_scanHexCharRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -5977,7 +5977,7 @@ unsafe extern "C" fn little2_scanHexCharRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanCharRef(
+extern "C" fn little2_scanCharRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -6047,7 +6047,7 @@ unsafe extern "C" fn little2_scanCharRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanRef(
+extern "C" fn little2_scanRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -6236,7 +6236,7 @@ unsafe extern "C" fn little2_scanRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanAtts(
+extern "C" fn little2_scanAtts(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -6772,7 +6772,7 @@ unsafe extern "C" fn little2_scanAtts(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanLt(
+extern "C" fn little2_scanLt(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -7259,7 +7259,7 @@ unsafe extern "C" fn little2_scanLt(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_contentTok(
+extern "C" fn little2_contentTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -7509,7 +7509,7 @@ unsafe extern "C" fn little2_contentTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn little2_scanPercent(
+extern "C" fn little2_scanPercent(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -7694,7 +7694,7 @@ unsafe extern "C" fn little2_scanPercent(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_scanPoundName(
+extern "C" fn little2_scanPoundName(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -7875,7 +7875,7 @@ unsafe extern "C" fn little2_scanPoundName(
         return -XML_TOK_POUND_NAME;
     }
 }
-unsafe extern "C" fn little2_scanLit(
+extern "C" fn little2_scanLit(
     mut open: ::core::ffi::c_int,
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
@@ -7956,7 +7956,7 @@ unsafe extern "C" fn little2_scanLit(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_prologTok(
+extern "C" fn little2_prologTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -8527,7 +8527,7 @@ unsafe extern "C" fn little2_prologTok(
         return -tok;
     }
 }
-unsafe extern "C" fn little2_attributeValueTok(
+extern "C" fn little2_attributeValueTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -8637,7 +8637,7 @@ unsafe extern "C" fn little2_attributeValueTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn little2_entityValueTok(
+extern "C" fn little2_entityValueTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -8752,7 +8752,7 @@ unsafe extern "C" fn little2_entityValueTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn little2_ignoreSectionTok(
+extern "C" fn little2_ignoreSectionTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -8875,7 +8875,7 @@ unsafe extern "C" fn little2_ignoreSectionTok(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn little2_isPublicId(
+extern "C" fn little2_isPublicId(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -8956,7 +8956,7 @@ unsafe extern "C" fn little2_isPublicId(
         return 1 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn little2_getAtts(
+extern "C" fn little2_getAtts(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut attsMax: ::core::ffi::c_int,
@@ -9252,7 +9252,7 @@ extern "C" fn little2_updatePosition(
         }
     }
 }
-unsafe extern "C" fn big2_scanComment(
+extern "C" fn big2_scanComment(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -9355,7 +9355,7 @@ unsafe extern "C" fn big2_scanComment(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanDecl(
+extern "C" fn big2_scanDecl(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -9474,7 +9474,7 @@ extern "C" fn big2_checkPiTarget(
 ) -> ::core::ffi::c_int {
     check_pi_target_with(ptr, end, tokPtr, 2, read_big2_ascii_unit)
 }
-unsafe extern "C" fn big2_scanPi(
+extern "C" fn big2_scanPi(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -9757,7 +9757,7 @@ unsafe extern "C" fn big2_scanPi(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanCdataSection(
+extern "C" fn big2_scanCdataSection(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -9795,7 +9795,7 @@ unsafe extern "C" fn big2_scanCdataSection(
         return XML_TOK_CDATA_SECT_OPEN;
     }
 }
-unsafe extern "C" fn big2_cdataSectionTok(
+extern "C" fn big2_cdataSectionTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -9969,7 +9969,7 @@ unsafe extern "C" fn big2_cdataSectionTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn big2_scanEndTag(
+extern "C" fn big2_scanEndTag(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -10189,7 +10189,7 @@ unsafe extern "C" fn big2_scanEndTag(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanHexCharRef(
+extern "C" fn big2_scanHexCharRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -10250,7 +10250,7 @@ unsafe extern "C" fn big2_scanHexCharRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanCharRef(
+extern "C" fn big2_scanCharRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -10323,7 +10323,7 @@ unsafe extern "C" fn big2_scanCharRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanRef(
+extern "C" fn big2_scanRef(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -10514,7 +10514,7 @@ unsafe extern "C" fn big2_scanRef(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanAtts(
+extern "C" fn big2_scanAtts(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -11058,7 +11058,7 @@ unsafe extern "C" fn big2_scanAtts(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanLt(
+extern "C" fn big2_scanLt(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -11551,7 +11551,7 @@ unsafe extern "C" fn big2_scanLt(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_contentTok(
+extern "C" fn big2_contentTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -11805,7 +11805,7 @@ unsafe extern "C" fn big2_contentTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn big2_scanPercent(
+extern "C" fn big2_scanPercent(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -11992,7 +11992,7 @@ unsafe extern "C" fn big2_scanPercent(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_scanPoundName(
+extern "C" fn big2_scanPoundName(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -12175,7 +12175,7 @@ unsafe extern "C" fn big2_scanPoundName(
         return -XML_TOK_POUND_NAME;
     }
 }
-unsafe extern "C" fn big2_scanLit(
+extern "C" fn big2_scanLit(
     mut open: ::core::ffi::c_int,
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
@@ -12258,7 +12258,7 @@ unsafe extern "C" fn big2_scanLit(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_prologTok(
+extern "C" fn big2_prologTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -12837,7 +12837,7 @@ unsafe extern "C" fn big2_prologTok(
         return -tok;
     }
 }
-unsafe extern "C" fn big2_attributeValueTok(
+extern "C" fn big2_attributeValueTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -12949,7 +12949,7 @@ unsafe extern "C" fn big2_attributeValueTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn big2_entityValueTok(
+extern "C" fn big2_entityValueTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -13066,7 +13066,7 @@ unsafe extern "C" fn big2_entityValueTok(
         return XML_TOK_DATA_CHARS;
     }
 }
-unsafe extern "C" fn big2_ignoreSectionTok(
+extern "C" fn big2_ignoreSectionTok(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -13190,7 +13190,7 @@ unsafe extern "C" fn big2_ignoreSectionTok(
         return XML_TOK_PARTIAL;
     }
 }
-unsafe extern "C" fn big2_isPublicId(
+extern "C" fn big2_isPublicId(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -13272,7 +13272,7 @@ unsafe extern "C" fn big2_isPublicId(
         return 1 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn big2_getAtts(
+extern "C" fn big2_getAtts(
     mut enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut attsMax: ::core::ffi::c_int,
@@ -13709,7 +13709,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -13718,7 +13718,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -13727,7 +13727,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -13736,7 +13736,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -13747,7 +13747,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -13756,7 +13756,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -13822,7 +13822,7 @@ static mut utf8_encoding_ns: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -14128,7 +14128,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14137,7 +14137,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14146,7 +14146,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14155,7 +14155,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14166,7 +14166,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14175,7 +14175,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14241,7 +14241,7 @@ static mut utf8_encoding: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -14549,7 +14549,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14558,7 +14558,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14567,7 +14567,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14576,7 +14576,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14587,7 +14587,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14596,7 +14596,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -14662,7 +14662,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15027,7 +15027,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15036,7 +15036,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15045,7 +15045,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15054,7 +15054,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15065,7 +15065,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15074,7 +15074,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15140,7 +15140,7 @@ static mut internal_utf8_encoding: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15516,7 +15516,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15525,7 +15525,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15534,7 +15534,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15543,7 +15543,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15554,7 +15554,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15563,7 +15563,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15629,7 +15629,7 @@ static mut latin1_encoding_ns: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -15935,7 +15935,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15944,7 +15944,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15953,7 +15953,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15962,7 +15962,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15973,7 +15973,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -15982,7 +15982,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16048,7 +16048,7 @@ static mut latin1_encoding: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16378,7 +16378,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16387,7 +16387,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16396,7 +16396,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16405,7 +16405,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16416,7 +16416,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16425,7 +16425,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16491,7 +16491,7 @@ static mut ascii_encoding_ns: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -16797,7 +16797,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
             scanners: [
                 Some(
                     normal_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16806,7 +16806,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16815,7 +16815,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16824,7 +16824,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16835,7 +16835,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     normal_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16844,7 +16844,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     normal_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -16910,7 +16910,7 @@ static mut ascii_encoding: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 normal_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17507,7 +17507,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             scanners: [
                 Some(
                     little2_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17516,7 +17516,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17525,7 +17525,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17534,7 +17534,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17545,7 +17545,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     little2_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17554,7 +17554,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17620,7 +17620,7 @@ static mut little2_encoding_ns: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 little2_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -17926,7 +17926,7 @@ static mut little2_encoding: normal_encoding = unsafe {
             scanners: [
                 Some(
                     little2_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17935,7 +17935,7 @@ static mut little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17944,7 +17944,7 @@ static mut little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17953,7 +17953,7 @@ static mut little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17964,7 +17964,7 @@ static mut little2_encoding: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     little2_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -17973,7 +17973,7 @@ static mut little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18039,7 +18039,7 @@ static mut little2_encoding: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 little2_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18345,7 +18345,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             scanners: [
                 Some(
                     little2_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18354,7 +18354,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18363,7 +18363,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18372,7 +18372,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18383,7 +18383,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     little2_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18392,7 +18392,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18458,7 +18458,7 @@ static mut internal_little2_encoding_ns: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 little2_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -18764,7 +18764,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             scanners: [
                 Some(
                     little2_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18773,7 +18773,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18782,7 +18782,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18791,7 +18791,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18802,7 +18802,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     little2_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18811,7 +18811,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     little2_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -18877,7 +18877,7 @@ static mut internal_little2_encoding: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 little2_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -19183,7 +19183,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             scanners: [
                 Some(
                     big2_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19192,7 +19192,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19201,7 +19201,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19210,7 +19210,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19221,7 +19221,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     big2_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19230,7 +19230,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19296,7 +19296,7 @@ static mut big2_encoding_ns: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 big2_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -19602,7 +19602,7 @@ static mut big2_encoding: normal_encoding = unsafe {
             scanners: [
                 Some(
                     big2_prologTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19611,7 +19611,7 @@ static mut big2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_contentTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19620,7 +19620,7 @@ static mut big2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_cdataSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19629,7 +19629,7 @@ static mut big2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_ignoreSectionTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19640,7 +19640,7 @@ static mut big2_encoding: normal_encoding = unsafe {
             literalScanners: [
                 Some(
                     big2_attributeValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19649,7 +19649,7 @@ static mut big2_encoding: normal_encoding = unsafe {
                 ),
                 Some(
                     big2_entityValueTok
-                        as unsafe extern "C" fn(
+                        as extern "C" fn(
                             *const ENCODING,
                             *const ::core::ffi::c_char,
                             *const ::core::ffi::c_char,
@@ -19715,7 +19715,7 @@ static mut big2_encoding: normal_encoding = unsafe {
             ),
             isPublicId: Some(
                 big2_isPublicId
-                    as unsafe extern "C" fn(
+                    as extern "C" fn(
                         *const ENCODING,
                         *const ::core::ffi::c_char,
                         *const ::core::ffi::c_char,
@@ -20946,7 +20946,7 @@ pub unsafe extern "C" fn XmlInitEncoding(
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
         (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = Some(
             initScanProlog
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -20955,7 +20955,7 @@ pub unsafe extern "C" fn XmlInitEncoding(
         ) as SCANNER;
         (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = Some(
             initScanContent
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21111,7 +21111,7 @@ pub unsafe extern "C" fn XmlInitEncodingNS(
         (*p).initEnc.isUtf16 = i as ::core::ffi::c_char;
         (*p).initEnc.scanners[XML_PROLOG_STATE as usize] = Some(
             initScanPrologNS
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
@@ -21120,7 +21120,7 @@ pub unsafe extern "C" fn XmlInitEncodingNS(
         ) as SCANNER;
         (*p).initEnc.scanners[XML_CONTENT_STATE as usize] = Some(
             initScanContentNS
-                as unsafe extern "C" fn(
+                as extern "C" fn(
                     *const ENCODING,
                     *const ::core::ffi::c_char,
                     *const ::core::ffi::c_char,
