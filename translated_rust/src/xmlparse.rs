@@ -15259,11 +15259,15 @@ unsafe extern "C" fn doProlog(
     let mut internal_event_window = None;
     let mut parser_event_ptr = s;
     let mut quant: crate::expat_h::XML_Content_Quant = crate::expat_h::XML_CQUANT_NONE;
-    // `enc` is selected by the processor dispatch and remains valid for this
-    // prolog token.  Reborrow it only when an XML declaration selects a new
-    // parser encoding, so the state machine reads encoding metadata through
-    // this bounded view rather than repeatedly dereferencing the raw handle.
-    let mut encoding = &*enc;
+    // Prolog tokens either belong to the document buffer, whose table is
+    // selected by parser state, or to an internal entity, whose text always
+    // uses Expat's internal UTF-8 table.  Keep that ownership distinction
+    // instead of reborrowing the processor's raw encoding handle.
+    let mut encoding = if parser_events {
+        *current_parser_encoding(parser)
+    } else {
+        *internal_encoding(parser.m_internalEncoding)
+    };
     if !parser_events {
         let open_entity = {
             let parser_state = &mut *parser;
@@ -15471,7 +15475,7 @@ unsafe extern "C" fn doProlog(
                                         active_parser_encoding =
                                             std::ptr::from_ref(current_parser_encoding(parser));
                                         enc = active_parser_encoding;
-                                        encoding = &*enc;
+                                        encoding = *current_parser_encoding(parser);
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
@@ -15479,7 +15483,7 @@ unsafe extern "C" fn doProlog(
                                         if (*parser).m_startDoctypeDeclHandler {
                                             if pool_store_name_source(
                                                 &mut (*parser).m_tempPool,
-                                                encoding,
+                                                &encoding,
                                                 unknown_encoding.as_ref(),
                                                 &token_bytes,
                                             )
@@ -15603,7 +15607,7 @@ unsafe extern "C" fn doProlog(
                                         active_parser_encoding =
                                             std::ptr::from_ref(current_parser_encoding(parser));
                                         enc = active_parser_encoding;
-                                        encoding = &*enc;
+                                        encoding = *current_parser_encoding(parser);
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         break 's_2375;
                                     }
@@ -15668,7 +15672,7 @@ unsafe extern "C" fn doProlog(
                                             };
                                             if pool_store_name_source(
                                                 &mut (*parser).m_tempPool,
-                                                encoding,
+                                                &encoding,
                                                 unknown_encoding.as_ref(),
                                                 quoted_public_id,
                                             )
@@ -15959,7 +15963,7 @@ unsafe extern "C" fn doProlog(
                                     34 => {
                                         let Some(element_name) = get_element_type_from_token(
                                             dtd,
-                                            encoding,
+                                            &encoding,
                                             unknown_encoding.as_ref(),
                                             &token_bytes,
                                             hash_salt,
@@ -15973,7 +15977,7 @@ unsafe extern "C" fn doProlog(
                                         let Some(attribute_name) = get_attribute_id_from_token(
                                             parser,
                                             dtd,
-                                            encoding,
+                                            &encoding,
                                             unknown_encoding.as_ref(),
                                             &token_bytes,
                                         ) else {
@@ -16014,7 +16018,7 @@ unsafe extern "C" fn doProlog(
                                             }
                                             if pool_append_source(
                                                 &mut parser_ref.m_tempPool,
-                                                encoding,
+                                                &encoding,
                                                 unknown_encoding.as_ref(),
                                                 &token_bytes,
                                             )
@@ -16861,7 +16865,7 @@ unsafe extern "C" fn doProlog(
                                         if dtd.keepProcessing != 0 {
                                             let Some(declaration_name) = pool_store_name_source(
                                                 &mut dtd.pool,
-                                                encoding,
+                                                &encoding,
                                                 unknown_encoding.as_ref(),
                                                 &token_bytes,
                                             ) else {
