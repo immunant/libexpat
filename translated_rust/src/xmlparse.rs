@@ -9032,6 +9032,29 @@ unsafe extern "C" fn externalEntityContentProcessor(
     return result;
 }
 
+/// The content loop checks parser status only after each token has completed
+/// its callback work.  Keep that decision independent of parser storage so a
+/// callback cannot leave a borrow live across the next iteration.
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum ContentLoopStatus {
+    Suspended,
+    Aborted,
+    Reentered,
+    Continue,
+}
+
+fn content_loop_status(
+    parsing: ::core::ffi::c_uint,
+    reenter: crate::expat_h::XML_Bool,
+) -> ContentLoopStatus {
+    match parsing {
+        3 => ContentLoopStatus::Suspended,
+        2 => ContentLoopStatus::Aborted,
+        1 if reenter != 0 => ContentLoopStatus::Reentered,
+        _ => ContentLoopStatus::Continue,
+    }
+}
+
 unsafe extern "C" fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
@@ -10183,23 +10206,28 @@ unsafe extern "C" fn doContent(
                 }
             }
         }
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-            3 => {
+        let loop_status = {
+            let parser_state = &*parser;
+            content_loop_status(
+                parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint,
+                parser_state.m_reenter,
+            )
+        };
+        match loop_status {
+            ContentLoopStatus::Suspended => {
                 update_event_start(next);
                 *nextPtr = next;
                 return crate::expat_h::XML_ERROR_NONE;
             }
-            2 => {
+            ContentLoopStatus::Aborted => {
                 update_event_start(next);
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
-            1 => {
-                if (*parser).m_reenter != 0 {
-                    *nextPtr = next;
-                    return crate::expat_h::XML_ERROR_NONE;
-                }
+            ContentLoopStatus::Reentered => {
+                *nextPtr = next;
+                return crate::expat_h::XML_ERROR_NONE;
             }
-            _ => {}
+            ContentLoopStatus::Continue => {}
         }
         s = next;
         update_event_start(s);
