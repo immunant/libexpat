@@ -2999,7 +2999,7 @@ impl AllocationBacking {
             return None;
         }
         let malloc = policy.memory_suite.malloc_fcn.expect("non-null function pointer");
-        let allocation = unsafe { malloc(bytes) };
+        let allocation = malloc(bytes);
         if allocation.is_null() {
             return None;
         }
@@ -3072,7 +3072,7 @@ impl AllocationBacking {
                         .memory_suite
                         .realloc_fcn
                         .expect("non-null function pointer");
-                    let replacement = unsafe { realloc(prefix, bytes) };
+                    let replacement = realloc(prefix, bytes);
                     if replacement.is_null() {
                         return false;
                     }
@@ -3115,7 +3115,7 @@ impl AllocationBacking {
                         .memory_suite
                         .malloc_fcn
                         .expect("non-null function pointer");
-                    let replacement = unsafe { malloc(bytes) };
+                    let replacement = malloc(bytes);
                     if replacement.is_null() {
                         return false;
                     }
@@ -3148,7 +3148,7 @@ impl AllocationBacking {
                         .wrapping_add(previous_size);
                     policy.account_free(previous_bytes, free_source_line);
                     let free = policy.memory_suite.free_fcn.expect("non-null function pointer");
-                    unsafe { free(prefix) };
+                    free(prefix);
                     allocation = replacement;
                     true
                 }
@@ -3171,7 +3171,7 @@ impl AllocationBacking {
                         .wrapping_add(size);
                     policy.account_free(bytes, source_line);
                     let free = policy.memory_suite.free_fcn.expect("non-null function pointer");
-                    unsafe { free(prefix) };
+                    free(prefix);
                     true
                 }
             }),
@@ -3188,15 +3188,14 @@ fn parser_storage_backing(
     let allocation_size = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
-    let allocation =
-        unsafe { memory_suite.malloc_fcn.expect("non-null function pointer")(allocation_size) };
+    let allocation = memory_suite
+        .malloc_fcn
+        .expect("non-null function pointer")(allocation_size);
     if allocation.is_null() {
         return None;
     }
     let free = memory_suite.free_fcn.expect("non-null function pointer");
-    Some(Box::new(move || unsafe {
-        free(allocation);
-    }))
+    Some(Box::new(move || free(allocation)))
 }
 
 // Namespace-attribute duplicate detection is a parser-owned scratch table.
@@ -25401,11 +25400,14 @@ fn content_model_allocation_backing(
     size: crate::__stddef_size_t_h::size_t,
 ) -> Option<Box<dyn FnMut()>> {
     let free = parser.m_mem.free_fcn.expect("non-null function pointer");
-    let allocation = unsafe { parser.m_mem.malloc_fcn.expect("non-null function pointer")(size) };
+    let allocation = parser
+        .m_mem
+        .malloc_fcn
+        .expect("non-null function pointer")(size);
     if allocation.is_null() {
         return None;
     }
-    Some(Box::new(move || unsafe { free(allocation) }))
+    Some(Box::new(move || free(allocation)))
 }
 
 fn register_content_model(model_key: usize, mut model: ContentModelStorage) -> bool {

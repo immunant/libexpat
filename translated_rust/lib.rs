@@ -553,15 +553,15 @@ pub mod expat_h {
 
     pub struct XML_Memory_Handling_Suite {
         pub malloc_fcn: Option<
-            unsafe extern "C" fn(crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void,
+            extern "C" fn(crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void,
         >,
         pub realloc_fcn: Option<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 crate::__stddef_size_t_h::size_t,
             ) -> *mut ::core::ffi::c_void,
         >,
-        pub free_fcn: Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
+        pub free_fcn: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ()>,
     }
 
     pub type XML_StartElementHandler = Option<
@@ -813,7 +813,7 @@ pub mod expat_h {
     pub const XML_MICRO_VERSION: ::core::ffi::c_int = 4 as ::core::ffi::c_int;
 }
 pub mod stdlib {
-    extern "C" {
+    unsafe extern "C" {
         pub fn __assert_fail(
             __assertion: *const ::core::ffi::c_char,
             __file: *const ::core::ffi::c_char,
@@ -839,14 +839,17 @@ pub mod stdlib {
             __size: crate::__stddef_size_t_h::size_t,
         );
 
-        pub fn malloc(__size: crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void;
+        // These functions are used only through Expat's allocator contract:
+        // `realloc` and `free` receive an allocation returned by this suite.
+        // C's allocator accepts every size, including zero.
+        pub safe fn malloc(__size: crate::__stddef_size_t_h::size_t) -> *mut ::core::ffi::c_void;
 
-        pub fn realloc(
+        pub safe fn realloc(
             __ptr: *mut ::core::ffi::c_void,
             __size: crate::__stddef_size_t_h::size_t,
         ) -> *mut ::core::ffi::c_void;
 
-        pub fn free(__ptr: *mut ::core::ffi::c_void);
+        pub safe fn free(__ptr: *mut ::core::ffi::c_void);
 
         pub fn getenv(__name: *const ::core::ffi::c_char) -> *mut ::core::ffi::c_char;
         pub fn memcpy(
