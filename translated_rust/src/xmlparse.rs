@@ -25571,7 +25571,7 @@ fn dtd_destroy_impl(
 /// Releases a uniquely owned DTD using the parser's already-checked exclusive
 /// borrow.  Both owners are Rust values here, so teardown does not need the
 /// legacy raw parser-handle adapter.
-unsafe fn dtdDestroy(
+fn dtdDestroy(
     p: &mut DTD,
     is_doc_entity: bool,
     parser: &mut XML_ParserStruct,
