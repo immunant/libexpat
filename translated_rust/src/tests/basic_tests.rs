@@ -2393,8 +2393,16 @@ fn external_entity_good_cdata_handler_for_tests() -> XML_ExternalEntityRefHandle
     Some(external_entity_good_cdata_ascii)
 }
 
+fn external_entity_oneshot_loader_handler_for_tests() -> XML_ExternalEntityRefHandler {
+    Some(external_entity_oneshot_loader)
+}
+
 fn external_entity_null_loader_handler_for_tests() -> XML_ExternalEntityRefHandler {
     Some(external_entity_null_loader)
+}
+
+fn param_entity_match_handler_for_tests() -> XML_EntityDeclHandler {
+    Some(param_entity_match_handler)
 }
 
 fn reject_not_standalone_handler_for_tests() -> XML_NotStandaloneHandler {
@@ -11763,262 +11771,155 @@ extern "C" fn test_trailing_cr_in_att_value() {
     }
 }
 extern "C" fn test_standalone_internal_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_standalone_internal_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4056 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='yes' ?>\n<!DOCTYPE doc [\n  <!ELEMENT doc (#PCDATA)>\n  <!ENTITY % pe '<!ATTLIST doc att2 CDATA \"&ge;\">'>\n  <!ENTITY ge 'AttDefaultValue'>\n  %pe;\n]>\n<doc att2='any'/>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4069 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(
+        b"test_standalone_internal_entity\0",
+        4056 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<?xml version='1.0' standalone='yes' ?>
+<!DOCTYPE doc [
+  <!ELEMENT doc (#PCDATA)>
+  <!ENTITY % pe '<!ATTLIST doc att2 CDATA \"&ge;\">'>
+  <!ENTITY ge 'AttDefaultValue'>
+  %pe;
+]>
+<doc att2='any'/>\0",
+    );
+
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        4069 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_skipped_external_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_skipped_external_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4074 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc></doc>\n\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtTest = ExtTest {
-            parse_text: b"<!ELEMENT doc EMPTY>\n<!ENTITY % e2 '%e1;'>\n\0".as_ptr()
-                as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4086 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(
+        b"test_skipped_external_entity\0",
+        4074 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>
+<doc></doc>
+\0",
+    );
+    let mut test_data = ExtTest {
+        parse_text: bytes_as_c_char_ptr(
+            b"<!ELEMENT doc EMPTY>
+<!ENTITY % e2 '%e1;'>
+\0",
+        ),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+
+    parser_set_user_data((&raw mut test_data).cast::<::core::ffi::c_void>());
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_loader_handler_for_tests());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        4086 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_skipped_null_loaded_ext_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_skipped_null_loaded_ext_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4091 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>\n<doc />\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtHdlrData = ext_hdlr_data {
-            parse_text: b"<!ENTITY % pe1 SYSTEM 'http://example.org/two.ent'>\n<!ENTITY % pe2 '%pe1;'>\n%pe2;\n\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            handler: Some(
-                external_entity_null_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_oneshot_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4105 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(
+        b"test_skipped_null_loaded_ext_entity\0",
+        4091 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>
+<doc />\0",
+    );
+    let mut test_data = ExtHdlrData {
+        parse_text: bytes_as_c_char_ptr(
+            b"<!ENTITY % pe1 SYSTEM 'http://example.org/two.ent'>
+<!ENTITY % pe2 '%pe1;'>
+%pe2;
+\0",
+        ),
+        handler: external_entity_null_loader_handler_for_tests(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+
+    parser_set_user_data((&raw mut test_data).cast::<::core::ffi::c_void>());
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_oneshot_loader_handler_for_tests());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        4105 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_skipped_unloaded_ext_entity() {
-    unsafe {
-        _check_set_test_info(
-            b"test_skipped_unloaded_ext_entity\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4109 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>\n<doc />\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtHdlrData = ext_hdlr_data {
-            parse_text: b"<!ENTITY % pe1 SYSTEM 'http://example.org/two.ent'>\n<!ENTITY % pe2 '%pe1;'>\n%pe2;\n\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            handler: None,
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_oneshot_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4123 as ::core::ffi::c_int,
-            );
-        }
-    }
+    set_test_info(
+        b"test_skipped_unloaded_ext_entity\0",
+        4109 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/one.ent'>
+<doc />\0",
+    );
+    let mut test_data = ExtHdlrData {
+        parse_text: bytes_as_c_char_ptr(
+            b"<!ENTITY % pe1 SYSTEM 'http://example.org/two.ent'>
+<!ENTITY % pe2 '%pe1;'>
+%pe2;
+\0",
+        ),
+        handler: None,
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+
+    parser_set_user_data((&raw mut test_data).cast::<::core::ffi::c_void>());
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_oneshot_loader_handler_for_tests());
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        4123 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_param_entity_with_trailing_cr() {
-    unsafe {
-        _check_set_test_info(
-            b"test_param_entity_with_trailing_cr\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4130 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_param_entity_with_trailing_cr\0",
+        4130 as ::core::ffi::c_int,
+    );
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc SYSTEM 'http://example.org/'>
+<doc/>\0",
+    );
+    let mut test_data = ExtTest {
+        parse_text: bytes_as_c_char_ptr(
+            b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"default\">\r'>
+%pe;
+\0",
+        ),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+
+    parser_set_user_data((&raw mut test_data).cast::<::core::ffi::c_void>());
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_external_entity_ref_handler(external_entity_loader_handler_for_tests());
+    parser_set_entity_decl_handler(param_entity_match_handler_for_tests());
+    ffi_call2(
+        param_entity_match_init,
+        bytes_as_xml_char_ptr(b"pe\0"),
+        bytes_as_xml_char_ptr(
+            b"<!ATTLIST doc att CDATA \"default\">
+\0",
+        ),
+    );
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        4148 as ::core::ffi::c_int,
+    );
+
+    let entity_match_flag = ffi_call0(get_param_entity_match_flag);
+    if entity_match_flag == ENTITY_MATCH_FAIL {
+        fail_test(
+            4151 as ::core::ffi::c_int,
+            b"Parameter entity CR->NEWLINE conversion failed\0",
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'http://example.org/'>\n<doc/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut test_data: ExtTest = ExtTest {
-            parse_text: b"<!ENTITY % pe '<!ATTLIST doc att CDATA \"default\">\r'>\n%pe;\n\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
-            ),
-        );
-        XML_SetEntityDeclHandler(
-            g_parser,
-            Some(
-                param_entity_match_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        param_entity_match_init(
-            b"pe\0".as_ptr() as *const XML_Char,
-            b"<!ATTLIST doc att CDATA \"default\">\n\0".as_ptr() as *const XML_Char,
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4148 as ::core::ffi::c_int,
-            );
-        }
-        let mut entity_match_flag: ::core::ffi::c_int = get_param_entity_match_flag();
-        if entity_match_flag == ENTITY_MATCH_FAIL {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4151 as ::core::ffi::c_int,
-                b"Parameter entity CR->NEWLINE conversion failed\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        } else if entity_match_flag == ENTITY_MATCH_NOT_FOUND {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                4153 as ::core::ffi::c_int,
-                b"Parameter entity not parsed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    } else if entity_match_flag == ENTITY_MATCH_NOT_FOUND {
+        fail_test(4153 as ::core::ffi::c_int, b"Parameter entity not parsed\0");
     }
 }
 extern "C" fn test_invalid_character_entity() {
