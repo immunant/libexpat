@@ -2169,8 +2169,10 @@ unsafe extern "C" fn callProcessor(
     let mut ret: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     *endPtr = start;
     loop {
-        ret =
-            (*parser).m_processor.expect("non-null function pointer")(parser, *endPtr, end, endPtr);
+        let Some(processor) = (*parser).m_processor else {
+            return (*parser).m_errorCode;
+        };
+        ret = processor(parser, *endPtr, end, endPtr);
         if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
             != crate::expat_h::XML_PARSING as ::core::ffi::c_int as ::core::ffi::c_uint
         {
@@ -3941,15 +3943,7 @@ pub unsafe extern "C" fn XML_ParseBuffer_ffi(
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
         (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = Some(
-            errorProcessor
-                as unsafe extern "C" fn(
-                    crate::expat_h::XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> crate::expat_h::XML_Error,
-        );
+        (*parser).m_processor = None;
         return crate::expat_h::XML_STATUS_ERROR;
     } else {
         match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
@@ -4222,15 +4216,7 @@ pub unsafe extern "C" fn XML_ResumeParser_ffi(
         != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
         (*parser).m_eventEndPtr = (*parser).m_eventPtr;
-        (*parser).m_processor = Some(
-            errorProcessor
-                as unsafe extern "C" fn(
-                    crate::expat_h::XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> crate::expat_h::XML_Error,
-        );
+        (*parser).m_processor = None;
         return crate::expat_h::XML_STATUS_ERROR;
     } else {
         match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
@@ -9938,15 +9924,6 @@ unsafe extern "C" fn internalEntityProcessor(
     }
     triggerReenter(&mut *parser);
     return crate::expat_h::XML_ERROR_NONE;
-}
-
-unsafe extern "C" fn errorProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    return (*parser).m_errorCode;
 }
 
 unsafe extern "C" fn storeAttributeValue(
