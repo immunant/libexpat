@@ -24420,7 +24420,7 @@ fn report_comment_token(
 /// checked references, a bounded token, and cursor addresses for publishing
 /// parser event locations.  Foreign callback dispatch is confined to the
 /// small local adapter below.
-unsafe fn report_default_impl(
+fn report_default_impl(
     parser_key: usize,
     parser: &mut XML_ParserStruct,
     encoding: &crate::src::xmltok::ENCODING,
@@ -24630,19 +24630,14 @@ fn report_default_token(
     let Some(token) = source.get(..token_len) else {
         return;
     };
-    // `parser` is an exclusive, live parser borrow, `encoding` comes from
-    // the selected normal encoding, and `token` is bounded above.  Those are
-    // the legacy implementation's only pointer-derived preconditions.
-    unsafe {
-        report_default_impl(
-            parser_key,
-            parser,
-            encoding,
-            encoding_address,
-            input_start,
-            token,
-        );
-    }
+    report_default_impl(
+        parser_key,
+        parser,
+        encoding,
+        encoding_address,
+        input_start,
+        token,
+    );
 }
 
 /// Adds a default attribute using the DTD's typed table records.
