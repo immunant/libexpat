@@ -3294,138 +3294,199 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
     }
 
-    pub unsafe extern "C" fn normal_ignoreSectionTok(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut level: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        if 1 as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
-            let mut n: crate::__stddef_size_t_h::size_t =
-                end.offset_from(ptr) as crate::__stddef_size_t_h::size_t;
-            if n & (1 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                as crate::__stddef_size_t_h::size_t
-                != 0
-            {
-                n &= !(1 as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-                    as crate::__stddef_size_t_h::size_t;
-                end = ptr.offset(n as isize);
-            }
-        }
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
+    enum NormalIgnoreSectionOutcome {
+        Token(::core::ffi::c_int, usize),
+        Partial(::core::ffi::c_int),
+        Invalid(usize),
+        UnknownInvalid {
+            at: usize,
+            width: usize,
+            level: ::core::ffi::c_int,
+        },
+    }
+
+    /// Scans an ignored conditional section using bounded indices.  Unknown
+    /// encodings leave their callback-backed validity check to the boundary
+    /// adapter, which resumes this scanner after a valid character.
+    fn normal_ignore_section_tok_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+        mut pos: usize,
+        mut level: ::core::ffi::c_int,
+    ) -> NormalIgnoreSectionOutcome {
+        while pos < input.len() {
+            match enc.type_0[input[pos] as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int {
                 5 => {
-                    if end.offset_from(ptr) < 2 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - pos < 2 {
+                        return NormalIgnoreSectionOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
                     }
-                    let normal = &*(enc as *const normal_encoding);
-                    let invalid = match normal.invalid2 {
+                    let invalid = match enc.invalid2 {
                         Invalid2Checker::Never => false,
-                        Invalid2Checker::Utf8 => {
-                            utf8_invalid2(::core::slice::from_raw_parts(ptr.cast::<u8>(), 2))
+                        Invalid2Checker::Utf8 => utf8_invalid2(&[
+                            input[pos] as u8,
+                            input[pos + 1] as u8,
+                        ]),
+                        Invalid2Checker::Unknown => {
+                            return NormalIgnoreSectionOutcome::UnknownInvalid {
+                                at: pos,
+                                width: 2,
+                                level,
+                            };
                         }
-                        Invalid2Checker::Unknown => unknown_isInvalid(enc, ptr) != 0,
                     };
                     if invalid {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
+                        return NormalIgnoreSectionOutcome::Invalid(pos);
                     }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                    pos += 2;
                 }
                 6 => {
-                    if end.offset_from(ptr) < 3 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+                    if input.len() - pos < 3 {
+                        return NormalIgnoreSectionOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
                     }
-                    let normal = &*(enc as *const normal_encoding);
-                    let predicate = match normal.invalid3 {
-                        Invalid3Checker::Never => isNever,
-                        Invalid3Checker::Utf8 => utf8_isInvalid3,
-                        Invalid3Checker::Unknown => unknown_isInvalid,
-                    };
-                    if predicate(enc, ptr) != 0 {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    if end.offset_from(ptr) < 4 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    let normal = &*(enc as *const normal_encoding);
-                    let invalid = match normal.invalid4 {
-                        Invalid4Checker::Never => false,
-                        Invalid4Checker::Utf8 => {
-                            utf8_invalid4(::core::slice::from_raw_parts(ptr.cast::<u8>(), 4))
-                        }
-                        Invalid4Checker::Unknown => {
-                            let predicate = unknown_isInvalid as unsafe extern "C" fn(_, _) -> _;
-                            predicate(enc, ptr) != 0
+                    let invalid = match enc.invalid3 {
+                        Invalid3Checker::Never => false,
+                        Invalid3Checker::Utf8 => utf8_invalid3(&[
+                            input[pos] as u8,
+                            input[pos + 1] as u8,
+                            input[pos + 2] as u8,
+                        ]),
+                        Invalid3Checker::Unknown => {
+                            return NormalIgnoreSectionOutcome::UnknownInvalid {
+                                at: pos,
+                                width: 3,
+                                level,
+                            };
                         }
                     };
                     if invalid {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
+                        return NormalIgnoreSectionOutcome::Invalid(pos);
                     }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
+                    pos += 3;
                 }
-                0 | 1 | 8 => {
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                }
-                2 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr)
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-                    {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                7 => {
+                    if input.len() - pos < 4 {
+                        return NormalIgnoreSectionOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1,
+                        );
                     }
-                    if *ptr as ::core::ffi::c_int == 0x21 as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                    let invalid = match enc.invalid4 {
+                        Invalid4Checker::Never => false,
+                        Invalid4Checker::Utf8 => utf8_invalid4(&[
+                            input[pos] as u8,
+                            input[pos + 1] as u8,
+                            input[pos + 2] as u8,
+                            input[pos + 3] as u8,
+                        ]),
+                        Invalid4Checker::Unknown => {
+                            return NormalIgnoreSectionOutcome::UnknownInvalid {
+                                at: pos,
+                                width: 4,
+                                level,
+                            };
                         }
-                        if *ptr as ::core::ffi::c_int == 0x5b as ::core::ffi::c_int {
+                    };
+                    if invalid {
+                        return NormalIgnoreSectionOutcome::Invalid(pos);
+                    }
+                    pos += 4;
+                }
+                0 | 1 | 8 => return NormalIgnoreSectionOutcome::Invalid(pos),
+                2 => {
+                    pos += 1;
+                    if pos == input.len() {
+                        return NormalIgnoreSectionOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_1,
+                        );
+                    }
+                    if input[pos] as ::core::ffi::c_int == 0x21 {
+                        pos += 1;
+                        if pos == input.len() {
+                            return NormalIgnoreSectionOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_1,
+                            );
+                        }
+                        if input[pos] as ::core::ffi::c_int == 0x5b {
                             level += 1;
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                            pos += 1;
                         }
                     }
                 }
                 4 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr)
-                        >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-                    {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                    pos += 1;
+                    if pos == input.len() {
+                        return NormalIgnoreSectionOutcome::Partial(
+                            crate::src::xmltok::XML_TOK_PARTIAL_1,
+                        );
                     }
-                    if *ptr as ::core::ffi::c_int == 0x5d as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                    if input[pos] as ::core::ffi::c_int == 0x5d {
+                        pos += 1;
+                        if pos == input.len() {
+                            return NormalIgnoreSectionOutcome::Partial(
+                                crate::src::xmltok::XML_TOK_PARTIAL_1,
+                            );
                         }
-                        if *ptr as ::core::ffi::c_int == 0x3e as ::core::ffi::c_int {
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            if level == 0 as ::core::ffi::c_int {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_IGNORE_SECT_1;
+                        if input[pos] as ::core::ffi::c_int == 0x3e {
+                            pos += 1;
+                            if level == 0 {
+                                return NormalIgnoreSectionOutcome::Token(
+                                    crate::src::xmltok::XML_TOK_IGNORE_SECT_1,
+                                    pos,
+                                );
                             }
                             level -= 1;
                         }
                     }
                 }
-                _ => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                _ => pos += 1,
+            }
+        }
+        NormalIgnoreSectionOutcome::Partial(crate::src::xmltok::XML_TOK_PARTIAL_1)
+    }
+
+    pub unsafe extern "C" fn normal_ignoreSectionTok(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len <= 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let encoding = &*(enc as *const normal_encoding);
+        let mut start = 0;
+        let mut level = 0;
+
+        loop {
+            match normal_ignore_section_tok_impl(encoding, input, start, level) {
+                NormalIgnoreSectionOutcome::Token(token, next) => {
+                    *nextTokPtr = ptr.add(next);
+                    return token;
+                }
+                NormalIgnoreSectionOutcome::Partial(token) => return token,
+                NormalIgnoreSectionOutcome::Invalid(at) => {
+                    *nextTokPtr = ptr.add(at);
+                    return crate::src::xmltok::XML_TOK_INVALID_1;
+                }
+                NormalIgnoreSectionOutcome::UnknownInvalid {
+                    at,
+                    width,
+                    level: saved_level,
+                } => {
+                    if unknown_isInvalid(enc, ptr.add(at)) != 0 {
+                        *nextTokPtr = ptr.add(at);
+                        return crate::src::xmltok::XML_TOK_INVALID_1;
+                    }
+                    start = at + width;
+                    level = saved_level;
                 }
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
     pub unsafe extern "C" fn normal_isPublicId(
