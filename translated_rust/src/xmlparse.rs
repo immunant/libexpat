@@ -1634,16 +1634,7 @@ static DEFAULT_HANDLERS: std::sync::OnceLock<
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a start-doctype callback is installed.
-trait StartDoctypeDeclCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        doctype_name: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-        has_internal_subset: ::core::ffi::c_int,
-    );
-}
+trait StartDoctypeDeclCallback: Send + Sync + std::any::Any {}
 
 impl StartDoctypeDeclCallback
     for unsafe extern "C" fn(
@@ -1654,27 +1645,38 @@ impl StartDoctypeDeclCallback
         ::core::ffi::c_int,
     )
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        doctype_name: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-        has_internal_subset: ::core::ffi::c_int,
-    ) {
-        self(
-            user_data,
-            doctype_name,
-            system_id,
-            public_id,
-            has_internal_subset,
-        );
+}
+
+/// A start-doctype declaration represented entirely by scoped parser views.
+/// The adapter turns these views into the callback's transient ABI arguments
+/// only after all identifiers have been resolved from parser-owned pools.
+struct StartDoctypeDeclCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    name: Option<&'a [crate::expat_external_h::XML_Char]>,
+    system_id: Option<&'a [crate::expat_external_h::XML_Char]>,
+    public_id: Option<&'a [crate::expat_external_h::XML_Char]>,
+    has_internal_subset: ::core::ffi::c_int,
+}
+
+/// Owns the erased foreign callback while parser dispatch uses a typed event.
+struct StartDoctypeDeclCallbackAdapter {
+    callback: std::sync::Arc<dyn StartDoctypeDeclCallback>,
+}
+
+impl StartDoctypeDeclCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: StartDoctypeDeclCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
     }
 }
 
 static START_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn StartDoctypeDeclCallback>>,
+        std::collections::HashMap<usize, std::sync::Arc<StartDoctypeDeclCallbackAdapter>>,
     >,
 > = std::sync::OnceLock::new();
 
@@ -1683,7 +1685,7 @@ static START_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
 /// Parser state retains only this typed registry entry and its opaque address
 /// key, never the C callback representation itself.
 struct StartDoctypeDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn StartDoctypeDeclCallback>>,
+    callback: Option<std::sync::Arc<StartDoctypeDeclCallbackAdapter>>,
 }
 
 fn start_doctype_decl_handler_registration<Callback>(
@@ -1693,7 +1695,9 @@ where
     Callback: StartDoctypeDeclCallback + 'static,
 {
     StartDoctypeDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| {
+            std::sync::Arc::new(StartDoctypeDeclCallbackAdapter::new(callback))
+        }),
     }
 }
 
@@ -1733,7 +1737,9 @@ where
     EndCallback: EndCdataSectionCallback + 'static,
 {
     DoctypeDeclHandlers {
-        start: start.map(|callback| std::sync::Arc::new(callback) as _),
+        start: start.map(|callback| {
+            std::sync::Arc::new(StartDoctypeDeclCallbackAdapter::new(callback))
+        }),
         end: end.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
             callback: std::sync::Arc::new(callback),
         })),
@@ -1744,7 +1750,7 @@ where
 /// parser-side setter only needs these owned adapters and an opaque parser
 /// address key.
 struct DoctypeDeclHandlers {
-    start: Option<std::sync::Arc<dyn StartDoctypeDeclCallback>>,
+    start: Option<std::sync::Arc<StartDoctypeDeclCallbackAdapter>>,
     end: Option<std::sync::Arc<CdataSectionCallbackAdapter>>,
 }
 
@@ -1865,6 +1871,35 @@ macro_rules! handler_arg_from_state {
             HandlerArg::Parser => std::ptr::from_ref(&*parser).cast_mut().cast(),
         }
     }};
+}
+
+impl StartDoctypeDeclCallbackAdapter {
+    fn invoke(&self, event: StartDoctypeDeclCallbackEvent<'_>) {
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+            ),
+        >() else {
+            return;
+        };
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event.name.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event
+                    .system_id
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event
+                    .public_id
+                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event.has_internal_subset,
+            );
+        }
+    }
 }
 
 impl CommentCallbackAdapter {
@@ -2053,38 +2088,29 @@ fn dispatch_start_element_callback(
 /// sequences, so prolog processing can remain on typed parser state and this
 /// narrow boundary contains the sole ABI call.
 fn dispatch_start_doctype_decl_callback(
-    callback: &dyn StartDoctypeDeclCallback,
+    callback: &StartDoctypeDeclCallbackAdapter,
     parser: &XML_ParserStruct,
     has_internal_subset: ::core::ffi::c_int,
 ) {
     let doctype_name = parser
         .m_doctypeName
-        .and_then(|name| parser.m_tempPool.chars_from(name))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        .and_then(|name| parser.m_tempPool.chars_from(name));
     let doctype_pubid = parser
         .m_doctypePubid
-        .and_then(|public_id| parser.m_tempPool.chars_from(public_id))
-        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        .and_then(|public_id| parser.m_tempPool.chars_from(public_id));
     let doctype_sysid = match parser.m_doctypeSysid {
         DoctypeSystemId::Pool(system_id) => parser
             .m_tempPool
-            .chars_from(system_id)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-        DoctypeSystemId::None | DoctypeSystemId::ExternalSubset => ::core::ptr::null(),
+            .chars_from(system_id),
+        DoctypeSystemId::None | DoctypeSystemId::ExternalSubset => None,
     };
-    let handler_arg = match parser.m_handlerArg {
-        HandlerArg::UserData => callback_context_pointer!(parser),
-        HandlerArg::Parser => std::ptr::from_ref(parser).cast_mut().cast(),
-    };
-    unsafe {
-        callback.invoke(
-            handler_arg,
-            doctype_name,
-            doctype_sysid,
-            doctype_pubid,
-            has_internal_subset,
-        );
-    }
+    callback.invoke(StartDoctypeDeclCallbackEvent {
+        parser,
+        name: doctype_name,
+        system_id: doctype_sysid,
+        public_id: doctype_pubid,
+        has_internal_subset,
+    });
 }
 
 /// Dispatch an end-element callback from a self-contained, terminated name.
