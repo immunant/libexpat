@@ -710,32 +710,27 @@ pub enum WhitespaceSkipper {
 
 impl WhitespaceSkipper {
     /// Returns the number of encoded bytes occupied by leading XML whitespace.
-    fn skip_s_bytes(self, encoding: &normal_encoding, bytes: &[::core::ffi::c_char]) -> usize {
+    fn skip_s_bytes(self, bytes: &[::core::ffi::c_char]) -> usize {
         match self {
             Self::Normal => bytes
                 .iter()
-                .position(|&byte| {
-                    !matches!(
-                        encoding.type_0[byte as u8 as usize] as ::core::ffi::c_int,
-                        10 | 9 | 21
-                    )
-                })
+                .position(|&byte| !matches!(byte as u8, b' ' | b'\t' | b'\n' | b'\r'))
                 .unwrap_or(bytes.len()),
             Self::Little2 | Self::Big2 => {
                 let mut skipped = 0;
                 for code_unit in bytes.chunks_exact(2) {
-                    let byte_type = match self {
-                        Self::Little2 if code_unit[1] == 0 => {
-                            encoding.type_0[code_unit[0] as u8 as usize] as ::core::ffi::c_int
+                    let is_space = match self {
+                        Self::Little2 => {
+                            code_unit[1] == 0
+                                && matches!(code_unit[0] as u8, b' ' | b'\t' | b'\n' | b'\r')
                         }
-                        Self::Little2 => unicode_byte_type(code_unit[1], code_unit[0]),
-                        Self::Big2 if code_unit[0] == 0 => {
-                            encoding.type_0[code_unit[1] as u8 as usize] as ::core::ffi::c_int
+                        Self::Big2 => {
+                            code_unit[0] == 0
+                                && matches!(code_unit[1] as u8, b' ' | b'\t' | b'\n' | b'\r')
                         }
-                        Self::Big2 => unicode_byte_type(code_unit[0], code_unit[1]),
                         Self::Normal => unreachable!(),
                     };
-                    if !matches!(byte_type, 10 | 9 | 21) {
+                    if !is_space {
                         break;
                     }
                     skipped += 2;
@@ -3921,26 +3916,15 @@ pub mod xmltok_impl_c {
         n_atts
     }
 
-    pub unsafe fn skip_s(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
+    /// Skips leading XML whitespace in a caller-validated token window.
+    ///
+    /// The returned byte offset is relative to `input`; C cursor conversion
+    /// belongs to the parser boundary that owns that window.
+    pub fn skip_s(
+        input: &[::core::ffi::c_char],
         skipper: crate::src::xmltok::WhitespaceSkipper,
-    ) -> *const ::core::ffi::c_char {
-        // Validate the C cursor ordering before constructing its bounded
-        // slice.  `offset_from` would additionally require proving both
-        // cursors originate in the same allocation; the caller's scanner
-        // contract provides that provenance, while address subtraction keeps
-        // malformed/reversed cursors from becoming an unsafe operation here.
-        let Some(len) = end.addr().checked_sub(ptr.addr()) else {
-            return ptr;
-        };
-        if ptr.is_null() || len > isize::MAX as usize {
-            return ptr;
-        }
-        let bytes = ::core::slice::from_raw_parts(ptr, len);
-        let encoding = &*(enc as *const normal_encoding);
-        bytes[skipper.skip_s_bytes(encoding, bytes)..].as_ptr()
+    ) -> usize {
+        skipper.skip_s_bytes(input)
     }
 
     pub(crate) fn normal_update_position(
