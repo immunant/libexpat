@@ -212,7 +212,7 @@ pub struct TestCase {
 }
 pub const XML_TRUE: XML_Bool = 1 as ::core::ffi::c_int as XML_Bool;
 pub const XML_FALSE: XML_Bool = 0 as ::core::ffi::c_int as XML_Bool;
-unsafe extern "C" fn test_accounting_precision() {
+extern "C" fn test_accounting_precision() {
     unsafe {
         _check_set_test_info(
             b"test_accounting_precision\0".as_ptr() as *const ::core::ffi::c_char,
@@ -697,7 +697,7 @@ unsafe extern "C" fn test_accounting_precision() {
         }
     }
 }
-unsafe extern "C" fn test_billion_laughs_attack_protection_api() {
+extern "C" fn test_billion_laughs_attack_protection_api() {
     unsafe {
         _check_set_test_info(
             b"test_billion_laughs_attack_protection_api\0".as_ptr() as *const ::core::ffi::c_char,
