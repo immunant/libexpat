@@ -2239,7 +2239,7 @@ fn invoke_cdata_section_callback(
 trait NotStandaloneCallback: Send + Sync + std::any::Any {}
 
 impl NotStandaloneCallback
-    for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int
+    for extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int
 {
 }
 
@@ -2272,11 +2272,11 @@ fn dispatch_not_standalone_callback(
     parser: &XML_ParserStruct,
 ) -> ::core::ffi::c_int {
     let Some(callback) = (callback as &dyn std::any::Any).downcast_ref::<
-        unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int,
+        extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int,
     >() else {
         return 0;
     };
-    unsafe { callback(handler_arg_from_state!(parser)) }
+    callback(handler_arg_from_state!(parser))
 }
 
 // Foreign callback values remain in this boundary registry; parser state only
@@ -10761,6 +10761,12 @@ pub unsafe extern "C" fn XML_SetNotStandaloneHandler_ffi(
         return;
     }
     let parser_address = parser.addr();
+    // The exported handler type remains unsafe because C supplies it.  This
+    // boundary conversion records that Expat invokes it only with its opaque
+    // handler context, allowing parser processing to use a safe callback
+    // representation.
+    let handler: Option<extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int> =
+        handler.map(|handler| unsafe { ::core::mem::transmute(handler) });
     let registration = not_standalone_handler_registration(handler);
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_not_standalone_handler(parser, parser_address, registration);
