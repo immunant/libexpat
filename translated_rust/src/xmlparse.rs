@@ -2220,7 +2220,9 @@ pub type ATTRIBUTE_ID = attribute_id;
 #[repr(C)]
 
 pub struct ELEMENT_TYPE {
-    pub name: *const crate::expat_external_h::XML_Char,
+    // Element types are created by the name table, which initializes this
+    // leading field from a successful, non-null pool allocation.
+    pub name: std::ptr::NonNull<crate::expat_external_h::XML_Char>,
     pub prefix: *mut PREFIX,
     pub idAtt: *const ATTRIBUTE_ID,
     pub nDefaultAtts: ::core::ffi::c_int,
@@ -9846,7 +9848,7 @@ unsafe extern "C" fn doProlog(
                                                 if let Some(callback) = attlist_decl_handler(parser as usize) {
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
-                                                        (*(*parser).m_declElementType).name,
+                                                        (*(*parser).m_declElementType).name.as_ptr(),
                                                         (*(*parser).m_declAttributeId).name,
                                                         (*parser).m_declAttributeType,
                                                         ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
@@ -9949,7 +9951,7 @@ unsafe extern "C" fn doProlog(
                                                 if let Some(callback) = attlist_decl_handler(parser as usize) {
                                                     callback.invoke(
                                                         (*parser).m_handlerArg,
-                                                        (*(*parser).m_declElementType).name,
+                                                        (*(*parser).m_declElementType).name.as_ptr(),
                                                         (*(*parser).m_declAttributeId).name,
                                                         (*parser).m_declAttributeType,
                                                         attVal,
@@ -10840,7 +10842,7 @@ unsafe extern "C" fn doProlog(
                                                 *eventEndPP = s;
                                                 callElementDeclHandler(
                                                     parser,
-                                                    (*(*parser).m_declElementType).name,
+                                                    (*(*parser).m_declElementType).name.as_ptr(),
                                                     content,
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
@@ -11032,7 +11034,7 @@ unsafe extern "C" fn doProlog(
                         if el.is_null() {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        name_2 = (*el).name;
+                        name_2 = (*el).name.as_ptr();
                         (*(*dtd).scaffold.offset(myindex_0 as isize)).name = name_2;
                         nameLen = 0 as crate::__stddef_size_t_h::size_t;
                         loop {
@@ -11082,7 +11084,7 @@ unsafe extern "C" fn doProlog(
                             *eventEndPP = s;
                             callElementDeclHandler(
                                 parser,
-                                (*(*parser).m_declElementType).name,
+                                (*(*parser).m_declElementType).name.as_ptr(),
                                 model,
                             );
                         }
@@ -12410,13 +12412,13 @@ unsafe extern "C" fn setElementTypePrefix(
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut name: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    name = (*elementType).name;
+    name = (*elementType).name.as_ptr();
     while *name != 0 {
         if *name as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
             let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
             let mut s: *const crate::expat_external_h::XML_Char =
                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            s = (*elementType).name;
+            s = (*elementType).name.as_ptr();
             while s != name {
                 if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
                     && poolGrow(&raw mut (*dtd).pool) == 0
@@ -13091,7 +13093,7 @@ unsafe extern "C" fn dtdCopy(
             break;
         }
         let old_e = &*old_e;
-        let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.name);
+        let name_1 = poolCopyString(&raw mut new_dtd.pool, old_e.name.as_ptr());
         if name_1.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -14058,7 +14060,7 @@ unsafe extern "C" fn getElementType(
     if ret.is_null() {
         return ::core::ptr::null_mut::<ELEMENT_TYPE>();
     }
-    if (*ret).name != name {
+    if (*ret).name.as_ptr() as *const crate::expat_external_h::XML_Char != name {
         (*dtd).pool.ptr = (*dtd).pool.start;
     } else {
         (*dtd).pool.start = (*dtd).pool.ptr;
