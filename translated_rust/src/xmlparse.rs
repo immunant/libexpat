@@ -2718,88 +2718,28 @@ fn set_external_entity_ref_handler(
     }
 }
 
-// Explicit external-entity callback arguments are boundary-only values.  The
-// parser records neither their address nor a parser-typed alias; this registry
-// retains a callable boundary adapter keyed by the opaque parser handle.
-trait ExternalEntityRefHandlerArgInvoker {
-    unsafe fn invoke(
-        &self,
-        handler: &dyn ExternalEntityRefCallback,
-        context: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-    ) -> ::core::ffi::c_int;
-}
-
-impl<F> ExternalEntityRefHandlerArgInvoker for F
-where
-    F: Fn(
-        &dyn ExternalEntityRefCallback,
-        *const crate::expat_external_h::XML_Char,
-        *const crate::expat_external_h::XML_Char,
-        *const crate::expat_external_h::XML_Char,
-        *const crate::expat_external_h::XML_Char,
-    ) -> ::core::ffi::c_int,
-{
-    unsafe fn invoke(
-        &self,
-        handler: &dyn ExternalEntityRefCallback,
-        context: *const crate::expat_external_h::XML_Char,
-        base: *const crate::expat_external_h::XML_Char,
-        system_id: *const crate::expat_external_h::XML_Char,
-        public_id: *const crate::expat_external_h::XML_Char,
-    ) -> ::core::ffi::c_int {
-        self(handler, context, base, system_id, public_id)
-    }
-}
-
 #[derive(Clone)]
 struct ExternalEntityRefHandlerArgRegistration {
     // This is false when the caller explicitly supplied the parent parser,
     // which has the same child-parser meaning as the default NULL argument.
     applies_to_child: bool,
-    invoke: std::sync::Arc<dyn ExternalEntityRefHandlerArgInvoker>,
+    // The C callback receives this only as an opaque parser handle.  Rust
+    // never dereferences it; the atomic preserves the original pointer until
+    // the foreign callback boundary needs to forward it.
+    callback_arg: CallbackContextRegistration,
 }
-
-// The captured foreign value is never dereferenced by Rust; it is forwarded
-// only while invoking the registered C callback.  As with the parser's former
-// opaque raw field, callers are responsible for serializing access to a parser
-// and for keeping the callback context valid for that call.
-unsafe impl Send for ExternalEntityRefHandlerArgRegistration {}
-unsafe impl Sync for ExternalEntityRefHandlerArgRegistration {}
 
 static EXTERNAL_ENTITY_REF_HANDLER_ARGS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, ExternalEntityRefHandlerArgRegistration>>,
 > = std::sync::OnceLock::new();
 
-unsafe fn external_entity_ref_handler_arg_registration(
-    arg: *mut ::core::ffi::c_void,
-    parser: crate::expat_h::XML_Parser,
+fn external_entity_ref_handler_arg_registration(
+    callback_arg: CallbackContextRegistration,
+    applies_to_child: bool,
 ) -> ExternalEntityRefHandlerArgRegistration {
-    let callback_arg = arg.cast::<XML_ParserStruct>();
     ExternalEntityRefHandlerArgRegistration {
-        applies_to_child: callback_arg != parser,
-        invoke: std::sync::Arc::new(
-            move |handler: &dyn ExternalEntityRefCallback,
-                  context: *const crate::expat_external_h::XML_Char,
-                  base: *const crate::expat_external_h::XML_Char,
-                  system_id: *const crate::expat_external_h::XML_Char,
-                  public_id: *const crate::expat_external_h::XML_Char| {
-                let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
-                    unsafe extern "C" fn(
-                        crate::expat_h::XML_Parser,
-                        *const crate::expat_external_h::XML_Char,
-                        *const crate::expat_external_h::XML_Char,
-                        *const crate::expat_external_h::XML_Char,
-                        *const crate::expat_external_h::XML_Char,
-                    ) -> ::core::ffi::c_int,
-                >() else {
-                    return 0;
-                };
-                unsafe { handler(callback_arg, context, base, system_id, public_id) }
-            },
-        ),
+        applies_to_child,
+        callback_arg,
     }
 }
 
@@ -9788,33 +9728,45 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandler_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_external_entity_ref_handler(parser, parser_address, registration);
 }
-pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg(
-    mut parser: crate::expat_h::XML_Parser,
-    mut arg: *mut ::core::ffi::c_void,
+fn set_external_entity_ref_handler_arg(
+    parser: &mut XML_ParserStruct,
+    registration: Option<ExternalEntityRefHandlerArgRegistration>,
 ) {
-    if parser.is_null() {
-        return;
-    }
+    let parser_address = std::ptr::from_mut(parser).addr();
     let mut args = EXTERNAL_ENTITY_REF_HANDLER_ARGS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if arg.is_null() {
-        args.remove(&(parser as usize));
-    } else {
-        args.insert(
-            parser as usize,
-            external_entity_ref_handler_arg_registration(arg, parser),
-        );
+    match registration {
+        Some(registration) => {
+            args.insert(parser_address, registration);
+        }
+        None => {
+            args.remove(&parser_address);
+        }
     }
 }
 #[export_name = "XML_SetExternalEntityRefHandlerArg"]
 
 pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut arg: *mut ::core::ffi::c_void,
+    parser: crate::expat_h::XML_Parser,
+    arg: *mut ::core::ffi::c_void,
 ) {
-    XML_SetExternalEntityRefHandlerArg(parser, arg)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let registration = (!arg.is_null()).then(|| {
+        external_entity_ref_handler_arg_registration(
+            CallbackContextRegistration {
+                context: std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(
+                    arg.cast::<XML_ParserStruct>(),
+                )),
+            },
+            arg.cast::<XML_ParserStruct>() != parser,
+        )
+    });
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_external_entity_ref_handler_arg(parser, registration);
 }
 pub unsafe extern "C" fn XML_SetSkippedEntityHandler(
     mut parser: crate::expat_h::XML_Parser,
@@ -25839,8 +25791,28 @@ fn dispatch_external_entity_ref_event_handler(
         .cloned();
     match callback_arg {
         Some(arg) => unsafe {
-            arg.invoke
-                .invoke(handler, context, base, system_id, public_id)
+            let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
+                unsafe extern "C" fn(
+                    crate::expat_h::XML_Parser,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                    *const crate::expat_external_h::XML_Char,
+                ) -> ::core::ffi::c_int,
+            >() else {
+                return 0;
+            };
+            handler(
+                arg.callback_arg
+                    .context
+                    .downcast_ref::<std::sync::atomic::AtomicPtr<XML_ParserStruct>>()
+                    .map(|callback_arg| callback_arg.load(std::sync::atomic::Ordering::Relaxed))
+                    .unwrap_or(::core::ptr::null_mut()),
+                context,
+                base,
+                system_id,
+                public_id,
+            )
         },
         None => unsafe {
             let Some(handler) = (handler as &dyn std::any::Any).downcast_ref::<
