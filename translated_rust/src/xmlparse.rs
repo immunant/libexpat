@@ -23513,40 +23513,6 @@ unsafe fn copyEntityTable(
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 
-unsafe extern "C" fn keylen(mut s: KEY) -> crate::__stddef_size_t_h::size_t {
-    let mut len: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    while *s != 0 {
-        s = s.offset(1);
-        len = len.wrapping_add(1);
-    }
-    return len;
-}
-
-unsafe extern "C" fn hash(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: KEY,
-) -> ::core::ffi::c_ulong {
-    let mut state: crate::siphash_h::siphash = crate::siphash_h::siphash {
-        v0: 0,
-        v1: 0,
-        v2: 0,
-        v3: 0,
-        buf: [0; 8],
-        p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
-        c: 0,
-    };
-    let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey {
-        k: [0, get_hash_secret_salt(parser) as crate::stdlib::uint64_t],
-    };
-    crate::src::xmlparse::siphash_h::sip24_init_state(&mut state, &key);
-    sip24_update(
-        &raw mut state,
-        s as *const ::core::ffi::c_void,
-        keylen(s).wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-    );
-    return sip24_final(&mut state) as ::core::ffi::c_ulong;
-}
-
 unsafe fn allocation_backing(
     parser: crate::expat_h::XML_Parser,
     size: crate::__stddef_size_t_h::size_t,
