@@ -2638,6 +2638,46 @@ static EXTERNAL_ENTITY_REF_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+/// External-entity callback registration prepared from its ABI value.
+///
+/// The parser records only the presence of the handler; the callable foreign
+/// callback remains in the boundary registry keyed by the opaque parser
+/// address.
+struct ExternalEntityRefHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn ExternalEntityRefCallback>>,
+}
+
+fn external_entity_ref_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> ExternalEntityRefHandlerRegistration
+where
+    Callback: ExternalEntityRefCallback + 'static,
+{
+    ExternalEntityRefHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
+fn set_external_entity_ref_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: ExternalEntityRefHandlerRegistration,
+) {
+    parser.m_externalEntityRefHandler = registration.callback.is_some();
+    let mut handlers = EXTERNAL_ENTITY_REF_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
+        }
+    }
+}
+
 // Explicit external-entity callback arguments are boundary-only values.  The
 // parser records neither their address nor a parser-typed alias; this registry
 // retains a callable boundary adapter keyed by the opaque parser handle.
@@ -9701,33 +9741,19 @@ pub unsafe extern "C" fn XML_SetNotStandaloneHandler_ffi(
 ) {
     XML_SetNotStandaloneHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetExternalEntityRefHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_ExternalEntityRefHandler,
-) {
-    if !parser.is_null() {
-        (*parser).m_externalEntityRefHandler = handler.is_some();
-        let mut handlers = EXTERNAL_ENTITY_REF_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
-        }
-    }
-}
 #[export_name = "XML_SetExternalEntityRefHandler"]
 
 pub unsafe extern "C" fn XML_SetExternalEntityRefHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_ExternalEntityRefHandler,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_ExternalEntityRefHandler,
 ) {
-    XML_SetExternalEntityRefHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = external_entity_ref_handler_registration(handler);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_external_entity_ref_handler(parser, parser_address, registration);
 }
 pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg(
     mut parser: crate::expat_h::XML_Parser,
