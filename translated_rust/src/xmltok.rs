@@ -10838,37 +10838,6 @@ pub mod xmltok_ns_c {
         &raw const crate::src::xmltok::utf8_encoding.enc,
     ];
 
-    pub unsafe extern "C" fn initScanProlog(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        return initScan(
-            false,
-            enc as *const crate::src::xmltok::INIT_ENCODING,
-            crate::src::xmltok::XML_PROLOG_STATE,
-            ptr,
-            end,
-            nextTokPtr,
-        );
-    }
-
-    pub unsafe extern "C" fn initScanContent(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        return initScan(
-            false,
-            enc as *const crate::src::xmltok::INIT_ENCODING,
-            crate::src::xmltok::XML_CONTENT_STATE,
-            ptr,
-            end,
-            nextTokPtr,
-        );
-    }
     /// Initializes the parser's non-namespace encoding state from an
     /// optional, already-bounded protocol encoding name.
     pub(crate) fn init_encoding(
@@ -11016,37 +10985,6 @@ pub mod xmltok_ns_c {
         &raw const crate::src::xmltok::utf8_encoding_ns.enc,
     ];
 
-    pub unsafe extern "C" fn initScanPrologNS(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        return initScan(
-            true,
-            enc as *const crate::src::xmltok::INIT_ENCODING,
-            crate::src::xmltok::XML_PROLOG_STATE,
-            ptr,
-            end,
-            nextTokPtr,
-        );
-    }
-
-    pub unsafe extern "C" fn initScanContentNS(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        return initScan(
-            true,
-            enc as *const crate::src::xmltok::INIT_ENCODING,
-            crate::src::xmltok::XML_CONTENT_STATE,
-            ptr,
-            end,
-            nextTokPtr,
-        );
-    }
     /// Initializes the parser's namespace-aware encoding state from an
     /// optional, already-bounded protocol encoding name.
     pub fn XmlInitEncodingNS(
@@ -11166,7 +11104,6 @@ pub mod xmltok_ns_c {
         )
     }
     use crate::src::xmltok::encoding_index;
-    use crate::src::xmltok::initScan;
     use crate::src::xmltok::internal_little2_encoding;
     use crate::src::xmltok::internal_little2_encoding_ns;
     use crate::src::xmltok::internal_utf8_encoding;
@@ -12130,10 +12067,6 @@ pub use crate::src::xmltok::xmltok_impl_c::skip_s;
 pub use crate::src::xmltok::xmltok_impl_c::Big2AttributeAction;
 pub use crate::src::xmltok::xmltok_ns_c::encodings;
 pub use crate::src::xmltok::xmltok_ns_c::encodingsNS;
-pub use crate::src::xmltok::xmltok_ns_c::initScanContent;
-pub use crate::src::xmltok::xmltok_ns_c::initScanContentNS;
-pub use crate::src::xmltok::xmltok_ns_c::initScanProlog;
-pub use crate::src::xmltok::xmltok_ns_c::initScanPrologNS;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf16InternalEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf16InternalEncodingNS;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
@@ -18098,42 +18031,6 @@ fn initial_scan_result(
     }
 }
 
-/// # Safety
-///
-/// The tokenizer dispatch contract supplies a valid, readable `ptr..end`
-/// range from one allocation and writable output slots in both `enc` and
-/// `nextTokPtr`.  This adapter confines those C ABI cursors to the final
-/// state update; known-encoding selection and scanner dispatch are slice
-/// based.
-unsafe extern "C" fn initScan(
-    namespace_aware: bool,
-    mut enc: *const crate::src::xmltok::INIT_ENCODING,
-    mut state: ::core::ffi::c_int,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextTokPtr: *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    let input_len = end.offset_from(ptr);
-    if input_len <= 0 {
-        return crate::src::xmltok::XML_TOK_NONE_1;
-    }
-    let state = if state == crate::src::xmltok::XML_CONTENT_STATE {
-        InitScanState::Content
-    } else {
-        InitScanState::Prolog
-    };
-    let bytes = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-    let input = ScannerInput {
-        bytes,
-        chars: bytemuck::cast_slice(bytes),
-    };
-    let initial_encoding = &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING);
-    let result = initial_scan_result(initial_encoding, namespace_aware, state, input);
-    if let Some(offset) = result.next {
-        *nextTokPtr = ptr.wrapping_add(offset);
-    }
-    result.token
-}
 #[export_name = "XmlInitUnknownEncodingNS"]
 pub unsafe extern "C" fn XmlInitUnknownEncodingNS_ffi(
     mem: *mut ::core::ffi::c_void,
