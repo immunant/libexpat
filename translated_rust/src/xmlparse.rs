@@ -2852,6 +2852,31 @@ impl AllocationBackingFactory {
     }
 }
 
+/// Captures the allocator route needed while copying DTD-owned records.  This
+/// keeps the copy operation independent of the parser's broader state.
+#[derive(Clone)]
+struct DtdCopyAllocator {
+    factory: Option<AllocationBackingFactory>,
+}
+
+impl DtdCopyAllocator {
+    fn from_parser(parser: &XML_ParserStruct) -> Self {
+        Self {
+            factory: parser.m_allocationBackingFactory.clone(),
+        }
+    }
+
+    fn allocate(
+        &self,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> Option<AllocationBacking> {
+        self.factory
+            .as_ref()
+            .and_then(|factory| factory.allocation_backing(size, source_line))
+    }
+}
+
 // Expat promises malloc-compatible alignment for the allocation returned by
 // its XML_TESTING helpers.  The foreign allocator remains observable through
 // `AllocationBacking`; this storage only owns the test-visible size prefix and
@@ -8116,10 +8141,16 @@ unsafe fn XML_ExternalEntityParserCreate(
         // with scoped DTD references.
         let old_dtd_owner = old.m_dtd.clone();
         let new_dtd_owner = parser_ref.m_dtd.clone();
+        let dtd_copy_allocator = DtdCopyAllocator::from_parser(parser_ref);
+        let hash_secret_salt = parser_ref
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .hash_secret_salt;
         let copied_and_restored = match (old_dtd_owner, new_dtd_owner) {
             (Some(old_dtd_owner), Some(new_dtd_owner)) => old_dtd_owner.inspect(|old_dtd| {
                 new_dtd_owner.inspect(|new_dtd| {
-                    dtdCopy(new_dtd, old_dtd, parser_ref) != 0
+                    dtd_copy_impl(new_dtd, old_dtd, hash_secret_salt, &dtd_copy_allocator) != 0
                         && set_context_impl(parser_ref, new_dtd, context.to_bytes()) != 0
                 })
             }),
@@ -18319,7 +18350,7 @@ unsafe fn doProlog(
                                                     .allocation_backing(allocation_size, 7182)?;
                                                 let backing = LiveParserAllocationBacking { backing };
                                                 default_attribute_storage_from_backing(
-                                                    parser, capacity, 7182, backing,
+                                                    capacity, 7182, backing,
                                                 )
                                             };
                                             if !define_declared_attribute(
@@ -18506,7 +18537,7 @@ unsafe fn doProlog(
                                                     .allocation_backing(allocation_size, 7182)?;
                                                 let backing = LiveParserAllocationBacking { backing };
                                                 default_attribute_storage_from_backing(
-                                                    parser, capacity, 7182, backing,
+                                                    capacity, 7182, backing,
                                                 )
                                             };
                                             if !define_declared_attribute(
@@ -24072,13 +24103,32 @@ unsafe fn dtdCopy(
     old_dtd: &DTD,
     parser: &mut XML_ParserStruct,
 ) -> ::core::ffi::c_int {
-    // Both DTD owners are retained by the caller throughout the copy.  This
-    // helper therefore needs no raw parser or DTD handles for its field work.
     let hash_secret_salt = parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt;
+    let dtd_copy_allocator = DtdCopyAllocator::from_parser(parser);
+    dtd_copy_impl(
+        new_dtd,
+        old_dtd,
+        hash_secret_salt,
+        &dtd_copy_allocator,
+    )
+}
+
+/// Copies DTD records using a previously captured allocator route.  The
+/// parser-dependent details are captured before entry, leaving this table and
+/// pool operation entirely within Rust-owned state.
+fn dtd_copy_impl(
+    new_dtd: &mut DTD,
+    old_dtd: &DTD,
+    hash_secret_salt: ::core::ffi::c_ulong,
+    allocator: &DtdCopyAllocator,
+) -> ::core::ffi::c_int {
+    // Both DTD owners are retained by the caller throughout the copy.  The
+    // allocator route and hash salt are captured before entering this helper,
+    // so table copying needs no parser access.
     let mut copied_prefixes = Vec::new();
     let mut copied_attributes = Vec::new();
     // Slots are the table's owned iteration order.  Reading them directly
@@ -24246,14 +24296,12 @@ unsafe fn dtdCopy(
                 else {
                     return 0 as ::core::ffi::c_int;
                 };
-                let Some(backing) = AllocationBackingFactory::for_parser(parser)
-                    .allocation_backing(allocation_size, 7683)
+                let Some(backing) = allocator.allocate(allocation_size, 7683)
                 else {
                     return 0 as ::core::ffi::c_int;
                 };
                 let backing = LiveParserAllocationBacking { backing };
                 let Some(storage) = default_attribute_storage_from_backing(
-                    parser,
                     old_e.nDefaultAtts as usize,
                     7683,
                     backing,
@@ -24592,14 +24640,15 @@ fn namespace_attribute_storage_from_backing(
 }
 
 fn default_attribute_storage_from_backing(
-    parser: &mut XML_ParserStruct,
     capacity: usize,
     source_line: ::core::ffi::c_int,
     mut backing: LiveParserAllocationBacking,
 ) -> Option<DefaultAttributeStorage> {
     let mut values = Vec::new();
     if values.try_reserve_exact(capacity).is_err() {
-        backing.apply(parser, ParserAllocationAction::Free(source_line));
+        backing
+            .backing
+            .apply(ParserAllocationAction::Free(source_line));
         return None;
     }
     Some(DefaultAttributeStorage { values, backing })
