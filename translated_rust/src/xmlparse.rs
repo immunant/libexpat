@@ -21190,43 +21190,43 @@ unsafe fn storeAttributeValue(
             else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let (entity_has_more, entity_input) = {
-                let dtd = parser_dtd_ptr!(parser);
-                if dtd.is_null() {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                }
-                let dtd = &mut *dtd;
-                let salt = parser
-                    .m_root
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .hash_secret_salt;
-                let Some(NamedRecord::Entity(entity)) = lookup_impl(
-                    &mut dtd.pool,
-                    &mut dtd.generalEntities,
-                    LookupName::Retained(entity_name),
-                    0,
-                    salt,
-                ) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            let salt = parser
+                .m_root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .hash_secret_salt;
+            let Some(dtd_owner) = parser.m_dtd.clone() else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            // Replacement text is owned by the DTD.  Copy the unprocessed
+            // portion while holding its scoped borrow so attribute expansion
+            // can update parser/DTD state without retaining a raw DTD pointer
+            // or a borrow into storage that may grow during the scan.
+            let (entity_has_more, entity_input) = match dtd_owner.inspect(|dtd| {
+                let Some(entity) = general_entity_mut(dtd, entity_name, salt) else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                let entity = entity.as_mut();
                 let Some(text_ref) = entity.textPtr.present() else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
                 let text_len = entity.textLen;
-                let processed = entity.processed;
+                let processed = usize::try_from(entity.processed)
+                    .map_err(|_| crate::expat_h::XML_ERROR_UNEXPECTED_STATE)?;
                 let entity_has_more = entity.hasMore;
-                let Some(text) = entity_text_chars(dtd, text_ref, text_len) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                let Some(unprocessed) = entity_text_chars(dtd, text_ref, text_len)
+                    .and_then(|text| text.get(processed..))
+                else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                let Ok(processed) = usize::try_from(processed) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                let Some(unprocessed) = text.get(processed..) else {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                };
-                (entity_has_more, unprocessed)
+                let mut entity_input = Vec::new();
+                entity_input
+                    .try_reserve_exact(unprocessed.len())
+                    .map_err(|_| crate::expat_h::XML_ERROR_NO_MEMORY)?;
+                entity_input.extend_from_slice(unprocessed);
+                Ok((entity_has_more, entity_input))
+            }) {
+                Ok(input) => input,
+                Err(error) => return error,
             };
             if entity_has_more != 0 {
                 let (append_result, append_next) = appendAttributeValue(
@@ -21236,7 +21236,7 @@ unsafe fn storeAttributeValue(
                         InternalEncoding::Utf8Ns
                     )),
                     isCdata,
-                    entity_input,
+                    &entity_input,
                     0,
                     None,
                     &mut pool,
