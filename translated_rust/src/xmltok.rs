@@ -13950,27 +13950,36 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        doParseXmlDecl(
-            Some(
-                findEncoding
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::xmltok::ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        )
+        let result = doParseXmlDecl(findEncoding, isGeneralTextEntity, &*enc, ptr, end);
+        if !versionPtr.is_null() {
+            if let Some(value) = result.version_ptr {
+                *versionPtr = value;
+            }
+        }
+        if !versionEndPtr.is_null() {
+            if let Some(value) = result.version_end_ptr {
+                *versionEndPtr = value;
+            }
+        }
+        if !encodingName.is_null() {
+            if let Some(value) = result.encoding_name {
+                *encodingName = value;
+            }
+        }
+        if !encoding.is_null() {
+            if let Some(value) = result.encoding {
+                *encoding = value;
+            }
+        }
+        if !standalone.is_null() {
+            if let Some(value) = result.standalone {
+                *standalone = value;
+            }
+        }
+        if let Some(value) = result.bad_ptr {
+            *badPtr = value;
+        }
+        result.ok
     }
     pub use XmlParseXmlDecl_ffi as XmlParseXmlDecl;
     pub extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
@@ -14170,27 +14179,36 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        doParseXmlDecl(
-            Some(
-                findEncodingNS
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::xmltok::ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        )
+        let result = doParseXmlDecl(findEncodingNS, isGeneralTextEntity, &*enc, ptr, end);
+        if !versionPtr.is_null() {
+            if let Some(value) = result.version_ptr {
+                *versionPtr = value;
+            }
+        }
+        if !versionEndPtr.is_null() {
+            if let Some(value) = result.version_end_ptr {
+                *versionEndPtr = value;
+            }
+        }
+        if !encodingName.is_null() {
+            if let Some(value) = result.encoding_name {
+                *encodingName = value;
+            }
+        }
+        if !encoding.is_null() {
+            if let Some(value) = result.encoding {
+                *encoding = value;
+            }
+        }
+        if !standalone.is_null() {
+            if let Some(value) = result.standalone {
+                *standalone = value;
+            }
+        }
+        if let Some(value) = result.bad_ptr {
+            *badPtr = value;
+        }
+        result.ok
     }
     use crate::src::xmltok::ascii_encoding;
     use crate::src::xmltok::ascii_encoding_ns;
@@ -22258,21 +22276,23 @@ extern "C" fn initUpdatePosition(
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }
 
-unsafe extern "C" fn toAscii(
-    mut enc: *const crate::src::xmltok::ENCODING,
+fn toAscii(
+    enc: &crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
     let mut buf: [::core::ffi::c_char; 1] = [0; 1];
-    let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-    (*enc).utf8Convert.expect("non-null function pointer")(
-        enc,
-        &raw mut ptr,
-        end,
-        &raw mut p,
-        p.offset(1 as ::core::ffi::c_int as isize),
-    );
-    if p == &raw mut buf as *mut ::core::ffi::c_char {
+    let mut p: *mut ::core::ffi::c_char = buf.as_mut_ptr();
+    unsafe {
+        enc.utf8Convert.expect("non-null function pointer")(
+            enc as *const crate::src::xmltok::ENCODING,
+            &raw mut ptr,
+            end,
+            &raw mut p,
+            p.wrapping_offset(1 as ::core::ffi::c_int as isize),
+        );
+    }
+    if p == buf.as_mut_ptr() {
         return -1 as ::core::ffi::c_int;
     } else {
         return buf[0 as ::core::ffi::c_int as usize] as ::core::ffi::c_int;
@@ -22287,80 +22307,78 @@ fn isSpace(c: ::core::ffi::c_int) -> ::core::ffi::c_int {
     return 0 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn parsePseudoAttribute(
-    mut enc: *const crate::src::xmltok::ENCODING,
+#[derive(Copy, Clone)]
+struct PseudoAttribute {
+    name: *const ::core::ffi::c_char,
+    name_end: *const ::core::ffi::c_char,
+    value: *const ::core::ffi::c_char,
+    next: *const ::core::ffi::c_char,
+}
+
+fn parsePseudoAttribute(
+    enc: &crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut namePtr: *mut *const ::core::ffi::c_char,
-    mut nameEndPtr: *mut *const ::core::ffi::c_char,
-    mut valPtr: *mut *const ::core::ffi::c_char,
-    mut nextTokPtr: *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
+) -> Result<Option<PseudoAttribute>, *const ::core::ffi::c_char> {
     let mut c: ::core::ffi::c_int = 0;
     let mut open: ::core::ffi::c_char = 0;
     if ptr == end {
-        *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
-        return 1 as ::core::ffi::c_int;
+        return Ok(None);
     }
     if isSpace(toAscii(enc, ptr, end)) == 0 {
-        *nextTokPtr = ptr;
-        return 0 as ::core::ffi::c_int;
+        return Err(ptr);
     }
     loop {
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
         if !(isSpace(toAscii(enc, ptr, end)) != 0) {
             break;
         }
     }
     if ptr == end {
-        *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
-        return 1 as ::core::ffi::c_int;
+        return Ok(None);
     }
-    *namePtr = ptr;
+    let name = ptr;
+    let name_end;
     loop {
         c = toAscii(enc, ptr, end);
         if c == -1 as ::core::ffi::c_int {
-            *nextTokPtr = ptr;
-            return 0 as ::core::ffi::c_int;
+            return Err(ptr);
         }
         if c == crate::ascii_h::ASCII_EQUALS {
-            *nameEndPtr = ptr;
+            name_end = ptr;
             break;
         } else if isSpace(c) != 0 {
-            *nameEndPtr = ptr;
+            name_end = ptr;
             loop {
-                ptr = ptr.offset((*enc).minBytesPerChar as isize);
+                ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
                 c = toAscii(enc, ptr, end);
                 if !(isSpace(c) != 0) {
                     break;
                 }
             }
             if c != crate::ascii_h::ASCII_EQUALS {
-                *nextTokPtr = ptr;
-                return 0 as ::core::ffi::c_int;
+                return Err(ptr);
             }
             break;
         } else {
-            ptr = ptr.offset((*enc).minBytesPerChar as isize);
+            ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
         }
     }
-    if ptr == *namePtr {
-        *nextTokPtr = ptr;
-        return 0 as ::core::ffi::c_int;
+    if ptr == name {
+        return Err(ptr);
     }
-    ptr = ptr.offset((*enc).minBytesPerChar as isize);
+    ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
     c = toAscii(enc, ptr, end);
     while isSpace(c) != 0 {
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
         c = toAscii(enc, ptr, end);
     }
     if c != crate::ascii_h::ASCII_QUOT && c != crate::ascii_h::ASCII_APOS {
-        *nextTokPtr = ptr;
-        return 0 as ::core::ffi::c_int;
+        return Err(ptr);
     }
     open = c as ::core::ffi::c_char;
-    ptr = ptr.offset((*enc).minBytesPerChar as isize);
-    *valPtr = ptr;
+    ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
+    let value = ptr;
     loop {
         c = toAscii(enc, ptr, end);
         if c == open as ::core::ffi::c_int {
@@ -22373,13 +22391,16 @@ unsafe extern "C" fn parsePseudoAttribute(
             && c != crate::ascii_h::ASCII_MINUS
             && c != crate::ascii_h::ASCII_UNDERSCORE
         {
-            *nextTokPtr = ptr;
-            return 0 as ::core::ffi::c_int;
+            return Err(ptr);
         }
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
     }
-    *nextTokPtr = ptr.offset((*enc).minBytesPerChar as isize);
-    return 1 as ::core::ffi::c_int;
+    return Ok(Some(PseudoAttribute {
+        name,
+        name_end,
+        value,
+        next: ptr.wrapping_offset(enc.minBytesPerChar as isize),
+    }));
 }
 
 static KW_version: [::core::ffi::c_char; 8] = [
@@ -22432,167 +22453,145 @@ static KW_no: [::core::ffi::c_char; 3] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-unsafe extern "C" fn doParseXmlDecl(
-    mut encodingFinder: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> *const crate::src::xmltok::ENCODING,
-    >,
+#[derive(Copy, Clone)]
+struct XmlDeclParseResult {
+    ok: ::core::ffi::c_int,
+    bad_ptr: Option<*const ::core::ffi::c_char>,
+    version_ptr: Option<*const ::core::ffi::c_char>,
+    version_end_ptr: Option<*const ::core::ffi::c_char>,
+    encoding_name: Option<*const ::core::ffi::c_char>,
+    encoding: Option<*const crate::src::xmltok::ENCODING>,
+    standalone: Option<::core::ffi::c_int>,
+}
+
+impl XmlDeclParseResult {
+    fn success() -> Self {
+        Self {
+            ok: 1 as ::core::ffi::c_int,
+            bad_ptr: None,
+            version_ptr: None,
+            version_end_ptr: None,
+            encoding_name: None,
+            encoding: None,
+            standalone: None,
+        }
+    }
+
+    fn fail(mut self, bad_ptr: *const ::core::ffi::c_char) -> Self {
+        self.ok = 0 as ::core::ffi::c_int;
+        self.bad_ptr = Some(bad_ptr);
+        self
+    }
+}
+
+fn doParseXmlDecl(
+    encodingFinder: extern "C" fn(
+        *const crate::src::xmltok::ENCODING,
+        *const ::core::ffi::c_char,
+        *const ::core::ffi::c_char,
+    ) -> *const crate::src::xmltok::ENCODING,
     mut isGeneralTextEntity: ::core::ffi::c_int,
-    mut enc: *const crate::src::xmltok::ENCODING,
+    enc: &crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut badPtr: *mut *const ::core::ffi::c_char,
-    mut versionPtr: *mut *const ::core::ffi::c_char,
-    mut versionEndPtr: *mut *const ::core::ffi::c_char,
-    mut encodingName: *mut *const ::core::ffi::c_char,
-    mut encoding: *mut *const crate::src::xmltok::ENCODING,
-    mut standalone: *mut ::core::ffi::c_int,
-) -> ::core::ffi::c_int {
-    let mut val: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut name: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut nameEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    ptr = ptr.offset((5 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize);
-    end = end.offset(-((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize));
-    if parsePseudoAttribute(
-        enc,
-        ptr,
-        end,
-        &raw mut name,
-        &raw mut nameEnd,
-        &raw mut val,
-        &raw mut ptr,
-    ) == 0
-        || name.is_null()
-    {
-        *badPtr = ptr;
-        return 0 as ::core::ffi::c_int;
-    }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        name,
-        nameEnd,
+) -> XmlDeclParseResult {
+    let mut result = XmlDeclParseResult::success();
+    let enc_ptr = enc as *const crate::src::xmltok::ENCODING;
+    ptr = ptr.wrapping_offset((5 as ::core::ffi::c_int * enc.minBytesPerChar) as isize);
+    end = end.wrapping_offset(-((2 as ::core::ffi::c_int * enc.minBytesPerChar) as isize));
+    let mut attr = match parsePseudoAttribute(enc, ptr, end) {
+        Ok(Some(attr)) => attr,
+        Ok(None) => return result.fail(ptr),
+        Err(bad_ptr) => return result.fail(bad_ptr),
+    };
+    ptr = attr.next;
+    if enc.nameMatchesAscii.expect("non-null function pointer")(
+        enc_ptr,
+        attr.name,
+        attr.name_end,
         KW_version.as_ptr(),
     ) == 0
     {
         if isGeneralTextEntity == 0 {
-            *badPtr = name;
-            return 0 as ::core::ffi::c_int;
+            return result.fail(attr.name);
         }
     } else {
-        if !versionPtr.is_null() {
-            *versionPtr = val;
-        }
-        if !versionEndPtr.is_null() {
-            *versionEndPtr = ptr;
-        }
-        if parsePseudoAttribute(
-            enc,
-            ptr,
-            end,
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
-            *badPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        if name.is_null() {
-            if isGeneralTextEntity != 0 {
-                *badPtr = ptr;
-                return 0 as ::core::ffi::c_int;
+        result.version_ptr = Some(attr.value);
+        result.version_end_ptr = Some(ptr);
+        attr = match parsePseudoAttribute(enc, ptr, end) {
+            Ok(Some(attr)) => attr,
+            Ok(None) => {
+                if isGeneralTextEntity != 0 {
+                    return result.fail(ptr);
+                }
+                return result;
             }
-            return 1 as ::core::ffi::c_int;
-        }
+            Err(bad_ptr) => return result.fail(bad_ptr),
+        };
+        ptr = attr.next;
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        name,
-        nameEnd,
+    if enc.nameMatchesAscii.expect("non-null function pointer")(
+        enc_ptr,
+        attr.name,
+        attr.name_end,
         KW_encoding.as_ptr(),
     ) != 0
     {
-        let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
+        let mut c: ::core::ffi::c_int = toAscii(enc, attr.value, end);
         if !(crate::ascii_h::ASCII_a_1 <= c && c <= crate::ascii_h::ASCII_z)
             && !(crate::ascii_h::ASCII_A <= c && c <= crate::ascii_h::ASCII_Z)
         {
-            *badPtr = val;
-            return 0 as ::core::ffi::c_int;
+            return result.fail(attr.value);
         }
-        if !encodingName.is_null() {
-            *encodingName = val;
-        }
-        if !encoding.is_null() {
-            *encoding = encodingFinder.expect("non-null function pointer")(
-                enc,
-                val,
-                ptr.offset(-((*enc).minBytesPerChar as isize)),
-            );
-        }
-        if parsePseudoAttribute(
-            enc,
-            ptr,
-            end,
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
-            *badPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        if name.is_null() {
-            return 1 as ::core::ffi::c_int;
-        }
+        result.encoding_name = Some(attr.value);
+        result.encoding = Some(encodingFinder(
+            enc_ptr,
+            attr.value,
+            ptr.wrapping_offset(-(enc.minBytesPerChar as isize)),
+        ));
+        attr = match parsePseudoAttribute(enc, ptr, end) {
+            Ok(Some(attr)) => attr,
+            Ok(None) => return result,
+            Err(bad_ptr) => return result.fail(bad_ptr),
+        };
+        ptr = attr.next;
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        name,
-        nameEnd,
+    if enc.nameMatchesAscii.expect("non-null function pointer")(
+        enc_ptr,
+        attr.name,
+        attr.name_end,
         KW_standalone.as_ptr(),
     ) == 0
         || isGeneralTextEntity != 0
     {
-        *badPtr = name;
-        return 0 as ::core::ffi::c_int;
+        return result.fail(attr.name);
     }
-    if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        val,
-        ptr.offset(-((*enc).minBytesPerChar as isize)),
+    if enc.nameMatchesAscii.expect("non-null function pointer")(
+        enc_ptr,
+        attr.value,
+        ptr.wrapping_offset(-(enc.minBytesPerChar as isize)),
         KW_yes.as_ptr(),
     ) != 0
     {
-        if !standalone.is_null() {
-            *standalone = 1 as ::core::ffi::c_int;
-        }
-    } else if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-        enc,
-        val,
-        ptr.offset(-((*enc).minBytesPerChar as isize)),
+        result.standalone = Some(1 as ::core::ffi::c_int);
+    } else if enc.nameMatchesAscii.expect("non-null function pointer")(
+        enc_ptr,
+        attr.value,
+        ptr.wrapping_offset(-(enc.minBytesPerChar as isize)),
         KW_no.as_ptr(),
     ) != 0
     {
-        if !standalone.is_null() {
-            *standalone = 0 as ::core::ffi::c_int;
-        }
+        result.standalone = Some(0 as ::core::ffi::c_int);
     } else {
-        *badPtr = val;
-        return 0 as ::core::ffi::c_int;
+        return result.fail(attr.value);
     }
     while isSpace(toAscii(enc, ptr, end)) != 0 {
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
+        ptr = ptr.wrapping_offset(enc.minBytesPerChar as isize);
     }
     if ptr != end {
-        *badPtr = ptr;
-        return 0 as ::core::ffi::c_int;
+        return result.fail(ptr);
     }
-    return 1 as ::core::ffi::c_int;
+    return result;
 }
 
 fn checkCharRefNumber(result: ::core::ffi::c_int) -> ::core::ffi::c_int {
