@@ -4160,56 +4160,21 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn normal_isPublicId(
+    pub extern "C" fn normal_isPublicId(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut badPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        end = end.offset(-(1 as ::core::ffi::c_int as isize));
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut c2rust_current_block_8: u64;
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
-                | 30 | 19 | 23 => {
-                    c2rust_current_block_8 = 5143058163439228106;
-                }
-                21 => {
-                    if *ptr as ::core::ffi::c_int == 0x9 as ::core::ffi::c_int {
-                        *badPtr = ptr;
-                        return 0 as ::core::ffi::c_int;
-                    }
-                    c2rust_current_block_8 = 5143058163439228106;
-                }
-                26 | 22 => {
-                    if *ptr as ::core::ffi::c_int & !(0x7f as ::core::ffi::c_int) == 0 {
-                        c2rust_current_block_8 = 5143058163439228106;
-                    } else {
-                        c2rust_current_block_8 = 12979234177089312207;
-                    }
-                }
-                _ => {
-                    c2rust_current_block_8 = 12979234177089312207;
-                }
-            }
-            match c2rust_current_block_8 {
-                12979234177089312207 => match *ptr as ::core::ffi::c_int {
-                    36 | 64 => {}
-                    _ => {
-                        *badPtr = ptr;
-                        return 0 as ::core::ffi::c_int;
-                    }
-                },
-                _ => {}
-            }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-        }
-        return 1 as ::core::ffi::c_int;
+        super::is_public_id(
+            enc,
+            ptr,
+            end,
+            badPtr,
+            1,
+            super::normal_ascii_byte,
+            super::normal_encoded_byte_type,
+        )
     }
 
     pub unsafe extern "C" fn normal_getAtts(
@@ -8419,84 +8384,21 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_isPublicId(
+    pub extern "C" fn little2_isPublicId(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut badPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        end = end.offset(-(2 as ::core::ffi::c_int as isize));
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut c2rust_current_block_8: u64;
-            match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                )
-            } {
-                25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
-                | 30 | 19 | 23 => {
-                    c2rust_current_block_8 = 5143058163439228106;
-                }
-                21 => {
-                    if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                        && *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0x9 as ::core::ffi::c_int
-                    {
-                        *badPtr = ptr;
-                        return 0 as ::core::ffi::c_int;
-                    }
-                    c2rust_current_block_8 = 5143058163439228106;
-                }
-                26 | 22 => {
-                    if (if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    }) & !(0x7f as ::core::ffi::c_int)
-                        == 0
-                    {
-                        c2rust_current_block_8 = 5143058163439228106;
-                    } else {
-                        c2rust_current_block_8 = 4180602701773895618;
-                    }
-                }
-                _ => {
-                    c2rust_current_block_8 = 4180602701773895618;
-                }
-            }
-            match c2rust_current_block_8 {
-                4180602701773895618 => {
-                    match if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    } {
-                        36 | 64 => {}
-                        _ => {
-                            *badPtr = ptr;
-                            return 0 as ::core::ffi::c_int;
-                        }
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        return 1 as ::core::ffi::c_int;
+        super::is_public_id(
+            enc,
+            ptr,
+            end,
+            badPtr,
+            2,
+            super::little2_ascii_byte,
+            super::little2_encoded_byte_type,
+        )
     }
 
     pub unsafe extern "C" fn little2_getAtts(
@@ -12842,85 +12744,21 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn big2_isPublicId(
+    pub extern "C" fn big2_isPublicId(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
         mut end: *const ::core::ffi::c_char,
         mut badPtr: *mut *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        end = end.offset(-(2 as ::core::ffi::c_int as isize));
-        while end.offset_from(ptr) as ::core::ffi::c_long
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as ::core::ffi::c_long
-        {
-            let mut c2rust_current_block_8: u64;
-            match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-            {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(
-                    *ptr.offset(0 as ::core::ffi::c_int as isize),
-                    *ptr.offset(1 as ::core::ffi::c_int as isize),
-                )
-            } {
-                25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33
-                | 30 | 19 | 23 => {
-                    c2rust_current_block_8 = 5143058163439228106;
-                }
-                21 => {
-                    if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                        && *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0x9 as ::core::ffi::c_int
-                    {
-                        *badPtr = ptr;
-                        return 0 as ::core::ffi::c_int;
-                    }
-                    c2rust_current_block_8 = 5143058163439228106;
-                }
-                26 | 22 => {
-                    if (if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    }) & !(0x7f as ::core::ffi::c_int)
-                        == 0
-                    {
-                        c2rust_current_block_8 = 5143058163439228106;
-                    } else {
-                        c2rust_current_block_8 = 16806259742772502465;
-                    }
-                }
-                _ => {
-                    c2rust_current_block_8 = 16806259742772502465;
-                }
-            }
-            match c2rust_current_block_8 {
-                16806259742772502465 => {
-                    match if *ptr.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    } {
-                        36 | 64 => {}
-                        _ => {
-                            *badPtr = ptr;
-                            return 0 as ::core::ffi::c_int;
-                        }
-                    }
-                }
-                _ => {}
-            }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-        }
-        return 1 as ::core::ffi::c_int;
+        super::is_public_id(
+            enc,
+            ptr,
+            end,
+            badPtr,
+            2,
+            super::big2_ascii_byte,
+            super::big2_encoded_byte_type,
+        )
     }
 
     pub unsafe extern "C" fn big2_getAtts(
@@ -15031,6 +14869,102 @@ fn big2_ascii_byte(p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     } else {
         -1
     }
+}
+
+fn normal_encoded_byte_type(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    normal_byte_type(enc, utf8_byte(p, 0))
+}
+
+fn little2_encoded_byte_type(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    let lo = utf8_byte(p, 0);
+    let hi = utf8_byte(p, 1);
+    if hi == 0 {
+        normal_byte_type(enc, lo)
+    } else {
+        unicode_byte_type(
+            hi as ::core::ffi::c_uchar as ::core::ffi::c_char,
+            lo as ::core::ffi::c_uchar as ::core::ffi::c_char,
+        )
+    }
+}
+
+fn big2_encoded_byte_type(
+    enc: *const crate::src::xmltok::ENCODING,
+    p: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    let hi = utf8_byte(p, 0);
+    let lo = utf8_byte(p, 1);
+    if hi == 0 {
+        normal_byte_type(enc, lo)
+    } else {
+        unicode_byte_type(
+            hi as ::core::ffi::c_uchar as ::core::ffi::c_char,
+            lo as ::core::ffi::c_uchar as ::core::ffi::c_char,
+        )
+    }
+}
+
+fn public_id_type_is_allowed(t: ::core::ffi::c_int) -> bool {
+    matches!(
+        t,
+        25 | 24 | 27 | 13 | 31 | 32 | 34 | 35 | 17 | 14 | 15 | 9 | 10 | 18 | 16 | 33 | 30 | 19 | 23
+    )
+}
+
+fn set_bad_public_id_ptr(
+    bad_ptr: *mut *const ::core::ffi::c_char,
+    ptr: *const ::core::ffi::c_char,
+) {
+    unsafe {
+        *bad_ptr = ptr;
+    }
+}
+
+fn is_public_id(
+    enc: *const crate::src::xmltok::ENCODING,
+    mut ptr: *const ::core::ffi::c_char,
+    mut end: *const ::core::ffi::c_char,
+    bad_ptr: *mut *const ::core::ffi::c_char,
+    width: usize,
+    ascii_byte: fn(*const ::core::ffi::c_char) -> ::core::ffi::c_int,
+    byte_type: fn(
+        *const crate::src::xmltok::ENCODING,
+        *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int,
+) -> ::core::ffi::c_int {
+    ptr = ptr.wrapping_add(width);
+    end = end.wrapping_sub(width);
+    while byte_distance(ptr, end) >= width as ::core::ffi::c_long {
+        let c = ascii_byte(ptr);
+        match byte_type(enc, ptr) {
+            t if public_id_type_is_allowed(t) => {}
+            21 => {
+                if c == 0x9 {
+                    set_bad_public_id_ptr(bad_ptr, ptr);
+                    return 0;
+                }
+            }
+            26 | 22 => {
+                if c & !0x7f != 0 && !matches!(c, 36 | 64) {
+                    set_bad_public_id_ptr(bad_ptr, ptr);
+                    return 0;
+                }
+            }
+            _ if matches!(c, 36 | 64) => {}
+            _ => {
+                set_bad_public_id_ptr(bad_ptr, ptr);
+                return 0;
+            }
+        }
+        ptr = ptr.wrapping_add(width);
+    }
+    1
 }
 
 fn add_char_ref_hex_digit(result: &mut ::core::ffi::c_int, c: ::core::ffi::c_int) {
