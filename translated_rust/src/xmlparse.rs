@@ -128,65 +128,32 @@ pub mod siphash_h {
     pub unsafe extern "C" fn sip24_final(
         mut H: *mut crate::siphash_h::siphash,
     ) -> crate::stdlib::uint64_t {
-        let left: ::core::ffi::c_char = (*H)
-            .p
-            .offset_from(&raw mut (*H).buf as *mut ::core::ffi::c_uchar)
-            as ::core::ffi::c_char;
-        let mut b: crate::stdlib::uint64_t =
-            (*H).c.wrapping_add(left as crate::stdlib::uint64_t) << 56 as ::core::ffi::c_int;
-        's_46: {
-            'c_16515: {
-                'c_16514: {
-                    'c_16513: {
-                        'c_16512: {
-                            'c_16511: {
-                                match left as ::core::ffi::c_int {
-                                    7 => {
-                                        b |= ((*H).buf[6 as usize] as crate::stdlib::uint64_t)
-                                            << 48 as ::core::ffi::c_int;
-                                    }
-                                    6 => {}
-                                    5 => {
-                                        break 'c_16511;
-                                    }
-                                    4 => {
-                                        break 'c_16512;
-                                    }
-                                    3 => {
-                                        break 'c_16513;
-                                    }
-                                    2 => {
-                                        break 'c_16514;
-                                    }
-                                    1 => {
-                                        break 'c_16515;
-                                    }
-                                    0 | _ => {
-                                        break 's_46;
-                                    }
-                                }
-                                b |= ((*H).buf[5 as usize] as crate::stdlib::uint64_t)
-                                    << 40 as ::core::ffi::c_int;
-                            }
-                            b |= ((*H).buf[4 as usize] as crate::stdlib::uint64_t)
-                                << 32 as ::core::ffi::c_int;
-                        }
-                        b |= ((*H).buf[3 as usize] as crate::stdlib::uint64_t)
-                            << 24 as ::core::ffi::c_int;
-                    }
-                    b |= ((*H).buf[2 as usize] as crate::stdlib::uint64_t)
-                        << 16 as ::core::ffi::c_int;
+        let b = {
+            let state = &mut *H;
+            let left = state.p.offset_from(state.buf.as_mut_ptr()) as ::core::ffi::c_char;
+            let mut b = state.c.wrapping_add(left as crate::stdlib::uint64_t)
+                << 56 as ::core::ffi::c_int;
+            if (0..=7).contains(&(left as ::core::ffi::c_int)) {
+                for index in 0..left as usize {
+                    b |= (state.buf[index] as crate::stdlib::uint64_t)
+                        << (index * 8) as ::core::ffi::c_int;
                 }
-                b |= ((*H).buf[1 as usize] as crate::stdlib::uint64_t) << 8 as ::core::ffi::c_int;
             }
-            b |= ((*H).buf[0 as usize] as crate::stdlib::uint64_t) << 0 as ::core::ffi::c_int;
+            b
+        };
+        {
+            let state = &mut *H;
+            state.v3 ^= b;
         }
-        (*H).v3 ^= b;
         sip_round(H, 2 as ::core::ffi::c_int);
-        (*H).v0 ^= b;
-        (*H).v2 ^= 0xff as crate::stdlib::uint64_t;
+        {
+            let state = &mut *H;
+            state.v0 ^= b;
+            state.v2 ^= 0xff as crate::stdlib::uint64_t;
+        }
         sip_round(H, 4 as ::core::ffi::c_int);
-        return (*H).v0 ^ (*H).v1 ^ (*H).v2 ^ (*H).v3;
+        let state = &*H;
+        return state.v0 ^ state.v1 ^ state.v2 ^ state.v3;
     }
 
     pub unsafe extern "C" fn siphash24(
@@ -1521,6 +1488,22 @@ macro_rules! handler_arg_from_state {
     }};
 }
 
+trait NotStandaloneCallback: Send + Sync {
+    unsafe fn invoke(&self, parser: &XML_ParserStruct) -> ::core::ffi::c_int;
+}
+
+impl NotStandaloneCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ::core::ffi::c_int {
+    unsafe fn invoke(&self, parser: &XML_ParserStruct) -> ::core::ffi::c_int {
+        self(handler_arg_from_state!(parser))
+    }
+}
+
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether a not-standalone callback is installed.
+static NOT_STANDALONE_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn NotStandaloneCallback>>>,
+> = std::sync::OnceLock::new();
+
 unsafe fn callCharacterDataHandler(
     parser: crate::expat_h::XML_Parser,
     data: *const crate::expat_external_h::XML_Char,
@@ -2135,7 +2118,7 @@ pub struct XML_ParserStruct {
     pub m_notationDeclHandler: bool,
     pub m_startNamespaceDeclHandler: bool,
     pub m_endNamespaceDeclHandler: bool,
-    pub m_notStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler,
+    pub m_notStandaloneHandler: bool,
     pub m_externalEntityRefHandler: bool,
     pub m_externalEntityRefHandlerArg: crate::expat_h::XML_Parser,
     pub m_skippedEntityHandler: bool,
@@ -3906,7 +3889,7 @@ fn initial_parser_struct(
         m_notationDeclHandler: false,
         m_startNamespaceDeclHandler: false,
         m_endNamespaceDeclHandler: false,
-        m_notStandaloneHandler: None,
+        m_notStandaloneHandler: false,
         m_externalEntityRefHandler: false,
         m_externalEntityRefHandlerArg: ::core::ptr::null_mut::<XML_ParserStruct>(),
         m_skippedEntityHandler: false,
@@ -4340,7 +4323,12 @@ fn parser_init(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
-    parser.m_notStandaloneHandler = None;
+    parser.m_notStandaloneHandler = false;
+    NOT_STANDALONE_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
     parser.m_externalEntityRefHandler = false;
     EXTERNAL_ENTITY_REF_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -4647,7 +4635,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldEndNamespaceDeclHandler = false;
     let mut oldEndNamespaceDeclCallback: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>> =
         None;
-    let mut oldNotStandaloneHandler: crate::expat_h::XML_NotStandaloneHandler = None;
+    let mut oldNotStandaloneHandler = false;
+    let mut oldNotStandaloneCallback: Option<std::sync::Arc<dyn NotStandaloneCallback>> = None;
     let mut oldExternalEntityRefHandler: Option<std::sync::Arc<dyn ExternalEntityRefCallback>> =
         None;
     let mut oldSkippedEntityCallback: Option<std::sync::Arc<dyn SkippedEntityCallback>> = None;
@@ -4753,6 +4742,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .get(&(parser as usize))
         .cloned();
     oldNotStandaloneHandler = (*parser).m_notStandaloneHandler;
+    oldNotStandaloneCallback = NOT_STANDALONE_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldExternalEntityRefHandler = EXTERNAL_ENTITY_REF_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -4922,6 +4917,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
             .insert(parser as usize, callback);
     }
     (*parser).m_notStandaloneHandler = oldNotStandaloneHandler;
+    if let Some(callback) = oldNotStandaloneCallback {
+        NOT_STANDALONE_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_externalEntityRefHandler = oldExternalEntityRefHandler.is_some();
     if let Some(callback) = oldExternalEntityRefHandler {
         EXTERNAL_ENTITY_REF_HANDLERS
@@ -6022,8 +6024,21 @@ pub unsafe extern "C" fn XML_SetNotStandaloneHandler(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_NotStandaloneHandler,
 ) {
-    if !parser.is_null() {
-        (*parser).m_notStandaloneHandler = handler;
+    if parser.is_null() {
+        return;
+    }
+    (*parser).m_notStandaloneHandler = handler.is_some();
+    let mut handlers = NOT_STANDALONE_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match handler {
+        Some(callback) => {
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        }
+        None => {
+            handlers.remove(&(parser as usize));
+        }
     }
 }
 #[export_name = "XML_SetNotStandaloneHandler"]
@@ -11385,16 +11400,18 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 if (*dtd).paramEntityRead != 0 {
                                                     if (*dtd).standalone == 0
-                                                        && (*parser)
-                                                            .m_notStandaloneHandler
-                                                            .is_some()
-                                                        && (*parser)
-                                                            .m_notStandaloneHandler
-                                                            .expect("non-null function pointer")(
-                                                            handler_arg_from_state!(parser),
-                                                        ) == 0
+                                                        && (*parser).m_notStandaloneHandler
                                                     {
+                                                        let callback = NOT_STANDALONE_HANDLERS
+                                                            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                            .lock()
+                                                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                            .get(&(parser as *mut XML_ParserStruct as usize))
+                                                            .cloned()
+                                                            .expect("installed not-standalone handler");
+                                                        if callback.invoke(&*parser) == 0 {
                                                         return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                                        }
                                                     }
                                                 } else if !(*parser).m_doctypeSysid.is_present() {
                                                     (*dtd).hasParamEntityRefs = hadParamEntityRefs;
@@ -11465,16 +11482,18 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 if (*dtd).paramEntityRead != 0 {
                                                     if (*dtd).standalone == 0
-                                                        && (*parser)
-                                                            .m_notStandaloneHandler
-                                                            .is_some()
-                                                        && (*parser)
-                                                            .m_notStandaloneHandler
-                                                            .expect("non-null function pointer")(
-                                                            handler_arg_from_state!(parser),
-                                                        ) == 0
+                                                        && (*parser).m_notStandaloneHandler
                                                     {
+                                                        let callback = NOT_STANDALONE_HANDLERS
+                                                            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                            .lock()
+                                                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                            .get(&(parser as *mut XML_ParserStruct as usize))
+                                                            .cloned()
+                                                            .expect("installed not-standalone handler");
+                                                        if callback.invoke(&*parser) == 0 {
                                                         return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                                        }
                                                     }
                                                 } else {
                                                     (*dtd).hasParamEntityRefs =
@@ -12100,14 +12119,18 @@ unsafe extern "C" fn doProlog(
                                         }
                                         if (*dtd).standalone == 0
                                             && (*parser).m_paramEntityParsing as u64 == 0
-                                            && (*parser).m_notStandaloneHandler.is_some()
-                                            && (*parser)
-                                                .m_notStandaloneHandler
-                                                .expect("non-null function pointer")(
-                                                handler_arg_from_state!(parser),
-                                            ) == 0
+                                            && (*parser).m_notStandaloneHandler
                                         {
+                                            let callback = NOT_STANDALONE_HANDLERS
+                                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                .get(&(parser as *mut XML_ParserStruct as usize))
+                                                .cloned()
+                                                .expect("installed not-standalone handler");
+                                            if callback.invoke(&*parser) == 0 {
                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                            }
                                         }
                                         if (*parser).m_declEntity.is_none() {
                                             let entity = lookup(
@@ -13095,14 +13118,18 @@ unsafe extern "C" fn doProlog(
                                             }
                                         }
                                         if (*dtd).standalone == 0
-                                            && (*parser).m_notStandaloneHandler.is_some()
-                                            && (*parser)
-                                                .m_notStandaloneHandler
-                                                .expect("non-null function pointer")(
-                                                handler_arg_from_state!(parser),
-                                            ) == 0
+                                            && (*parser).m_notStandaloneHandler
                                         {
+                                            let callback = NOT_STANDALONE_HANDLERS
+                                                .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                .get(&(parser as *mut XML_ParserStruct as usize))
+                                                .cloned()
+                                                .expect("installed not-standalone handler");
+                                            if callback.invoke(&*parser) == 0 {
                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
+                                            }
                                         }
                                         break 's_2375;
                                     }
