@@ -5587,7 +5587,10 @@ fn expat_apply_reallocation_tracking(
     }
 }
 
-pub unsafe extern "C" fn expat_realloc(
+/// Internal allocator implementation behind the exported `expat_realloc`
+/// boundary.  It deliberately keeps the assertion and allocator interaction
+/// out of `expat_realloc_ffi`, whose only job is to dispatch the ABI call.
+unsafe fn expat_realloc(
     mut parser: crate::expat_h::XML_Parser,
     mut ptr: *mut ::core::ffi::c_void,
     mut size: crate::__stddef_size_t_h::size_t,
