@@ -1525,8 +1525,9 @@ pub type Processor = unsafe extern "C" fn(
 #[repr(C)]
 
 pub struct HASH_TABLE_ITER {
-    pub p: *mut *mut NAMED,
-    pub end: *mut *mut NAMED,
+    pub entries: *mut *mut NAMED,
+    pub size: crate::__stddef_size_t_h::size_t,
+    pub index: crate::__stddef_size_t_h::size_t,
 }
 
 pub type XML_Account = ::core::ffi::c_uint;
@@ -5315,7 +5316,7 @@ unsafe extern "C" fn doContent(
                     }
                     entity = lookup(
                         parser,
-                        &raw mut (*dtd).generalEntities,
+                        &mut (*dtd).generalEntities,
                         name as KEY,
                         0 as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
@@ -6002,7 +6003,7 @@ unsafe extern "C" fn storeAtts(
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     elementType = lookup(
         parser,
-        &raw mut (*dtd).elementTypes,
+        &mut (*dtd).elementTypes,
         (*tagNamePtr).str as KEY,
         0 as crate::__stddef_size_t_h::size_t,
     ) as *mut ELEMENT_TYPE;
@@ -6014,7 +6015,7 @@ unsafe extern "C" fn storeAtts(
         }
         elementType = lookup(
             parser,
-            &raw mut (*dtd).elementTypes,
+            &mut (*dtd).elementTypes,
             name as KEY,
             ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
         ) as *mut ELEMENT_TYPE;
@@ -6310,14 +6311,15 @@ unsafe extern "C" fn storeAtts(
                     c: 0,
                 };
                 let mut sip_key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-                copy_salt_to_sipkey(parser, &mut sip_key);
+                sip_key.k[0] = 0 as crate::stdlib::uint64_t;
+                sip_key.k[1] = get_hash_secret_salt(parser) as crate::stdlib::uint64_t;
                 sip24_init(&mut sip_state, &sip_key);
                 *(s as *mut crate::expat_external_h::XML_Char)
                     .offset(-1 as ::core::ffi::c_int as isize) =
                     0 as crate::expat_external_h::XML_Char;
                 id = lookup(
                     parser,
-                    &raw mut (*dtd).attributeIds,
+                    &mut (*dtd).attributeIds,
                     s as KEY,
                     0 as crate::__stddef_size_t_h::size_t,
                 ) as *mut ATTRIBUTE_ID;
@@ -8051,7 +8053,7 @@ unsafe extern "C" fn doProlog(
                 (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
                 (*parser).m_declEntity = lookup(
                     parser,
-                    &raw mut (*dtd).paramEntities,
+                    &mut (*dtd).paramEntities,
                     &raw const externalSubsetName as KEY,
                     ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                 ) as *mut ENTITY;
@@ -8118,7 +8120,7 @@ unsafe extern "C" fn doProlog(
                     {
                         let mut entity: *mut ENTITY = lookup(
                             parser,
-                            &raw mut (*dtd).paramEntities,
+                            &mut (*dtd).paramEntities,
                             &raw const externalSubsetName as KEY,
                             ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                         ) as *mut ENTITY;
@@ -8178,7 +8180,7 @@ unsafe extern "C" fn doProlog(
                     {
                         let mut entity_0: *mut ENTITY = lookup(
                             parser,
-                            &raw mut (*dtd).paramEntities,
+                            &mut (*dtd).paramEntities,
                             &raw const externalSubsetName as KEY,
                             ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                         ) as *mut ENTITY;
@@ -8567,7 +8569,7 @@ unsafe extern "C" fn doProlog(
                 if (*parser).m_declEntity.is_null() {
                     (*parser).m_declEntity = lookup(
                         parser,
-                        &raw mut (*dtd).paramEntities,
+                        &mut (*dtd).paramEntities,
                         &raw const externalSubsetName as KEY,
                         ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
@@ -8663,7 +8665,7 @@ unsafe extern "C" fn doProlog(
                     }
                     (*parser).m_declEntity = lookup(
                         parser,
-                        &raw mut (*dtd).generalEntities,
+                        &mut (*dtd).generalEntities,
                         name as KEY,
                         ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
@@ -8702,7 +8704,7 @@ unsafe extern "C" fn doProlog(
                     }
                     (*parser).m_declEntity = lookup(
                         parser,
-                        &raw mut (*dtd).paramEntities,
+                        &mut (*dtd).paramEntities,
                         name_0 as KEY,
                         ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
@@ -9020,7 +9022,7 @@ unsafe extern "C" fn doProlog(
                     }
                     entity_1 = lookup(
                         parser,
-                        &raw mut (*dtd).paramEntities,
+                        &mut (*dtd).paramEntities,
                         name_1 as KEY,
                         0 as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
@@ -10065,7 +10067,7 @@ unsafe extern "C" fn appendAttributeValue(
                     }
                     entity = lookup(
                         parser,
-                        &raw mut (*dtd).generalEntities,
+                        &mut (*dtd).generalEntities,
                         name as KEY,
                         0 as crate::__stddef_size_t_h::size_t,
                     ) as *mut ENTITY;
@@ -10232,7 +10234,7 @@ unsafe extern "C" fn storeEntityValue(
                         } else {
                             entity = lookup(
                                 parser,
-                                &raw mut (*dtd).paramEntities,
+                                &mut (*dtd).paramEntities,
                                 name as KEY,
                                 0 as crate::__stddef_size_t_h::size_t,
                             ) as *mut ENTITY;
@@ -10771,7 +10773,7 @@ unsafe extern "C" fn setElementTypePrefix(
             }
             prefix = lookup(
                 parser,
-                &raw mut (*dtd).prefixes,
+                &mut (*dtd).prefixes,
                 (*dtd).pool.start as KEY,
                 ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
             ) as *mut PREFIX;
@@ -10822,7 +10824,7 @@ unsafe extern "C" fn getAttributeId(
     name = name.offset(1);
     id = lookup(
         parser,
-        &raw mut (*dtd).attributeIds,
+        &mut (*dtd).attributeIds,
         name as KEY,
         ::core::mem::size_of::<ATTRIBUTE_ID>() as crate::__stddef_size_t_h::size_t,
     ) as *mut ATTRIBUTE_ID;
@@ -10856,7 +10858,7 @@ unsafe extern "C" fn getAttributeId(
                 } else {
                     (*id).prefix = lookup(
                         parser,
-                        &raw mut (*dtd).prefixes,
+                        &mut (*dtd).prefixes,
                         name.offset(6 as ::core::ffi::c_int as isize),
                         ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
                     ) as *mut PREFIX;
@@ -10903,7 +10905,7 @@ unsafe extern "C" fn getAttributeId(
                         }
                         (*id).prefix = lookup(
                             parser,
-                            &raw mut (*dtd).prefixes,
+                            &mut (*dtd).prefixes,
                             (*dtd).pool.start as KEY,
                             ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
                         ) as *mut PREFIX;
@@ -10933,8 +10935,9 @@ unsafe extern "C" fn getContext(
 ) -> *const crate::expat_external_h::XML_Char {
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        entries: ::core::ptr::null_mut::<*mut NAMED>(),
+        size: 0 as crate::__stddef_size_t_h::size_t,
+        index: 0 as crate::__stddef_size_t_h::size_t,
     };
     let mut needSep: crate::expat_h::XML_Bool = crate::expat_h::XML_FALSE;
     if !(*dtd).defaultPrefix.binding.is_null() {
@@ -10984,7 +10987,7 @@ unsafe extern "C" fn getContext(
         let mut len_0: ::core::ffi::c_int = 0;
         let mut s: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut prefix: *mut PREFIX = hashTableIterNext(&raw mut iter) as *mut PREFIX;
+        let mut prefix: *mut PREFIX = hashTableIterNext(&mut iter) as *mut PREFIX;
         if prefix.is_null() {
             break;
         }
@@ -11066,7 +11069,7 @@ unsafe extern "C" fn getContext(
     loop {
         let mut s_0: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut e: *mut ENTITY = hashTableIterNext(&raw mut iter) as *mut ENTITY;
+        let mut e: *mut ENTITY = hashTableIterNext(&mut iter) as *mut ENTITY;
         if e.is_null() {
             break;
         }
@@ -11155,7 +11158,7 @@ unsafe extern "C" fn setContext(
             }
             e = lookup(
                 parser,
-                &raw mut (*dtd).generalEntities,
+                &mut (*dtd).generalEntities,
                 (*parser).m_tempPool.start as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ENTITY;
@@ -11193,7 +11196,7 @@ unsafe extern "C" fn setContext(
                 }
                 prefix = lookup(
                     parser,
-                    &raw mut (*dtd).prefixes,
+                    &mut (*dtd).prefixes,
                     (*parser).m_tempPool.start as KEY,
                     ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
                 ) as *mut PREFIX;
@@ -11349,12 +11352,13 @@ unsafe extern "C" fn dtdCreate(mut parser: crate::expat_h::XML_Parser) -> *mut D
 
 unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_Parser) {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        entries: ::core::ptr::null_mut::<*mut NAMED>(),
+        size: 0 as crate::__stddef_size_t_h::size_t,
+        index: 0 as crate::__stddef_size_t_h::size_t,
     };
     hashTableIterInit(&mut iter, &(*p).elementTypes);
     loop {
-        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
+        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&mut iter) as *mut ELEMENT_TYPE;
         if e.is_null() {
             break;
         }
@@ -11366,12 +11370,12 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_P
             );
         }
     }
-    hashTableClear(&raw mut (*p).generalEntities);
+    hashTableClear(&mut (*p).generalEntities);
     (*p).paramEntityRead = crate::expat_h::XML_FALSE;
-    hashTableClear(&raw mut (*p).paramEntities);
-    hashTableClear(&raw mut (*p).elementTypes);
-    hashTableClear(&raw mut (*p).attributeIds);
-    hashTableClear(&raw mut (*p).prefixes);
+    hashTableClear(&mut (*p).paramEntities);
+    hashTableClear(&mut (*p).elementTypes);
+    hashTableClear(&mut (*p).attributeIds);
+    hashTableClear(&mut (*p).prefixes);
     poolClear(&raw mut (*p).pool);
     poolClear(&raw mut (*p).entityValuePool);
     (*p).defaultPrefix.name = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -11404,12 +11408,13 @@ unsafe extern "C" fn dtdDestroy(
     mut parser: crate::expat_h::XML_Parser,
 ) {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        entries: ::core::ptr::null_mut::<*mut NAMED>(),
+        size: 0 as crate::__stddef_size_t_h::size_t,
+        index: 0 as crate::__stddef_size_t_h::size_t,
     };
     hashTableIterInit(&mut iter, &(*p).elementTypes);
     loop {
-        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
+        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&mut iter) as *mut ELEMENT_TYPE;
         if e.is_null() {
             break;
         }
@@ -11421,11 +11426,11 @@ unsafe extern "C" fn dtdDestroy(
             );
         }
     }
-    hashTableDestroy(&raw mut (*p).generalEntities);
-    hashTableDestroy(&raw mut (*p).paramEntities);
-    hashTableDestroy(&raw mut (*p).elementTypes);
-    hashTableDestroy(&raw mut (*p).attributeIds);
-    hashTableDestroy(&raw mut (*p).prefixes);
+    hashTableDestroy(&mut (*p).generalEntities);
+    hashTableDestroy(&mut (*p).paramEntities);
+    hashTableDestroy(&mut (*p).elementTypes);
+    hashTableDestroy(&mut (*p).attributeIds);
+    hashTableDestroy(&mut (*p).prefixes);
     poolDestroy(&raw mut (*p).pool);
     poolDestroy(&raw mut (*p).entityValuePool);
     if isDocEntity != 0 {
@@ -11454,14 +11459,15 @@ unsafe extern "C" fn dtdCopy(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        entries: ::core::ptr::null_mut::<*mut NAMED>(),
+        size: 0 as crate::__stddef_size_t_h::size_t,
+        index: 0 as crate::__stddef_size_t_h::size_t,
     };
     hashTableIterInit(&mut iter, &(*oldDtd).prefixes);
     loop {
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldP: *const PREFIX = hashTableIterNext(&raw mut iter) as *mut PREFIX;
+        let mut oldP: *const PREFIX = hashTableIterNext(&mut iter) as *mut PREFIX;
         if oldP.is_null() {
             break;
         }
@@ -11471,7 +11477,7 @@ unsafe extern "C" fn dtdCopy(
         }
         if lookup(
             oldParser,
-            &raw mut (*newDtd).prefixes,
+            &mut (*newDtd).prefixes,
             name as KEY,
             ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
         )
@@ -11485,7 +11491,7 @@ unsafe extern "C" fn dtdCopy(
         let mut newA: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
         let mut name_0: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldA: *const ATTRIBUTE_ID = hashTableIterNext(&raw mut iter) as *mut ATTRIBUTE_ID;
+        let mut oldA: *const ATTRIBUTE_ID = hashTableIterNext(&mut iter) as *mut ATTRIBUTE_ID;
         if oldA.is_null() {
             break;
         }
@@ -11509,7 +11515,7 @@ unsafe extern "C" fn dtdCopy(
         name_0 = name_0.offset(1);
         newA = lookup(
             oldParser,
-            &raw mut (*newDtd).attributeIds,
+            &mut (*newDtd).attributeIds,
             name_0 as KEY,
             ::core::mem::size_of::<ATTRIBUTE_ID>() as crate::__stddef_size_t_h::size_t,
         ) as *mut ATTRIBUTE_ID;
@@ -11524,7 +11530,7 @@ unsafe extern "C" fn dtdCopy(
             } else {
                 (*newA).prefix = lookup(
                     oldParser,
-                    &raw mut (*newDtd).prefixes,
+                    &mut (*newDtd).prefixes,
                     (*(*oldA).prefix).name as KEY,
                     0 as crate::__stddef_size_t_h::size_t,
                 ) as *mut PREFIX;
@@ -11537,7 +11543,7 @@ unsafe extern "C" fn dtdCopy(
         let mut newE: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
         let mut name_1: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
+        let mut oldE: *const ELEMENT_TYPE = hashTableIterNext(&mut iter) as *mut ELEMENT_TYPE;
         if oldE.is_null() {
             break;
         }
@@ -11547,7 +11553,7 @@ unsafe extern "C" fn dtdCopy(
         }
         newE = lookup(
             oldParser,
-            &raw mut (*newDtd).elementTypes,
+            &mut (*newDtd).elementTypes,
             name_1 as KEY,
             ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
         ) as *mut ELEMENT_TYPE;
@@ -11569,7 +11575,7 @@ unsafe extern "C" fn dtdCopy(
         if !(*oldE).idAtt.is_null() {
             (*newE).idAtt = lookup(
                 oldParser,
-                &raw mut (*newDtd).attributeIds,
+                &mut (*newDtd).attributeIds,
                 (*(*oldE).idAtt).name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ATTRIBUTE_ID;
@@ -11579,7 +11585,7 @@ unsafe extern "C" fn dtdCopy(
         if !(*oldE).prefix.is_null() {
             (*newE).prefix = lookup(
                 oldParser,
-                &raw mut (*newDtd).prefixes,
+                &mut (*newDtd).prefixes,
                 (*(*oldE).prefix).name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut PREFIX;
@@ -11589,7 +11595,7 @@ unsafe extern "C" fn dtdCopy(
             let ref mut c2rust_fresh82 = (*(*newE).defaultAtts.offset(i as isize)).id;
             *c2rust_fresh82 = lookup(
                 oldParser,
-                &raw mut (*newDtd).attributeIds,
+                &mut (*newDtd).attributeIds,
                 (*(*(*oldE).defaultAtts.offset(i as isize)).id).name as KEY,
                 0 as crate::__stddef_size_t_h::size_t,
             ) as *mut ATTRIBUTE_ID;
@@ -11613,7 +11619,7 @@ unsafe extern "C" fn dtdCopy(
     }
     if copyEntityTable(
         oldParser,
-        &raw mut (*newDtd).generalEntities,
+        &mut (*newDtd).generalEntities,
         &raw mut (*newDtd).pool,
         &raw const (*oldDtd).generalEntities,
     ) == 0
@@ -11622,7 +11628,7 @@ unsafe extern "C" fn dtdCopy(
     }
     if copyEntityTable(
         oldParser,
-        &raw mut (*newDtd).paramEntities,
+        &mut (*newDtd).paramEntities,
         &raw mut (*newDtd).pool,
         &raw const (*oldDtd).paramEntities,
     ) == 0
@@ -11649,8 +11655,9 @@ unsafe extern "C" fn copyEntityTable(
     mut oldTable: *const HASH_TABLE,
 ) -> ::core::ffi::c_int {
     let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
+        entries: ::core::ptr::null_mut::<*mut NAMED>(),
+        size: 0 as crate::__stddef_size_t_h::size_t,
+        index: 0 as crate::__stddef_size_t_h::size_t,
     };
     let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
@@ -11661,7 +11668,7 @@ unsafe extern "C" fn copyEntityTable(
         let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ENTITY = hashTableIterNext(&raw mut iter) as *mut ENTITY;
+        let mut oldE: *const ENTITY = hashTableIterNext(&mut iter) as *mut ENTITY;
         if oldE.is_null() {
             break;
         }
@@ -11671,7 +11678,7 @@ unsafe extern "C" fn copyEntityTable(
         }
         newE = lookup(
             oldParser,
-            newTable,
+            &mut *newTable,
             name as KEY,
             ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
         ) as *mut ENTITY;
@@ -11742,18 +11749,7 @@ fn key_len(s: &::core::ffi::CStr) -> crate::__stddef_size_t_h::size_t {
     s.to_bytes().len() as crate::__stddef_size_t_h::size_t
 }
 
-unsafe fn copy_salt_to_sipkey(
-    parser: crate::expat_h::XML_Parser,
-    key: &mut crate::siphash_h::sipkey,
-) {
-    key.k[0] = 0 as crate::stdlib::uint64_t;
-    key.k[1] = get_hash_secret_salt(parser) as crate::stdlib::uint64_t;
-}
-
-unsafe extern "C" fn hash(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: KEY,
-) -> ::core::ffi::c_ulong {
+fn hash(mut parser: crate::expat_h::XML_Parser, mut s: KEY) -> ::core::ffi::c_ulong {
     let mut state: crate::siphash_h::siphash = crate::siphash_h::siphash {
         v0: 0,
         v1: 0,
@@ -11764,66 +11760,72 @@ unsafe extern "C" fn hash(
         c: 0,
     };
     let mut key: crate::siphash_h::sipkey = crate::siphash_h::sipkey { k: [0; 2] };
-    copy_salt_to_sipkey(parser, &mut key);
+    key.k[0] = 0 as crate::stdlib::uint64_t;
+    key.k[1] = unsafe { get_hash_secret_salt(parser) } as crate::stdlib::uint64_t;
     sip24_init(&mut state, &key);
-    sip24_update(&mut state, ::core::ffi::CStr::from_ptr(s).to_bytes());
+    sip24_update(
+        &mut state,
+        unsafe { ::core::ffi::CStr::from_ptr(s) }.to_bytes(),
+    );
     return sip24_final(&mut state) as ::core::ffi::c_ulong;
 }
 
-unsafe extern "C" fn lookup(
+fn lookup(
     mut parser: crate::expat_h::XML_Parser,
-    mut table: *mut HASH_TABLE,
+    table: &mut HASH_TABLE,
     mut name: KEY,
     mut createSize: crate::__stddef_size_t_h::size_t,
 ) -> *mut NAMED {
     let mut i: crate::__stddef_size_t_h::size_t = 0;
-    if (*table).size == 0 as crate::__stddef_size_t_h::size_t {
+    if table.size == 0 as crate::__stddef_size_t_h::size_t {
         let mut tsize: crate::__stddef_size_t_h::size_t = 0;
         if createSize == 0 {
             return ::core::ptr::null_mut::<NAMED>();
         }
-        (*table).power = INIT_POWER as ::core::ffi::c_uchar;
-        (*table).size = (1 as ::core::ffi::c_int as crate::__stddef_size_t_h::size_t) << INIT_POWER;
-        tsize = (*table)
+        table.power = INIT_POWER as ::core::ffi::c_uchar;
+        table.size = (1 as ::core::ffi::c_int as crate::__stddef_size_t_h::size_t) << INIT_POWER;
+        tsize = table
             .size
             .wrapping_mul(::core::mem::size_of::<*mut NAMED>() as crate::__stddef_size_t_h::size_t);
-        (*table).v =
-            expat_malloc((*table).parser, tsize, 7845 as ::core::ffi::c_int) as *mut *mut NAMED;
-        if (*table).v.is_null() {
-            (*table).size = 0 as crate::__stddef_size_t_h::size_t;
+        table.v = unsafe { expat_malloc(table.parser, tsize, 7845 as ::core::ffi::c_int) }
+            as *mut *mut NAMED;
+        if table.v.is_null() {
+            table.size = 0 as crate::__stddef_size_t_h::size_t;
             return ::core::ptr::null_mut::<NAMED>();
         }
-        crate::stdlib::memset(
-            (*table).v as *mut ::core::ffi::c_void,
-            0 as ::core::ffi::c_int,
-            tsize,
-        );
+        unsafe {
+            crate::stdlib::memset(
+                table.v as *mut ::core::ffi::c_void,
+                0 as ::core::ffi::c_int,
+                tsize,
+            );
+        }
         i = (hash(parser, name)
-            & ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
+            & (table.size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong))
             as crate::__stddef_size_t_h::size_t;
     } else {
         let mut h: ::core::ffi::c_ulong = hash(parser, name);
         let mut mask: ::core::ffi::c_ulong =
-            ((*table).size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
+            (table.size as ::core::ffi::c_ulong).wrapping_sub(1 as ::core::ffi::c_ulong);
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
+        let slots = unsafe { ::core::slice::from_raw_parts(table.v, table.size) };
         i = (h & mask) as crate::__stddef_size_t_h::size_t;
-        while !(*(*table).v.offset(i as isize)).is_null() {
-            if key_eq(
-                ::core::ffi::CStr::from_ptr(name),
-                ::core::ffi::CStr::from_ptr((**(*table).v.offset(i as isize)).name),
-            ) != 0
+        while !slots[i as usize].is_null() {
+            let named = slots[i as usize];
+            if key_eq(unsafe { ::core::ffi::CStr::from_ptr(name) }, unsafe {
+                ::core::ffi::CStr::from_ptr((*named).name)
+            }) != 0
             {
-                return *(*table).v.offset(i as isize);
+                return named;
             }
             if step == 0 {
-                step = ((h & !mask)
-                    >> (*table).power as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                step = ((h & !mask) >> table.power as ::core::ffi::c_int - 1 as ::core::ffi::c_int
                     & mask >> 2 as ::core::ffi::c_int
                     | 1 as ::core::ffi::c_ulong) as ::core::ffi::c_uchar;
             }
             if i < step as crate::__stddef_size_t_h::size_t {
                 i = i.wrapping_add(
-                    (*table)
+                    table
                         .size
                         .wrapping_sub(step as crate::__stddef_size_t_h::size_t),
                 );
@@ -11834,8 +11836,8 @@ unsafe extern "C" fn lookup(
         if createSize == 0 {
             return ::core::ptr::null_mut::<NAMED>();
         }
-        if (*table).used >> (*table).power as ::core::ffi::c_int - 1 as ::core::ffi::c_int != 0 {
-            let mut newPower: ::core::ffi::c_uchar = ((*table).power as ::core::ffi::c_int
+        if table.used >> table.power as ::core::ffi::c_int - 1 as ::core::ffi::c_int != 0 {
+            let mut newPower: ::core::ffi::c_uchar = (table.power as ::core::ffi::c_int
                 + 1 as ::core::ffi::c_int)
                 as ::core::ffi::c_uchar;
             if newPower as usize
@@ -11859,26 +11861,29 @@ unsafe extern "C" fn lookup(
                 ::core::mem::size_of::<*mut NAMED>() as crate::__stddef_size_t_h::size_t,
             );
             let mut newV: *mut *mut NAMED =
-                expat_malloc((*table).parser, tsize_0, 7885 as ::core::ffi::c_int)
+                unsafe { expat_malloc(table.parser, tsize_0, 7885 as ::core::ffi::c_int) }
                     as *mut *mut NAMED;
             if newV.is_null() {
                 return ::core::ptr::null_mut::<NAMED>();
             }
-            crate::stdlib::memset(
-                newV as *mut ::core::ffi::c_void,
-                0 as ::core::ffi::c_int,
-                tsize_0,
-            );
+            unsafe {
+                crate::stdlib::memset(
+                    newV as *mut ::core::ffi::c_void,
+                    0 as ::core::ffi::c_int,
+                    tsize_0,
+                );
+            }
+            let new_slots = unsafe { ::core::slice::from_raw_parts_mut(newV, newSize) };
             i = 0 as crate::__stddef_size_t_h::size_t;
-            while i < (*table).size {
-                if !(*(*table).v.offset(i as isize)).is_null() {
-                    let mut newHash: ::core::ffi::c_ulong =
-                        hash(parser, (**(*table).v.offset(i as isize)).name);
+            while i < table.size {
+                if !slots[i as usize].is_null() {
+                    let named = slots[i as usize];
+                    let mut newHash: ::core::ffi::c_ulong = hash(parser, unsafe { (*named).name });
                     let mut j: crate::__stddef_size_t_h::size_t = newHash
                         as crate::__stddef_size_t_h::size_t
                         & newMask as crate::__stddef_size_t_h::size_t;
                     step = 0 as ::core::ffi::c_uchar;
-                    while !(*newV.offset(j as isize)).is_null() {
+                    while !new_slots[j as usize].is_null() {
                         if step == 0 {
                             step = ((newHash & !newMask)
                                 >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
@@ -11894,22 +11899,24 @@ unsafe extern "C" fn lookup(
                             j = j.wrapping_sub(step as crate::__stddef_size_t_h::size_t);
                         };
                     }
-                    let ref mut c2rust_fresh17 = *newV.offset(j as isize);
-                    *c2rust_fresh17 = *(*table).v.offset(i as isize);
+                    new_slots[j as usize] = named;
                 }
                 i = i.wrapping_add(1);
             }
-            expat_free(
-                (*table).parser,
-                (*table).v as *mut ::core::ffi::c_void,
-                7901 as ::core::ffi::c_int,
-            );
-            (*table).v = newV;
-            (*table).power = newPower;
-            (*table).size = newSize;
+            unsafe {
+                expat_free(
+                    table.parser,
+                    table.v as *mut ::core::ffi::c_void,
+                    7901 as ::core::ffi::c_int,
+                );
+            }
+            table.v = newV;
+            table.power = newPower;
+            table.size = newSize;
+            let slots = unsafe { ::core::slice::from_raw_parts(table.v, table.size) };
             i = (h & newMask) as crate::__stddef_size_t_h::size_t;
             step = 0 as ::core::ffi::c_uchar;
-            while !(*(*table).v.offset(i as isize)).is_null() {
+            while !slots[i as usize].is_null() {
                 if step == 0 {
                     step = ((h & !newMask)
                         >> newPower as ::core::ffi::c_int - 1 as ::core::ffi::c_int
@@ -11927,55 +11934,70 @@ unsafe extern "C" fn lookup(
             }
         }
     }
-    let ref mut c2rust_fresh18 = *(*table).v.offset(i as isize);
-    *c2rust_fresh18 =
-        expat_malloc((*table).parser, createSize, 7914 as ::core::ffi::c_int) as *mut NAMED;
-    if (*(*table).v.offset(i as isize)).is_null() {
+    let parser_for_alloc = table.parser;
+    let new_entry =
+        unsafe { expat_malloc(parser_for_alloc, createSize, 7914 as ::core::ffi::c_int) }
+            as *mut NAMED;
+    if new_entry.is_null() {
         return ::core::ptr::null_mut::<NAMED>();
     }
-    crate::stdlib::memset(
-        *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-        0 as ::core::ffi::c_int,
-        createSize,
-    );
-    let ref mut c2rust_fresh19 = (**(*table).v.offset(i as isize)).name;
-    *c2rust_fresh19 = name;
-    (*table).used = (*table).used.wrapping_add(1);
-    return *(*table).v.offset(i as isize);
+    unsafe {
+        crate::stdlib::memset(
+            new_entry as *mut ::core::ffi::c_void,
+            0 as ::core::ffi::c_int,
+            createSize,
+        );
+    }
+    let result = {
+        let slots = unsafe { ::core::slice::from_raw_parts_mut(table.v, table.size) };
+        let entry = slots
+            .get_mut(i as usize)
+            .expect("hash table index in bounds");
+        *entry = new_entry;
+        unsafe {
+            (**entry).name = name;
+        }
+        *entry
+    };
+    table.used = table.used.wrapping_add(1);
+    return result;
 }
 
-unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
-    let mut i: crate::__stddef_size_t_h::size_t = 0;
-    i = 0 as crate::__stddef_size_t_h::size_t;
-    while i < (*table).size {
-        expat_free(
-            (*table).parser,
-            *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-            7927 as ::core::ffi::c_int,
-        );
-        let ref mut c2rust_fresh75 = *(*table).v.offset(i as isize);
-        *c2rust_fresh75 = ::core::ptr::null_mut::<NAMED>();
-        i = i.wrapping_add(1);
+fn hashTableClear(table: &mut HASH_TABLE) {
+    let parser = table.parser;
+    let slots = unsafe { ::core::slice::from_raw_parts_mut(table.v, table.size) };
+    for slot in slots.iter_mut() {
+        unsafe {
+            expat_free(
+                parser,
+                *slot as *mut ::core::ffi::c_void,
+                7927 as ::core::ffi::c_int,
+            );
+        }
+        *slot = ::core::ptr::null_mut::<NAMED>();
     }
-    (*table).used = 0 as crate::__stddef_size_t_h::size_t;
+    table.used = 0 as crate::__stddef_size_t_h::size_t;
 }
 
-unsafe extern "C" fn hashTableDestroy(mut table: *mut HASH_TABLE) {
-    let mut i: crate::__stddef_size_t_h::size_t = 0;
-    i = 0 as crate::__stddef_size_t_h::size_t;
-    while i < (*table).size {
-        expat_free(
-            (*table).parser,
-            *(*table).v.offset(i as isize) as *mut ::core::ffi::c_void,
-            7937 as ::core::ffi::c_int,
-        );
-        i = i.wrapping_add(1);
+fn hashTableDestroy(table: &mut HASH_TABLE) {
+    let parser = table.parser;
+    let slots = unsafe { ::core::slice::from_raw_parts(table.v, table.size) };
+    for slot in slots.iter() {
+        unsafe {
+            expat_free(
+                parser,
+                *slot as *mut ::core::ffi::c_void,
+                7937 as ::core::ffi::c_int,
+            );
+        }
     }
-    expat_free(
-        (*table).parser,
-        (*table).v as *mut ::core::ffi::c_void,
-        7938 as ::core::ffi::c_int,
-    );
+    unsafe {
+        expat_free(
+            parser,
+            table.v as *mut ::core::ffi::c_void,
+            7938 as ::core::ffi::c_int,
+        );
+    }
 }
 
 fn hashTableInit(p: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
@@ -11987,19 +12009,17 @@ fn hashTableInit(p: &mut HASH_TABLE, parser: crate::expat_h::XML_Parser) {
 }
 
 fn hashTableIterInit(iter: &mut HASH_TABLE_ITER, table: &HASH_TABLE) {
-    iter.p = table.v;
-    iter.end = if !iter.p.is_null() {
-        iter.p.wrapping_add(table.size)
-    } else {
-        ::core::ptr::null_mut::<*mut NAMED>()
-    };
+    iter.entries = table.v;
+    iter.size = table.size;
+    iter.index = 0 as crate::__stddef_size_t_h::size_t;
 }
 
-unsafe extern "C" fn hashTableIterNext(mut iter: *mut HASH_TABLE_ITER) -> *mut NAMED {
-    while (*iter).p != (*iter).end {
-        let c2rust_fresh0 = (*iter).p;
-        (*iter).p = (*iter).p.offset(1);
-        let mut tem: *mut NAMED = *c2rust_fresh0;
+fn hashTableIterNext(iter: &mut HASH_TABLE_ITER) -> *mut NAMED {
+    let entries = unsafe { ::core::slice::from_raw_parts(iter.entries, iter.size) };
+    while iter.index != iter.size {
+        let index = iter.index;
+        iter.index = iter.index.wrapping_add(1);
+        let tem = entries[index as usize];
         if !tem.is_null() {
             return tem;
         }
@@ -12519,7 +12539,7 @@ unsafe extern "C" fn getElementType(
     }
     ret = lookup(
         parser,
-        &raw mut (*dtd).elementTypes,
+        &mut (*dtd).elementTypes,
         name as KEY,
         ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
     ) as *mut ELEMENT_TYPE;
