@@ -3692,7 +3692,9 @@ pub unsafe extern "C" fn XML_SetHashSalt_ffi(
             as crate::expat_h::XML_Parser;
     XML_SetHashSalt(rootParser.as_mut(), hash_salt)
 }
-pub unsafe extern "C" fn XML_Parse(
+#[export_name = "XML_Parse"]
+
+pub unsafe extern "C" fn XML_Parse_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut s: *const ::core::ffi::c_char,
     mut len: ::core::ffi::c_int,
@@ -3725,7 +3727,7 @@ pub unsafe extern "C" fn XML_Parse(
         _ => {}
     }
     (*parser).m_parsingStatus.parsing = crate::expat_h::XML_PARSING;
-    let mut buff: *mut ::core::ffi::c_void = XML_GetBuffer(parser, len);
+    let mut buff: *mut ::core::ffi::c_void = XML_GetBuffer_ffi(parser, len);
     if buff.is_null() {
         return crate::expat_h::XML_STATUS_ERROR;
     }
@@ -3748,19 +3750,11 @@ pub unsafe extern "C" fn XML_Parse(
             len as crate::__stddef_size_t_h::size_t,
         );
     }
-    return XML_ParseBuffer(parser, len, isFinal);
+    return XML_ParseBuffer_ffi(parser, len, isFinal);
 }
-#[export_name = "XML_Parse"]
+#[export_name = "XML_ParseBuffer"]
 
-pub unsafe extern "C" fn XML_Parse_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut len: ::core::ffi::c_int,
-    mut isFinal: ::core::ffi::c_int,
-) -> crate::expat_h::XML_Status {
-    XML_Parse(parser, s, len, isFinal)
-}
-pub unsafe extern "C" fn XML_ParseBuffer(
+pub unsafe extern "C" fn XML_ParseBuffer_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut len: ::core::ffi::c_int,
     mut isFinal: ::core::ffi::c_int,
@@ -3847,16 +3841,9 @@ pub unsafe extern "C" fn XML_ParseBuffer(
     (*parser).m_positionPtr = (*parser).m_bufferPtr;
     return result;
 }
-#[export_name = "XML_ParseBuffer"]
+#[export_name = "XML_GetBuffer"]
 
-pub unsafe extern "C" fn XML_ParseBuffer_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut len: ::core::ffi::c_int,
-    mut isFinal: ::core::ffi::c_int,
-) -> crate::expat_h::XML_Status {
-    XML_ParseBuffer(parser, len, isFinal)
-}
-pub unsafe extern "C" fn XML_GetBuffer(
+pub unsafe extern "C" fn XML_GetBuffer_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut len: ::core::ffi::c_int,
 ) -> *mut ::core::ffi::c_void {
@@ -4022,14 +4009,6 @@ pub unsafe extern "C" fn XML_GetBuffer(
         (*parser).m_positionPtr = ::core::ptr::null::<::core::ffi::c_char>();
     }
     return (*parser).m_bufferEnd as *mut ::core::ffi::c_void;
-}
-#[export_name = "XML_GetBuffer"]
-
-pub unsafe extern "C" fn XML_GetBuffer_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut len: ::core::ffi::c_int,
-) -> *mut ::core::ffi::c_void {
-    XML_GetBuffer(parser, len)
 }
 fn triggerReenter(parser: &mut XML_ParserStruct) {
     parser.m_reenter = crate::expat_h::XML_TRUE;
