@@ -4495,21 +4495,21 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn normal_nameMatchesAscii(
+    pub extern "C" fn normal_nameMatchesAscii(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
         mut ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 1 as ::core::ffi::c_long {
+        while super::utf8_byte(ptr2, 0) != 0 {
+            if super::byte_distance(ptr1, end1) < 1 as ::core::ffi::c_long {
                 return 0 as ::core::ffi::c_int;
             }
-            if !(*ptr1 as ::core::ffi::c_int == *ptr2 as ::core::ffi::c_int) {
+            if !(super::utf8_byte(ptr1, 0) == super::utf8_byte(ptr2, 0)) {
                 return 0 as ::core::ffi::c_int;
             }
-            ptr1 = ptr1.offset(1 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+            ptr1 = ptr1.wrapping_add(1);
+            ptr2 = ptr2.wrapping_add(1);
         }
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
@@ -9031,25 +9031,23 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn little2_nameMatchesAscii(
+    pub extern "C" fn little2_nameMatchesAscii(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
         mut ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
+        while super::utf8_byte(ptr2, 0) != 0 {
+            if super::byte_distance(ptr1, end1) < 2 as ::core::ffi::c_long {
                 return 0 as ::core::ffi::c_int;
             }
-            if !(*ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
+            if !(super::utf8_byte(ptr1, 1) == 0 as ::core::ffi::c_int
+                && super::utf8_byte(ptr1, 0) == super::utf8_byte(ptr2, 0))
             {
                 return 0 as ::core::ffi::c_int;
             }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+            ptr1 = ptr1.wrapping_add(2);
+            ptr2 = ptr2.wrapping_add(1);
         }
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
@@ -13667,25 +13665,23 @@ pub mod xmltok_impl_c {
         return 0 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn big2_nameMatchesAscii(
+    pub extern "C" fn big2_nameMatchesAscii(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr1: *const ::core::ffi::c_char,
         mut end1: *const ::core::ffi::c_char,
         mut ptr2: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        while *ptr2 != 0 {
-            if (end1.offset_from(ptr1) as ::core::ffi::c_long) < 2 as ::core::ffi::c_long {
+        while super::utf8_byte(ptr2, 0) != 0 {
+            if super::byte_distance(ptr1, end1) < 2 as ::core::ffi::c_long {
                 return 0 as ::core::ffi::c_int;
             }
-            if !(*ptr1.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0 as ::core::ffi::c_int
-                && *ptr1.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == *ptr2 as ::core::ffi::c_int)
+            if !(super::utf8_byte(ptr1, 0) == 0 as ::core::ffi::c_int
+                && super::utf8_byte(ptr1, 1) == super::utf8_byte(ptr2, 0))
             {
                 return 0 as ::core::ffi::c_int;
             }
-            ptr1 = ptr1.offset(2 as ::core::ffi::c_int as isize);
-            ptr2 = ptr2.offset(1);
+            ptr1 = ptr1.wrapping_add(2);
+            ptr2 = ptr2.wrapping_add(1);
         }
         return (ptr1 == end1) as ::core::ffi::c_int;
     }
@@ -15552,6 +15548,13 @@ extern "C" fn isNever(
 
 fn utf8_byte(p: *const ::core::ffi::c_char, offset: usize) -> ::core::ffi::c_int {
     unsafe { *(p as *const ::core::ffi::c_uchar).add(offset) as ::core::ffi::c_int }
+}
+
+fn byte_distance(
+    from: *const ::core::ffi::c_char,
+    to: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_long {
+    (to as isize).wrapping_sub(from as isize) as ::core::ffi::c_long
 }
 
 extern "C" fn utf8_isName2(
