@@ -3262,6 +3262,16 @@ impl RawNameSource<'_> {
         }
     }
 
+    /// Returns the byte-preserving character view used by tokenizer scanners.
+    /// `c_char` and `u8` are both one byte, and entity text is XML data rather
+    /// than UTF-8 Rust text, so the byte-backed input can be viewed directly.
+    fn chars(&self) -> &[::core::ffi::c_char] {
+        match self {
+            Self::Bytes(bytes) => bytemuck::cast_slice(bytes),
+            Self::Chars(chars) => chars,
+        }
+    }
+
     fn same_bytes(&self, other: &Self) -> bool {
         self.len() == other.len()
             && match (self, other) {
@@ -17380,7 +17390,11 @@ unsafe fn storeEntityValue(
     let entity_text_start = entityTextPtr;
     let parser = &mut *parser;
     let enc_ptr = enc;
-    let enc = &*enc;
+    // Entity-value literal scanners need the complete normal-encoding table.
+    // All callers reach this processor only after the tokenizer has selected
+    // one; keeping that conversion here confines it to the legacy cursor
+    // adapter while scanning itself stays slice based.
+    let enc = &*(enc as *const crate::src::xmltok::normal_encoding);
     let dtd = &mut *parser_dtd_ptr!(parser);
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     let oldInEntityValue = parser.m_prologState.inEntityValue;
@@ -17396,20 +17410,47 @@ unsafe fn storeEntityValue(
     let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     '_endEntityValue: loop {
         next = entityTextPtr;
-        let scanner = match enc.literalScanners[1] {
-            crate::src::xmltok::LiteralScanner::NormalEntityValue => {
-                crate::src::xmltok::xmltok_impl_c::normal_entityValueTok
-            }
-            crate::src::xmltok::LiteralScanner::Little2EntityValue => {
-                crate::src::xmltok::xmltok_impl_c::little2_entityValueTok
-            }
-            crate::src::xmltok::LiteralScanner::Big2EntityValue => {
-                crate::src::xmltok::xmltok_impl_c::big2_entityValueTok
-            }
-            _ => unreachable!("entity literal scanner must match its table slot"),
+        // Borrow the parser-owned source only for this tokenizer operation.
+        // Pool growth and entity callbacks below may mutate parser/DTD state,
+        // so no source slice may remain live after this block.
+        let (tok, char_ref, scan_next) = {
+            let Some(input) = entity_value_token_source(
+                parser,
+                dtd,
+                entityTextPtr.addr(),
+                entityTextEnd.addr(),
+            ) else {
+                result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                break;
+            };
+            let input = input.chars();
+            let scan = crate::src::xmltok::xmltok_impl_c::scan_entity_value(enc, input);
+            let char_ref = if scan.token == crate::src::xmltok::XML_TOK_CHAR_REF {
+                let Some(next_offset) = scan.next else {
+                    result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    break;
+                };
+                let Some(token) = input.get(..next_offset) else {
+                    result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    break;
+                };
+                Some(enc.enc.charRefNumber.decode(bytemuck::cast_slice(token)))
+            } else {
+                None
+            };
+            let scan_next = match scan.next {
+                Some(next_offset) => match input.get(next_offset..) {
+                    Some(next) => next.as_ptr(),
+                    None => {
+                        result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        break;
+                    }
+                },
+                None => entityTextPtr,
+            };
+            (scan.token, char_ref, scan_next)
         };
-        let mut tok: ::core::ffi::c_int =
-            scanner(enc_ptr, entityTextPtr, entityTextEnd, &raw mut next);
+        next = scan_next;
         if accountingDiffTolerated(
             parser,
             tok,
@@ -17435,8 +17476,8 @@ unsafe fn storeEntityValue(
                             name = poolStoreString(
                                 &raw mut (*parser).m_tempPool,
                                 enc_ptr,
-                                entityTextPtr.wrapping_add(enc.minBytesPerChar as usize),
-                                next.wrapping_sub(enc.minBytesPerChar as usize),
+                                entityTextPtr.wrapping_add(enc.enc.minBytesPerChar as usize),
+                                next.wrapping_sub(enc.enc.minBytesPerChar as usize),
                             );
                             if name.is_null() {
                                 result = crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -17562,23 +17603,40 @@ unsafe fn storeEntityValue(
                         }
                     }
                     crate::src::xmltok::XML_TOK_TRAILING_CR => {
-                        next = entityTextPtr.wrapping_add(enc.minBytesPerChar as usize);
-                    }
-                    crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
-                    crate::src::xmltok::XML_TOK_CHAR_REF => {
-                        // The literal scanner returned one complete token.
-                        // Resolve its cursors through their input/entity
-                        // owner before decoding it.
-                        let Some(token) = entity_value_token_source(
+                        let Ok(width) = usize::try_from(enc.enc.minBytesPerChar) else {
+                            result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            break '_endEntityValue;
+                        };
+                        let Some(next_address) = entityTextPtr.addr().checked_add(width) else {
+                            result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            break '_endEntityValue;
+                        };
+                        let Some(input) = entity_value_token_source(
                             parser,
                             dtd,
                             entityTextPtr.addr(),
-                            next.addr(),
+                            entityTextEnd.addr(),
                         ) else {
                             result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             break '_endEntityValue;
                         };
-                        let n = token.decode_char_ref(enc.charRefNumber);
+                        let input = input.chars();
+                        let Some(next_offset) = next_address.checked_sub(entityTextPtr.addr()) else {
+                            result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            break '_endEntityValue;
+                        };
+                        let Some(next_char) = input.get(next_offset..) else {
+                            result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            break '_endEntityValue;
+                        };
+                        next = next_char.as_ptr();
+                    }
+                    crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
+                    crate::src::xmltok::XML_TOK_CHAR_REF => {
+                        let Some(n) = char_ref else {
+                            result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            break '_endEntityValue;
+                        };
                         if n < 0 as ::core::ffi::c_int {
                             if enc_ptr == parser_encoding(parser) {
                                 set_parser_event_start!(&mut *parser, entityTextPtr);

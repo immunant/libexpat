@@ -10298,6 +10298,30 @@ pub mod xmltok_impl_c {
         result.token
     }
 
+    /// Scans an entity value from an already-bounded XML-character slice.
+    /// The C cursor adapters above remain for the public tokenizer ABI, while
+    /// parser implementation code uses this offset-based path.
+    pub(crate) fn scan_entity_value(
+        encoding: &crate::src::xmltok::normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> crate::src::xmltok::ScannerResult {
+        match encoding.enc.literalScanners[1] {
+            crate::src::xmltok::LiteralScanner::NormalEntityValue => {
+                let result = normal_entity_value_tok_impl(encoding, input);
+                crate::src::xmltok::ScannerResult::new(result.token, result.next)
+            }
+            crate::src::xmltok::LiteralScanner::Little2EntityValue => {
+                let result = little2_entity_value_tok_impl(encoding, input);
+                crate::src::xmltok::ScannerResult::new(result.token, result.next)
+            }
+            crate::src::xmltok::LiteralScanner::Big2EntityValue => {
+                let result = big2_entity_value_tok_impl(encoding, input);
+                crate::src::xmltok::ScannerResult::new(result.token, result.next)
+            }
+            _ => unreachable!("entity literal scanner must match its table slot"),
+        }
+    }
+
     fn big2_ignore_section_tok_impl(
         enc: &normal_encoding,
         raw_input: &[::core::ffi::c_char],
