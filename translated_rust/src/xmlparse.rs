@@ -17431,7 +17431,15 @@ unsafe fn doProlog(
                                         let mut result_3: crate::expat_h::XML_Error =
                                             crate::expat_h::XML_ERROR_NONE;
                                         if (*parser).m_defaultHandler {
-                                            reportDefault(parser, enc, s, next);
+                                            report_default_token(
+                                                parser_key,
+                                                parser,
+                                                &encoding,
+                                                enc.addr(),
+                                                s.addr(),
+                                                next.addr(),
+                                                &token_bytes,
+                                            );
                                         }
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         result_3 = doIgnoreSection(
@@ -18385,7 +18393,15 @@ unsafe fn doProlog(
             }
         }
         if handleDefault as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler {
-            reportDefault(parser, enc, s, next);
+            report_default_token(
+                parser_key,
+                parser,
+                &encoding,
+                enc.addr(),
+                s.addr(),
+                next.addr(),
+                &token_bytes,
+            );
         }
         match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
