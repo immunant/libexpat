@@ -9635,7 +9635,7 @@ pub unsafe extern "C" fn XML_SetUserData_ffi(
 /// Stores an already-validated, NUL-terminated base identifier in the DTD
 /// pool.  `SharedDtd::inspect` confines the shared DTD's interior-mutability
 /// boundary, while parser access remains exclusive for this operation.
-unsafe fn xml_set_base_impl(
+fn xml_set_base_impl(
     parser: &mut XML_ParserStruct,
     base: Option<&[crate::expat_external_h::XML_Char]>,
 ) -> crate::expat_h::XML_Status {
