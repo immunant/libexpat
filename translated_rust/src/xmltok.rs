@@ -15741,6 +15741,13 @@ enum ByteOutputConversion {
     AsciiIdentity,
 }
 
+#[derive(Copy, Clone)]
+enum Utf16InputConversion {
+    Latin1,
+    LittleEndian,
+    BigEndian,
+}
+
 fn convert_to_utf8_bytes(
     conversion: ByteOutputConversion,
     fromP: *mut *const ::core::ffi::c_char,
@@ -17877,25 +17884,74 @@ extern "C" fn latin1_toUtf8(
     )
 }
 
-unsafe extern "C" fn latin1_toUtf16(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+fn convert_to_utf16_units(
+    conversion: Utf16InputConversion,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let c2rust_fresh4 = *fromP;
-        *fromP = (*fromP).offset(1);
-        let c2rust_fresh5 = *toP;
-        *toP = (*toP).offset(1);
-        *c2rust_fresh5 = *c2rust_fresh4 as ::core::ffi::c_uchar as ::core::ffi::c_ushort;
+    unsafe {
+        let mut from = *fromP;
+        let mut to = *toP;
+        let mut from_lim = fromLim;
+        let mut res = crate::src::xmltok::XML_CONVERT_COMPLETED;
+
+        match conversion {
+            Utf16InputConversion::Latin1 => {
+                while from < from_lim && to < toLim as *mut ::core::ffi::c_ushort {
+                    *to = *from as ::core::ffi::c_uchar as ::core::ffi::c_ushort;
+                    from = from.offset(1);
+                    to = to.offset(1);
+                }
+            }
+            Utf16InputConversion::LittleEndian | Utf16InputConversion::BigEndian => {
+                let high_byte_offset = match conversion {
+                    Utf16InputConversion::LittleEndian => 1,
+                    Utf16InputConversion::BigEndian => 0,
+                    Utf16InputConversion::Latin1 => unreachable!(),
+                };
+                let low_byte_offset = 1 - high_byte_offset;
+                from_lim = from.offset((fromLim.offset_from(from) >> 1) << 1);
+                if from_lim.offset_from(from) > toLim.offset_from(to) << 1
+                    && *from_lim.offset(-2).offset(high_byte_offset) as ::core::ffi::c_uchar
+                        as ::core::ffi::c_int
+                        & 0xf8 as ::core::ffi::c_int
+                        == 0xd8 as ::core::ffi::c_int
+                {
+                    from_lim = from_lim.offset(-2);
+                    res = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+                }
+                while from < from_lim && to < toLim as *mut ::core::ffi::c_ushort {
+                    let high = *from.offset(high_byte_offset) as ::core::ffi::c_uchar
+                        as ::core::ffi::c_int;
+                    let low =
+                        *from.offset(low_byte_offset) as ::core::ffi::c_uchar as ::core::ffi::c_int;
+                    *to = ((high << 8 as ::core::ffi::c_int) | low) as ::core::ffi::c_ushort;
+                    from = from.offset(2);
+                    to = to.offset(1);
+                }
+            }
+        }
+
+        *fromP = from;
+        *toP = to;
+        if to == toLim as *mut ::core::ffi::c_ushort && from < from_lim {
+            crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED
+        } else {
+            res
+        }
     }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    } else {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
-    };
+}
+
+extern "C" fn latin1_toUtf16(
+    _enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
+) -> crate::src::xmltok::XML_Convert_Result {
+    convert_to_utf16_units(Utf16InputConversion::Latin1, fromP, fromLim, toP, toLim)
 }
 
 static latin1_encoding_ns: normal_encoding = normal_encoding {
@@ -19741,45 +19797,20 @@ unsafe extern "C" fn little2_toUtf8(
     };
 }
 
-unsafe extern "C" fn little2_toUtf16(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+extern "C" fn little2_toUtf16(
+    _enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut res: crate::src::xmltok::XML_Convert_Result = crate::src::xmltok::XML_CONVERT_COMPLETED;
-    fromLim = (*fromP).offset(
-        ((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int) as isize,
-    );
-    if fromLim.offset_from(*fromP) as ::core::ffi::c_long
-        > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1 as ::core::ffi::c_int
-        && *fromLim
-            .offset(-(2 as ::core::ffi::c_int as isize))
-            .offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int
-            & 0xf8 as ::core::ffi::c_int
-            == 0xd8 as ::core::ffi::c_int
-    {
-        fromLim = fromLim.offset(-(2 as ::core::ffi::c_int as isize));
-        res = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-    }
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let c2rust_fresh18 = *toP;
-        *toP = (*toP).offset(1);
-        *c2rust_fresh18 = ((*(*fromP).offset(1 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_uchar as ::core::ffi::c_int)
-            << 8 as ::core::ffi::c_int
-            | *(*fromP).offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int) as ::core::ffi::c_ushort;
-        *fromP = (*fromP).offset(2 as ::core::ffi::c_int as isize);
-    }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    } else {
-        return res;
-    };
+    convert_to_utf16_units(
+        Utf16InputConversion::LittleEndian,
+        fromP,
+        fromLim,
+        toP,
+        toLim,
+    )
 }
 
 unsafe extern "C" fn big2_toUtf8(
@@ -19921,45 +19952,14 @@ unsafe extern "C" fn big2_toUtf8(
     };
 }
 
-unsafe extern "C" fn big2_toUtf16(
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+extern "C" fn big2_toUtf16(
+    _enc: *const crate::src::xmltok::ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    let mut res: crate::src::xmltok::XML_Convert_Result = crate::src::xmltok::XML_CONVERT_COMPLETED;
-    fromLim = (*fromP).offset(
-        ((fromLim.offset_from(*fromP) as ::core::ffi::c_long >> 1 as ::core::ffi::c_int)
-            << 1 as ::core::ffi::c_int) as isize,
-    );
-    if fromLim.offset_from(*fromP) as ::core::ffi::c_long
-        > (toLim.offset_from(*toP) as ::core::ffi::c_long) << 1 as ::core::ffi::c_int
-        && *fromLim
-            .offset(-(2 as ::core::ffi::c_int as isize))
-            .offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int
-            & 0xf8 as ::core::ffi::c_int
-            == 0xd8 as ::core::ffi::c_int
-    {
-        fromLim = fromLim.offset(-(2 as ::core::ffi::c_int as isize));
-        res = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
-    }
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let c2rust_fresh37 = *toP;
-        *toP = (*toP).offset(1);
-        *c2rust_fresh37 = ((*(*fromP).offset(0 as ::core::ffi::c_int as isize)
-            as ::core::ffi::c_uchar as ::core::ffi::c_int)
-            << 8 as ::core::ffi::c_int
-            | *(*fromP).offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar
-                as ::core::ffi::c_int) as ::core::ffi::c_ushort;
-        *fromP = (*fromP).offset(2 as ::core::ffi::c_int as isize);
-    }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    } else {
-        return res;
-    };
+    convert_to_utf16_units(Utf16InputConversion::BigEndian, fromP, fromLim, toP, toLim)
 }
 
 static little2_encoding_ns: normal_encoding = normal_encoding {
