@@ -2472,6 +2472,10 @@ struct InternalEntityStorage {
     // pointer in parser-owned state, and lets allocation failure remain an
     // XML error rather than an allocator panic.
     node: Vec<OPEN_INTERNAL_ENTITY>,
+    // The frame node intentionally has no address into the DTD.  This
+    // sidecar records the entity's stable pool key and table while the frame
+    // is active, so hash-table growth cannot invalidate the association.
+    entity_ref: Option<OpenEntityRef>,
     // This opaque token keeps the configured Expat allocator's allocation and
     // matching release observable even though Rust owns the typed node.
     backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
@@ -3332,10 +3336,25 @@ pub struct open_internal_entity {
     pub internalEventPtr: *const ::core::ffi::c_char,
     pub internalEventEndPtr: *const ::core::ffi::c_char,
     pub next: *mut open_internal_entity,
-    pub entity: *mut ENTITY,
+    // Entity ownership lives beside the stable frame node in
+    // `InternalEntityStorage`.  Keep this word as a typed frame slot so the
+    // configured allocator continues to observe the C frame allocation size.
+    pub entity_slot: usize,
     pub startTagLevel: ::core::ffi::c_int,
     pub betweenDecl: crate::expat_h::XML_Bool,
     pub type_0: EntityType,
+}
+
+#[derive(Copy, Clone)]
+enum OpenEntityTable {
+    General,
+    Parameter,
+}
+
+#[derive(Copy, Clone)]
+struct OpenEntityRef {
+    name: PoolStringRef,
+    table: OpenEntityTable,
 }
 
 pub type EntityType = ::core::ffi::c_uint;
@@ -14393,11 +14412,36 @@ unsafe extern "C" fn processEntity(
     if openEntity.is_null() {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     }
+    let dtd = parser_dtd_ptr!(parser_state);
+    if dtd.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let Some(name) = pool_string_ref(&raw const (*dtd).pool, entity.named.name.as_ptr(), false)
+    else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let entity_ref = OpenEntityRef {
+        name,
+        table: if entity.is_param != 0 {
+            OpenEntityTable::Parameter
+        } else {
+            OpenEntityTable::General
+        },
+    };
+    let storage = if is_internal_entity {
+        parser_state.m_activeInternalEntities.last_mut()
+    } else {
+        parser_state.m_activeValueEntities.last_mut()
+    };
+    let Some(storage) = storage else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    storage.entity_ref = Some(entity_ref);
     entity.open = crate::expat_h::XML_TRUE;
     entity.hasMore = crate::expat_h::XML_TRUE;
     entityTrackingOnOpen(parser, std::ptr::from_mut(entity), 6389 as ::core::ffi::c_int);
     entity.processed = 0 as ::core::ffi::c_int;
-    (*openEntity).next = if is_internal_entity {
+    let next_open_entity = if is_internal_entity {
         parser_state
             .m_openInternalEntities
             .and_then(|index| parser_state.m_activeInternalEntities.get(index))
@@ -14419,12 +14463,15 @@ unsafe extern "C" fn processEntity(
         parser_state.m_openValueEntities =
             parser_state.m_activeValueEntities.len().checked_sub(1);
     }
-    (*openEntity).entity = std::ptr::from_mut(entity);
-    (*openEntity).type_0 = type_0;
-    (*openEntity).startTagLevel = parser_state.m_tagLevel;
-    (*openEntity).betweenDecl = betweenDecl;
-    (*openEntity).internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    (*openEntity).internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    {
+        let open_entity = &mut *openEntity;
+        open_entity.next = next_open_entity;
+        open_entity.type_0 = type_0;
+        open_entity.startTagLevel = parser_state.m_tagLevel;
+        open_entity.betweenDecl = betweenDecl;
+        open_entity.internalEventPtr = ::core::ptr::null::<::core::ffi::c_char>();
+        open_entity.internalEventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
+    }
     if type_0 as ::core::ffi::c_uint == ENTITY_INTERNAL as ::core::ffi::c_int as ::core::ffi::c_uint
     {
         triggerReenter(parser);
@@ -14443,7 +14490,7 @@ unsafe extern "C" fn internalEntityProcessor(
     let mut textEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
-    let (open_entity_index, mut openEntity) = {
+    let (open_entity_index, mut openEntity, entity_ref) = {
         let parser_state = &mut *parser;
         let Some(open_entity_index) = parser_state.m_openInternalEntities else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -14452,21 +14499,51 @@ unsafe extern "C" fn internalEntityProcessor(
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        (open_entity_index, std::ptr::from_mut(open_entity.node_mut()))
+        (
+            open_entity_index,
+            std::ptr::from_mut(open_entity.node_mut()),
+            open_entity.entity_ref,
+        )
     };
-    entity = (*openEntity).entity;
-    if (*entity).hasMore != 0 {
-        let Some(text) = (*entity).textPtr.present() else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        let dtd = parser_dtd_ptr!(parser);
-        if dtd.is_null() {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    let Some(entity_ref) = entity_ref else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let dtd = parser_dtd_ptr!(parser);
+    if dtd.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let Some(name) = (*dtd).pool.chars_from(entity_ref.name) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    entity = match entity_ref.table {
+        OpenEntityTable::General => {
+            lookup(parser, &raw mut (*dtd).generalEntities, name.as_ptr(), 0).cast::<ENTITY>()
         }
-        let Some(text) = entity_text_chars(&*dtd, text, (*entity).textLen) else {
+        OpenEntityTable::Parameter => {
+            lookup(parser, &raw mut (*dtd).paramEntities, name.as_ptr(), 0).cast::<ENTITY>()
+        }
+    };
+    if entity.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let (has_more, text_ref, text_len, processed_before, is_parameter_entity) = {
+        let entity_ref = &*entity;
+        (
+            entity_ref.hasMore != 0,
+            entity_ref.textPtr.present(),
+            entity_ref.textLen,
+            entity_ref.processed,
+            entity_ref.is_param != 0,
+        )
+    };
+    if has_more {
+        let Some(text) = text_ref else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let Ok(processed) = usize::try_from((*entity).processed) else {
+        let Some(text) = entity_text_chars(&*dtd, text, text_len) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let Ok(processed) = usize::try_from(processed_before) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         let Some(unprocessed) = text.get(processed..) else {
@@ -14478,7 +14555,7 @@ unsafe extern "C" fn internalEntityProcessor(
             .wrapping_add(text.len())
             .cast::<::core::ffi::c_char>();
         next = textStart;
-        if (*entity).is_param != 0 {
+        if is_parameter_entity {
             let internal_encoding = internal_encoding((*parser).m_internalEncoding);
             let mut tok: ::core::ffi::c_int = internal_encoding.scanners[0 as usize]
                 .scan(
@@ -14500,9 +14577,10 @@ unsafe extern "C" fn internalEntityProcessor(
                 XML_ACCOUNT_ENTITY_EXPANSION,
             );
         } else {
+            let start_tag_level = (*openEntity).startTagLevel;
             result = doContent(
                 parser,
-                (*openEntity).startTagLevel,
+                start_tag_level,
                 internal_encoding((*parser).m_internalEncoding) as *const _,
                 textStart,
                 textEnd,
@@ -14516,24 +14594,29 @@ unsafe extern "C" fn internalEntityProcessor(
         {
             return result;
         }
-        if textEnd != next
-            && ((*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+        let is_suspended_or_reentered = {
+            let parser_state = &*parser;
+            parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint
                 == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
-                || (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                || parser_state.m_parsingStatus.parsing as ::core::ffi::c_uint
                     == crate::expat_h::XML_PARSING as ::core::ffi::c_int as ::core::ffi::c_uint
-                    && (*parser).m_reenter as ::core::ffi::c_int != 0)
-        {
+                    && parser_state.m_reenter as ::core::ffi::c_int != 0
+        };
+        if textEnd != next && is_suspended_or_reentered {
             let Some(processed) = next.addr().checked_sub(textStart.addr()) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            (*entity).processed = (*entity).processed.saturating_add(processed);
+            let entity_ref = &mut *entity;
+            entity_ref.processed = entity_ref.processed.saturating_add(processed);
             return result;
         }
-        (*entity).hasMore = crate::expat_h::XML_FALSE;
-        if (*entity).is_param == 0 && (*openEntity).startTagLevel != (*parser).m_tagLevel {
+        let start_tag_level = (*openEntity).startTagLevel;
+        let tag_level = (&*parser).m_tagLevel;
+        (&mut *entity).hasMore = crate::expat_h::XML_FALSE;
+        if !is_parameter_entity && start_tag_level != tag_level {
             return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
         }
         triggerReenter(parser);
@@ -15246,7 +15329,7 @@ unsafe extern "C" fn callStoreEntityValue(
         if (*parser).m_openValueEntities.is_none() {
             result = storeEntityValue(parser, enc, next, entityTextEnd, account, &raw mut next);
         } else {
-            let (open_entity_index, openEntity) = {
+            let (open_entity_index, openEntity, entity_ref) = {
                 let parser_state = &*parser;
                 let open_entity_index = parser_state
                     .m_openValueEntities
@@ -15257,20 +15340,54 @@ unsafe extern "C" fn callStoreEntityValue(
                 (
                     open_entity_index,
                     std::ptr::from_ref(storage.node()).cast_mut(),
+                    storage.entity_ref,
                 )
             };
-            let entity: *mut ENTITY = (*openEntity).entity;
-            let Some(text) = (*entity).textPtr.present() else {
+            let Some(entity_ref) = entity_ref else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let dtd = parser_dtd_ptr!(parser);
             if dtd.is_null() {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
-            let Some(text) = entity_text_chars(&*dtd, text, (*entity).textLen) else {
+            let Some(name) = (*dtd).pool.chars_from(entity_ref.name) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let Ok(processed) = usize::try_from((*entity).processed) else {
+            let entity: *mut ENTITY = match entity_ref.table {
+                OpenEntityTable::General => lookup(
+                    parser,
+                    &raw mut (*dtd).generalEntities,
+                    name.as_ptr(),
+                    0,
+                )
+                .cast::<ENTITY>(),
+                OpenEntityTable::Parameter => lookup(
+                    parser,
+                    &raw mut (*dtd).paramEntities,
+                    name.as_ptr(),
+                    0,
+                )
+                .cast::<ENTITY>(),
+            };
+            if entity.is_null() {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
+            let (text_ref, text_len, processed_before, has_more) = {
+                let entity_ref = &*entity;
+                (
+                    entity_ref.textPtr.present(),
+                    entity_ref.textLen,
+                    entity_ref.processed,
+                    entity_ref.hasMore != 0,
+                )
+            };
+            let Some(text) = text_ref else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(text) = entity_text_chars(&*dtd, text, text_len) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Ok(processed) = usize::try_from(processed_before) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let Some(unprocessed) = text.get(processed..) else {
@@ -15282,7 +15399,7 @@ unsafe extern "C" fn callStoreEntityValue(
                 .wrapping_add(text.len())
                 .cast::<::core::ffi::c_char>();
             let mut nextInEntity: *const ::core::ffi::c_char = textStart;
-            if (*entity).hasMore != 0 {
+            if has_more {
                 result = storeEntityValue(
                     parser,
                     internal_encoding((*parser).m_internalEncoding) as *const _,
@@ -15303,10 +15420,11 @@ unsafe extern "C" fn callStoreEntityValue(
                     let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    (*entity).processed = (*entity).processed.saturating_add(processed);
+                    let entity_ref = &mut *entity;
+                    entity_ref.processed = entity_ref.processed.saturating_add(processed);
                     continue;
                 } else {
-                    (*entity).hasMore = crate::expat_h::XML_FALSE;
+                    (&mut *entity).hasMore = crate::expat_h::XML_FALSE;
                     continue;
                 }
             } else {
@@ -16861,13 +16979,14 @@ fn internal_entity_storage_new(
         internalEventPtr: ::core::ptr::null(),
         internalEventEndPtr: ::core::ptr::null(),
         next: ::core::ptr::null_mut(),
-        entity: ::core::ptr::null_mut(),
+        entity_slot: 0,
         startTagLevel: 0,
         betweenDecl: crate::expat_h::XML_FALSE,
         type_0: ENTITY_INTERNAL,
     });
     Some(InternalEntityStorage {
         node,
+        entity_ref: None,
         backing: Some(backing),
     })
 }
