@@ -14936,43 +14936,33 @@ unsafe extern "C" fn little2_toUtf8(
     result
 }
 
-unsafe extern "C" fn little2_toUtf16(
-    _enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::xmltok::XML_Convert_Result {
-    let mut res: crate::src::xmltok::XML_Convert_Result = crate::src::xmltok::XML_CONVERT_COMPLETED;
-    fromLim = (*fromP).offset(
-        ((fromLim.offset_from(*fromP) >> 1 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int)
-            as isize,
-    );
-    if fromLim.offset_from(*fromP) > toLim.offset_from(*toP) << 1 as ::core::ffi::c_int
-        && *fromLim
-            .offset(-(2 as ::core::ffi::c_int as isize))
-            .offset(1 as isize) as ::core::ffi::c_uchar as ::core::ffi::c_int
-            & 0xf8 as ::core::ffi::c_int
-            == 0xd8 as ::core::ffi::c_int
+fn little2_toUtf16(
+    input: &[u8],
+    output: &mut [::core::ffi::c_ushort],
+) -> (crate::src::xmltok::XML_Convert_Result, usize, usize) {
+    // A trailing byte is not a complete UTF-16 code unit and remains for the
+    // next conversion call.  If output pressure would split a surrogate pair,
+    // leave the leading surrogate untouched as well.
+    let mut input_len = input.len() & !1;
+    let mut result = crate::src::xmltok::XML_CONVERT_COMPLETED;
+    if input_len > output.len().saturating_mul(2) && input[input_len - 1] & 0xf8 == 0xd8 {
+        input_len -= 2;
+        result = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+    }
+
+    let output_len = (input_len / 2).min(output.len());
+    for (slot, bytes) in output[..output_len]
+        .iter_mut()
+        .zip(input[..output_len * 2].chunks_exact(2))
     {
-        fromLim = fromLim.offset(-(2 as ::core::ffi::c_int as isize));
-        res = crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE;
+        *slot = u16::from_le_bytes([bytes[0], bytes[1]]);
     }
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let c2rust_fresh10 = *toP;
-        *toP = (*toP).offset(1);
-        *c2rust_fresh10 = ((*(*fromP).offset(1 as isize) as ::core::ffi::c_uchar
-            as ::core::ffi::c_int)
-            << 8 as ::core::ffi::c_int
-            | *(*fromP).offset(0 as isize) as ::core::ffi::c_uchar as ::core::ffi::c_int)
-            as ::core::ffi::c_ushort;
-        *fromP = (*fromP).offset(2 as ::core::ffi::c_int as isize);
+
+    let input_used = output_len * 2;
+    if output_len == output.len() && input_used < input_len {
+        result = crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
     }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    } else {
-        return res;
-    };
+    (result, input_used, output_len)
 }
 
 fn big2_to_utf8_window(
