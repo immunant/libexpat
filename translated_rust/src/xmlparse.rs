@@ -2270,7 +2270,10 @@ pub struct ENTITY {
     // stable location in the DTD string pool.  The address is recovered only
     // at callback boundaries, after checking that the pool block is live.
     pub base: Option<PoolStringRef>,
-    pub publicId: *const crate::expat_external_h::XML_Char,
+    // Public identifiers are normalized in, and owned by, the DTD pool.
+    // Store a checked pool location instead of retaining its allocator-owned
+    // address between callbacks.
+    pub publicId: Option<PoolStringRef>,
     pub notation: *const crate::expat_external_h::XML_Char,
     pub open: crate::expat_h::XML_Bool,
     pub hasMore: crate::expat_h::XML_Bool,
@@ -10357,10 +10360,7 @@ unsafe extern "C" fn doProlog(
                                             if (*parser).m_declEntity.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            (*(*parser).m_declEntity).publicId = ::core::ptr::null::<
-                                                crate::expat_external_h::XML_Char,
-                                            >(
-                                            );
+                                            (*(*parser).m_declEntity).publicId = None;
                                         }
                                         break 'c_12793;
                                     }
@@ -10384,31 +10384,54 @@ unsafe extern "C" fn doProlog(
                                                 .get(&(parser as usize))
                                                 .cloned();
                                             if let Some(callback) = callback {
+                                                let (
+                                                    handler_arg,
+                                                    entity_name,
+                                                    entity_is_param,
+                                                    entity_base,
+                                                    entity_system_id,
+                                                    entity_public_id,
+                                                ) = {
+                                                    let entity = &*(*parser).m_declEntity;
+                                                    (
+                                                        (*parser).m_handlerArg,
+                                                        entity.named.name,
+                                                        entity.is_param as ::core::ffi::c_int,
+                                                        entity.base,
+                                                        entity.systemId,
+                                                        entity.publicId,
+                                                    )
+                                                };
                                                 callback.invoke(
-                                                    (*parser).m_handlerArg,
-                                                    (*(*parser).m_declEntity).named.name,
-                                                    (*(*parser).m_declEntity).is_param
-                                                        as ::core::ffi::c_int,
+                                                    handler_arg,
+                                                    entity_name,
+                                                    entity_is_param,
                                                     ::core::ptr::null::<
                                                         crate::expat_external_h::XML_Char,
                                                     >(
                                                     ),
                                                     0 as ::core::ffi::c_int,
-                                                    (*(*parser).m_declEntity).base.map_or(
+                                                    entity_base.map_or(
                                                         ::core::ptr::null(),
                                                         |base| pool_string_pointer(
                                                             dtd_pool as *const STRING_POOL,
                                                             base,
                                                         ),
                                                     ),
-                                                    (*(*parser).m_declEntity).systemId.map_or(
+                                                    entity_system_id.map_or(
                                                         ::core::ptr::null(),
                                                         |system_id| pool_string_pointer(
                                                             dtd_pool as *const STRING_POOL,
                                                             system_id,
                                                         ),
                                                     ),
-                                                    (*(*parser).m_declEntity).publicId,
+                                                    entity_public_id.map_or(
+                                                        ::core::ptr::null(),
+                                                        |public_id| pool_string_pointer(
+                                                            dtd_pool as *const STRING_POOL,
+                                                            public_id,
+                                                        ),
+                                                    ),
                                                     ::core::ptr::null::<
                                                         crate::expat_external_h::XML_Char,
                                                     >(
@@ -10441,27 +10464,54 @@ unsafe extern "C" fn doProlog(
                                                 })
                                                 .get(&(parser as usize))
                                                 .cloned();
+                                            let (
+                                                handler_arg,
+                                                entity_name,
+                                                entity_base,
+                                                entity_system_id,
+                                                entity_public_id,
+                                                entity_notation,
+                                            ) = {
+                                                let entity = &*(*parser).m_declEntity;
+                                                (
+                                                    (*parser).m_handlerArg,
+                                                    entity.named.name,
+                                                    entity.base,
+                                                    entity.systemId,
+                                                    entity.publicId,
+                                                    entity.notation,
+                                                )
+                                            };
+                                            let entity_base = entity_base.map_or(
+                                                ::core::ptr::null(),
+                                                |base| pool_string_pointer(
+                                                    dtd_pool as *const STRING_POOL,
+                                                    base,
+                                                ),
+                                            );
+                                            let entity_system_id = entity_system_id.map_or(
+                                                ::core::ptr::null(),
+                                                |system_id| pool_string_pointer(
+                                                    dtd_pool as *const STRING_POOL,
+                                                    system_id,
+                                                ),
+                                            );
+                                            let entity_public_id = entity_public_id.map_or(
+                                                ::core::ptr::null(),
+                                                |public_id| pool_string_pointer(
+                                                    dtd_pool as *const STRING_POOL,
+                                                    public_id,
+                                                ),
+                                            );
                                             if let Some(callback) = callback {
                                                 *eventEndPP = s;
                                                 callback.invoke(
-                                                    (*parser).m_handlerArg,
-                                                    (*(*parser).m_declEntity).named.name,
-                                                    (*(*parser).m_declEntity).base.map_or(
-                                                        ::core::ptr::null(),
-                                                        |base| pool_string_pointer(
-                                                            dtd_pool as *const STRING_POOL,
-                                                            base,
-                                                        ),
-                                                    ),
-                                                    (*(*parser).m_declEntity).systemId.map_or(
-                                                        ::core::ptr::null(),
-                                                        |system_id| pool_string_pointer(
-                                                            dtd_pool as *const STRING_POOL,
-                                                            system_id,
-                                                        ),
-                                                    ),
-                                                    (*(*parser).m_declEntity).publicId,
-                                                    (*(*parser).m_declEntity).notation,
+                                                    handler_arg,
+                                                    entity_name,
+                                                    entity_base,
+                                                    entity_system_id,
+                                                    entity_public_id,
+                                                    entity_notation,
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             } else if (*parser).m_entityDeclHandler {
@@ -10480,30 +10530,18 @@ unsafe extern "C" fn doProlog(
                                                     .cloned();
                                                 if let Some(callback) = callback {
                                                     callback.invoke(
-                                                        (*parser).m_handlerArg,
-                                                        (*(*parser).m_declEntity).named.name,
+                                                        handler_arg,
+                                                        entity_name,
                                                         0 as ::core::ffi::c_int,
                                                         ::core::ptr::null::<
                                                             crate::expat_external_h::XML_Char,
                                                         >(
                                                         ),
                                                         0 as ::core::ffi::c_int,
-                                                        (*(*parser).m_declEntity).base.map_or(
-                                                            ::core::ptr::null(),
-                                                            |base| pool_string_pointer(
-                                                                dtd_pool as *const STRING_POOL,
-                                                                base,
-                                                            ),
-                                                        ),
-                                                        (*(*parser).m_declEntity).systemId.map_or(
-                                                            ::core::ptr::null(),
-                                                            |system_id| pool_string_pointer(
-                                                                dtd_pool as *const STRING_POOL,
-                                                                system_id,
-                                                            ),
-                                                        ),
-                                                        (*(*parser).m_declEntity).publicId,
-                                                        (*(*parser).m_declEntity).notation,
+                                                        entity_base,
+                                                        entity_system_id,
+                                                        entity_public_id,
+                                                        entity_notation,
                                                     );
                                                 }
                                                 handleDefault = crate::expat_h::XML_FALSE;
@@ -10546,11 +10584,7 @@ unsafe extern "C" fn doProlog(
                                                         ::core::ptr::null_mut::<ENTITY>();
                                                 } else {
                                                     (*dtd).pool.start = (*dtd).pool.ptr;
-                                                    (*(*parser).m_declEntity).publicId =
-                                                        ::core::ptr::null::<
-                                                            crate::expat_external_h::XML_Char,
-                                                        >(
-                                                        );
+                                                    (*(*parser).m_declEntity).publicId = None;
                                                     (*(*parser).m_declEntity).is_param =
                                                         crate::expat_h::XML_FALSE;
                                                     (*(*parser).m_declEntity).is_internal =
@@ -10596,11 +10630,7 @@ unsafe extern "C" fn doProlog(
                                                     ::core::ptr::null_mut::<ENTITY>();
                                             } else {
                                                 (*dtd).pool.start = (*dtd).pool.ptr;
-                                                (*(*parser).m_declEntity).publicId =
-                                                    ::core::ptr::null::<
-                                                        crate::expat_external_h::XML_Char,
-                                                    >(
-                                                    );
+                                                (*(*parser).m_declEntity).publicId = None;
                                                 (*(*parser).m_declEntity).is_param =
                                                     crate::expat_h::XML_TRUE;
                                                 (*(*parser).m_declEntity).is_internal = !(!(*parser)
@@ -11467,7 +11497,10 @@ unsafe extern "C" fn doProlog(
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
                 normalizePublicId(tem);
-                (*(*parser).m_declEntity).publicId = tem;
+                (*(*parser).m_declEntity).publicId = pool_string_ref(dtd_pool, tem);
+                if (*(*parser).m_declEntity).publicId.is_none() {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
                 (*dtd).pool.start = (*dtd).pool.ptr;
                 if (*parser).m_entityDeclHandler
                     && role == crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
@@ -13698,12 +13731,22 @@ unsafe extern "C" fn copyEntityTable(
                     cachedNewBase = (*newE).base;
                 }
             }
-            if !(*oldE).publicId.is_null() {
-                tem = poolCopyString(newPool, (*oldE).publicId);
+            if let Some(old_public_id) = (*oldE).publicId {
+                let old_public_id = pool_string_pointer(
+                    &raw const (*(*oldParser).m_dtd).pool,
+                    old_public_id,
+                );
+                if old_public_id.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                tem = poolCopyString(newPool, old_public_id);
                 if tem.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
-                (*newE).publicId = tem;
+                (*newE).publicId = pool_string_ref(newPool, tem);
+                if (*newE).publicId.is_none() {
+                    return 0 as ::core::ffi::c_int;
+                }
             }
         } else {
             let mut tem_0: *const crate::expat_external_h::XML_Char =
@@ -14077,7 +14120,9 @@ unsafe fn invoke_external_entity_ref_handler(
         entity.systemId.map_or(::core::ptr::null(), |system_id| {
             pool_string_pointer(pool, system_id)
         }),
-        entity.publicId,
+        entity.publicId.map_or(::core::ptr::null(), |public_id| {
+            pool_string_pointer(pool, public_id)
+        }),
     )
 }
 
