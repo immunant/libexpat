@@ -12574,12 +12574,10 @@ fn trim_to_complete_utf8_characters(input: &[u8]) -> usize {
 /// range from one allocation.  `from_lim_ref` must be writable.
 unsafe fn trim_to_complete_utf8_cursor(
     from: *const ::core::ffi::c_char,
-    from_lim_ref: *mut *const ::core::ffi::c_char,
+    mut from_lim_ref: core::ptr::NonNull<*const ::core::ffi::c_char>,
 ) {
-    if from_lim_ref.is_null() {
-        return;
-    }
-    let from_lim = unsafe { *from_lim_ref };
+    let from_lim_ref = unsafe { from_lim_ref.as_mut() };
+    let from_lim = *from_lim_ref;
     // A zero-length range does not need a dereferenceable data pointer.
     if from == from_lim {
         return;
@@ -12593,7 +12591,7 @@ unsafe fn trim_to_complete_utf8_cursor(
     }
     let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>(), length as usize) };
     let trimmed = trim_to_complete_utf8_characters(input);
-    unsafe { *from_lim_ref = from.add(trimmed) };
+    *from_lim_ref = from.wrapping_add(trimmed);
 }
 
 #[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
@@ -12602,7 +12600,10 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
     mut from: *const ::core::ffi::c_char,
     mut fromLimRef: *mut *const ::core::ffi::c_char,
 ) {
-    unsafe { trim_to_complete_utf8_cursor(from, fromLimRef) };
+    let Some(from_lim_ref) = core::ptr::NonNull::new(fromLimRef) else {
+        return;
+    };
+    unsafe { trim_to_complete_utf8_cursor(from, from_lim_ref) };
 }
 /// Copies the largest UTF-8 prefix that fits in `output` without splitting a
 /// complete character.  This intentionally mirrors Expat's byte-oriented
