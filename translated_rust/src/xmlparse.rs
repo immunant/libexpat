@@ -11843,6 +11843,10 @@ unsafe fn storeAtts(
     appAtts: &mut Vec<*const crate::expat_external_h::XML_Char>,
 ) -> crate::expat_h::XML_Error {
     let parser_ptr = std::ptr::from_mut(parser);
+    let Some(normal_encoding) = entity_value_normal_encoding(parser, enc.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let encoding = &normal_encoding.enc;
     let Some(dtd_owner) = parser.m_dtd.as_ref() else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
@@ -11895,8 +11899,8 @@ unsafe fn storeAtts(
         // before later parser work can grow them or invoke a callback.
         att_token_len = source.len();
         let records = &mut parser_ref.m_atts.records;
-        (*enc).getAtts.scan(
-            &*(enc as *const crate::src::xmltok::normal_encoding),
+        encoding.getAtts.scan(
+            &normal_encoding,
             source,
             records,
         )
@@ -11918,8 +11922,8 @@ unsafe fn storeAtts(
             ) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            (*enc).getAtts.scan(
-                &*(enc as *const crate::src::xmltok::normal_encoding),
+            encoding.getAtts.scan(
+                &normal_encoding,
                 source,
                 &mut parser_ref.m_atts.records,
             );
@@ -11960,9 +11964,6 @@ unsafe fn storeAtts(
         // not share the outer parser's event cursor.
         let name_len = {
             let parser_ref = &*parser;
-            let Some(normal_encoding) = entity_value_normal_encoding(parser_ref, enc.addr()) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
             let Some(name_source) = event_raw_name_source(
                 parser_ref,
                 dtd,
@@ -11973,7 +11974,7 @@ unsafe fn storeAtts(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let Some(name_len) = measure_event_name(
-                &normal_encoding.enc,
+                encoding,
                 &normal_encoding,
                 name_source.chars(),
                 None,
@@ -11982,17 +11983,46 @@ unsafe fn storeAtts(
             };
             name_len
         };
-        let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
-            parser,
-            enc,
-            name,
-            name.wrapping_offset(name_len.length as isize),
-            None,
-        );
-        if attId.is_null() {
+        let Some(name_end) = usize::try_from(name_len.length).ok() else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        let name_token = {
+            let parser_ref = &*parser;
+            let Some(name_source) = event_raw_name_source(
+                parser_ref,
+                dtd,
+                parser_events,
+                name.addr(),
+                attEnd.addr(),
+            ) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(name_chars) = name_source.chars().get(..name_end) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(name_token) = raw_name_bytes(RawNameSource::Chars(name_chars)) else {
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
+            };
+            name_token
+        };
+        let unknown_encoding = match parser.m_encoding {
+            EncodingState::Initial => None,
+            EncodingState::Unknown => parser
+                .m_unknownEncodingMem
+                .as_ref()
+                .and_then(UnknownEncodingMemory::initialized_encoding),
+        };
+        let Some(att_id) = get_attribute_id_details_from_token(
+            dtd,
+            encoding,
+            unknown_encoding,
+            &name_token,
+            parser.m_ns != 0,
+            salt,
+        ) else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        let att_id_name_ref = (*attId).named.name;
+        };
+        let att_id_name_ref = att_id.name;
         let att_id_name = pool_string_pointer!(&dtd.pool, att_id_name_ref);
         if att_id_name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -12020,7 +12050,7 @@ unsafe fn storeAtts(
         if currAtt.normalized == 0 {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             let mut isCdata: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
-            if (*attId).maybeTokenized != 0 {
+            if att_id.maybe_tokenized != 0 {
                 let mut j: ::core::ffi::c_int = 0;
                 j = 0 as ::core::ffi::c_int;
                 while j < nDefaultAtts {
@@ -12083,9 +12113,9 @@ unsafe fn storeAtts(
             attribute_value_ref = start;
             (*parser).m_tempPool.commit();
         }
-        if !matches!((*attId).prefix, AttributePrefix::None) {
-            let attribute_prefix = (*attId).prefix;
-            if (*attId).xmlns != 0 {
+        if !matches!(att_id.prefix, AttributePrefix::None) {
+            let attribute_prefix = att_id.prefix;
+            if att_id.xmlns != 0 {
                 let binding_prefix = match attribute_prefix {
                     AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
                     AttributePrefix::Default => BindingPrefix::Default,
@@ -12160,16 +12190,10 @@ unsafe fn storeAtts(
         if id_name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let id = lookup(
-            parser,
-            &raw mut dtd.attributeIds,
-            id_name as KEY,
-            0 as crate::__stddef_size_t_h::size_t,
-        ) as *mut ATTRIBUTE_ID;
-        if id.is_null() {
+        let Some(id) = attribute_id_by_name(dtd, id_name_ref, salt) else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
-        }
-        let id_name_ref = (*id).named.name;
+        };
+        let id_name_ref = id.named.name;
         let id_name_pointer = pool_string_pointer!(&dtd.pool, id_name_ref);
         if id_name_pointer.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -12188,9 +12212,9 @@ unsafe fn storeAtts(
             if value.is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
-            if !matches!((*id).prefix, AttributePrefix::None) {
-                let attribute_prefix = (*id).prefix;
-                if (*id).xmlns != 0 {
+            if !matches!(id.prefix, AttributePrefix::None) {
+                let attribute_prefix = id.prefix;
+                if id.xmlns != 0 {
                     let binding_prefix = match attribute_prefix {
                         AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
                         AttributePrefix::Default => BindingPrefix::Default,
@@ -12375,13 +12399,12 @@ unsafe fn storeAtts(
                 {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 }
-                let id = lookup(
-                    parser_ptr,
-                    &raw mut dtd.attributeIds,
-                    appAtts[i as usize] as KEY,
-                    0 as crate::__stddef_size_t_h::size_t,
-                ) as *mut ATTRIBUTE_ID;
-                let Some(id) = id.as_ref() else {
+                let salt = parser_ref
+                    .m_root
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .hash_secret_salt;
+                let Some(id) = attribute_id_by_name(dtd, attribute_name, salt) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
                 let Some(local_part) = pool_terminated_chars(&dtd.pool, attribute_name)
@@ -20987,64 +21010,27 @@ unsafe extern "C" fn setElementTypePrefix(
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe fn getAttributeId(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    retained_name: Option<&mut Option<PoolStringRef>>,
-) -> *mut ATTRIBUTE_ID {
-    let Some(parser) = parser.as_mut() else {
-        return ::core::ptr::null_mut();
-    };
-    let Some(enc) = enc.as_ref() else {
-        return ::core::ptr::null_mut();
-    };
-    let dtd = &mut *parser_dtd_ptr!(parser);
-    // Attribute names are tokenizer cursors, never arbitrary C strings.  Find
-    // the parser/entity allocation that owns the complete range before the
-    // converter sees it; this rejects a reversed or cross-allocation window.
-    let Some(source) = entity_value_token_source(parser, dtd, start.addr(), end.addr()) else {
-        return ::core::ptr::null_mut();
-    };
-    let Some(source) = raw_name_bytes(source) else {
-        return ::core::ptr::null_mut();
-    };
-    let unknown_encoding = match parser.m_encoding {
-        EncodingState::Initial => None,
-        EncodingState::Unknown => parser
-            .m_unknownEncodingMem
-            .as_ref()
-            .and_then(UnknownEncodingMemory::initialized_encoding)
-            .copied(),
-    };
-    if matches!(enc.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
-        && unknown_encoding.is_none()
-    {
-        return ::core::ptr::null_mut();
-    }
-    let salt = parser
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .hash_secret_salt;
-    if !pool_append_char(&mut dtd.pool, 0) {
-        return ::core::ptr::null_mut();
-    }
-    let Some(name_start) = pool_store_name_source(&mut dtd.pool, enc, unknown_encoding.as_ref(), &source)
-    else {
-        return ::core::ptr::null_mut();
-    };
-    get_attribute_id_impl(
-        &mut dtd.pool,
-        &mut dtd.attributeIds,
-        &mut dtd.prefixes,
-        parser.m_ns != 0,
+/// Resolves an attribute identifier through the typed hash-table storage.
+/// Pool handles remain valid across table growth, unlike the legacy `NAMED *`
+/// returned by `lookup`.
+fn attribute_id_by_name<'a>(
+    dtd: &'a DTD,
+    name: PoolStringRef,
+    salt: ::core::ffi::c_ulong,
+) -> Option<&'a ATTRIBUTE_ID> {
+    let index = lookup_existing(
+        &dtd.pool,
+        &dtd.attributeIds,
+        LookupName::Retained(name),
         salt,
-        name_start,
-        retained_name,
-    )
-        .map_or(::core::ptr::null_mut(), std::ptr::from_mut)
+    )?;
+    dtd.attributeIds
+        .v
+        .as_ref()?
+        .entries
+        .get(index)?
+        .as_ref()?
+        .attribute()
 }
 
 /// Copies a tokenizer-owned name into a bounded byte buffer before mutating
@@ -23908,7 +23894,54 @@ fn get_element_type_from_token(
     Some(element_name)
 }
 
-/// Starts an attribute declaration from a bounded name token.  Its return is
+/// The portion of an attribute-table entry that start-tag processing needs
+/// after insertion. Returning a copy prevents a table borrow from surviving
+/// pool growth or a namespace callback.
+#[derive(Copy, Clone)]
+struct AttributeIdDetails {
+    name: PoolStringRef,
+    prefix: AttributePrefix,
+    maybe_tokenized: crate::expat_h::XML_Bool,
+    xmlns: crate::expat_h::XML_Bool,
+}
+
+/// Stores a bounded attribute name and snapshots the fields needed after the
+/// hash-table mutation. No raw table address escapes this operation.
+fn get_attribute_id_details_from_token(
+    dtd: &mut DTD,
+    encoding: &crate::src::xmltok::ENCODING,
+    unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
+    token: &[u8],
+    namespaces_enabled: bool,
+    salt: ::core::ffi::c_ulong,
+) -> Option<AttributeIdDetails> {
+    if matches!(encoding.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
+        && unknown_encoding.is_none()
+    {
+        return None;
+    }
+    if !pool_append_char(&mut dtd.pool, 0) {
+        return None;
+    }
+    let name_start = pool_store_name_source(&mut dtd.pool, encoding, unknown_encoding, token)?;
+    let id = get_attribute_id_impl(
+        &mut dtd.pool,
+        &mut dtd.attributeIds,
+        &mut dtd.prefixes,
+        namespaces_enabled,
+        salt,
+        name_start,
+        None,
+    )?;
+    Some(AttributeIdDetails {
+        name: id.named.name,
+        prefix: id.prefix,
+        maybe_tokenized: id.maybeTokenized,
+        xmlns: id.xmlns,
+    })
+}
+
+/// Starts an attribute declaration from a bounded name token. Its return is
 /// the pool key retained by the DTD; no raw attribute-table address escapes.
 fn get_attribute_id_from_token(
     parser: &mut XML_ParserStruct,
@@ -23917,31 +23950,20 @@ fn get_attribute_id_from_token(
     unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
     token: &[u8],
 ) -> Option<PoolStringRef> {
-    if matches!(encoding.utf8Convert, crate::src::xmltok::Utf8Converter::Unknown)
-        && unknown_encoding.is_none()
-    {
-        return None;
-    }
     let salt = parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt;
-    if !pool_append_char(&mut dtd.pool, 0) {
-        return None;
-    }
-    let name_start = pool_store_name_source(&mut dtd.pool, encoding, unknown_encoding, token)?;
-    let mut retained_name = None;
-    get_attribute_id_impl(
-        &mut dtd.pool,
-        &mut dtd.attributeIds,
-        &mut dtd.prefixes,
+    get_attribute_id_details_from_token(
+        dtd,
+        encoding,
+        unknown_encoding,
+        token,
         parser.m_ns != 0,
         salt,
-        name_start,
-        Some(&mut retained_name),
-    )?;
-    retained_name
+    )
+    .map(|id| id.name)
 }
 
 /// Applies the role-machine result for an attribute declaration.  The role
