@@ -19986,6 +19986,18 @@ fn hash_table_clear_owned(table: &mut HASH_TABLE) {
     table.used = 0;
 }
 
+/// Releases a table and its slot allocation after all records have been
+/// detached.  This is the owned equivalent of the legacy raw destructor.
+fn hash_table_destroy_owned(table: &mut HASH_TABLE) {
+    if let Some(mut slots) = table.v.take() {
+        for mut entry in slots.entries.drain(..).flatten() {
+            (entry.backing)(7937 as ::core::ffi::c_int);
+        }
+        (slots.backing)(7938 as ::core::ffi::c_int);
+    }
+    table.used = 0;
+}
+
 unsafe extern "C" fn dtdReset(p: *mut DTD, parser: crate::expat_h::XML_Parser) {
     let p = &mut *p;
     let parser = &mut *parser;
@@ -20021,37 +20033,36 @@ unsafe extern "C" fn dtdReset(p: *mut DTD, parser: crate::expat_h::XML_Parser) {
     p.standalone = crate::expat_h::XML_FALSE;
 }
 
-unsafe extern "C" fn dtdDestroy(
+/// Releases a uniquely owned DTD and its allocator-observability tokens.
+///
+/// The caller has already unwrapped the DTD's shared owner, so every table
+/// entry belongs to this DTD.  Iterating the owned slots directly keeps the
+/// destruction path independent of the legacy raw hash-table iterator.
+fn dtd_destroy_impl(
     p: &mut DTD,
-    mut isDocEntity: crate::expat_h::XML_Bool,
-    mut parser: crate::expat_h::XML_Parser,
+    is_doc_entity: bool,
+    release_default_attributes: &mut dyn FnMut(Box<DefaultAttributeStorage>),
 ) {
     // The shared owner is unwrapped by the parser that owns this DTD.  Release
     // allocator-backed members in the same order as the legacy DTD object.
-    let parser = &mut *parser;
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        table: None,
-        next: 0 as crate::__stddef_size_t_h::size_t,
-    };
-    let table = &p.elementTypes;
-    hashTableIterInit(&raw mut iter, table);
-    loop {
-        let mut e: *mut ELEMENT_TYPE = hashTableIterNext(&raw mut iter) as *mut ELEMENT_TYPE;
-        if e.is_null() {
-            break;
-        }
-        if let Some(mut default_atts) = (*e).defaultAtts.take() {
-            (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7580));
+    if let Some(slots) = p.elementTypes.v.as_mut() {
+        for entry in slots.entries.iter_mut().flatten() {
+            let Some(element) = entry.element_mut() else {
+                continue;
+            };
+            if let Some(default_atts) = element.defaultAtts.take() {
+                release_default_attributes(default_atts);
+            }
         }
     }
-    hashTableDestroy(&raw mut p.generalEntities);
-    hashTableDestroy(&raw mut p.paramEntities);
-    hashTableDestroy(&raw mut p.elementTypes);
-    hashTableDestroy(&raw mut p.attributeIds);
-    hashTableDestroy(&raw mut p.prefixes);
+    hash_table_destroy_owned(&mut p.generalEntities);
+    hash_table_destroy_owned(&mut p.paramEntities);
+    hash_table_destroy_owned(&mut p.elementTypes);
+    hash_table_destroy_owned(&mut p.attributeIds);
+    hash_table_destroy_owned(&mut p.prefixes);
     poolDestroy(&mut p.pool);
     poolDestroy(&mut p.entityValuePool);
-    if isDocEntity != 0 {
+    if is_doc_entity {
         let backing = {
             let mut scaffold = p
                 .scaffold
@@ -20066,6 +20077,20 @@ unsafe extern "C" fn dtdDestroy(
     if let Some(mut allocation) = p.allocation.take() {
         allocation(7595 as ::core::ffi::c_int);
     }
+}
+
+/// Converts the internal parser handle once, then delegates DTD ownership
+/// teardown to the safe implementation.
+unsafe extern "C" fn dtdDestroy(
+    p: &mut DTD,
+    is_doc_entity: crate::expat_h::XML_Bool,
+    parser: crate::expat_h::XML_Parser,
+) {
+    let parser = &mut *parser;
+    let mut release_default_attributes = |mut storage: Box<DefaultAttributeStorage>| {
+        (storage.backing)(parser, DefaultAttributeAllocationAction::Free(7580));
+    };
+    dtd_destroy_impl(p, is_doc_entity != 0, &mut release_default_attributes);
 }
 
 unsafe fn dtdCopy(
