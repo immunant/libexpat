@@ -4458,10 +4458,6 @@ extern "C" fn isNever(
     return 0 as ::core::ffi::c_int;
 }
 
-fn utf8_byte(p: *const ::core::ffi::c_char, offset: usize) -> ::core::ffi::c_int {
-    unsafe { *(p as *const ::core::ffi::c_uchar).add(offset) as ::core::ffi::c_int }
-}
-
 fn normal_ascii_byte(p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     utf8_byte(p, 0)
 }
@@ -4528,6 +4524,18 @@ enum NormalCharCheck {
 }
 
 enum EncodingDataLookup {
+    RawByte {
+        p: *const ::core::ffi::c_char,
+        offset: usize,
+    },
+    WriteNextTokPtr {
+        dst: *mut *const ::core::ffi::c_char,
+        value: *const ::core::ffi::c_char,
+    },
+    WriteAttribute {
+        dst: *mut crate::src::xmltok::ATTRIBUTE,
+        value: crate::src::xmltok::ATTRIBUTE,
+    },
     NormalByteType(::core::ffi::c_int),
     NormalCharCheck {
         p: *const ::core::ffi::c_char,
@@ -4541,6 +4549,7 @@ enum EncodingDataValue {
     Int(::core::ffi::c_int),
     Bool(bool),
     Unknown(UnknownEncodingValue),
+    Unit,
 }
 
 fn encoding_data_lookup(
@@ -4549,6 +4558,17 @@ fn encoding_data_lookup(
 ) -> EncodingDataValue {
     unsafe {
         match lookup {
+            EncodingDataLookup::RawByte { p, offset } => EncodingDataValue::Int(
+                *(p as *const ::core::ffi::c_uchar).add(offset) as ::core::ffi::c_int,
+            ),
+            EncodingDataLookup::WriteNextTokPtr { dst, value } => {
+                *dst = value;
+                EncodingDataValue::Unit
+            }
+            EncodingDataLookup::WriteAttribute { dst, value } => {
+                *dst = value;
+                EncodingDataValue::Unit
+            }
             EncodingDataLookup::NormalByteType(byte) => {
                 let normal = &*(enc as *const normal_encoding);
                 EncodingDataValue::Int(
@@ -4598,6 +4618,16 @@ fn encoding_data_lookup(
                 })
             }
         }
+    }
+}
+
+fn utf8_byte(p: *const ::core::ffi::c_char, offset: usize) -> ::core::ffi::c_int {
+    match encoding_data_lookup(
+        ::core::ptr::null::<crate::src::xmltok::ENCODING>(),
+        EncodingDataLookup::RawByte { p, offset },
+    ) {
+        EncodingDataValue::Int(value) => value,
+        _ => unreachable!(),
     }
 }
 
@@ -6774,17 +6804,20 @@ fn public_id_type_is_allowed(t: ::core::ffi::c_int) -> bool {
     )
 }
 
-fn write_raw<T>(dst: *mut T, value: T) {
-    unsafe {
-        *dst = value;
-    }
-}
-
 fn set_next_tok_ptr(
     next_tok_ptr: *mut *const ::core::ffi::c_char,
     ptr: *const ::core::ffi::c_char,
 ) {
-    write_raw(next_tok_ptr, ptr);
+    match encoding_data_lookup(
+        ::core::ptr::null::<crate::src::xmltok::ENCODING>(),
+        EncodingDataLookup::WriteNextTokPtr {
+            dst: next_tok_ptr,
+            value: ptr,
+        },
+    ) {
+        EncodingDataValue::Unit => {}
+        _ => unreachable!(),
+    }
 }
 
 fn current_attribute(
@@ -6792,6 +6825,16 @@ fn current_attribute(
     index: ::core::ffi::c_int,
 ) -> *mut crate::src::xmltok::ATTRIBUTE {
     atts.wrapping_add(index as usize)
+}
+
+fn write_attribute(dst: *mut crate::src::xmltok::ATTRIBUTE, value: crate::src::xmltok::ATTRIBUTE) {
+    match encoding_data_lookup(
+        ::core::ptr::null::<crate::src::xmltok::ENCODING>(),
+        EncodingDataLookup::WriteAttribute { dst, value },
+    ) {
+        EncodingDataValue::Unit => {}
+        _ => unreachable!(),
+    }
 }
 
 fn ignore_section_tok(
@@ -6970,7 +7013,7 @@ fn get_atts(
                             valueEnd: ::core::ptr::null(),
                             normalized: 1,
                         };
-                        write_raw(current_attribute(atts, n_atts), current_att);
+                        write_attribute(current_attribute(atts, n_atts), current_att);
                     }
                     state = crate::xmltok_impl_c::inName;
                 }
@@ -6984,7 +7027,7 @@ fn get_atts(
                 if state != crate::xmltok_impl_c::inValue {
                     if n_atts < atts_max {
                         current_att.valuePtr = ptr.wrapping_add(width);
-                        write_raw(current_attribute(atts, n_atts), current_att);
+                        write_attribute(current_attribute(atts, n_atts), current_att);
                     }
                     state = crate::xmltok_impl_c::inValue;
                     open = t;
@@ -6992,7 +7035,7 @@ fn get_atts(
                     state = crate::xmltok_impl_c::other;
                     if n_atts < atts_max {
                         current_att.valueEnd = ptr;
-                        write_raw(current_attribute(atts, n_atts), current_att);
+                        write_attribute(current_attribute(atts, n_atts), current_att);
                     }
                     n_atts += 1;
                 }
@@ -7000,7 +7043,7 @@ fn get_atts(
             t if t == crate::xmltok_impl_h::BT_AMP as ::core::ffi::c_int => {
                 if n_atts < atts_max {
                     current_att.normalized = 0;
-                    write_raw(current_attribute(atts, n_atts), current_att);
+                    write_attribute(current_attribute(atts, n_atts), current_att);
                 }
             }
             t if t == crate::xmltok_impl_h::BT_S as ::core::ffi::c_int => {
@@ -7015,7 +7058,7 @@ fn get_atts(
                             || byte_type(enc, next) == open)
                     {
                         current_att.normalized = 0;
-                        write_raw(current_attribute(atts, n_atts), current_att);
+                        write_attribute(current_attribute(atts, n_atts), current_att);
                     }
                 }
             }
@@ -7026,7 +7069,7 @@ fn get_atts(
                     state = crate::xmltok_impl_c::other;
                 } else if state == crate::xmltok_impl_c::inValue && n_atts < atts_max {
                     current_att.normalized = 0;
-                    write_raw(current_attribute(atts, n_atts), current_att);
+                    write_attribute(current_attribute(atts, n_atts), current_att);
                 }
             }
             t if t == crate::xmltok_impl_h::BT_SOL as ::core::ffi::c_int
