@@ -19876,38 +19876,6 @@ struct ActiveInternalEntityState {
     internal_encoding: InternalEncoding,
 }
 
-unsafe fn active_internal_entity_state(
-    parser: &mut XML_ParserStruct,
-) -> Option<ActiveInternalEntityState> {
-    let parser_ptr = std::ptr::from_mut(parser);
-    let parser_state = parser;
-    let open_entity_index = parser_state.m_openInternalEntities?;
-    let open_entity = parser_state
-        .m_activeInternalEntities
-        .get(open_entity_index)?;
-    let entity_ref = open_entity.entity_ref?;
-    let start_tag_level = open_entity.node().startTagLevel;
-    let dtd = parser_state.m_dtd.as_ref()?;
-    let dtd = &mut *dtd.value.get();
-    let name = dtd.pool.chars_from(entity_ref.name)?.as_ptr();
-    let table = match entity_ref.table {
-        OpenEntityTable::General => &mut dtd.generalEntities,
-        OpenEntityTable::Parameter => &mut dtd.paramEntities,
-    };
-    let entity = lookup(parser_ptr, std::ptr::from_mut(table), name, 0).cast::<ENTITY>();
-    let entity = entity.as_mut()?;
-    Some(ActiveInternalEntityState {
-        index: open_entity_index,
-        start_tag_level,
-        has_more: entity.hasMore != 0,
-        text: entity.textPtr,
-        text_len: entity.textLen,
-        processed: entity.processed,
-        is_parameter: entity.is_param != 0,
-        internal_encoding: parser_state.m_internalEncoding,
-    })
-}
-
 #[derive(Copy, Clone)]
 enum ActiveInternalEntityUpdate {
     Advance(::core::ffi::c_int),
@@ -19989,7 +19957,43 @@ unsafe extern "C" fn internalEntityProcessor(
     _nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let parser_state = &mut *parser;
-    let Some(entity_state) = active_internal_entity_state(parser_state) else {
+    let Some(open_entity_index) = parser_state.m_openInternalEntities else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(open_entity) = parser_state.m_activeInternalEntities.get(open_entity_index) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(entity_ref) = open_entity.entity_ref else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let start_tag_level = open_entity.node().startTagLevel;
+    let declaration = match entity_ref.table {
+        OpenEntityTable::General => DeclaredEntity::General(entity_ref.name),
+        OpenEntityTable::Parameter => DeclaredEntity::Parameter(entity_ref.name),
+    };
+    let hash_salt = parser_state
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let active_internal_encoding = parser_state.m_internalEncoding;
+    let Some(dtd_owner) = parser_state.m_dtd.clone() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let entity_state = dtd_owner.inspect(|dtd| {
+        let entity = declared_entity_mut(dtd, declaration, hash_salt)?;
+        Some(ActiveInternalEntityState {
+            index: open_entity_index,
+            start_tag_level,
+            has_more: entity.hasMore != 0,
+            text: entity.textPtr,
+            text_len: entity.textLen,
+            processed: entity.processed,
+            is_parameter: entity.is_param != 0,
+            internal_encoding: active_internal_encoding,
+        })
+    });
+    let Some(entity_state) = entity_state else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
     if entity_state.has_more {
@@ -20069,7 +20073,6 @@ unsafe extern "C" fn internalEntityProcessor(
         {
             return result;
         }
-        let parser_state = &mut *parser;
         let is_suspended_or_reentered = parser_state.m_parsingStatus.parsing
             as ::core::ffi::c_uint
             == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
@@ -20110,7 +20113,7 @@ unsafe extern "C" fn internalEntityProcessor(
         return result;
     }
     if update_active_internal_entity(
-        &mut *parser,
+        parser_state,
         entity_state.index,
         ActiveInternalEntityUpdate::Close(entity_state.index),
     )
