@@ -15686,7 +15686,7 @@ unsafe fn entity_value_init_processor_impl(
             if parser.m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
             {
-                *next_ptr = s;
+                        *next_ptr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             match tok {
@@ -16120,7 +16120,7 @@ unsafe fn doProlog(
     // the call.  Keep that invariant at this boundary and use the checked
     // borrow throughout the prolog state machine instead of repeatedly
     // dereferencing its raw handle.
-    let parser_key = parser as *mut XML_ParserStruct as usize;
+    let parser_key = std::ptr::from_ref(parser).addr();
     let hash_salt = parser
         .m_root
         .lock()
@@ -16207,7 +16207,7 @@ unsafe fn doProlog(
                             .expect("external prolog parsing requires an open entity")
                             == 0
                     {
-                        *next_ptr = s;
+                *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     if parser.m_isParamEntity as ::core::ffi::c_int != 0
@@ -16610,10 +16610,7 @@ unsafe fn doProlog(
                                                             .unwrap_or_else(|poisoned| {
                                                                 poisoned.into_inner()
                                                             })
-                                                            .get(
-                                                                &(parser as *mut XML_ParserStruct
-                                                                    as usize),
-                                                            )
+                                                            .get(&parser_key)
                                                             .cloned()
                                                             .expect(
                                                                 "installed not-standalone handler",
@@ -16712,10 +16709,7 @@ unsafe fn doProlog(
                                                             .unwrap_or_else(|poisoned| {
                                                                 poisoned.into_inner()
                                                             })
-                                                            .get(
-                                                                &(parser as *mut XML_ParserStruct
-                                                                    as usize),
-                                                            )
+                                                            .get(&parser_key)
                                                             .cloned()
                                                             .expect(
                                                                 "installed not-standalone handler",
@@ -17209,7 +17203,7 @@ unsafe fn doProlog(
                                                 })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&(parser as *mut XML_ParserStruct as usize))
+                                                .get(&parser_key)
                                                 .cloned()
                                                 .expect("installed not-standalone handler");
                                             if dispatch_not_standalone_callback(
@@ -18309,7 +18303,7 @@ unsafe fn doProlog(
                                                 })
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                                .get(&(parser as *mut XML_ParserStruct as usize))
+                                                .get(&parser_key)
                                                 .cloned()
                                                 .expect("installed not-standalone handler");
                                             if dispatch_not_standalone_callback(
