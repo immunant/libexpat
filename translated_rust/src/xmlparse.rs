@@ -13575,22 +13575,27 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             }
-                                            let pub_id = poolStoreString(
+                                            let stored_public_id = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
                                                 s.offset((*enc).minBytesPerChar as isize),
                                                 next.offset(-((*enc).minBytesPerChar as isize)),
                                             );
-                                            if pub_id.is_null() {
+                                            if stored_public_id.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            normalizePublicId(pub_id);
                                             let parser_ref = &mut *parser;
                                             let Some(pub_id) =
                                                 parser_ref.m_tempPool.start_ref(true)
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
+                                            let Some(public_id_chars) =
+                                                parser_ref.m_tempPool.chars_from_mut(pub_id)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
+                                            normalizePublicId(public_id_chars);
                                             parser_ref.m_tempPool.commit();
                                             parser_ref.m_doctypePubid = Some(pub_id);
                                             handleDefault = crate::expat_h::XML_FALSE;
@@ -14950,23 +14955,27 @@ unsafe extern "C" fn doProlog(
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
                                         if (*parser).m_declNotationName.is_some() {
-                                            let mut tem_0: *mut crate::expat_external_h::XML_Char =
-                                                poolStoreString(
-                                                    &raw mut (*parser).m_tempPool,
-                                                    enc,
-                                                    s.offset((*enc).minBytesPerChar as isize),
-                                                    next.offset(-((*enc).minBytesPerChar as isize)),
-                                                );
-                                            if tem_0.is_null() {
+                                            let stored_public_id = poolStoreString(
+                                                &raw mut (*parser).m_tempPool,
+                                                enc,
+                                                s.offset((*enc).minBytesPerChar as isize),
+                                                next.offset(-((*enc).minBytesPerChar as isize)),
+                                            );
+                                            if stored_public_id.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            normalizePublicId(tem_0);
                                             let parser_ref = &mut *parser;
                                             let Some(public_id) =
                                                 parser_ref.m_tempPool.start_ref(true)
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
+                                            let Some(public_id_chars) =
+                                                parser_ref.m_tempPool.chars_from_mut(public_id)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            };
+                                            normalizePublicId(public_id_chars);
                                             parser_ref.m_declNotationPublicId = Some(public_id);
                                             parser_ref.m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
@@ -16036,21 +16045,25 @@ unsafe extern "C" fn doProlog(
                 let Some(entity) = resolve_declared_entity(declaration) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
-                let mut tem: *mut crate::expat_external_h::XML_Char = poolStoreString(
+                let stored_public_id = poolStoreString(
                     dtd_pool,
                     enc,
                     s.offset((*enc).minBytesPerChar as isize),
                     next.offset(-((*enc).minBytesPerChar as isize)),
                 );
-                if tem.is_null() {
+                if stored_public_id.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                normalizePublicId(tem);
-                (*entity).publicId = pool_string_ref(dtd_pool, tem, false);
-                if (*entity).publicId.is_none() {
+                let dtd_ref = &mut *dtd;
+                let Some(public_id) = dtd_ref.pool.start_ref(true) else {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
-                }
-                (*dtd).pool.commit();
+                };
+                let Some(public_id_chars) = dtd_ref.pool.chars_from_mut(public_id) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                normalizePublicId(public_id_chars);
+                (*entity).publicId = Some(public_id);
+                dtd_ref.pool.commit();
                 if (*parser).m_entityDeclHandler
                     && role == crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
                 {
@@ -18701,34 +18714,30 @@ unsafe extern "C" fn setContext(
     crate::expat_h::XML_TRUE
 }
 
-unsafe extern "C" fn normalizePublicId(mut publicId: *mut crate::expat_external_h::XML_Char) {
-    let mut p: *mut crate::expat_external_h::XML_Char = publicId;
-    let mut s: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    s = publicId;
-    while *s != 0 {
-        match *s as ::core::ffi::c_int {
-            32 | 13 | 10 => {
-                if p != publicId
-                    && *p.offset(-1 as isize) as ::core::ffi::c_int != 0x20 as ::core::ffi::c_int
-                {
-                    let c2rust_fresh56 = p;
-                    p = p.offset(1);
-                    *c2rust_fresh56 = 0x20 as crate::expat_external_h::XML_Char;
-                }
+fn normalizePublicId(public_id: &mut [crate::expat_external_h::XML_Char]) {
+    let Some(terminator) = public_id.iter().position(|&character| character == 0) else {
+        return;
+    };
+
+    let mut write = 0;
+    for read in 0..terminator {
+        let character = public_id[read];
+        if matches!(character as ::core::ffi::c_int, 32 | 13 | 10) {
+            if write != 0
+                && public_id[write - 1] != 0x20 as crate::expat_external_h::XML_Char
+            {
+                public_id[write] = 0x20 as crate::expat_external_h::XML_Char;
+                write += 1;
             }
-            _ => {
-                let c2rust_fresh57 = p;
-                p = p.offset(1);
-                *c2rust_fresh57 = *s;
-            }
+        } else {
+            public_id[write] = character;
+            write += 1;
         }
-        s = s.offset(1);
     }
-    if p != publicId && *p.offset(-1 as isize) as ::core::ffi::c_int == 0x20 as ::core::ffi::c_int {
-        p = p.offset(-1);
+    if write != 0 && public_id[write - 1] == 0x20 as crate::expat_external_h::XML_Char {
+        write -= 1;
     }
-    *p = '\0' as crate::expat_external_h::XML_Char;
+    public_id[write] = 0;
 }
 
 fn dtd_create(parser: &mut XML_ParserStruct) -> Option<std::sync::Arc<SharedDtd>> {
