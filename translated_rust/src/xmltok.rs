@@ -479,52 +479,50 @@ pub mod xmltok_impl_c {
         end: *const ::core::ffi::c_char,
         encoding: CharRefEncoding,
     ) -> Option<CharRefUnit> {
-        unsafe {
-            let type_table = &(*(enc as *const normal_encoding)).type_0;
-            match encoding {
-                CharRefEncoding::Normal => {
-                    if end.offset_from(ptr) < 1 {
-                        return None;
-                    }
-                    let byte = *ptr as ::core::ffi::c_uchar;
-                    Some(CharRefUnit {
-                        type_0: type_table[byte as usize] as ::core::ffi::c_int,
-                        is_hex_marker: byte == b'x',
-                        next_ptr: ptr.wrapping_offset(1),
-                    })
+        let type_table = &normal_encoding_ref!(enc).type_0;
+        match encoding {
+            CharRefEncoding::Normal => {
+                if ptr_offset_from!(end, ptr) < 1 {
+                    return None;
                 }
-                CharRefEncoding::Little2 => {
-                    if end.offset_from(ptr) < 2 {
-                        return None;
-                    }
-                    let lo = *ptr.wrapping_offset(0) as ::core::ffi::c_uchar;
-                    let hi = *ptr.wrapping_offset(1) as ::core::ffi::c_uchar;
-                    Some(CharRefUnit {
-                        type_0: if hi == 0 {
-                            type_table[lo as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(hi as ::core::ffi::c_char, lo as ::core::ffi::c_char)
-                        },
-                        is_hex_marker: hi == 0 && lo == b'x',
-                        next_ptr: ptr.wrapping_offset(2),
-                    })
+                let byte = ptr_read!(ptr) as ::core::ffi::c_uchar;
+                Some(CharRefUnit {
+                    type_0: type_table[byte as usize] as ::core::ffi::c_int,
+                    is_hex_marker: byte == b'x',
+                    next_ptr: ptr.wrapping_offset(1),
+                })
+            }
+            CharRefEncoding::Little2 => {
+                if ptr_offset_from!(end, ptr) < 2 {
+                    return None;
                 }
-                CharRefEncoding::Big2 => {
-                    if end.offset_from(ptr) < 2 {
-                        return None;
-                    }
-                    let hi = *ptr.wrapping_offset(0) as ::core::ffi::c_uchar;
-                    let lo = *ptr.wrapping_offset(1) as ::core::ffi::c_uchar;
-                    Some(CharRefUnit {
-                        type_0: if hi == 0 {
-                            type_table[lo as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(hi as ::core::ffi::c_char, lo as ::core::ffi::c_char)
-                        },
-                        is_hex_marker: hi == 0 && lo == b'x',
-                        next_ptr: ptr.wrapping_offset(2),
-                    })
+                let lo = ptr_read!(ptr) as ::core::ffi::c_uchar;
+                let hi = ptr_read!(ptr.wrapping_offset(1)) as ::core::ffi::c_uchar;
+                Some(CharRefUnit {
+                    type_0: if hi == 0 {
+                        type_table[lo as usize] as ::core::ffi::c_int
+                    } else {
+                        unicode_byte_type(hi as ::core::ffi::c_char, lo as ::core::ffi::c_char)
+                    },
+                    is_hex_marker: hi == 0 && lo == b'x',
+                    next_ptr: ptr.wrapping_offset(2),
+                })
+            }
+            CharRefEncoding::Big2 => {
+                if ptr_offset_from!(end, ptr) < 2 {
+                    return None;
                 }
+                let hi = ptr_read!(ptr) as ::core::ffi::c_uchar;
+                let lo = ptr_read!(ptr.wrapping_offset(1)) as ::core::ffi::c_uchar;
+                Some(CharRefUnit {
+                    type_0: if hi == 0 {
+                        type_table[lo as usize] as ::core::ffi::c_int
+                    } else {
+                        unicode_byte_type(hi as ::core::ffi::c_char, lo as ::core::ffi::c_char)
+                    },
+                    is_hex_marker: hi == 0 && lo == b'x',
+                    next_ptr: ptr.wrapping_offset(2),
+                })
             }
         }
     }
@@ -533,9 +531,7 @@ pub mod xmltok_impl_c {
         next_tok_ptr: *mut *const ::core::ffi::c_char,
         next_ptr: *const ::core::ffi::c_char,
     ) {
-        unsafe {
-            *next_tok_ptr = next_ptr;
-        }
+        ptr_write!(next_tok_ptr, next_ptr);
     }
 
     fn scan_hex_char_ref_impl(
