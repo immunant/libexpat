@@ -1683,6 +1683,22 @@ fn current_chunk_size() -> ::core::ffi::c_int {
     unsafe_global_get!(g_chunkSize)
 }
 
+fn reparse_deferral_enabled_default() -> bool {
+    unsafe_global_get!(g_reparseDeferralEnabledDefault) != 0
+}
+
+fn bytes_scanned() -> ::core::ffi::c_uint {
+    unsafe_global_get!(g_bytesScanned)
+}
+
+fn set_bytes_scanned(value: ::core::ffi::c_uint) {
+    unsafe_global_set!(g_bytesScanned, value);
+}
+
+fn standard_error() -> *mut FILE {
+    unsafe_global_get!(stderr)
+}
+
 #[derive(Copy, Clone)]
 enum SharedTestText {
     CharacterData,
@@ -1793,6 +1809,15 @@ fn parse_single_bytes(text: *const ::core::ffi::c_char, len: ::core::ffi::c_int)
         len,
         XML_TRUE as ::core::ffi::c_int,
     )
+}
+
+fn parse_single_bytes_for(
+    parser: XML_Parser,
+    text: *const ::core::ffi::c_char,
+    len: ::core::ffi::c_int,
+    is_final: ::core::ffi::c_int,
+) -> XML_Status {
+    ffi_call4(_XML_Parse_SINGLE_BYTES, parser, text, len, is_final)
 }
 
 fn parse_single_bytes_c_string(text: *const ::core::ffi::c_char) -> XML_Status {
@@ -13001,181 +13026,139 @@ extern "C" fn test_nested_entity_suspend_2() {
     }
 }
 extern "C" fn test_big_tokens_scale_linearly() {
-    unsafe {
-        _check_set_test_info(
-            b"test_big_tokens_scale_linearly\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5661 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_big_tokens_scale_linearly\0",
+        5661 as ::core::ffi::c_int,
+    );
+    let text = [
+        C2Rust_Unnamed {
+            pre: bytes_as_c_char_ptr(b"<a>\0"),
+            post: bytes_as_c_char_ptr(b"</a>\0"),
+        },
+        C2Rust_Unnamed {
+            pre: bytes_as_c_char_ptr(b"<b><![CDATA[ value: \0"),
+            post: bytes_as_c_char_ptr(b" ]]></b>\0"),
+        },
+        C2Rust_Unnamed {
+            pre: bytes_as_c_char_ptr(b"<c attr='\0"),
+            post: bytes_as_c_char_ptr(b"'></c>\0"),
+        },
+        C2Rust_Unnamed {
+            pre: bytes_as_c_char_ptr(b"<d><!-- \0"),
+            post: bytes_as_c_char_ptr(b" --></d>\0"),
+        },
+        C2Rust_Unnamed {
+            pre: bytes_as_c_char_ptr(b"<e><\0"),
+            post: bytes_as_c_char_ptr(b"/></e>\0"),
+        },
+    ];
+    let aaaaaa = [b'a' as ::core::ffi::c_char; 4096];
+    let fillsize = aaaaaa.len() as ::core::ffi::c_int;
+    let fillcount: ::core::ffi::c_int = 100 as ::core::ffi::c_int;
+    let approx_bytes: ::core::ffi::c_uint = (fillsize * fillcount) as ::core::ffi::c_uint;
+    let max_factor: ::core::ffi::c_uint = 4 as ::core::ffi::c_uint;
+    let max_scanned = max_factor.wrapping_mul(approx_bytes);
+
+    if !reparse_deferral_enabled_default() {
+        return;
+    }
+
+    for case in text {
+        let parser = create_parser_or_fail(5688 as ::core::ffi::c_int);
+        ffi_call!(
+            set_subtest,
+            bytes_as_c_char_ptr(b"text=\"%saaaaaa%s\"\0"),
+            case.pre,
+            case.post,
         );
-        let text: [C2Rust_Unnamed; 5] = [
-            C2Rust_Unnamed {
-                pre: b"<a>\0".as_ptr() as *const ::core::ffi::c_char,
-                post: b"</a>\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            C2Rust_Unnamed {
-                pre: b"<b><![CDATA[ value: \0".as_ptr() as *const ::core::ffi::c_char,
-                post: b" ]]></b>\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            C2Rust_Unnamed {
-                pre: b"<c attr='\0".as_ptr() as *const ::core::ffi::c_char,
-                post: b"'></c>\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            C2Rust_Unnamed {
-                pre: b"<d><!-- \0".as_ptr() as *const ::core::ffi::c_char,
-                post: b" --></d>\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            C2Rust_Unnamed {
-                pre: b"<e><\0".as_ptr() as *const ::core::ffi::c_char,
-                post: b"/></e>\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-        ];
-        let num_cases: ::core::ffi::c_int = (::core::mem::size_of::<[C2Rust_Unnamed; 5]>() as usize)
-            .wrapping_div(::core::mem::size_of::<C2Rust_Unnamed>() as usize)
-            as ::core::ffi::c_int;
-        let mut aaaaaa: [::core::ffi::c_char; 4096] = [0; 4096];
-        let fillsize: ::core::ffi::c_int =
-            ::core::mem::size_of::<[::core::ffi::c_char; 4096]>() as ::core::ffi::c_int;
-        let fillcount: ::core::ffi::c_int = 100 as ::core::ffi::c_int;
-        let approx_bytes: ::core::ffi::c_uint = (fillsize * fillcount) as ::core::ffi::c_uint;
-        let max_factor: ::core::ffi::c_uint = 4 as ::core::ffi::c_uint;
-        let max_scanned: ::core::ffi::c_uint = max_factor.wrapping_mul(approx_bytes);
-        memset(
-            &raw mut aaaaaa as *mut ::core::ffi::c_char as *mut ::core::ffi::c_void,
-            'a' as i32,
-            fillsize as size_t,
-        );
-        if g_reparseDeferralEnabledDefault == 0 {
-            return;
-        }
-        let mut i: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while i < num_cases {
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5688 as ::core::ffi::c_int,
-                    b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            let mut status: XML_Status = XML_STATUS_ERROR;
-            set_subtest(
-                b"text=\"%saaaaaa%s\"\0".as_ptr() as *const ::core::ffi::c_char,
-                text[i as usize].pre,
-                text[i as usize].post,
-            );
-            g_bytesScanned = 0 as ::core::ffi::c_uint;
-            status = _XML_Parse_SINGLE_BYTES(
+
+        set_bytes_scanned(0);
+        ensure_parser_success_for(
+            parser,
+            parse_single_bytes_for(
                 parser,
-                text[i as usize].pre,
-                strlen(text[i as usize].pre) as ::core::ffi::c_int,
+                case.pre,
+                c_string_len(case.pre),
                 XML_FALSE as ::core::ffi::c_int,
-            );
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
+            ),
+            5697 as ::core::ffi::c_int,
+        );
+
+        let mut past_max_count: ::core::ffi::c_uint = 0;
+        for filled_loops in 1..=fillcount {
+            ensure_parser_success_for(
+                parser,
+                parse_single_bytes_for(
                     parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5697 as ::core::ffi::c_int,
-                );
-            }
-            let mut past_max_count: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
-            let mut f: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-            while f < fillcount {
-                status = _XML_Parse_SINGLE_BYTES(
-                    parser,
-                    &raw mut aaaaaa as *mut ::core::ffi::c_char,
+                    aaaaaa.as_ptr(),
                     fillsize,
                     XML_FALSE as ::core::ffi::c_int,
-                );
-                if status as ::core::ffi::c_uint
-                    != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    _xml_failure(
-                        parser,
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        5705 as ::core::ffi::c_int,
-                    );
-                }
-                if g_bytesScanned > max_scanned {
-                    let pushed: ::core::ffi::c_uint =
-                        (strlen(text[i as usize].pre) as ::core::ffi::c_uint).wrapping_add(
-                            ((f + 1 as ::core::ffi::c_int) * fillsize) as ::core::ffi::c_uint,
-                        );
-                    fprintf(
-                        stderr,
-                        b"after %d/%d loops: pushed=%u scanned=%u (factor ~%.2f) max_scanned: %u (factor ~%u)\n\0"
-                            .as_ptr() as *const ::core::ffi::c_char,
-                        f + 1 as ::core::ffi::c_int,
-                        fillcount,
-                        pushed,
-                        g_bytesScanned,
-                        g_bytesScanned as ::core::ffi::c_double
-                            / pushed as ::core::ffi::c_double,
-                        max_scanned,
-                        max_factor,
-                    );
-                    past_max_count = past_max_count.wrapping_add(1);
-                    if !(past_max_count < 5 as ::core::ffi::c_uint) {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            5720 as ::core::ffi::c_int,
-                            b"check failed: past_max_count < 5\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                }
-                f += 1;
-            }
-            status = _XML_Parse_SINGLE_BYTES(
-                parser,
-                text[i as usize].post,
-                strlen(text[i as usize].post) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
+                ),
+                5705 as ::core::ffi::c_int,
             );
-            if status as ::core::ffi::c_uint
-                != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5728 as ::core::ffi::c_int,
-                );
-            }
-            if !(g_bytesScanned > approx_bytes) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5731 as ::core::ffi::c_int,
-                    b"check failed: g_bytesScanned > approx_bytes\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            if g_bytesScanned > max_scanned {
-                fprintf(
-                    stderr,
-                    b"after all input: scanned=%u (factor ~%.2f) max_scanned: %u (factor ~%u)\n\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                    g_bytesScanned,
-                    g_bytesScanned as ::core::ffi::c_double / approx_bytes as ::core::ffi::c_double,
+
+            let scanned = bytes_scanned();
+            if scanned > max_scanned {
+                let pushed = (c_string_len(case.pre) as ::core::ffi::c_uint)
+                    .wrapping_add((filled_loops * fillsize) as ::core::ffi::c_uint);
+                ffi_call!(
+                    fprintf,
+                    standard_error(),
+                    bytes_as_c_char_ptr(
+                        b"after %d/%d loops: pushed=%u scanned=%u (factor ~%.2f) max_scanned: %u (factor ~%u)\n\0",
+                    ),
+                    filled_loops,
+                    fillcount,
+                    pushed,
+                    scanned,
+                    scanned as ::core::ffi::c_double / pushed as ::core::ffi::c_double,
                     max_scanned,
                     max_factor,
                 );
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5738 as ::core::ffi::c_int,
-                    b"scanned too many bytes\0".as_ptr() as *const ::core::ffi::c_char,
-                );
+                past_max_count = past_max_count.wrapping_add(1);
+                if past_max_count >= 5 as ::core::ffi::c_uint {
+                    fail_test(
+                        5720 as ::core::ffi::c_int,
+                        b"check failed: past_max_count < 5\0",
+                    );
+                }
             }
-            parser_free(parser);
-            i += 1;
         }
+
+        ensure_parser_success_for(
+            parser,
+            parse_single_bytes_for(
+                parser,
+                case.post,
+                c_string_len(case.post),
+                XML_TRUE as ::core::ffi::c_int,
+            ),
+            5728 as ::core::ffi::c_int,
+        );
+
+        let scanned = bytes_scanned();
+        if scanned <= approx_bytes {
+            fail_test(
+                5731 as ::core::ffi::c_int,
+                b"check failed: g_bytesScanned > approx_bytes\0",
+            );
+        }
+        if scanned > max_scanned {
+            ffi_call!(
+                fprintf,
+                standard_error(),
+                bytes_as_c_char_ptr(
+                    b"after all input: scanned=%u (factor ~%.2f) max_scanned: %u (factor ~%u)\n\0",
+                ),
+                scanned,
+                scanned as ::core::ffi::c_double / approx_bytes as ::core::ffi::c_double,
+                max_scanned,
+                max_factor,
+            );
+            fail_test(5738 as ::core::ffi::c_int, b"scanned too many bytes\0");
+        }
+
+        parser_free(parser);
     }
 }
 extern "C" fn test_set_reparse_deferral() {
@@ -13996,534 +13979,477 @@ extern "C" fn test_bypass_heuristic_when_close_to_bufsize() {
     }
 }
 extern "C" fn test_varying_buffer_fills() {
-    unsafe {
-        _check_set_test_info(
-            b"test_varying_buffer_fills\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            6143 as ::core::ffi::c_int,
+    set_test_info(b"test_varying_buffer_fills\0", 6143 as ::core::ffi::c_int);
+    let KiB: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
+    let MiB: ::core::ffi::c_int = 1024 as ::core::ffi::c_int * KiB;
+    let document_length: ::core::ffi::c_int = 16 as ::core::ffi::c_int * MiB;
+    let big: ::core::ffi::c_int = 7654321 as ::core::ffi::c_int;
+    if current_chunk_size() != 0 as ::core::ffi::c_int {
+        return;
+    }
+
+    let mut document = vec![b'x' as ::core::ffi::c_char; document_length as usize];
+    document[0] = b'<' as ::core::ffi::c_char;
+    document[1] = b't' as ::core::ffi::c_char;
+    document[2..(big - 1) as usize].fill(b' ' as ::core::ffi::c_char);
+    document[(big - 1) as usize] = b'>' as ::core::ffi::c_char;
+
+    let testcases: [[::core::ffi::c_int; 30]; 11] = [
+        [
+            8 as ::core::ffi::c_int * MiB,
+            -(8 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            4 as ::core::ffi::c_int * MiB,
+            4 as ::core::ffi::c_int * MiB,
+            -(12 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            4 as ::core::ffi::c_int * MiB,
+            0 as ::core::ffi::c_int,
+            4 as ::core::ffi::c_int * MiB,
+            -(12 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            4 as ::core::ffi::c_int * MiB,
+            0 as ::core::ffi::c_int,
+            0 as ::core::ffi::c_int,
+            4 as ::core::ffi::c_int * MiB,
+            -(12 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            4 as ::core::ffi::c_int * MiB,
+            0 as ::core::ffi::c_int,
+            1 as ::core::ffi::c_int * MiB,
+            0 as ::core::ffi::c_int,
+            3 as ::core::ffi::c_int * MiB,
+            -(12 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            4 as ::core::ffi::c_int * MiB,
+            2 as ::core::ffi::c_int * MiB,
+            1 as ::core::ffi::c_int * MiB,
+            512 as ::core::ffi::c_int * KiB,
+            256 as ::core::ffi::c_int * KiB,
+            256 as ::core::ffi::c_int * KiB,
+            -(12 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            4 as ::core::ffi::c_int * MiB + 1 as ::core::ffi::c_int,
+            2 as ::core::ffi::c_int * MiB,
+            1 as ::core::ffi::c_int * MiB,
+            512 as ::core::ffi::c_int * KiB,
+            -(25 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            1 as ::core::ffi::c_int * KiB,
+            2 as ::core::ffi::c_int * KiB,
+            4 as ::core::ffi::c_int * KiB,
+            8 as ::core::ffi::c_int * KiB,
+            16 as ::core::ffi::c_int * KiB,
+            32 as ::core::ffi::c_int * KiB,
+            64 as ::core::ffi::c_int * KiB,
+            128 as ::core::ffi::c_int * KiB,
+            256 as ::core::ffi::c_int * KiB,
+            512 as ::core::ffi::c_int * KiB,
+            1 as ::core::ffi::c_int * MiB,
+            2 as ::core::ffi::c_int * MiB,
+            4 as ::core::ffi::c_int * MiB,
+            -(16 as ::core::ffi::c_int) * MiB,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            2 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
+            2 as ::core::ffi::c_int * KiB,
+            4 as ::core::ffi::c_int * KiB,
+            8 as ::core::ffi::c_int * KiB,
+            16 as ::core::ffi::c_int * KiB,
+            32 as ::core::ffi::c_int * KiB,
+            64 as ::core::ffi::c_int * KiB,
+            128 as ::core::ffi::c_int * KiB,
+            256 as ::core::ffi::c_int * KiB,
+            512 as ::core::ffi::c_int * KiB,
+            1 as ::core::ffi::c_int * MiB,
+            2 as ::core::ffi::c_int * MiB,
+            4 as ::core::ffi::c_int * MiB,
+            -(10 as ::core::ffi::c_int * MiB
+                + 682 as ::core::ffi::c_int * KiB
+                + 7 as ::core::ffi::c_int),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            2 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
+            2 as ::core::ffi::c_int * KiB,
+            4 as ::core::ffi::c_int * KiB,
+            8 as ::core::ffi::c_int * KiB,
+            16 as ::core::ffi::c_int * KiB,
+            32 as ::core::ffi::c_int * KiB,
+            64 as ::core::ffi::c_int * KiB,
+            128 as ::core::ffi::c_int * KiB,
+            256 as ::core::ffi::c_int * KiB,
+            512 as ::core::ffi::c_int * KiB,
+            1 as ::core::ffi::c_int * MiB,
+            2 as ::core::ffi::c_int * MiB,
+            4 as ::core::ffi::c_int * MiB - 1 as ::core::ffi::c_int,
+            -(10 as ::core::ffi::c_int * MiB
+                + 682 as ::core::ffi::c_int * KiB
+                + 6 as ::core::ffi::c_int),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            512 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
+            256 as ::core::ffi::c_int * KiB,
+            128 as ::core::ffi::c_int * KiB,
+            128 as ::core::ffi::c_int * KiB - 1 as ::core::ffi::c_int,
+            512 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
+            256 as ::core::ffi::c_int * KiB,
+            128 as ::core::ffi::c_int * KiB,
+            128 as ::core::ffi::c_int * KiB - 1 as ::core::ffi::c_int,
+            1 as ::core::ffi::c_int * MiB + 1 as ::core::ffi::c_int,
+            512 as ::core::ffi::c_int * KiB,
+            256 as ::core::ffi::c_int * KiB,
+            256 as ::core::ffi::c_int * KiB - 1 as ::core::ffi::c_int,
+            2 as ::core::ffi::c_int * MiB + 1 as ::core::ffi::c_int,
+            1 as ::core::ffi::c_int * MiB,
+            512 as ::core::ffi::c_int * KiB,
+            -(45 as ::core::ffi::c_int * MiB + 12 as ::core::ffi::c_int),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+    ];
+    for (test_i, fillsizes) in testcases.iter().enumerate() {
+        ffi_call!(
+            set_subtest,
+            bytes_as_c_char_ptr(b"#%d {%d %d %d %d ...}\0"),
+            test_i as ::core::ffi::c_int,
+            fillsizes[0],
+            fillsizes[1],
+            fillsizes[2],
+            fillsizes[3],
         );
-        let KiB: ::core::ffi::c_int = 1024 as ::core::ffi::c_int;
-        let MiB: ::core::ffi::c_int = 1024 as ::core::ffi::c_int * KiB;
-        let document_length: ::core::ffi::c_int = 16 as ::core::ffi::c_int * MiB;
-        let big: ::core::ffi::c_int = 7654321 as ::core::ffi::c_int;
-        if g_chunkSize != 0 as ::core::ffi::c_int {
-            return;
-        }
-        let document: *mut ::core::ffi::c_char =
-            malloc(document_length as size_t) as *mut ::core::ffi::c_char;
-        if document.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                6154 as ::core::ffi::c_int,
-                b"check failed: document != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        memset(
-            document as *mut ::core::ffi::c_void,
-            'x' as i32,
-            document_length as size_t,
-        );
-        *document.offset(0 as ::core::ffi::c_int as isize) = '<' as i32 as ::core::ffi::c_char;
-        *document.offset(1 as ::core::ffi::c_int as isize) = 't' as i32 as ::core::ffi::c_char;
-        memset(
-            document.offset(2 as ::core::ffi::c_int as isize) as *mut ::core::ffi::c_char
-                as *mut ::core::ffi::c_void,
-            ' ' as i32,
-            (big - 2 as ::core::ffi::c_int) as size_t,
-        );
-        *document.offset((big - 1 as ::core::ffi::c_int) as isize) =
-            '>' as i32 as ::core::ffi::c_char;
-        let testcases: [[::core::ffi::c_int; 30]; 11] = [
-            [
-                8 as ::core::ffi::c_int * MiB,
-                -(8 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                4 as ::core::ffi::c_int * MiB,
-                4 as ::core::ffi::c_int * MiB,
-                -(12 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                4 as ::core::ffi::c_int * MiB,
-                0 as ::core::ffi::c_int,
-                4 as ::core::ffi::c_int * MiB,
-                -(12 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                4 as ::core::ffi::c_int * MiB,
-                0 as ::core::ffi::c_int,
-                0 as ::core::ffi::c_int,
-                4 as ::core::ffi::c_int * MiB,
-                -(12 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                4 as ::core::ffi::c_int * MiB,
-                0 as ::core::ffi::c_int,
-                1 as ::core::ffi::c_int * MiB,
-                0 as ::core::ffi::c_int,
-                3 as ::core::ffi::c_int * MiB,
-                -(12 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                4 as ::core::ffi::c_int * MiB,
-                2 as ::core::ffi::c_int * MiB,
-                1 as ::core::ffi::c_int * MiB,
-                512 as ::core::ffi::c_int * KiB,
-                256 as ::core::ffi::c_int * KiB,
-                256 as ::core::ffi::c_int * KiB,
-                -(12 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                4 as ::core::ffi::c_int * MiB + 1 as ::core::ffi::c_int,
-                2 as ::core::ffi::c_int * MiB,
-                1 as ::core::ffi::c_int * MiB,
-                512 as ::core::ffi::c_int * KiB,
-                -(25 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                1 as ::core::ffi::c_int * KiB,
-                2 as ::core::ffi::c_int * KiB,
-                4 as ::core::ffi::c_int * KiB,
-                8 as ::core::ffi::c_int * KiB,
-                16 as ::core::ffi::c_int * KiB,
-                32 as ::core::ffi::c_int * KiB,
-                64 as ::core::ffi::c_int * KiB,
-                128 as ::core::ffi::c_int * KiB,
-                256 as ::core::ffi::c_int * KiB,
-                512 as ::core::ffi::c_int * KiB,
-                1 as ::core::ffi::c_int * MiB,
-                2 as ::core::ffi::c_int * MiB,
-                4 as ::core::ffi::c_int * MiB,
-                -(16 as ::core::ffi::c_int) * MiB,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                2 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
-                2 as ::core::ffi::c_int * KiB,
-                4 as ::core::ffi::c_int * KiB,
-                8 as ::core::ffi::c_int * KiB,
-                16 as ::core::ffi::c_int * KiB,
-                32 as ::core::ffi::c_int * KiB,
-                64 as ::core::ffi::c_int * KiB,
-                128 as ::core::ffi::c_int * KiB,
-                256 as ::core::ffi::c_int * KiB,
-                512 as ::core::ffi::c_int * KiB,
-                1 as ::core::ffi::c_int * MiB,
-                2 as ::core::ffi::c_int * MiB,
-                4 as ::core::ffi::c_int * MiB,
-                -(10 as ::core::ffi::c_int * MiB
-                    + 682 as ::core::ffi::c_int * KiB
-                    + 7 as ::core::ffi::c_int),
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                2 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
-                2 as ::core::ffi::c_int * KiB,
-                4 as ::core::ffi::c_int * KiB,
-                8 as ::core::ffi::c_int * KiB,
-                16 as ::core::ffi::c_int * KiB,
-                32 as ::core::ffi::c_int * KiB,
-                64 as ::core::ffi::c_int * KiB,
-                128 as ::core::ffi::c_int * KiB,
-                256 as ::core::ffi::c_int * KiB,
-                512 as ::core::ffi::c_int * KiB,
-                1 as ::core::ffi::c_int * MiB,
-                2 as ::core::ffi::c_int * MiB,
-                4 as ::core::ffi::c_int * MiB - 1 as ::core::ffi::c_int,
-                -(10 as ::core::ffi::c_int * MiB
-                    + 682 as ::core::ffi::c_int * KiB
-                    + 6 as ::core::ffi::c_int),
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            [
-                512 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
-                256 as ::core::ffi::c_int * KiB,
-                128 as ::core::ffi::c_int * KiB,
-                128 as ::core::ffi::c_int * KiB - 1 as ::core::ffi::c_int,
-                512 as ::core::ffi::c_int * KiB + 1 as ::core::ffi::c_int,
-                256 as ::core::ffi::c_int * KiB,
-                128 as ::core::ffi::c_int * KiB,
-                128 as ::core::ffi::c_int * KiB - 1 as ::core::ffi::c_int,
-                1 as ::core::ffi::c_int * MiB + 1 as ::core::ffi::c_int,
-                512 as ::core::ffi::c_int * KiB,
-                256 as ::core::ffi::c_int * KiB,
-                256 as ::core::ffi::c_int * KiB - 1 as ::core::ffi::c_int,
-                2 as ::core::ffi::c_int * MiB + 1 as ::core::ffi::c_int,
-                1 as ::core::ffi::c_int * MiB,
-                512 as ::core::ffi::c_int * KiB,
-                -(45 as ::core::ffi::c_int * MiB + 12 as ::core::ffi::c_int),
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-        ];
-        let testcount: ::core::ffi::c_int =
-            (::core::mem::size_of::<[[::core::ffi::c_int; 30]; 11]>() as usize)
-                .wrapping_div(::core::mem::size_of::<[::core::ffi::c_int; 30]>() as usize)
-                as ::core::ffi::c_int;
-        let mut test_i: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while test_i < testcount {
-            let mut fillsize: *const ::core::ffi::c_int =
-                &raw const *(&raw const testcases as *const [::core::ffi::c_int; 30])
-                    .offset(test_i as isize) as *const ::core::ffi::c_int;
-            set_subtest(
-                b"#%d {%d %d %d %d ...}\0".as_ptr() as *const ::core::ffi::c_char,
-                test_i,
-                *fillsize.offset(0 as ::core::ffi::c_int as isize),
-                *fillsize.offset(1 as ::core::ffi::c_int as isize),
-                *fillsize.offset(2 as ::core::ffi::c_int as isize),
-                *fillsize.offset(3 as ::core::ffi::c_int as isize),
-            );
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    6214 as ::core::ffi::c_int,
-                    b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+
+        let parser = create_parser_or_fail(6214 as ::core::ffi::c_int);
+        let mut storage = CharData {
+            count: 0,
+            data: [0; 2048],
+        };
+        ffi_call1(CharData_Init, &raw mut storage);
+        parser_set_user_data_for(parser, (&raw mut storage as *mut CharData).cast());
+        parser_set_start_element_handler_for(parser, start_element_event_handler_for_tests());
+        set_bytes_scanned(0);
+
+        let mut worstcase_bytes: ::core::ffi::c_int = 0;
+        let mut offset: ::core::ffi::c_int = 0;
+        let mut terminal_fill: ::core::ffi::c_int = 0;
+
+        for &fill in fillsizes {
+            if fill < 0 {
+                terminal_fill = fill;
+                break;
+            }
+            if offset + fill > document_length {
+                fail_test(
+                    6225 as ::core::ffi::c_int,
+                    b"check failed: offset + *fillsize <= document_length\0",
                 );
             }
-            let mut storage: CharData = CharData {
-                count: 0,
-                data: [0; 2048],
-            };
-            CharData_Init(&raw mut storage);
-            parser_set_user_data_for(parser, &raw mut storage as *mut ::core::ffi::c_void);
-            XML_SetStartElementHandler(
+
+            ensure_parser_success_for(
                 parser,
-                Some(
-                    start_element_event_handler
-                        as unsafe extern "C" fn(
-                            *mut ::core::ffi::c_void,
-                            *const XML_Char,
-                            *mut *const XML_Char,
-                        ) -> (),
-                ),
-            );
-            g_bytesScanned = 0 as ::core::ffi::c_uint;
-            let mut worstcase_bytes: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-            let mut offset: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-            while *fillsize >= 0 as ::core::ffi::c_int {
-                if !(offset + *fillsize <= document_length) {
-                    _fail(
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        6225 as ::core::ffi::c_int,
-                        b"check failed: offset + *fillsize <= document_length\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                    );
-                }
-                let status: XML_Status = XML_Parse(
+                parser_parse_for(
                     parser,
-                    document.offset(offset as isize) as *mut ::core::ffi::c_char,
-                    *fillsize,
+                    document.as_ptr().wrapping_add(offset as usize),
+                    fill,
                     XML_FALSE as ::core::ffi::c_int,
-                ) as XML_Status;
-                if status as ::core::ffi::c_uint
-                    != XML_STATUS_OK as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    _xml_failure(
-                        parser,
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        6229 as ::core::ffi::c_int,
-                    );
-                }
-                offset += *fillsize;
-                fillsize = fillsize.offset(1);
-                if !(offset <= 2147483647 as ::core::ffi::c_int - worstcase_bytes) {
-                    _fail(
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        6233 as ::core::ffi::c_int,
-                        b"check failed: offset <= INT_MAX - worstcase_bytes\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                    );
-                }
-                worstcase_bytes += offset;
-            }
-            if !(storage.count == 1 as ::core::ffi::c_int) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    6236 as ::core::ffi::c_int,
-                    b"check failed: storage.count == 1\0".as_ptr() as *const ::core::ffi::c_char,
+                ),
+                6229 as ::core::ffi::c_int,
+            );
+
+            offset += fill;
+            if offset > 2147483647 as ::core::ffi::c_int - worstcase_bytes {
+                fail_test(
+                    6233 as ::core::ffi::c_int,
+                    b"check failed: offset <= INT_MAX - worstcase_bytes\0",
                 );
             }
-            if !(g_bytesScanned > 0 as ::core::ffi::c_uint) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    6237 as ::core::ffi::c_int,
-                    b"check failed: g_bytesScanned > 0\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            if g_reparseDeferralEnabledDefault != 0 {
-                let max_bytes_scanned: ::core::ffi::c_uint = -*fillsize as ::core::ffi::c_uint;
-                if g_bytesScanned > max_bytes_scanned {
-                    fprintf(
-                        stderr,
-                        b"bytes scanned in parse attempts: actual=%u limit=%u \n\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        g_bytesScanned,
-                        max_bytes_scanned,
-                    );
-                    _fail(
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        6245 as ::core::ffi::c_int,
-                        b"too many bytes scanned in parse attempts\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                    );
-                }
-            }
-            if !(g_bytesScanned <= worstcase_bytes as ::core::ffi::c_uint) {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    6248 as ::core::ffi::c_int,
-                    b"check failed: g_bytesScanned <= (unsigned)worstcase_bytes\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            parser_free(parser);
-            test_i += 1;
+            worstcase_bytes += offset;
         }
-        free(document as *mut ::core::ffi::c_void);
+
+        if storage.count != 1 as ::core::ffi::c_int {
+            fail_test(
+                6236 as ::core::ffi::c_int,
+                b"check failed: storage.count == 1\0",
+            );
+        }
+
+        let scanned = bytes_scanned();
+        if scanned == 0 {
+            fail_test(
+                6237 as ::core::ffi::c_int,
+                b"check failed: g_bytesScanned > 0\0",
+            );
+        }
+        if reparse_deferral_enabled_default() {
+            let max_bytes_scanned = (-terminal_fill) as ::core::ffi::c_uint;
+            if scanned > max_bytes_scanned {
+                ffi_call!(
+                    fprintf,
+                    standard_error(),
+                    bytes_as_c_char_ptr(
+                        b"bytes scanned in parse attempts: actual=%u limit=%u \n\0",
+                    ),
+                    scanned,
+                    max_bytes_scanned,
+                );
+                fail_test(
+                    6245 as ::core::ffi::c_int,
+                    b"too many bytes scanned in parse attempts\0",
+                );
+            }
+        }
+        if scanned > worstcase_bytes as ::core::ffi::c_uint {
+            fail_test(
+                6248 as ::core::ffi::c_int,
+                b"check failed: g_bytesScanned <= (unsigned)worstcase_bytes\0",
+            );
+        }
+
+        parser_free(parser);
     }
 }
 #[no_mangle]
