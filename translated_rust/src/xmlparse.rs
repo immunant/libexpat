@@ -2771,11 +2771,11 @@ struct AllocationBacking {
     actions: Box<dyn FnMut(ParserAllocationAction) -> bool>,
 }
 
-/// Opaque allocator token whose accounting is performed through the parser
-/// that owns the operation.  DTD state can outlive an individual parser, so
-/// unlike `AllocationBacking` this token deliberately does not capture one.
+/// Opaque allocator token used by DTD-owned storage.  It retains the
+/// allocator route captured when the storage was created, while callers pass
+/// the current parser only to keep allocation and release sites uniform.
 struct LiveParserAllocationBacking {
-    actions: Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>,
+    backing: AllocationBacking,
 }
 
 /// The allocator policy owned by a parser's Rust state.  It carries the
@@ -2809,8 +2809,8 @@ impl AllocationBacking {
 }
 
 impl LiveParserAllocationBacking {
-    fn apply(&mut self, parser: &mut XML_ParserStruct, action: ParserAllocationAction) -> bool {
-        (self.actions)(parser, action)
+    fn apply(&mut self, _parser: &mut XML_ParserStruct, action: ParserAllocationAction) -> bool {
+        self.backing.apply(action)
     }
 }
 
@@ -24480,27 +24480,10 @@ unsafe fn live_parser_allocation_backing(
     allocation_size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
 ) -> Option<LiveParserAllocationBacking> {
-    let mut allocation = expat_malloc(parser, allocation_size, source_line);
-    if allocation.is_null() {
-        return None;
-    }
+    let backing = ParserAllocatorPolicy::for_parser(parser)
+        .allocation_backing(allocation_size, source_line)?;
     Some(LiveParserAllocationBacking {
-        actions: Box::new(move |parser, action| match action {
-            ParserAllocationAction::Grow { size, source_line } => {
-                let reallocated = expat_realloc(parser, allocation, size, source_line);
-                if reallocated.is_null() {
-                    false
-                } else {
-                    allocation = reallocated;
-                    true
-                }
-            }
-            ParserAllocationAction::Replace { .. } => false,
-            ParserAllocationAction::Free(free_source_line) => {
-                expat_free(parser, allocation, free_source_line);
-                true
-            }
-        }),
+        backing,
     })
 }
 
