@@ -1503,6 +1503,8 @@ pub const XML_ACCOUNT_ENTITY_EXPANSION: XML_Account = 1;
 
 pub const XML_ACCOUNT_DIRECT: XML_Account = 0;
 
+const ACCOUNTING_ABORTING_EPILOG: &[u8; 11] = b" ABORTING\n\0";
+
 pub type ICHAR = ::core::ffi::c_char;
 
 pub const INIT_TAG_BUF_SIZE: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
@@ -1958,35 +1960,18 @@ pub unsafe extern "C" fn expat_realloc_ffi(
 ) -> *mut ::core::ffi::c_void {
     expat_realloc(parser, ptr, size, sourceLine)
 }
-pub unsafe extern "C" fn XML_ParserCreate(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    return XML_ParserCreate_MM(
-        encodingName,
-        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-    );
-}
 #[export_name = "XML_ParserCreate"]
 
 pub unsafe extern "C" fn XML_ParserCreate_ffi(
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    XML_ParserCreate(encodingName)
-}
-pub unsafe extern "C" fn XML_ParserCreateNS(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut nsSep: crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    let mut tmp: [crate::expat_external_h::XML_Char; 2] = [
-        nsSep,
-        0 as ::core::ffi::c_int as crate::expat_external_h::XML_Char,
-    ];
-    return XML_ParserCreate_MM(
+    parserCreate(
         encodingName,
         ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
-        &raw mut tmp as *mut crate::expat_external_h::XML_Char,
-    );
+        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        ::core::ptr::null_mut::<DTD>(),
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+    )
 }
 #[export_name = "XML_ParserCreateNS"]
 
@@ -1994,7 +1979,17 @@ pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
     mut encodingName: *const crate::expat_external_h::XML_Char,
     mut nsSep: crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    XML_ParserCreateNS(encodingName, nsSep)
+    let mut tmp: [crate::expat_external_h::XML_Char; 2] = [
+        nsSep,
+        0 as ::core::ffi::c_int as crate::expat_external_h::XML_Char,
+    ];
+    parserCreate(
+        encodingName,
+        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
+        &raw mut tmp as *mut crate::expat_external_h::XML_Char,
+        ::core::ptr::null_mut::<DTD>(),
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+    )
 }
 static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     crate::ascii_h::ASCII_x as crate::expat_external_h::XML_Char,
@@ -2148,19 +2143,6 @@ unsafe extern "C" fn startParsing(
     }
     return crate::expat_h::XML_TRUE;
 }
-pub unsafe extern "C" fn XML_ParserCreate_MM(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
-    mut nameSep: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    return parserCreate(
-        encodingName,
-        memsuite,
-        nameSep,
-        ::core::ptr::null_mut::<DTD>(),
-        ::core::ptr::null_mut::<XML_ParserStruct>(),
-    );
-}
 #[export_name = "XML_ParserCreate_MM"]
 
 pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
@@ -2168,7 +2150,13 @@ pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
     mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
     mut nameSep: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
-    XML_ParserCreate_MM(encodingName, memsuite, nameSep)
+    parserCreate(
+        encodingName,
+        memsuite,
+        nameSep,
+        ::core::ptr::null_mut::<DTD>(),
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+    )
 }
 unsafe extern "C" fn parserCreate(
     mut encodingName: *const crate::expat_external_h::XML_Char,
@@ -4967,7 +4955,10 @@ unsafe extern "C" fn externalEntityInitProcessor2(
                 XML_ACCOUNT_DIRECT,
             ) == 0
             {
-                accountingOnAbort(parser);
+                accountingReportStats(
+                    parser,
+                    ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                );
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
             if next == end && (*parser).m_parsingStatus.finalBuffer == 0 {
@@ -5150,7 +5141,10 @@ unsafe extern "C" fn doContent(
             account,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingReportStats(
+                parser,
+                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         *eventEndPP = next;
@@ -6907,7 +6901,10 @@ unsafe extern "C" fn doCdataSection(
             enc, s, end, &raw mut next
         );
         if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
-            accountingOnAbort(parser);
+            accountingReportStats(
+                parser,
+                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         *eventEndPP = next;
@@ -7125,7 +7122,10 @@ unsafe extern "C" fn doIgnoreSection(
         XML_ACCOUNT_DIRECT,
     ) == 0
     {
-        accountingOnAbort(parser);
+        accountingReportStats(
+            parser,
+            ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+        );
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     *eventEndPP = next;
@@ -7224,7 +7224,10 @@ unsafe extern "C" fn processXmlDecl(
         XML_ACCOUNT_DIRECT,
     ) == 0
     {
-        accountingOnAbort(parser);
+        accountingReportStats(
+            parser,
+            ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+        );
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     if if (*parser).m_ns as ::core::ffi::c_int != 0 {
@@ -7576,7 +7579,10 @@ unsafe extern "C" fn entityValueInitProcessor(
                 XML_ACCOUNT_DIRECT,
             ) == 0
             {
-                accountingOnAbort(parser);
+                accountingReportStats(
+                    parser,
+                    ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                );
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
             *nextPtr = next;
@@ -7624,7 +7630,10 @@ unsafe extern "C" fn externalParEntProcessor(
             XML_ACCOUNT_DIRECT,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingReportStats(
+                parser,
+                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
@@ -7934,7 +7943,10 @@ unsafe extern "C" fn doProlog(
                     account,
                 ) == 0
                 {
-                    accountingOnAbort(parser);
+                    accountingReportStats(
+                        parser,
+                        ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                    );
                     return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
                 }
             }
@@ -9456,7 +9468,10 @@ unsafe extern "C" fn epilogProcessor(
             XML_ACCOUNT_DIRECT,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingReportStats(
+                parser,
+                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         (*parser).m_eventEndPtr = next;
@@ -9878,7 +9893,10 @@ unsafe extern "C" fn appendAttributeValue(
                 .expect("non-null function pointer")(enc, ptr, end, &raw mut next);
         if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
         {
-            accountingOnAbort(parser);
+            accountingReportStats(
+                parser,
+                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         let mut c2rust_current_block_70: u64;
@@ -10151,7 +10169,10 @@ unsafe extern "C" fn storeEntityValue(
             account,
         ) == 0
         {
-            accountingOnAbort(parser);
+            accountingReportStats(
+                parser,
+                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            );
             result = crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             break;
         } else {
@@ -12548,13 +12569,6 @@ unsafe extern "C" fn accountingReportStats(
         (*rootParser).m_accounting.countBytesIndirect,
         amplificationFactor as ::core::ffi::c_double,
         epilog,
-    );
-}
-
-unsafe extern "C" fn accountingOnAbort(mut originParser: crate::expat_h::XML_Parser) {
-    accountingReportStats(
-        originParser,
-        b" ABORTING\n\0".as_ptr() as *const ::core::ffi::c_char,
     );
 }
 
