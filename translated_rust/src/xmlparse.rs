@@ -16889,11 +16889,11 @@ unsafe fn entity_value_init_processor_impl(
                 }
                 crate::src::xmltok::XML_TOK_NONE | _ => {}
             }
-            return storeEntityValue(
-                std::ptr::from_mut(parser),
-                std::ptr::from_ref(current_parser_encoding(parser)),
-                s,
-                end,
+            return store_entity_value_impl(
+                parser,
+                std::ptr::from_ref(current_parser_encoding(parser)).addr(),
+                s.addr(),
+                end.addr(),
                 XML_ACCOUNT_DIRECT,
             )
             .error;
@@ -17103,11 +17103,11 @@ unsafe extern "C" fn entityValueProcessor(
                 }
                 crate::src::xmltok::XML_TOK_NONE | _ => {}
             }
-            return storeEntityValue(
-                std::ptr::from_mut(parser),
-                std::ptr::from_ref(current_parser_encoding(parser)),
-                s,
-                end,
+            return store_entity_value_impl(
+                parser,
+                std::ptr::from_ref(current_parser_encoding(parser)).addr(),
+                s.addr(),
+                end.addr(),
                 XML_ACCOUNT_DIRECT,
             )
             .error;
@@ -18515,14 +18515,26 @@ unsafe fn doProlog(
                                     }
                                     12 => {
                                         if dtd.keepProcessing != 0 {
+                                            let Ok(width) = usize::try_from(encoding.minBytesPerChar) else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            let Some(entity_start) = s.addr().checked_add(width) else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            let Some(entity_end) = next.addr().checked_sub(width) else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            if entity_start > entity_end {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            }
                                             let mut result_2: crate::expat_h::XML_Error =
-                                                callStoreEntityValue(
+                                                call_store_entity_value_impl(
                                                     parser,
-                                                    enc,
-                                                    s.wrapping_add(encoding.minBytesPerChar as usize),
-                                                    next.wrapping_sub(encoding.minBytesPerChar as usize),
+                                                    enc.addr(),
+                                                    PrologCursorAddress(entity_start),
+                                                    PrologCursorAddress(entity_end),
                                                     XML_ACCOUNT_NONE,
-                                            );
+                                                );
                                             if let Some(declaration) = parser.m_declEntity {
                                                 let dtd_ref: &mut DTD = dtd;
                                                 let Some(entity_text_ref) =
@@ -21463,13 +21475,16 @@ unsafe fn appendAttributeValue(
         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, cursor);
     }
     let input_start = input.as_ptr();
-    let (error, position) = (|| {
+    let Some(dtd_owner) = parser.m_dtd.clone() else {
+        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, cursor);
+    };
+    let (error, position) = dtd_owner.inspect(|dtd| {
+        (|| {
     // Literal scanners retain the C cursor ABI, but all token inspection below
     // is performed through this one checked view.  In particular, a scanner
     // result must remain within this window before it can select a token or an
     // entity-name subrange.
     let mut ptr = input_start.wrapping_add(cursor);
-    let dtd = &mut *parser_dtd_ptr!(parser);
     let pool_is_dtd_pool = matches!(pool, AttributeValuePool::Dtd(_));
     loop {
         let Ok(char_width) = usize::try_from(enc.enc.minBytesPerChar) else {
@@ -21797,7 +21812,8 @@ unsafe fn appendAttributeValue(
             }
         }
         ptr = next;
-    }})();
+        }})()
+    });
     let offset = position
         .addr()
         .checked_sub(input_start.addr())
@@ -21889,26 +21905,34 @@ fn attribute_accounting_diff_tolerated(
     tolerated
 }
 
-unsafe fn storeEntityValue(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut entityTextPtr: *const ::core::ffi::c_char,
-    mut entityTextEnd: *const ::core::ffi::c_char,
-    mut account: XML_Account,
+/// Stores a validated entity-value range.  Cursor addresses are resolved
+/// through parser- or entity-owned storage before every scan, so this
+/// implementation never dereferences a raw parser or cursor handle.
+fn store_entity_value_impl(
+    parser: &mut XML_ParserStruct,
+    enc_address: usize,
+    mut entity_text_ptr: usize,
+    entity_text_end: usize,
+    account: XML_Account,
 ) -> EntityValueResult {
-    let entity_text_start = entityTextPtr;
-    let parser = &mut *parser;
-    let enc_ptr = enc;
+    let entity_text_start = entity_text_ptr;
+    let enc_ptr = enc_address;
     // Entity-value literal scanners need the complete normal-encoding table.
     // The ABI prefix is never reinterpreted: only tables owned by this parser
     // or its fixed internal UTF-8 representation are valid at this point.
-    let Some(enc) = entity_value_normal_encoding(parser, enc.addr()) else {
+    let Some(enc) = entity_value_normal_encoding(parser, enc_address) else {
         return EntityValueResult {
             error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
             next_offset: None,
         };
     };
-    let dtd = &mut *parser_dtd_ptr!(parser);
+    let Some(dtd_owner) = parser.m_dtd.clone() else {
+        return EntityValueResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            next_offset: None,
+        };
+    };
+    dtd_owner.inspect(|dtd| {
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     let oldInEntityValue = parser.m_prologState.inEntityValue;
     parser.m_prologState.inEntityValue = 1 as ::core::ffi::c_int;
@@ -21920,9 +21944,9 @@ unsafe fn storeEntityValue(
             };
         }
     }
-    let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    let mut next = entity_text_ptr;
     '_endEntityValue: loop {
-        next = entityTextPtr;
+        next = entity_text_ptr;
         // Borrow the parser-owned source only for this tokenizer operation.
         // Pool growth and entity callbacks below may mutate parser/DTD state,
         // so no source slice may remain live after this block.
@@ -21930,8 +21954,8 @@ unsafe fn storeEntityValue(
             let Some(input) = entity_value_token_source(
                 parser,
                 dtd,
-                entityTextPtr.addr(),
-                entityTextEnd.addr(),
+                entity_text_ptr,
+                entity_text_end,
             ) else {
                 result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 break;
@@ -21953,13 +21977,13 @@ unsafe fn storeEntityValue(
             };
             let scan_next = match scan.next {
                 Some(next_offset) => match input.get(next_offset..) {
-                    Some(next) => next.as_ptr(),
+                    Some(next) => next.as_ptr().addr(),
                     None => {
                         result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         break;
                     }
                 },
-                None => entityTextPtr,
+                None => entity_text_ptr,
             };
             // The token range is already bounded by the parser buffer or the
             // active entity's replacement text.  Keep it as a slice for
@@ -21990,17 +22014,17 @@ unsafe fn storeEntityValue(
                 match tok {
                     crate::src::xmltok::XML_TOK_PARAM_ENTITY_REF => {
                         if parser.m_isParamEntity as ::core::ffi::c_int != 0
-                            || enc_ptr != std::ptr::from_ref(current_parser_encoding(parser))
+                            || enc_ptr != std::ptr::from_ref(current_parser_encoding(parser)).addr()
                         {
                             let Ok(width) = usize::try_from(enc.enc.minBytesPerChar) else {
                                 result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 break '_endEntityValue;
                             };
-                            let Some(name_start) = entityTextPtr.addr().checked_add(width) else {
+                            let Some(name_start) = entity_text_ptr.checked_add(width) else {
                                 result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 break '_endEntityValue;
                             };
-                            let Some(name_end) = next.addr().checked_sub(width) else {
+                            let Some(name_end) = next.checked_sub(width) else {
                                 result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 break '_endEntityValue;
                             };
@@ -22059,7 +22083,7 @@ unsafe fn storeEntityValue(
                                         NamedRecord::Entity(entity) => Some(entity.as_mut()),
                                         _ => None,
                                     });
-                                (*parser).m_tempPool.rewind();
+                                parser.m_tempPool.rewind();
                                 let Some(entity) = entity else {
                                     dtd.keepProcessing = dtd.standalone;
                                     break '_endEntityValue;
@@ -22077,8 +22101,8 @@ unsafe fn storeEntityValue(
                                 };
                                 if entity.open as ::core::ffi::c_int != 0 || is_current_declaration
                                 {
-                                    if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
-                                        set_parser_event_start!(&mut *parser, entityTextPtr);
+                                    if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)).addr() {
+                                        set_parser_event_start_address(parser, entity_text_ptr);
                                     }
                                     result = crate::expat_h::XML_ERROR_RECURSIVE_ENTITY_REF;
                                     break '_endEntityValue;
@@ -22099,7 +22123,7 @@ unsafe fn storeEntityValue(
                                             })
                                             .lock()
                                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                            .get(&(parser as *mut XML_ParserStruct as usize))
+                                            .get(&std::ptr::from_ref(parser).addr())
                                             .cloned()
                                             .expect("installed external entity handler");
                                         let event = external_entity_ref_event_from_names(
@@ -22151,7 +22175,7 @@ unsafe fn storeEntityValue(
                                 }
                             }
                         } else {
-                            set_parser_event_start!(&mut *parser, entityTextPtr);
+                            set_parser_event_start_address(parser, entity_text_ptr);
                             result = crate::expat_h::XML_ERROR_PARAM_ENTITY_REF;
                             break '_endEntityValue;
                         }
@@ -22171,8 +22195,8 @@ unsafe fn storeEntityValue(
                         let Some(input_source) = entity_value_token_source(
                             parser,
                             dtd,
-                            entityTextPtr.addr(),
-                            next.addr(),
+                            entity_text_ptr,
+                            next,
                         ) else {
                             result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             break '_endEntityValue;
@@ -22207,21 +22231,21 @@ unsafe fn storeEntityValue(
                             result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             break '_endEntityValue;
                         };
-                        let Some(next_address) = entityTextPtr.addr().checked_add(width) else {
+                        let Some(next_address) = entity_text_ptr.checked_add(width) else {
                             result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             break '_endEntityValue;
                         };
                         let Some(input) = entity_value_token_source(
                             parser,
                             dtd,
-                            entityTextPtr.addr(),
-                            entityTextEnd.addr(),
+                            entity_text_ptr,
+                            entity_text_end,
                         ) else {
                             result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             break '_endEntityValue;
                         };
                         let input = input.chars();
-                        let Some(next_offset) = next_address.checked_sub(entityTextPtr.addr()) else {
+                        let Some(next_offset) = next_address.checked_sub(entity_text_ptr) else {
                             result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             break '_endEntityValue;
                         };
@@ -22229,7 +22253,7 @@ unsafe fn storeEntityValue(
                             result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             break '_endEntityValue;
                         };
-                        next = next_char.as_ptr();
+                        next = next_char.as_ptr().addr();
                     }
                     crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
                     crate::src::xmltok::XML_TOK_CHAR_REF => {
@@ -22238,8 +22262,8 @@ unsafe fn storeEntityValue(
                             break '_endEntityValue;
                         };
                         if n < 0 as ::core::ffi::c_int {
-                            if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
-                                set_parser_event_start!(&mut *parser, entityTextPtr);
+                            if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)).addr() {
+                                set_parser_event_start_address(parser, entity_text_ptr);
                             }
                             result = crate::expat_h::XML_ERROR_BAD_CHAR_REF;
                             break '_endEntityValue;
@@ -22249,9 +22273,7 @@ unsafe fn storeEntityValue(
                                 if !pool_append_char(&mut dtd.entityValuePool, value) {
                                     return EntityValueResult {
                                         error: crate::expat_h::XML_ERROR_NO_MEMORY,
-                                        next_offset: next
-                                            .addr()
-                                            .checked_sub(entity_text_start.addr()),
+                                        next_offset: next.checked_sub(entity_text_start),
                                     };
                                 }
                             }
@@ -22259,22 +22281,22 @@ unsafe fn storeEntityValue(
                         }
                     }
                     crate::src::xmltok::XML_TOK_PARTIAL => {
-                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
-                            set_parser_event_start!(&mut *parser, entityTextPtr);
+                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)).addr() {
+                            set_parser_event_start_address(parser, entity_text_ptr);
                         }
                         result = crate::expat_h::XML_ERROR_INVALID_TOKEN;
                         break '_endEntityValue;
                     }
                     crate::src::xmltok::XML_TOK_INVALID => {
-                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
-                            set_parser_event_start!(&mut *parser, next);
+                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)).addr() {
+                            set_parser_event_start_address(parser, next);
                         }
                         result = crate::expat_h::XML_ERROR_INVALID_TOKEN;
                         break '_endEntityValue;
                     }
                     _ => {
-                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)) {
-                            set_parser_event_start!(&mut *parser, entityTextPtr);
+                        if enc_ptr == std::ptr::from_ref(current_parser_encoding(parser)).addr() {
+                            set_parser_event_start_address(parser, entity_text_ptr);
                         }
                         result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         break '_endEntityValue;
@@ -22290,34 +22312,31 @@ unsafe fn storeEntityValue(
                     {
                         return EntityValueResult {
                             error: crate::expat_h::XML_ERROR_NO_MEMORY,
-                            next_offset: next
-                                .addr()
-                                .checked_sub(entity_text_start.addr()),
+                            next_offset: next.checked_sub(entity_text_start),
                         };
                     }
                 }
             }
-            entityTextPtr = next;
+            entity_text_ptr = next;
         }
     }
     parser.m_prologState.inEntityValue = oldInEntityValue;
     EntityValueResult {
         error: result,
-        next_offset: next
-            .addr()
-            .checked_sub(entity_text_start.addr()),
+        next_offset: next.checked_sub(entity_text_start),
     }
+    })
 }
 
-unsafe fn callStoreEntityValue(
+/// Continues entity-value storage through the typed entity stack.
+fn call_store_entity_value_impl(
     parser: &mut XML_ParserStruct,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    entityTextPtr: PrologCursorAddress,
-    entityTextEnd: PrologCursorAddress,
-    mut account: XML_Account,
+    enc_address: usize,
+    entity_text_ptr: PrologCursorAddress,
+    entity_text_end: PrologCursorAddress,
+    account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let parser_handle = std::ptr::from_mut(parser);
-    let mut next_address = entityTextPtr.addr();
+    let mut next_address = entity_text_ptr.addr();
     let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     loop {
         if parser.m_openValueEntities.is_none() {
@@ -22329,28 +22348,20 @@ unsafe fn callStoreEntityValue(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             let Some((input_start, input_end)) = dtd_owner.inspect(|dtd| {
-                entity_value_token_source(parser, dtd, next_address, entityTextEnd.addr()).map(
-                    |input| match input {
-                        RawNameSource::Bytes(bytes) => (
-                            bytes.as_ptr().cast::<::core::ffi::c_char>(),
-                            bytes.as_ptr()
-                                .wrapping_add(bytes.len())
-                                .cast::<::core::ffi::c_char>(),
-                        ),
-                        RawNameSource::Chars(chars) => (
-                            chars.as_ptr(),
-                            chars.as_ptr().wrapping_add(chars.len()),
-                        ),
-                    },
-                )
+                entity_value_token_source(parser, dtd, next_address, entity_text_end.addr())
+                    .map(|input| (input.chars().as_ptr().addr(), input.len()))
             }) else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let stored = storeEntityValue(parser_handle, enc, input_start, input_end, account);
+            let Some(input_end) = input_start.checked_add(input_end) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let stored = store_entity_value_impl(parser, enc_address, input_start, input_end, account);
             result = stored.error;
             next_address = stored
                 .next_offset
-                .map_or(input_start.addr(), |offset| input_start.addr().wrapping_add(offset));
+                .and_then(|offset| input_start.checked_add(offset))
+                .unwrap_or(input_start);
         } else {
             let (open_entity_index, entity_ref) = {
                 let open_entity_index = parser
@@ -22379,7 +22390,7 @@ unsafe fn callStoreEntityValue(
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .hash_secret_salt;
-            let (textStart, textEnd, has_more) = {
+            let (text_start, text_end, has_more) = {
                 let Some(dtd_owner) = parser.m_dtd.clone() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
@@ -22392,10 +22403,8 @@ unsafe fn callStoreEntityValue(
                     let text = entity_text_chars(dtd, text, text_len)?;
                     let unprocessed = text.get(processed..)?;
                     Some((
-                        unprocessed.as_ptr().cast::<::core::ffi::c_char>(),
-                        text.as_ptr()
-                            .wrapping_add(text.len())
-                            .cast::<::core::ffi::c_char>(),
+                        unprocessed.as_ptr().addr(),
+                        text.as_ptr().addr().checked_add(text.len())?,
                         has_more,
                     ))
                 }) else {
@@ -22403,26 +22412,27 @@ unsafe fn callStoreEntityValue(
                 };
                 text
             };
-            let mut nextInEntity: *const ::core::ffi::c_char = textStart;
+            let mut next_in_entity = text_start;
             if has_more {
-                let stored = storeEntityValue(
-                    parser_handle,
-                    internal_encoding(parser.m_internalEncoding) as *const _,
-                    textStart,
-                    textEnd,
+                let stored = store_entity_value_impl(
+                    parser,
+                    std::ptr::from_ref(internal_encoding(parser.m_internalEncoding)).addr(),
+                    text_start,
+                    text_end,
                     XML_ACCOUNT_ENTITY_EXPANSION,
                 );
                 result = stored.error;
-                nextInEntity = stored
+                next_in_entity = stored
                     .next_offset
-                    .map_or(textStart, |offset| textStart.wrapping_add(offset));
+                    .and_then(|offset| text_start.checked_add(offset))
+                    .unwrap_or(text_start);
                 if result as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     break;
                 }
-                if textEnd != nextInEntity {
-                    let Some(processed) = nextInEntity.addr().checked_sub(textStart.addr()) else {
+                if text_end != next_in_entity {
+                    let Some(processed) = next_in_entity.checked_sub(text_start) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
                     let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
@@ -22510,7 +22520,7 @@ unsafe fn callStoreEntityValue(
             }
         }
         if result as ::core::ffi::c_uint != 0
-            || parser.m_openValueEntities.is_none() && entityTextEnd.addr() == next_address
+            || parser.m_openValueEntities.is_none() && entity_text_end.addr() == next_address
         {
             break;
         }
