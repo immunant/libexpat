@@ -10434,7 +10434,7 @@ unsafe extern "C" fn externalEntityInitProcessor3(
             let declaration_encoding = current_parser_encoding(parser);
             let declaration_encoding_address = std::ptr::from_ref(declaration_encoding).addr();
             let declaration_encoding = *declaration_encoding;
-            let result = process_xml_decl(
+            let result = process_xml_decl_impl(
                 parser,
                 1 as ::core::ffi::c_int,
                 &declaration_encoding,
@@ -15308,7 +15308,7 @@ fn declaration_token_bytes(
 /// declaration token starting at `start_address`.  Keeping that boundary
 /// address-based means callers do not need to pass an unchecked cursor into
 /// declaration-result handling.
-unsafe fn process_xml_decl(
+fn process_xml_decl_impl(
     parser: &mut XML_ParserStruct,
     isGeneralTextEntity: ::core::ffi::c_int,
     encoding: &crate::src::xmltok::ENCODING,
@@ -15456,12 +15456,16 @@ unsafe fn process_xml_decl(
             );
         }
     } else if default_handler {
-        report_default_impl(
+        let Some(input_end) = start_address.checked_add(input.len()) else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        report_default_token(
             parser_key,
             parser,
             encoding,
             encoding_address,
             start_address,
+            input_end,
             input,
         );
     }
@@ -15810,7 +15814,7 @@ unsafe fn entity_value_init_processor_impl(
             let declaration_encoding = current_parser_encoding(parser);
             let declaration_encoding_address = std::ptr::from_ref(declaration_encoding).addr();
             let declaration_encoding = *declaration_encoding;
-            let result = process_xml_decl(
+            let result = process_xml_decl_impl(
                 parser,
                 0 as ::core::ffi::c_int,
                 &declaration_encoding,
@@ -16536,7 +16540,7 @@ unsafe fn doProlog(
                                         let declaration_encoding_address =
                                             std::ptr::from_ref(declaration_encoding).addr();
                                         let declaration_encoding = *declaration_encoding;
-                                        let result = process_xml_decl(
+                                        let result = process_xml_decl_impl(
                                             parser,
                                             0 as ::core::ffi::c_int,
                                             &declaration_encoding,
@@ -16612,7 +16616,7 @@ unsafe fn doProlog(
                                         let declaration_encoding_address =
                                             std::ptr::from_ref(declaration_encoding).addr();
                                         let declaration_encoding = *declaration_encoding;
-                                        let result_0 = process_xml_decl(
+                                        let result_0 = process_xml_decl_impl(
                                             parser,
                                             1 as ::core::ffi::c_int,
                                             &declaration_encoding,
