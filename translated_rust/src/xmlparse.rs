@@ -15835,7 +15835,7 @@ unsafe fn doProlog(
         .m_dtd
         .clone()
         .expect("parser processing requires an attached DTD");
-    let dtd = &mut *dtd_owner.value.get();
+    dtd_owner.inspect(|dtd| {
     let mut active_parser_encoding = std::ptr::from_ref(current_parser_encoding(parser));
     let parser_events = enc == active_parser_encoding;
     let mut event_target = EventCursorTarget::Parser;
@@ -18629,6 +18629,7 @@ unsafe fn doProlog(
             next = s.wrapping_add(offset);
         }
     }
+    })
 }
 
 // Epilog scanning is confined to a copied, already-bounded input window.  The
