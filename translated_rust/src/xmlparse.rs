@@ -18591,7 +18591,7 @@ unsafe extern "C" fn dtdCopy(
         oldParser,
         parser,
         &raw mut new_dtd.generalEntities,
-        &raw mut new_dtd.pool,
+        &mut new_dtd.pool,
         &raw const old_dtd.generalEntities,
     ) == 0
     {
@@ -18601,7 +18601,7 @@ unsafe extern "C" fn dtdCopy(
         oldParser,
         parser,
         &raw mut new_dtd.paramEntities,
-        &raw mut new_dtd.pool,
+        &mut new_dtd.pool,
         &raw const old_dtd.paramEntities,
     ) == 0
     {
@@ -18631,35 +18631,34 @@ unsafe extern "C" fn copyEntityTable(
     mut oldParser: crate::expat_h::XML_Parser,
     mut newParser: crate::expat_h::XML_Parser,
     mut newTable: *mut HASH_TABLE,
-    mut newPool: *mut STRING_POOL,
+    newPool: &mut STRING_POOL,
     mut oldTable: *const HASH_TABLE,
 ) -> ::core::ffi::c_int {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        table: None,
-        next: 0 as crate::__stddef_size_t_h::size_t,
-    };
     let mut cachedOldBase: Option<PoolStringRef> = None;
     let mut cachedNewBase: Option<PoolStringRef> = None;
     let table = &*oldTable;
+    let new_pool = newPool;
     let old_dtd = &*parser_dtd_ptr!(oldParser);
-    hashTableIterInit(&raw mut iter, table);
-    loop {
+    let Some(slots) = table.v.as_ref() else {
+        return 1;
+    };
+    for entry in &slots.entries {
+        let Some(entry) = entry.as_ref() else {
+            continue;
+        };
         let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ENTITY = hashTableIterNext(&raw mut iter) as *mut ENTITY;
-        if oldE.is_null() {
-            break;
-        }
-        let old_e = &*oldE;
-        let old_name = old_dtd
-            .pool
-            .chars_from(old_e.named.name)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-        if old_name.is_null() {
+        let old_e = &*(entry.bytes.as_ptr() as *const ENTITY);
+        let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_e.named.name) else {
             return 0 as ::core::ffi::c_int;
-        }
-        name = poolCopyString(newPool, old_name).0;
+        };
+        let Some(new_name) = pool_copy_chars(new_pool, old_name) else {
+            return 0 as ::core::ffi::c_int;
+        };
+        name = new_pool
+            .chars_from(new_name)
+            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -18674,55 +18673,40 @@ unsafe extern "C" fn copyEntityTable(
         }
         let new_e = &mut *newE;
         if let Some(old_system_id) = old_e.systemId {
-            let old_system_id = pool_string_pointer!(&old_dtd.pool, old_system_id);
-            if old_system_id.is_null() {
+            let Some(old_system_id) = pool_terminated_chars(&old_dtd.pool, old_system_id) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            let (mut tem, system_id) = poolCopyString(newPool, old_system_id);
-            if tem.is_null() {
+            };
+            let Some(system_id) = pool_copy_chars(new_pool, old_system_id) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            new_e.systemId = system_id;
-            if new_e.systemId.is_none() {
-                return 0 as ::core::ffi::c_int;
-            }
+            };
+            new_e.systemId = Some(system_id);
             if old_e.base.is_some() {
                 if old_e.base == cachedOldBase {
                     new_e.base = cachedNewBase;
                 } else {
                     cachedOldBase = old_e.base;
-                    let (copied_base, base) = poolCopyString(
-                        newPool,
-                        pool_string_pointer!(
-                            &old_dtd.pool,
-                            cachedOldBase.expect("base is present after the non-null check"),
-                        ),
-                    );
-                    tem = copied_base;
-                    if tem.is_null() {
+                    let Some(old_base) = pool_terminated_chars(
+                        &old_dtd.pool,
+                        cachedOldBase.expect("base is present after the non-null check"),
+                    ) else {
                         return 0 as ::core::ffi::c_int;
-                    }
-                    new_e.base = base;
-                    if new_e.base.is_none() {
+                    };
+                    let Some(base) = pool_copy_chars(new_pool, old_base) else {
                         return 0 as ::core::ffi::c_int;
-                    }
-                    cachedNewBase = new_e.base;
+                    };
+                    new_e.base = Some(base);
+                    cachedNewBase = Some(base);
                 }
             }
             if let Some(old_public_id) = old_e.publicId {
-                let old_public_id = pool_string_pointer!(&old_dtd.pool, old_public_id);
-                if old_public_id.is_null() {
+                let Some(old_public_id) = pool_terminated_chars(&old_dtd.pool, old_public_id)
+                else {
                     return 0 as ::core::ffi::c_int;
-                }
-                let (copied_public_id, public_id) = poolCopyString(newPool, old_public_id);
-                tem = copied_public_id;
-                if tem.is_null() {
+                };
+                let Some(public_id) = pool_copy_chars(new_pool, old_public_id) else {
                     return 0 as ::core::ffi::c_int;
-                }
-                new_e.publicId = public_id;
-                if new_e.publicId.is_none() {
-                    return 0 as ::core::ffi::c_int;
-                }
+                };
+                new_e.publicId = Some(public_id);
             }
         } else {
             let Some(old_text) = old_e.textPtr.present() else {
@@ -18731,7 +18715,7 @@ unsafe extern "C" fn copyEntityTable(
             let Some(old_text) = entity_text_chars(old_dtd, old_text, old_e.textLen) else {
                 return 0 as ::core::ffi::c_int;
             };
-            let Some(new_text) = poolCopyStringN(newPool, old_text.as_ptr(), old_e.textLen) else {
+            let Some(new_text) = pool_copy_chars(new_pool, old_text) else {
                 return 0 as ::core::ffi::c_int;
             };
             new_e.textPtr = EntityTextRef {
@@ -18741,18 +18725,13 @@ unsafe extern "C" fn copyEntityTable(
             new_e.textLen = old_e.textLen;
         }
         if let Some(old_notation) = old_e.notation {
-            let old_notation = pool_string_pointer!(&old_dtd.pool, old_notation);
-            if old_notation.is_null() {
+            let Some(old_notation) = pool_terminated_chars(&old_dtd.pool, old_notation) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            let (mut tem_1, notation) = poolCopyString(newPool, old_notation);
-            if tem_1.is_null() {
+            };
+            let Some(notation) = pool_copy_chars(new_pool, old_notation) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            new_e.notation = notation;
-            if new_e.notation.is_none() {
-                return 0 as ::core::ffi::c_int;
-            }
+            };
+            new_e.notation = Some(notation);
         }
         new_e.is_param = old_e.is_param;
         new_e.is_internal = old_e.is_internal;
@@ -19537,6 +19516,23 @@ unsafe fn poolCopyStringN(
     let string = pool.start_ref(true);
     pool.commit();
     string
+}
+
+/// Returns the owned, NUL-terminated pool string at `string`.
+///
+/// A pool location can also designate non-terminated entity text, so callers
+/// that need C-string semantics must validate the terminator before copying.
+/// Keeping that check at the pool boundary avoids scanning a raw pointer.
+fn pool_terminated_chars(
+    pool: &STRING_POOL,
+    string: PoolStringRef,
+) -> Option<&[crate::expat_external_h::XML_Char]> {
+    let chars = pool.chars_from(string)?;
+    let length = chars
+        .iter()
+        .position(|&character| character == 0)?
+        .checked_add(1)?;
+    chars.get(..length)
 }
 
 // Copying retained DTD text is an ownership operation: callers already hold
