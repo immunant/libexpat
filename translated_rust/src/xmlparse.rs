@@ -2551,7 +2551,8 @@ unsafe extern "C" fn moveToFreeBindingList(
         (*parser).m_freeBindingList = b;
     }
 }
-pub unsafe extern "C" fn XML_ParserReset(
+#[export_name = "XML_ParserReset"]
+pub unsafe extern "C" fn XML_ParserReset_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
@@ -2616,14 +2617,6 @@ pub unsafe extern "C" fn XML_ParserReset(
     parserInit(parser, encodingName);
     dtdReset((*parser).m_dtd, parser);
     return crate::expat_h::XML_TRUE;
-}
-#[export_name = "XML_ParserReset"]
-
-pub unsafe extern "C" fn XML_ParserReset_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Bool {
-    XML_ParserReset(parser, encodingName)
 }
 fn parserBusy(parser: &XML_ParserStruct) -> crate::expat_h::XML_Bool {
     match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
