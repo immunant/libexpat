@@ -18392,21 +18392,19 @@ unsafe extern "C" fn dtdCopy(
             let Some(old_name_ref) = old_p.name else {
                 return 0 as ::core::ffi::c_int;
             };
-            let old_name = pool_string_pointer!(&old_dtd.pool, old_name_ref);
-            if old_name.is_null() {
+            let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_name_ref) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            let name = poolCopyString(&raw mut new_dtd.pool, old_name).0;
-            if name.is_null() {
+            };
+            let Some(new_name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            let Some(new_name_ref) = pool_string_ref(&raw const new_dtd.pool, name, false) else {
+            };
+            let Some(name) = new_dtd.pool.chars_from(new_name_ref) else {
                 return 0 as ::core::ffi::c_int;
             };
             if lookup(
                 parser,
                 &raw mut new_dtd.prefixes,
-                name as KEY,
+                name.as_ptr(),
                 ::core::mem::size_of::<PREFIX>(),
             )
             .is_null()
@@ -18440,22 +18438,23 @@ unsafe extern "C" fn dtdCopy(
             {
                 return 0 as ::core::ffi::c_int;
             }
-            let old_name = old_dtd
-                .pool
-                .chars_from(old_a.named.name)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-            if old_name.is_null() {
+            // Attribute names keep an empty key immediately before their
+            // actual name.  Commit that sentinel first so the checked copy
+            // below obtains a pool reference directly to the name.
+            new_dtd.pool.commit();
+            let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_a.named.name) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            let name_0 = poolCopyString(&raw mut new_dtd.pool, old_name).0;
-            if name_0.is_null() {
+            };
+            let Some(name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            let name_0 = name_0.wrapping_add(1);
+            };
+            let Some(name_0) = new_dtd.pool.chars_from(name_ref) else {
+                return 0 as ::core::ffi::c_int;
+            };
             let new_a = lookup(
                 parser,
                 &raw mut new_dtd.attributeIds,
-                name_0 as KEY,
+                name_0.as_ptr(),
                 ::core::mem::size_of::<ATTRIBUTE_ID>(),
             ) as *mut ATTRIBUTE_ID;
             if new_a.is_null() {
@@ -18489,21 +18488,19 @@ unsafe extern "C" fn dtdCopy(
                 continue;
             };
             let old_e = &*(entry.bytes.as_ptr() as *const ELEMENT_TYPE);
-            let old_name = old_dtd
-                .pool
-                .chars_from(old_e.named.name)
-                .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-            if old_name.is_null() {
+            let Some(old_name) = pool_terminated_chars(&old_dtd.pool, old_e.named.name) else {
                 return 0 as ::core::ffi::c_int;
-            }
-            let name_1 = poolCopyString(&raw mut new_dtd.pool, old_name).0;
-            if name_1.is_null() {
+            };
+            let Some(name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
-            }
+            };
+            let Some(name_1) = new_dtd.pool.chars_from(name_ref) else {
+                return 0 as ::core::ffi::c_int;
+            };
             let new_e = lookup(
                 parser,
                 &raw mut new_dtd.elementTypes,
-                name_1 as KEY,
+                name_1.as_ptr(),
                 ::core::mem::size_of::<ELEMENT_TYPE>(),
             ) as *mut ELEMENT_TYPE;
             if new_e.is_null() {
