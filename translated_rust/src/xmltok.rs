@@ -684,14 +684,14 @@ pub mod xmltok_impl_c {
         let function = match kind {
             NormalCharCheck::Invalid => match width {
                 2 => match normal.invalid2 {
-                    Invalid2Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
+                    Invalid2Checker::Never => return false,
                     Invalid2Checker::Utf8 => return utf8_invalid2(input),
                     Invalid2Checker::Unknown => {
                         Some(unknown_isInvalid as unsafe extern "C" fn(_, _) -> _)
                     }
                 },
                 3 => match normal.invalid3 {
-                    Invalid3Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
+                    Invalid3Checker::Never => return false,
                     Invalid3Checker::Utf8 => return utf8_invalid3(input),
                     Invalid3Checker::Unknown => {
                         Some(unknown_isInvalid as unsafe extern "C" fn(_, _) -> _)
@@ -709,7 +709,7 @@ pub mod xmltok_impl_c {
             NormalCharCheck::NameStart => match width {
                 2 => match normal.isNmstrt2 {
                     crate::src::xmltok::NameStart2Checker::Never => {
-                        Some(isNever as unsafe extern "C" fn(_, _) -> _)
+                        return false;
                     }
                     crate::src::xmltok::NameStart2Checker::Utf8 => {
                         return crate::src::xmltok::utf8_is_name_start2(input);
@@ -719,7 +719,7 @@ pub mod xmltok_impl_c {
                     ),
                 },
                 3 => match normal.isNmstrt3 {
-                    NameStart3Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
+                    NameStart3Checker::Never => return false,
                     NameStart3Checker::Utf8 => return utf8_is_name_start3(input),
                     NameStart3Checker::Unknown => {
                         Some(unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _)
@@ -749,7 +749,7 @@ pub mod xmltok_impl_c {
                     };
                 }
                 4 => match normal.isName4 {
-                    Name4Checker::Never => Some(isNever as unsafe extern "C" fn(_, _) -> _),
+                    Name4Checker::Never => return false,
                     Name4Checker::Unknown => {
                         Some(unknown_isName as unsafe extern "C" fn(_, _) -> _)
                     }
@@ -10595,7 +10595,6 @@ pub mod xmltok_impl_c {
     }
 
     use crate::src::xmltok::checkCharRefNumber;
-    use crate::src::xmltok::isNever;
     use crate::src::xmltok::nametab_h::namePages;
     use crate::src::xmltok::nametab_h::namingBitmap;
     use crate::src::xmltok::nametab_h::nmstrtPages;
@@ -12185,13 +12184,6 @@ pub type C2Rust_Unnamed_9 = ::core::ffi::c_int;
 
 pub const US_ASCII_ENC: C2Rust_Unnamed_9 = 1;
 
-unsafe extern "C" fn isNever(
-    _enc: *const crate::src::xmltok::ENCODING,
-    _p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    return 0 as ::core::ffi::c_int;
-}
-
 fn utf8_is_name2(input: &[u8]) -> bool {
     (namingBitmap[(((namePages[(input[0] as ::core::ffi::c_int >> 2 as ::core::ffi::c_int
         & 7 as ::core::ffi::c_int) as usize] as ::core::ffi::c_int)
@@ -12276,13 +12268,6 @@ fn utf8_invalid3(input: &[u8]) -> bool {
                     second & 0xc0 == 0xc0
                 }
         }
-}
-
-unsafe extern "C" fn utf8_isInvalid3(
-    _enc: *const crate::src::xmltok::ENCODING,
-    p: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    utf8_invalid3(::core::slice::from_raw_parts(p.cast::<u8>(), 3)) as ::core::ffi::c_int
 }
 
 fn utf8_invalid4(input: &[u8]) -> bool {
