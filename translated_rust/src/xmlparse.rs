@@ -12191,8 +12191,34 @@ unsafe fn doContent(
                     }
                 }
                 crate::src::xmltok::XML_TOK_PI => {
-                    if reportProcessingInstruction(parser, enc, s, next) == 0 {
+                    let Some(token_len) = next
+                        .addr()
+                        .checked_sub(s.addr())
+                        .filter(|length| *length <= source.len())
+                    else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let Some(token) = source.get(..token_len) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let Some(handled) = report_processing_instruction_token(
+                        parser,
+                        encoding,
+                        &normal_encoding,
+                        token,
+                    ) else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    };
+                    if !handled && parser.m_defaultHandler {
+                        report_default_token(
+                            parser_ptr.addr(),
+                            parser,
+                            encoding,
+                            enc.addr(),
+                            s.addr(),
+                            next.addr(),
+                            &source,
+                        );
                     }
                 }
                 crate::src::xmltok::XML_TOK_COMMENT => {
@@ -18851,7 +18877,10 @@ fn epilog_processor_impl(
     input: &EpilogInput,
     scan: &mut dyn FnMut(usize) -> crate::src::xmltok::ScannerResult,
     account: &mut dyn FnMut(::core::ffi::c_int, usize, usize) -> bool,
-    dispatch: &mut dyn FnMut(EpilogEvent) -> Result<(), crate::expat_h::XML_Error>,
+    dispatch: &mut dyn FnMut(
+        &mut XML_ParserStruct,
+        EpilogEvent,
+    ) -> Result<(), crate::expat_h::XML_Error>,
 ) -> EpilogResult {
     parser.m_processor = ProcessorState::Epilog;
     parser.m_eventPtr = Some(input.input_start);
@@ -18873,7 +18902,7 @@ fn epilog_processor_impl(
         match token.token {
             -15 => {
                 if parser.m_defaultHandler {
-                    if let Err(error) = dispatch(EpilogEvent::Default(cursor..next)) {
+                    if let Err(error) = dispatch(parser, EpilogEvent::Default(cursor..next)) {
                         return epilog_result(error, None);
                     }
                     if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
@@ -18889,18 +18918,21 @@ fn epilog_processor_impl(
             }
             crate::src::xmltok::XML_TOK_PROLOG_S => {
                 if parser.m_defaultHandler {
-                    if let Err(error) = dispatch(EpilogEvent::Default(cursor..next)) {
+                    if let Err(error) = dispatch(parser, EpilogEvent::Default(cursor..next)) {
                         return epilog_result(error, None);
                     }
                 }
             }
             crate::src::xmltok::XML_TOK_PI => {
-                if let Err(error) = dispatch(EpilogEvent::ProcessingInstruction(cursor..next)) {
+                if let Err(error) = dispatch(
+                    parser,
+                    EpilogEvent::ProcessingInstruction(cursor..next),
+                ) {
                     return epilog_result(error, None);
                 }
             }
             crate::src::xmltok::XML_TOK_COMMENT => {
-                if let Err(error) = dispatch(EpilogEvent::Comment(cursor..next)) {
+                if let Err(error) = dispatch(parser, EpilogEvent::Comment(cursor..next)) {
                     return epilog_result(error, None);
                 }
             }
@@ -19028,27 +19060,24 @@ unsafe extern "C" fn epilogProcessor(
     };
     let parser_for_dispatch = parser;
     let input_for_dispatch = &input;
-    let mut dispatch = move |event: EpilogEvent| {
-        let range = match &event {
-            EpilogEvent::Default(range)
-            | EpilogEvent::ProcessingInstruction(range)
-            | EpilogEvent::Comment(range) => range,
-        };
-        let Some(bytes) = (&*parser_for_dispatch).m_buffer.bytes.as_deref() else {
-            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-        };
-        let Some(start) = input_for_dispatch.input_start.checked_add(range.start) else {
-            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-        };
-        let Some(end) = input_for_dispatch.input_start.checked_add(range.end) else {
-            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-        };
-        let (Some(start), Some(end)) = (bytes.get(start..), bytes.get(end..)) else {
-            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-        };
-        let encoding = parser_encoding(parser_for_dispatch);
+    let mut dispatch = move |parser_state: &mut XML_ParserStruct, event: EpilogEvent| {
         match event {
-            EpilogEvent::Default(_) => {
+            EpilogEvent::Default(range) => {
+                let Some(bytes) = parser_state.m_buffer.bytes.as_deref() else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let Some(start_offset) = input_for_dispatch.input_start.checked_add(range.start)
+                else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let Some(end_offset) = input_for_dispatch.input_start.checked_add(range.end) else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let (Some(start), Some(end)) = (bytes.get(start_offset..), bytes.get(end_offset..))
+                else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
                 reportDefault(
                     parser_for_dispatch,
                     encoding,
@@ -19057,17 +19086,69 @@ unsafe extern "C" fn epilogProcessor(
                 );
                 Ok(())
             }
-            EpilogEvent::ProcessingInstruction(_) => {
-                (reportProcessingInstruction(
-                    parser_for_dispatch,
-                    encoding,
-                    start.as_ptr().cast(),
-                    end.as_ptr().cast(),
-                ) != 0)
-                    .then_some(())
-                    .ok_or(crate::expat_h::XML_ERROR_NO_MEMORY)
+            EpilogEvent::ProcessingInstruction(range) => {
+                let Some(token) = input_for_dispatch.bytes.get(range.clone()) else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let encoding_address = std::ptr::from_ref(current_parser_encoding(parser_state)).addr();
+                let encoding = *current_parser_encoding(parser_state);
+                let Some(handled) = report_processing_instruction_token(
+                    parser_state,
+                    &encoding,
+                    &normal_encoding,
+                    token,
+                ) else {
+                    return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+                };
+                if !handled && parser_state.m_defaultHandler {
+                    let Some(input_offset) = input_for_dispatch
+                        .input_start
+                        .checked_add(range.start)
+                    else {
+                        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                    };
+                    let Some(input_start) = parser_state
+                        .m_buffer
+                        .bytes
+                        .as_deref()
+                        .and_then(|bytes| bytes.as_ptr().addr().checked_add(input_offset))
+                    else {
+                        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                    };
+                    let Some(input_end) = input_start.checked_add(token.len()) else {
+                        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                    };
+                    report_default_token(
+                        parser_for_dispatch.addr(),
+                        parser_state,
+                        &encoding,
+                        encoding_address,
+                        input_start,
+                        input_end,
+                        token,
+                    );
+                }
+                Ok(())
             }
-            EpilogEvent::Comment(_) => {
+            EpilogEvent::Comment(range) => {
+                let Some(bytes) = parser_state.m_buffer.bytes.as_deref() else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let Some(start_offset) = input_for_dispatch.input_start.checked_add(range.start)
+                else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let Some(end_offset) = input_for_dispatch.input_start.checked_add(range.end) else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let (Some(start), Some(end)) = (bytes.get(start_offset..), bytes.get(end_offset..))
+                else {
+                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                };
+                let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
                 (reportComment(
                     parser_for_dispatch,
                     encoding,
@@ -20883,96 +20964,6 @@ fn normalizeLines(s: &mut [crate::expat_external_h::XML_Char]) {
         }
     }
     s[write] = 0;
-}
-
-unsafe extern "C" fn reportProcessingInstruction(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    if parser.is_null()
-        || !parser.is_aligned()
-        || enc.is_null()
-        || !enc.is_aligned()
-        || start.is_null()
-        || !start.is_aligned()
-        || end.is_null()
-        || !end.is_aligned()
-        || end.addr() < start.addr()
-    {
-        return 0;
-    }
-    let parser_state = &mut *parser;
-    let encoding = &*enc;
-    let has_processing_instruction_handler = parser_state.m_processingInstructionHandler;
-    let has_default_handler = parser_state.m_defaultHandler;
-    if !has_processing_instruction_handler {
-        if has_default_handler {
-            reportDefault(parser, enc, start, end);
-        }
-        return 1 as ::core::ffi::c_int;
-    }
-    // The tokenizer cursors may refer to the parser buffer or to an active
-    // internal entity.  Resolve their complete range through that owner before
-    // copying it, rather than doing pointer arithmetic on an untrusted pair.
-    let Some(dtd_owner) = parser_state.m_dtd.as_ref() else {
-        return 0;
-    };
-    let dtd = &*dtd_owner.value.get();
-    let parser_events = std::ptr::eq(enc, current_parser_encoding(parser_state));
-    let Some(source) = event_raw_name_source(
-        parser_state,
-        dtd,
-        parser_events,
-        start.addr(),
-        end.addr(),
-    ) else {
-        return 0;
-    };
-    let Some(token) = raw_name_bytes(source) else {
-        return 0;
-    };
-    let Some(normal_encoding) = entity_value_normal_encoding(parser_state, enc.addr()) else {
-        return 0;
-    };
-    let Some((target_ref, data_ref)) = report_processing_instruction_impl(
-        parser_state,
-        encoding,
-        &normal_encoding,
-        &token,
-    ) else {
-        return 0;
-    };
-    let Some(target) = parser_state
-        .m_tempPool
-        .chars_from(target_ref)
-        .map(|chars| chars.as_ptr())
-    else {
-        return 0;
-    };
-    let Some(data) = parser_state
-        .m_tempPool
-        .chars_from(data_ref)
-        .map(|chars| chars.as_ptr())
-    else {
-        return 0;
-    };
-    let handler_arg = handler_arg_from_state!(parser_state);
-    let callback = PROCESSING_INSTRUCTION_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
-        .cloned();
-    if let Some(callback) = callback {
-        callback.invoke(handler_arg, target, data);
-    }
-    {
-        let parser_state = &mut *parser;
-        poolClear(&mut parser_state.m_tempPool);
-    }
-    return 1 as ::core::ffi::c_int;
 }
 
 /// Converts a validated processing-instruction token into the two terminated
