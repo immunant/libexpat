@@ -18493,7 +18493,6 @@ unsafe fn appendAttributeValue(
     }
     let input_start = input.as_ptr();
     let (error, position) = (|| {
-    let enc_ptr: *const crate::src::xmltok::ENCODING = &enc.enc;
     // Literal scanners retain the C cursor ABI, but all token inspection below
     // is performed through this one checked view.  In particular, a scanner
     // result must remain within this window before it can select a token or an
@@ -18531,17 +18530,17 @@ unsafe fn appendAttributeValue(
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
         }
         let mut tok: ::core::ffi::c_int = scan.token;
-        if accountingDiffTolerated(
+        let token_bytes: &[u8] = bytemuck::cast_slice(&input[cursor..scanned_next_offset]);
+        if attribute_accounting_diff_tolerated(
             parser,
             tok,
-            ptr,
-            next,
+            token_bytes,
             6591 as ::core::ffi::c_int,
             account,
             None,
         ) == 0
         {
-            accountingOnAbort(parser);
+            cdata_accounting_on_abort(parser);
             return (crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH, ptr);
         }
         's_350: {
@@ -18644,9 +18643,6 @@ unsafe fn appendAttributeValue(
                 crate::src::xmltok::XML_TOK_ATTRIBUTE_VALUE_S
                 | crate::src::xmltok::XML_TOK_DATA_NEWLINE => {}
                 crate::src::xmltok::XML_TOK_ENTITY_REF => {
-                    let mut name: *const crate::expat_external_h::XML_Char =
-                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                    let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                     let mut checkEntityDecl: bool = false;
                     let entity_start = ptr.wrapping_add(char_width);
                     let entity_end = next.wrapping_sub(char_width);
@@ -18661,18 +18657,19 @@ unsafe fn appendAttributeValue(
                         crate::src::xmltok::PredefinedEntityNameMatcher::Little2
                         | crate::src::xmltok::PredefinedEntityNameMatcher::Big2 => 9,
                     };
+                    let Some(entity_start_offset) = cursor.checked_add(char_width) else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    };
+                    let Some(entity_end_offset) = scanned_next_offset.checked_sub(char_width)
+                    else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    };
+                    let Some(entity_source) = input.get(entity_start_offset..entity_end_offset)
+                    else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                    };
                     let entity_name = if entity_len <= max_entity_name_len {
-                        let Some(entity_start_offset) = cursor.checked_add(char_width) else {
-                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
-                        };
-                        let Some(entity_end_offset) = scanned_next_offset.checked_sub(char_width) else {
-                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
-                        };
-                        let Some(entity_name) = input.get(entity_start_offset..entity_end_offset)
-                        else {
-                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
-                        };
-                        entity_name
+                        entity_source
                     } else {
                         &[]
                     };
@@ -18680,42 +18677,66 @@ unsafe fn appendAttributeValue(
                         crate::src::xmltok::predefined_entity_name(
                             enc.enc.predefinedEntityName,
                             entity_name,
-                        ) as crate::expat_external_h::XML_Char;
+                    ) as crate::expat_external_h::XML_Char;
                     if ch != 0 {
-                        accountingDiffTolerated(
+                        let ch_bytes = bytemuck::bytes_of(&ch);
+                        attribute_accounting_diff_tolerated(
                             parser,
                             tok,
-                            &raw mut ch as *mut ::core::ffi::c_char,
-                            (&raw mut ch)
-                                .cast::<u8>()
-                                .wrapping_add(::core::mem::size_of::<
-                                    crate::expat_external_h::XML_Char,
-                                >())
-                                .cast::<::core::ffi::c_char>(),
+                            ch_bytes,
                             6663 as ::core::ffi::c_int,
                             XML_ACCOUNT_ENTITY_EXPANSION,
-                            Some(bytemuck::bytes_of(&ch)),
+                            Some(ch_bytes),
                         );
                         if !pool_append_char(pool, ch) {
                             return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
                         }
                         break 's_350;
                     } else {
-                        name = poolStoreString(
-                            &raw mut parser.m_temp2Pool,
-                            enc_ptr,
-                            ptr.wrapping_add(char_width),
-                            next.wrapping_sub(char_width),
-                        );
-                        if name.is_null() {
-                            return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
+                        let unknown_encoding = match enc.enc.utf8Convert {
+                            crate::src::xmltok::Utf8Converter::Unknown => parser
+                                .m_unknownEncodingMem
+                                .as_ref()
+                                .and_then(UnknownEncodingMemory::initialized_encoding)
+                                .copied(),
+                            _ => None,
+                        };
+                        if matches!(
+                            enc.enc.utf8Convert,
+                            crate::src::xmltok::Utf8Converter::Unknown
+                        ) && unknown_encoding.is_none()
+                        {
+                            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
                         }
-                        entity = lookup(
-                            parser,
-                            &raw mut (*dtd).generalEntities,
-                            name as KEY,
-                            0 as crate::__stddef_size_t_h::size_t,
-                        ) as *mut ENTITY;
+                        let Some(name) = pool_store_name_source(
+                            &mut parser.m_temp2Pool,
+                            &enc.enc,
+                            unknown_encoding.as_ref(),
+                            bytemuck::cast_slice(entity_source),
+                        ) else {
+                            return (crate::expat_h::XML_ERROR_NO_MEMORY, ptr);
+                        };
+                        let entity = {
+                            let Some(name) = pool_terminated_chars(&parser.m_temp2Pool, name)
+                            else {
+                                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, ptr);
+                            };
+                            let salt = parser
+                                .m_root
+                                .lock()
+                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                .hash_secret_salt;
+                            match lookup_impl(
+                                &mut dtd.pool,
+                                &mut dtd.generalEntities,
+                                LookupName::Borrowed(name),
+                                0,
+                                salt,
+                            ) {
+                                Some(NamedRecord::Entity(entity)) => Some(entity.as_mut()),
+                                _ => None,
+                            }
+                        };
                         parser.m_temp2Pool.rewind();
                         if pool_is_dtd_pool {
                             checkEntityDecl = parser.m_prologState.documentEntity != 0
@@ -18728,17 +18749,16 @@ unsafe fn appendAttributeValue(
                             checkEntityDecl = dtd.hasParamEntityRefs == 0
                                 || dtd.standalone as ::core::ffi::c_int != 0;
                         }
-                        if entity.is_null() {
+                        let Some(entity) = entity else {
                             if checkEntityDecl {
                                 return (crate::expat_h::XML_ERROR_UNDEFINED_ENTITY, ptr);
                             }
                             break 's_350;
-                        }
-                        // `lookup` returned a live hash-table record.  Keep the
-                        // reference scoped to this branch; `processEntity` is
+                        };
+                        // `lookup_impl` returned a live hash-table record.  Keep
+                        // the reference scoped to this branch; `processEntity` is
                         // its only possible re-entrant operation and receives
                         // the record's address explicitly below.
-                        let entity = &mut *entity;
                         if checkEntityDecl && entity.is_internal == 0 {
                             return (crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE, ptr);
                         }
@@ -18796,6 +18816,89 @@ unsafe fn appendAttributeValue(
         .filter(|offset| *offset <= input.len())
         .unwrap_or(cursor);
     (error, offset)
+}
+
+/// Accounts for one already-bounded attribute-value token.  This is the same
+/// arithmetic and diagnostic path as the raw-cursor accounting routine, but
+/// its token context stays a slice from the scanner rather than being
+/// reconstructed from C cursors.
+fn attribute_accounting_diff_tolerated(
+    parser: &XML_ParserStruct,
+    token: ::core::ffi::c_int,
+    bytes: &[u8],
+    source_line: ::core::ffi::c_int,
+    account: XML_Account,
+    diagnostic_bytes: Option<&[u8]>,
+) -> crate::expat_h::XML_Bool {
+    match token {
+        crate::src::xmltok::XML_TOK_INVALID
+        | crate::src::xmltok::XML_TOK_PARTIAL
+        | crate::src::xmltok::XML_TOK_PARTIAL_CHAR
+        | crate::src::xmltok::XML_TOK_NONE => return crate::expat_h::XML_TRUE,
+        _ => {}
+    }
+    if account as ::core::ffi::c_uint
+        == XML_ACCOUNT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return crate::expat_h::XML_TRUE;
+    }
+    let Some(bytes_more) = crate::__stddef_ptrdiff_t_h::ptrdiff_t::try_from(bytes.len()).ok()
+    else {
+        return crate::expat_h::XML_FALSE;
+    };
+    let levels_away_from_root = parser
+        .m_parentParser
+        .map_or(0, ::core::num::NonZeroU32::get);
+    let is_direct = account as ::core::ffi::c_uint
+        == XML_ACCOUNT_DIRECT as ::core::ffi::c_int as ::core::ffi::c_uint
+        && parser.m_parentParser.is_none();
+    let (count_bytes_output, amplification_factor, threshold, maximum, debug_level) = {
+        let mut root = parser
+            .m_root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let addition_target = if is_direct {
+            &mut root.accounting.countBytesDirect
+        } else {
+            &mut root.accounting.countBytesIndirect
+        };
+        if *addition_target > XmlBigCount::MAX.wrapping_sub(bytes_more as XmlBigCount) {
+            return crate::expat_h::XML_FALSE;
+        }
+        *addition_target = addition_target.wrapping_add(bytes_more as XmlBigCount);
+        let output = root
+            .accounting
+            .countBytesDirect
+            .wrapping_add(root.accounting.countBytesIndirect);
+        let amplification = if root.accounting.countBytesDirect != 0 {
+            output as ::core::ffi::c_float / root.accounting.countBytesDirect as ::core::ffi::c_float
+        } else {
+            (23 as XmlBigCount).wrapping_add(root.accounting.countBytesIndirect)
+                as ::core::ffi::c_float
+                / 23.0
+        };
+        (
+            output,
+            amplification,
+            root.accounting.activationThresholdBytes,
+            root.accounting.maximumAmplificationFactor,
+            root.accounting.debugLevel,
+        )
+    };
+    let tolerated = (count_bytes_output < threshold || amplification_factor <= maximum)
+        as ::core::ffi::c_int as crate::expat_h::XML_Bool;
+    if debug_level >= 2 {
+        cdata_accounting_report_stats(parser, "");
+        accounting_report_diff(
+            debug_level,
+            levels_away_from_root,
+            diagnostic_bytes.unwrap_or(bytes),
+            bytes_more,
+            source_line,
+            account,
+        );
+    }
+    tolerated
 }
 
 unsafe fn storeEntityValue(
