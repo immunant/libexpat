@@ -2890,18 +2890,6 @@ macro_rules! parser_dtd_ptr {
     }};
 }
 
-macro_rules! set_parser_event_end {
-    ($parser:expr, $end:expr) => {{
-        let parser_ref = &mut *$parser;
-        parser_ref.m_eventEndPtr = parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-            ($end)
-                .addr()
-                .checked_sub(bytes.as_ptr().addr())
-                .filter(|offset| *offset <= bytes.len())
-        });
-    }};
-}
-
 // Parser-event cursors are always offsets into the current owned buffer.
 macro_rules! set_parser_event_start {
     ($parser:expr, $start:expr) => {{
@@ -2942,29 +2930,6 @@ macro_rules! parser_event_start {
             })
         })
     }};
-}
-
-macro_rules! set_event_end {
-    ($parser:expr, $parser_events:expr, $internal_start:expr, $internal_window:expr, $internal_end:expr, $end:expr) => {
-        if $parser_events {
-            set_parser_event_end!($parser, $end);
-        } else {
-            *$internal_end = ($internal_start).and_then(|start| {
-                internal_event_offset($internal_window, ($end).addr())
-                    .and_then(|end| end.checked_sub(start))
-            });
-        }
-    };
-}
-
-macro_rules! set_event_start {
-    ($parser:expr, $parser_events:expr, $event_start:expr, $internal_window:expr, $start:expr) => {
-        if $parser_events {
-            set_parser_event_start!(&mut *$parser, $start);
-        } else {
-            *$event_start = internal_event_offset($internal_window, ($start).addr());
-        }
-    };
 }
 
 pub type ENTITY_STATS = entity_stats;
@@ -15266,6 +15231,7 @@ unsafe extern "C" fn doProlog(
     // borrow throughout the prolog state machine instead of repeatedly
     // dereferencing its raw handle.
     let parser = &mut *parser;
+    let next_ptr = &mut *nextPtr;
     let parser_key = parser as *mut XML_ParserStruct as usize;
     let hash_salt = parser
         .m_root
@@ -15282,11 +15248,9 @@ unsafe extern "C" fn doProlog(
     let dtd = &mut *dtd_owner.value.get();
     let mut active_parser_encoding = std::ptr::from_ref(current_parser_encoding(parser));
     let parser_events = enc == active_parser_encoding;
-    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
+    let mut event_target = EventCursorTarget::Parser;
     let mut internal_event_start = None;
     let mut internal_event_window = None;
-    let mut parser_event_ptr = s;
     let mut quant: crate::expat_h::XML_Content_Quant = crate::expat_h::XML_CQUANT_NONE;
     // Prolog tokens either belong to the document buffer, whose table is
     // selected by parser state, or to an internal entity, whose text always
@@ -15298,48 +15262,39 @@ unsafe extern "C" fn doProlog(
         *internal_encoding(parser.m_internalEncoding)
     };
     if !parser_events {
-        let open_entity = {
-            let parser_state = &mut *parser;
-            let open_entity_index = parser_state
-                .m_openInternalEntities
-                .expect("external prolog parsing requires an open entity");
-            std::ptr::from_mut(
-                parser_state
-                    .m_activeInternalEntities
-                    .get_mut(open_entity_index)
-                    .expect("open internal entity index is live")
-                    .node_mut(),
-            )
-        };
-        let open_entity = &mut *open_entity;
+        let open_entity_index = parser
+            .m_openInternalEntities
+            .expect("external prolog parsing requires an open entity");
+        let open_entity = parser
+            .m_activeInternalEntities
+            .get_mut(open_entity_index)
+            .expect("open internal entity index is live")
+            .node_mut();
         let Some(window) = event_text_window(dtd, open_entity) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
         internal_event_window = Some(window);
-        eventPP = &raw mut open_entity.internalEventPtr;
-        eventEndPP = &raw mut open_entity.internalEventEndPtr;
+        event_target = EventCursorTarget::InternalEntity(open_entity_index);
     }
     loop {
         let mut role: ::core::ffi::c_int = 0;
         let mut handleDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
         internal_event_start = internal_event_offset(internal_event_window, s.addr());
-        set_event_start!(parser, parser_events, eventPP, internal_event_window, s);
-        set_event_end!(
+        event_target.set_start(parser, internal_event_window, s.addr());
+        event_target.set_end(
             parser,
-            parser_events,
             internal_event_start,
             internal_event_window,
-            eventEndPP,
-            next
+            next.addr(),
         );
         if tok <= 0 as ::core::ffi::c_int {
             if haveMore as ::core::ffi::c_int != 0 && tok != crate::src::xmltok::XML_TOK_INVALID {
-                *nextPtr = s;
+                *next_ptr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             match tok {
                 crate::src::xmltok::XML_TOK_INVALID => {
-                    set_event_start!(parser, parser_events, eventPP, internal_event_window, next);
+                    event_target.set_start(parser, internal_event_window, next.addr());
                     return crate::expat_h::XML_ERROR_INVALID_TOKEN;
                 }
                 crate::src::xmltok::XML_TOK_PARTIAL => {
@@ -15364,7 +15319,7 @@ unsafe extern "C" fn doProlog(
                             .expect("external prolog parsing requires an open entity")
                             == 0
                     {
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
@@ -15385,7 +15340,7 @@ unsafe extern "C" fn doProlog(
                         {
                             return crate::expat_h::XML_ERROR_INCOMPLETE_PE;
                         }
-                        *nextPtr = s;
+                        *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     return crate::expat_h::XML_ERROR_NO_ELEMENTS;
@@ -15676,20 +15631,16 @@ unsafe extern "C" fn doProlog(
                                             };
                                             if let Some(bad_offset) = bad_offset {
                                                 let bad_ptr = s.wrapping_add(bad_offset);
-                                                if parser_events {
-                                                    set_parser_event_start!(
-                                                        parser,
-                                                        parser_event_ptr
-                                                    );
+                                                let event_start = if parser_events {
+                                                    s.addr()
                                                 } else {
-                                                    set_event_start!(
-                                                        parser,
-                                                        false,
-                                                        eventPP,
-                                                        internal_event_window,
-                                                        bad_ptr
-                                                    );
-                                                }
+                                                    bad_ptr.addr()
+                                                };
+                                                event_target.set_start(
+                                                    parser,
+                                                    internal_event_window,
+                                                    event_start,
+                                                );
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             }
                                             let Some(quoted_public_id) = token_bytes.get(
@@ -16139,13 +16090,11 @@ unsafe extern "C" fn doProlog(
                                                         Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
-                                                set_event_end!(
+                                                event_target.set_end(
                                                     parser,
-                                                    parser_events,
                                                     internal_event_start,
                                                     internal_event_window,
-                                                    eventEndPP,
-                                                    s
+                                                    s.addr(),
                                                 );
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
@@ -16332,13 +16281,11 @@ unsafe extern "C" fn doProlog(
                                                         Some(DeclAttributeType::Temporary(start));
                                                     parser_ref.m_tempPool.commit();
                                                 }
-                                                set_event_end!(
+                                                event_target.set_end(
                                                     parser,
-                                                    parser_events,
                                                     internal_event_start,
                                                     internal_event_window,
-                                                    eventEndPP,
-                                                    s
+                                                    s.addr(),
                                                 );
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
@@ -16467,13 +16414,11 @@ unsafe extern "C" fn doProlog(
                                                     (entity.named.name, entity.is_param, entity.textLen)
                                                 };
                                                 if (*parser).m_entityDeclHandler {
-                                                    set_event_end!(
+                                                    event_target.set_end(
                                                         parser,
-                                                        parser_events,
                                                         internal_event_start,
                                                         internal_event_window,
-                                                        eventEndPP,
-                                                        s
+                                                        s.addr(),
                                                     );
                                                     let callback = ENTITY_DECL_HANDLERS
                                                         .get_or_init(|| {
@@ -16609,13 +16554,11 @@ unsafe extern "C" fn doProlog(
                                             let declaration = (*parser)
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
-                                            set_event_end!(
+                                            event_target.set_end(
                                                 parser,
-                                                parser_events,
                                                 internal_event_start,
                                                 internal_event_window,
-                                                eventEndPP,
-                                                s
+                                                s.addr(),
                                             );
                                             let callback = ENTITY_DECL_HANDLERS
                                                 .get_or_init(|| {
@@ -16780,13 +16723,11 @@ unsafe extern "C" fn doProlog(
                                                 },
                                             );
                                             if let Some(callback) = callback {
-                                                set_event_end!(
+                                                event_target.set_end(
                                                     parser,
-                                                    parser_events,
                                                     internal_event_start,
                                                     internal_event_window,
-                                                    eventEndPP,
-                                                    s
+                                                    s.addr(),
                                                 );
                                                 callback.invoke(
                                                     handler_arg,
@@ -16798,13 +16739,11 @@ unsafe extern "C" fn doProlog(
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             } else if (*parser).m_entityDeclHandler {
-                                                set_event_end!(
+                                                event_target.set_end(
                                                     parser,
-                                                    parser_events,
                                                     internal_event_start,
                                                     internal_event_window,
-                                                    eventEndPP,
-                                                    s
+                                                    s.addr(),
                                                 );
                                                 let callback = ENTITY_DECL_HANDLERS
                                                     .get_or_init(|| {
@@ -17008,17 +16947,16 @@ unsafe extern "C" fn doProlog(
                                         };
                                         if let Some(bad_offset) = bad_offset {
                                             let bad_ptr = s.wrapping_add(bad_offset);
-                                            if parser_events {
-                                                set_parser_event_start!(parser, parser_event_ptr);
+                                            let event_start = if parser_events {
+                                                s.addr()
                                             } else {
-                                                set_event_start!(
-                                                    parser,
-                                                    false,
-                                                    eventPP,
-                                                    internal_event_window,
-                                                    bad_ptr
-                                                );
-                                            }
+                                                bad_ptr.addr()
+                                            };
+                                            event_target.set_start(
+                                                parser,
+                                                internal_event_window,
+                                                event_start,
+                                            );
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
                                         if (*parser).m_declNotationName.is_some() {
@@ -17062,13 +17000,11 @@ unsafe extern "C" fn doProlog(
                                             if systemId.is_null() {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            set_event_end!(
+                                            event_target.set_end(
                                                 parser,
-                                                parser_events,
                                                 internal_event_start,
                                                 internal_event_window,
-                                                eventEndPP,
-                                                s
+                                                s.addr(),
                                             );
                                             let callback = NOTATION_DECL_HANDLERS
                                                 .get_or_init(|| {
@@ -17143,13 +17079,11 @@ unsafe extern "C" fn doProlog(
                                         if (*parser).m_declNotationPublicId.is_some()
                                             && (*parser).m_notationDeclHandler
                                         {
-                                            set_event_end!(
+                                            event_target.set_end(
                                                 parser,
-                                                parser_events,
                                                 internal_event_start,
                                                 internal_event_window,
-                                                eventEndPP,
-                                                s
+                                                s.addr(),
                                             );
                                             let callback = NOTATION_DECL_HANDLERS
                                                 .get_or_init(|| {
@@ -17743,13 +17677,11 @@ unsafe extern "C" fn doProlog(
                                                         as ::core::ffi::c_int
                                                 })
                                                     as crate::expat_h::XML_Content_Type;
-                                                set_event_end!(
+                                                event_target.set_end(
                                                     parser,
-                                                    parser_events,
                                                     internal_event_start,
                                                     internal_event_window,
-                                                    eventEndPP,
-                                                    s
+                                                    s.addr(),
                                                 );
                                                 callElementDeclHandler(
                                                     parser,
@@ -17915,17 +17847,16 @@ unsafe extern "C" fn doProlog(
                                 };
                                 if let Some(bad_offset) = bad_offset {
                                     let bad_ptr = s.wrapping_add(bad_offset);
-                                    if parser_events {
-                                        set_parser_event_start!(parser, parser_event_ptr);
+                                    let event_start = if parser_events {
+                                        s.addr()
                                     } else {
-                                        set_event_start!(
-                                            parser,
-                                            false,
-                                            eventPP,
-                                            internal_event_window,
-                                            bad_ptr
-                                        );
-                                    }
+                                        bad_ptr.addr()
+                                    };
+                                    event_target.set_start(
+                                        parser,
+                                        internal_event_window,
+                                        event_start,
+                                    );
                                     return crate::expat_h::XML_ERROR_PUBLICID;
                                 }
                                 break '_alreadyChecked;
@@ -18070,13 +18001,11 @@ unsafe extern "C" fn doProlog(
                             if model.is_null() {
                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                             }
-                            set_event_end!(
+                            event_target.set_end(
                                 parser,
-                                parser_events,
                                 internal_event_start,
                                 internal_event_window,
-                                eventEndPP,
-                                s
+                                s.addr(),
                             );
                             callElementDeclHandler(
                                 parser,
@@ -18135,13 +18064,13 @@ unsafe extern "C" fn doProlog(
         }
         match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
-                *nextPtr = next;
+                *next_ptr = next;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             2 => return crate::expat_h::XML_ERROR_ABORTED,
             1 => {
                 if (*parser).m_reenter != 0 {
-                    *nextPtr = next;
+                    *next_ptr = next;
                     return crate::expat_h::XML_ERROR_NONE;
                 }
             }
