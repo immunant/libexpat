@@ -4936,15 +4936,6 @@ unsafe fn shared_entity_text_chars(
     entity_text_chars(&*dtd.value.get(), text, length)
 }
 
-// Default-handler reporting needs only cursor offsets. Resolve those while
-// the DTD cell is inspected so no DTD borrow can escape across a callback.
-unsafe fn shared_event_text_window(
-    dtd: &SharedDtd,
-    entity: &OPEN_INTERNAL_ENTITY,
-) -> Option<(usize, usize)> {
-    dtd.inspect(|dtd| event_text_window(dtd, entity))
-}
-
 // Internal-entity events are locations in the entity's replacement text, not
 // addresses into its growable pool.  This representation remains valid when a
 // callback grows that pool and moves its backing allocation.
@@ -19988,7 +19979,7 @@ unsafe extern "C" fn storeAttributeValue(
                                 .and_then(|index| parser.m_activeInternalEntities.get(index))
                                 .map(InternalEntityStorage::node)
                         })?;
-                    let (start, input_len) = shared_event_text_window(dtd, entity)?;
+                    let (start, input_len) = dtd.inspect(|dtd| event_text_window(dtd, entity))?;
                     let start_offset = next.addr().checked_sub(start)?;
                     let end_offset = end.addr().checked_sub(start)?;
                     (start_offset <= end_offset && end_offset <= input_len).then_some(())
@@ -21550,7 +21541,7 @@ unsafe fn report_default_impl(
                     .get(open_entity_index)
                     .expect("open internal entity index is live")
                     .node();
-                let Some(window) = (unsafe { shared_event_text_window(dtd, open_entity) }) else {
+                let Some(window) = dtd.inspect(|dtd| event_text_window(dtd, open_entity)) else {
                     return;
                 };
                 let internal_window = Some(window);
