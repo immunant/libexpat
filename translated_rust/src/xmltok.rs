@@ -432,28 +432,97 @@ pub mod xmltok_impl_c {
         Name,
     }
 
+    type CharPredicate = extern "C" fn(
+        *const crate::src::xmltok::ENCODING,
+        *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int;
+
+    #[derive(Copy, Clone)]
+    enum NormalPredicateFamily {
+        Utf8,
+        Unknown,
+        NoCallbacks,
+    }
+
+    fn encoding_pointer_is(
+        enc: *const crate::src::xmltok::ENCODING,
+        candidate: *const crate::src::xmltok::ENCODING,
+    ) -> bool {
+        enc == candidate
+    }
+
+    fn normal_predicate_family(enc: *const crate::src::xmltok::ENCODING) -> NormalPredicateFamily {
+        if encoding_pointer_is(enc, &raw const super::utf8_encoding.enc)
+            || encoding_pointer_is(enc, &raw const super::utf8_encoding_ns.enc)
+            || encoding_pointer_is(enc, &raw const super::internal_utf8_encoding.enc)
+            || encoding_pointer_is(enc, &raw const super::internal_utf8_encoding_ns.enc)
+        {
+            return NormalPredicateFamily::Utf8;
+        }
+
+        if encoding_pointer_is(enc, &raw const super::latin1_encoding.enc)
+            || encoding_pointer_is(enc, &raw const super::latin1_encoding_ns.enc)
+            || encoding_pointer_is(enc, &raw const super::ascii_encoding.enc)
+            || encoding_pointer_is(enc, &raw const super::ascii_encoding_ns.enc)
+            || encoding_pointer_is(enc, &raw const super::little2_encoding.enc)
+            || encoding_pointer_is(enc, &raw const super::little2_encoding_ns.enc)
+            || encoding_pointer_is(enc, &raw const super::internal_little2_encoding.enc)
+            || encoding_pointer_is(enc, &raw const super::internal_little2_encoding_ns.enc)
+            || encoding_pointer_is(enc, &raw const super::big2_encoding.enc)
+            || encoding_pointer_is(enc, &raw const super::big2_encoding_ns.enc)
+        {
+            return NormalPredicateFamily::NoCallbacks;
+        }
+
+        NormalPredicateFamily::Unknown
+    }
+
+    fn utf8_char_predicate(
+        byte_type: ::core::ffi::c_int,
+        predicate: NormalCharPredicate,
+    ) -> Option<CharPredicate> {
+        match (predicate, byte_type) {
+            (NormalCharPredicate::Invalid, 5) => Some(super::utf8_isInvalid2 as CharPredicate),
+            (NormalCharPredicate::Invalid, 6) => Some(super::utf8_isInvalid3 as CharPredicate),
+            (NormalCharPredicate::Invalid, 7) => Some(super::utf8_isInvalid4 as CharPredicate),
+            (NormalCharPredicate::NameStart, 5) => Some(super::utf8_isNmstrt2 as CharPredicate),
+            (NormalCharPredicate::NameStart, 6) => Some(super::utf8_isNmstrt3 as CharPredicate),
+            (NormalCharPredicate::NameStart, 7) => Some(super::isNever as CharPredicate),
+            (NormalCharPredicate::Name, 5) => Some(super::utf8_isName2 as CharPredicate),
+            (NormalCharPredicate::Name, 6) => Some(super::utf8_isName3 as CharPredicate),
+            (NormalCharPredicate::Name, 7) => Some(super::isNever as CharPredicate),
+            _ => None,
+        }
+    }
+
+    fn unknown_char_predicate(
+        byte_type: ::core::ffi::c_int,
+        predicate: NormalCharPredicate,
+    ) -> Option<CharPredicate> {
+        match (predicate, byte_type) {
+            (NormalCharPredicate::Invalid, 5 | 6 | 7) => {
+                Some(super::unknown_isInvalid as CharPredicate)
+            }
+            (NormalCharPredicate::NameStart, 5 | 6 | 7) => {
+                Some(super::unknown_isNmstrt as CharPredicate)
+            }
+            (NormalCharPredicate::Name, 5 | 6 | 7) => Some(super::unknown_isName as CharPredicate),
+            _ => None,
+        }
+    }
+
     fn normal_char_predicate(
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,
         byte_type: ::core::ffi::c_int,
         predicate: NormalCharPredicate,
     ) -> bool {
-        unsafe {
-            let normal = &*(enc as *const normal_encoding);
-            let callback = match (predicate, byte_type) {
-                (NormalCharPredicate::Invalid, 5) => normal.isInvalid2,
-                (NormalCharPredicate::Invalid, 6) => normal.isInvalid3,
-                (NormalCharPredicate::Invalid, 7) => normal.isInvalid4,
-                (NormalCharPredicate::NameStart, 5) => normal.isNmstrt2,
-                (NormalCharPredicate::NameStart, 6) => normal.isNmstrt3,
-                (NormalCharPredicate::NameStart, 7) => normal.isNmstrt4,
-                (NormalCharPredicate::Name, 5) => normal.isName2,
-                (NormalCharPredicate::Name, 6) => normal.isName3,
-                (NormalCharPredicate::Name, 7) => normal.isName4,
-                _ => None,
-            };
-            callback.expect("non-null function pointer")(enc, ptr) != 0 as ::core::ffi::c_int
-        }
+        let callback = match normal_predicate_family(enc) {
+            NormalPredicateFamily::Utf8 => utf8_char_predicate(byte_type, predicate),
+            NormalPredicateFamily::Unknown => unknown_char_predicate(byte_type, predicate),
+            NormalPredicateFamily::NoCallbacks => None,
+        };
+        callback.expect("non-null function pointer")(enc, ptr) != 0 as ::core::ffi::c_int
     }
 
     fn normal_invalid_char(
