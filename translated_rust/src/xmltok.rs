@@ -1839,25 +1839,6 @@ pub mod xmltok_impl_c {
         (crate::src::xmltok::XML_TOK_DATA_CHARS_1, Some(offset))
     }
 
-    pub unsafe extern "C" fn normal_cdataSectionTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let encoding = &*(enc as *const normal_encoding);
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), end.offset_from(ptr) as usize);
-        let (token, next_offset) =
-            normal_cdata_section_tok(input, &encoding.type_0, encoding.enc.isUtf8 != 0);
-        if let Some(next_offset) = next_offset {
-            *nextTokPtr = ptr.add(next_offset);
-        }
-        token
-    }
-
     enum NormalScanEndTagCharCheck {
         Invalid,
         NameStart,
@@ -2746,30 +2727,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_scanLt(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input_len = end.offset_from(ptr) as usize;
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
-        let normal = &*(enc as *const normal_encoding);
-        let char_check = |kind, offset, width| {
-            normal_char_check(normal, kind, width, &input[offset..], || {
-                unknown_character_value(enc as usize, &input[offset..])
-            })
-        };
-        let result = normal_scan_lt_with_check(normal, input, &char_check);
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
-    }
-
     enum NormalContentAction {
         Token(::core::ffi::c_int, Option<usize>),
         ScanLt(usize),
@@ -3013,25 +2970,6 @@ pub mod xmltok_impl_c {
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    pub unsafe extern "C" fn normal_scanPercent(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize) };
-        let normal = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = normal_scan_percent_impl(normal, input);
-        if let Some(offset) = next {
-            unsafe { *nextTokPtr = ptr.add(offset) };
-        }
-        token
-    }
-
     pub(super) fn normal_scan_pound_name_impl<T: XmlTokenByte>(
         enc: &normal_encoding,
         input: &[T],
@@ -3083,25 +3021,6 @@ pub mod xmltok_impl_c {
             }
         }
         (-crate::src::xmltok::XML_TOK_POUND_NAME_1, None)
-    }
-
-    pub unsafe extern "C" fn normal_scanPoundName(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize) };
-        let normal = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = normal_scan_pound_name_impl(normal, input);
-        if let Some(offset) = next {
-            unsafe { *nextTokPtr = ptr.add(offset) };
-        }
-        token
     }
 
     /// Scans a normal-encoding literal using offsets within a bounded input
@@ -3166,34 +3085,6 @@ pub mod xmltok_impl_c {
             }
         }
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
-    }
-
-    pub unsafe extern "C" fn normal_scanLit(
-        open: ::core::ffi::c_int,
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let (token, next) = normal_scan_lit_impl(open, normal, input, |offset, width| {
-            normal_char_check(
-                normal,
-                NormalCharCheck::Invalid,
-                width,
-                &input[offset..],
-                || unknown_character_value(enc as usize, &input[offset..]),
-            )
-        });
-        if let Some(offset) = next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        token
     }
 
     pub(super) enum NormalPrologCharCheck {
@@ -3745,25 +3636,6 @@ pub mod xmltok_impl_c {
             token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
             next: Some(offset),
         }
-    }
-
-    pub unsafe extern "C" fn normal_entityValueTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = normal_entity_value_tok_impl(normal, input);
-        if let Some(offset) = result.next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        result.token
     }
 
     enum NormalIgnoreSectionOutcome {
@@ -10943,7 +10815,6 @@ pub mod xmltok_impl_c {
     use crate::src::xmltok::nametab_h::nmstrtPages;
     use crate::src::xmltok::normal_encoding;
     use crate::src::xmltok::unicode_byte_type;
-    use crate::src::xmltok::unknown_character_value;
     use crate::src::xmltok::unknown_character_value_for;
     use crate::src::xmltok::unknown_is_invalid;
     use crate::src::xmltok::unknown_is_name;
@@ -12254,14 +12125,8 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_updatePosition;
 pub use crate::src::xmltok::xmltok_impl_c::normal_attributeValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::normal_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
-pub use crate::src::xmltok::xmltok_impl_c::normal_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanLit;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanLt;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanPercent;
-pub use crate::src::xmltok::xmltok_impl_c::normal_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::skip_s;
 pub use crate::src::xmltok::xmltok_impl_c::Big2AttributeAction;
 pub use crate::src::xmltok::xmltok_ns_c::encodings;
