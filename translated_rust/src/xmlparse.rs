@@ -10100,6 +10100,9 @@ unsafe extern "C" fn contentProcessor(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let parser_state = &mut *parser;
+    let Some(next_ptr) = endPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
@@ -10119,7 +10122,7 @@ unsafe extern "C" fn contentProcessor(
         true,
         start,
         end,
-        endPtr,
+        next_ptr,
         have_more,
         XML_ACCOUNT_DIRECT,
     );
@@ -10533,6 +10536,9 @@ unsafe extern "C" fn externalEntityContentProcessor(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let parser_state = &mut *parser;
+    let Some(next_ptr) = endPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
@@ -10547,7 +10553,7 @@ unsafe extern "C" fn externalEntityContentProcessor(
         true,
         start,
         end,
-        endPtr,
+        next_ptr,
         have_more,
         XML_ACCOUNT_ENTITY_EXPANSION,
     );
@@ -10606,6 +10612,29 @@ fn content_token_handlers(parser: &XML_ParserStruct) -> ContentTokenHandlers {
         end_element: parser.m_endElementHandler,
         start_cdata_section: parser.m_startCdataSectionHandler,
     }
+}
+
+// An epilog begins at the end of a document element.  Keep that range as
+// offsets rather than cursor addresses because its final element callback is
+// allowed to request more buffer space, which can relocate or compact the
+// parser input before the epilog processor runs.
+#[derive(Copy, Clone)]
+struct ContentEpilogRange {
+    start: usize,
+    end: usize,
+}
+
+fn content_epilog_range(
+    parser: &XML_ParserStruct,
+    token_start: usize,
+    token_end: usize,
+    source_len: usize,
+) -> Option<ContentEpilogRange> {
+    let token_offset = parser.m_buffer.offset_from_address(token_start)?;
+    let token_len = token_end.checked_sub(token_start)?;
+    let start = token_offset.checked_add(token_len)?;
+    let end = token_offset.checked_add(source_len)?;
+    (start <= end && end <= parser.m_bufferEnd).then_some(ContentEpilogRange { start, end })
 }
 
 /// Entity-reference handler settings captured immediately before dispatch.
@@ -10758,18 +10787,10 @@ unsafe fn doContent(
     parser_events: bool,
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
+    next_ptr: &mut *const ::core::ffi::c_char,
     mut haveMore: crate::expat_h::XML_Bool,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    // `doContent`'s legacy caller supplies an output cursor.  Establish the
-    // short-lived exclusive reference once, so every return path below writes
-    // through the checked boundary reference rather than repeatedly
-    // dereferencing the raw C out-parameter.
-    if nextPtr.is_null() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let next_ptr = &mut *nextPtr;
     // Keep the parser state borrowed for ordinary bookkeeping.  The raw
     // handle is only recovered at the legacy callback/token API boundary;
     // no parser-owned field access below needs to dereference it.
@@ -10847,6 +10868,14 @@ unsafe fn doContent(
             (scan, next, source)
         };
         let mut tok: ::core::ffi::c_int = scan.token;
+        // Save the semantic epilog range before handlers run.  A handler may
+        // grow or compact the input buffer, invalidating `next` and `end` as
+        // addresses while preserving these offsets in the live buffer.
+        let epilog_range = if parser_events {
+            content_epilog_range(parser, s.addr(), next.addr(), source.len())
+        } else {
+            None
+        };
         let account_after = if tok
             == crate::src::xmltok::XML_TOK_TRAILING_RSQB
             || tok == crate::src::xmltok::XML_TOK_TRAILING_CR
@@ -11768,7 +11797,22 @@ unsafe fn doContent(
                         release_binding(parser, binding_id);
                     }
                     if close_element_epilog_action(parser) {
-                        return epilogProcessor(parser, next, end, nextPtr);
+                        let Some(range) = epilog_range else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        let result = epilog_processor_from_offsets(parser, range.start, range.end);
+                        if let Some(cursor) = result.next {
+                            let Some(offset) = range.start.checked_add(cursor) else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            let Some(pointer) = parser.m_buffer.bytes.as_deref().and_then(|bytes| {
+                                bytes.get(offset..).map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+                            }) else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            *next_ptr = pointer;
+                        }
+                        return result.error;
                     }
                 }
                 crate::src::xmltok::XML_TOK_END_TAG => {
@@ -12017,7 +12061,22 @@ unsafe fn doContent(
                             release_binding(parser, binding_id);
                         }
                         if close_element_epilog_action(parser) {
-                            return epilogProcessor(parser, next, end, nextPtr);
+                            let Some(range) = epilog_range else {
+                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                            };
+                            let result = epilog_processor_from_offsets(parser, range.start, range.end);
+                            if let Some(cursor) = result.next {
+                                let Some(offset) = range.start.checked_add(cursor) else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                };
+                                let Some(pointer) = parser.m_buffer.bytes.as_deref().and_then(|bytes| {
+                                    bytes.get(offset..).map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+                                }) else {
+                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                };
+                                *next_ptr = pointer;
+                            }
+                            return result.error;
                         }
                     }
                 }
@@ -16259,7 +16318,7 @@ fn continue_prolog_as_content(
             parser_events,
             start,
             end,
-            &raw mut next,
+            &mut next,
             have_more,
             account,
         )
@@ -19133,7 +19192,7 @@ fn epilog_processor_impl(
     parser: &mut XML_ParserStruct,
     input: &EpilogInput,
     scan: &mut dyn FnMut(usize) -> crate::src::xmltok::ScannerResult,
-    account: &mut dyn FnMut(::core::ffi::c_int, usize, usize) -> bool,
+    account: &mut dyn FnMut(&XML_ParserStruct, ::core::ffi::c_int, usize, usize) -> bool,
     dispatch: &mut dyn FnMut(
         &mut XML_ParserStruct,
         EpilogEvent,
@@ -19149,7 +19208,7 @@ fn epilog_processor_impl(
             .and_then(|offset| cursor.checked_add(offset))
             .filter(|offset| *offset <= input.bytes.len())
             .unwrap_or(cursor);
-        if !account(token.token, cursor, next) {
+        if !account(parser, token.token, cursor, next) {
             return epilog_result(
                 crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH,
                 None,
@@ -19232,32 +19291,34 @@ fn epilog_processor_impl(
     }
 }
 
-unsafe extern "C" fn epilogProcessor(
-    parser: crate::expat_h::XML_Parser,
-    s: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() || s.is_null() || end.is_null() || nextPtr.is_null() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
+/// Runs epilog scanning from offsets in the current parser buffer.
+///
+/// The copied token window remains valid through callbacks, while the result
+/// remains an offset so callers can rebind it to whichever allocation is live
+/// when the callback returns.
+fn epilog_processor_from_offsets(
+    parser_state: &mut XML_ParserStruct,
+    start_offset: usize,
+    end_offset: usize,
+) -> EpilogResult {
     let (input, scan_encoding) = {
-        let parser_state = &mut *parser;
         let Some(scan_encoding) = current_parser_normal_encoding(parser_state) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            return epilog_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None);
         };
-        let Some(input_start) = parser_state.m_buffer.offset_from_address(s.addr()) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        let Some(bytes) = parser_state.m_buffer.window_from_addresses(s.addr(), end.addr()) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        let Some(bytes) = parser_state
+            .m_buffer
+            .bytes
+            .as_deref()
+            .and_then(|bytes| bytes.get(start_offset..end_offset))
+        else {
+            return epilog_result(crate::expat_h::XML_ERROR_UNEXPECTED_STATE, None);
         };
         let mut input_bytes = Vec::new();
         let mut input_chars = Vec::new();
         if input_bytes.try_reserve_exact(bytes.len()).is_err()
             || input_chars.try_reserve_exact(bytes.len()).is_err()
         {
-            return crate::expat_h::XML_ERROR_NO_MEMORY;
+            return epilog_result(crate::expat_h::XML_ERROR_NO_MEMORY, None);
         }
         input_bytes.extend_from_slice(bytes);
         input_chars.extend(bytes.iter().map(|&byte| byte as ::core::ffi::c_char));
@@ -19265,7 +19326,7 @@ unsafe extern "C" fn epilogProcessor(
             EpilogInput {
                 bytes: input_bytes,
                 chars: input_chars,
-                input_start,
+                input_start: start_offset,
             },
             scan_encoding,
         )
@@ -19281,13 +19342,11 @@ unsafe extern "C" fn epilogProcessor(
             scan_encoding.unknown_converter_id,
         )
     };
-    let parser_for_account = parser;
     let input_for_account = &input;
-    let mut account = move |token, start, end| {
+    let mut account = move |parser_state: &XML_ParserStruct, token, start, end| {
         // Accounting cannot invoke a callback, so keep the checked parser
         // borrow local to this bounded parser-buffer lookup and use the
         // slice-based accounting implementation directly.
-        let parser_state = &*parser_for_account;
         let Some(bytes) = parser_state.m_buffer.bytes.as_deref() else {
             return false;
         };
@@ -19315,7 +19374,6 @@ unsafe extern "C" fn epilogProcessor(
             true
         }
     };
-    let parser_for_dispatch = parser;
     let input_for_dispatch = &input;
     let mut dispatch = move |parser_state: &mut XML_ParserStruct, event: EpilogEvent| {
         match event {
@@ -19344,7 +19402,7 @@ unsafe extern "C" fn epilogProcessor(
                 let encoding_address = std::ptr::from_ref(current_parser_encoding(parser_state)).addr();
                 let encoding = *current_parser_encoding(parser_state);
                 report_default_token(
-                    parser_for_dispatch.addr(),
+                    std::ptr::from_mut(parser_state).addr(),
                     parser_state,
                     &encoding,
                     encoding_address,
@@ -19391,7 +19449,7 @@ unsafe extern "C" fn epilogProcessor(
                         return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                     };
                     report_default_token(
-                        parser_for_dispatch.addr(),
+                        std::ptr::from_mut(parser_state).addr(),
                         parser_state,
                         &encoding,
                         encoding_address,
@@ -19429,7 +19487,7 @@ unsafe extern "C" fn epilogProcessor(
                             return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                         };
                         report_default_token(
-                            parser_for_dispatch.addr(),
+                            std::ptr::from_mut(parser_state).addr(),
                             parser_state,
                             &encoding,
                             encoding_address,
@@ -19445,12 +19503,36 @@ unsafe extern "C" fn epilogProcessor(
             }
         }
     };
-    let result = epilog_processor_impl(&mut *parser, &input, &mut scan, &mut account, &mut dispatch);
+    epilog_processor_impl(parser_state, &input, &mut scan, &mut account, &mut dispatch)
+}
+
+unsafe extern "C" fn epilogProcessor(
+    parser: crate::expat_h::XML_Parser,
+    s: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    nextPtr: *mut *const ::core::ffi::c_char,
+) -> crate::expat_h::XML_Error {
+    let Some(parser_state) = parser.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(next_ptr) = nextPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    if s.is_null() || end.is_null() {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    }
+    let Some(start_offset) = parser_state.m_buffer.offset_from_address(s.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(end_offset) = parser_state.m_buffer.offset_from_address(end.addr()) else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let result = epilog_processor_from_offsets(parser_state, start_offset, end_offset);
     if let Some(cursor) = result.next {
-        let Some(offset) = input.input_start.checked_add(cursor) else {
+        let Some(offset) = start_offset.checked_add(cursor) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let Some(pointer) = (&*parser)
+        let Some(pointer) = parser_state
             .m_buffer
             .bytes
             .as_deref()
@@ -19458,7 +19540,7 @@ unsafe extern "C" fn epilogProcessor(
         else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        *nextPtr = pointer;
+        *next_ptr = pointer;
     }
     result.error
 }
@@ -19883,7 +19965,7 @@ unsafe extern "C" fn internalEntityProcessor(
                 false,
                 textStart,
                 textEnd,
-                &raw mut next,
+                &mut next,
                 crate::expat_h::XML_FALSE,
                 XML_ACCOUNT_ENTITY_EXPANSION,
             );
