@@ -319,7 +319,7 @@ impl Scanner {
                         }
                     };
                     xmltok_impl_c::normal_char_check(normal, kind, width, &input[offset..], || {
-                        unknown_character_value(enc, ptr.wrapping_add(offset))
+                        unknown_character_value(enc, &input[offset..])
                     })
                 });
             let (token, next) = match action {
@@ -340,7 +340,7 @@ impl Scanner {
                                 xmltok_impl_c::NormalCharCheck::Invalid,
                                 width,
                                 &input[start + offset..],
-                                || unknown_character_value(enc, ptr.wrapping_add(start + offset)),
+                                || unknown_character_value(enc, &input[start + offset..]),
                             )
                         },
                     );
@@ -362,7 +362,7 @@ impl Scanner {
                                         || {
                                             unknown_character_value(
                                                 enc,
-                                                ptr.wrapping_add(comment_start + offset),
+                                                &input[comment_start + offset..],
                                             )
                                         },
                                     )
@@ -728,28 +728,30 @@ pub type CONVERTER = Option<
     ) -> ::core::ffi::c_int,
 >;
 
-trait UnknownEncodingConverter: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        input: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int;
+trait UnknownEncodingConverter {
+    fn invoke(&self, input: &[u8]) -> ::core::ffi::c_int;
 }
 
-impl UnknownEncodingConverter
-    for unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int
+impl<F> UnknownEncodingConverter for F
+where
+    F: Fn(&[u8]) -> ::core::ffi::c_int,
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        input: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        self(user_data, input)
+    fn invoke(&self, input: &[u8]) -> ::core::ffi::c_int {
+        self(input)
     }
 }
+
+#[derive(Clone)]
+struct UnknownEncodingConverterRegistration {
+    invoke: std::sync::Arc<dyn UnknownEncodingConverter>,
+}
+
+// The captured callback and context are opaque C values.  Rust never
+// dereferences the context and invokes the callback only with a slice-backed,
+// non-empty character buffer; callers retain responsibility for the C
+// callback's lifetime and thread-safety, as required by Expat's callback ABI.
+unsafe impl Send for UnknownEncodingConverterRegistration {}
+unsafe impl Sync for UnknownEncodingConverterRegistration {}
 
 // Unknown encodings are initialized in caller-provided storage.  Keep the
 // foreign callback in this boundary adapter instead of retaining it in that
@@ -757,13 +759,13 @@ impl UnknownEncodingConverter
 // parser resets or is freed.
 static UNKNOWN_ENCODING_CONVERTERS: std::sync::OnceLock<
     std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingConverter>>,
+        std::collections::HashMap<usize, UnknownEncodingConverterRegistration>,
     >,
 > = std::sync::OnceLock::new();
 
 fn register_unknown_encoding_converter(
     storage_id: usize,
-    converter: Option<std::sync::Arc<dyn UnknownEncodingConverter>>,
+    converter: Option<UnknownEncodingConverterRegistration>,
 ) {
     let mut converters = UNKNOWN_ENCODING_CONVERTERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -778,7 +780,7 @@ fn register_unknown_encoding_converter(
 
 fn unknown_encoding_converter(
     storage_id: usize,
-) -> Option<std::sync::Arc<dyn UnknownEncodingConverter>> {
+) -> Option<UnknownEncodingConverterRegistration> {
     UNKNOWN_ENCODING_CONVERTERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -2385,7 +2387,7 @@ pub mod xmltok_impl_c {
         let normal = &*(enc as *const normal_encoding);
         let char_check = |kind, offset, width| {
             normal_char_check(normal, kind, width, &input[offset..], || {
-                unknown_character_value(enc, ptr.add(offset))
+                unknown_character_value(enc, &input[offset..])
             })
         };
         let result = normal_scan_lt_with_check(normal, input, &char_check);
@@ -2558,7 +2560,7 @@ pub mod xmltok_impl_c {
                 NormalCharCheck::Invalid,
                 width,
                 &input[offset..],
-                || unknown_character_value(enc, ptr.add(offset)),
+                || unknown_character_value(enc, &input[offset..]),
             )
         }) {
             NormalContentAction::Token(token, next) => {
@@ -2811,7 +2813,7 @@ pub mod xmltok_impl_c {
                 NormalCharCheck::Invalid,
                 width,
                 &input[offset..],
-                || unknown_character_value(enc, ptr.add(offset)),
+                || unknown_character_value(enc, &input[offset..]),
             )
         });
         if let Some(offset) = next {
@@ -3406,12 +3408,12 @@ pub mod xmltok_impl_c {
     /// adapter, which resumes this scanner after a valid character.
     fn normal_ignore_section_tok_impl(
         enc: &normal_encoding,
-        input: &[::core::ffi::c_char],
+        input: &[u8],
         mut pos: usize,
         mut level: ::core::ffi::c_int,
     ) -> NormalIgnoreSectionOutcome {
         while pos < input.len() {
-            match enc.type_0[input[pos] as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int {
+            match enc.type_0[input[pos] as usize] as ::core::ffi::c_int {
                 5 => {
                     if input.len() - pos < 2 {
                         return NormalIgnoreSectionOutcome::Partial(
@@ -3421,7 +3423,7 @@ pub mod xmltok_impl_c {
                     let invalid = match enc.invalid2 {
                         Invalid2Checker::Never => false,
                         Invalid2Checker::Utf8 => {
-                            utf8_invalid2(&[input[pos] as u8, input[pos + 1] as u8])
+                            utf8_invalid2(&[input[pos], input[pos + 1]])
                         }
                         Invalid2Checker::Unknown => {
                             return NormalIgnoreSectionOutcome::UnknownInvalid {
@@ -3445,9 +3447,9 @@ pub mod xmltok_impl_c {
                     let invalid = match enc.invalid3 {
                         Invalid3Checker::Never => false,
                         Invalid3Checker::Utf8 => utf8_invalid3(&[
-                            input[pos] as u8,
-                            input[pos + 1] as u8,
-                            input[pos + 2] as u8,
+                            input[pos],
+                            input[pos + 1],
+                            input[pos + 2],
                         ]),
                         Invalid3Checker::Unknown => {
                             return NormalIgnoreSectionOutcome::UnknownInvalid {
@@ -3471,10 +3473,10 @@ pub mod xmltok_impl_c {
                     let invalid = match enc.invalid4 {
                         Invalid4Checker::Never => false,
                         Invalid4Checker::Utf8 => utf8_invalid4(&[
-                            input[pos] as u8,
-                            input[pos + 1] as u8,
-                            input[pos + 2] as u8,
-                            input[pos + 3] as u8,
+                            input[pos],
+                            input[pos + 1],
+                            input[pos + 2],
+                            input[pos + 3],
                         ]),
                         Invalid4Checker::Unknown => {
                             return NormalIgnoreSectionOutcome::UnknownInvalid {
@@ -3552,7 +3554,7 @@ pub mod xmltok_impl_c {
         if input_len <= 0 {
             return crate::src::xmltok::XML_TOK_PARTIAL_1;
         }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len as usize);
         let encoding = &*(enc as *const normal_encoding);
         let mut start = 0;
         let mut level = 0;
@@ -3573,7 +3575,7 @@ pub mod xmltok_impl_c {
                     width,
                     level: saved_level,
                 } => {
-                    if unknown_is_invalid(unknown_character_value(enc, ptr.add(at))) {
+                    if unknown_is_invalid(unknown_character_value(enc, &input[at..])) {
                         *nextTokPtr = ptr.add(at);
                         return crate::src::xmltok::XML_TOK_INVALID_1;
                     }
@@ -17646,16 +17648,18 @@ pub unsafe extern "C" fn XmlSizeOfUnknownEncoding_ffi() -> ::core::ffi::c_int {
 }
 /// Invokes the foreign unknown-encoding converter for one complete character.
 ///
-/// Callers must supply the initialized unknown-encoding table and a pointer to
-/// the complete character selected by that table's byte classification.
+/// Callers supply the initialized unknown-encoding table and the remaining
+/// bounded input beginning at the character selected by that table's byte
+/// classification.
 unsafe fn unknown_character_value(
     enc: *const crate::src::xmltok::ENCODING,
-    p: *const ::core::ffi::c_char,
+    input: &[u8],
 ) -> ::core::ffi::c_int {
     let uenc = &*(enc as *const unknown_encoding);
     unknown_encoding_converter(uenc.converter_id)
         .expect("unknown encoding converter is registered")
-        .invoke(uenc.userData, p)
+        .invoke
+        .invoke(input)
 }
 
 fn unknown_is_name(c: ::core::ffi::c_int) -> bool {
@@ -17692,9 +17696,9 @@ fn unknown_is_invalid(c: ::core::ffi::c_int) -> bool {
 
 fn unknown_to_utf8_window(
     encoding: &unknown_encoding,
-    input: &[::core::ffi::c_char],
+    input: &[u8],
     output: &mut [::core::ffi::c_char],
-    mut convert: impl FnMut(&[::core::ffi::c_char]) -> ::core::ffi::c_int,
+    mut convert: impl FnMut(&[u8]) -> ::core::ffi::c_int,
 ) -> (crate::src::xmltok::XML_Convert_Result, usize, usize) {
     let mut input_used = 0;
     let mut output_used = 0;
@@ -17758,7 +17762,7 @@ unsafe extern "C" fn unknown_toUtf8(
     };
     // Empty C windows may use null pointers, so form slices only when data is
     // present.  This mirrors the other UTF-8 converters' boundary handling.
-    let input = core::slice::from_raw_parts(input_start, input_len);
+    let input = core::slice::from_raw_parts(input_start.cast::<u8>(), input_len);
     let output = if output_len == 0 {
         &mut []
     } else {
@@ -17768,10 +17772,11 @@ unsafe extern "C" fn unknown_toUtf8(
         encoding,
         input,
         output,
-        |source| unsafe {
+        |source| {
             unknown_encoding_converter(encoding.converter_id)
                 .expect("unknown encoding converter is registered")
-                .invoke(encoding.userData, source.as_ptr())
+                .invoke
+                .invoke(source)
         },
     );
     if input_used != 0 {
@@ -17806,7 +17811,7 @@ unsafe extern "C" fn unknown_toUtf16(
         unsafe { toLim.offset_from(output_start) as usize }
     };
     let encoding = unsafe { &*(enc as *const unknown_encoding) };
-    let input = unsafe { core::slice::from_raw_parts(input_start, input_len) };
+    let input = unsafe { core::slice::from_raw_parts(input_start.cast::<u8>(), input_len) };
     // As with the UTF-8 converter, an empty C window may be represented by a
     // null pointer.  There is no output access in that case.
     let output = if output_len == 0 {
@@ -17818,10 +17823,11 @@ unsafe extern "C" fn unknown_toUtf16(
         encoding,
         input,
         output,
-        |source| unsafe {
+        |source| {
             unknown_encoding_converter(encoding.converter_id)
                 .expect("unknown encoding converter is registered")
-                .invoke(encoding.userData, source.as_ptr())
+                .invoke
+                .invoke(source)
         },
     );
     if input_used != 0 {
@@ -17835,9 +17841,9 @@ unsafe extern "C" fn unknown_toUtf16(
 
 fn unknown_to_utf16_window(
     encoding: &unknown_encoding,
-    input: &[::core::ffi::c_char],
+    input: &[u8],
     output: &mut [::core::ffi::c_ushort],
-    mut convert: impl FnMut(&[::core::ffi::c_char]) -> ::core::ffi::c_int,
+    mut convert: impl FnMut(&[u8]) -> ::core::ffi::c_int,
 ) -> (crate::src::xmltok::XML_Convert_Result, usize, usize) {
     let mut input_used = 0;
     let mut output_used = 0;
@@ -18017,7 +18023,12 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
     register_unknown_encoding_converter(
         encoding.converter_id,
         convert.map(|callback| {
-            std::sync::Arc::new(callback) as std::sync::Arc<dyn UnknownEncodingConverter>
+            let foreign_context = userData;
+            UnknownEncodingConverterRegistration {
+                invoke: std::sync::Arc::new(move |input: &[u8]| unsafe {
+                    callback(foreign_context, input.as_ptr().cast::<::core::ffi::c_char>())
+                }),
+            }
         }),
     );
     if convert.is_some() {
