@@ -2658,6 +2658,22 @@ fn parser_parse_for(
     ffi_call4(XML_Parse, parser, text, len, is_final)
 }
 
+fn parser_mem_malloc(parser: XML_Parser, size: size_t) -> *mut ::core::ffi::c_void {
+    ffi_call2(XML_MemMalloc, parser, size)
+}
+
+fn parser_mem_realloc(
+    parser: XML_Parser,
+    ptr: *mut ::core::ffi::c_void,
+    size: size_t,
+) -> *mut ::core::ffi::c_void {
+    ffi_call3(XML_MemRealloc, parser, ptr, size)
+}
+
+fn parser_mem_free(parser: XML_Parser, ptr: *mut ::core::ffi::c_void) {
+    ffi_call2(XML_MemFree, parser, ptr);
+}
+
 fn parser_buffer_for(parser: XML_Parser, len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
     ffi_call2(XML_GetBuffer, parser, len)
 }
@@ -5857,66 +5873,45 @@ extern "C" fn test_suspend_parser_between_cdata_calls() {
     }
 }
 extern "C" fn test_memory_allocation() {
-    unsafe {
-        _check_set_test_info(
-            b"test_memory_allocation\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            1965 as ::core::ffi::c_int,
-        );
-        let mut buffer: *mut ::core::ffi::c_char =
-            XML_MemMalloc(g_parser, 256 as size_t) as *mut ::core::ffi::c_char;
-        let mut p: *mut ::core::ffi::c_char = ::core::ptr::null_mut::<::core::ffi::c_char>();
-        if buffer.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1970 as ::core::ffi::c_int,
-                b"Allocation failed\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        } else {
-            *buffer.offset(0 as ::core::ffi::c_int as isize) = 'T' as i32 as ::core::ffi::c_char;
-            *buffer.offset(1 as ::core::ffi::c_int as isize) = 'E' as i32 as ::core::ffi::c_char;
-            *buffer.offset(2 as ::core::ffi::c_int as isize) = 'S' as i32 as ::core::ffi::c_char;
-            *buffer.offset(3 as ::core::ffi::c_int as isize) = 'T' as i32 as ::core::ffi::c_char;
-            *buffer.offset(4 as ::core::ffi::c_int as isize) = '\0' as i32 as ::core::ffi::c_char;
-            if strcmp(buffer, b"TEST\0".as_ptr() as *const ::core::ffi::c_char)
-                != 0 as ::core::ffi::c_int
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    1979 as ::core::ffi::c_int,
-                    b"Memory not writable\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            } else {
-                p = XML_MemRealloc(g_parser, buffer as *mut ::core::ffi::c_void, 512 as size_t)
-                    as *mut ::core::ffi::c_char;
-                if p.is_null() {
-                    _fail(
-                        b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        1983 as ::core::ffi::c_int,
-                        b"Reallocation failed\0".as_ptr() as *const ::core::ffi::c_char,
-                    );
-                } else {
-                    buffer = p;
-                    *buffer.offset(0 as ::core::ffi::c_int as isize) =
-                        'V' as i32 as ::core::ffi::c_char;
-                    if strcmp(buffer, b"VEST\0".as_ptr() as *const ::core::ffi::c_char)
-                        != 0 as ::core::ffi::c_int
-                    {
-                        _fail(
-                            b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                            1989 as ::core::ffi::c_int,
-                            b"Reallocated memory not writable\0".as_ptr()
-                                as *const ::core::ffi::c_char,
-                        );
-                    }
-                }
-            }
-            XML_MemFree(g_parser, buffer as *mut ::core::ffi::c_void);
-        };
+    set_test_info(b"test_memory_allocation\0", 1965 as ::core::ffi::c_int);
+
+    let parser = current_parser();
+    let mut buffer = parser_mem_malloc(parser, 256 as size_t).cast::<::core::ffi::c_char>();
+    if buffer.is_null() {
+        fail_test(1970 as ::core::ffi::c_int, b"Allocation failed\0");
     }
+
+    ffi_call3(
+        memcpy,
+        buffer.cast::<::core::ffi::c_void>(),
+        bytes_as_c_char_ptr(b"TEST\0").cast::<::core::ffi::c_void>(),
+        b"TEST\0".len() as size_t,
+    );
+    if ffi_call2(strcmp, buffer, bytes_as_c_char_ptr(b"TEST\0")) != 0 as ::core::ffi::c_int {
+        fail_test(1979 as ::core::ffi::c_int, b"Memory not writable\0");
+    }
+
+    let resized = parser_mem_realloc(parser, buffer.cast::<::core::ffi::c_void>(), 512 as size_t)
+        .cast::<::core::ffi::c_char>();
+    if resized.is_null() {
+        fail_test(1983 as ::core::ffi::c_int, b"Reallocation failed\0");
+    }
+
+    buffer = resized;
+    ffi_call3(
+        memcpy,
+        buffer.cast::<::core::ffi::c_void>(),
+        bytes_as_c_char_ptr(b"VEST\0").cast::<::core::ffi::c_void>(),
+        b"VEST\0".len() as size_t,
+    );
+    if ffi_call2(strcmp, buffer, bytes_as_c_char_ptr(b"VEST\0")) != 0 as ::core::ffi::c_int {
+        fail_test(
+            1989 as ::core::ffi::c_int,
+            b"Reallocated memory not writable\0",
+        );
+    }
+
+    parser_mem_free(parser, buffer.cast::<::core::ffi::c_void>());
 }
 extern "C" fn test_default_current() {
     unsafe {
@@ -8866,107 +8861,89 @@ extern "C" fn test_set_base() {
     parser_set_base(old_base);
 }
 extern "C" fn test_attributes() {
-    unsafe {
-        _check_set_test_info(
-            b"test_attributes\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2456 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (tag)>\n<!ATTLIST doc id ID #REQUIRED>\n]><doc a='1' id='one' b='2'><tag c='3'/></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut doc_info: [AttrInfo; 4] = [
-            attrInfo {
-                name: b"a\0".as_ptr() as *const XML_Char,
-                value: b"1\0".as_ptr() as *const XML_Char,
-            },
-            attrInfo {
-                name: b"b\0".as_ptr() as *const XML_Char,
-                value: b"2\0".as_ptr() as *const XML_Char,
-            },
-            attrInfo {
-                name: b"id\0".as_ptr() as *const XML_Char,
-                value: b"one\0".as_ptr() as *const XML_Char,
-            },
-            attrInfo {
-                name: ::core::ptr::null::<XML_Char>(),
-                value: ::core::ptr::null::<XML_Char>(),
-            },
-        ];
-        let mut tag_info: [AttrInfo; 2] = [
-            attrInfo {
-                name: b"c\0".as_ptr() as *const XML_Char,
-                value: b"3\0".as_ptr() as *const XML_Char,
-            },
-            attrInfo {
-                name: ::core::ptr::null::<XML_Char>(),
-                value: ::core::ptr::null::<XML_Char>(),
-            },
-        ];
-        let mut info: [ElementInfo; 3] = [
-            elementInfo {
-                name: b"doc\0".as_ptr() as *const XML_Char,
-                attr_count: 3 as ::core::ffi::c_int,
-                id_name: b"id\0".as_ptr() as *const XML_Char,
-                attributes: ::core::ptr::null_mut::<AttrInfo>(),
-            },
-            elementInfo {
-                name: b"tag\0".as_ptr() as *const XML_Char,
-                attr_count: 1 as ::core::ffi::c_int,
-                id_name: ::core::ptr::null::<XML_Char>(),
-                attributes: ::core::ptr::null_mut::<AttrInfo>(),
-            },
-            elementInfo {
-                name: ::core::ptr::null::<XML_Char>(),
-                attr_count: 0 as ::core::ffi::c_int,
-                id_name: ::core::ptr::null::<XML_Char>(),
-                attributes: ::core::ptr::null_mut::<AttrInfo>(),
-            },
-        ];
-        info[0 as ::core::ffi::c_int as usize].attributes = &raw mut doc_info as *mut AttrInfo;
-        info[1 as ::core::ffi::c_int as usize].attributes = &raw mut tag_info as *mut AttrInfo;
-        let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-        if parser.is_null() {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2476 as ::core::ffi::c_int,
-                b"check failed: parser != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        let mut parserAndElementInfos: ParserAndElementInfo = StructParserAndElementInfo {
-            parser: parser,
-            info: &raw mut info as *mut ElementInfo,
-        };
-        XML_SetStartElementHandler(
-            parser,
-            Some(
-                counting_start_element_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        parser_set_user_data_for(
-            parser,
-            &raw mut parserAndElementInfos as *mut ::core::ffi::c_void,
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2486 as ::core::ffi::c_int,
-            );
-        }
-        parser_free(parser);
-    }
+    set_test_info(b"test_attributes\0", 2456 as ::core::ffi::c_int);
+
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n<!ELEMENT doc (tag)>\n<!ATTLIST doc id ID #REQUIRED>\n]><doc a='1' id='one' b='2'><tag c='3'/></doc>\0",
+    );
+    let mut doc_info = [
+        attrInfo {
+            name: bytes_as_c_char_ptr(b"a\0").cast::<XML_Char>(),
+            value: bytes_as_c_char_ptr(b"1\0").cast::<XML_Char>(),
+        },
+        attrInfo {
+            name: bytes_as_c_char_ptr(b"b\0").cast::<XML_Char>(),
+            value: bytes_as_c_char_ptr(b"2\0").cast::<XML_Char>(),
+        },
+        attrInfo {
+            name: bytes_as_c_char_ptr(b"id\0").cast::<XML_Char>(),
+            value: bytes_as_c_char_ptr(b"one\0").cast::<XML_Char>(),
+        },
+        attrInfo {
+            name: ::core::ptr::null::<XML_Char>(),
+            value: ::core::ptr::null::<XML_Char>(),
+        },
+    ];
+    let mut tag_info = [
+        attrInfo {
+            name: bytes_as_c_char_ptr(b"c\0").cast::<XML_Char>(),
+            value: bytes_as_c_char_ptr(b"3\0").cast::<XML_Char>(),
+        },
+        attrInfo {
+            name: ::core::ptr::null::<XML_Char>(),
+            value: ::core::ptr::null::<XML_Char>(),
+        },
+    ];
+    let mut info = [
+        elementInfo {
+            name: bytes_as_c_char_ptr(b"doc\0").cast::<XML_Char>(),
+            attr_count: 3 as ::core::ffi::c_int,
+            id_name: bytes_as_c_char_ptr(b"id\0").cast::<XML_Char>(),
+            attributes: ::core::ptr::null_mut::<AttrInfo>(),
+        },
+        elementInfo {
+            name: bytes_as_c_char_ptr(b"tag\0").cast::<XML_Char>(),
+            attr_count: 1 as ::core::ffi::c_int,
+            id_name: ::core::ptr::null::<XML_Char>(),
+            attributes: ::core::ptr::null_mut::<AttrInfo>(),
+        },
+        elementInfo {
+            name: ::core::ptr::null::<XML_Char>(),
+            attr_count: 0,
+            id_name: ::core::ptr::null::<XML_Char>(),
+            attributes: ::core::ptr::null_mut::<AttrInfo>(),
+        },
+    ];
+    info[0].attributes = doc_info.as_mut_ptr();
+    info[1].attributes = tag_info.as_mut_ptr();
+
+    let parser = create_parser_or_fail(2476 as ::core::ffi::c_int);
+    let mut parser_and_element_infos = StructParserAndElementInfo {
+        parser,
+        info: info.as_mut_ptr(),
+    };
+    parser_set_start_element_handler_for(
+        parser,
+        Some(
+            counting_start_element_handler
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    *const XML_Char,
+                    *mut *const XML_Char,
+                ) -> (),
+        ),
+    );
+    parser_set_user_data_for(
+        parser,
+        (&mut parser_and_element_infos as *mut StructParserAndElementInfo)
+            .cast::<::core::ffi::c_void>(),
+    );
+    ensure_parser_success_for(
+        parser,
+        parse_single_bytes_c_string_for(parser, text),
+        2486 as ::core::ffi::c_int,
+    );
+    parser_free(parser);
 }
 extern "C" fn test_reset_in_entity() {
     set_test_info(b"test_reset_in_entity\0", 2495 as ::core::ffi::c_int);
@@ -11233,22 +11210,13 @@ extern "C" fn test_suspend_in_sole_empty_tag() {
     }
 }
 extern "C" fn test_unfinished_epilog() {
-    unsafe {
-        _check_set_test_info(
-            b"test_unfinished_epilog\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3840 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc></doc><\0".as_ptr() as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_UNCLOSED_TOKEN,
-            b"Incomplete epilog entry not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3844 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_unfinished_epilog\0", 3840 as ::core::ffi::c_int);
+    expect_failure(
+        bytes_as_c_char_ptr(b"<doc></doc><\0"),
+        XML_ERROR_UNCLOSED_TOKEN,
+        b"Incomplete epilog entry not faulted\0",
+        3844 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_partial_char_in_epilog() {
     unsafe {
@@ -11501,42 +11469,28 @@ extern "C" fn test_restart_on_error() {
     }
 }
 extern "C" fn test_reject_lt_in_attribute_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_reject_lt_in_attribute_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4026 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [<!ATTLIST doc a CDATA '<bar>'>]>\n<doc></doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Bad attribute default not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4031 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(
+        b"test_reject_lt_in_attribute_value\0",
+        4026 as ::core::ffi::c_int,
+    );
+    expect_failure(
+        bytes_as_c_char_ptr(b"<!DOCTYPE doc [<!ATTLIST doc a CDATA '<bar>'>]>\n<doc></doc>\0"),
+        XML_ERROR_INVALID_TOKEN,
+        b"Bad attribute default not faulted\0",
+        4031 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_reject_unfinished_param_in_att_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_reject_unfinished_param_in_att_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4035 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [<!ATTLIST doc a CDATA '&foo'>]>\n<doc></doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Bad attribute default not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            4040 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(
+        b"test_reject_unfinished_param_in_att_value\0",
+        4035 as ::core::ffi::c_int,
+    );
+    expect_failure(
+        bytes_as_c_char_ptr(b"<!DOCTYPE doc [<!ATTLIST doc a CDATA '&foo'>]>\n<doc></doc>\0"),
+        XML_ERROR_INVALID_TOKEN,
+        b"Bad attribute default not faulted\0",
+        4040 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_trailing_cr_in_att_value() {
     unsafe {
@@ -13160,22 +13114,13 @@ extern "C" fn test_utf16_second_attr() {
     }
 }
 extern "C" fn test_attr_after_solidus() {
-    unsafe {
-        _check_set_test_info(
-            b"test_attr_after_solidus\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5043 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<doc attr1='a' / attr2='b'>\0".as_ptr() as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Misplaced / not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5046 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_attr_after_solidus\0", 5043 as ::core::ffi::c_int);
+    expect_failure(
+        bytes_as_c_char_ptr(b"<doc attr1='a' / attr2='b'>\0"),
+        XML_ERROR_INVALID_TOKEN,
+        b"Misplaced / not faulted\0",
+        5046 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_utf16_pe() {
     unsafe {
@@ -13234,23 +13179,15 @@ extern "C" fn test_utf16_pe() {
     }
 }
 extern "C" fn test_bad_attr_desc_keyword() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_attr_desc_keyword\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5086 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc [\n  <!ATTLIST doc attr CDATA #!IMPLIED>\n]>\n<doc />\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        _expect_failure(
-            text,
-            XML_ERROR_INVALID_TOKEN,
-            b"Bad keyword !IMPLIED not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5093 as ::core::ffi::c_int,
-        );
-    }
+    set_test_info(b"test_bad_attr_desc_keyword\0", 5086 as ::core::ffi::c_int);
+    expect_failure(
+        bytes_as_c_char_ptr(
+            b"<!DOCTYPE doc [\n  <!ATTLIST doc attr CDATA #!IMPLIED>\n]>\n<doc />\0",
+        ),
+        XML_ERROR_INVALID_TOKEN,
+        b"Bad keyword !IMPLIED not faulted\0",
+        5093 as ::core::ffi::c_int,
+    );
 }
 extern "C" fn test_bad_attr_desc_keyword_utf16() {
     unsafe {
@@ -13720,87 +13657,66 @@ extern "C" fn test_bad_notation() {
     );
 }
 extern "C" fn test_default_doctype_handler() {
-    unsafe {
-        _check_set_test_info(
-            b"test_default_doctype_handler\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            5397 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc PUBLIC 'pubname' 'test.dtd' [\n  <!ENTITY foo 'bar'>\n]>\n<doc>&foo;</doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut test_data: [DefaultCheck; 3] = [
-            default_check {
-                expected: b"'pubname'\0".as_ptr() as *const XML_Char,
-                expectedLen: 9 as ::core::ffi::c_int,
-                seen: XML_FALSE,
-            },
-            default_check {
-                expected: b"'test.dtd'\0".as_ptr() as *const XML_Char,
-                expectedLen: 10 as ::core::ffi::c_int,
-                seen: XML_FALSE,
-            },
-            default_check {
-                expected: ::core::ptr::null::<XML_Char>(),
-                expectedLen: 0 as ::core::ffi::c_int,
-                seen: XML_FALSE,
-            },
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        parser_set_user_data(&raw mut test_data as *mut ::core::ffi::c_void);
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                checking_default_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetEntityDeclHandler(
-            g_parser,
-            Some(
-                dummy_entity_decl_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                5412 as ::core::ffi::c_int,
+    set_test_info(
+        b"test_default_doctype_handler\0",
+        5397 as ::core::ffi::c_int,
+    );
+
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc PUBLIC 'pubname' 'test.dtd' [\n  <!ENTITY foo 'bar'>\n]>\n<doc>&foo;</doc>\0",
+    );
+    let mut test_data = [
+        default_check {
+            expected: bytes_as_c_char_ptr(b"'pubname'\0").cast::<XML_Char>(),
+            expectedLen: 9 as ::core::ffi::c_int,
+            seen: XML_FALSE,
+        },
+        default_check {
+            expected: bytes_as_c_char_ptr(b"'test.dtd'\0").cast::<XML_Char>(),
+            expectedLen: 10 as ::core::ffi::c_int,
+            seen: XML_FALSE,
+        },
+        default_check {
+            expected: ::core::ptr::null::<XML_Char>(),
+            expectedLen: 0,
+            seen: XML_FALSE,
+        },
+    ];
+
+    parser_set_user_data(test_data.as_mut_ptr().cast::<::core::ffi::c_void>());
+    parser_set_default_handler(Some(
+        checking_default_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+            ) -> (),
+    ));
+    parser_set_entity_decl_handler(Some(
+        dummy_entity_decl_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                ::core::ffi::c_int,
+                *const XML_Char,
+                ::core::ffi::c_int,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+            ) -> (),
+    ));
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        5412 as ::core::ffi::c_int,
+    );
+
+    for data in test_data.iter().take_while(|data| !data.expected.is_null()) {
+        if data.seen == 0 {
+            fail_test(
+                5415 as ::core::ffi::c_int,
+                b"Default handler not run for public !DOCTYPE\0",
             );
-        }
-        i = 0 as ::core::ffi::c_int;
-        while !test_data[i as usize].expected.is_null() {
-            if test_data[i as usize].seen == 0 {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    5415 as ::core::ffi::c_int,
-                    b"Default handler not run for public !DOCTYPE\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            }
-            i += 1;
         }
     }
 }
