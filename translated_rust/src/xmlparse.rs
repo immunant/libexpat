@@ -3455,11 +3455,10 @@ unsafe extern "C" fn parserInit(
     (*parser).m_declNotationPublicId = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     (*parser).m_declAttributeIsCdata = crate::expat_h::XML_FALSE;
     (*parser).m_declAttributeIsId = crate::expat_h::XML_FALSE;
-    crate::stdlib::memset(
-        &raw mut (*parser).m_position as *mut ::core::ffi::c_void,
-        0 as ::core::ffi::c_int,
-        ::core::mem::size_of::<crate::src::xmltok::POSITION>(),
-    );
+    (*parser).m_position = crate::src::xmltok::POSITION {
+        lineNumber: 0,
+        columnNumber: 0,
+    };
     (*parser).m_errorCode = crate::expat_h::XML_ERROR_NONE;
     (*parser).m_eventPtr = ::core::ptr::null::<::core::ffi::c_char>();
     (*parser).m_eventEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
@@ -3481,11 +3480,13 @@ unsafe extern "C" fn parserInit(
     (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
     (*parser).m_paramEntityParsing = crate::expat_h::XML_PARAM_ENTITY_PARSING_NEVER;
     (*parser).m_hash_secret_salt = 0 as ::core::ffi::c_ulong;
-    crate::stdlib::memset(
-        &raw mut (*parser).m_accounting as *mut ::core::ffi::c_void,
-        0 as ::core::ffi::c_int,
-        ::core::mem::size_of::<ACCOUNTING>(),
-    );
+    (*parser).m_accounting = ACCOUNTING {
+        countBytesDirect: 0,
+        countBytesIndirect: 0,
+        debugLevel: 0,
+        maximumAmplificationFactor: 0.0,
+        activationThresholdBytes: 0,
+    };
     (*parser).m_accounting.debugLevel = getDebugLevel(
         b"EXPAT_ACCOUNTING_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
         0 as ::core::ffi::c_ulong,
@@ -3495,11 +3496,12 @@ unsafe extern "C" fn parserInit(
     (*parser).m_accounting.activationThresholdBytes =
         crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT
             as ::core::ffi::c_ulonglong;
-    crate::stdlib::memset(
-        &raw mut (*parser).m_entity_stats as *mut ::core::ffi::c_void,
-        0 as ::core::ffi::c_int,
-        ::core::mem::size_of::<ENTITY_STATS>(),
-    );
+    (*parser).m_entity_stats = ENTITY_STATS {
+        countEverOpened: 0,
+        currentDepth: 0,
+        maximumDepthSeen: 0,
+        debugLevel: 0,
+    };
     (*parser).m_entity_stats.debugLevel = getDebugLevel(
         b"EXPAT_ENTITY_DEBUG\0".as_ptr() as *const ::core::ffi::c_char,
         0 as ::core::ffi::c_ulong,
