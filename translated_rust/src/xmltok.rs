@@ -18037,7 +18037,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding_ffi(
 ) -> *mut crate::src::xmltok::ENCODING {
     XmlInitUnknownEncoding(mem, table, convert, userData)
 }
-static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
+static KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_S as ::core::ffi::c_char,
     crate::ascii_h::ASCII_O as ::core::ffi::c_char,
@@ -18051,7 +18051,7 @@ static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
+static KW_US_ASCII: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_S as ::core::ffi::c_char,
     crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
@@ -18063,7 +18063,7 @@ static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
+static KW_UTF_8: [::core::ffi::c_char; 6] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
@@ -18072,7 +18072,7 @@ static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
+static KW_UTF_16: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
@@ -18082,7 +18082,7 @@ static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
@@ -18094,7 +18094,7 @@ static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     '\0' as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16LE: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
