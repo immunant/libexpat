@@ -3201,7 +3201,19 @@ pub unsafe extern "C" fn XML_SetUserData_ffi(
 ) {
     XML_SetUserData(unsafe { parser.as_mut() }, p)
 }
-pub unsafe extern "C" fn XML_SetBase(
+pub fn XML_SetBase(
+    parser: Option<&mut XML_ParserStruct>,
+    p: *const crate::expat_external_h::XML_Char,
+) -> crate::expat_h::XML_Status {
+    with_parser_mut(parser, |parser| {
+        parser.m_curBase = p;
+        crate::expat_h::XML_STATUS_OK
+    })
+    .unwrap_or(crate::expat_h::XML_STATUS_ERROR)
+}
+#[export_name = "XML_SetBase"]
+
+pub unsafe extern "C" fn XML_SetBase_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut p: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Status {
@@ -3213,19 +3225,8 @@ pub unsafe extern "C" fn XML_SetBase(
         if p.is_null() {
             return crate::expat_h::XML_STATUS_ERROR;
         }
-        (*parser).m_curBase = p;
-    } else {
-        (*parser).m_curBase = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     }
-    return crate::expat_h::XML_STATUS_OK;
-}
-#[export_name = "XML_SetBase"]
-
-pub unsafe extern "C" fn XML_SetBase_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut p: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Status {
-    XML_SetBase(parser, p)
+    XML_SetBase(unsafe { parser.as_mut() }, p)
 }
 pub fn XML_GetBase(
     parser: Option<&mut XML_ParserStruct>,
@@ -3750,7 +3751,22 @@ pub unsafe extern "C" fn XML_SetParamEntityParsing_ffi(
 ) -> ::core::ffi::c_int {
     XML_SetParamEntityParsing(unsafe { parser.as_mut() }, peParsing)
 }
-pub unsafe extern "C" fn XML_SetHashSalt(
+pub fn XML_SetHashSalt(
+    root_parser: Option<&mut XML_ParserStruct>,
+    hash_salt: ::core::ffi::c_ulong,
+) -> ::core::ffi::c_int {
+    with_parser_mut(root_parser, |root_parser| {
+        if parserBusy(root_parser) != 0 {
+            return 0 as ::core::ffi::c_int;
+        }
+        root_parser.m_hash_secret_salt = hash_salt;
+        1 as ::core::ffi::c_int
+    })
+    .unwrap_or(0 as ::core::ffi::c_int)
+}
+#[export_name = "XML_SetHashSalt"]
+
+pub unsafe extern "C" fn XML_SetHashSalt_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut hash_salt: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_int {
@@ -3772,19 +3788,7 @@ pub unsafe extern "C" fn XML_SetHashSalt(
             );
         }
     };
-    if parserBusy(&*rootParser) != 0 {
-        return 0 as ::core::ffi::c_int;
-    }
-    (*rootParser).m_hash_secret_salt = hash_salt;
-    return 1 as ::core::ffi::c_int;
-}
-#[export_name = "XML_SetHashSalt"]
-
-pub unsafe extern "C" fn XML_SetHashSalt_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut hash_salt: ::core::ffi::c_ulong,
-) -> ::core::ffi::c_int {
-    XML_SetHashSalt(parser, hash_salt)
+    XML_SetHashSalt(unsafe { rootParser.as_mut() }, hash_salt)
 }
 pub unsafe extern "C" fn XML_Parse(
     mut parser: crate::expat_h::XML_Parser,
