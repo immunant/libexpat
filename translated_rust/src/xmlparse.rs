@@ -3186,7 +3186,300 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
         let context_cstr = ::std::ffi::CStr::from_ptr(context);
         let raw_parser = parser;
         let raw_dtd = (*parser).m_dtd;
-        if dtdCopy(oldParser, raw_dtd, oldDtd, parser) == 0
+        let mut hash_table_iter_next_local = |iter: &mut HASH_TABLE_ITER| -> *mut NAMED {
+            let mut result: *mut NAMED = ::core::ptr::null_mut::<NAMED>();
+            while iter.p != iter.end {
+                let slot = iter.p;
+                iter.p = iter.p.wrapping_add(1);
+                let entry = *slot;
+                if !entry.is_null() {
+                    result = entry;
+                    break;
+                }
+            }
+            result
+        };
+        let mut dtd_copy = |mut oldParser: crate::expat_h::XML_Parser,
+                            mut newDtd: *mut DTD,
+                            mut oldDtd: *const DTD,
+                            mut parser: crate::expat_h::XML_Parser|
+         -> ::core::ffi::c_int {
+            let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
+                p: ::core::ptr::null_mut::<*mut NAMED>(),
+                end: ::core::ptr::null_mut::<*mut NAMED>(),
+            };
+            let mut copy_pool_string = |pool: &mut STRING_POOL,
+                                        s: *const crate::expat_external_h::XML_Char|
+             -> *const crate::expat_external_h::XML_Char {
+                let len = ::std::ffi::CStr::from_ptr(s).to_bytes_with_nul().len();
+                poolCopyString(pool, ::core::slice::from_raw_parts(s, len))
+            };
+            hashTableIterInit(&mut iter, &(*oldDtd).prefixes);
+            loop {
+                let mut name: *const crate::expat_external_h::XML_Char =
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                let mut oldP: *const PREFIX = hash_table_iter_next_local(&mut iter) as *mut PREFIX;
+                if oldP.is_null() {
+                    break;
+                }
+                name = copy_pool_string(&mut (*newDtd).pool, (*oldP).name);
+                if name.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                if lookup!(
+                    oldParser,
+                    &raw mut (*newDtd).prefixes,
+                    name as KEY,
+                    ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
+                )
+                .is_null()
+                {
+                    return 0 as ::core::ffi::c_int;
+                }
+            }
+            hashTableIterInit(&mut iter, &(*oldDtd).attributeIds);
+            loop {
+                let mut newA: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                let mut name_0: *const crate::expat_external_h::XML_Char =
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                let mut oldA: *const ATTRIBUTE_ID =
+                    hash_table_iter_next_local(&mut iter) as *mut ATTRIBUTE_ID;
+                if oldA.is_null() {
+                    break;
+                }
+                if if (*newDtd).pool.ptr
+                    == (*newDtd).pool.end as *mut crate::expat_external_h::XML_Char
+                    && poolGrow(&mut (*newDtd).pool, None) == 0
+                {
+                    0 as ::core::ffi::c_int
+                } else {
+                    let c2rust_fresh81 = (*newDtd).pool.ptr;
+                    (*newDtd).pool.ptr = (*newDtd).pool.ptr.offset(1);
+                    *c2rust_fresh81 = '\0' as i32 as crate::expat_external_h::XML_Char;
+                    1 as ::core::ffi::c_int
+                } == 0
+                {
+                    return 0 as ::core::ffi::c_int;
+                }
+                name_0 = copy_pool_string(&mut (*newDtd).pool, (*oldA).name);
+                if name_0.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                name_0 = name_0.offset(1);
+                newA = lookup!(
+                    oldParser,
+                    &raw mut (*newDtd).attributeIds,
+                    name_0 as KEY,
+                    ::core::mem::size_of::<ATTRIBUTE_ID>() as crate::__stddef_size_t_h::size_t,
+                ) as *mut ATTRIBUTE_ID;
+                if newA.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                (*newA).maybeTokenized = (*oldA).maybeTokenized;
+                if !(*oldA).prefix.is_null() {
+                    (*newA).xmlns = (*oldA).xmlns;
+                    if (*oldA).prefix == &raw const (*oldDtd).defaultPrefix as *mut PREFIX {
+                        (*newA).prefix = &raw mut (*newDtd).defaultPrefix;
+                    } else {
+                        (*newA).prefix = lookup!(
+                            oldParser,
+                            &raw mut (*newDtd).prefixes,
+                            (*(*oldA).prefix).name as KEY,
+                            0 as crate::__stddef_size_t_h::size_t,
+                        ) as *mut PREFIX;
+                    }
+                }
+            }
+            hashTableIterInit(&mut iter, &(*oldDtd).elementTypes);
+            loop {
+                let mut i: ::core::ffi::c_int = 0;
+                let mut newE: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
+                let mut name_1: *const crate::expat_external_h::XML_Char =
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                let mut oldE: *const ELEMENT_TYPE =
+                    hash_table_iter_next_local(&mut iter) as *mut ELEMENT_TYPE;
+                if oldE.is_null() {
+                    break;
+                }
+                name_1 = copy_pool_string(&mut (*newDtd).pool, (*oldE).name);
+                if name_1.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                newE = lookup!(
+                    oldParser,
+                    &raw mut (*newDtd).elementTypes,
+                    name_1 as KEY,
+                    ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
+                ) as *mut ELEMENT_TYPE;
+                if newE.is_null() {
+                    return 0 as ::core::ffi::c_int;
+                }
+                if (*oldE).nDefaultAtts != 0 {
+                    (*newE).defaultAtts = expat_malloc(
+                        parser,
+                        ((*oldE).nDefaultAtts as crate::__stddef_size_t_h::size_t)
+                            .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
+                                as crate::__stddef_size_t_h::size_t),
+                        7683 as ::core::ffi::c_int,
+                    ) as *mut DEFAULT_ATTRIBUTE;
+                    if (*newE).defaultAtts.is_null() {
+                        return 0 as ::core::ffi::c_int;
+                    }
+                }
+                if !(*oldE).idAtt.is_null() {
+                    (*newE).idAtt = lookup!(
+                        oldParser,
+                        &raw mut (*newDtd).attributeIds,
+                        (*(*oldE).idAtt).name as KEY,
+                        0 as crate::__stddef_size_t_h::size_t,
+                    ) as *mut ATTRIBUTE_ID;
+                }
+                (*newE).nDefaultAtts = (*oldE).nDefaultAtts;
+                (*newE).allocDefaultAtts = (*newE).nDefaultAtts;
+                if !(*oldE).prefix.is_null() {
+                    (*newE).prefix = lookup!(
+                        oldParser,
+                        &raw mut (*newDtd).prefixes,
+                        (*(*oldE).prefix).name as KEY,
+                        0 as crate::__stddef_size_t_h::size_t,
+                    ) as *mut PREFIX;
+                }
+                i = 0 as ::core::ffi::c_int;
+                while i < (*newE).nDefaultAtts {
+                    let ref mut c2rust_fresh82 = (*(*newE).defaultAtts.offset(i as isize)).id;
+                    *c2rust_fresh82 = lookup!(
+                        oldParser,
+                        &raw mut (*newDtd).attributeIds,
+                        (*(*(*oldE).defaultAtts.offset(i as isize)).id).name as KEY,
+                        0 as crate::__stddef_size_t_h::size_t,
+                    ) as *mut ATTRIBUTE_ID;
+                    (*(*newE).defaultAtts.offset(i as isize)).isCdata =
+                        (*(*oldE).defaultAtts.offset(i as isize)).isCdata;
+                    if !(*(*oldE).defaultAtts.offset(i as isize)).value.is_null() {
+                        let ref mut c2rust_fresh83 =
+                            (*(*newE).defaultAtts.offset(i as isize)).value;
+                        *c2rust_fresh83 = copy_pool_string(
+                            &mut (*newDtd).pool,
+                            (*(*oldE).defaultAtts.offset(i as isize)).value,
+                        );
+                        if (*(*newE).defaultAtts.offset(i as isize)).value.is_null() {
+                            return 0 as ::core::ffi::c_int;
+                        }
+                    } else {
+                        let ref mut c2rust_fresh84 =
+                            (*(*newE).defaultAtts.offset(i as isize)).value;
+                        *c2rust_fresh84 = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    }
+                    i += 1;
+                }
+            }
+            for (newTable, oldTable) in [
+                (
+                    &raw mut (*newDtd).generalEntities,
+                    &raw const (*oldDtd).generalEntities,
+                ),
+                (
+                    &raw mut (*newDtd).paramEntities,
+                    &raw const (*oldDtd).paramEntities,
+                ),
+            ] {
+                let mut entity_iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
+                    p: ::core::ptr::null_mut::<*mut NAMED>(),
+                    end: ::core::ptr::null_mut::<*mut NAMED>(),
+                };
+                let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                let mut cachedNewBase: *const crate::expat_external_h::XML_Char =
+                    ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                hashTableIterInit(&mut entity_iter, &*oldTable);
+                loop {
+                    let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
+                    let mut name: *const crate::expat_external_h::XML_Char =
+                        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+                    let mut oldE: *const ENTITY =
+                        hash_table_iter_next_local(&mut entity_iter) as *mut ENTITY;
+                    if oldE.is_null() {
+                        break;
+                    }
+                    name = copy_pool_string(&mut (*newDtd).pool, (*oldE).name);
+                    if name.is_null() {
+                        return 0 as ::core::ffi::c_int;
+                    }
+                    newE = lookup!(
+                        oldParser,
+                        newTable,
+                        name as KEY,
+                        ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
+                    ) as *mut ENTITY;
+                    if newE.is_null() {
+                        return 0 as ::core::ffi::c_int;
+                    }
+                    if !(*oldE).systemId.is_null() {
+                        let mut tem: *const crate::expat_external_h::XML_Char =
+                            copy_pool_string(&mut (*newDtd).pool, (*oldE).systemId);
+                        if tem.is_null() {
+                            return 0 as ::core::ffi::c_int;
+                        }
+                        (*newE).systemId = tem;
+                        if !(*oldE).base.is_null() {
+                            if (*oldE).base == cachedOldBase {
+                                (*newE).base = cachedNewBase;
+                            } else {
+                                cachedOldBase = (*oldE).base;
+                                tem = copy_pool_string(&mut (*newDtd).pool, cachedOldBase);
+                                if tem.is_null() {
+                                    return 0 as ::core::ffi::c_int;
+                                }
+                                (*newE).base = tem;
+                                cachedNewBase = (*newE).base;
+                            }
+                        }
+                        if !(*oldE).publicId.is_null() {
+                            tem = copy_pool_string(&mut (*newDtd).pool, (*oldE).publicId);
+                            if tem.is_null() {
+                                return 0 as ::core::ffi::c_int;
+                            }
+                            (*newE).publicId = tem;
+                        }
+                    } else {
+                        let mut tem_0: *const crate::expat_external_h::XML_Char = poolCopyStringN(
+                            &mut (*newDtd).pool,
+                            ::core::slice::from_raw_parts(
+                                (*oldE).textPtr,
+                                (*oldE).textLen as usize,
+                            ),
+                        );
+                        if tem_0.is_null() {
+                            return 0 as ::core::ffi::c_int;
+                        }
+                        (*newE).textPtr = tem_0;
+                        (*newE).textLen = (*oldE).textLen;
+                    }
+                    if !(*oldE).notation.is_null() {
+                        let mut tem_1: *const crate::expat_external_h::XML_Char =
+                            copy_pool_string(&mut (*newDtd).pool, (*oldE).notation);
+                        if tem_1.is_null() {
+                            return 0 as ::core::ffi::c_int;
+                        }
+                        (*newE).notation = tem_1;
+                    }
+                    (*newE).is_param = (*oldE).is_param;
+                    (*newE).is_internal = (*oldE).is_internal;
+                }
+            }
+            (*newDtd).paramEntityRead = (*oldDtd).paramEntityRead;
+            (*newDtd).keepProcessing = (*oldDtd).keepProcessing;
+            (*newDtd).hasParamEntityRefs = (*oldDtd).hasParamEntityRefs;
+            (*newDtd).standalone = (*oldDtd).standalone;
+            (*newDtd).in_eldecl = (*oldDtd).in_eldecl;
+            (*newDtd).scaffold = (*oldDtd).scaffold;
+            (*newDtd).contentStringLen = (*oldDtd).contentStringLen;
+            (*newDtd).scaffSize = (*oldDtd).scaffSize;
+            (*newDtd).scaffLevel = (*oldDtd).scaffLevel;
+            (*newDtd).scaffIndex = (*oldDtd).scaffIndex;
+            return 1 as ::core::ffi::c_int;
+        };
+        if dtd_copy(oldParser, raw_dtd, oldDtd, parser) == 0
             || setContext(
                 &mut *raw_parser,
                 &mut *raw_dtd,
@@ -12574,279 +12867,6 @@ fn dtdInit(p: &mut DTD, parser: crate::expat_h::XML_Parser) {
     p.keepProcessing = crate::expat_h::XML_TRUE;
     p.hasParamEntityRefs = crate::expat_h::XML_FALSE;
     p.standalone = crate::expat_h::XML_FALSE;
-}
-
-unsafe extern "C" fn dtdCopy(
-    mut oldParser: crate::expat_h::XML_Parser,
-    mut newDtd: *mut DTD,
-    mut oldDtd: *const DTD,
-    mut parser: crate::expat_h::XML_Parser,
-) -> ::core::ffi::c_int {
-    let mut iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-        p: ::core::ptr::null_mut::<*mut NAMED>(),
-        end: ::core::ptr::null_mut::<*mut NAMED>(),
-    };
-    let mut copy_pool_string = |pool: &mut STRING_POOL,
-                                s: *const crate::expat_external_h::XML_Char|
-     -> *const crate::expat_external_h::XML_Char {
-        let len = ::std::ffi::CStr::from_ptr(s).to_bytes_with_nul().len();
-        poolCopyString(pool, ::core::slice::from_raw_parts(s, len))
-    };
-    hashTableIterInit(&mut iter, &(*oldDtd).prefixes);
-    loop {
-        let mut name: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldP: *const PREFIX = hash_table_iter_next!(iter) as *mut PREFIX;
-        if oldP.is_null() {
-            break;
-        }
-        name = copy_pool_string(&mut (*newDtd).pool, (*oldP).name);
-        if name.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        if lookup!(
-            oldParser,
-            &raw mut (*newDtd).prefixes,
-            name as KEY,
-            ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
-        )
-        .is_null()
-        {
-            return 0 as ::core::ffi::c_int;
-        }
-    }
-    hashTableIterInit(&mut iter, &(*oldDtd).attributeIds);
-    loop {
-        let mut newA: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        let mut name_0: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldA: *const ATTRIBUTE_ID = hash_table_iter_next!(iter) as *mut ATTRIBUTE_ID;
-        if oldA.is_null() {
-            break;
-        }
-        if if (*newDtd).pool.ptr == (*newDtd).pool.end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(&mut (*newDtd).pool, None) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh81 = (*newDtd).pool.ptr;
-            (*newDtd).pool.ptr = (*newDtd).pool.ptr.offset(1);
-            *c2rust_fresh81 = '\0' as i32 as crate::expat_external_h::XML_Char;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
-            return 0 as ::core::ffi::c_int;
-        }
-        name_0 = copy_pool_string(&mut (*newDtd).pool, (*oldA).name);
-        if name_0.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        name_0 = name_0.offset(1);
-        newA = lookup!(
-            oldParser,
-            &raw mut (*newDtd).attributeIds,
-            name_0 as KEY,
-            ::core::mem::size_of::<ATTRIBUTE_ID>() as crate::__stddef_size_t_h::size_t,
-        ) as *mut ATTRIBUTE_ID;
-        if newA.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        (*newA).maybeTokenized = (*oldA).maybeTokenized;
-        if !(*oldA).prefix.is_null() {
-            (*newA).xmlns = (*oldA).xmlns;
-            if (*oldA).prefix == &raw const (*oldDtd).defaultPrefix as *mut PREFIX {
-                (*newA).prefix = &raw mut (*newDtd).defaultPrefix;
-            } else {
-                (*newA).prefix = lookup!(
-                    oldParser,
-                    &raw mut (*newDtd).prefixes,
-                    (*(*oldA).prefix).name as KEY,
-                    0 as crate::__stddef_size_t_h::size_t,
-                ) as *mut PREFIX;
-            }
-        }
-    }
-    hashTableIterInit(&mut iter, &(*oldDtd).elementTypes);
-    loop {
-        let mut i: ::core::ffi::c_int = 0;
-        let mut newE: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
-        let mut name_1: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut oldE: *const ELEMENT_TYPE = hash_table_iter_next!(iter) as *mut ELEMENT_TYPE;
-        if oldE.is_null() {
-            break;
-        }
-        name_1 = copy_pool_string(&mut (*newDtd).pool, (*oldE).name);
-        if name_1.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        newE = lookup!(
-            oldParser,
-            &raw mut (*newDtd).elementTypes,
-            name_1 as KEY,
-            ::core::mem::size_of::<ELEMENT_TYPE>() as crate::__stddef_size_t_h::size_t,
-        ) as *mut ELEMENT_TYPE;
-        if newE.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        if (*oldE).nDefaultAtts != 0 {
-            (*newE).defaultAtts = expat_malloc(
-                parser,
-                ((*oldE).nDefaultAtts as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
-                        as crate::__stddef_size_t_h::size_t),
-                7683 as ::core::ffi::c_int,
-            ) as *mut DEFAULT_ATTRIBUTE;
-            if (*newE).defaultAtts.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-        }
-        if !(*oldE).idAtt.is_null() {
-            (*newE).idAtt = lookup!(
-                oldParser,
-                &raw mut (*newDtd).attributeIds,
-                (*(*oldE).idAtt).name as KEY,
-                0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut ATTRIBUTE_ID;
-        }
-        (*newE).nDefaultAtts = (*oldE).nDefaultAtts;
-        (*newE).allocDefaultAtts = (*newE).nDefaultAtts;
-        if !(*oldE).prefix.is_null() {
-            (*newE).prefix = lookup!(
-                oldParser,
-                &raw mut (*newDtd).prefixes,
-                (*(*oldE).prefix).name as KEY,
-                0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut PREFIX;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i < (*newE).nDefaultAtts {
-            let ref mut c2rust_fresh82 = (*(*newE).defaultAtts.offset(i as isize)).id;
-            *c2rust_fresh82 = lookup!(
-                oldParser,
-                &raw mut (*newDtd).attributeIds,
-                (*(*(*oldE).defaultAtts.offset(i as isize)).id).name as KEY,
-                0 as crate::__stddef_size_t_h::size_t,
-            ) as *mut ATTRIBUTE_ID;
-            (*(*newE).defaultAtts.offset(i as isize)).isCdata =
-                (*(*oldE).defaultAtts.offset(i as isize)).isCdata;
-            if !(*(*oldE).defaultAtts.offset(i as isize)).value.is_null() {
-                let ref mut c2rust_fresh83 = (*(*newE).defaultAtts.offset(i as isize)).value;
-                *c2rust_fresh83 = copy_pool_string(
-                    &mut (*newDtd).pool,
-                    (*(*oldE).defaultAtts.offset(i as isize)).value,
-                );
-                if (*(*newE).defaultAtts.offset(i as isize)).value.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-            } else {
-                let ref mut c2rust_fresh84 = (*(*newE).defaultAtts.offset(i as isize)).value;
-                *c2rust_fresh84 = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            }
-            i += 1;
-        }
-    }
-    for (newTable, oldTable) in [
-        (
-            &raw mut (*newDtd).generalEntities,
-            &raw const (*oldDtd).generalEntities,
-        ),
-        (
-            &raw mut (*newDtd).paramEntities,
-            &raw const (*oldDtd).paramEntities,
-        ),
-    ] {
-        let mut entity_iter: HASH_TABLE_ITER = HASH_TABLE_ITER {
-            p: ::core::ptr::null_mut::<*mut NAMED>(),
-            end: ::core::ptr::null_mut::<*mut NAMED>(),
-        };
-        let mut cachedOldBase: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        let mut cachedNewBase: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        hashTableIterInit(&mut entity_iter, &*oldTable);
-        loop {
-            let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-            let mut name: *const crate::expat_external_h::XML_Char =
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            let mut oldE: *const ENTITY = hash_table_iter_next!(entity_iter) as *mut ENTITY;
-            if oldE.is_null() {
-                break;
-            }
-            name = copy_pool_string(&mut (*newDtd).pool, (*oldE).name);
-            if name.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            newE = lookup!(
-                oldParser,
-                newTable,
-                name as KEY,
-                ::core::mem::size_of::<ENTITY>() as crate::__stddef_size_t_h::size_t,
-            ) as *mut ENTITY;
-            if newE.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            if !(*oldE).systemId.is_null() {
-                let mut tem: *const crate::expat_external_h::XML_Char =
-                    copy_pool_string(&mut (*newDtd).pool, (*oldE).systemId);
-                if tem.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                (*newE).systemId = tem;
-                if !(*oldE).base.is_null() {
-                    if (*oldE).base == cachedOldBase {
-                        (*newE).base = cachedNewBase;
-                    } else {
-                        cachedOldBase = (*oldE).base;
-                        tem = copy_pool_string(&mut (*newDtd).pool, cachedOldBase);
-                        if tem.is_null() {
-                            return 0 as ::core::ffi::c_int;
-                        }
-                        (*newE).base = tem;
-                        cachedNewBase = (*newE).base;
-                    }
-                }
-                if !(*oldE).publicId.is_null() {
-                    tem = copy_pool_string(&mut (*newDtd).pool, (*oldE).publicId);
-                    if tem.is_null() {
-                        return 0 as ::core::ffi::c_int;
-                    }
-                    (*newE).publicId = tem;
-                }
-            } else {
-                let mut tem_0: *const crate::expat_external_h::XML_Char = poolCopyStringN(
-                    &mut (*newDtd).pool,
-                    ::core::slice::from_raw_parts((*oldE).textPtr, (*oldE).textLen as usize),
-                );
-                if tem_0.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                (*newE).textPtr = tem_0;
-                (*newE).textLen = (*oldE).textLen;
-            }
-            if !(*oldE).notation.is_null() {
-                let mut tem_1: *const crate::expat_external_h::XML_Char =
-                    copy_pool_string(&mut (*newDtd).pool, (*oldE).notation);
-                if tem_1.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                (*newE).notation = tem_1;
-            }
-            (*newE).is_param = (*oldE).is_param;
-            (*newE).is_internal = (*oldE).is_internal;
-        }
-    }
-    (*newDtd).paramEntityRead = (*oldDtd).paramEntityRead;
-    (*newDtd).keepProcessing = (*oldDtd).keepProcessing;
-    (*newDtd).hasParamEntityRefs = (*oldDtd).hasParamEntityRefs;
-    (*newDtd).standalone = (*oldDtd).standalone;
-    (*newDtd).in_eldecl = (*oldDtd).in_eldecl;
-    (*newDtd).scaffold = (*oldDtd).scaffold;
-    (*newDtd).contentStringLen = (*oldDtd).contentStringLen;
-    (*newDtd).scaffSize = (*oldDtd).scaffSize;
-    (*newDtd).scaffLevel = (*oldDtd).scaffLevel;
-    (*newDtd).scaffIndex = (*oldDtd).scaffIndex;
-    return 1 as ::core::ffi::c_int;
 }
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
