@@ -2984,9 +2984,22 @@ pub struct attribute_id {
     // other named record.  Keeping that one header avoids a duplicate raw
     // name field while preserving the allocation layout expected by lookup.
     pub named: NAMED,
-    pub prefix: *mut PREFIX,
+    // Attribute names retain the namespace prefix by its stable DTD-pool
+    // identity.  The default namespace has no pool name, so it uses the
+    // explicit marker below.  Resolving this only at the operation that needs
+    // the mutable prefix record avoids retaining a hash-table address across
+    // table growth.
+    pub prefix: AttributePrefix,
     pub maybeTokenized: crate::expat_h::XML_Bool,
     pub xmlns: crate::expat_h::XML_Bool,
+}
+
+#[derive(Copy, Clone)]
+#[repr(u8)]
+pub enum AttributePrefix {
+    None,
+    Default,
+    Named(PoolStringRef),
 }
 
 pub type PREFIX = prefix;
@@ -9213,7 +9226,7 @@ unsafe extern "C" fn storeAtts(
     mut bindingsPtr: *mut *mut BINDING,
     mut account: XML_Account,
 ) -> crate::expat_h::XML_Error {
-    let dtd = parser_dtd_ptr!(parser);
+    let dtd = &mut *parser_dtd_ptr!(parser);
     let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     let mut nDefaultAtts: ::core::ffi::c_int = 0;
     let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
@@ -9243,19 +9256,19 @@ unsafe extern "C" fn storeAtts(
     }
     elementType = lookup(
         parser,
-        &raw mut (*dtd).elementTypes,
+        &raw mut dtd.elementTypes,
         tag_name as KEY,
         0 as crate::__stddef_size_t_h::size_t,
     ) as *mut ELEMENT_TYPE;
     if elementType.is_null() {
         let mut name: *const crate::expat_external_h::XML_Char =
-            poolCopyString(&raw mut (*dtd).pool, tag_name).0;
+            poolCopyString(&raw mut dtd.pool, tag_name).0;
         if name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
         elementType = lookup(
             parser,
-            &raw mut (*dtd).elementTypes,
+            &raw mut dtd.elementTypes,
             name as KEY,
             ::core::mem::size_of::<ELEMENT_TYPE>(),
         ) as *mut ELEMENT_TYPE;
@@ -9494,7 +9507,7 @@ unsafe extern "C" fn storeAtts(
         if attId.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let att_id_name = pool_string_pointer!(&(*dtd).pool, (*attId).named.name);
+        let att_id_name = pool_string_pointer!(&dtd.pool, (*attId).named.name);
         if att_id_name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -9524,8 +9537,7 @@ unsafe extern "C" fn storeAtts(
                         .get(j as usize)
                         .expect("default attribute count must match stored values");
                     let default_name = default_att.id.map_or(::core::ptr::null(), |name| {
-                        (*dtd)
-                            .pool
+                        dtd.pool
                             .chars_from(name)
                             .map_or(::core::ptr::null(), |chars| chars.as_ptr())
                     });
@@ -9576,11 +9588,32 @@ unsafe extern "C" fn storeAtts(
             }
             (*parser).m_tempPool.commit();
         }
-        if !(*attId).prefix.is_null() {
+        if !matches!((*attId).prefix, AttributePrefix::None) {
+            let attribute_prefix = (*attId).prefix;
             if (*attId).xmlns != 0 {
+                let prefix = match attribute_prefix {
+                    AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+                    AttributePrefix::Default => &raw mut dtd.defaultPrefix,
+                    AttributePrefix::Named(name) => {
+                        let name = pool_string_pointer!(&dtd.pool, name);
+                        if name.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        let prefix = lookup(
+                            parser,
+                            &raw mut dtd.prefixes,
+                            name as KEY,
+                            0 as crate::__stddef_size_t_h::size_t,
+                        ) as *mut PREFIX;
+                        if prefix.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        prefix
+                    }
+                };
                 let mut result_0: crate::expat_h::XML_Error = addBinding(
                     parser,
-                    (*attId).prefix,
+                    prefix,
                     attId,
                     appAtts[attIndex as usize],
                     bindingsPtr,
@@ -9602,8 +9635,7 @@ unsafe extern "C" fn storeAtts(
     }
     (*parser).m_nSpecifiedAtts = attIndex;
     if let Some(id_att_name) = (*elementType).idAtt {
-        let id_att_name = (*dtd)
-            .pool
+        let id_att_name = dtd.pool
             .chars_from(id_att_name)
             .map_or(::core::ptr::null(), |chars| chars.as_ptr());
         if id_att_name.is_null() {
@@ -9632,8 +9664,7 @@ unsafe extern "C" fn storeAtts(
         let Some(id_name_ref) = da.id else {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         };
-        let id_name = (*dtd)
-            .pool
+        let id_name = dtd.pool
             .chars_from(id_name_ref)
             .map_or(::core::ptr::null(), |chars| chars.as_ptr());
         if id_name.is_null() {
@@ -9641,14 +9672,14 @@ unsafe extern "C" fn storeAtts(
         }
         let id = lookup(
             parser,
-            &raw mut (*dtd).attributeIds,
+            &raw mut dtd.attributeIds,
             id_name as KEY,
             0 as crate::__stddef_size_t_h::size_t,
         ) as *mut ATTRIBUTE_ID;
         if id.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
-        let id_name_pointer = pool_string_pointer!(&(*dtd).pool, (*id).named.name);
+        let id_name_pointer = pool_string_pointer!(&dtd.pool, (*id).named.name);
         if id_name_pointer.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -9656,17 +9687,37 @@ unsafe extern "C" fn storeAtts(
             let value_ref = da
                 .value
                 .expect("a present default attribute value has a pool location");
-            let value = (*dtd)
-                .pool
+            let value = dtd.pool
                 .chars_from(value_ref)
                 .map_or(::core::ptr::null(), |chars| chars.as_ptr());
             if value.is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
-            if !(*id).prefix.is_null() {
+            if !matches!((*id).prefix, AttributePrefix::None) {
+                let attribute_prefix = (*id).prefix;
                 if (*id).xmlns != 0 {
+                    let prefix = match attribute_prefix {
+                        AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+                        AttributePrefix::Default => &raw mut dtd.defaultPrefix,
+                        AttributePrefix::Named(name) => {
+                            let name = pool_string_pointer!(&dtd.pool, name);
+                            if name.is_null() {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
+                            let prefix = lookup(
+                                parser,
+                                &raw mut dtd.prefixes,
+                                name as KEY,
+                                0 as crate::__stddef_size_t_h::size_t,
+                            ) as *mut PREFIX;
+                            if prefix.is_null() {
+                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                            }
+                            prefix
+                        }
+                    };
                     let mut result_1: crate::expat_h::XML_Error =
-                        addBinding(parser, (*id).prefix, id, value, bindingsPtr);
+                        addBinding(parser, prefix, id, value, bindingsPtr);
                     if result_1 as u64 != 0 {
                         return result_1;
                     }
@@ -9807,14 +9858,38 @@ unsafe extern "C" fn storeAtts(
                     0 as crate::expat_external_h::XML_Char;
                 id = lookup(
                     parser,
-                    &raw mut (*dtd).attributeIds,
+                    &raw mut dtd.attributeIds,
                     s as KEY,
                     0 as crate::__stddef_size_t_h::size_t,
                 ) as *mut ATTRIBUTE_ID;
-                if id.is_null() || (*id).prefix.is_null() {
+                if id.is_null() {
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
-                b = (*(*id).prefix).binding;
+                let attribute_prefix = (*id).prefix;
+                if matches!(attribute_prefix, AttributePrefix::None) {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                }
+                let prefix = match attribute_prefix {
+                    AttributePrefix::None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+                    AttributePrefix::Default => &raw mut dtd.defaultPrefix,
+                    AttributePrefix::Named(name) => {
+                        let name = pool_string_pointer!(&dtd.pool, name);
+                        if name.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        let prefix = lookup(
+                            parser,
+                            &raw mut dtd.prefixes,
+                            name as KEY,
+                            0 as crate::__stddef_size_t_h::size_t,
+                        ) as *mut PREFIX;
+                        if prefix.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        prefix
+                    }
+                };
+                b = (*prefix).binding;
                 if b.is_null() {
                     return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
                 }
@@ -9947,7 +10022,7 @@ unsafe extern "C" fn storeAtts(
                     let Some(prefix_name) = (*(*b).prefix).name else {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
-                    s = pool_string_pointer!(&(*dtd).pool, prefix_name);
+                    s = pool_string_pointer!(&dtd.pool, prefix_name);
                     if s.is_null() {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
@@ -10018,7 +10093,7 @@ unsafe extern "C" fn storeAtts(
         let Some(attribute_name) = binding_ref.attId else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let binding_name = pool_string_pointer!(&(*dtd).pool, attribute_name);
+        let binding_name = pool_string_pointer!(&dtd.pool, attribute_name);
         if binding_name.is_null() {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         }
@@ -10030,13 +10105,13 @@ unsafe extern "C" fn storeAtts(
         return crate::expat_h::XML_ERROR_NONE;
     }
     if (*elementType).hasPrefix != 0 {
-        let prefix_name = pool_string_pointer!(&(*dtd).pool, (*elementType).prefix);
+        let prefix_name = pool_string_pointer!(&dtd.pool, (*elementType).prefix);
         if prefix_name.is_null() {
             return crate::expat_h::XML_ERROR_UNBOUND_PREFIX;
         }
         let prefix = lookup(
             parser,
-            &raw mut (*dtd).prefixes,
+            &raw mut dtd.prefixes,
             prefix_name as KEY,
             0 as crate::__stddef_size_t_h::size_t,
         ) as *mut PREFIX;
@@ -10056,8 +10131,8 @@ unsafe extern "C" fn storeAtts(
                 break;
             }
         }
-    } else if !(*dtd).defaultPrefix.binding.is_null() {
-        binding = (*dtd).defaultPrefix.binding;
+    } else if !dtd.defaultPrefix.binding.is_null() {
+        binding = dtd.defaultPrefix.binding;
         localPart = tag_name;
     } else {
         return crate::expat_h::XML_ERROR_NONE;
@@ -10065,7 +10140,7 @@ unsafe extern "C" fn storeAtts(
     let binding_ref = &mut *binding;
     prefixLen = 0 as ::core::ffi::c_int;
     let prefix_name = (*binding_ref.prefix).name.map_or(::core::ptr::null(), |name| {
-        pool_string_pointer!(&(*dtd).pool, name)
+        pool_string_pointer!(&dtd.pool, name)
     });
     if (*parser).m_ns_triplets as ::core::ffi::c_int != 0 && !prefix_name.is_null() {
         loop {
@@ -16062,14 +16137,21 @@ unsafe fn getAttributeId(
         if parser.m_ns != 0 {
             if name_bytes.starts_with(b"xmlns") && matches!(name_bytes.get(5), None | Some(b':')) {
                 if name_bytes.len() == 5 {
-                    id.prefix = &raw mut dtd.defaultPrefix;
+                    id.prefix = AttributePrefix::Default;
                 } else {
-                    id.prefix = lookup(
+                    let prefix = lookup(
                         parser_ptr,
                         &raw mut dtd.prefixes,
                         name.wrapping_add(6),
                         ::core::mem::size_of::<PREFIX>(),
                     ) as *mut PREFIX;
+                    if prefix.is_null() {
+                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    }
+                    let Some(prefix_name) = (*prefix).name else {
+                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    };
+                    id.prefix = AttributePrefix::Named(prefix_name);
                 }
                 id.xmlns = crate::expat_h::XML_TRUE;
             } else {
@@ -16098,13 +16180,13 @@ unsafe fn getAttributeId(
                     if pool_start.is_null() {
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     }
-                    id.prefix = lookup(
+                    let prefix = lookup(
                         parser_ptr,
                         &raw mut dtd.prefixes,
                         pool_start as KEY,
                         ::core::mem::size_of::<PREFIX>(),
                     ) as *mut PREFIX;
-                    if id.prefix.is_null() {
+                    if prefix.is_null() {
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     }
                     let Some(pool_start_ref) =
@@ -16112,7 +16194,11 @@ unsafe fn getAttributeId(
                     else {
                         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                     };
-                    if (*id.prefix).name == Some(pool_start_ref) {
+                    let Some(prefix_name) = (*prefix).name else {
+                        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                    };
+                    id.prefix = AttributePrefix::Named(prefix_name);
+                    if prefix_name == pool_start_ref {
                         dtd.pool.commit();
                     } else {
                         dtd.pool.rewind();
@@ -16669,6 +16755,7 @@ unsafe extern "C" fn dtdCopy(
     // references to them makes the field-level copy below ordinary Rust access.
     let old_dtd = &*oldDtd;
     let new_dtd = &mut *newDtd;
+    let mut copied_prefixes = Vec::new();
     // Slots are the table's owned iteration order.  Reading them directly
     // keeps this copy within the owned storage model instead of round-tripping
     // each entry through the legacy raw iterator adapter.
@@ -16689,6 +16776,9 @@ unsafe extern "C" fn dtdCopy(
             if name.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
+            let Some(new_name_ref) = pool_string_ref(&raw const new_dtd.pool, name, false) else {
+                return 0 as ::core::ffi::c_int;
+            };
             if lookup(
                 parser,
                 &raw mut new_dtd.prefixes,
@@ -16699,6 +16789,10 @@ unsafe extern "C" fn dtdCopy(
             {
                 return 0 as ::core::ffi::c_int;
             }
+            if copied_prefixes.try_reserve(1).is_err() {
+                return 0 as ::core::ffi::c_int;
+            }
+            copied_prefixes.push((old_name_ref, new_name_ref));
         }
     }
     if let Some(slots) = old_dtd.attributeIds.v.as_ref() {
@@ -16745,22 +16839,24 @@ unsafe extern "C" fn dtdCopy(
             }
             let new_a = &mut *new_a;
             new_a.maybeTokenized = old_a.maybeTokenized;
-            if !old_a.prefix.is_null() {
+            if !matches!(old_a.prefix, AttributePrefix::None) {
+                let attribute_prefix = old_a.prefix;
                 new_a.xmlns = old_a.xmlns;
-                if old_a.prefix == &raw const old_dtd.defaultPrefix as *mut PREFIX {
-                    new_a.prefix = &raw mut new_dtd.defaultPrefix;
-                } else {
-                    let old_prefix = &*old_a.prefix;
-                    new_a.prefix = lookup(
-                        parser,
-                        &raw mut new_dtd.prefixes,
-                        pool_string_pointer!(
-                            &old_dtd.pool,
-                            old_prefix.name.expect("named prefix table entry"),
-                        ) as KEY,
-                        0 as crate::__stddef_size_t_h::size_t,
-                    ) as *mut PREFIX;
-                }
+                new_a.prefix = match attribute_prefix {
+                    AttributePrefix::Default => AttributePrefix::Default,
+                    AttributePrefix::Named(old_prefix_name) => {
+                        let Some(new_prefix_name) = copied_prefixes
+                            .iter()
+                            .find_map(|&(old_name, new_name)| {
+                                (old_name == old_prefix_name).then_some(new_name)
+                            })
+                        else {
+                            return 0 as ::core::ffi::c_int;
+                        };
+                        AttributePrefix::Named(new_prefix_name)
+                    }
+                    AttributePrefix::None => unreachable!("checked above"),
+                };
             }
         }
     }
