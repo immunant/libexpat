@@ -1452,6 +1452,46 @@ static DEFAULT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn DefaultCallback>>>,
 > = std::sync::OnceLock::new();
 
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether a start-doctype callback is installed.
+trait StartDoctypeDeclCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        doctype_name: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+        has_internal_subset: ::core::ffi::c_int,
+    );
+}
+
+impl StartDoctypeDeclCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        *const crate::expat_external_h::XML_Char,
+        ::core::ffi::c_int,
+    )
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        doctype_name: *const crate::expat_external_h::XML_Char,
+        system_id: *const crate::expat_external_h::XML_Char,
+        public_id: *const crate::expat_external_h::XML_Char,
+        has_internal_subset: ::core::ffi::c_int,
+    ) {
+        self(user_data, doctype_name, system_id, public_id, has_internal_subset);
+    }
+}
+
+static START_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<usize, std::sync::Arc<dyn StartDoctypeDeclCallback>>,
+    >,
+> = std::sync::OnceLock::new();
+
 unsafe fn callCharacterDataHandler(
     parser: crate::expat_h::XML_Parser,
     data: *const crate::expat_external_h::XML_Char,
@@ -1866,7 +1906,7 @@ pub struct XML_ParserStruct {
     pub m_startCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler,
     pub m_endCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler,
     pub m_defaultHandler: bool,
-    pub m_startDoctypeDeclHandler: crate::expat_h::XML_StartDoctypeDeclHandler,
+    pub m_startDoctypeDeclHandler: bool,
     pub m_endDoctypeDeclHandler: crate::expat_h::XML_EndDoctypeDeclHandler,
     pub m_unparsedEntityDeclHandler: bool,
     pub m_notationDeclHandler: bool,
@@ -3278,7 +3318,12 @@ unsafe extern "C" fn parserInit(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
-    (*parser).m_startDoctypeDeclHandler = None;
+    (*parser).m_startDoctypeDeclHandler = false;
+    START_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_endDoctypeDeclHandler = None;
     (*parser).m_unparsedEntityDeclHandler = false;
     UNPARSED_ENTITY_DECL_HANDLERS
@@ -3967,6 +4012,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
+    START_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&parser_key);
     ELEMENT_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -4601,7 +4651,19 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler(
     if parser.is_null() {
         return;
     }
-    (*parser).m_startDoctypeDeclHandler = start;
+    (*parser).m_startDoctypeDeclHandler = start.is_some();
+    let mut handlers = START_DOCTYPE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match start {
+        Some(callback) => {
+            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        }
+        None => {
+            handlers.remove(&(parser as usize));
+        }
+    }
     (*parser).m_endDoctypeDeclHandler = end;
 }
 #[export_name = "XML_SetDoctypeDeclHandler"]
@@ -4618,7 +4680,19 @@ pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler(
     mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_startDoctypeDeclHandler = start;
+        (*parser).m_startDoctypeDeclHandler = start.is_some();
+        let mut handlers = START_DOCTYPE_DECL_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match start {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetStartDoctypeDeclHandler"]
@@ -9165,7 +9239,7 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     4 => {
-                                        if (*parser).m_startDoctypeDeclHandler.is_some() {
+                                        if (*parser).m_startDoctypeDeclHandler {
                                             (*parser).m_doctypeName = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
@@ -9188,16 +9262,26 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     7 => {
-                                        if (*parser).m_startDoctypeDeclHandler.is_some() {
-                                            (*parser)
-                                                .m_startDoctypeDeclHandler
-                                                .expect("non-null function pointer")(
-                                                (*parser).m_handlerArg,
-                                                (*parser).m_doctypeName,
-                                                (*parser).m_doctypeSysid,
-                                                (*parser).m_doctypePubid,
-                                                1 as ::core::ffi::c_int,
-                                            );
+                                        if (*parser).m_startDoctypeDeclHandler {
+                                            let callback = START_DOCTYPE_DECL_HANDLERS
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                .get(&(parser as usize))
+                                                .cloned();
+                                            if let Some(callback) = callback {
+                                                callback.invoke(
+                                                    (*parser).m_handlerArg,
+                                                    (*parser).m_doctypeName,
+                                                    (*parser).m_doctypeSysid,
+                                                    (*parser).m_doctypePubid,
+                                                    1 as ::core::ffi::c_int,
+                                                );
+                                            }
                                             (*parser).m_doctypeName = ::core::ptr::null::<
                                                 crate::expat_external_h::XML_Char,
                                             >(
@@ -9238,7 +9322,7 @@ unsafe extern "C" fn doProlog(
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                                        if (*parser).m_startDoctypeDeclHandler.is_some() {
+                                        if (*parser).m_startDoctypeDeclHandler {
                                             let mut pubId: *mut crate::expat_external_h::XML_Char =
                                                 ::core::ptr::null_mut::<
                                                     crate::expat_external_h::XML_Char,
@@ -9277,15 +9361,25 @@ unsafe extern "C" fn doProlog(
                                             return crate::expat_h::XML_ERROR_INVALID_TOKEN;
                                         }
                                         if !(*parser).m_doctypeName.is_null() {
-                                            (*parser)
-                                                .m_startDoctypeDeclHandler
-                                                .expect("non-null function pointer")(
-                                                (*parser).m_handlerArg,
-                                                (*parser).m_doctypeName,
-                                                (*parser).m_doctypeSysid,
-                                                (*parser).m_doctypePubid,
-                                                0 as ::core::ffi::c_int,
-                                            );
+                                            let callback = START_DOCTYPE_DECL_HANDLERS
+                                                .get_or_init(|| {
+                                                    std::sync::Mutex::new(
+                                                        std::collections::HashMap::new(),
+                                                    )
+                                                })
+                                                .lock()
+                                                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                                .get(&(parser as usize))
+                                                .cloned();
+                                            if let Some(callback) = callback {
+                                                callback.invoke(
+                                                    (*parser).m_handlerArg,
+                                                    (*parser).m_doctypeName,
+                                                    (*parser).m_doctypeSysid,
+                                                    (*parser).m_doctypePubid,
+                                                    0 as ::core::ffi::c_int,
+                                                );
+                                            }
                                             poolClear(&raw mut (*parser).m_tempPool);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
@@ -9799,7 +9893,7 @@ unsafe extern "C" fn doProlog(
                                     5 => {
                                         (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                                        if (*parser).m_startDoctypeDeclHandler.is_some() {
+                                        if (*parser).m_startDoctypeDeclHandler {
                                             (*parser).m_doctypeSysid = poolStoreString(
                                                 &raw mut (*parser).m_tempPool,
                                                 enc,
@@ -10673,7 +10767,7 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     3 => {
-                                        if (*parser).m_startDoctypeDeclHandler.is_some() {
+                                        if (*parser).m_startDoctypeDeclHandler {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
