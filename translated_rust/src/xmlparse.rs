@@ -19778,7 +19778,13 @@ unsafe fn dtdCopy(
 ) -> ::core::ffi::c_int {
     // Both DTD owners are retained by the caller throughout the copy.  This
     // helper therefore needs no raw parser or DTD handles for its field work.
+    let hash_secret_salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
     let mut copied_prefixes = Vec::new();
+    let mut copied_attributes = Vec::new();
     // Slots are the table's owned iteration order.  Reading them directly
     // keeps this copy within the owned storage model instead of round-tripping
     // each entry through the legacy raw iterator adapter.
@@ -19799,17 +19805,13 @@ unsafe fn dtdCopy(
             let Some(new_name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
             };
-            let Some(name) = new_dtd.pool.chars_from(new_name_ref) else {
-                return 0 as ::core::ffi::c_int;
-            };
-            if lookup(
-                parser,
-                &raw mut new_dtd.prefixes,
-                name.as_ptr(),
+            if !dtd_copy_lookup_prefix(
+                &mut new_dtd.pool,
+                &mut new_dtd.prefixes,
+                new_name_ref,
                 ::core::mem::size_of::<PREFIX>(),
-            )
-            .is_null()
-            {
+                hash_secret_salt,
+            ) {
                 return 0 as ::core::ffi::c_int;
             }
             if copied_prefixes.try_reserve(1).is_err() {
@@ -19851,19 +19853,16 @@ unsafe fn dtdCopy(
             let Some(name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
             };
-            let Some(name_0) = new_dtd.pool.chars_from(name_ref) else {
+            let Some(new_a) = dtd_copy_lookup_attribute(
+                &mut new_dtd.pool,
+                &mut new_dtd.attributeIds,
+                name_ref,
+                ::core::mem::size_of::<ATTRIBUTE_ID>(),
+                hash_secret_salt,
+            )
+            else {
                 return 0 as ::core::ffi::c_int;
             };
-            let new_a = lookup(
-                parser,
-                &raw mut new_dtd.attributeIds,
-                name_0.as_ptr(),
-                ::core::mem::size_of::<ATTRIBUTE_ID>(),
-            ) as *mut ATTRIBUTE_ID;
-            if new_a.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            let new_a = &mut *new_a;
             new_a.maybeTokenized = old_a.maybeTokenized;
             if !matches!(old_a.prefix, AttributePrefix::None) {
                 let attribute_prefix = old_a.prefix;
@@ -19883,6 +19882,10 @@ unsafe fn dtdCopy(
                     AttributePrefix::None => unreachable!("checked above"),
                 };
             }
+            if copied_attributes.try_reserve(1).is_err() {
+                return 0 as ::core::ffi::c_int;
+            }
+            copied_attributes.push((old_a.named.name, name_ref));
         }
     }
     if let Some(slots) = old_dtd.elementTypes.v.as_ref() {
@@ -19899,19 +19902,16 @@ unsafe fn dtdCopy(
             let Some(name_ref) = pool_copy_chars(&mut new_dtd.pool, old_name) else {
                 return 0 as ::core::ffi::c_int;
             };
-            let Some(name_1) = new_dtd.pool.chars_from(name_ref) else {
+            let Some(new_e) = dtd_copy_lookup_element(
+                &mut new_dtd.pool,
+                &mut new_dtd.elementTypes,
+                name_ref,
+                ::core::mem::size_of::<ELEMENT_TYPE>(),
+                hash_secret_salt,
+            )
+            else {
                 return 0 as ::core::ffi::c_int;
             };
-            let new_e = lookup(
-                parser,
-                &raw mut new_dtd.elementTypes,
-                name_1.as_ptr(),
-                ::core::mem::size_of::<ELEMENT_TYPE>(),
-            ) as *mut ELEMENT_TYPE;
-            if new_e.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            let new_e = &mut *new_e;
             if old_e.nDefaultAtts != 0 {
                 let Some(storage) =
                     default_attribute_storage_new(parser, old_e.nDefaultAtts as usize, 7683)
@@ -19921,36 +19921,19 @@ unsafe fn dtdCopy(
                 new_e.defaultAtts = Some(storage);
             }
             if let Some(old_id_att) = old_e.idAtt {
-                let old_id_att = pool_string_pointer!(&old_dtd.pool, old_id_att);
-                if old_id_att.is_null() {
+                let Some(new_id_att) = copied_attributes
+                    .iter()
+                    .find_map(|&(old_name, new_name)| (old_name == old_id_att).then_some(new_name))
+                else {
                     return 0 as ::core::ffi::c_int;
-                }
-                let new_id_att = lookup(
-                    parser,
-                    &raw mut new_dtd.attributeIds,
-                    old_id_att as KEY,
-                    0 as crate::__stddef_size_t_h::size_t,
-                ) as *mut ATTRIBUTE_ID;
-                if new_id_att.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                new_e.idAtt = Some((*new_id_att).named.name);
+                };
+                new_e.idAtt = Some(new_id_att);
             }
             if old_e.hasPrefix != 0 {
-                let old_prefix_name = pool_string_pointer!(&old_dtd.pool, old_e.prefix);
-                if old_prefix_name.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                let new_prefix = lookup(
-                    parser,
-                    &raw mut new_dtd.prefixes,
-                    old_prefix_name as KEY,
-                    0 as crate::__stddef_size_t_h::size_t,
-                ) as *mut PREFIX;
-                if new_prefix.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                let Some(prefix_ref) = (*new_prefix).name else {
+                let Some(prefix_ref) = copied_prefixes
+                    .iter()
+                    .find_map(|&(old_name, new_name)| (old_name == old_e.prefix).then_some(new_name))
+                else {
                     return 0 as ::core::ffi::c_int;
                 };
                 new_e.prefix = prefix_ref;
@@ -19968,23 +19951,12 @@ unsafe fn dtdCopy(
                 let Some(old_id_name) = old_att.id else {
                     return 0 as ::core::ffi::c_int;
                 };
-                let old_id_name = old_dtd
-                    .pool
-                    .chars_from(old_id_name)
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-                if old_id_name.is_null() {
+                let Some(new_id_name) = copied_attributes
+                    .iter()
+                    .find_map(|&(old_name, new_name)| (old_name == old_id_name).then_some(new_name))
+                else {
                     return 0 as ::core::ffi::c_int;
-                }
-                let new_id = lookup(
-                    parser,
-                    &raw mut new_dtd.attributeIds,
-                    old_id_name as KEY,
-                    0 as crate::__stddef_size_t_h::size_t,
-                ) as *mut ATTRIBUTE_ID;
-                if new_id.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                let new_id_name = (*new_id).named.name;
+                };
                 let value = if let Some(value) = old_att.value {
                     let Some(old_value) = old_dtd.pool.chars_from(value) else {
                         return 0 as ::core::ffi::c_int;
@@ -20023,20 +19995,20 @@ unsafe fn dtdCopy(
     }
     if copyEntityTable(
         old_dtd,
-        parser,
         &mut new_dtd.generalEntities,
         &mut new_dtd.pool,
         &old_dtd.generalEntities,
+        hash_secret_salt,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
     }
     if copyEntityTable(
         old_dtd,
-        parser,
         &mut new_dtd.paramEntities,
         &mut new_dtd.pool,
         &old_dtd.paramEntities,
+        hash_secret_salt,
     ) == 0
     {
         return 0 as ::core::ffi::c_int;
@@ -20061,12 +20033,90 @@ fn copy_dtd_metadata(new_dtd: &mut DTD, old_dtd: &DTD) {
     new_dtd.scaffIndex = old_dtd.scaffIndex.clone();
 }
 
+// These typed accessors keep the `Box`-backed record downcast in one place
+// while DTD copying is in progress.  Their callers only retain the returned
+// reference until the next table operation, so table growth cannot invalidate
+// an active record borrow.
+unsafe fn dtd_copy_lookup_prefix(
+    pool: &mut STRING_POOL,
+    table: &mut HASH_TABLE,
+    name: PoolStringRef,
+    create_size: usize,
+    hash_secret_salt: ::core::ffi::c_ulong,
+) -> bool {
+    matches!(
+        lookup_impl(
+            pool,
+            table,
+            LookupName::Retained(name),
+            create_size,
+            hash_secret_salt,
+        ),
+        Some(NamedRecord::Prefix(_))
+    )
+}
+
+unsafe fn dtd_copy_lookup_attribute<'a>(
+    pool: &mut STRING_POOL,
+    table: &'a mut HASH_TABLE,
+    name: PoolStringRef,
+    create_size: usize,
+    hash_secret_salt: ::core::ffi::c_ulong,
+) -> Option<&'a mut ATTRIBUTE_ID> {
+    lookup_impl(
+        pool,
+        table,
+        LookupName::Retained(name),
+        create_size,
+        hash_secret_salt,
+    )
+    .and_then(NamedRecord::attribute_mut)
+}
+
+unsafe fn dtd_copy_lookup_element<'a>(
+    pool: &mut STRING_POOL,
+    table: &'a mut HASH_TABLE,
+    name: PoolStringRef,
+    create_size: usize,
+    hash_secret_salt: ::core::ffi::c_ulong,
+) -> Option<&'a mut ELEMENT_TYPE> {
+    let Some(NamedRecord::Element(element)) = lookup_impl(
+        pool,
+        table,
+        LookupName::Retained(name),
+        create_size,
+        hash_secret_salt,
+    ) else {
+        return None;
+    };
+    Some(element)
+}
+
+unsafe fn dtd_copy_lookup_entity<'a>(
+    pool: &mut STRING_POOL,
+    table: &'a mut HASH_TABLE,
+    name: PoolStringRef,
+    create_size: usize,
+    hash_secret_salt: ::core::ffi::c_ulong,
+) -> Option<&'a mut ENTITY> {
+    let Some(NamedRecord::Entity(entity)) = lookup_impl(
+        pool,
+        table,
+        LookupName::Retained(name),
+        create_size,
+        hash_secret_salt,
+    ) else {
+        return None;
+    };
+    Some(entity)
+}
+
 unsafe fn copyEntityTable(
     old_dtd: &DTD,
-    new_parser: &mut XML_ParserStruct,
     new_table: &mut HASH_TABLE,
     newPool: &mut STRING_POOL,
     old_table: &HASH_TABLE,
+    hash_secret_salt: ::core::ffi::c_ulong,
 ) -> ::core::ffi::c_int {
     let mut cachedOldBase: Option<PoolStringRef> = None;
     let mut cachedNewBase: Option<PoolStringRef> = None;
@@ -20078,9 +20128,6 @@ unsafe fn copyEntityTable(
         let Some(entry) = entry.as_ref() else {
             continue;
         };
-        let mut newE: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-        let mut name: *const crate::expat_external_h::XML_Char =
-            ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         let Some(old_e) = entry.entity() else {
             return 0 as ::core::ffi::c_int;
         };
@@ -20090,22 +20137,16 @@ unsafe fn copyEntityTable(
         let Some(new_name) = pool_copy_chars(new_pool, old_name) else {
             return 0 as ::core::ffi::c_int;
         };
-        name = new_pool
-            .chars_from(new_name)
-            .map_or(::core::ptr::null(), |chars| chars.as_ptr());
-        if name.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        newE = lookup(
-            std::ptr::from_mut(new_parser),
-            std::ptr::from_mut(new_table),
-            name as KEY,
+        let Some(new_e) = dtd_copy_lookup_entity(
+            new_pool,
+            new_table,
+            new_name,
             ::core::mem::size_of::<ENTITY>(),
-        ) as *mut ENTITY;
-        if newE.is_null() {
+            hash_secret_salt,
+        )
+        else {
             return 0 as ::core::ffi::c_int;
-        }
-        let new_e = &mut *newE;
+        };
         if let Some(old_system_id) = old_e.systemId {
             let Some(old_system_id) = pool_terminated_chars(&old_dtd.pool, old_system_id) else {
                 return 0 as ::core::ffi::c_int;
