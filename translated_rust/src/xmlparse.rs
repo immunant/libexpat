@@ -19638,7 +19638,7 @@ unsafe extern "C" fn callStoreEntityValue(
                 .next_offset
                 .map_or(input_start, |offset| input_start.wrapping_add(offset));
         } else {
-            let (open_entity_index, openEntity, entity_ref) = {
+            let (open_entity_index, entity_ref) = {
                 let open_entity_index = parser
                     .m_openValueEntities
                     .expect("value-entity processing requires an open entity");
@@ -19646,61 +19646,59 @@ unsafe extern "C" fn callStoreEntityValue(
                 else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                (
-                    open_entity_index,
-                    std::ptr::from_ref(storage.node()).cast_mut(),
-                    storage.entity_ref,
-                )
+                (open_entity_index, storage.entity_ref)
             };
             let Some(entity_ref) = entity_ref else {
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
-            let dtd = parser_dtd_ptr!(parser_handle);
-            if dtd.is_null() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            let Some(name) = (*dtd).pool.chars_from(entity_ref.name) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            // Entity frames retain the declaration's typed pool key and table
+            // kind.  Resolve that key through the owned DTD map instead of
+            // reconstructing a raw name pointer for the legacy lookup API.
+            // Parser operations are serialized by the public API, so this is
+            // the one scoped access to the shared DTD for the frame update.
+            let declaration = match entity_ref.table {
+                OpenEntityTable::General => DeclaredEntity::General(entity_ref.name),
+                OpenEntityTable::Parameter => DeclaredEntity::Parameter(entity_ref.name),
             };
-            let entity: *mut ENTITY = match entity_ref.table {
-                OpenEntityTable::General => {
-                    lookup(parser_handle, &raw mut (*dtd).generalEntities, name.as_ptr(), 0)
-                        .cast::<ENTITY>()
-                }
-                OpenEntityTable::Parameter => {
-                    lookup(parser_handle, &raw mut (*dtd).paramEntities, name.as_ptr(), 0)
-                        .cast::<ENTITY>()
-                }
-            };
-            if entity.is_null() {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            }
-            let (text_ref, text_len, processed_before, has_more) = {
-                let entity_ref = &*entity;
+            let hash_salt = parser
+                .m_root
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .hash_secret_salt;
+            let (textStart, textEnd, has_more) = {
+                let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let dtd = &mut *dtd_owner.value.get();
+                let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let (text_ref, text_len, processed_before, has_more) = (
+                    entity.textPtr.present(),
+                    entity.textLen,
+                    entity.processed,
+                    entity.hasMore != 0,
+                );
+                let Some(text) = text_ref else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(text) = entity_text_chars(dtd, text, text_len) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Ok(processed) = usize::try_from(processed_before) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(unprocessed) = text.get(processed..) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
                 (
-                    entity_ref.textPtr.present(),
-                    entity_ref.textLen,
-                    entity_ref.processed,
-                    entity_ref.hasMore != 0,
+                    unprocessed.as_ptr().cast::<::core::ffi::c_char>(),
+                    text.as_ptr()
+                        .wrapping_add(text.len())
+                        .cast::<::core::ffi::c_char>(),
+                    has_more,
                 )
             };
-            let Some(text) = text_ref else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(text) = entity_text_chars(&*dtd, text, text_len) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Ok(processed) = usize::try_from(processed_before) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let Some(unprocessed) = text.get(processed..) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            let textStart = unprocessed.as_ptr().cast::<::core::ffi::c_char>();
-            let textEnd = text
-                .as_ptr()
-                .wrapping_add(text.len())
-                .cast::<::core::ffi::c_char>();
             let mut nextInEntity: *const ::core::ffi::c_char = textStart;
             if has_more {
                 let stored = storeEntityValue(
@@ -19726,28 +19724,67 @@ unsafe extern "C" fn callStoreEntityValue(
                     let Ok(processed) = ::core::ffi::c_int::try_from(processed) else {
                         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     };
-                    let entity_ref = &mut *entity;
-                    entity_ref.processed = entity_ref.processed.saturating_add(processed);
+                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let dtd = &mut *dtd_owner.value.get();
+                    let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    entity.processed = entity.processed.saturating_add(processed);
                     continue;
                 } else {
-                    (&mut *entity).hasMore = crate::expat_h::XML_FALSE;
+                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let dtd = &mut *dtd_owner.value.get();
+                    let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    entity.hasMore = crate::expat_h::XML_FALSE;
                     continue;
                 }
             } else {
-                entityTrackingOnClose(parser_handle, entity, 6998 as ::core::ffi::c_int);
+                let entity = {
+                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let dtd = &mut *dtd_owner.value.get();
+                    let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    std::ptr::from_mut(entity)
+                };
+                entityTrackingOnClose(
+                    parser_handle,
+                    entity,
+                    6998 as ::core::ffi::c_int,
+                );
+                {
+                    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let dtd = &mut *dtd_owner.value.get();
+                    let Some(entity) = declared_entity_mut(dtd, declaration, hash_salt) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    entity.open = crate::expat_h::XML_FALSE;
+                }
                 if parser.m_openValueEntities != Some(open_entity_index) {
                     // This is an internal stack invariant.  The C assertion
                     // was non-returning; preserve that failure mode without
                     // calling the foreign assertion routine.
                     std::process::abort();
                 }
-                (*entity).open = crate::expat_h::XML_FALSE;
+                if open_entity_index
+                    .checked_add(1)
+                    .is_none_or(|next_index| next_index != parser.m_activeValueEntities.len())
+                {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                }
                 let Some(storage) = parser.m_activeValueEntities.pop() else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
-                if !std::ptr::eq(storage.node(), &*openEntity) {
-                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                }
                 parser.m_openValueEntities = parser.m_activeValueEntities.len().checked_sub(1);
                 parser.m_freeValueEntities.push(storage);
             }
