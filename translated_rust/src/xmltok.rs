@@ -442,6 +442,14 @@ pub enum AttributeScanner {
     Big2,
 }
 
+/// Selects the fixed entity-name matcher without retaining a raw callback.
+#[derive(Copy, Clone)]
+pub enum PredefinedEntityNameMatcher {
+    Normal,
+    Little2,
+    Big2,
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct encoding {
@@ -467,13 +475,7 @@ pub struct encoding {
             *const ::core::ffi::c_char,
         ) -> ::core::ffi::c_int,
     >,
-    pub predefinedEntityName: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub predefinedEntityName: crate::src::xmltok::PredefinedEntityNameMatcher,
     pub updatePosition: crate::src::xmltok::PositionUpdater,
     pub isPublicId: crate::src::xmltok::PublicIdChecker,
     pub utf8Convert: crate::src::xmltok::Utf8Converter,
@@ -482,6 +484,49 @@ pub struct encoding {
     pub minBytesPerChar: ::core::ffi::c_int,
     pub isUtf8: ::core::ffi::c_char,
     pub isUtf16: ::core::ffi::c_char,
+}
+
+/// Matches a tokenizer-bounded encoded entity name using the selected fixed encoding.
+pub unsafe fn predefined_entity_name(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    const PREDEFINED: [(&[u8], ::core::ffi::c_int); 5] = [
+        (b"lt", crate::ascii_h::ASCII_LT),
+        (b"gt", crate::ascii_h::ASCII_GT),
+        (b"amp", crate::ascii_h::ASCII_AMP),
+        (b"quot", crate::ascii_h::ASCII_QUOT),
+        (b"apos", crate::ascii_h::ASCII_APOS),
+    ];
+
+    let matcher = (*enc).predefinedEntityName;
+    let encoded_name_len = end.offset_from(ptr);
+    for &(name, value) in &PREDEFINED {
+        let width = match matcher {
+            PredefinedEntityNameMatcher::Normal => 1,
+            PredefinedEntityNameMatcher::Little2 | PredefinedEntityNameMatcher::Big2 => 2,
+        };
+        if encoded_name_len / width as isize != name.len() as isize {
+            continue;
+        }
+        let matches = match matcher {
+            PredefinedEntityNameMatcher::Normal => name
+                .iter()
+                .enumerate()
+                .all(|(index, &byte)| *ptr.add(index) as u8 == byte),
+            PredefinedEntityNameMatcher::Little2 => name.iter().enumerate().all(|(index, &byte)| {
+                *ptr.add(index * 2) as u8 == byte && *ptr.add(index * 2 + 1) == 0
+            }),
+            PredefinedEntityNameMatcher::Big2 => name.iter().enumerate().all(|(index, &byte)| {
+                *ptr.add(index * 2) == 0 && *ptr.add(index * 2 + 1) as u8 == byte
+            }),
+        };
+        if matches {
+            return value;
+        }
+    }
+    0
 }
 
 pub unsafe fn convert_to_utf8(
@@ -3988,66 +4033,6 @@ pub mod xmltok_impl_c {
             }
         }
         return checkCharRefNumber(result);
-    }
-
-    pub unsafe extern "C" fn normal_predefinedEntityName(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        match end.offset_from(ptr) / 1 as isize {
-            2 => {
-                if *ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x74 as ::core::ffi::c_int
-                {
-                    match *ptr as ::core::ffi::c_int {
-                        crate::ascii_h::ASCII_l_1 => return crate::ascii_h::ASCII_LT,
-                        crate::ascii_h::ASCII_g_1 => return crate::ascii_h::ASCII_GT,
-                        _ => {}
-                    }
-                }
-            }
-            3 => {
-                if *ptr as ::core::ffi::c_int == 0x61 as ::core::ffi::c_int {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if *ptr as ::core::ffi::c_int == 0x6d as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if *ptr as ::core::ffi::c_int == 0x70 as ::core::ffi::c_int {
-                            return crate::ascii_h::ASCII_AMP;
-                        }
-                    }
-                }
-            }
-            4 => match *ptr as ::core::ffi::c_int {
-                crate::ascii_h::ASCII_q => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if *ptr as ::core::ffi::c_int == 0x75 as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if *ptr as ::core::ffi::c_int == 0x6f as ::core::ffi::c_int {
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            if *ptr as ::core::ffi::c_int == 0x74 as ::core::ffi::c_int {
-                                return crate::ascii_h::ASCII_QUOT;
-                            }
-                        }
-                    }
-                }
-                crate::ascii_h::ASCII_a_1 => {
-                    ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                    if *ptr as ::core::ffi::c_int == 0x70 as ::core::ffi::c_int {
-                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                        if *ptr as ::core::ffi::c_int == 0x6f as ::core::ffi::c_int {
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            if *ptr as ::core::ffi::c_int == 0x73 as ::core::ffi::c_int {
-                                return crate::ascii_h::ASCII_APOS;
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-        return 0 as ::core::ffi::c_int;
     }
 
     pub unsafe extern "C" fn normal_nameLength(
@@ -7641,114 +7626,6 @@ pub mod xmltok_impl_c {
             }
         }
         return checkCharRefNumber(result);
-    }
-
-    pub unsafe extern "C" fn little2_predefinedEntityName(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        match end.offset_from(ptr) / 2 as isize {
-            2 => {
-                if *ptr
-                    .offset(2 as ::core::ffi::c_int as isize)
-                    .offset(1 as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr
-                        .offset(2 as ::core::ffi::c_int as isize)
-                        .offset(0 as isize) as ::core::ffi::c_int
-                        == 0x74 as ::core::ffi::c_int
-                {
-                    match if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(0 as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    } {
-                        crate::ascii_h::ASCII_l_1 => return crate::ascii_h::ASCII_LT,
-                        crate::ascii_h::ASCII_g_1 => return crate::ascii_h::ASCII_GT,
-                        _ => {}
-                    }
-                }
-            }
-            3 => {
-                if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                    && *ptr.offset(0 as isize) as ::core::ffi::c_int == 0x61 as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                        && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                            == 0x6d as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            return crate::ascii_h::ASCII_AMP;
-                        }
-                    }
-                }
-            }
-            4 => {
-                match if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    *ptr.offset(0 as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                } {
-                    crate::ascii_h::ASCII_q => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                == 0x75 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                        == 0x74 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_QUOT;
-                                }
-                            }
-                        }
-                    }
-                    crate::ascii_h::ASCII_a_1 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                        == 0x73 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_APOS;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        return 0 as ::core::ffi::c_int;
     }
 
     pub unsafe extern "C" fn little2_nameLength(
@@ -11540,114 +11417,6 @@ pub mod xmltok_impl_c {
         return checkCharRefNumber(result);
     }
 
-    pub unsafe extern "C" fn big2_predefinedEntityName(
-        _enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        match end.offset_from(ptr) / 2 as isize {
-            2 => {
-                if *ptr
-                    .offset(2 as ::core::ffi::c_int as isize)
-                    .offset(0 as isize) as ::core::ffi::c_int
-                    == 0 as ::core::ffi::c_int
-                    && *ptr
-                        .offset(2 as ::core::ffi::c_int as isize)
-                        .offset(1 as isize) as ::core::ffi::c_int
-                        == 0x74 as ::core::ffi::c_int
-                {
-                    match if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        *ptr.offset(1 as isize) as ::core::ffi::c_int
-                    } else {
-                        -1 as ::core::ffi::c_int
-                    } {
-                        crate::ascii_h::ASCII_l_1 => return crate::ascii_h::ASCII_LT,
-                        crate::ascii_h::ASCII_g_1 => return crate::ascii_h::ASCII_GT,
-                        _ => {}
-                    }
-                }
-            }
-            3 => {
-                if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                    && *ptr.offset(1 as isize) as ::core::ffi::c_int == 0x61 as ::core::ffi::c_int
-                {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                        && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                            == 0x6d as ::core::ffi::c_int
-                    {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            return crate::ascii_h::ASCII_AMP;
-                        }
-                    }
-                }
-            }
-            4 => {
-                match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                    *ptr.offset(1 as isize) as ::core::ffi::c_int
-                } else {
-                    -1 as ::core::ffi::c_int
-                } {
-                    crate::ascii_h::ASCII_q => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0x75 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                        == 0x74 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_QUOT;
-                                }
-                            }
-                        }
-                    }
-                    crate::ascii_h::ASCII_a_1 => {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                            && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0x70 as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                                && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                    == 0x6f as ::core::ffi::c_int
-                            {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                    && *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                        == 0x73 as ::core::ffi::c_int
-                                {
-                                    return crate::ascii_h::ASCII_APOS;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        return 0 as ::core::ffi::c_int;
-    }
-
     pub unsafe extern "C" fn big2_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -13062,7 +12831,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::big2_nameLength;
-pub use crate::src::xmltok::xmltok_impl_c::big2_predefinedEntityName;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanCdataSection;
@@ -13089,7 +12857,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::little2_nameLength;
-pub use crate::src::xmltok::xmltok_impl_c::little2_predefinedEntityName;
 pub use crate::src::xmltok::xmltok_impl_c::little2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanCdataSection;
@@ -13116,7 +12883,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;
-pub use crate::src::xmltok::xmltok_impl_c::normal_predefinedEntityName;
 pub use crate::src::xmltok::xmltok_impl_c::normal_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
@@ -13730,14 +13496,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
@@ -14104,14 +13863,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
@@ -14478,14 +14230,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
@@ -14852,14 +14597,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Utf8,
@@ -15287,14 +15025,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Latin1,
@@ -15607,14 +15338,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Latin1,
@@ -15948,14 +15672,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Ascii,
@@ -16268,14 +15985,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            normal_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Normal,
         updatePosition: PositionUpdater::Normal,
         isPublicId: PublicIdChecker::Normal,
         utf8Convert: Utf8Converter::Ascii,
@@ -16933,14 +16643,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            little2_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
@@ -17253,14 +16956,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            little2_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
@@ -17573,14 +17269,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            little2_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
@@ -17893,14 +17582,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            little2_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Little2,
         updatePosition: PositionUpdater::Little2,
         isPublicId: PublicIdChecker::Little2,
         utf8Convert: Utf8Converter::Little2,
@@ -18213,14 +17895,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            big2_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Big2,
         updatePosition: PositionUpdater::Big2,
         isPublicId: PublicIdChecker::Big2,
         utf8Convert: Utf8Converter::Big2,
@@ -18533,14 +18208,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> ::core::ffi::c_int,
         ),
-        predefinedEntityName: Some(
-            big2_predefinedEntityName
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                ) -> ::core::ffi::c_int,
-        ),
+        predefinedEntityName: PredefinedEntityNameMatcher::Big2,
         updatePosition: PositionUpdater::Big2,
         isPublicId: PublicIdChecker::Big2,
         utf8Convert: Utf8Converter::Big2,

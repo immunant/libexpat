@@ -5520,14 +5520,12 @@ unsafe extern "C" fn doContent(
                     let mut name: *const crate::expat_external_h::XML_Char =
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                    let mut ch: crate::expat_external_h::XML_Char = (*enc)
-                        .predefinedEntityName
-                        .expect("non-null function pointer")(
-                        enc,
-                        s.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    )
-                        as crate::expat_external_h::XML_Char;
+                    let mut ch: crate::expat_external_h::XML_Char =
+                        crate::src::xmltok::predefined_entity_name(
+                            enc,
+                            s.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        ) as crate::expat_external_h::XML_Char;
                     if ch != 0 {
                         accountingDiffTolerated(
                             parser,
@@ -8895,11 +8893,8 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     9 => {
-                                        if (*enc)
-                                            .predefinedEntityName
-                                            .expect("non-null function pointer")(
-                                            enc, s, next
-                                        ) != 0
+                                        if crate::src::xmltok::predefined_entity_name(enc, s, next)
+                                            != 0
                                         {
                                             (*parser).m_declEntity =
                                                 ::core::ptr::null_mut::<ENTITY>();
@@ -10305,14 +10300,12 @@ unsafe extern "C" fn appendAttributeValue(
                         ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                     let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                     let mut checkEntityDecl: bool = false;
-                    let mut ch: crate::expat_external_h::XML_Char = (*enc)
-                        .predefinedEntityName
-                        .expect("non-null function pointer")(
-                        enc,
-                        ptr.offset((*enc).minBytesPerChar as isize),
-                        next.offset(-((*enc).minBytesPerChar as isize)),
-                    )
-                        as crate::expat_external_h::XML_Char;
+                    let mut ch: crate::expat_external_h::XML_Char =
+                        crate::src::xmltok::predefined_entity_name(
+                            enc,
+                            ptr.offset((*enc).minBytesPerChar as isize),
+                            next.offset(-((*enc).minBytesPerChar as isize)),
+                        ) as crate::expat_external_h::XML_Char;
                     if ch != 0 {
                         accountingDiffTolerated(
                             parser,
