@@ -1151,8 +1151,6 @@ pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
 pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS;
-pub use crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl;
-pub use crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS;
 pub use crate::src::xmltok::XML_Convert_Result;
 pub use crate::src::xmltok::XmlSizeOfUnknownEncoding;
 pub use crate::src::xmltok::XmlUtf8Encode;

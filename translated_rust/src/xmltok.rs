@@ -11089,77 +11089,6 @@ pub mod xmltok_ns_c {
     ) -> ::core::ffi::c_int {
         XmlInitEncoding(p, encPtr, name)
     }
-    pub unsafe extern "C" fn findEncoding(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-    ) -> *const crate::src::xmltok::ENCODING {
-        let mut buf: [::core::ffi::c_char; 128] = ::core::mem::transmute:: <
-            [u8; 128],
-            [::core::ffi::c_char; 128],
-        >(
-            *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-        );
-        let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        crate::src::xmltok::convert_to_utf8(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128 as ::core::ffi::c_int as isize)
-                .offset(-(1 as ::core::ffi::c_int as isize)),
-        );
-        if ptr != end {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-        }
-        *p = 0 as ::core::ffi::c_char;
-        let name_len = buf.iter().position(|&byte| byte == 0).unwrap_or(buf.len());
-        i = encoding_index_chars(&buf[..name_len]);
-        if i == UTF_16_ENC as ::core::ffi::c_int
-            && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
-        {
-            return enc;
-        }
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-        }
-        return encodings[i as usize];
-    }
-    pub unsafe extern "C" fn XmlParseXmlDecl(
-        mut isGeneralTextEntity: ::core::ffi::c_int,
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut badPtr: *mut *const ::core::ffi::c_char,
-        mut versionPtr: *mut *const ::core::ffi::c_char,
-        mut versionEndPtr: *mut *const ::core::ffi::c_char,
-        mut encodingName: *mut *const ::core::ffi::c_char,
-        mut encoding: *mut *const crate::src::xmltok::ENCODING,
-        mut standalone: *mut ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int {
-        return doParseXmlDecl(
-            Some(
-                findEncoding
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::xmltok::ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        );
-    }
     #[export_name = "XmlParseXmlDecl"]
 
     pub unsafe extern "C" fn XmlParseXmlDecl_ffi(
@@ -11174,17 +11103,62 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        XmlParseXmlDecl(
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
+        if enc.is_null()
+            || !enc.is_aligned()
+            || ptr.is_null()
+            || end.addr() < ptr.addr()
+            || (!badPtr.is_null() && !badPtr.is_aligned())
+            || (!versionPtr.is_null() && !versionPtr.is_aligned())
+            || (!versionEndPtr.is_null() && !versionEndPtr.is_aligned())
+            || (!encodingName.is_null() && !encodingName.is_aligned())
+            || (!encoding.is_null() && !encoding.is_aligned())
+            || (!standalone.is_null() && !standalone.is_aligned())
+        {
+            return 0;
+        }
+        let input = unsafe {
+            core::slice::from_raw_parts(ptr.cast::<u8>(), end.addr() - ptr.addr())
+        };
+        crate::src::xmltok::parse_xml_decl_ffi(
+            isGeneralTextEntity != 0,
+            unsafe { &*enc },
+            input,
+            |event| match event {
+                crate::src::xmltok::XmlDeclFfiEvent::Bad(offset) => {
+                    if let Some(output) = unsafe { badPtr.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::Version(offset) => {
+                    if let Some(output) = unsafe { versionPtr.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::VersionEnd(offset) => {
+                    if let Some(output) = unsafe { versionEndPtr.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::EncodingName(offset) => {
+                    if let Some(output) = unsafe { encodingName.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::Encoding(selected) => {
+                    if let Some(output) = unsafe { encoding.as_mut() } {
+                        *output = match selected {
+                            crate::src::xmltok::XmlDeclEncoding::Current => enc,
+                            crate::src::xmltok::XmlDeclEncoding::Known(index) => encodings[index],
+                            crate::src::xmltok::XmlDeclEncoding::Unknown => core::ptr::null(),
+                        };
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::Standalone(value) => {
+                    if let Some(output) = unsafe { standalone.as_mut() } {
+                        *output = value;
+                    }
+                }
+            },
         )
     }
     pub fn XmlGetUtf8InternalEncodingNS() -> &'static crate::src::xmltok::ENCODING {
@@ -11279,77 +11253,6 @@ pub mod xmltok_ns_c {
     ) -> ::core::ffi::c_int {
         XmlInitEncodingNS(p, encPtr, name)
     }
-    pub unsafe extern "C" fn findEncodingNS(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-    ) -> *const crate::src::xmltok::ENCODING {
-        let mut buf: [::core::ffi::c_char; 128] = ::core::mem::transmute:: <
-            [u8; 128],
-            [::core::ffi::c_char; 128],
-        >(
-            *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-        );
-        let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        crate::src::xmltok::convert_to_utf8(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128 as ::core::ffi::c_int as isize)
-                .offset(-(1 as ::core::ffi::c_int as isize)),
-        );
-        if ptr != end {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-        }
-        *p = 0 as ::core::ffi::c_char;
-        let name_len = buf.iter().position(|&byte| byte == 0).unwrap_or(buf.len());
-        i = encoding_index_chars(&buf[..name_len]);
-        if i == UTF_16_ENC as ::core::ffi::c_int
-            && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
-        {
-            return enc;
-        }
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
-        }
-        return encodingsNS[i as usize];
-    }
-    pub unsafe extern "C" fn XmlParseXmlDeclNS(
-        mut isGeneralTextEntity: ::core::ffi::c_int,
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut badPtr: *mut *const ::core::ffi::c_char,
-        mut versionPtr: *mut *const ::core::ffi::c_char,
-        mut versionEndPtr: *mut *const ::core::ffi::c_char,
-        mut encodingName: *mut *const ::core::ffi::c_char,
-        mut encoding: *mut *const crate::src::xmltok::ENCODING,
-        mut standalone: *mut ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int {
-        return doParseXmlDecl(
-            Some(
-                findEncodingNS
-                    as unsafe extern "C" fn(
-                        *const crate::src::xmltok::ENCODING,
-                        *const ::core::ffi::c_char,
-                        *const ::core::ffi::c_char,
-                    )
-                        -> *const crate::src::xmltok::ENCODING,
-            ),
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
-        );
-    }
     #[export_name = "XmlParseXmlDeclNS"]
 
     pub unsafe extern "C" fn XmlParseXmlDeclNS_ffi(
@@ -11364,22 +11267,65 @@ pub mod xmltok_ns_c {
         mut encoding: *mut *const crate::src::xmltok::ENCODING,
         mut standalone: *mut ::core::ffi::c_int,
     ) -> ::core::ffi::c_int {
-        XmlParseXmlDeclNS(
-            isGeneralTextEntity,
-            enc,
-            ptr,
-            end,
-            badPtr,
-            versionPtr,
-            versionEndPtr,
-            encodingName,
-            encoding,
-            standalone,
+        if enc.is_null()
+            || !enc.is_aligned()
+            || ptr.is_null()
+            || end.addr() < ptr.addr()
+            || (!badPtr.is_null() && !badPtr.is_aligned())
+            || (!versionPtr.is_null() && !versionPtr.is_aligned())
+            || (!versionEndPtr.is_null() && !versionEndPtr.is_aligned())
+            || (!encodingName.is_null() && !encodingName.is_aligned())
+            || (!encoding.is_null() && !encoding.is_aligned())
+            || (!standalone.is_null() && !standalone.is_aligned())
+        {
+            return 0;
+        }
+        let input = unsafe {
+            core::slice::from_raw_parts(ptr.cast::<u8>(), end.addr() - ptr.addr())
+        };
+        crate::src::xmltok::parse_xml_decl_ffi(
+            isGeneralTextEntity != 0,
+            unsafe { &*enc },
+            input,
+            |event| match event {
+                crate::src::xmltok::XmlDeclFfiEvent::Bad(offset) => {
+                    if let Some(output) = unsafe { badPtr.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::Version(offset) => {
+                    if let Some(output) = unsafe { versionPtr.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::VersionEnd(offset) => {
+                    if let Some(output) = unsafe { versionEndPtr.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::EncodingName(offset) => {
+                    if let Some(output) = unsafe { encodingName.as_mut() } {
+                        *output = ptr.wrapping_add(offset);
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::Encoding(selected) => {
+                    if let Some(output) = unsafe { encoding.as_mut() } {
+                        *output = match selected {
+                            crate::src::xmltok::XmlDeclEncoding::Current => enc,
+                            crate::src::xmltok::XmlDeclEncoding::Known(index) => encodingsNS[index],
+                            crate::src::xmltok::XmlDeclEncoding::Unknown => core::ptr::null(),
+                        };
+                    }
+                }
+                crate::src::xmltok::XmlDeclFfiEvent::Standalone(value) => {
+                    if let Some(output) = unsafe { standalone.as_mut() } {
+                        *output = value;
+                    }
+                }
+            },
         )
     }
-    use crate::src::xmltok::doParseXmlDecl;
     use crate::src::xmltok::encoding_index;
-    use crate::src::xmltok::encoding_index_chars;
     use crate::src::xmltok::initScan;
     use crate::src::xmltok::internal_little2_encoding;
     use crate::src::xmltok::internal_little2_encoding_ns;
@@ -11387,7 +11333,6 @@ pub mod xmltok_ns_c {
     use crate::src::xmltok::internal_utf8_encoding_ns;
     use crate::src::xmltok::NO_ENC;
     use crate::src::xmltok::UNKNOWN_ENC;
-    use crate::src::xmltok::UTF_16_ENC;
 }
 
 pub mod nametab_h {
@@ -12357,8 +12302,6 @@ pub use crate::src::xmltok::xmltok_impl_c::skip_s;
 pub use crate::src::xmltok::xmltok_impl_c::Big2AttributeAction;
 pub use crate::src::xmltok::xmltok_ns_c::encodings;
 pub use crate::src::xmltok::xmltok_ns_c::encodingsNS;
-pub use crate::src::xmltok::xmltok_ns_c::findEncoding;
-pub use crate::src::xmltok::xmltok_ns_c::findEncodingNS;
 pub use crate::src::xmltok::xmltok_ns_c::initScanContent;
 pub use crate::src::xmltok::xmltok_ns_c::initScanContentNS;
 pub use crate::src::xmltok::xmltok_ns_c::initScanProlog;
@@ -12369,8 +12312,6 @@ pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncodingNS;
 pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncoding;
 pub use crate::src::xmltok::xmltok_ns_c::XmlInitEncodingNS;
-pub use crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl;
-pub use crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS;
 pub use crate::xmltok_impl_c::inName;
 pub use crate::xmltok_impl_c::inName_0;
 pub use crate::xmltok_impl_c::inName_1;
@@ -17244,6 +17185,27 @@ pub(crate) struct XmlDeclResult {
     pub(crate) standalone: Option<::core::ffi::c_int>,
 }
 
+/// A parsed XML declaration together with the encoding selection requested by
+/// its `encoding` pseudo-attribute.  All offsets remain relative to the
+/// caller-owned declaration slice; C boundary adapters alone materialize
+/// cursors from them.
+pub(crate) struct XmlDeclBoundaryResult {
+    pub(crate) declaration: XmlDeclResult,
+    pub(crate) selected_encoding: Option<XmlDeclEncoding>,
+}
+
+/// A declaration result expressed solely in byte offsets and safe values.
+/// C wrappers translate these events to their optional output cursor slots.
+#[derive(Copy, Clone)]
+pub(crate) enum XmlDeclFfiEvent {
+    Bad(usize),
+    Version(usize),
+    VersionEnd(usize),
+    EncodingName(usize),
+    Encoding(XmlDeclEncoding),
+    Standalone(::core::ffi::c_int),
+}
+
 #[derive(Copy, Clone)]
 pub(crate) struct XmlDeclEncodingInfo {
     pub(crate) name_matcher: NameMatcher,
@@ -17262,6 +17224,7 @@ impl encoding {
 /// The encoding selected by a syntactically valid XML declaration.  The
 /// parser consumes this index using its own namespace-specific encoding
 /// table, avoiding a raw tokenizer callback at the declaration boundary.
+#[derive(Copy, Clone)]
 pub(crate) enum XmlDeclEncoding {
     Current,
     Known(usize),
@@ -17469,6 +17432,59 @@ pub(crate) fn parse_xml_decl(
     parse_xml_decl_with_info(is_general_text_entity, enc.xml_decl_info(), input)
 }
 
+/// Parses an XML declaration and resolves its optional encoding name without
+/// retaining a raw scanner callback or any pointer into the input token.
+pub(crate) fn parse_xml_decl_boundary(
+    is_general_text_entity: bool,
+    enc: &encoding,
+    input: &[u8],
+) -> Result<XmlDeclBoundaryResult, usize> {
+    let declaration = parse_xml_decl(is_general_text_entity, enc, input)?;
+    let selected_encoding = declaration.encoding_name.as_ref().map(|range| {
+        xml_decl_encoding(enc.xml_decl_info(), &input[range.clone()])
+    });
+    Ok(XmlDeclBoundaryResult {
+        declaration,
+        selected_encoding,
+    })
+}
+
+/// Applies a parsed XML declaration to already-validated C output slots.
+/// This keeps all declaration-result handling slice- and offset-based; the
+/// exported wrappers only perform their boundary conversions.
+pub(crate) fn parse_xml_decl_ffi(
+    is_general_text_entity: bool,
+    current_encoding: &encoding,
+    input: &[u8],
+    mut emit: impl FnMut(XmlDeclFfiEvent),
+) -> ::core::ffi::c_int {
+    let result = match parse_xml_decl_boundary(is_general_text_entity, current_encoding, input) {
+        Ok(result) => result,
+        Err(offset) => {
+            emit(XmlDeclFfiEvent::Bad(offset.min(input.len())));
+            return 0;
+        }
+    };
+
+    let declaration = result.declaration;
+    if let Some(range) = declaration.version {
+        emit(XmlDeclFfiEvent::Version(range.start));
+    }
+    if let Some(offset) = declaration.version_end {
+        emit(XmlDeclFfiEvent::VersionEnd(offset));
+    }
+    if let Some(range) = declaration.encoding_name {
+        emit(XmlDeclFfiEvent::EncodingName(range.start));
+    }
+    if let Some(selected) = result.selected_encoding {
+        emit(XmlDeclFfiEvent::Encoding(selected));
+    }
+    if let Some(value) = declaration.standalone {
+        emit(XmlDeclFfiEvent::Standalone(value));
+    }
+    1
+}
+
 pub(crate) fn parse_xml_decl_with_info(
     is_general_text_entity: bool,
     encoding: XmlDeclEncodingInfo,
@@ -17552,62 +17568,6 @@ pub(crate) fn parse_xml_decl_with_info(
     } else {
         Err(cursor)
     }
-}
-
-unsafe extern "C" fn doParseXmlDecl(
-    mut encodingFinder: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            *const ::core::ffi::c_char,
-        ) -> *const crate::src::xmltok::ENCODING,
-    >,
-    mut isGeneralTextEntity: ::core::ffi::c_int,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut badPtr: *mut *const ::core::ffi::c_char,
-    mut versionPtr: *mut *const ::core::ffi::c_char,
-    mut versionEndPtr: *mut *const ::core::ffi::c_char,
-    mut encodingName: *mut *const ::core::ffi::c_char,
-    mut encoding: *mut *const crate::src::xmltok::ENCODING,
-    mut standalone: *mut ::core::ffi::c_int,
-) -> ::core::ffi::c_int {
-    if enc.is_null() || ptr.is_null() || end.addr() < ptr.addr() {
-        return 0;
-    }
-    let input = core::slice::from_raw_parts(ptr.cast::<u8>(), end.addr() - ptr.addr());
-    let result = match parse_xml_decl(isGeneralTextEntity != 0, &*enc, input) {
-        Ok(result) => result,
-        Err(offset) => {
-            if let Some(bad) = badPtr.as_mut() {
-                *bad = ptr.wrapping_add(offset.min(input.len()));
-            }
-            return 0;
-        }
-    };
-    if let (Some(range), Some(version)) = (result.version, versionPtr.as_mut()) {
-        *version = ptr.wrapping_add(range.start);
-    }
-    if let (Some(offset), Some(version_end)) = (result.version_end, versionEndPtr.as_mut()) {
-        *version_end = ptr.wrapping_add(offset);
-    }
-    if let (Some(range), Some(name)) = (result.encoding_name.clone(), encodingName.as_mut()) {
-        *name = ptr.wrapping_add(range.start);
-    }
-    if let (Some(range), Some(value_end), Some(found_encoding)) =
-        (result.encoding_name, result.encoding_end, encoding.as_mut())
-    {
-        *found_encoding = encodingFinder.expect("non-null function pointer")(
-            enc,
-            ptr.wrapping_add(range.start),
-            ptr.wrapping_add(value_end),
-        );
-    }
-    if let (Some(value), Some(output)) = (result.standalone, standalone.as_mut()) {
-        *output = value;
-    }
-    1
 }
 
 fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
