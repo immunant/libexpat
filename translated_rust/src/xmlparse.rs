@@ -8724,12 +8724,15 @@ unsafe extern "C" fn externalEntityInitProcessor2(
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = start;
-    let mut tok: ::core::ffi::c_int = (*parser_encoding(parser)).scanners[1 as usize].scan(
+    let scan = (*parser_encoding(parser)).scanners[1 as usize].scan(
         parser_encoding(parser),
         start,
         end,
-        &raw mut next,
     );
+    let mut tok: ::core::ffi::c_int = scan.token;
+    if let Some(offset) = scan.next {
+        next = start.wrapping_add(offset);
+    }
     match tok {
         crate::src::xmltok::XML_TOK_BOM => {
             if accountingDiffTolerated(
@@ -8781,12 +8784,15 @@ unsafe extern "C" fn externalEntityInitProcessor3(
     let mut tok: ::core::ffi::c_int = 0;
     let mut next: *const ::core::ffi::c_char = start;
     set_parser_event_start!(&mut *parser, start);
-    tok = (*parser_encoding(parser)).scanners[1 as usize].scan(
+    let scan = (*parser_encoding(parser)).scanners[1 as usize].scan(
         parser_encoding(parser),
         start,
         end,
-        &raw mut next,
     );
+    tok = scan.token;
+    if let Some(offset) = scan.next {
+        next = start.wrapping_add(offset);
+    }
     set_parser_event_end!(parser, next);
     match tok {
         crate::src::xmltok::XML_TOK_XML_DECL => {
@@ -8914,8 +8920,11 @@ unsafe extern "C" fn doContent(
     update_event_start(s);
     loop {
         let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int =
-            (*enc).scanners[1 as usize].scan(enc, s, end, &raw mut next);
+        let scan = (*enc).scanners[1 as usize].scan(enc, s, end);
+        let mut tok: ::core::ffi::c_int = scan.token;
+        if let Some(offset) = scan.next {
+            next = s.wrapping_add(offset);
+        }
         let mut accountAfter: *const ::core::ffi::c_char = if tok
             == crate::src::xmltok::XML_TOK_TRAILING_RSQB
             || tok == crate::src::xmltok::XML_TOK_TRAILING_CR
@@ -11862,7 +11871,11 @@ unsafe extern "C" fn doIgnoreSection(
         .then(|| internal_event_offset(internal_event_window, s.addr()))
         .flatten();
     *startPtr = ::core::ptr::null::<::core::ffi::c_char>();
-    tok = (*enc).scanners[3 as usize].scan(enc, s, end, &raw mut next);
+    let scan = (*enc).scanners[3 as usize].scan(enc, s, end);
+    tok = scan.token;
+    if let Some(offset) = scan.next {
+        next = s.wrapping_add(offset);
+    }
     if accountingDiffTolerated(
         parser,
         tok,
@@ -12366,12 +12379,15 @@ unsafe extern "C" fn entityValueInitProcessor(
     let mut next: *const ::core::ffi::c_char = start;
     set_parser_event_start!(&mut *parser, start);
     loop {
-        tok = (*parser_encoding(parser)).scanners[0 as usize].scan(
+        let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
             parser_encoding(parser),
             start,
             end,
-            &raw mut next,
         );
+        tok = scan.token;
+        if let Some(offset) = scan.next {
+            next = start.wrapping_add(offset);
+        }
         set_parser_event_end!(parser, next);
         if tok <= 0 as ::core::ffi::c_int {
             if (*parser).m_parsingStatus.finalBuffer == 0
@@ -12448,12 +12464,15 @@ unsafe extern "C" fn externalParEntProcessor(
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = s;
     let mut tok: ::core::ffi::c_int = 0;
-    tok = (*parser_encoding(parser)).scanners[0 as usize].scan(
+    let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
         parser_encoding(parser),
         s,
         end,
-        &raw mut next,
     );
+    tok = scan.token;
+    if let Some(offset) = scan.next {
+        next = s.wrapping_add(offset);
+    }
     if tok <= 0 as ::core::ffi::c_int {
         if (*parser).m_parsingStatus.finalBuffer == 0 && tok != crate::src::xmltok::XML_TOK_INVALID
         {
@@ -12482,12 +12501,15 @@ unsafe extern "C" fn externalParEntProcessor(
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
         s = next;
-        tok = (*parser_encoding(parser)).scanners[0 as usize].scan(
+        let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
             parser_encoding(parser),
             s,
             end,
-            &raw mut next,
         );
+        tok = scan.token;
+        if let Some(offset) = scan.next {
+            next = s.wrapping_add(offset);
+        }
     }
     (*parser).m_processor = ProcessorState::Prolog;
     return doProlog(
@@ -12516,7 +12538,11 @@ unsafe extern "C" fn entityValueProcessor(
     let mut enc: *const crate::src::xmltok::ENCODING = parser_encoding(parser);
     let mut tok: ::core::ffi::c_int = 0;
     loop {
-        tok = (*enc).scanners[0 as usize].scan(enc, start, end, &raw mut next);
+        let scan = (*enc).scanners[0 as usize].scan(enc, start, end);
+        tok = scan.token;
+        if let Some(offset) = scan.next {
+            next = start.wrapping_add(offset);
+        }
         if tok <= 0 as ::core::ffi::c_int {
             if (*parser).m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
@@ -12556,12 +12582,15 @@ unsafe extern "C" fn prologProcessor(
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
     let mut next: *const ::core::ffi::c_char = s;
-    let mut tok: ::core::ffi::c_int = (*parser_encoding(parser)).scanners[0 as usize].scan(
+    let scan = (*parser_encoding(parser)).scanners[0 as usize].scan(
         parser_encoding(parser),
         s,
         end,
-        &raw mut next,
     );
+    let mut tok: ::core::ffi::c_int = scan.token;
+    if let Some(offset) = scan.next {
+        next = s.wrapping_add(offset);
+    }
     return doProlog(
         parser,
         parser_encoding(parser),
@@ -15635,7 +15664,11 @@ unsafe extern "C" fn doProlog(
             _ => {}
         }
         s = next;
-        tok = (*enc).scanners[0 as usize].scan(enc, s, end, &raw mut next);
+        let scan = (*enc).scanners[0 as usize].scan(enc, s, end);
+        tok = scan.token;
+        if let Some(offset) = scan.next {
+            next = s.wrapping_add(offset);
+        }
     }
 }
 
@@ -15657,7 +15690,11 @@ unsafe extern "C" fn epilogProcessor(
         // does not live beyond the current iteration.
         let enc = parser_encoding(parser);
         let scanner = (*enc).scanners[0];
-        let tok: ::core::ffi::c_int = scanner.scan(enc, s, end, &raw mut next);
+        let scan = scanner.scan(enc, s, end);
+        let tok: ::core::ffi::c_int = scan.token;
+        if let Some(offset) = scan.next {
+            next = s.wrapping_add(offset);
+        }
         if accountingDiffTolerated(
             parser,
             tok,
@@ -16049,12 +16086,15 @@ unsafe extern "C" fn internalEntityProcessor(
         next = textStart;
         if is_parameter_entity {
             let internal_encoding = internal_encoding((*parser).m_internalEncoding);
-            let mut tok: ::core::ffi::c_int = internal_encoding.scanners[0 as usize].scan(
+            let scan = internal_encoding.scanners[0 as usize].scan(
                 internal_encoding as *const _,
                 textStart,
                 textEnd,
-                &raw mut next,
             );
+            let mut tok: ::core::ffi::c_int = scan.token;
+            if let Some(offset) = scan.next {
+                next = textStart.wrapping_add(offset);
+            }
             result = doProlog(
                 parser,
                 internal_encoding as *const _,

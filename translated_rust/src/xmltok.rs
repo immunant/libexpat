@@ -331,16 +331,22 @@ impl Scanner {
         crate::src::xmltok::xmltok_impl_c::scan_result(self, encoding, input, encoding_id)
     }
 
-    pub unsafe fn scan(
+    /// # Safety
+    ///
+    /// `ptr..end` must describe a readable range from one allocation, and
+    /// `enc` must identify the matching tokenizer encoding.  Unlike the old
+    /// C-shaped adapter, this returns the cursor as an offset: callers retain
+    /// ownership of their output cursor and no longer hand this dispatcher a
+    /// writable raw-pointer slot.
+    pub(crate) unsafe fn scan(
         self,
         enc: *const crate::src::xmltok::ENCODING,
         ptr: *const ::core::ffi::c_char,
         end: *const ::core::ffi::c_char,
-        next_tok_ptr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
+    ) -> ScannerResult {
         let span = end.offset_from(ptr);
         if span < 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
+            return ScannerResult::new(crate::src::xmltok::XML_TOK_NONE_1, None);
         }
         let input = ScannerInput {
             bytes: ::core::slice::from_raw_parts(ptr.cast::<u8>(), span as usize),
@@ -355,19 +361,11 @@ impl Scanner {
                 };
                 let namespace_aware = matches!(self, Self::InitPrologNS | Self::InitContentNS);
                 let initial = &mut *(enc as *mut crate::src::xmltok::INIT_ENCODING);
-                let result = initial_scan_result(initial, namespace_aware, state, input);
-                if let Some(offset) = result.next {
-                    *next_tok_ptr = ptr.wrapping_add(offset);
-                }
-                return result.token;
+                return initial_scan_result(initial, namespace_aware, state, input);
             }
             _ => {}
         }
-        let result = self.scan_result(&*(enc as *const normal_encoding), input, enc as usize);
-        if let Some(offset) = result.next {
-            *next_tok_ptr = ptr.wrapping_add(offset);
-        }
-        result.token
+        self.scan_result(&*(enc as *const normal_encoding), input, enc as usize)
     }
 }
 
@@ -18283,12 +18281,15 @@ unsafe extern "C" fn initScan(
         InitScanAction::Scan { encoding_index } => {
             let selected_encoding = encoding_table[encoding_index];
             initial_encoding.selected_encoding = Some(encoding_index);
-            (*selected_encoding).scanners[state.scanner_index()].scan(
+            let result = (*selected_encoding).scanners[state.scanner_index()].scan(
                 selected_encoding,
                 ptr,
                 end,
-                nextTokPtr,
-            )
+            );
+            if let Some(offset) = result.next {
+                *nextTokPtr = ptr.wrapping_add(offset);
+            }
+            result.token
         }
     }
 }
