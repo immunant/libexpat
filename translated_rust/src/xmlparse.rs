@@ -5848,6 +5848,10 @@ unsafe fn call_processor_impl(
         let start = bytes.as_ptr().wrapping_add(next).cast();
         let end = bytes.as_ptr().wrapping_add(input.end).cast();
         let mut next_pointer = start;
+        // CDATA cursor results are already checked buffer offsets.  Keep
+        // them as offsets through this dispatch instead of rebuilding a raw
+        // cursor merely for the common processor epilogue below.
+        let mut checked_next_offset = None;
         ret = if matches!(parser.m_processor, ProcessorState::Content) {
             let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
                 return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
@@ -5880,6 +5884,10 @@ unsafe fn call_processor_impl(
                 }
             }
             result
+        } else if matches!(parser.m_processor, ProcessorState::CdataSection) {
+            let result = cdata_section_processor_impl(parser, next, input.end);
+            checked_next_offset = Some(result.next_offset);
+            result.error
         } else {
             let processor: Processor = match parser.m_processor {
                 ProcessorState::PrologInit => prologInitProcessor,
@@ -5892,7 +5900,7 @@ unsafe fn call_processor_impl(
                 ProcessorState::ExternalParEnt => externalParEntProcessor,
                 ProcessorState::EntityValueInit => entityValueInitProcessor,
                 ProcessorState::EntityValue => entityValueProcessor,
-                ProcessorState::CdataSection => cdataSectionProcessor,
+                ProcessorState::CdataSection => unreachable!("CDATA dispatch is handled above"),
                 ProcessorState::IgnoreSection => ignoreSectionProcessor,
                 ProcessorState::Prolog => prologProcessor,
                 ProcessorState::Epilog => epilogProcessor,
@@ -5901,8 +5909,14 @@ unsafe fn call_processor_impl(
             };
             processor(std::ptr::from_mut(parser), start, end, &raw mut next_pointer)
         };
-        let Some(next_offset) = parser.m_buffer.offset_from_address(next_pointer.addr()) else {
-            return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+        let next_offset = match checked_next_offset {
+            Some(offset) => offset,
+            None => {
+                let Some(offset) = parser.m_buffer.offset_from_address(next_pointer.addr()) else {
+                    return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                };
+                offset
+            }
         };
         if next_offset > input.end {
             return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
@@ -14032,43 +14046,70 @@ fn namespace_binding_input(
     })
 }
 
-unsafe extern "C" fn cdataSectionProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut endPtr: *mut *const ::core::ffi::c_char,
-) -> crate::expat_h::XML_Error {
-    if parser.is_null() || endPtr.is_null() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    // Convert the processor ABI values once at this boundary.  The CDATA
-    // adapter only needs ordinary parser and out-cursor references after this
-    // point, so it cannot repeat either raw dereference while handling tokens.
-    let parser_state = &mut *parser;
-    let end_ptr = &mut *endPtr;
-    let encoding = current_parser_encoding(parser_state);
-    let mut result: crate::expat_h::XML_Error = doCdataSection(
-        parser_state,
-        std::ptr::from_ref(encoding),
-        &mut start,
-        end,
-        end_ptr,
-        (parser_state.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
-            as crate::expat_h::XML_Bool,
+struct CdataProcessorResult {
+    error: crate::expat_h::XML_Error,
+    next_offset: usize,
+}
+
+/// Runs CDATA processing against a range already validated by
+/// `call_processor_impl`.  CDATA state and cursor results are offsets, so no
+/// raw processor ABI values need to cross this boundary.
+fn cdata_section_processor_impl(
+    parser: &mut XML_ParserStruct,
+    start_offset: usize,
+    end_offset: usize,
+) -> CdataProcessorResult {
+    let Some(base_address) = parser.m_buffer.bytes.as_ref().map(|bytes| bytes.as_ptr().addr()) else {
+        return CdataProcessorResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            next_offset: start_offset,
+        };
+    };
+    let Some(start_address) = base_address.checked_add(start_offset) else {
+        return CdataProcessorResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            next_offset: start_offset,
+        };
+    };
+    let Some(end_address) = base_address.checked_add(end_offset) else {
+        return CdataProcessorResult {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            next_offset: start_offset,
+        };
+    };
+    let encoding_address = std::ptr::from_ref(current_parser_encoding(parser)).addr();
+    let checked = match do_cdata_section_checked(
+        parser,
+        encoding_address,
+        start_address,
+        end_address,
+        parser.m_parsingStatus.finalBuffer == 0,
         XML_ACCOUNT_DIRECT,
-    );
-    if result as ::core::ffi::c_uint
-        != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-    {
-        return result;
-    }
-    if !matches!(
-        cdata_processor_continuation(parser_state, !start.is_null()),
-        CdataProcessorContinuation::Complete
     ) {
-        parser_state.m_resumeAfterCdata = true;
+        Ok(checked) => checked,
+        Err(_) => {
+            return CdataProcessorResult {
+                error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                next_offset: start_offset,
+            };
+        }
+    };
+    let next_offset = checked
+        .result
+        .next
+        .and_then(|cursor| start_offset.checked_add(cursor))
+        .unwrap_or(start_offset);
+    let error = checked.result.error;
+    if error as ::core::ffi::c_uint
+        == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        && !matches!(
+            cdata_processor_continuation(parser, checked.result.start.is_some()),
+            CdataProcessorContinuation::Complete
+        )
+    {
+        parser.m_resumeAfterCdata = true;
     }
-    result
+    CdataProcessorResult { error, next_offset }
 }
 
 /// Chooses the processor that resumes after a CDATA section has yielded a
@@ -14252,81 +14293,16 @@ fn content_advance_event_start_to_end(
     }
 }
 
-// This is the sole raw boundary for the CDATA processor.  It validates and
-// copies the incoming cursor window, then lets the implementation below work
-// entirely in offsets and owned byte vectors.  Foreign callbacks, accounting,
-// and conversion stay here because they are the only operations that still
-// need C pointers.
-unsafe extern "C" fn doCdataSection(
-    parser_state: &mut XML_ParserStruct,
-    enc: *const crate::src::xmltok::ENCODING,
-    startPtr: &mut *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    nextPtr: &mut *const ::core::ffi::c_char,
-    haveMore: crate::expat_h::XML_Bool,
-    account: XML_Account,
-) -> crate::expat_h::XML_Error {
-    if enc.is_null() || (*startPtr).is_null() || end.is_null() {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    }
-    let start = *startPtr;
-    let Ok(checked) = do_cdata_section_checked(
-        parser_state,
-        enc.addr(),
-        start.addr(),
-        end.addr(),
-        haveMore != 0,
-        account,
-    ) else {
-        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-    };
-    *startPtr = ::core::ptr::null();
-    let cursor_pointer = |cursor: usize| -> Option<*const ::core::ffi::c_char> {
-        match checked.event_target {
-            CdataEventTarget::Parser { input_start } => {
-                let offset = input_start.checked_add(cursor)?;
-                let bytes = parser_state.m_buffer.bytes.as_deref()?;
-                bytes.get(offset..)
-                    .map(|_| bytes.as_ptr().wrapping_add(offset).cast())
-            }
-            CdataEventTarget::InternalEntity { text_start, .. } => {
-                let (text_ref, text_len, dtd) = checked.entity_text.as_ref()?;
-                let offset = text_start.checked_add(cursor)?;
-                dtd.inspect(|dtd| {
-                    let text = entity_text_chars(dtd, *text_ref, *text_len)?;
-                    text.get(offset..)
-                        .map(|_| text.as_ptr().wrapping_add(offset))
-                })
-            }
-        }
-    };
-    if let Some(cursor) = checked.result.start {
-        let Some(pointer) = cursor_pointer(cursor) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        *startPtr = pointer;
-    }
-    if let Some(cursor) = checked.result.next {
-        let Some(pointer) = cursor_pointer(cursor) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
-        *nextPtr = pointer;
-    }
-    checked.result.error
-}
-
-/// Applies a CDATA section using validated parser/entity offsets.
-///
-/// Both callers enter with C cursors, but callbacks may relocate either
-/// backing allocation.  This helper retains only copied token data and a
-/// stable cursor target; its callers recover output pointers from the live
-/// owner after it returns.
+/// CDATA processing owns a bounded input copy, while callers reconstruct
+/// output cursors from the live backing storage after callbacks return.
 struct CheckedCdataSection {
     result: CdataResult,
     event_target: CdataEventTarget,
     entity_text: Option<(EntityTextRef, ::core::ffi::c_int, std::sync::Arc<SharedDtd>)>,
 }
 
+/// Applies a CDATA section using validated parser/entity offsets.  It copies
+/// the bounded input before callbacks can re-enter and relocate parser state.
 fn do_cdata_section_checked(
     parser_state: &mut XML_ParserStruct,
     encoding_address: usize,
