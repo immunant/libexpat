@@ -2311,7 +2311,11 @@ pub struct XML_ParserStruct {
     m_groupConnector: GroupConnectorStorage,
     pub m_groupSize: ::core::ffi::c_uint,
     pub m_namespaceSeparator: crate::expat_external_h::XML_Char,
-    pub m_parentParser: crate::expat_h::XML_Parser,
+    // A child parser observes, but never owns, its parent.  The C lifetime
+    // contract guarantees that a live child has a live parent; represent the
+    // only nullable state explicitly rather than storing a nullable raw
+    // pointer in parser state.
+    pub m_parentParser: Option<::core::ptr::NonNull<XML_ParserStruct>>,
     pub m_parsingStatus: crate::expat_h::XML_ParsingStatus,
     pub m_isParamEntity: crate::expat_h::XML_Bool,
     pub m_useForeignDTD: crate::expat_h::XML_Bool,
@@ -3308,7 +3312,7 @@ pub unsafe extern "C" fn expat_malloc(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"rootParser->m_parentParser == NULL\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3398,7 +3402,7 @@ pub unsafe extern "C" fn expat_free(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label_0: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"rootParser->m_parentParser == NULL\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3483,7 +3487,7 @@ pub unsafe extern "C" fn expat_realloc(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label_0: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"rootParser->m_parentParser == NULL\0".as_ptr() as *const ::core::ffi::c_char,
@@ -3742,7 +3746,7 @@ unsafe extern "C" fn get_hash_secret_salt(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -4066,7 +4070,7 @@ fn initial_parser_struct(
         m_groupConnector: GroupConnectorStorage::empty(),
         m_groupSize: 0,
         m_namespaceSeparator: crate::ascii_h::ASCII_EXCL as crate::expat_external_h::XML_Char,
-        m_parentParser: ::core::ptr::null_mut::<XML_ParserStruct>(),
+        m_parentParser: None,
         m_parsingStatus: crate::expat_h::XML_ParsingStatus {
             parsing: crate::expat_h::XML_INITIALIZED,
             finalBuffer: crate::expat_h::XML_FALSE,
@@ -4173,7 +4177,7 @@ unsafe extern "C" fn parserCreate(
                 0 as XmlBigCount
             },
         };
-        parser.m_parentParser = parentParser;
+        parser.m_parentParser = ::core::ptr::NonNull::new(parentParser);
         if parentParser.is_null() {
             parser.m_accounting.countBytesDirect = 0 as XmlBigCount;
         }
@@ -4188,7 +4192,7 @@ unsafe extern "C" fn parserCreate(
         };
         // Both conditions are invariants of parser ownership/accounting.  They
         // cannot be recovered from without invalidating the allocator ledger.
-        if !root_parser.m_parentParser.is_null()
+        if root_parser.m_parentParser.is_some()
             || (XmlBigCount::MAX - root_parser.m_alloc_tracker.bytesAllocated
                 < increase as XmlBigCount)
         {
@@ -4603,7 +4607,7 @@ pub unsafe extern "C" fn XML_ParserReset(
         dtd,
     ) = {
         let parser_state = &mut *parser;
-        if !parser_state.m_parentParser.is_null() {
+        if parser_state.m_parentParser.is_some() {
             return crate::expat_h::XML_FALSE;
         }
         let mut active_tags = std::mem::take(&mut parser_state.m_activeTags);
@@ -5130,7 +5134,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     (*parser).m_ns_triplets = oldns_triplets;
     (*parser).m_hash_secret_salt = oldhash_secret_salt;
     (*parser).m_reparseDeferralEnabled = oldReparseDeferralEnabled;
-    (*parser).m_parentParser = oldParser;
+    (*parser).m_parentParser = ::core::ptr::NonNull::new(oldParser);
     (*parser).m_paramEntityParsing = oldParamEntityParsing;
     (*parser).m_prologState.inEntityValue = oldInEntityValue;
     if !context.is_null() {
@@ -5392,7 +5396,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
                 let mut dtd = dtd.value.into_inner();
                 dtdDestroy(
                     &mut dtd,
-                    parser.m_parentParser.is_null() as ::core::ffi::c_int
+                    parser.m_parentParser.is_none() as ::core::ffi::c_int
                         as crate::expat_h::XML_Bool,
                     parser as *mut XML_ParserStruct,
                 );
@@ -6494,7 +6498,7 @@ pub unsafe extern "C" fn XML_SetHashSalt(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -6544,7 +6548,7 @@ pub unsafe extern "C" fn XML_Parse(
             return crate::expat_h::XML_STATUS_ERROR;
         }
         0 => {
-            if (*parser).m_parentParser.is_null() && startParsing(parser) == 0 {
+            if (*parser).m_parentParser.is_none() && startParsing(parser) == 0 {
                 (*parser).m_errorCode = crate::expat_h::XML_ERROR_NO_MEMORY;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
@@ -6618,7 +6622,7 @@ unsafe fn parse_buffer_impl(
                     parser_ref.m_errorCode = crate::expat_h::XML_ERROR_NO_BUFFER;
                     return crate::expat_h::XML_STATUS_ERROR;
                 }
-                parser_ref.m_parentParser.is_null()
+                parser_ref.m_parentParser.is_none()
             }
             _ => false,
         }
@@ -7556,7 +7560,7 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionMaximumAmplificatio
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
     if parser.is_null()
-        || !(*parser).m_parentParser.is_null()
+        || (*parser).m_parentParser.is_some()
         || maximumAmplificationFactor.is_nan() as i32 != 0
         || maximumAmplificationFactor < 1.0f32
     {
@@ -7577,7 +7581,7 @@ pub unsafe extern "C" fn XML_SetBillionLaughsAttackProtectionActivationThreshold
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || !(*parser).m_parentParser.is_null() {
+    if parser.is_null() || (*parser).m_parentParser.is_some() {
         return crate::expat_h::XML_FALSE;
     }
     (*parser).m_accounting.activationThresholdBytes = activationThresholdBytes;
@@ -7596,7 +7600,7 @@ pub unsafe extern "C" fn XML_SetAllocTrackerMaximumAmplification(
     mut maximumAmplificationFactor: ::core::ffi::c_float,
 ) -> crate::expat_h::XML_Bool {
     if parser.is_null()
-        || !(*parser).m_parentParser.is_null()
+        || (*parser).m_parentParser.is_some()
         || maximumAmplificationFactor.is_nan() as i32 != 0
         || maximumAmplificationFactor < 1.0f32
     {
@@ -7617,7 +7621,7 @@ pub unsafe extern "C" fn XML_SetAllocTrackerActivationThreshold(
     mut parser: crate::expat_h::XML_Parser,
     mut activationThresholdBytes: ::core::ffi::c_ulonglong,
 ) -> crate::expat_h::XML_Bool {
-    if parser.is_null() || !(*parser).m_parentParser.is_null() {
+    if parser.is_null() || (*parser).m_parentParser.is_some() {
         return crate::expat_h::XML_FALSE;
     }
     (*parser).m_alloc_tracker.activationThresholdBytes = activationThresholdBytes as XmlBigCount;
@@ -7711,7 +7715,7 @@ unsafe extern "C" fn contentProcessor(
 ) -> crate::expat_h::XML_Error {
     let mut result: crate::expat_h::XML_Error = doContent(
         parser,
-        if !(*parser).m_parentParser.is_null() {
+        if (*parser).m_parentParser.is_some() {
             1 as ::core::ffi::c_int
         } else {
             0 as ::core::ffi::c_int
@@ -10064,7 +10068,7 @@ unsafe extern "C" fn cdataSectionProcessor(
         return result;
     }
     if !start.is_null() {
-        if !(*parser).m_parentParser.is_null() {
+        if (*parser).m_parentParser.is_some() {
             (*parser).m_processor = ProcessorState::ExternalEntityContent;
             return externalEntityContentProcessor(parser, start, end, endPtr);
         } else {
@@ -12627,7 +12631,7 @@ unsafe extern "C" fn doProlog(
                                                     (*entity).is_param =
                                                         crate::expat_h::XML_FALSE;
                                                     (*entity).is_internal =
-                                                        !(!(*parser).m_parentParser.is_null()
+                                                        !((*parser).m_parentParser.is_some()
                                                             || !(*parser)
                                                                 .m_openInternalEntities
                                                                 .is_null())
@@ -12678,9 +12682,9 @@ unsafe extern "C" fn doProlog(
                                                 (*entity).publicId = None;
                                                 (*entity).is_param =
                                                     crate::expat_h::XML_TRUE;
-                                                (*entity).is_internal = !(!(*parser)
+                                                (*entity).is_internal = !((*parser)
                                                     .m_parentParser
-                                                    .is_null()
+                                                    .is_some()
                                                     || !(*parser).m_openInternalEntities.is_null())
                                                     as ::core::ffi::c_int
                                                     as crate::expat_h::XML_Bool;
@@ -17583,7 +17587,7 @@ unsafe extern "C" fn accountingGetCurrentAmplification(
                 / lenOfShortestInclude as ::core::ffi::c_float
         };
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -17604,7 +17608,7 @@ unsafe extern "C" fn accountingReportStats(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -17668,7 +17672,7 @@ unsafe extern "C" fn accountingReportDiff(
     mut account: XML_Account,
 ) {
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -17752,7 +17756,7 @@ unsafe extern "C" fn accountingDiffTolerated(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(originParser, &raw mut levelsAwayFromRootParser);
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -17838,7 +17842,7 @@ unsafe extern "C" fn entityTrackingReportStats(
     mut sourceLine: ::core::ffi::c_int,
 ) {
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -17884,7 +17888,7 @@ unsafe extern "C" fn entityTrackingOnOpen(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -17921,7 +17925,7 @@ unsafe extern "C" fn entityTrackingOnClose(
     let rootParser: crate::expat_h::XML_Parser =
         getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>());
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
@@ -17948,12 +17952,12 @@ unsafe extern "C" fn getRootParserOf(
 ) -> crate::expat_h::XML_Parser {
     let mut rootParser: crate::expat_h::XML_Parser = parser;
     let mut stepsTakenUpwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
-    while !(*rootParser).m_parentParser.is_null() {
-        rootParser = (*rootParser).m_parentParser;
+    while let Some(parent) = (*rootParser).m_parentParser {
+        rootParser = parent.as_ptr();
         stepsTakenUpwards = stepsTakenUpwards.wrapping_add(1);
     }
     '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
+        if (*rootParser).m_parentParser.is_none() {
         } else {
             crate::stdlib::__assert_fail(
                 b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
