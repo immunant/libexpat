@@ -27336,286 +27336,72 @@ fn entity_tracking_on_close(
     root.entity_stats.currentDepth = root.entity_stats.currentDepth.wrapping_sub(1);
 }
 
-pub unsafe extern "C" fn unsignedCharToPrintable(
-    mut c: ::core::ffi::c_uchar,
-) -> *const ::core::ffi::c_char {
-    match c as ::core::ffi::c_int {
-        0 => return b"\\0\0".as_ptr() as *const ::core::ffi::c_char,
-        1 => return b"\\x1\0".as_ptr() as *const ::core::ffi::c_char,
-        2 => return b"\\x2\0".as_ptr() as *const ::core::ffi::c_char,
-        3 => return b"\\x3\0".as_ptr() as *const ::core::ffi::c_char,
-        4 => return b"\\x4\0".as_ptr() as *const ::core::ffi::c_char,
-        5 => return b"\\x5\0".as_ptr() as *const ::core::ffi::c_char,
-        6 => return b"\\x6\0".as_ptr() as *const ::core::ffi::c_char,
-        7 => return b"\\x7\0".as_ptr() as *const ::core::ffi::c_char,
-        8 => return b"\\x8\0".as_ptr() as *const ::core::ffi::c_char,
-        9 => return b"\\t\0".as_ptr() as *const ::core::ffi::c_char,
-        10 => return b"\\n\0".as_ptr() as *const ::core::ffi::c_char,
-        11 => return b"\\xB\0".as_ptr() as *const ::core::ffi::c_char,
-        12 => return b"\\xC\0".as_ptr() as *const ::core::ffi::c_char,
-        13 => return b"\\r\0".as_ptr() as *const ::core::ffi::c_char,
-        14 => return b"\\xE\0".as_ptr() as *const ::core::ffi::c_char,
-        15 => return b"\\xF\0".as_ptr() as *const ::core::ffi::c_char,
-        16 => return b"\\x10\0".as_ptr() as *const ::core::ffi::c_char,
-        17 => return b"\\x11\0".as_ptr() as *const ::core::ffi::c_char,
-        18 => return b"\\x12\0".as_ptr() as *const ::core::ffi::c_char,
-        19 => return b"\\x13\0".as_ptr() as *const ::core::ffi::c_char,
-        20 => return b"\\x14\0".as_ptr() as *const ::core::ffi::c_char,
-        21 => return b"\\x15\0".as_ptr() as *const ::core::ffi::c_char,
-        22 => return b"\\x16\0".as_ptr() as *const ::core::ffi::c_char,
-        23 => return b"\\x17\0".as_ptr() as *const ::core::ffi::c_char,
-        24 => return b"\\x18\0".as_ptr() as *const ::core::ffi::c_char,
-        25 => return b"\\x19\0".as_ptr() as *const ::core::ffi::c_char,
-        26 => return b"\\x1A\0".as_ptr() as *const ::core::ffi::c_char,
-        27 => return b"\\x1B\0".as_ptr() as *const ::core::ffi::c_char,
-        28 => return b"\\x1C\0".as_ptr() as *const ::core::ffi::c_char,
-        29 => return b"\\x1D\0".as_ptr() as *const ::core::ffi::c_char,
-        30 => return b"\\x1E\0".as_ptr() as *const ::core::ffi::c_char,
-        31 => return b"\\x1F\0".as_ptr() as *const ::core::ffi::c_char,
-        32 => return b" \0".as_ptr() as *const ::core::ffi::c_char,
-        33 => return b"!\0".as_ptr() as *const ::core::ffi::c_char,
-        34 => return b"\\\"\0".as_ptr() as *const ::core::ffi::c_char,
-        35 => return b"#\0".as_ptr() as *const ::core::ffi::c_char,
-        36 => return b"$\0".as_ptr() as *const ::core::ffi::c_char,
-        37 => return b"%\0".as_ptr() as *const ::core::ffi::c_char,
-        38 => return b"&\0".as_ptr() as *const ::core::ffi::c_char,
-        39 => return b"'\0".as_ptr() as *const ::core::ffi::c_char,
-        40 => return b"(\0".as_ptr() as *const ::core::ffi::c_char,
-        41 => return b")\0".as_ptr() as *const ::core::ffi::c_char,
-        42 => return b"*\0".as_ptr() as *const ::core::ffi::c_char,
-        43 => return b"+\0".as_ptr() as *const ::core::ffi::c_char,
-        44 => return b",\0".as_ptr() as *const ::core::ffi::c_char,
-        45 => return b"-\0".as_ptr() as *const ::core::ffi::c_char,
-        46 => return b".\0".as_ptr() as *const ::core::ffi::c_char,
-        47 => return b"/\0".as_ptr() as *const ::core::ffi::c_char,
-        48 => return b"0\0".as_ptr() as *const ::core::ffi::c_char,
-        49 => return b"1\0".as_ptr() as *const ::core::ffi::c_char,
-        50 => return b"2\0".as_ptr() as *const ::core::ffi::c_char,
-        51 => return b"3\0".as_ptr() as *const ::core::ffi::c_char,
-        52 => return b"4\0".as_ptr() as *const ::core::ffi::c_char,
-        53 => return b"5\0".as_ptr() as *const ::core::ffi::c_char,
-        54 => return b"6\0".as_ptr() as *const ::core::ffi::c_char,
-        55 => return b"7\0".as_ptr() as *const ::core::ffi::c_char,
-        56 => return b"8\0".as_ptr() as *const ::core::ffi::c_char,
-        57 => return b"9\0".as_ptr() as *const ::core::ffi::c_char,
-        58 => return b":\0".as_ptr() as *const ::core::ffi::c_char,
-        59 => return b";\0".as_ptr() as *const ::core::ffi::c_char,
-        60 => return b"<\0".as_ptr() as *const ::core::ffi::c_char,
-        61 => return b"=\0".as_ptr() as *const ::core::ffi::c_char,
-        62 => return b">\0".as_ptr() as *const ::core::ffi::c_char,
-        63 => return b"?\0".as_ptr() as *const ::core::ffi::c_char,
-        64 => return b"@\0".as_ptr() as *const ::core::ffi::c_char,
-        65 => return b"A\0".as_ptr() as *const ::core::ffi::c_char,
-        66 => return b"B\0".as_ptr() as *const ::core::ffi::c_char,
-        67 => return b"C\0".as_ptr() as *const ::core::ffi::c_char,
-        68 => return b"D\0".as_ptr() as *const ::core::ffi::c_char,
-        69 => return b"E\0".as_ptr() as *const ::core::ffi::c_char,
-        70 => return b"F\0".as_ptr() as *const ::core::ffi::c_char,
-        71 => return b"G\0".as_ptr() as *const ::core::ffi::c_char,
-        72 => return b"H\0".as_ptr() as *const ::core::ffi::c_char,
-        73 => return b"I\0".as_ptr() as *const ::core::ffi::c_char,
-        74 => return b"J\0".as_ptr() as *const ::core::ffi::c_char,
-        75 => return b"K\0".as_ptr() as *const ::core::ffi::c_char,
-        76 => return b"L\0".as_ptr() as *const ::core::ffi::c_char,
-        77 => return b"M\0".as_ptr() as *const ::core::ffi::c_char,
-        78 => return b"N\0".as_ptr() as *const ::core::ffi::c_char,
-        79 => return b"O\0".as_ptr() as *const ::core::ffi::c_char,
-        80 => return b"P\0".as_ptr() as *const ::core::ffi::c_char,
-        81 => return b"Q\0".as_ptr() as *const ::core::ffi::c_char,
-        82 => return b"R\0".as_ptr() as *const ::core::ffi::c_char,
-        83 => return b"S\0".as_ptr() as *const ::core::ffi::c_char,
-        84 => return b"T\0".as_ptr() as *const ::core::ffi::c_char,
-        85 => return b"U\0".as_ptr() as *const ::core::ffi::c_char,
-        86 => return b"V\0".as_ptr() as *const ::core::ffi::c_char,
-        87 => return b"W\0".as_ptr() as *const ::core::ffi::c_char,
-        88 => return b"X\0".as_ptr() as *const ::core::ffi::c_char,
-        89 => return b"Y\0".as_ptr() as *const ::core::ffi::c_char,
-        90 => return b"Z\0".as_ptr() as *const ::core::ffi::c_char,
-        91 => return b"[\0".as_ptr() as *const ::core::ffi::c_char,
-        92 => return b"\\\\\0".as_ptr() as *const ::core::ffi::c_char,
-        93 => return b"]\0".as_ptr() as *const ::core::ffi::c_char,
-        94 => return b"^\0".as_ptr() as *const ::core::ffi::c_char,
-        95 => return b"_\0".as_ptr() as *const ::core::ffi::c_char,
-        96 => return b"`\0".as_ptr() as *const ::core::ffi::c_char,
-        97 => return b"a\0".as_ptr() as *const ::core::ffi::c_char,
-        98 => return b"b\0".as_ptr() as *const ::core::ffi::c_char,
-        99 => return b"c\0".as_ptr() as *const ::core::ffi::c_char,
-        100 => return b"d\0".as_ptr() as *const ::core::ffi::c_char,
-        101 => return b"e\0".as_ptr() as *const ::core::ffi::c_char,
-        102 => return b"f\0".as_ptr() as *const ::core::ffi::c_char,
-        103 => return b"g\0".as_ptr() as *const ::core::ffi::c_char,
-        104 => return b"h\0".as_ptr() as *const ::core::ffi::c_char,
-        105 => return b"i\0".as_ptr() as *const ::core::ffi::c_char,
-        106 => return b"j\0".as_ptr() as *const ::core::ffi::c_char,
-        107 => return b"k\0".as_ptr() as *const ::core::ffi::c_char,
-        108 => return b"l\0".as_ptr() as *const ::core::ffi::c_char,
-        109 => return b"m\0".as_ptr() as *const ::core::ffi::c_char,
-        110 => return b"n\0".as_ptr() as *const ::core::ffi::c_char,
-        111 => return b"o\0".as_ptr() as *const ::core::ffi::c_char,
-        112 => return b"p\0".as_ptr() as *const ::core::ffi::c_char,
-        113 => return b"q\0".as_ptr() as *const ::core::ffi::c_char,
-        114 => return b"r\0".as_ptr() as *const ::core::ffi::c_char,
-        115 => return b"s\0".as_ptr() as *const ::core::ffi::c_char,
-        116 => return b"t\0".as_ptr() as *const ::core::ffi::c_char,
-        117 => return b"u\0".as_ptr() as *const ::core::ffi::c_char,
-        118 => return b"v\0".as_ptr() as *const ::core::ffi::c_char,
-        119 => return b"w\0".as_ptr() as *const ::core::ffi::c_char,
-        120 => return b"x\0".as_ptr() as *const ::core::ffi::c_char,
-        121 => return b"y\0".as_ptr() as *const ::core::ffi::c_char,
-        122 => return b"z\0".as_ptr() as *const ::core::ffi::c_char,
-        123 => return b"{\0".as_ptr() as *const ::core::ffi::c_char,
-        124 => return b"|\0".as_ptr() as *const ::core::ffi::c_char,
-        125 => return b"}\0".as_ptr() as *const ::core::ffi::c_char,
-        126 => return b"~\0".as_ptr() as *const ::core::ffi::c_char,
-        127 => return b"\\x7F\0".as_ptr() as *const ::core::ffi::c_char,
-        128 => return b"\\x80\0".as_ptr() as *const ::core::ffi::c_char,
-        129 => return b"\\x81\0".as_ptr() as *const ::core::ffi::c_char,
-        130 => return b"\\x82\0".as_ptr() as *const ::core::ffi::c_char,
-        131 => return b"\\x83\0".as_ptr() as *const ::core::ffi::c_char,
-        132 => return b"\\x84\0".as_ptr() as *const ::core::ffi::c_char,
-        133 => return b"\\x85\0".as_ptr() as *const ::core::ffi::c_char,
-        134 => return b"\\x86\0".as_ptr() as *const ::core::ffi::c_char,
-        135 => return b"\\x87\0".as_ptr() as *const ::core::ffi::c_char,
-        136 => return b"\\x88\0".as_ptr() as *const ::core::ffi::c_char,
-        137 => return b"\\x89\0".as_ptr() as *const ::core::ffi::c_char,
-        138 => return b"\\x8A\0".as_ptr() as *const ::core::ffi::c_char,
-        139 => return b"\\x8B\0".as_ptr() as *const ::core::ffi::c_char,
-        140 => return b"\\x8C\0".as_ptr() as *const ::core::ffi::c_char,
-        141 => return b"\\x8D\0".as_ptr() as *const ::core::ffi::c_char,
-        142 => return b"\\x8E\0".as_ptr() as *const ::core::ffi::c_char,
-        143 => return b"\\x8F\0".as_ptr() as *const ::core::ffi::c_char,
-        144 => return b"\\x90\0".as_ptr() as *const ::core::ffi::c_char,
-        145 => return b"\\x91\0".as_ptr() as *const ::core::ffi::c_char,
-        146 => return b"\\x92\0".as_ptr() as *const ::core::ffi::c_char,
-        147 => return b"\\x93\0".as_ptr() as *const ::core::ffi::c_char,
-        148 => return b"\\x94\0".as_ptr() as *const ::core::ffi::c_char,
-        149 => return b"\\x95\0".as_ptr() as *const ::core::ffi::c_char,
-        150 => return b"\\x96\0".as_ptr() as *const ::core::ffi::c_char,
-        151 => return b"\\x97\0".as_ptr() as *const ::core::ffi::c_char,
-        152 => return b"\\x98\0".as_ptr() as *const ::core::ffi::c_char,
-        153 => return b"\\x99\0".as_ptr() as *const ::core::ffi::c_char,
-        154 => return b"\\x9A\0".as_ptr() as *const ::core::ffi::c_char,
-        155 => return b"\\x9B\0".as_ptr() as *const ::core::ffi::c_char,
-        156 => return b"\\x9C\0".as_ptr() as *const ::core::ffi::c_char,
-        157 => return b"\\x9D\0".as_ptr() as *const ::core::ffi::c_char,
-        158 => return b"\\x9E\0".as_ptr() as *const ::core::ffi::c_char,
-        159 => return b"\\x9F\0".as_ptr() as *const ::core::ffi::c_char,
-        160 => return b"\\xA0\0".as_ptr() as *const ::core::ffi::c_char,
-        161 => return b"\\xA1\0".as_ptr() as *const ::core::ffi::c_char,
-        162 => return b"\\xA2\0".as_ptr() as *const ::core::ffi::c_char,
-        163 => return b"\\xA3\0".as_ptr() as *const ::core::ffi::c_char,
-        164 => return b"\\xA4\0".as_ptr() as *const ::core::ffi::c_char,
-        165 => return b"\\xA5\0".as_ptr() as *const ::core::ffi::c_char,
-        166 => return b"\\xA6\0".as_ptr() as *const ::core::ffi::c_char,
-        167 => return b"\\xA7\0".as_ptr() as *const ::core::ffi::c_char,
-        168 => return b"\\xA8\0".as_ptr() as *const ::core::ffi::c_char,
-        169 => return b"\\xA9\0".as_ptr() as *const ::core::ffi::c_char,
-        170 => return b"\\xAA\0".as_ptr() as *const ::core::ffi::c_char,
-        171 => return b"\\xAB\0".as_ptr() as *const ::core::ffi::c_char,
-        172 => return b"\\xAC\0".as_ptr() as *const ::core::ffi::c_char,
-        173 => return b"\\xAD\0".as_ptr() as *const ::core::ffi::c_char,
-        174 => return b"\\xAE\0".as_ptr() as *const ::core::ffi::c_char,
-        175 => return b"\\xAF\0".as_ptr() as *const ::core::ffi::c_char,
-        176 => return b"\\xB0\0".as_ptr() as *const ::core::ffi::c_char,
-        177 => return b"\\xB1\0".as_ptr() as *const ::core::ffi::c_char,
-        178 => return b"\\xB2\0".as_ptr() as *const ::core::ffi::c_char,
-        179 => return b"\\xB3\0".as_ptr() as *const ::core::ffi::c_char,
-        180 => return b"\\xB4\0".as_ptr() as *const ::core::ffi::c_char,
-        181 => return b"\\xB5\0".as_ptr() as *const ::core::ffi::c_char,
-        182 => return b"\\xB6\0".as_ptr() as *const ::core::ffi::c_char,
-        183 => return b"\\xB7\0".as_ptr() as *const ::core::ffi::c_char,
-        184 => return b"\\xB8\0".as_ptr() as *const ::core::ffi::c_char,
-        185 => return b"\\xB9\0".as_ptr() as *const ::core::ffi::c_char,
-        186 => return b"\\xBA\0".as_ptr() as *const ::core::ffi::c_char,
-        187 => return b"\\xBB\0".as_ptr() as *const ::core::ffi::c_char,
-        188 => return b"\\xBC\0".as_ptr() as *const ::core::ffi::c_char,
-        189 => return b"\\xBD\0".as_ptr() as *const ::core::ffi::c_char,
-        190 => return b"\\xBE\0".as_ptr() as *const ::core::ffi::c_char,
-        191 => return b"\\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-        192 => return b"\\xC0\0".as_ptr() as *const ::core::ffi::c_char,
-        193 => return b"\\xC1\0".as_ptr() as *const ::core::ffi::c_char,
-        194 => return b"\\xC2\0".as_ptr() as *const ::core::ffi::c_char,
-        195 => return b"\\xC3\0".as_ptr() as *const ::core::ffi::c_char,
-        196 => return b"\\xC4\0".as_ptr() as *const ::core::ffi::c_char,
-        197 => return b"\\xC5\0".as_ptr() as *const ::core::ffi::c_char,
-        198 => return b"\\xC6\0".as_ptr() as *const ::core::ffi::c_char,
-        199 => return b"\\xC7\0".as_ptr() as *const ::core::ffi::c_char,
-        200 => return b"\\xC8\0".as_ptr() as *const ::core::ffi::c_char,
-        201 => return b"\\xC9\0".as_ptr() as *const ::core::ffi::c_char,
-        202 => return b"\\xCA\0".as_ptr() as *const ::core::ffi::c_char,
-        203 => return b"\\xCB\0".as_ptr() as *const ::core::ffi::c_char,
-        204 => return b"\\xCC\0".as_ptr() as *const ::core::ffi::c_char,
-        205 => return b"\\xCD\0".as_ptr() as *const ::core::ffi::c_char,
-        206 => return b"\\xCE\0".as_ptr() as *const ::core::ffi::c_char,
-        207 => return b"\\xCF\0".as_ptr() as *const ::core::ffi::c_char,
-        208 => return b"\\xD0\0".as_ptr() as *const ::core::ffi::c_char,
-        209 => return b"\\xD1\0".as_ptr() as *const ::core::ffi::c_char,
-        210 => return b"\\xD2\0".as_ptr() as *const ::core::ffi::c_char,
-        211 => return b"\\xD3\0".as_ptr() as *const ::core::ffi::c_char,
-        212 => return b"\\xD4\0".as_ptr() as *const ::core::ffi::c_char,
-        213 => return b"\\xD5\0".as_ptr() as *const ::core::ffi::c_char,
-        214 => return b"\\xD6\0".as_ptr() as *const ::core::ffi::c_char,
-        215 => return b"\\xD7\0".as_ptr() as *const ::core::ffi::c_char,
-        216 => return b"\\xD8\0".as_ptr() as *const ::core::ffi::c_char,
-        217 => return b"\\xD9\0".as_ptr() as *const ::core::ffi::c_char,
-        218 => return b"\\xDA\0".as_ptr() as *const ::core::ffi::c_char,
-        219 => return b"\\xDB\0".as_ptr() as *const ::core::ffi::c_char,
-        220 => return b"\\xDC\0".as_ptr() as *const ::core::ffi::c_char,
-        221 => return b"\\xDD\0".as_ptr() as *const ::core::ffi::c_char,
-        222 => return b"\\xDE\0".as_ptr() as *const ::core::ffi::c_char,
-        223 => return b"\\xDF\0".as_ptr() as *const ::core::ffi::c_char,
-        224 => return b"\\xE0\0".as_ptr() as *const ::core::ffi::c_char,
-        225 => return b"\\xE1\0".as_ptr() as *const ::core::ffi::c_char,
-        226 => return b"\\xE2\0".as_ptr() as *const ::core::ffi::c_char,
-        227 => return b"\\xE3\0".as_ptr() as *const ::core::ffi::c_char,
-        228 => return b"\\xE4\0".as_ptr() as *const ::core::ffi::c_char,
-        229 => return b"\\xE5\0".as_ptr() as *const ::core::ffi::c_char,
-        230 => return b"\\xE6\0".as_ptr() as *const ::core::ffi::c_char,
-        231 => return b"\\xE7\0".as_ptr() as *const ::core::ffi::c_char,
-        232 => return b"\\xE8\0".as_ptr() as *const ::core::ffi::c_char,
-        233 => return b"\\xE9\0".as_ptr() as *const ::core::ffi::c_char,
-        234 => return b"\\xEA\0".as_ptr() as *const ::core::ffi::c_char,
-        235 => return b"\\xEB\0".as_ptr() as *const ::core::ffi::c_char,
-        236 => return b"\\xEC\0".as_ptr() as *const ::core::ffi::c_char,
-        237 => return b"\\xED\0".as_ptr() as *const ::core::ffi::c_char,
-        238 => return b"\\xEE\0".as_ptr() as *const ::core::ffi::c_char,
-        239 => return b"\\xEF\0".as_ptr() as *const ::core::ffi::c_char,
-        240 => return b"\\xF0\0".as_ptr() as *const ::core::ffi::c_char,
-        241 => return b"\\xF1\0".as_ptr() as *const ::core::ffi::c_char,
-        242 => return b"\\xF2\0".as_ptr() as *const ::core::ffi::c_char,
-        243 => return b"\\xF3\0".as_ptr() as *const ::core::ffi::c_char,
-        244 => return b"\\xF4\0".as_ptr() as *const ::core::ffi::c_char,
-        245 => return b"\\xF5\0".as_ptr() as *const ::core::ffi::c_char,
-        246 => return b"\\xF6\0".as_ptr() as *const ::core::ffi::c_char,
-        247 => return b"\\xF7\0".as_ptr() as *const ::core::ffi::c_char,
-        248 => return b"\\xF8\0".as_ptr() as *const ::core::ffi::c_char,
-        249 => return b"\\xF9\0".as_ptr() as *const ::core::ffi::c_char,
-        250 => return b"\\xFA\0".as_ptr() as *const ::core::ffi::c_char,
-        251 => return b"\\xFB\0".as_ptr() as *const ::core::ffi::c_char,
-        252 => return b"\\xFC\0".as_ptr() as *const ::core::ffi::c_char,
-        253 => return b"\\xFD\0".as_ptr() as *const ::core::ffi::c_char,
-        254 => return b"\\xFE\0".as_ptr() as *const ::core::ffi::c_char,
-        255 => return b"\\xFF\0".as_ptr() as *const ::core::ffi::c_char,
-        _ => {
-            '_c2rust_label: {
-                crate::stdlib::__assert_fail(
-                    b"0\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    9198 as ::core::ffi::c_uint,
-                    b"const char *unsignedCharToPrintable(unsigned char)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            };
-            return b"dead code\0".as_ptr() as *const ::core::ffi::c_char;
+const fn printable_hex_digit(value: u8) -> u8 {
+    match value {
+        0..=9 => b'0' + value,
+        _ => b'A' + (value - 10),
+    }
+}
+
+const fn printable_byte(c: u8) -> [u8; 5] {
+    let mut printable = [0; 5];
+    match c {
+        0 => {
+            printable[0] = b'\\';
+            printable[1] = b'0';
         }
-    };
+        b'\t' => {
+            printable[0] = b'\\';
+            printable[1] = b't';
+        }
+        b'\n' => {
+            printable[0] = b'\\';
+            printable[1] = b'n';
+        }
+        b'\r' => {
+            printable[0] = b'\\';
+            printable[1] = b'r';
+        }
+        32..=126 if c == b'"' || c == b'\\' => {
+            printable[0] = b'\\';
+            printable[1] = c;
+        }
+        32..=126 => printable[0] = c,
+        _ => {
+            printable[0] = b'\\';
+            printable[1] = b'x';
+            if c < 16 {
+                printable[2] = printable_hex_digit(c);
+            } else {
+                printable[2] = printable_hex_digit(c >> 4);
+                printable[3] = printable_hex_digit(c & 0x0f);
+            }
+        }
+    }
+    printable
+}
+
+const fn printable_byte_table() -> [[u8; 5]; 256] {
+    let mut table = [[0; 5]; 256];
+    let mut index = 0;
+    while index < table.len() {
+        table[index] = printable_byte(index as u8);
+        index += 1;
+    }
+    table
+}
+
+static PRINTABLE_BYTES: [[u8; 5]; 256] = printable_byte_table();
+
+fn unsignedCharToPrintable(c: ::core::ffi::c_uchar) -> &'static [u8; 5] {
+    &PRINTABLE_BYTES[c as usize]
 }
 #[export_name = "unsignedCharToPrintable"]
 
 pub unsafe extern "C" fn unsignedCharToPrintable_ffi(
-    mut c: ::core::ffi::c_uchar,
+    c: ::core::ffi::c_uchar,
 ) -> *const ::core::ffi::c_char {
-    unsignedCharToPrintable(c)
+    unsignedCharToPrintable(c).as_ptr().cast()
 }
 extern "C" fn c2rust_run_static_initializers() {}
 #[used]
