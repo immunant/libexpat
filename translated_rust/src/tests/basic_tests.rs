@@ -1205,18 +1205,36 @@ fn bytes_as_xml_char_ptr(bytes: &[u8]) -> *const XML_Char {
     bytes.as_ptr().cast()
 }
 
+macro_rules! ffi_call {
+    ($function:expr $(, $arg:expr)* $(,)?) => {{
+        unsafe { $function($($arg),*) }
+    }};
+}
+
+macro_rules! unsafe_global_get {
+    ($name:ident) => {{
+        unsafe { $name }
+    }};
+}
+
+macro_rules! unsafe_global_set {
+    ($name:ident, $value:expr) => {{
+        unsafe {
+            $name = $value;
+        }
+    }};
+}
+
 fn current_parser() -> XML_Parser {
-    unsafe { g_parser }
+    unsafe_global_get!(g_parser)
 }
 
 fn set_current_parser(parser: XML_Parser) {
-    unsafe {
-        g_parser = parser;
-    }
+    unsafe_global_set!(g_parser, parser);
 }
 
 fn current_chunk_size() -> ::core::ffi::c_int {
-    unsafe { g_chunkSize }
+    unsafe_global_get!(g_chunkSize)
 }
 
 #[derive(Copy, Clone)]
@@ -1226,33 +1244,29 @@ enum SharedTestText {
 }
 
 fn shared_test_text(kind: SharedTestText) -> *const ::core::ffi::c_char {
-    unsafe {
-        match kind {
-            SharedTestText::CharacterData => long_character_data_text,
-            SharedTestText::Cdata => long_cdata_text,
-        }
+    match kind {
+        SharedTestText::CharacterData => unsafe_global_get!(long_character_data_text),
+        SharedTestText::Cdata => unsafe_global_get!(long_cdata_text),
     }
 }
 
 fn set_parser_stop_state(resumable: XML_Bool, abortable: Option<XML_Bool>) {
-    unsafe {
-        g_resumable = resumable;
-        if let Some(abortable) = abortable {
-            g_abortable = abortable;
-        }
+    unsafe_global_set!(g_resumable, resumable);
+    if let Some(abortable) = abortable {
+        unsafe_global_set!(g_abortable, abortable);
     }
 }
 
 fn ffi_call1<A, R>(function: unsafe extern "C" fn(A) -> R, a: A) -> R {
-    unsafe { function(a) }
+    ffi_call!(function, a)
 }
 
 fn ffi_call2<A, B, R>(function: unsafe extern "C" fn(A, B) -> R, a: A, b: B) -> R {
-    unsafe { function(a, b) }
+    ffi_call!(function, a, b)
 }
 
 fn ffi_call3<A, B, C, R>(function: unsafe extern "C" fn(A, B, C) -> R, a: A, b: B, c: C) -> R {
-    unsafe { function(a, b, c) }
+    ffi_call!(function, a, b, c)
 }
 
 fn ffi_call4<A, B, C, D, R>(
@@ -1262,7 +1276,7 @@ fn ffi_call4<A, B, C, D, R>(
     c: C,
     d: D,
 ) -> R {
-    unsafe { function(a, b, c, d) }
+    ffi_call!(function, a, b, c, d)
 }
 
 fn ffi_call5<A, B, C, D, E, R>(
@@ -1273,7 +1287,7 @@ fn ffi_call5<A, B, C, D, E, R>(
     d: D,
     e: E,
 ) -> R {
-    unsafe { function(a, b, c, d, e) }
+    ffi_call!(function, a, b, c, d, e)
 }
 
 fn set_test_info(name: &[u8], line: ::core::ffi::c_int) {
@@ -1506,26 +1520,24 @@ fn run_character_check(
 }
 
 fn write_illegal_utf8_input(buffer: &mut [u8; 100], ordinal: ::core::ffi::c_int) {
-    unsafe {
-        snprintf(
-            buffer.as_mut_ptr().cast(),
-            buffer.len() as size_t,
-            bytes_as_c_char_ptr(b"<e>%ccd</e>\0"),
-            ordinal,
-        );
-    }
+    ffi_call!(
+        snprintf,
+        buffer.as_mut_ptr().cast(),
+        buffer.len() as size_t,
+        bytes_as_c_char_ptr(b"<e>%ccd</e>\0"),
+        ordinal,
+    );
 }
 
 fn write_illegal_utf8_failure_message(buffer: &mut [u8; 100], ordinal: ::core::ffi::c_int) {
-    unsafe {
-        snprintf(
-            buffer.as_mut_ptr().cast(),
-            buffer.len() as size_t,
-            bytes_as_c_char_ptr(b"expected token error for '%c' (ordinal %d) in UTF-8 text\0"),
-            ordinal,
-            ordinal,
-        );
-    }
+    ffi_call!(
+        snprintf,
+        buffer.as_mut_ptr().cast(),
+        buffer.len() as size_t,
+        bytes_as_c_char_ptr(b"expected token error for '%c' (ordinal %d) in UTF-8 text\0"),
+        ordinal,
+        ordinal,
+    );
 }
 
 fn load_sip_u64(bytes: &[::core::ffi::c_uchar]) -> uint64_t {
