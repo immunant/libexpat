@@ -2416,6 +2416,44 @@ static NOTATION_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn NotationDeclCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// A notation-declaration handler registration prepared from the ABI callback
+/// value.  Parser state keeps only this typed registry entry and an opaque
+/// parser address key.
+struct NotationDeclHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn NotationDeclCallback>>,
+}
+
+fn notation_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> NotationDeclHandlerRegistration
+where
+    Callback: NotationDeclCallback + 'static,
+{
+    NotationDeclHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
+fn set_notation_decl_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: NotationDeclHandlerRegistration,
+) {
+    parser.m_notationDeclHandler = registration.callback.is_some();
+    let mut handlers = NOTATION_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
+        }
+    }
+}
+
 /// Dispatches a notation declaration after all of its names have been
 /// retained in parser-owned pools.  The nullable system identifier is a pool
 /// handle rather than a raw pointer, so the prolog state machine only needs
@@ -9577,33 +9615,19 @@ pub unsafe extern "C" fn XML_SetUnparsedEntityDeclHandler_ffi(
 ) {
     XML_SetUnparsedEntityDeclHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetNotationDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_NotationDeclHandler,
-) {
-    if !parser.is_null() {
-        (*parser).m_notationDeclHandler = handler.is_some();
-        let mut handlers = NOTATION_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
-        }
-    }
-}
 #[export_name = "XML_SetNotationDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetNotationDeclHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_NotationDeclHandler,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_NotationDeclHandler,
 ) {
-    XML_SetNotationDeclHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = notation_decl_handler_registration(handler);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_notation_decl_handler(parser, parser_address, registration)
 }
 /// Namespace-handler registrations prepared from the ABI callback values.
 ///
