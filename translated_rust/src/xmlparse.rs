@@ -4712,67 +4712,83 @@ pub extern "C" fn XML_ExpatVersionInfo() -> crate::expat_h::XML_Expat_Version {
 pub unsafe extern "C" fn XML_ExpatVersionInfo_ffi() -> crate::expat_h::XML_Expat_Version {
     XML_ExpatVersionInfo()
 }
-pub unsafe extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
-    static mut features: [crate::expat_h::XML_Feature; 11] = [
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_SIZEOF_XML_CHAR,
-    name:  b"sizeof(XML_Char)\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  ::core::mem::size_of:: <crate::expat_external_h::XML_Char>() as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR,
-    name:  b"sizeof(XML_LChar)\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  ::core::mem::size_of:: <crate::expat_external_h::XML_LChar>() as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_DTD,
-    name:  b"XML_DTD\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  0 as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_CONTEXT_BYTES,
-    name:  b"XML_CONTEXT_BYTES\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  crate::stdlib::XML_CONTEXT_BYTES as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_NS,
-    name:  b"XML_NS\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  0 as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
-    name:  b"XML_BLAP_MAX_AMP\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT
+#[repr(C)]
+struct XmlFeatureStatic {
+    feature: crate::expat_h::XML_FeatureEnum,
+    name: Option<&'static u8>,
+    value: ::core::ffi::c_long,
+}
+
+const _: [(); ::core::mem::size_of::<crate::expat_h::XML_Feature>()] =
+    [(); ::core::mem::size_of::<XmlFeatureStatic>()];
+const _: [(); ::core::mem::align_of::<crate::expat_h::XML_Feature>()] =
+    [(); ::core::mem::align_of::<XmlFeatureStatic>()];
+
+pub extern "C" fn XML_GetFeatureList() -> *const crate::expat_h::XML_Feature {
+    static FEATURES: [XmlFeatureStatic; 11] = [
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_SIZEOF_XML_CHAR,
+            name: Some(&b"sizeof(XML_Char)\0"[0]),
+            value: ::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                 as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
-    name:  b"XML_BLAP_ACT_THRES\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_SIZEOF_XML_LCHAR,
+            name: Some(&b"sizeof(XML_LChar)\0"[0]),
+            value: ::core::mem::size_of::<crate::expat_external_h::XML_LChar>()
                 as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_GE,
-    name:  b"XML_GE\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  0 as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT,
-    name:  b"XML_AT_MAX_AMP\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
-    name:  b"XML_AT_ACT_THRES\0".as_ptr() as *const crate::expat_external_h::XML_LChar,
-    value:  crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT as ::core::ffi::c_long,
-},
-        crate::expat_h::XML_Feature {
-    feature:  crate::expat_h::XML_FEATURE_END,
-    name:  ::core::ptr::null:: <crate::expat_external_h::XML_LChar>(),
-    value:  0 as ::core::ffi::c_long,
-},
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_DTD,
+            name: Some(&b"XML_DTD\0"[0]),
+            value: 0 as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_CONTEXT_BYTES,
+            name: Some(&b"XML_CONTEXT_BYTES\0"[0]),
+            value: crate::stdlib::XML_CONTEXT_BYTES as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_NS,
+            name: Some(&b"XML_NS\0"[0]),
+            value: 0 as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT,
+            name: Some(&b"XML_BLAP_MAX_AMP\0"[0]),
+            value: crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT
+                as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT,
+            name: Some(&b"XML_BLAP_ACT_THRES\0"[0]),
+            value: crate::internal_h::EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT
+                as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_GE,
+            name: Some(&b"XML_GE\0"[0]),
+            value: 0 as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT,
+            name: Some(&b"XML_AT_MAX_AMP\0"[0]),
+            value: crate::internal_h::EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT
+                as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT,
+            name: Some(&b"XML_AT_ACT_THRES\0"[0]),
+            value: crate::internal_h::EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT
+                as ::core::ffi::c_long,
+        },
+        XmlFeatureStatic {
+            feature: crate::expat_h::XML_FEATURE_END,
+            name: None,
+            value: 0 as ::core::ffi::c_long,
+        },
     ];
-    return &raw const features as *const crate::expat_h::XML_Feature;
+    return FEATURES.as_ptr() as *const crate::expat_h::XML_Feature;
 }
 #[export_name = "XML_GetFeatureList"]
 
