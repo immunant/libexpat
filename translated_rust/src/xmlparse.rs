@@ -9077,11 +9077,12 @@ pub unsafe extern "C" fn XML_SetEndCdataSectionHandler_ffi(
 ) {
     XML_SetEndCdataSectionHandler(parser, end)
 }
-fn XML_SetDefaultHandler(
+fn set_default_handler(
     default_handler_enabled: &mut bool,
     default_expand_internal_entities: &mut crate::expat_h::XML_Bool,
     parser_address: usize,
     handler: Option<std::sync::Arc<dyn DefaultCallback>>,
+    expand_internal_entities: crate::expat_h::XML_Bool,
 ) {
     *default_handler_enabled = handler.is_some();
     let mut handlers = DEFAULT_HANDLERS
@@ -9096,7 +9097,7 @@ fn XML_SetDefaultHandler(
             handlers.remove(&parser_address);
         }
     }
-    *default_expand_internal_entities = crate::expat_h::XML_FALSE;
+    *default_expand_internal_entities = expand_internal_entities;
 }
 #[export_name = "XML_SetDefaultHandler"]
 
@@ -9110,34 +9111,13 @@ pub unsafe extern "C" fn XML_SetDefaultHandler_ffi(
     let parser_address = parser.addr();
     let handler = handler.map(|callback| std::sync::Arc::new(callback) as _);
     let parser = parser.as_mut().expect("non-null parser was checked");
-    XML_SetDefaultHandler(
+    set_default_handler(
         &mut parser.m_defaultHandler,
         &mut parser.m_defaultExpandInternalEntities,
         parser_address,
         handler,
+        crate::expat_h::XML_FALSE,
     )
-}
-pub unsafe extern "C" fn XML_SetDefaultHandlerExpand(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_DefaultHandler,
-) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_defaultHandler = handler.is_some();
-    let mut handlers = DEFAULT_HANDLERS
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    match handler {
-        Some(callback) => {
-            handlers.insert(parser as usize, std::sync::Arc::new(callback));
-        }
-        None => {
-            handlers.remove(&(parser as usize));
-        }
-    }
-    (*parser).m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
 }
 #[export_name = "XML_SetDefaultHandlerExpand"]
 
@@ -9145,7 +9125,19 @@ pub unsafe extern "C" fn XML_SetDefaultHandlerExpand_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_DefaultHandler,
 ) {
-    XML_SetDefaultHandlerExpand(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let handler = handler.map(|callback| std::sync::Arc::new(callback) as _);
+    let parser = parser.as_mut().expect("non-null parser was checked");
+    set_default_handler(
+        &mut parser.m_defaultHandler,
+        &mut parser.m_defaultExpandInternalEntities,
+        parser_address,
+        handler,
+        crate::expat_h::XML_TRUE,
+    )
 }
 pub unsafe extern "C" fn XML_SetDoctypeDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
