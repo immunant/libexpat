@@ -6020,31 +6020,86 @@ unsafe fn call_processor_impl(
             checked_next_offset = Some(result.next_offset);
             result.error
         } else if matches!(parser.m_processor, ProcessorState::ExternalEntityInit3) {
-            let encoding = parser_encoding(parser);
-            let scan = scanner_context_from_raw(
-                (*encoding).scanners[1],
-                encoding,
-                start,
-                end,
-            )
-            .scan();
+            // The current dispatch range has already been checked against
+            // the live parser buffer.  Snapshot it before the state
+            // transition, because processing an XML declaration may invoke a
+            // callback that re-enters and relocates that buffer.
+            let Some(source) = parser
+                .m_buffer
+                .bytes
+                .as_ref()
+                .and_then(|bytes| bytes.get(next..input.end))
+                .map(ToOwned::to_owned)
+            else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
+            let source_chars: &[::core::ffi::c_char] = bytemuck::cast_slice(&source);
+            let Some(scan) = external_entity_init_scan(parser, source_chars) else {
+                return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+            };
             match external_entity_init_processor3_transition(
                 parser,
                 scan,
                 start.addr(),
-                input.end.saturating_sub(next),
+                source_chars.len(),
             ) {
                 ExternalEntityInit3Action::Return(error, offset) => {
-                    next_pointer = start.wrapping_add(offset);
+                    let Some(offset) = next
+                        .checked_add(offset)
+                        .filter(|offset| *offset <= input.end)
+                    else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                    };
+                    checked_next_offset = Some(offset);
                     error
                 }
                 ExternalEntityInit3Action::ContinueContent(offset) => {
-                    externalEntityContentProcessor(
-                        std::ptr::from_mut(parser),
+                    let Some(content_offset) = next
+                        .checked_add(offset)
+                        .filter(|offset| *offset <= input.end)
+                    else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                    };
+                    let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                    };
+                    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
+                    let mut result = doContent(
+                        parser,
+                        1,
+                        normal_encoding,
+                        encoding,
+                        true,
                         start.wrapping_add(offset),
                         end,
-                        &raw mut next_pointer,
-                    )
+                        &mut next_pointer,
+                        (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+                            as crate::expat_h::XML_Bool,
+                        XML_ACCOUNT_ENTITY_EXPANSION,
+                    );
+                    let Some(processed_offset) = parser
+                        .m_buffer
+                        .offset_from_address(next_pointer.addr())
+                        .filter(|offset| *offset >= content_offset && *offset <= input.end)
+                    else {
+                        return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, next);
+                    };
+                    checked_next_offset = Some(processed_offset);
+                    if result as ::core::ffi::c_uint
+                        == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
+                            as ::core::ffi::c_uint
+                    {
+                        let raw_names_stored = match parser.m_dtd.clone() {
+                            Some(dtd_owner) => {
+                                dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd))
+                            }
+                            None => crate::expat_h::XML_FALSE,
+                        };
+                        if raw_names_stored == 0 {
+                            result = crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                    }
+                    result
                 }
             }
         } else {
@@ -10590,12 +10645,6 @@ fn prolog_public_id_byte_types(
         crate::src::xmltok::internal_utf8_normal_encoding(parser.m_ns != 0)
             .type_0
     }
-}
-
-unsafe fn parser_encoding(
-    mut parser: crate::expat_h::XML_Parser,
-) -> *const crate::src::xmltok::ENCODING {
-    std::ptr::from_ref(current_parser_encoding(&*parser))
 }
 
 // Keep encoding identity checks at the parser-state boundary.  Attribute
