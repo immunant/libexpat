@@ -13897,7 +13897,7 @@ pub mod xmltok_impl_c {
 }
 
 pub mod xmltok_ns_c {
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncoding() -> *const crate::src::xmltok::ENCODING {
+    pub extern "C" fn XmlGetUtf8InternalEncoding() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_utf8_encoding.enc;
     }
     #[export_name = "XmlGetUtf8InternalEncoding"]
@@ -13906,7 +13906,7 @@ pub mod xmltok_ns_c {
     {
         XmlGetUtf8InternalEncoding()
     }
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncoding() -> *const crate::src::xmltok::ENCODING {
+    pub extern "C" fn XmlGetUtf16InternalEncoding() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_little2_encoding.enc;
     }
     #[export_name = "XmlGetUtf16InternalEncoding"]
@@ -14106,7 +14106,7 @@ pub mod xmltok_ns_c {
             standalone,
         )
     }
-    pub unsafe extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
+    pub extern "C" fn XmlGetUtf8InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_utf8_encoding_ns.enc;
     }
     #[export_name = "XmlGetUtf8InternalEncodingNS"]
@@ -14115,8 +14115,7 @@ pub mod xmltok_ns_c {
     ) -> *const crate::src::xmltok::ENCODING {
         XmlGetUtf8InternalEncodingNS()
     }
-    pub unsafe extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const crate::src::xmltok::ENCODING
-    {
+    pub extern "C" fn XmlGetUtf16InternalEncodingNS() -> *const crate::src::xmltok::ENCODING {
         return &raw const internal_little2_encoding_ns.enc;
     }
     #[export_name = "XmlGetUtf16InternalEncodingNS"]
