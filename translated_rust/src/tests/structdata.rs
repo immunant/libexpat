@@ -1,3 +1,6 @@
+use std::ffi::{CStr, CString};
+use std::sync::{Mutex, MutexGuard};
+
 extern "C" {
     fn __assert_fail(
         __assertion: *const ::core::ffi::c_char,
@@ -5,32 +8,12 @@ extern "C" {
         __line: ::core::ffi::c_uint,
         __function: *const ::core::ffi::c_char,
     ) -> !;
-    fn malloc(__size: size_t) -> *mut ::core::ffi::c_void;
-    fn realloc(__ptr: *mut ::core::ffi::c_void, __size: size_t) -> *mut ::core::ffi::c_void;
-    fn free(__ptr: *mut ::core::ffi::c_void);
-    fn snprintf(
-        __s: *mut ::core::ffi::c_char,
-        __maxlen: size_t,
-        __format: *const ::core::ffi::c_char,
-        ...
-    ) -> ::core::ffi::c_int;
-    fn memcpy(
-        __dest: *mut ::core::ffi::c_void,
-        __src: *const ::core::ffi::c_void,
-        __n: size_t,
-    ) -> *mut ::core::ffi::c_void;
-    fn strcmp(
-        __s1: *const ::core::ffi::c_char,
-        __s2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int;
-    fn strlen(__s: *const ::core::ffi::c_char) -> size_t;
     fn _fail(
         file: *const ::core::ffi::c_char,
         line: ::core::ffi::c_int,
         msg: *const ::core::ffi::c_char,
     ) -> !;
 }
-pub type size_t = usize;
 pub type XML_Char = ::core::ffi::c_char;
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -47,241 +30,459 @@ pub struct StructData {
     pub max_count: ::core::ffi::c_int,
     pub entries: *mut StructDataEntry,
 }
-pub const NULL: *mut ::core::ffi::c_void =
-    ::core::ptr::null::<::core::ffi::c_void>() as *mut ::core::ffi::c_void;
 pub const STRUCT_EXTENSION_COUNT: ::core::ffi::c_int = 8 as ::core::ffi::c_int;
-unsafe extern "C" fn xmlstrdup(mut s: *const XML_Char) -> *mut XML_Char {
-    unsafe {
-        let mut byte_count: size_t = strlen(s as *const ::core::ffi::c_char)
-            .wrapping_add(1 as size_t)
-            .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t);
-        let dup: *mut XML_Char = malloc(byte_count) as *mut XML_Char;
-        if !dup.is_null() {
-        } else {
-            __assert_fail(
-                b"dup != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
-                66 as ::core::ffi::c_uint,
-                b"XML_Char *xmlstrdup(const XML_Char *)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        memcpy(
-            dup as *mut ::core::ffi::c_void,
-            s as *const ::core::ffi::c_void,
-            byte_count,
-        );
-        return dup;
+
+const FILE_PATH: &[u8] = b"/root/work/expat/tests/structdata.c\0";
+const FN_INIT: &[u8] = b"void StructData_Init(StructData *)\0";
+const FN_ADD_ITEM: &[u8] =
+    b"void StructData_AddItem(StructData *, const XML_Char *, int, int, int)\0";
+const FN_CHECK_ITEMS: &[u8] =
+    b"void StructData_CheckItems(StructData *, const StructDataEntry *, int)\0";
+const FN_DISPOSE: &[u8] = b"void StructData_Dispose(StructData *)\0";
+
+enum StructDataError {
+    Static {
+        line: ::core::ffi::c_int,
+        msg: &'static [u8],
+    },
+    Formatted {
+        line: ::core::ffi::c_int,
+        msg: String,
+    },
+}
+
+impl StructDataError {
+    fn static_msg(line: ::core::ffi::c_int, msg: &'static [u8]) -> Self {
+        Self::Static { line, msg }
+    }
+
+    fn formatted(line: ::core::ffi::c_int, msg: String) -> Self {
+        Self::Formatted { line, msg }
     }
 }
+
+struct OwnedEntry {
+    text: CString,
+    data0: ::core::ffi::c_int,
+    data1: ::core::ffi::c_int,
+    data2: ::core::ffi::c_int,
+}
+
+struct ExpectedEntry {
+    text: CString,
+    data0: ::core::ffi::c_int,
+    data1: ::core::ffi::c_int,
+    data2: ::core::ffi::c_int,
+}
+
+struct StructDataModel {
+    entries: Vec<OwnedEntry>,
+    max_count: ::core::ffi::c_int,
+}
+
+impl StructDataModel {
+    fn new() -> Self {
+        Self {
+            entries: Vec::new(),
+            max_count: 0 as ::core::ffi::c_int,
+        }
+    }
+
+    fn with_max_count(max_count: ::core::ffi::c_int) -> Self {
+        let mut model = Self::new();
+        model.max_count = max_count.max(0 as ::core::ffi::c_int);
+        model
+            .entries
+            .reserve(usize::try_from(model.max_count).expect("max_count should fit into usize"));
+        model
+    }
+
+    fn count(&self) -> ::core::ffi::c_int {
+        ::core::ffi::c_int::try_from(self.entries.len()).expect("entry count should fit into c_int")
+    }
+
+    fn add_item(
+        &mut self,
+        text: &CStr,
+        data0: ::core::ffi::c_int,
+        data1: ::core::ffi::c_int,
+        data2: ::core::ffi::c_int,
+    ) {
+        if self.count() == self.max_count {
+            self.max_count += STRUCT_EXTENSION_COUNT;
+            self.entries.reserve(
+                usize::try_from(STRUCT_EXTENSION_COUNT)
+                    .expect("extension count should fit into usize"),
+            );
+        }
+
+        self.entries.push(OwnedEntry {
+            text: text.to_owned(),
+            data0,
+            data1,
+            data2,
+        });
+    }
+
+    fn c_entries(&self) -> Box<[StructDataEntry]> {
+        self.entries
+            .iter()
+            .map(|entry| StructDataEntry {
+                str: entry.text.as_ptr(),
+                data0: entry.data0,
+                data1: entry.data1,
+                data2: entry.data2,
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice()
+    }
+
+    fn check_items(&self, expected: &[ExpectedEntry]) -> Result<(), StructDataError> {
+        let expected_count = ::core::ffi::c_int::try_from(expected.len())
+            .expect("expected length should fit into c_int");
+        let actual_count = self.count();
+        if expected_count != actual_count {
+            return Err(StructDataError::formatted(
+                119 as ::core::ffi::c_int,
+                format!(
+                    "wrong number of entries: got {}, expected {}",
+                    actual_count, expected_count
+                ),
+            ));
+        }
+
+        for (got, want) in self.entries.iter().zip(expected.iter()) {
+            if got.text.as_c_str() != want.text.as_c_str() {
+                return Err(StructDataError::static_msg(
+                    130 as ::core::ffi::c_int,
+                    b"structure got bad string\0",
+                ));
+            }
+
+            if got.data0 != want.data0 || got.data1 != want.data1 || got.data2 != want.data2 {
+                return Err(StructDataError::formatted(
+                    140 as ::core::ffi::c_int,
+                    format!(
+                        "struct '{}' expected ({},{},{}), got ({},{},{})",
+                        got.text.to_string_lossy(),
+                        want.data0,
+                        want.data1,
+                        want.data2,
+                        got.data0,
+                        got.data1,
+                        got.data2,
+                    ),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct RegistryEntry {
+    storage: usize,
+    model: StructDataModel,
+}
+
+static REGISTRY: Mutex<Vec<RegistryEntry>> = Mutex::new(Vec::new());
+
+fn registry() -> MutexGuard<'static, Vec<RegistryEntry>> {
+    REGISTRY
+        .lock()
+        .expect("structdata registry mutex should not be poisoned")
+}
+
+fn registry_index(entries: &[RegistryEntry], storage: usize) -> Option<usize> {
+    entries.iter().position(|entry| entry.storage == storage)
+}
+
+fn get_or_insert_model<'a>(
+    entries: &'a mut Vec<RegistryEntry>,
+    storage: &StructData,
+) -> &'a mut StructDataModel {
+    let storage_key = storage as *const StructData as usize;
+    if let Some(index) = registry_index(entries, storage_key) {
+        return &mut entries[index].model;
+    }
+
+    entries.push(RegistryEntry {
+        storage: storage_key,
+        model: StructDataModel::with_max_count(storage.max_count),
+    });
+    &mut entries
+        .last_mut()
+        .expect("inserted registry entry should exist")
+        .model
+}
+
+fn remove_model(entries: &mut Vec<RegistryEntry>, storage: &StructData) {
+    let storage_key = storage as *const StructData as usize;
+    if let Some(index) = registry_index(entries, storage_key) {
+        entries.remove(index);
+    }
+}
+
 #[no_mangle]
-pub unsafe extern "C" fn StructData_Init(mut storage: *mut StructData) {
-    unsafe {
-        if !storage.is_null() {
-        } else {
+pub unsafe extern "C" fn StructData_Init(storage: *mut StructData) {
+    let storage = if storage.is_null() {
+        unsafe {
             __assert_fail(
                 b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
                 73 as ::core::ffi::c_uint,
-                b"void StructData_Init(StructData *)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        (*storage).count = 0 as ::core::ffi::c_int;
-        (*storage).max_count = 0 as ::core::ffi::c_int;
-        (*storage).entries = ::core::ptr::null_mut::<StructDataEntry>();
+                FN_INIT.as_ptr() as *const ::core::ffi::c_char,
+            )
+        }
+    } else {
+        unsafe { &mut *storage }
+    };
+
+    let mut registry = registry();
+    remove_model(&mut registry, storage);
+    registry.push(RegistryEntry {
+        storage: storage as *mut StructData as usize,
+        model: StructDataModel::new(),
+    });
+
+    if !storage.entries.is_null() {
+        unsafe {
+            drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
+                storage.entries,
+                usize::try_from(storage.count).expect("entry count should be non-negative"),
+            )))
+        }
     }
+
+    storage.count = 0 as ::core::ffi::c_int;
+    storage.max_count = 0 as ::core::ffi::c_int;
+    storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn StructData_AddItem(
-    mut storage: *mut StructData,
-    mut s: *const XML_Char,
-    mut data0: ::core::ffi::c_int,
-    mut data1: ::core::ffi::c_int,
-    mut data2: ::core::ffi::c_int,
+    storage: *mut StructData,
+    s: *const XML_Char,
+    data0: ::core::ffi::c_int,
+    data1: ::core::ffi::c_int,
+    data2: ::core::ffi::c_int,
 ) {
-    unsafe {
-        let mut entry: *mut StructDataEntry = ::core::ptr::null_mut::<StructDataEntry>();
-        if !storage.is_null() {
-        } else {
+    let storage = if storage.is_null() {
+        unsafe {
             __assert_fail(
                 b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
                 84 as ::core::ffi::c_uint,
-                b"void StructData_AddItem(StructData *, const XML_Char *, int, int, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if !s.is_null() {
-        } else {
+                FN_ADD_ITEM.as_ptr() as *const ::core::ffi::c_char,
+            )
+        }
+    } else {
+        unsafe { &mut *storage }
+    };
+    let s = if s.is_null() {
+        unsafe {
             __assert_fail(
                 b"s != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
                 85 as ::core::ffi::c_uint,
-                b"void StructData_AddItem(StructData *, const XML_Char *, int, int, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if (*storage).count == (*storage).max_count {
-            let mut new_entries: *mut StructDataEntry = ::core::ptr::null_mut::<StructDataEntry>();
-            (*storage).max_count += STRUCT_EXTENSION_COUNT;
-            new_entries = realloc(
-                (*storage).entries as *mut ::core::ffi::c_void,
-                ((*storage).max_count as size_t)
-                    .wrapping_mul(::core::mem::size_of::<StructDataEntry>() as size_t),
-            ) as *mut StructDataEntry;
-            if !new_entries.is_null() {
-            } else {
-                __assert_fail(
-                    b"new_entries != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    92 as ::core::ffi::c_uint,
-                    b"void StructData_AddItem(StructData *, const XML_Char *, int, int, int)\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                );
-            };
-            (*storage).entries = new_entries;
+                FN_ADD_ITEM.as_ptr() as *const ::core::ffi::c_char,
+            )
         }
-        entry = (*storage).entries.offset((*storage).count as isize) as *mut StructDataEntry;
-        (*entry).str = xmlstrdup(s);
-        (*entry).data0 = data0;
-        (*entry).data1 = data1;
-        (*entry).data2 = data2;
-        (*storage).count += 1;
+    } else {
+        unsafe { CStr::from_ptr(s) }
+    };
+
+    let old_entries = storage.entries;
+    let old_count = storage.count;
+
+    let mut registry = registry();
+    let model = get_or_insert_model(&mut registry, storage);
+    model.add_item(s, data0, data1, data2);
+
+    let new_entries = model.c_entries();
+    storage.count = model.count();
+    storage.max_count = model.max_count;
+    storage.entries = if new_entries.is_empty() {
+        ::core::ptr::null_mut::<StructDataEntry>()
+    } else {
+        Box::into_raw(new_entries) as *mut StructDataEntry
+    };
+
+    if !old_entries.is_null() {
+        unsafe {
+            drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
+                old_entries,
+                usize::try_from(old_count).expect("entry count should be non-negative"),
+            )))
+        }
     }
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn StructData_CheckItems(
-    mut storage: *mut StructData,
-    mut expected: *const StructDataEntry,
-    mut count: ::core::ffi::c_int,
+    storage: *mut StructData,
+    expected: *const StructDataEntry,
+    count: ::core::ffi::c_int,
 ) {
-    unsafe {
-        let mut buffer: [::core::ffi::c_char; 1024] = [0; 1024];
-        if !storage.is_null() {
-        } else {
+    let storage = if storage.is_null() {
+        unsafe {
             __assert_fail(
                 b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
                 112 as ::core::ffi::c_uint,
-                b"void StructData_CheckItems(StructData *, const StructDataEntry *, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if !expected.is_null() {
-        } else {
+                FN_CHECK_ITEMS.as_ptr() as *const ::core::ffi::c_char,
+            )
+        }
+    } else {
+        unsafe { &mut *storage }
+    };
+    if expected.is_null() {
+        unsafe {
             __assert_fail(
                 b"expected != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
                 113 as ::core::ffi::c_uint,
-                b"void StructData_CheckItems(StructData *, const StructDataEntry *, int)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        };
-        if count != (*storage).count {
-            snprintf(
-                &raw mut buffer as *mut ::core::ffi::c_char,
-                ::core::mem::size_of::<[::core::ffi::c_char; 1024]>() as size_t,
-                b"wrong number of entries: got %d, expected %d\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                (*storage).count,
-                count,
-            );
-            StructData_Dispose(storage);
-            _fail(
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
-                119 as ::core::ffi::c_int,
-                &raw mut buffer as *mut ::core::ffi::c_char,
-            );
-        } else {
-            let mut i: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-            while i < count {
-                let mut got: *const StructDataEntry =
-                    (*storage).entries.offset(i as isize) as *mut StructDataEntry;
-                let mut want: *const StructDataEntry =
-                    expected.offset(i as isize) as *const StructDataEntry;
-                if !got.is_null() {
-                } else {
-                    __assert_fail(
-                        b"got != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                        b"/root/work/expat/tests/structdata.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        125 as ::core::ffi::c_uint,
-                        b"void StructData_CheckItems(StructData *, const StructDataEntry *, int)\0"
-                            .as_ptr() as *const ::core::ffi::c_char,
-                    );
-                };
-                if !want.is_null() {
-                } else {
-                    __assert_fail(
-                        b"want != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                        b"/root/work/expat/tests/structdata.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        126 as ::core::ffi::c_uint,
-                        b"void StructData_CheckItems(StructData *, const StructDataEntry *, int)\0"
-                            .as_ptr() as *const ::core::ffi::c_char,
-                    );
-                };
-                if strcmp(
-                    (*got).str as *const ::core::ffi::c_char,
-                    (*want).str as *const ::core::ffi::c_char,
-                ) != 0 as ::core::ffi::c_int
-                {
-                    StructData_Dispose(storage);
-                    _fail(
-                        b"/root/work/expat/tests/structdata.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        130 as ::core::ffi::c_int,
-                        b"structure got bad string\0".as_ptr() as *const ::core::ffi::c_char,
-                    );
-                } else if (*got).data0 != (*want).data0
-                    || (*got).data1 != (*want).data1
-                    || (*got).data2 != (*want).data2
-                {
-                    snprintf(
-                        &raw mut buffer as *mut ::core::ffi::c_char,
-                        ::core::mem::size_of::<[::core::ffi::c_char; 1024]>() as size_t,
-                        b"struct '%s' expected (%d,%d,%d), got (%d,%d,%d)\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        (*got).str,
-                        (*want).data0,
-                        (*want).data1,
-                        (*want).data2,
-                        (*got).data0,
-                        (*got).data1,
-                        (*got).data2,
-                    );
-                    StructData_Dispose(storage);
-                    _fail(
-                        b"/root/work/expat/tests/structdata.c\0".as_ptr()
-                            as *const ::core::ffi::c_char,
-                        140 as ::core::ffi::c_int,
-                        &raw mut buffer as *mut ::core::ffi::c_char,
-                    );
-                }
-                i += 1;
+                FN_CHECK_ITEMS.as_ptr() as *const ::core::ffi::c_char,
+            )
+        }
+    }
+
+    if count != storage.count {
+        let actual_count = storage.count;
+        let entries = storage.entries;
+        let entry_count = storage.count;
+
+        if !entries.is_null() {
+            unsafe {
+                drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
+                    entries,
+                    usize::try_from(entry_count).expect("entry count should be non-negative"),
+                )))
             }
-        };
+        }
+
+        let mut registry = registry();
+        remove_model(&mut registry, storage);
+        storage.count = 0 as ::core::ffi::c_int;
+        storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+
+        let msg = CString::new(format!(
+            "wrong number of entries: got {}, expected {}",
+            actual_count, count
+        ))
+        .expect("formatted failure messages must not contain NUL");
+        unsafe {
+            _fail(
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                119,
+                msg.as_ptr(),
+            )
+        }
+    }
+
+    let expected = unsafe {
+        ::core::slice::from_raw_parts(
+            expected,
+            usize::try_from(count).expect("expected count should be non-negative"),
+        )
+    };
+
+    let expected_entries: Vec<ExpectedEntry> = expected
+        .iter()
+        .map(|entry| ExpectedEntry {
+            text: unsafe { CStr::from_ptr(entry.str) }.to_owned(),
+            data0: entry.data0,
+            data1: entry.data1,
+            data2: entry.data2,
+        })
+        .collect();
+
+    let result = {
+        let mut registry = registry();
+        let model = get_or_insert_model(&mut registry, storage);
+        model.check_items(&expected_entries)
+    };
+
+    match result {
+        Ok(()) => {}
+        Err(StructDataError::Static { line, msg }) => {
+            let entries = storage.entries;
+            let entry_count = storage.count;
+            if !entries.is_null() {
+                unsafe {
+                    drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
+                        entries,
+                        usize::try_from(entry_count).expect("entry count should be non-negative"),
+                    )))
+                }
+            }
+
+            let mut registry = registry();
+            remove_model(&mut registry, storage);
+            storage.count = 0 as ::core::ffi::c_int;
+            storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+            unsafe {
+                _fail(
+                    FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                    line,
+                    msg.as_ptr() as *const ::core::ffi::c_char,
+                )
+            }
+        }
+        Err(StructDataError::Formatted { line, msg }) => {
+            let entries = storage.entries;
+            let entry_count = storage.count;
+            if !entries.is_null() {
+                unsafe {
+                    drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
+                        entries,
+                        usize::try_from(entry_count).expect("entry count should be non-negative"),
+                    )))
+                }
+            }
+
+            let mut registry = registry();
+            remove_model(&mut registry, storage);
+            storage.count = 0 as ::core::ffi::c_int;
+            storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
+            let msg = CString::new(msg).expect("formatted failure messages must not contain NUL");
+            unsafe {
+                _fail(
+                    FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
+                    line,
+                    msg.as_ptr(),
+                )
+            }
+        }
     }
 }
+
 #[no_mangle]
-pub unsafe extern "C" fn StructData_Dispose(mut storage: *mut StructData) {
-    unsafe {
-        let mut i: ::core::ffi::c_int = 0;
-        if !storage.is_null() {
-        } else {
+pub unsafe extern "C" fn StructData_Dispose(storage: *mut StructData) {
+    let storage = if storage.is_null() {
+        unsafe {
             __assert_fail(
                 b"storage != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/structdata.c\0".as_ptr() as *const ::core::ffi::c_char,
+                FILE_PATH.as_ptr() as *const ::core::ffi::c_char,
                 151 as ::core::ffi::c_uint,
-                b"void StructData_Dispose(StructData *)\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        };
-        i = 0 as ::core::ffi::c_int;
-        while i < (*storage).count {
-            free((*(*storage).entries.offset(i as isize)).str as *mut ::core::ffi::c_void);
-            i += 1;
+                FN_DISPOSE.as_ptr() as *const ::core::ffi::c_char,
+            )
         }
-        free((*storage).entries as *mut ::core::ffi::c_void);
-        (*storage).count = 0 as ::core::ffi::c_int;
-        (*storage).entries = ::core::ptr::null_mut::<StructDataEntry>();
+    } else {
+        unsafe { &mut *storage }
+    };
+
+    if !storage.entries.is_null() {
+        unsafe {
+            drop(Box::from_raw(::core::ptr::slice_from_raw_parts_mut(
+                storage.entries,
+                usize::try_from(storage.count).expect("entry count should be non-negative"),
+            )))
+        }
     }
+
+    let mut registry = registry();
+    remove_model(&mut registry, storage);
+    storage.count = 0 as ::core::ffi::c_int;
+    storage.entries = ::core::ptr::null_mut::<StructDataEntry>();
 }
