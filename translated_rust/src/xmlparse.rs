@@ -7591,8 +7591,6 @@ unsafe extern "C" fn storeAtts(
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     let mut nDefaultAtts: ::core::ffi::c_int = 0;
-    let mut appAtts: *mut *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<*const crate::expat_external_h::XML_Char>();
     let mut attIndex: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     let mut prefixLen: ::core::ffi::c_int = 0;
     let mut i: ::core::ffi::c_int = 0;
@@ -7704,33 +7702,53 @@ unsafe extern "C" fn storeAtts(
             }
         }
     }
-    appAtts = (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char;
+    // `m_atts` is allocated (and, above, resized) as exactly `m_attsSize`
+    // ATTRIBUTE records.  Expat intentionally reuses this allocation as the
+    // callback-facing name/value array, so keep it under the configured
+    // allocator rather than replacing it with a Vec.  Each ATTRIBUTE occupies
+    // an integral number of pointer slots, which bounds every name/value pair
+    // written below.
+    if (*parser).m_atts.is_null() || (*parser).m_attsSize <= 0 {
+        return crate::expat_h::XML_ERROR_NO_MEMORY;
+    }
+    let appAttsLen = match ((*parser).m_attsSize as usize).checked_mul(
+        ::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>()
+            / ::core::mem::size_of::<*const crate::expat_external_h::XML_Char>(),
+    ) {
+        Some(len) => len,
+        None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+    };
+    let appAtts = ::core::slice::from_raw_parts_mut(
+        (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char,
+        appAttsLen,
+    );
     i = 0 as ::core::ffi::c_int;
     while i < n {
-        let mut currAtt: *mut crate::src::xmltok::ATTRIBUTE = (*parser).m_atts.offset(i as isize);
+        // The scanner has completed before the name/value view is formed.
+        // Copy this record before its storage is reused by `appAtts`.
+        let currAtt = ::core::ptr::read((*parser).m_atts.add(i as usize));
         let mut attId: *mut ATTRIBUTE_ID = getAttributeId(
             parser,
             enc,
-            (*currAtt).name,
-            (*currAtt)
+            currAtt.name,
+            currAtt
                 .name
-                .offset(crate::src::xmltok::name_length(enc, (*currAtt).name) as isize),
+                .offset(crate::src::xmltok::name_length(enc, currAtt.name) as isize),
         );
         if attId.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
         if *(*attId).name.offset(-1 as isize) != 0 {
             if enc == parser_encoding(parser) {
-                (*parser).m_eventPtr = (*(*parser).m_atts.offset(i as isize)).name;
+                (*parser).m_eventPtr = currAtt.name;
             }
             return crate::expat_h::XML_ERROR_DUPLICATE_ATTRIBUTE;
         }
         *(*attId).name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
         let c2rust_fresh23 = attIndex;
         attIndex = attIndex + 1;
-        let c2rust_lvalue_ptr = &raw mut *appAtts.offset(c2rust_fresh23 as isize);
-        *c2rust_lvalue_ptr = (*attId).name;
-        if (*(*parser).m_atts.offset(i as isize)).normalized == 0 {
+        appAtts[c2rust_fresh23 as usize] = (*attId).name;
+        if currAtt.normalized == 0 {
             let mut result: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
             let mut isCdata: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
             if (*attId).maybeTokenized != 0 {
@@ -7761,24 +7779,24 @@ unsafe extern "C" fn storeAtts(
                 parser,
                 enc,
                 isCdata,
-                (*(*parser).m_atts.offset(i as isize)).valuePtr,
-                (*(*parser).m_atts.offset(i as isize)).valueEnd,
+                currAtt.valuePtr,
+                currAtt.valueEnd,
                 &raw mut (*parser).m_tempPool,
                 account,
             );
             if result as u64 != 0 {
                 return result;
             }
-            *appAtts.offset(attIndex as isize) = (*parser).m_tempPool.start;
+            appAtts[attIndex as usize] = (*parser).m_tempPool.start;
             (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
         } else {
-            *appAtts.offset(attIndex as isize) = poolStoreString(
+            appAtts[attIndex as usize] = poolStoreString(
                 &raw mut (*parser).m_tempPool,
                 enc,
-                (*(*parser).m_atts.offset(i as isize)).valuePtr,
-                (*(*parser).m_atts.offset(i as isize)).valueEnd,
+                currAtt.valuePtr,
+                currAtt.valueEnd,
             );
-            if (*appAtts.offset(attIndex as isize)).is_null() {
+            if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
             (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
@@ -7789,7 +7807,7 @@ unsafe extern "C" fn storeAtts(
                     parser,
                     (*attId).prefix,
                     attId,
-                    *appAtts.offset(attIndex as isize),
+                    appAtts[attIndex as usize],
                     bindingsPtr,
                 );
                 if result_0 as u64 != 0 {
@@ -7812,7 +7830,7 @@ unsafe extern "C" fn storeAtts(
     {
         i = 0 as ::core::ffi::c_int;
         while i < attIndex {
-            if *appAtts.offset(i as isize)
+            if appAtts[i as usize]
                 == (*(*elementType).idAtt).name as *const crate::expat_external_h::XML_Char
             {
                 (*parser).m_idAttIndex = i;
@@ -7853,28 +7871,24 @@ unsafe extern "C" fn storeAtts(
                     nPrefixes += 1;
                     let c2rust_fresh24 = attIndex;
                     attIndex = attIndex + 1;
-                    let c2rust_lvalue_ptr_0 = &raw mut *appAtts.offset(c2rust_fresh24 as isize);
-                    *c2rust_lvalue_ptr_0 = (*(*da).id).name;
+                    appAtts[c2rust_fresh24 as usize] = (*(*da).id).name;
                     let c2rust_fresh25 = attIndex;
                     attIndex = attIndex + 1;
-                    let c2rust_lvalue_ptr_1 = &raw mut *appAtts.offset(c2rust_fresh25 as isize);
-                    *c2rust_lvalue_ptr_1 = value;
+                    appAtts[c2rust_fresh25 as usize] = value;
                 }
             } else {
                 *(*(*da).id).name.offset(-1 as isize) = 1 as crate::expat_external_h::XML_Char;
                 let c2rust_fresh26 = attIndex;
                 attIndex = attIndex + 1;
-                let c2rust_lvalue_ptr_2 = &raw mut *appAtts.offset(c2rust_fresh26 as isize);
-                *c2rust_lvalue_ptr_2 = (*(*da).id).name;
+                appAtts[c2rust_fresh26 as usize] = (*(*da).id).name;
                 let c2rust_fresh27 = attIndex;
                 attIndex = attIndex + 1;
-                let c2rust_lvalue_ptr_3 = &raw mut *appAtts.offset(c2rust_fresh27 as isize);
-                *c2rust_lvalue_ptr_3 = value;
+                appAtts[c2rust_fresh27 as usize] = value;
             }
         }
         i += 1;
     }
-    *appAtts.offset(attIndex as isize) = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+    appAtts[attIndex as usize] = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     i = 0 as ::core::ffi::c_int;
     if nPrefixes != 0 {
         let mut j_0: ::core::ffi::c_uint = 0;
@@ -7934,7 +7948,7 @@ unsafe extern "C" fn storeAtts(
         version = version.wrapping_sub(1);
         (*parser).m_nsAttsVersion = version;
         while i < attIndex {
-            let mut s: *const crate::expat_external_h::XML_Char = *appAtts.offset(i as isize);
+            let mut s: *const crate::expat_external_h::XML_Char = appAtts[i as usize];
             if *s.offset(-1 as isize) as ::core::ffi::c_int == 2 as ::core::ffi::c_int {
                 let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
                 let mut b: *const BINDING = ::core::ptr::null::<BINDING>();
@@ -8088,7 +8102,7 @@ unsafe extern "C" fn storeAtts(
                 }
                 s = (*parser).m_tempPool.start;
                 (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                *appAtts.offset(i as isize) = s;
+                appAtts[i as usize] = s;
                 (*(*parser).m_nsAtts.offset(j_0 as isize)).version = version;
                 (*(*parser).m_nsAtts.offset(j_0 as isize)).hash = uriHash;
                 (*(*parser).m_nsAtts.offset(j_0 as isize)).uriName = s;
@@ -8105,7 +8119,7 @@ unsafe extern "C" fn storeAtts(
         }
     }
     while i < attIndex {
-        *(*appAtts.offset(i as isize) as *mut crate::expat_external_h::XML_Char)
+        *(appAtts[i as usize] as *mut crate::expat_external_h::XML_Char)
             .offset(-1 as isize) = 0 as crate::expat_external_h::XML_Char;
         i += 2 as ::core::ffi::c_int;
     }
