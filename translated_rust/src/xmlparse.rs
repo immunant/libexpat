@@ -22734,49 +22734,109 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect_ffi(
 ) -> ::core::ffi::c_ulonglong {
     testingAccountingGetCountBytesIndirect(parser)
 }
-unsafe extern "C" fn entityTrackingReportStats(
-    mut rootParser: crate::expat_h::XML_Parser,
-    mut entity: *mut ENTITY,
-    mut action: *const ::core::ffi::c_char,
-    mut sourceLine: ::core::ffi::c_int,
+#[derive(Copy, Clone)]
+enum EntityTrackingAction {
+    Open,
+    Close,
+}
+
+impl EntityTrackingAction {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Open => "OPEN ",
+            Self::Close => "CLOSE",
+        }
+    }
+}
+
+/// Renders the optional entity-tracking diagnostic from checked parser and DTD
+/// state.  Entity names stay as XML bytes: reporting must not require them to
+/// be valid UTF-8.
+struct EntityTrackingReport<'a> {
+    root_parser_address: usize,
+    count_ever_opened: ::core::ffi::c_uint,
+    current_depth: ::core::ffi::c_uint,
+    maximum_depth_seen: ::core::ffi::c_uint,
+    is_parameter: bool,
+    entity_name: &'a [u8],
+    action: EntityTrackingAction,
+    text_length: ::core::ffi::c_int,
+    source_line: ::core::ffi::c_int,
+}
+
+fn entityTrackingReportStats(report: EntityTrackingReport<'_>) {
+    use std::io::Write;
+
+    let mut stderr = std::io::stderr().lock();
+    let _ = write!(
+        stderr,
+        "expat: Entities(0x{:x}): Count {:>9}, depth {:>2}/{:>2} ",
+        report.root_parser_address,
+        report.count_ever_opened,
+        report.current_depth,
+        report.maximum_depth_seen,
+    );
+    let indentation = (report.current_depth as ::core::ffi::c_int)
+        .wrapping_sub(1)
+        .wrapping_mul(2)
+        .unsigned_abs() as usize;
+    for _ in 0..indentation {
+        let _ = stderr.write_all(b" ");
+    }
+    let _ = stderr.write_all(if report.is_parameter { b"%" } else { b"&" });
+    let _ = stderr.write_all(report.entity_name);
+    let _ = write!(
+        stderr,
+        "; {} length {} (xmlparse.c:{})\n",
+        report.action.label(),
+        report.text_length,
+        report.source_line,
+    );
+}
+
+/// Resolves the parser-owned DTD and entity record at the legacy raw-handle
+/// boundary, then delegates all reporting to the safe implementation.
+unsafe fn entity_tracking_report_stats_from_handles(
+    root_parser: crate::expat_h::XML_Parser,
+    entity: *mut ENTITY,
+    action: EntityTrackingAction,
+    source_line: ::core::ffi::c_int,
 ) {
-    let stats = (*rootParser)
+    let root_parser_address = root_parser.addr();
+    let Some(root_parser) = root_parser.as_ref() else {
+        return;
+    };
+    let Some(entity) = entity.as_ref() else {
+        return;
+    };
+    let Some(dtd) = root_parser.m_dtd.as_deref() else {
+        return;
+    };
+    let dtd = &*dtd.value.get();
+    let stats = root_parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     if stats.entity_stats.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
-    let dtd = parser_dtd_ptr!(rootParser);
-    if dtd.is_null() {
+    let Some(entity_name) = pool_terminated_chars(&dtd.pool, entity.named.name) else {
         return;
-    }
-    let entity_name = pool_string_pointer!(&(*dtd).pool, (*entity).named.name);
-    if entity_name.is_null() {
+    };
+    let Some(entity_name) = entity_name.strip_suffix(&[0]) else {
         return;
-    }
-    let entityName: *const ::core::ffi::c_char = entity_name.cast();
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"expat: Entities(%p): Count %9u, depth %2u/%2u %*s%s%s; %s length %d (xmlparse.c:%d)\n\0"
-            .as_ptr() as *const ::core::ffi::c_char,
-        rootParser as *mut ::core::ffi::c_void,
-        stats.entity_stats.countEverOpened,
-        stats.entity_stats.currentDepth,
-        stats.entity_stats.maximumDepthSeen,
-        (stats.entity_stats.currentDepth as ::core::ffi::c_int - 1 as ::core::ffi::c_int)
-            * 2 as ::core::ffi::c_int,
-        b"\0".as_ptr() as *const ::core::ffi::c_char,
-        if (*entity).is_param as ::core::ffi::c_int != 0 {
-            b"%\0".as_ptr() as *const ::core::ffi::c_char
-        } else {
-            b"&\0".as_ptr() as *const ::core::ffi::c_char
-        },
-        entityName,
+    };
+    entityTrackingReportStats(EntityTrackingReport {
+        root_parser_address,
+        count_ever_opened: stats.entity_stats.countEverOpened,
+        current_depth: stats.entity_stats.currentDepth,
+        maximum_depth_seen: stats.entity_stats.maximumDepthSeen,
+        is_parameter: entity.is_param != 0,
+        entity_name: bytemuck::cast_slice(entity_name),
         action,
-        (*entity).textLen,
-        sourceLine,
-    );
+        text_length: entity.textLen,
+        source_line,
+    });
 }
 
 unsafe extern "C" fn entityTrackingOnOpen(
@@ -22795,10 +22855,10 @@ unsafe extern "C" fn entityTrackingOnOpen(
             root.entity_stats.maximumDepthSeen = root.entity_stats.maximumDepthSeen.wrapping_add(1);
         }
     }
-    entityTrackingReportStats(
+    entity_tracking_report_stats_from_handles(
         originParser,
         entity,
-        b"OPEN \0".as_ptr() as *const ::core::ffi::c_char,
+        EntityTrackingAction::Open,
         sourceLine,
     );
 }
@@ -22808,10 +22868,10 @@ unsafe extern "C" fn entityTrackingOnClose(
     mut entity: *mut ENTITY,
     mut sourceLine: ::core::ffi::c_int,
 ) {
-    entityTrackingReportStats(
+    entity_tracking_report_stats_from_handles(
         originParser,
         entity,
-        b"CLOSE\0".as_ptr() as *const ::core::ffi::c_char,
+        EntityTrackingAction::Close,
         sourceLine,
     );
     let mut root = (*originParser)
