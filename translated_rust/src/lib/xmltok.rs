@@ -285,14 +285,20 @@ fn read_c_char_bytes<const N: usize>(p: *const ::core::ffi::c_char) -> [u8; N] {
     bytes
 }
 
+fn with_ref<T, R>(ptr: *const T, f: impl FnOnce(&T) -> R) -> R {
+    unsafe { f(&*ptr) }
+}
+
+fn with_mut<T, R>(ptr: *mut T, f: impl FnOnce(&mut T) -> R) -> R {
+    unsafe { f(&mut *ptr) }
+}
+
 fn read_copy<T: Copy>(ptr: *const T) -> T {
-    unsafe { ptr.read() }
+    with_ref(ptr, |value| *value)
 }
 
 fn write_copy<T>(ptr: *mut T, value: T) {
-    unsafe {
-        ptr.write(value);
-    }
+    with_mut(ptr, |slot| *slot = value)
 }
 
 fn ref_from_ptr<'a, T>(ptr: *const T) -> &'a T {
@@ -342,8 +348,9 @@ fn c_char_distance(
 }
 
 fn normal_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    let normal = ref_from_ptr(enc as *const normal_encoding);
-    normal.type_0[read_c_char(ptr) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+    with_ref(enc.cast::<normal_encoding>(), |normal| {
+        normal.type_0[read_c_char(ptr) as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+    })
 }
 
 fn little2_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
@@ -359,31 +366,28 @@ fn big2_byte_type(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> ::co
     let high = read_c_char(ptr);
     let low = read_c_char(add_const_c_char(ptr, 1));
     if high as ::core::ffi::c_int == 0 {
-        let normal = ref_from_ptr(enc as *const normal_encoding);
-        normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+        with_ref(enc.cast::<normal_encoding>(), |normal| {
+            normal.type_0[low as ::core::ffi::c_uchar as usize] as ::core::ffi::c_int
+        })
     } else {
         unicode_byte_type(high, low)
     }
 }
 
 fn line_number(pos: *mut POSITION) -> XML_Size {
-    unsafe { read_copy(::core::ptr::addr_of!((*pos).lineNumber)) }
+    with_ref(pos.cast_const(), |position| position.lineNumber)
 }
 
 fn set_line_number(pos: *mut POSITION, value: XML_Size) {
-    unsafe {
-        write_copy(::core::ptr::addr_of_mut!((*pos).lineNumber), value);
-    }
+    with_mut(pos, |position| position.lineNumber = value)
 }
 
 fn column_number(pos: *mut POSITION) -> XML_Size {
-    unsafe { read_copy(::core::ptr::addr_of!((*pos).columnNumber)) }
+    with_ref(pos.cast_const(), |position| position.columnNumber)
 }
 
 fn set_column_number(pos: *mut POSITION, value: XML_Size) {
-    unsafe {
-        write_copy(::core::ptr::addr_of_mut!((*pos).columnNumber), value);
-    }
+    with_mut(pos, |position| position.columnNumber = value)
 }
 
 fn increment_line_number(pos: *mut POSITION) {
@@ -395,7 +399,7 @@ fn increment_column_number(pos: *mut POSITION) {
 }
 
 fn encoding_min_bytes_per_char(enc: *const ENCODING) -> isize {
-    unsafe { read_copy(::core::ptr::addr_of!((*enc).minBytesPerChar)) as isize }
+    with_ref(enc, |encoding| encoding.minBytesPerChar as isize)
 }
 
 fn encoding_name_matches_ascii(
@@ -404,10 +408,9 @@ fn encoding_name_matches_ascii(
     end: *const ::core::ffi::c_char,
     ascii_name: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        read_copy(::core::ptr::addr_of!((*enc).nameMatchesAscii))
-            .expect("non-null function pointer")(enc, ptr, end, ascii_name)
-    }
+    let name_matches_ascii =
+        with_ref(enc, |encoding| encoding.nameMatchesAscii).expect("non-null function pointer");
+    name_matches_ascii(enc, ptr, end, ascii_name)
 }
 
 fn encoding_utf8_convert(
@@ -417,9 +420,8 @@ fn encoding_utf8_convert(
     to_p: *mut *mut ::core::ffi::c_char,
     to_lim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    let utf8_convert = unsafe {
-        read_copy(::core::ptr::addr_of!((*enc).utf8Convert)).expect("non-null function pointer")
-    };
+    let utf8_convert =
+        with_ref(enc, |encoding| encoding.utf8Convert).expect("non-null function pointer");
     unsafe { utf8_convert(enc, from_p, from_lim, to_p, to_lim) }
 }
 
@@ -479,9 +481,10 @@ fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char,
 }
 
 fn unknown_sequence_length(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> isize {
-    let normal = ref_from_ptr(enc as *const normal_encoding);
     let byte = read_c_char(ptr) as ::core::ffi::c_uchar as usize;
-    (normal.type_0[byte] as ::core::ffi::c_int - (BT_LEAD2 as ::core::ffi::c_int - 2)) as isize
+    with_ref(enc.cast::<normal_encoding>(), |normal| {
+        (normal.type_0[byte] as ::core::ffi::c_int - (BT_LEAD2 as ::core::ffi::c_int - 2)) as isize
+    })
 }
 
 fn read_encoding_table_entry(table: *const *const ENCODING, index: usize) -> *const ENCODING {
