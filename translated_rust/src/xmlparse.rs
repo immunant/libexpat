@@ -2403,7 +2403,10 @@ pub struct XML_ParserStruct {
     // cache owns Rust storage paired with an opaque allocator token.
     m_freeTagList: FreeTagList,
     m_activeTags: Vec<TagStorage>,
-    pub m_inheritedBindings: *mut BINDING,
+    // Inherited namespace bindings form a nullable list head.  A present
+    // entry always names an allocated binding node, so keep nullability in
+    // the option rather than in a raw pointer field.
+    pub m_inheritedBindings: Option<::core::ptr::NonNull<BINDING>>,
     // Binding nodes are returned to this parser-owned LIFO reuse list.  A
     // present head always names an allocated node, so express nullability
     // separately from the non-null node address.
@@ -4113,7 +4116,7 @@ fn initial_parser_struct(
         m_tagStack: None,
         m_freeTagList: FreeTagList::empty(),
         m_activeTags: Vec::new(),
-        m_inheritedBindings: ::core::ptr::null_mut::<BINDING>(),
+        m_inheritedBindings: None,
         m_freeBindingList: None,
         m_attsSize: 0,
         m_nSpecifiedAtts: 0,
@@ -4567,7 +4570,7 @@ fn parser_init(
     parser.m_defaultExpandInternalEntities = crate::expat_h::XML_TRUE;
     parser.m_tagLevel = 0 as ::core::ffi::c_int;
     parser.m_tagStack = None;
-    parser.m_inheritedBindings = ::core::ptr::null_mut::<BINDING>();
+    parser.m_inheritedBindings = None;
     parser.m_nSpecifiedAtts = 0 as ::core::ffi::c_int;
     parser.m_unknownEncodingMem = None;
     parser.m_parsingStatus.parsing = crate::expat_h::XML_INITIALIZED;
@@ -4701,7 +4704,12 @@ pub unsafe extern "C" fn XML_ParserReset(
                 as *mut open_internal_entity;
             parser_state.m_freeValueEntities = ::core::ptr::NonNull::new(open_entity);
         }
-        moveToFreeBindingList(parser_state, parser_state.m_inheritedBindings);
+        moveToFreeBindingList(
+            parser_state,
+            parser_state
+                .m_inheritedBindings
+                .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr),
+        );
         let unknown_encoding_mem = parser_state.m_unknownEncodingMem.take();
         let protocol_encoding_name = parser_state.m_protocolEncodingName.take();
         (
@@ -5460,7 +5468,12 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
             .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr),
         parser as *mut XML_ParserStruct,
     );
-    destroyBindings(parser.m_inheritedBindings, parser as *mut XML_ParserStruct);
+    destroyBindings(
+        parser
+            .m_inheritedBindings
+            .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr),
+        parser as *mut XML_ParserStruct,
+    );
     poolDestroy(&mut parser.m_tempPool);
     poolDestroy(&mut parser.m_temp2Pool);
     if let Some(protocol_encoding_name) = parser.m_protocolEncodingName.take() {
@@ -15857,13 +15870,18 @@ unsafe extern "C" fn setContext(
                 if pool_start.is_null() {
                     return crate::expat_h::XML_FALSE;
                 }
-                if addBinding(
+                let mut inherited_bindings = parser
+                    .m_inheritedBindings
+                    .map_or(::core::ptr::null_mut(), ::core::ptr::NonNull::as_ptr);
+                let inherited_binding_result = addBinding(
                     parser as *mut XML_ParserStruct,
                     prefix,
                     ::core::ptr::null::<ATTRIBUTE_ID>(),
                     pool_start,
-                    &raw mut parser.m_inheritedBindings,
-                ) as ::core::ffi::c_uint
+                    &raw mut inherited_bindings,
+                );
+                parser.m_inheritedBindings = ::core::ptr::NonNull::new(inherited_bindings);
+                if inherited_binding_result as ::core::ffi::c_uint
                     != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
                 {
                     return crate::expat_h::XML_FALSE;
