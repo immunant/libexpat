@@ -1547,6 +1547,14 @@ static END_DOCTYPE_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndCdataSectionCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// Typed doctype callback registrations prepared at the ABI boundary.  The
+/// parser-side setter only needs these owned adapters and an opaque parser
+/// address key.
+struct DoctypeDeclHandlers {
+    start: Option<std::sync::Arc<dyn StartDoctypeDeclCallback>>,
+    end: Option<std::sync::Arc<dyn EndCdataSectionCallback>>,
+}
+
 // C exposes two handler-context modes: callbacks receive the caller's user
 // data by default, or the parser handle after XML_UseParserAsHandlerArg.
 // Recording that choice avoids retaining an opaque foreign pointer in parser
@@ -9121,38 +9129,37 @@ pub unsafe extern "C" fn XML_SetDefaultHandlerExpand_ffi(
         crate::expat_h::XML_TRUE,
     )
 }
-pub unsafe extern "C" fn XML_SetDoctypeDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
-    mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
+fn XML_SetDoctypeDeclHandler(
+    start_handler_enabled: &mut bool,
+    end_handler_enabled: &mut bool,
+    parser_address: usize,
+    handlers: DoctypeDeclHandlers,
 ) {
-    if parser.is_null() {
-        return;
-    }
-    (*parser).m_startDoctypeDeclHandler = start.is_some();
+    let DoctypeDeclHandlers { start, end } = handlers;
+    *start_handler_enabled = start.is_some();
     let mut handlers = START_DOCTYPE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     match start {
         Some(callback) => {
-            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            handlers.insert(parser_address, callback);
         }
         None => {
-            handlers.remove(&(parser as usize));
+            handlers.remove(&parser_address);
         }
     }
-    (*parser).m_endDoctypeDeclHandler = end.is_some();
+    *end_handler_enabled = end.is_some();
     let mut handlers = END_DOCTYPE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     match end {
         Some(callback) => {
-            handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            handlers.insert(parser_address, callback);
         }
         None => {
-            handlers.remove(&(parser as usize));
+            handlers.remove(&parser_address);
         }
     }
 }
@@ -9163,7 +9170,21 @@ pub unsafe extern "C" fn XML_SetDoctypeDeclHandler_ffi(
     mut start: crate::expat_h::XML_StartDoctypeDeclHandler,
     mut end: crate::expat_h::XML_EndDoctypeDeclHandler,
 ) {
-    XML_SetDoctypeDeclHandler(parser, start, end)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let handlers = DoctypeDeclHandlers {
+        start: start.map(|callback| std::sync::Arc::new(callback) as _),
+        end: end.map(|callback| std::sync::Arc::new(callback) as _),
+    };
+    let parser = parser.as_mut().expect("non-null parser was checked");
+    XML_SetDoctypeDeclHandler(
+        &mut parser.m_startDoctypeDeclHandler,
+        &mut parser.m_endDoctypeDeclHandler,
+        parser_address,
+        handlers,
+    )
 }
 pub unsafe extern "C" fn XML_SetStartDoctypeDeclHandler(
     mut parser: crate::expat_h::XML_Parser,
