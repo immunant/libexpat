@@ -2825,48 +2825,8 @@ impl AllocationBackingFactory {
     /// foreign allocator calls stay at this allocation boundary rather than
     /// leaking into parser construction and its Rust-owned buffers.
     fn for_pinned_parser(parser: std::pin::Pin<&XML_ParserStruct>) -> Self {
-        let parser_ptr = std::ptr::from_ref(parser.get_ref()).cast_mut();
         Self {
-            allocate: std::sync::Arc::new(move |size, source_line| {
-                let allocation = unsafe { expat_malloc(parser_ptr, size, source_line) };
-                if allocation.is_null() {
-                    return None;
-                }
-                let mut allocation = allocation;
-                Some(AllocationBacking {
-                    actions: Box::new(move |action| match action {
-                        ParserAllocationAction::Grow { size, source_line } => {
-                            let reallocated =
-                                unsafe { expat_realloc(parser_ptr, allocation, size, source_line) };
-                            if reallocated.is_null() {
-                                false
-                            } else {
-                                allocation = reallocated;
-                                true
-                            }
-                        }
-                        ParserAllocationAction::Replace {
-                            size,
-                            allocation_source_line,
-                            free_source_line,
-                        } => {
-                            let replacement =
-                                unsafe { expat_malloc(parser_ptr, size, allocation_source_line) };
-                            if replacement.is_null() {
-                                false
-                            } else {
-                                unsafe { expat_free(parser_ptr, allocation, free_source_line) };
-                                allocation = replacement;
-                                true
-                            }
-                        }
-                        ParserAllocationAction::Free(source_line) => {
-                            unsafe { expat_free(parser_ptr, allocation, source_line) };
-                            true
-                        }
-                    }),
-                })
-            }),
+            allocate: captured_parser_allocation_route(parser),
         }
     }
 
@@ -2877,6 +2837,58 @@ impl AllocationBackingFactory {
     ) -> Option<AllocationBacking> {
         (self.allocate)(size, source_line)
     }
+}
+
+/// Construct the opaque allocation route while the parser's stable address
+/// is still available.  This is the sole implementation boundary that keeps
+/// the raw parser handle needed by Expat's allocator ABI; the factory itself
+/// only deals in typed allocation tokens.
+fn captured_parser_allocation_route(
+    parser: std::pin::Pin<&XML_ParserStruct>,
+) -> std::sync::Arc<
+    dyn Fn(crate::__stddef_size_t_h::size_t, ::core::ffi::c_int) -> Option<AllocationBacking>,
+> {
+    let parser_ptr = std::ptr::from_ref(parser.get_ref()).cast_mut();
+    std::sync::Arc::new(move |size, source_line| {
+        let allocation = unsafe { expat_malloc(parser_ptr, size, source_line) };
+        if allocation.is_null() {
+            return None;
+        }
+        let mut allocation = allocation;
+        Some(AllocationBacking {
+            actions: Box::new(move |action| match action {
+                ParserAllocationAction::Grow { size, source_line } => {
+                    let reallocated = unsafe { expat_realloc(parser_ptr, allocation, size, source_line) };
+                    if reallocated.is_null() {
+                        false
+                    } else {
+                        allocation = reallocated;
+                        true
+                    }
+                }
+                ParserAllocationAction::Replace {
+                    size,
+                    allocation_source_line,
+                    free_source_line,
+                } => {
+                    let replacement = unsafe {
+                        expat_malloc(parser_ptr, size, allocation_source_line)
+                    };
+                    if replacement.is_null() {
+                        false
+                    } else {
+                        unsafe { expat_free(parser_ptr, allocation, free_source_line) };
+                        allocation = replacement;
+                        true
+                    }
+                }
+                ParserAllocationAction::Free(source_line) => {
+                    unsafe { expat_free(parser_ptr, allocation, source_line) };
+                    true
+                }
+            }),
+        })
+    })
 }
 
 /// Reserve the allocator-observable storage token paired with a parser.
