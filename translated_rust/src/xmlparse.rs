@@ -16460,32 +16460,41 @@ unsafe extern "C" fn externalParEntProcessor(
 }
 
 unsafe extern "C" fn entityValueProcessor(
-    mut parser: crate::expat_h::XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
+    parser: crate::expat_h::XML_Parser,
+    s: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
-    let mut start: *const ::core::ffi::c_char = s;
-    let mut next: *const ::core::ffi::c_char = s;
-    let mut enc: *const crate::src::xmltok::ENCODING = parser_encoding(parser);
-    let mut tok: ::core::ffi::c_int = 0;
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(next_ptr) = nextPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let mut start = s;
     loop {
-        let scan = scanner_context_from_raw(
-            (*enc).scanners[0 as usize],
-            enc,
-            start,
-            end,
-        )
-        .scan();
-        tok = scan.token;
-        if let Some(offset) = scan.next {
-            next = start.wrapping_add(offset);
-        }
+        // Entity-value processors always scan cursors owned by the parser's
+        // live input buffer.  Resolve that range before constructing the
+        // tokenizer view; this also preserves the selected internal UTF-8
+        // table for entity expansion scans.
+        let scan = entity_value_init_scan(parser, start.addr(), end.addr());
+        let tok = scan.token;
+        let next = if let Some(offset) = scan.next {
+            let Some(next_address) = start.addr().checked_add(offset) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            if next_address > end.addr() {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            }
+            start.wrapping_add(offset)
+        } else {
+            start
+        };
         if tok <= 0 as ::core::ffi::c_int {
-            if (*parser).m_parsingStatus.finalBuffer == 0
+            if parser.m_parsingStatus.finalBuffer == 0
                 && tok != crate::src::xmltok::XML_TOK_INVALID
             {
-                *nextPtr = s;
+                *next_ptr = s;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             match tok {
@@ -16501,8 +16510,8 @@ unsafe extern "C" fn entityValueProcessor(
                 crate::src::xmltok::XML_TOK_NONE | _ => {}
             }
             return storeEntityValue(
-                parser,
-                enc,
+                std::ptr::from_mut(parser),
+                std::ptr::from_ref(current_parser_encoding(parser)),
                 s,
                 end,
                 XML_ACCOUNT_DIRECT,
