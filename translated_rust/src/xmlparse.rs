@@ -1302,6 +1302,35 @@ static CHARACTER_DATA_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn CharacterDataCallback>>>,
 > = std::sync::OnceLock::new();
 
+// Foreign callback values remain in this boundary registry; parser state only
+// records whether a comment callback is installed.
+trait CommentCallback: Send + Sync {
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        data: *const crate::expat_external_h::XML_Char,
+    );
+}
+
+impl CommentCallback
+    for unsafe extern "C" fn(
+        *mut ::core::ffi::c_void,
+        *const crate::expat_external_h::XML_Char,
+    ) -> ()
+{
+    unsafe fn invoke(
+        &self,
+        user_data: *mut ::core::ffi::c_void,
+        data: *const crate::expat_external_h::XML_Char,
+    ) {
+        self(user_data, data);
+    }
+}
+
+static COMMENT_HANDLERS: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn CommentCallback>>>,
+> = std::sync::OnceLock::new();
+
 unsafe fn callCharacterDataHandler(
     parser: crate::expat_h::XML_Parser,
     data: *const crate::expat_external_h::XML_Char,
@@ -1466,7 +1495,7 @@ pub struct XML_ParserStruct {
     pub m_endElementHandler: crate::expat_h::XML_EndElementHandler,
     pub m_characterDataHandler: bool,
     pub m_processingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler,
-    pub m_commentHandler: crate::expat_h::XML_CommentHandler,
+    pub m_commentHandler: bool,
     pub m_startCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler,
     pub m_endCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler,
     pub m_defaultHandler: crate::expat_h::XML_DefaultHandler,
@@ -2856,7 +2885,12 @@ unsafe extern "C" fn parserInit(
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     (*parser).m_processingInstructionHandler = None;
-    (*parser).m_commentHandler = None;
+    (*parser).m_commentHandler = false;
+    COMMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
     (*parser).m_startCdataSectionHandler = None;
     (*parser).m_endCdataSectionHandler = None;
     (*parser).m_defaultHandler = None;
@@ -3094,7 +3128,8 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     let mut oldCharacterDataCallback: Option<std::sync::Arc<dyn CharacterDataCallback>> = None;
     let mut oldProcessingInstructionHandler: crate::expat_h::XML_ProcessingInstructionHandler =
         None;
-    let mut oldCommentHandler: crate::expat_h::XML_CommentHandler = None;
+    let mut oldCommentHandler = false;
+    let mut oldCommentCallback: Option<std::sync::Arc<dyn CommentCallback>> = None;
     let mut oldStartCdataSectionHandler: crate::expat_h::XML_StartCdataSectionHandler = None;
     let mut oldEndCdataSectionHandler: crate::expat_h::XML_EndCdataSectionHandler = None;
     let mut oldDefaultHandler: crate::expat_h::XML_DefaultHandler = None;
@@ -3146,6 +3181,12 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
         .cloned();
     oldProcessingInstructionHandler = (*parser).m_processingInstructionHandler;
     oldCommentHandler = (*parser).m_commentHandler;
+    oldCommentCallback = COMMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
     oldStartCdataSectionHandler = (*parser).m_startCdataSectionHandler;
     oldEndCdataSectionHandler = (*parser).m_endCdataSectionHandler;
     oldDefaultHandler = (*parser).m_defaultHandler;
@@ -3233,6 +3274,13 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     }
     (*parser).m_processingInstructionHandler = oldProcessingInstructionHandler;
     (*parser).m_commentHandler = oldCommentHandler;
+    if let Some(callback) = oldCommentCallback {
+        COMMENT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(parser as usize, callback);
+    }
     (*parser).m_startCdataSectionHandler = oldStartCdataSectionHandler;
     (*parser).m_endCdataSectionHandler = oldEndCdataSectionHandler;
     (*parser).m_defaultHandler = oldDefaultHandler;
@@ -3345,6 +3393,11 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&(parser as usize));
     CHARACTER_DATA_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&(parser as usize));
+    COMMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -3778,7 +3831,19 @@ pub unsafe extern "C" fn XML_SetCommentHandler(
     mut handler: crate::expat_h::XML_CommentHandler,
 ) {
     if !parser.is_null() {
-        (*parser).m_commentHandler = handler;
+        (*parser).m_commentHandler = handler.is_some();
+        let mut handlers = COMMENT_HANDLERS
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match handler {
+            Some(callback) => {
+                handlers.insert(parser as usize, std::sync::Arc::new(callback));
+            }
+            None => {
+                handlers.remove(&(parser as usize));
+            }
+        }
     }
 }
 #[export_name = "XML_SetCommentHandler"]
@@ -10985,14 +11050,22 @@ unsafe extern "C" fn reportComment(
 ) -> ::core::ffi::c_int {
     let mut data: *mut crate::expat_external_h::XML_Char =
         ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    if (*parser).m_commentHandler.is_none() {
-        if (*parser).m_defaultHandler.is_some() {
+    let (has_comment_handler, has_default_handler) = {
+        let parser_state = &*parser;
+        (
+            parser_state.m_commentHandler,
+            parser_state.m_defaultHandler.is_some(),
+        )
+    };
+    if !has_comment_handler {
+        if has_default_handler {
             reportDefault(parser, enc, start, end);
         }
         return 1 as ::core::ffi::c_int;
     }
+    let temp_pool = &raw mut (*parser).m_tempPool;
     data = poolStoreString(
-        &raw mut (*parser).m_tempPool,
+        temp_pool,
         enc,
         start.offset(((*enc).minBytesPerChar * 4 as ::core::ffi::c_int) as isize),
         end.offset(-(((*enc).minBytesPerChar * 3 as ::core::ffi::c_int) as isize)),
@@ -11001,10 +11074,16 @@ unsafe extern "C" fn reportComment(
         return 0 as ::core::ffi::c_int;
     }
     normalizeLines(data);
-    (*parser)
-        .m_commentHandler
-        .expect("non-null function pointer")((*parser).m_handlerArg, data);
-    poolClear(&raw mut (*parser).m_tempPool);
+    let callback = COMMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&(parser as usize))
+        .cloned();
+    if let Some(callback) = callback {
+        callback.invoke((*parser).m_handlerArg, data);
+    }
+    poolClear(temp_pool);
     return 1 as ::core::ffi::c_int;
 }
 
