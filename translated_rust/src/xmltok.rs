@@ -354,9 +354,26 @@ impl<'a> ScannerContext<'a> {
         ptr: *const ::core::ffi::c_char,
         end: *const ::core::ffi::c_char,
     ) -> Self {
+        // `from_raw_parts` requires a non-null, aligned base even for an
+        // empty range, and its length must stay within the addressable slice
+        // limit.  C callers normally retain an input-buffer cursor for an
+        // empty token, but reject a malformed cursor pair here rather than
+        // turning it into a Rust slice first.
+        if enc.is_null()
+            || !enc.is_aligned()
+            || ptr.is_null()
+            || end.is_null()
+            || !ptr.is_aligned()
+            || !end.is_aligned()
+        {
+            return Self(ScannerContextKind::InvalidRange);
+        }
         let Some(span) = end.addr().checked_sub(ptr.addr()) else {
             return Self(ScannerContextKind::InvalidRange);
         };
+        if span > isize::MAX as usize {
+            return Self(ScannerContextKind::InvalidRange);
+        }
         let chars = ::core::slice::from_raw_parts(ptr, span);
         let input = ScannerInput {
             // `c_char` and `u8` have identical one-byte layouts.  The safe
