@@ -15226,7 +15226,14 @@ unsafe extern "C" fn doProlog(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt;
-    let dtd = &mut *parser_dtd_ptr!(parser);
+    // Hold a shared DTD owner for this processing pass, then use one scoped
+    // borrow of its cell instead of treating every DTD field access as a raw
+    // pointer dereference.
+    let dtd_owner = parser
+        .m_dtd
+        .clone()
+        .expect("parser processing requires an attached DTD");
+    let dtd = &mut *dtd_owner.value.get();
     let dtd_pool: *mut STRING_POOL = &raw mut dtd.pool;
     let mut active_parser_encoding = std::ptr::from_ref(current_parser_encoding(parser));
     let parser_events = enc == active_parser_encoding;
