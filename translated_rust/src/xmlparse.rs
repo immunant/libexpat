@@ -13781,13 +13781,11 @@ fn new_binding_storage(
     // memory is never dereferenced: the resulting facade only preserves
     // Expat's allocation, reallocation, and release observations.
     let parser_handle = std::ptr::from_mut(parser);
-    let mut binding_backing = unsafe {
-        allocation_backing(
-            parser_handle,
-            ::core::mem::size_of::<BINDING>(),
-            4525 as ::core::ffi::c_int,
-        )?
-    };
+    let mut binding_backing = parser_allocation_backing(
+        parser,
+        ::core::mem::size_of::<BINDING>(),
+        4525 as ::core::ffi::c_int,
+    )?;
     let uri_size =
         uri_capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
     let uri_allocation = unsafe { expat_malloc(parser_handle, uri_size, 4543) };
