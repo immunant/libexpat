@@ -2214,7 +2214,10 @@ pub struct XML_ParserStruct {
     // boundaries materialize a pointer for their documented lifetime.
     pub m_curBase: Option<PoolStringRef>,
     pub m_tagStack: *mut TAG,
-    pub m_freeTagList: *mut TAG,
+    // Tags are allocated by Expat's configured allocator, so their reuse
+    // cache owns Rust storage paired with an opaque allocator token.
+    m_freeTagList: FreeTagList,
+    m_activeTags: Vec<TagStorage>,
     pub m_inheritedBindings: *mut BINDING,
     pub m_freeBindingList: *mut BINDING,
     pub m_attsSize: ::core::ffi::c_int,
@@ -2705,6 +2708,74 @@ pub struct tag {
     pub bufEnd: *mut ::core::ffi::c_char,
     pub bufSize: crate::__stddef_size_t_h::size_t,
     pub bindings: *mut BINDING,
+}
+
+struct TagStorage {
+    // A one-element vector gives this tag stable Rust-owned storage while
+    // allowing allocation failure to be reported instead of aborting.
+    tag: Vec<TAG>,
+    // This token represents the original configured-allocator allocation for
+    // the tag.  It is never dereferenced, but preserves allocation accounting
+    // and custom allocator observability.
+    backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
+}
+
+struct FreeTagList {
+    tags: Vec<TagStorage>,
+}
+
+impl FreeTagList {
+    const fn empty() -> Self {
+        Self { tags: Vec::new() }
+    }
+}
+
+unsafe fn tag_storage_new(
+    parser: crate::expat_h::XML_Parser,
+    source_line: ::core::ffi::c_int,
+) -> Option<TagStorage> {
+    let mut backing = allocation_backing(parser, ::core::mem::size_of::<TAG>(), source_line)?;
+    let mut tag = Vec::new();
+    if tag.try_reserve_exact(1).is_err() {
+        backing(source_line);
+        return None;
+    }
+    tag.push(TAG {
+        parent: ::core::ptr::null_mut(),
+        rawName: ::core::ptr::null(),
+        rawNameLength: 0,
+        name: TAG_NAME {
+            str: TagNameStorage::Unset,
+            localPart: None,
+            strLen: 0,
+            uriLen: 0,
+            prefixLen: 0,
+        },
+        buf: C2Rust_Unnamed_1 {},
+        bufEnd: ::core::ptr::null_mut(),
+        bufSize: 0,
+        bindings: ::core::ptr::null_mut(),
+    });
+    Some(TagStorage {
+        tag,
+        backing: Some(backing),
+    })
+}
+
+unsafe fn release_tag_storage(
+    parser: crate::expat_h::XML_Parser,
+    mut storage: TagStorage,
+) {
+    let tag = storage.tag.as_mut_ptr();
+    expat_free(
+        parser,
+        (*tag).bufEnd as *mut ::core::ffi::c_void,
+        1942 as ::core::ffi::c_int,
+    );
+    destroyBindings((*tag).bindings, parser);
+    if let Some(mut backing) = storage.backing.take() {
+        backing(1944 as ::core::ffi::c_int);
+    }
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -3886,7 +3957,8 @@ fn initial_parser_struct(
         m_dtd: None,
         m_curBase: None,
         m_tagStack: ::core::ptr::null_mut::<TAG>(),
-        m_freeTagList: ::core::ptr::null_mut::<TAG>(),
+        m_freeTagList: FreeTagList::empty(),
+        m_activeTags: Vec::new(),
         m_inheritedBindings: ::core::ptr::null_mut::<BINDING>(),
         m_freeBindingList: ::core::ptr::null_mut::<BINDING>(),
         m_attsSize: 0,
@@ -4129,7 +4201,7 @@ unsafe extern "C" fn parserCreate(
         }
     }
     parser.m_freeBindingList = ::core::ptr::null_mut::<BINDING>();
-    parser.m_freeTagList = ::core::ptr::null_mut::<TAG>();
+    parser.m_freeTagList = FreeTagList::empty();
     parser.m_freeInternalEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_freeAttributeEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     parser.m_freeValueEntities = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
@@ -4429,14 +4501,12 @@ pub unsafe extern "C" fn XML_ParserReset(
         if !parser_state.m_parentParser.is_null() {
             return crate::expat_h::XML_FALSE;
         }
-        let mut tag_stack = parser_state.m_tagStack;
-        while !tag_stack.is_null() {
-            let tag = tag_stack;
-            tag_stack = (*tag).parent as *mut TAG;
-            (*tag).parent = parser_state.m_freeTagList as *mut tag;
+        let mut active_tags = std::mem::take(&mut parser_state.m_activeTags);
+        for mut tag_storage in active_tags.drain(..).rev() {
+            let tag = tag_storage.tag.as_mut_ptr();
             moveToFreeBindingList(parser_state, (*tag).bindings);
             (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
-            parser_state.m_freeTagList = tag;
+            parser_state.m_freeTagList.tags.push(tag_storage);
         }
         let mut open_entity_list = parser_state.m_openInternalEntities;
         while !open_entity_list.is_null() {
@@ -4968,7 +5038,6 @@ unsafe extern "C" fn destroyBindings(
     }
 }
 pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) {
-    let mut tagList: *mut TAG = ::core::ptr::null_mut::<TAG>();
     let mut entityList: *mut OPEN_INTERNAL_ENTITY = ::core::ptr::null_mut::<OPEN_INTERNAL_ENTITY>();
     if parser.is_null() {
         return;
@@ -5075,29 +5144,13 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&parser_key);
-    tagList = parser.m_tagStack;
-    loop {
-        let mut p: *mut TAG = ::core::ptr::null_mut::<TAG>();
-        if tagList.is_null() {
-            if parser.m_freeTagList.is_null() {
-                break;
-            }
-            tagList = parser.m_freeTagList;
-            parser.m_freeTagList = ::core::ptr::null_mut::<TAG>();
-        }
-        p = tagList;
-        tagList = (*tagList).parent as *mut TAG;
-        expat_free(
-            parser as *mut XML_ParserStruct,
-            (*p).bufEnd as *mut ::core::ffi::c_void,
-            1942 as ::core::ffi::c_int,
-        );
-        destroyBindings((*p).bindings, parser as *mut XML_ParserStruct);
-        expat_free(
-            parser as *mut XML_ParserStruct,
-            p as *mut ::core::ffi::c_void,
-            1944 as ::core::ffi::c_int,
-        );
+    let active_tags = std::mem::take(&mut parser.m_activeTags);
+    for storage in active_tags.into_iter().rev() {
+        release_tag_storage(parser as *mut XML_ParserStruct, storage);
+    }
+    let free_tags = std::mem::take(&mut parser.m_freeTagList.tags);
+    for storage in free_tags.into_iter().rev() {
+        release_tag_storage(parser as *mut XML_ParserStruct, storage);
     }
     entityList = parser.m_openInternalEntities;
     loop {
@@ -7932,33 +7985,34 @@ unsafe extern "C" fn doContent(
                     let mut result_0: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
                     let mut toPtr: *mut crate::expat_external_h::XML_Char =
                         ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                    if !(*parser).m_freeTagList.is_null() {
-                        tag = (*parser).m_freeTagList;
-                        (*parser).m_freeTagList = (*(*parser).m_freeTagList).parent as *mut TAG;
-                    } else {
-                        tag = expat_malloc(
-                            parser,
-                            ::core::mem::size_of::<TAG>(),
-                            3477 as ::core::ffi::c_int,
-                        ) as *mut TAG;
-                        if tag.is_null() {
-                            return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
+                    if (*parser).m_freeTagList.tags.try_reserve(1).is_err()
+                        || (*parser).m_activeTags.try_reserve(1).is_err()
+                    {
+                        return crate::expat_h::XML_ERROR_NO_MEMORY;
+                    }
+                    let mut tag_storage = match (*parser).m_freeTagList.tags.pop() {
+                        Some(storage) => storage,
+                        None => match tag_storage_new(parser, 3477 as ::core::ffi::c_int) {
+                            Some(storage) => storage,
+                            None => return crate::expat_h::XML_ERROR_NO_MEMORY,
+                        },
+                    };
+                    tag = tag_storage.tag.as_mut_ptr();
+                    if (*tag).bufEnd.is_null() {
                         (*tag).bufEnd = expat_malloc(
                             parser,
                             32 as crate::__stddef_size_t_h::size_t,
                             3480 as ::core::ffi::c_int,
                         ) as *mut ::core::ffi::c_char;
                         if (*tag).bufEnd.is_null() {
-                            expat_free(
-                                parser,
-                                tag as *mut ::core::ffi::c_void,
-                                3482 as ::core::ffi::c_int,
-                            );
+                            if let Some(mut backing) = tag_storage.backing.take() {
+                                backing(3482 as ::core::ffi::c_int);
+                            }
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
                         (*tag).bufSize = INIT_TAG_BUF_SIZE as crate::__stddef_size_t_h::size_t;
                     }
+                    (*parser).m_activeTags.push(tag_storage);
                     (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
                     (*tag).parent = (*parser).m_tagStack as *mut tag;
                     (*parser).m_tagStack = tag;
@@ -8228,8 +8282,13 @@ unsafe extern "C" fn doContent(
                             return crate::expat_h::XML_ERROR_TAG_MISMATCH;
                         }
                         (*parser).m_tagStack = (*tag_0).parent as *mut TAG;
-                        (*tag_0).parent = (*parser).m_freeTagList as *mut tag;
-                        (*parser).m_freeTagList = tag_0;
+                        let tag_index = (*parser)
+                            .m_activeTags
+                            .iter()
+                            .position(|storage| storage.tag.as_ptr() == tag_0)
+                            .expect("active tag stack pointer must have owned storage");
+                        let tag_storage = (*parser).m_activeTags.remove(tag_index);
+                        (*parser).m_freeTagList.tags.push(tag_storage);
                         (*parser).m_tagLevel -= 1;
                         if (*parser).m_endElementHandler {
                             let mut localPart: *const crate::expat_external_h::XML_Char =
