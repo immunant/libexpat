@@ -5077,7 +5077,7 @@ pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
 ) -> crate::expat_h::XML_Parser {
     XML_ParserCreateNS(encodingName, nsSep)
 }
-static mut implicitContext: [crate::expat_external_h::XML_Char; 41] = [
+static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     crate::ascii_h::ASCII_x as crate::expat_external_h::XML_Char,
     crate::ascii_h::ASCII_m as crate::expat_external_h::XML_Char,
     crate::ascii_h::ASCII_l as crate::expat_external_h::XML_Char,
@@ -5281,22 +5281,26 @@ unsafe fn call_processor_impl(
 unsafe extern "C" fn startParsing(
     mut parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_h::XML_Bool {
-    let needs_salt = (*parser)
+    // Processor dispatch keeps the opaque parser allocation alive and
+    // exclusive for this initialization step.  Convert it once, then keep
+    // the hash state and namespace settings behind the checked borrow.
+    let parser = &mut *parser;
+    let needs_salt = parser
         .m_root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .hash_secret_salt
         == 0;
     if needs_salt {
-        (*parser)
+        parser
             .m_root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .hash_secret_salt = generate_hash_secret_salt(parser);
+            .hash_secret_salt = generate_hash_secret_salt(parser as *mut XML_ParserStruct);
     }
-    if (*parser).m_ns != 0 {
+    if parser.m_ns != 0 {
         return setContext(
-            parser,
+            parser as *mut XML_ParserStruct,
             &raw const implicitContext as *const crate::expat_external_h::XML_Char,
         );
     }
