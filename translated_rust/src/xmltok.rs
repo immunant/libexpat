@@ -729,7 +729,12 @@ pub mod xmltok_impl_c {
                         unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _,
                     ),
                 },
-                4 => normal.isNmstrt4,
+                4 => match normal.isNmstrt4 {
+                    NameStart4Checker::Never => return false,
+                    NameStart4Checker::Unknown => Some(
+                        unknown_isNmstrt as unsafe extern "C" fn(_, _) -> _,
+                    ),
+                },
                 _ => unreachable!(),
             },
             NormalCharCheck::Name => match width {
@@ -10368,6 +10373,7 @@ pub mod xmltok_impl_c {
     use crate::src::xmltok::Name3Checker;
     use crate::src::xmltok::Name4Checker;
     use crate::src::xmltok::NameStart3Checker;
+    use crate::src::xmltok::NameStart4Checker;
 }
 
 pub mod xmltok_ns_c {
@@ -11807,12 +11813,7 @@ pub struct normal_encoding {
     pub isName4: Name4Checker,
     pub isNmstrt2: NameStart2Checker,
     pub isNmstrt3: NameStart3Checker,
-    pub isNmstrt4: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub isNmstrt4: NameStart4Checker,
     pub invalid2: Invalid2Checker,
     pub invalid3: Invalid3Checker,
     pub invalid4: Invalid4Checker,
@@ -11849,6 +11850,12 @@ pub enum NameStart2Checker {
 pub enum NameStart3Checker {
     Never,
     Utf8,
+    Unknown,
+}
+
+#[derive(Copy, Clone)]
+pub enum NameStart4Checker {
+    Never,
     Unknown,
 }
 
@@ -12536,13 +12543,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Utf8,
     isNmstrt3: NameStart3Checker::Utf8,
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
     invalid4: Invalid4Checker::Utf8,
@@ -12837,13 +12838,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Utf8,
     isNmstrt3: NameStart3Checker::Utf8,
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
     invalid4: Invalid4Checker::Utf8,
@@ -13138,13 +13133,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Utf8,
     isNmstrt3: NameStart3Checker::Utf8,
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
     invalid4: Invalid4Checker::Utf8,
@@ -13439,13 +13428,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Utf8,
     isNmstrt3: NameStart3Checker::Utf8,
-    isNmstrt4: Some(
-        isNever
-            as unsafe extern "C" fn(
-                *const crate::src::xmltok::ENCODING,
-                *const ::core::ffi::c_char,
-            ) -> ::core::ffi::c_int,
-    ),
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Utf8,
     invalid3: Invalid3Checker::Utf8,
     invalid4: Invalid4Checker::Utf8,
@@ -13801,7 +13784,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -14096,7 +14079,7 @@ static latin1_encoding: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -14412,7 +14395,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -14707,7 +14690,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -15267,7 +15250,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -15562,7 +15545,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -15857,7 +15840,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -16152,7 +16135,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -16447,7 +16430,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -16742,7 +16725,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
     isName4: Name4Checker::Never,
     isNmstrt2: NameStart2Checker::Never,
     isNmstrt3: NameStart3Checker::Never,
-    isNmstrt4: None,
+    isNmstrt4: NameStart4Checker::Never,
     invalid2: Invalid2Checker::Never,
     invalid3: Invalid3Checker::Never,
     invalid4: Invalid4Checker::Never,
@@ -17574,7 +17557,7 @@ fn install_unknown_name_checks(encoding: &mut unknown_encoding) {
     encoding.normal.isName4 = Name4Checker::Unknown;
     encoding.normal.isNmstrt2 = NameStart2Checker::Unknown;
     encoding.normal.isNmstrt3 = NameStart3Checker::Unknown;
-    encoding.normal.isNmstrt4 = Some(unknown_isNmstrt);
+    encoding.normal.isNmstrt4 = NameStart4Checker::Unknown;
     encoding.normal.invalid2 = Invalid2Checker::Unknown;
     encoding.normal.invalid3 = Invalid3Checker::Unknown;
     encoding.normal.invalid4 = Invalid4Checker::Unknown;
