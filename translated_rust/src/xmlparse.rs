@@ -2230,7 +2230,10 @@ pub struct ELEMENT_TYPE {
     pub idAtt: *const ATTRIBUTE_ID,
     pub nDefaultAtts: ::core::ffi::c_int,
     pub allocDefaultAtts: ::core::ffi::c_int,
-    pub defaultAtts: *mut DEFAULT_ATTRIBUTE,
+    // The storage remains allocated and released through the parser's
+    // configured allocator.  NonNull makes its nullable ownership state
+    // explicit without changing that allocator pairing.
+    pub defaultAtts: Option<std::ptr::NonNull<DEFAULT_ATTRIBUTE>>,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -7730,9 +7733,19 @@ unsafe extern "C" fn storeAtts(
                 j = 0 as ::core::ffi::c_int;
                 while j < nDefaultAtts {
                     if attId
-                        == (*(*elementType).defaultAtts.offset(j as isize)).id as *mut ATTRIBUTE_ID
+                        == (*(*elementType)
+                            .defaultAtts
+                            .expect("default attribute storage must exist for a non-empty list")
+                            .as_ptr()
+                            .offset(j as isize))
+                        .id as *mut ATTRIBUTE_ID
                     {
-                        isCdata = (*(*elementType).defaultAtts.offset(j as isize)).isCdata;
+                        isCdata = (*(*elementType)
+                            .defaultAtts
+                            .expect("default attribute storage must exist for a non-empty list")
+                            .as_ptr()
+                            .offset(j as isize))
+                        .isCdata;
                         break;
                     } else {
                         j += 1;
@@ -7808,7 +7821,11 @@ unsafe extern "C" fn storeAtts(
     }
     i = 0 as ::core::ffi::c_int;
     while i < nDefaultAtts {
-        let mut da: *const DEFAULT_ATTRIBUTE = (*elementType).defaultAtts.offset(i as isize);
+        let mut da: *const DEFAULT_ATTRIBUTE = (*elementType)
+            .defaultAtts
+            .expect("default attribute storage must exist for a non-empty list")
+            .as_ptr()
+            .offset(i as isize);
         if *(*(*da).id).name.offset(-1 as isize) == 0 && (*da).value.is_some() {
             let value = (*da)
                 .value
@@ -12506,7 +12523,14 @@ unsafe extern "C" fn defineAttribute(
         let mut i: ::core::ffi::c_int = 0;
         i = 0 as ::core::ffi::c_int;
         while i < (*type_0).nDefaultAtts {
-            if attId == (*(*type_0).defaultAtts.offset(i as isize)).id as *mut ATTRIBUTE_ID {
+            if attId
+                == (*(*type_0)
+                    .defaultAtts
+                    .expect("default attribute storage must exist for a non-empty list")
+                    .as_ptr()
+                    .offset(i as isize))
+                .id as *mut ATTRIBUTE_ID
+            {
                 return 1 as ::core::ffi::c_int;
             }
             i += 1;
@@ -12518,13 +12542,15 @@ unsafe extern "C" fn defineAttribute(
     if (*type_0).nDefaultAtts == (*type_0).allocDefaultAtts {
         if (*type_0).allocDefaultAtts == 0 as ::core::ffi::c_int {
             (*type_0).allocDefaultAtts = 8 as ::core::ffi::c_int;
-            (*type_0).defaultAtts = expat_malloc(
-                parser,
-                ((*type_0).allocDefaultAtts as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
-                7182 as ::core::ffi::c_int,
-            ) as *mut DEFAULT_ATTRIBUTE;
-            if (*type_0).defaultAtts.is_null() {
+            (*type_0).defaultAtts = std::ptr::NonNull::new(
+                expat_malloc(
+                    parser,
+                    ((*type_0).allocDefaultAtts as crate::__stddef_size_t_h::size_t)
+                        .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
+                    7182 as ::core::ffi::c_int,
+                ) as *mut DEFAULT_ATTRIBUTE,
+            );
+            if (*type_0).defaultAtts.is_none() {
                 (*type_0).allocDefaultAtts = 0 as ::core::ffi::c_int;
                 return 0 as ::core::ffi::c_int;
             }
@@ -12537,7 +12563,10 @@ unsafe extern "C" fn defineAttribute(
                 (*type_0).allocDefaultAtts * 2 as ::core::ffi::c_int;
             temp = expat_realloc(
                 parser,
-                (*type_0).defaultAtts as *mut ::core::ffi::c_void,
+                (*type_0)
+                    .defaultAtts
+                    .expect("default attribute storage must exist before growing")
+                    .as_ptr() as *mut ::core::ffi::c_void,
                 (count as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
                 7208 as ::core::ffi::c_int,
@@ -12546,11 +12575,16 @@ unsafe extern "C" fn defineAttribute(
                 return 0 as ::core::ffi::c_int;
             }
             (*type_0).allocDefaultAtts = count;
-            (*type_0).defaultAtts = temp;
+            (*type_0).defaultAtts = Some(
+                std::ptr::NonNull::new(temp)
+                    .expect("a successful realloc must return a non-null allocation"),
+            );
         }
     }
     att = (*type_0)
         .defaultAtts
+        .expect("default attribute storage must exist after allocation")
+        .as_ptr()
         .offset((*type_0).nDefaultAtts as isize);
     (*att).id = attId;
     (*att).value = std::ptr::NonNull::new(value as *mut crate::expat_external_h::XML_Char);
@@ -13072,9 +13106,12 @@ unsafe extern "C" fn dtdReset(mut p: *mut DTD, mut parser: crate::expat_h::XML_P
             break;
         }
         if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
+            let defaultAtts = (*e)
+                .defaultAtts
+                .expect("default attribute storage must exist for a non-zero capacity");
             expat_free(
                 parser,
-                (*e).defaultAtts as *mut ::core::ffi::c_void,
+                defaultAtts.as_ptr() as *mut ::core::ffi::c_void,
                 7539 as ::core::ffi::c_int,
             );
         }
@@ -13123,9 +13160,12 @@ unsafe extern "C" fn dtdDestroy(
             break;
         }
         if (*e).allocDefaultAtts != 0 as ::core::ffi::c_int {
+            let defaultAtts = (*e)
+                .defaultAtts
+                .expect("default attribute storage must exist for a non-zero capacity");
             expat_free(
                 parser,
-                (*e).defaultAtts as *mut ::core::ffi::c_void,
+                defaultAtts.as_ptr() as *mut ::core::ffi::c_void,
                 7580 as ::core::ffi::c_int,
             );
         }
@@ -13265,13 +13305,15 @@ unsafe extern "C" fn dtdCopy(
         }
         let new_e = &mut *new_e;
         if old_e.nDefaultAtts != 0 {
-            new_e.defaultAtts = expat_malloc(
-                parser,
-                (old_e.nDefaultAtts as crate::__stddef_size_t_h::size_t)
-                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
-                7683 as ::core::ffi::c_int,
-            ) as *mut DEFAULT_ATTRIBUTE;
-            if new_e.defaultAtts.is_null() {
+            new_e.defaultAtts = std::ptr::NonNull::new(
+                expat_malloc(
+                    parser,
+                    (old_e.nDefaultAtts as crate::__stddef_size_t_h::size_t)
+                        .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()),
+                    7683 as ::core::ffi::c_int,
+                ) as *mut DEFAULT_ATTRIBUTE,
+            );
+            if new_e.defaultAtts.is_none() {
                 return 0 as ::core::ffi::c_int;
             }
         }
@@ -13297,8 +13339,16 @@ unsafe extern "C" fn dtdCopy(
         }
         let mut i = 0 as ::core::ffi::c_int;
         while i < new_e.nDefaultAtts {
-            let old_att = &*old_e.defaultAtts.offset(i as isize);
-            let new_att = &mut *new_e.defaultAtts.offset(i as isize);
+            let old_att = &*old_e
+                .defaultAtts
+                .expect("default attribute storage must exist for a non-empty list")
+                .as_ptr()
+                .offset(i as isize);
+            let new_att = &mut *new_e
+                .defaultAtts
+                .expect("default attribute storage must exist for a non-empty list")
+                .as_ptr()
+                .offset(i as isize);
             let old_id_att = &*old_att.id;
             new_att.id = lookup(
                 oldParser,
