@@ -4118,50 +4118,42 @@ pub unsafe extern "C" fn XML_GetBuffer_ffi(
 fn triggerReenter(parser: &mut XML_ParserStruct) {
     parser.m_reenter = crate::expat_h::XML_TRUE;
 }
-pub unsafe extern "C" fn XML_StopParser(
-    mut parser: crate::expat_h::XML_Parser,
-    mut resumable: crate::expat_h::XML_Bool,
+pub fn XML_StopParser(
+    parser: Option<&mut XML_ParserStruct>,
+    resumable: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Status {
-    if parser.is_null() {
+    let Some(parser) = parser else {
         return crate::expat_h::XML_STATUS_ERROR;
-    }
-    match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+    };
+    match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
         0 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_NOT_STARTED;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_NOT_STARTED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         3 => {
             if resumable != 0 {
-                (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
+                parser.m_errorCode = crate::expat_h::XML_ERROR_SUSPENDED;
                 return crate::expat_h::XML_STATUS_ERROR;
             }
-            (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+            parser.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
         }
         2 => {
-            (*parser).m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
+            parser.m_errorCode = crate::expat_h::XML_ERROR_FINISHED;
             return crate::expat_h::XML_STATUS_ERROR;
         }
         1 => {
             if resumable != 0 {
-                if (*parser).m_isParamEntity != 0 {
-                    (*parser).m_errorCode = crate::expat_h::XML_ERROR_SUSPEND_PE;
+                if parser.m_isParamEntity != 0 {
+                    parser.m_errorCode = crate::expat_h::XML_ERROR_SUSPEND_PE;
                     return crate::expat_h::XML_STATUS_ERROR;
                 }
-                (*parser).m_parsingStatus.parsing = crate::expat_h::XML_SUSPENDED;
+                parser.m_parsingStatus.parsing = crate::expat_h::XML_SUSPENDED;
             } else {
-                (*parser).m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
+                parser.m_parsingStatus.parsing = crate::expat_h::XML_FINISHED;
             }
         }
         _ => {
-            '_c2rust_label: {
-                crate::stdlib::__assert_fail(
-                    b"0\0".as_ptr() as *const ::core::ffi::c_char,
-                    b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                    2692 as ::core::ffi::c_uint,
-                    b"enum XML_Status XML_StopParser(XML_Parser, XML_Bool)\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                );
-            };
+            ::std::process::abort();
         }
     }
     return crate::expat_h::XML_STATUS_OK;
@@ -4172,7 +4164,7 @@ pub unsafe extern "C" fn XML_StopParser_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut resumable: crate::expat_h::XML_Bool,
 ) -> crate::expat_h::XML_Status {
-    XML_StopParser(parser, resumable)
+    XML_StopParser(unsafe { parser.as_mut() }, resumable)
 }
 pub unsafe extern "C" fn XML_ResumeParser(
     mut parser: crate::expat_h::XML_Parser,
