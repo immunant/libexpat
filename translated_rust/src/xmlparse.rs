@@ -11062,23 +11062,20 @@ unsafe extern "C" fn doCdataSection(
                 open_entity.node().eventTextLen,
                 dtd,
             ));
-            let (text_ref, text_len, dtd) = internal_event_text.as_ref().expect("internal event text was set");
-            let Some(text) = shared_entity_text_chars(dtd, *text_ref, *text_len) else {
-                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-            };
-            internal_event_window = Some((text.as_ptr().addr(), text.len()));
             open_entity_index
         };
         event_target = EventCursorTarget::InternalEntity(open_entity);
     }
     let event_parser = parser_handle;
-    let mut update_event_start = |start: *const ::core::ffi::c_char| {
-        event_target.set_start(&mut *event_parser, internal_event_window, start.addr());
+    let mut update_event_start = |
+        start: *const ::core::ffi::c_char,
+        internal_window: Option<(usize, usize)>,
+    | {
+        event_target.set_start(&mut *event_parser, internal_window, start.addr());
         if !parser_events {
-            internal_event_start.set(internal_event_offset(internal_event_window, start.addr()));
+            internal_event_start.set(internal_event_offset(internal_window, start.addr()));
         }
     };
-    update_event_start(s);
     loop {
         // Form the token window from owned storage and drop it before a
         // callback.  Internal replacement text is resolved afresh from its
@@ -11101,6 +11098,9 @@ unsafe extern "C" fn doCdataSection(
                 let Some(text) = shared_entity_text_chars(dtd, *text_ref, *text_len) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
+                if internal_event_window.is_none() {
+                    internal_event_window = Some((text.as_ptr().addr(), text.len()));
+                }
                 let Some(start) = s.addr().checked_sub(text.as_ptr().addr()) else {
                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                 };
@@ -11114,6 +11114,11 @@ unsafe extern "C" fn doCdataSection(
             };
             (tok, next_offset.map_or(s, |offset| s.wrapping_add(offset)))
         };
+        // The internal-entity window is resolved immediately before its
+        // bounded tokenizer use.  That keeps no borrowed pool slice alive
+        // across a callback, while still publishing the event start before a
+        // token can report an event.
+        update_event_start(s, internal_event_window);
         if accountingDiffTolerated(parser_handle, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
             accountingOnAbort(parser_handle);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
@@ -11247,7 +11252,7 @@ unsafe extern "C" fn doCdataSection(
                             {
                                 break;
                             }
-                            update_event_start(s);
+                            update_event_start(s, internal_event_window);
                         }
                     } else {
                         let data_len = match next
@@ -11269,7 +11274,7 @@ unsafe extern "C" fn doCdataSection(
                 }
             }
             crate::src::xmltok::XML_TOK_INVALID => {
-                update_event_start(next);
+                update_event_start(next, internal_event_window);
                 return crate::expat_h::XML_ERROR_INVALID_TOKEN;
             }
             crate::src::xmltok::XML_TOK_PARTIAL_CHAR => {
@@ -11285,18 +11290,18 @@ unsafe extern "C" fn doCdataSection(
                 return crate::expat_h::XML_ERROR_UNCLOSED_CDATA_SECTION;
             }
             _ => {
-                update_event_start(next);
+                update_event_start(next, internal_event_window);
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             }
         }
         let parsing_state = cdata_parsing_state(&*parser_handle);
         match parsing_state.parsing as ::core::ffi::c_uint {
             3 => {
-                update_event_start(next);
+                update_event_start(next, internal_event_window);
                 return finish(crate::expat_h::XML_ERROR_NONE, None, Some(next));
             }
             2 => {
-                update_event_start(next);
+                update_event_start(next, internal_event_window);
                 return crate::expat_h::XML_ERROR_ABORTED;
             }
             1 => {
@@ -11307,7 +11312,7 @@ unsafe extern "C" fn doCdataSection(
             _ => {}
         }
         s = next;
-        update_event_start(s);
+        update_event_start(s, internal_event_window);
     }
 }
 
