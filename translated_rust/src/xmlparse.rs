@@ -2445,44 +2445,13 @@ static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingCallback>>>,
 > = std::sync::OnceLock::new();
 
-// The unknown-encoding callback context is an opaque foreign token.  It stays
-// in a boundary adapter and is forwarded only for the callback that owns it.
-trait UnknownEncodingHandlerInvoker {
-    unsafe fn invoke(
-        &self,
-        handler: &dyn UnknownEncodingCallback,
-        encoding_name: *const crate::expat_external_h::XML_Char,
-        info: *mut crate::expat_h::XML_Encoding,
-    ) -> ::core::ffi::c_int;
-}
-
-impl<F> UnknownEncodingHandlerInvoker for F
-where
-    F: Fn(
-        &dyn UnknownEncodingCallback,
-        *const crate::expat_external_h::XML_Char,
-        *mut crate::expat_h::XML_Encoding,
-    ) -> ::core::ffi::c_int,
-{
-    unsafe fn invoke(
-        &self,
-        handler: &dyn UnknownEncodingCallback,
-        encoding_name: *const crate::expat_external_h::XML_Char,
-        info: *mut crate::expat_h::XML_Encoding,
-    ) -> ::core::ffi::c_int {
-        self(handler, encoding_name, info)
-    }
-}
-
 #[derive(Clone)]
 struct UnknownEncodingHandlerRegistration {
-    invoke: std::sync::Arc<dyn UnknownEncodingHandlerInvoker>,
+    // The context belongs to the foreign caller.  This opaque container keeps
+    // its address out of parser state and is only materialized for callback
+    // dispatch.
+    context: CallbackContextRegistration,
 }
-
-// The captured context is never dereferenced by Rust; Expat callers retain
-// responsibility for its validity while their callback is invoked.
-unsafe impl Send for UnknownEncodingHandlerRegistration {}
-unsafe impl Sync for UnknownEncodingHandlerRegistration {}
 
 static UNKNOWN_ENCODING_HANDLER_ARGS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, UnknownEncodingHandlerRegistration>>,
@@ -9549,42 +9518,43 @@ pub unsafe extern "C" fn XML_SetSkippedEntityHandler_ffi(
 ) {
     XML_SetSkippedEntityHandler(parser, handler)
 }
+/// Updates unknown-encoding callback registrations for an already validated
+/// parser.  The foreign context remains in an opaque boundary adapter and is
+/// only materialized at callback dispatch.
 pub unsafe extern "C" fn XML_SetUnknownEncodingHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_UnknownEncodingHandler,
-    mut data: *mut ::core::ffi::c_void,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_UnknownEncodingHandler,
+    data: *mut ::core::ffi::c_void,
 ) {
-    if parser.is_null() {
+    if parser.is_null() || !parser.is_aligned() {
         return;
     }
-    (*parser).m_unknownEncodingHandler = handler.is_some();
+    let parser = &mut *parser;
+    let parser_key = std::ptr::from_ref(parser).addr();
+    parser.m_unknownEncodingHandler = handler.is_some();
     let mut handlers = UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     if let Some(callback) = handler {
-        handlers.insert(parser as usize, std::sync::Arc::new(callback));
+        handlers.insert(parser_key, std::sync::Arc::new(callback));
         let registration = UnknownEncodingHandlerRegistration {
-            invoke: std::sync::Arc::new(
-                move |handler: &dyn UnknownEncodingCallback,
-                      encoding_name: *const crate::expat_external_h::XML_Char,
-                      info: *mut crate::expat_h::XML_Encoding| unsafe {
-                    handler.invoke(data, encoding_name, info)
-                },
-            ),
+            context: CallbackContextRegistration {
+                context: std::sync::Arc::new(std::sync::atomic::AtomicPtr::new(data)),
+            },
         };
         UNKNOWN_ENCODING_HANDLER_ARGS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, registration);
+            .insert(parser_key, registration);
     } else {
-        handlers.remove(&(parser as usize));
+        handlers.remove(&parser_key);
         UNKNOWN_ENCODING_HANDLER_ARGS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .remove(&(parser as usize));
+            .remove(&parser_key);
     }
 }
 #[export_name = "XML_SetUnknownEncodingHandler"]
@@ -16918,11 +16888,19 @@ fn call_unknown_encoding_handler(
     info: &mut crate::expat_h::XML_Encoding,
 ) -> bool {
     let encoding_name = encoding_name.map_or(::core::ptr::null(), |chars| chars.as_ptr());
+    let Some(context) = callback_arg
+        .context
+        .context
+        .downcast_ref::<std::sync::atomic::AtomicPtr<::core::ffi::c_void>>()
+    else {
+        return false;
+    };
     unsafe {
-        callback_arg
-            .invoke
-            .invoke(callback, encoding_name, std::ptr::from_mut(info))
-            != 0
+        callback.invoke(
+            context.load(std::sync::atomic::Ordering::Relaxed),
+            encoding_name,
+            std::ptr::from_mut(info),
+        ) != 0
     }
 }
 
