@@ -284,6 +284,141 @@ fn read_c_char_bytes<const N: usize>(p: *const ::core::ffi::c_char) -> [u8; N] {
     }
     bytes
 }
+
+fn read_copy<T: Copy>(ptr: *const T) -> T {
+    unsafe { ptr.read() }
+}
+
+fn write_copy<T>(ptr: *mut T, value: T) {
+    unsafe {
+        ptr.write(value);
+    }
+}
+
+fn ref_from_ptr<'a, T>(ptr: *const T) -> &'a T {
+    unsafe { &*ptr }
+}
+
+fn add_const_c_char(ptr: *const ::core::ffi::c_char, offset: isize) -> *const ::core::ffi::c_char {
+    ptr.wrapping_offset(offset)
+}
+
+fn add_mut_c_char(ptr: *mut ::core::ffi::c_char, offset: isize) -> *mut ::core::ffi::c_char {
+    ptr.wrapping_offset(offset)
+}
+
+fn add_mut_c_ushort(ptr: *mut ::core::ffi::c_ushort, offset: isize) -> *mut ::core::ffi::c_ushort {
+    ptr.wrapping_offset(offset)
+}
+
+fn read_c_char(ptr: *const ::core::ffi::c_char) -> ::core::ffi::c_char {
+    read_c_char_bytes::<1>(ptr)[0] as ::core::ffi::c_char
+}
+
+fn remaining_c_chars(ptr: *mut ::core::ffi::c_char, end: *const ::core::ffi::c_char) -> usize {
+    (end as usize).wrapping_sub(ptr as usize)
+}
+
+fn remaining_c_ushorts(
+    ptr: *mut ::core::ffi::c_ushort,
+    end: *const ::core::ffi::c_ushort,
+) -> usize {
+    ((end as usize).wrapping_sub(ptr as usize)) / ::core::mem::size_of::<::core::ffi::c_ushort>()
+}
+
+fn encoding_min_bytes_per_char(enc: *const ENCODING) -> isize {
+    unsafe { read_copy(::core::ptr::addr_of!((*enc).minBytesPerChar)) as isize }
+}
+
+fn encoding_name_matches_ascii(
+    enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    ascii_name: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    unsafe {
+        read_copy(::core::ptr::addr_of!((*enc).nameMatchesAscii))
+            .expect("non-null function pointer")(enc, ptr, end, ascii_name)
+    }
+}
+
+fn encoding_utf8_convert(
+    enc: *const ENCODING,
+    from_p: *mut *const ::core::ffi::c_char,
+    from_lim: *const ::core::ffi::c_char,
+    to_p: *mut *mut ::core::ffi::c_char,
+    to_lim: *const ::core::ffi::c_char,
+) -> XML_Convert_Result {
+    let utf8_convert = unsafe {
+        read_copy(::core::ptr::addr_of!((*enc).utf8Convert)).expect("non-null function pointer")
+    };
+    unsafe { utf8_convert(enc, from_p, from_lim, to_p, to_lim) }
+}
+
+fn encoding_table_ptr() -> *const *const ENCODING {
+    unsafe { &raw const encodings as *const *const ENCODING }
+}
+
+fn encoding_table_ns_ptr() -> *const *const ENCODING {
+    unsafe { &raw const encodingsNS as *const *const ENCODING }
+}
+
+fn update_position_with_utf8(
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    pos: *mut POSITION,
+) {
+    unsafe {
+        normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
+    }
+}
+
+fn call_unknown_converter(
+    uenc: &unknown_encoding,
+    ptr: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    unsafe { uenc.convert.expect("non-null function pointer")(uenc.userData, ptr) }
+}
+
+fn call_xml_utf8_encode(
+    c: ::core::ffi::c_int,
+    buf: *mut ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    unsafe { XmlUtf8Encode(c, buf) }
+}
+
+fn call_encoding_finder(
+    encoding_finder: unsafe extern "C" fn(
+        *const ENCODING,
+        *const ::core::ffi::c_char,
+        *const ::core::ffi::c_char,
+    ) -> *const ENCODING,
+    enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> *const ENCODING {
+    unsafe { encoding_finder(enc, ptr, end) }
+}
+
+fn copy_c_chars(dest: *mut ::core::ffi::c_char, src: *const ::core::ffi::c_char, len: size_t) {
+    unsafe {
+        memcpy(
+            dest.cast::<::core::ffi::c_void>(),
+            src.cast::<::core::ffi::c_void>(),
+            len,
+        );
+    }
+}
+
+fn unknown_sequence_length(enc: *const ENCODING, ptr: *const ::core::ffi::c_char) -> isize {
+    let normal = ref_from_ptr(enc as *const normal_encoding);
+    let byte = read_c_char(ptr) as ::core::ffi::c_uchar as usize;
+    (normal.type_0[byte] as ::core::ffi::c_int - (BT_LEAD2 as ::core::ffi::c_int - 2)) as isize
+}
+
+fn read_encoding_table_entry(table: *const *const ENCODING, index: usize) -> *const ENCODING {
+    read_copy(table.wrapping_add(index))
+}
 extern "C" fn isNever(_enc: *const ENCODING, _p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     0
 }
@@ -20421,64 +20556,57 @@ static mut big2_encoding: normal_encoding = unsafe {
         isInvalid4: None,
     }
 };
-unsafe extern "C" fn streqci(
+fn streqci(
     mut s1: *const ::core::ffi::c_char,
     mut s2: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        loop {
-            let c2rust_fresh58 = s1;
-            s1 = s1.offset(1);
-            let mut c1: ::core::ffi::c_char = *c2rust_fresh58;
-            let c2rust_fresh59 = s2;
-            s2 = s2.offset(1);
-            let mut c2: ::core::ffi::c_char = *c2rust_fresh59;
-            if ASCII_a <= c1 as ::core::ffi::c_int && c1 as ::core::ffi::c_int <= ASCII_z {
-                c1 = (c1 as ::core::ffi::c_int + (ASCII_A - ASCII_a)) as ::core::ffi::c_char;
-            }
-            if ASCII_a <= c2 as ::core::ffi::c_int && c2 as ::core::ffi::c_int <= ASCII_z {
-                c2 = (c2 as ::core::ffi::c_int + (ASCII_A - ASCII_a)) as ::core::ffi::c_char;
-            }
-            if c1 as ::core::ffi::c_int != c2 as ::core::ffi::c_int {
-                return 0 as ::core::ffi::c_int;
-            }
-            if c1 == 0 {
-                break;
-            }
+    loop {
+        let mut c1 = read_c_char(s1);
+        s1 = add_const_c_char(s1, 1);
+        let mut c2 = read_c_char(s2);
+        s2 = add_const_c_char(s2, 1);
+        if ASCII_a <= c1 as ::core::ffi::c_int && c1 as ::core::ffi::c_int <= ASCII_z {
+            c1 = (c1 as ::core::ffi::c_int + (ASCII_A - ASCII_a)) as ::core::ffi::c_char;
         }
-        return 1 as ::core::ffi::c_int;
+        if ASCII_a <= c2 as ::core::ffi::c_int && c2 as ::core::ffi::c_int <= ASCII_z {
+            c2 = (c2 as ::core::ffi::c_int + (ASCII_A - ASCII_a)) as ::core::ffi::c_char;
+        }
+        if c1 as ::core::ffi::c_int != c2 as ::core::ffi::c_int {
+            return 0 as ::core::ffi::c_int;
+        }
+        if c1 == 0 {
+            return 1 as ::core::ffi::c_int;
+        }
     }
 }
-unsafe extern "C" fn initUpdatePosition(
-    mut enc: *const ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut pos: *mut POSITION,
+
+extern "C" fn initUpdatePosition(
+    _enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    pos: *mut POSITION,
 ) {
-    unsafe {
-        normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
-    }
+    update_position_with_utf8(ptr, end, pos);
 }
-unsafe extern "C" fn toAscii(
-    mut enc: *const ENCODING,
+
+fn toAscii(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut buf: [::core::ffi::c_char; 1] = [0; 1];
-        let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-        (*enc).utf8Convert.expect("non-null function pointer")(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(1 as ::core::ffi::c_int as isize),
-        );
-        if p == &raw mut buf as *mut ::core::ffi::c_char {
-            return -(1 as ::core::ffi::c_int);
-        } else {
-            return buf[0 as ::core::ffi::c_int as usize] as ::core::ffi::c_int;
-        };
+    let mut buf: [::core::ffi::c_char; 1] = [0; 1];
+    let mut out = buf.as_mut_ptr();
+    encoding_utf8_convert(
+        enc,
+        &mut ptr,
+        end,
+        &mut out,
+        add_const_c_char(out.cast_const(), 1),
+    );
+    if out == buf.as_mut_ptr() {
+        -(1 as ::core::ffi::c_int)
+    } else {
+        buf[0] as ::core::ffi::c_int
     }
 }
 fn isSpace(c: ::core::ffi::c_int) -> ::core::ffi::c_int {
@@ -20487,103 +20615,102 @@ fn isSpace(c: ::core::ffi::c_int) -> ::core::ffi::c_int {
         _ => 0 as ::core::ffi::c_int,
     }
 }
-unsafe extern "C" fn parsePseudoAttribute(
-    mut enc: *const ENCODING,
+fn parsePseudoAttribute(
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut namePtr: *mut *const ::core::ffi::c_char,
-    mut nameEndPtr: *mut *const ::core::ffi::c_char,
-    mut valPtr: *mut *const ::core::ffi::c_char,
-    mut nextTokPtr: *mut *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    namePtr: *mut *const ::core::ffi::c_char,
+    nameEndPtr: *mut *const ::core::ffi::c_char,
+    valPtr: *mut *const ::core::ffi::c_char,
+    nextTokPtr: *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut c: ::core::ffi::c_int = 0;
-        let mut open: ::core::ffi::c_char = 0;
-        if ptr == end {
-            *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
-            return 1 as ::core::ffi::c_int;
-        }
-        if isSpace(toAscii(enc, ptr, end)) == 0 {
-            *nextTokPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        loop {
-            ptr = ptr.offset((*enc).minBytesPerChar as isize);
-            if !(isSpace(toAscii(enc, ptr, end)) != 0) {
-                break;
-            }
-        }
-        if ptr == end {
-            *namePtr = ::core::ptr::null::<::core::ffi::c_char>();
-            return 1 as ::core::ffi::c_int;
-        }
-        *namePtr = ptr;
-        loop {
-            c = toAscii(enc, ptr, end);
-            if c == -(1 as ::core::ffi::c_int) {
-                *nextTokPtr = ptr;
-                return 0 as ::core::ffi::c_int;
-            }
-            if c == ASCII_EQUALS {
-                *nameEndPtr = ptr;
-                break;
-            } else if isSpace(c) != 0 {
-                *nameEndPtr = ptr;
-                loop {
-                    ptr = ptr.offset((*enc).minBytesPerChar as isize);
-                    c = toAscii(enc, ptr, end);
-                    if !(isSpace(c) != 0) {
-                        break;
-                    }
-                }
-                if c != ASCII_EQUALS {
-                    *nextTokPtr = ptr;
-                    return 0 as ::core::ffi::c_int;
-                }
-                break;
-            } else {
-                ptr = ptr.offset((*enc).minBytesPerChar as isize);
-            }
-        }
-        if ptr == *namePtr {
-            *nextTokPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
-        c = toAscii(enc, ptr, end);
-        while isSpace(c) != 0 {
-            ptr = ptr.offset((*enc).minBytesPerChar as isize);
-            c = toAscii(enc, ptr, end);
-        }
-        if c != ASCII_QUOT && c != ASCII_APOS {
-            *nextTokPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        open = c as ::core::ffi::c_char;
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
-        *valPtr = ptr;
-        loop {
-            c = toAscii(enc, ptr, end);
-            if c == open as ::core::ffi::c_int {
-                break;
-            }
-            if !(ASCII_a <= c && c <= ASCII_z)
-                && !(ASCII_A <= c && c <= ASCII_Z)
-                && !(ASCII_0 <= c && c <= ASCII_9)
-                && c != ASCII_PERIOD
-                && c != ASCII_MINUS
-                && c != ASCII_UNDERSCORE
-            {
-                *nextTokPtr = ptr;
-                return 0 as ::core::ffi::c_int;
-            }
-            ptr = ptr.offset((*enc).minBytesPerChar as isize);
-        }
-        *nextTokPtr = ptr.offset((*enc).minBytesPerChar as isize);
+    let min_bytes_per_char = encoding_min_bytes_per_char(enc);
+    let mut c: ::core::ffi::c_int = 0;
+    let mut open: ::core::ffi::c_char = 0;
+    if ptr == end {
+        write_copy(namePtr, ::core::ptr::null::<::core::ffi::c_char>());
         return 1 as ::core::ffi::c_int;
     }
+    if isSpace(toAscii(enc, ptr, end)) == 0 {
+        write_copy(nextTokPtr, ptr);
+        return 0 as ::core::ffi::c_int;
+    }
+    loop {
+        ptr = add_const_c_char(ptr, min_bytes_per_char);
+        if isSpace(toAscii(enc, ptr, end)) == 0 {
+            break;
+        }
+    }
+    if ptr == end {
+        write_copy(namePtr, ::core::ptr::null::<::core::ffi::c_char>());
+        return 1 as ::core::ffi::c_int;
+    }
+    write_copy(namePtr, ptr);
+    loop {
+        c = toAscii(enc, ptr, end);
+        if c == -(1 as ::core::ffi::c_int) {
+            write_copy(nextTokPtr, ptr);
+            return 0 as ::core::ffi::c_int;
+        }
+        if c == ASCII_EQUALS {
+            write_copy(nameEndPtr, ptr);
+            break;
+        } else if isSpace(c) != 0 {
+            write_copy(nameEndPtr, ptr);
+            loop {
+                ptr = add_const_c_char(ptr, min_bytes_per_char);
+                c = toAscii(enc, ptr, end);
+                if isSpace(c) == 0 {
+                    break;
+                }
+            }
+            if c != ASCII_EQUALS {
+                write_copy(nextTokPtr, ptr);
+                return 0 as ::core::ffi::c_int;
+            }
+            break;
+        } else {
+            ptr = add_const_c_char(ptr, min_bytes_per_char);
+        }
+    }
+    if ptr == read_copy(namePtr.cast_const()) {
+        write_copy(nextTokPtr, ptr);
+        return 0 as ::core::ffi::c_int;
+    }
+    ptr = add_const_c_char(ptr, min_bytes_per_char);
+    c = toAscii(enc, ptr, end);
+    while isSpace(c) != 0 {
+        ptr = add_const_c_char(ptr, min_bytes_per_char);
+        c = toAscii(enc, ptr, end);
+    }
+    if c != ASCII_QUOT && c != ASCII_APOS {
+        write_copy(nextTokPtr, ptr);
+        return 0 as ::core::ffi::c_int;
+    }
+    open = c as ::core::ffi::c_char;
+    ptr = add_const_c_char(ptr, min_bytes_per_char);
+    write_copy(valPtr, ptr);
+    loop {
+        c = toAscii(enc, ptr, end);
+        if c == open as ::core::ffi::c_int {
+            break;
+        }
+        if !(ASCII_a <= c && c <= ASCII_z)
+            && !(ASCII_A <= c && c <= ASCII_Z)
+            && !(ASCII_0 <= c && c <= ASCII_9)
+            && c != ASCII_PERIOD
+            && c != ASCII_MINUS
+            && c != ASCII_UNDERSCORE
+        {
+            write_copy(nextTokPtr, ptr);
+            return 0 as ::core::ffi::c_int;
+        }
+        ptr = add_const_c_char(ptr, min_bytes_per_char);
+    }
+    write_copy(nextTokPtr, add_const_c_char(ptr, min_bytes_per_char));
+    1 as ::core::ffi::c_int
 }
-static mut KW_version: [::core::ffi::c_char; 8] = [
+static KW_version: [::core::ffi::c_char; 8] = [
     ASCII_v as ::core::ffi::c_char,
     ASCII_e as ::core::ffi::c_char,
     ASCII_r as ::core::ffi::c_char,
@@ -20593,7 +20720,7 @@ static mut KW_version: [::core::ffi::c_char; 8] = [
     ASCII_n as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_encoding: [::core::ffi::c_char; 9] = [
+static KW_encoding: [::core::ffi::c_char; 9] = [
     ASCII_e as ::core::ffi::c_char,
     ASCII_n as ::core::ffi::c_char,
     ASCII_c as ::core::ffi::c_char,
@@ -20604,7 +20731,7 @@ static mut KW_encoding: [::core::ffi::c_char; 9] = [
     ASCII_g as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_standalone: [::core::ffi::c_char; 11] = [
+static KW_standalone: [::core::ffi::c_char; 11] = [
     ASCII_s as ::core::ffi::c_char,
     ASCII_t as ::core::ffi::c_char,
     ASCII_a as ::core::ffi::c_char,
@@ -20617,42 +20744,68 @@ static mut KW_standalone: [::core::ffi::c_char; 11] = [
     ASCII_e as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_yes: [::core::ffi::c_char; 4] = [
+static KW_yes: [::core::ffi::c_char; 4] = [
     ASCII_y as ::core::ffi::c_char,
     ASCII_e as ::core::ffi::c_char,
     ASCII_s as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_no: [::core::ffi::c_char; 3] = [
+static KW_no: [::core::ffi::c_char; 3] = [
     ASCII_n as ::core::ffi::c_char,
     ASCII_o as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-unsafe extern "C" fn doParseXmlDecl(
-    mut encodingFinder: Option<
+fn doParseXmlDecl(
+    encodingFinder: Option<
         unsafe extern "C" fn(
             *const ENCODING,
             *const ::core::ffi::c_char,
             *const ::core::ffi::c_char,
         ) -> *const ENCODING,
     >,
-    mut isGeneralTextEntity: ::core::ffi::c_int,
-    mut enc: *const ENCODING,
+    isGeneralTextEntity: ::core::ffi::c_int,
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
-    mut badPtr: *mut *const ::core::ffi::c_char,
-    mut versionPtr: *mut *const ::core::ffi::c_char,
-    mut versionEndPtr: *mut *const ::core::ffi::c_char,
-    mut encodingName: *mut *const ::core::ffi::c_char,
-    mut encoding: *mut *const ENCODING,
-    mut standalone: *mut ::core::ffi::c_int,
+    badPtr: *mut *const ::core::ffi::c_char,
+    versionPtr: *mut *const ::core::ffi::c_char,
+    versionEndPtr: *mut *const ::core::ffi::c_char,
+    encodingName: *mut *const ::core::ffi::c_char,
+    encoding: *mut *const ENCODING,
+    standalone: *mut ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut val: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut name: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        let mut nameEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        ptr = ptr.offset((5 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize);
-        end = end.offset(-((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize));
+    let min_bytes_per_char = encoding_min_bytes_per_char(enc);
+    let mut val: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    let mut name: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    let mut nameEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    ptr = add_const_c_char(ptr, 5 * min_bytes_per_char);
+    end = add_const_c_char(end, -(2 * min_bytes_per_char));
+    if parsePseudoAttribute(
+        enc,
+        ptr,
+        end,
+        &raw mut name,
+        &raw mut nameEnd,
+        &raw mut val,
+        &raw mut ptr,
+    ) == 0
+        || name.is_null()
+    {
+        write_copy(badPtr, ptr);
+        return 0 as ::core::ffi::c_int;
+    }
+    if encoding_name_matches_ascii(enc, name, nameEnd, KW_version.as_ptr()) == 0 {
+        if isGeneralTextEntity == 0 {
+            write_copy(badPtr, name);
+            return 0 as ::core::ffi::c_int;
+        }
+    } else {
+        if !versionPtr.is_null() {
+            write_copy(versionPtr, val);
+        }
+        if !versionEndPtr.is_null() {
+            write_copy(versionEndPtr, ptr);
+        }
         if parsePseudoAttribute(
             enc,
             ptr,
@@ -20662,133 +20815,82 @@ unsafe extern "C" fn doParseXmlDecl(
             &raw mut val,
             &raw mut ptr,
         ) == 0
-            || name.is_null()
         {
-            *badPtr = ptr;
+            write_copy(badPtr, ptr);
             return 0 as ::core::ffi::c_int;
         }
-        if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-            enc,
-            name,
-            nameEnd,
-            &raw const KW_version as *const ::core::ffi::c_char,
-        ) == 0
-        {
-            if isGeneralTextEntity == 0 {
-                *badPtr = name;
+        if name.is_null() {
+            if isGeneralTextEntity != 0 {
+                write_copy(badPtr, ptr);
                 return 0 as ::core::ffi::c_int;
             }
-        } else {
-            if !versionPtr.is_null() {
-                *versionPtr = val;
-            }
-            if !versionEndPtr.is_null() {
-                *versionEndPtr = ptr;
-            }
-            if parsePseudoAttribute(
-                enc,
-                ptr,
-                end,
-                &raw mut name,
-                &raw mut nameEnd,
-                &raw mut val,
-                &raw mut ptr,
-            ) == 0
-            {
-                *badPtr = ptr;
-                return 0 as ::core::ffi::c_int;
-            }
-            if name.is_null() {
-                if isGeneralTextEntity != 0 {
-                    *badPtr = ptr;
-                    return 0 as ::core::ffi::c_int;
-                }
-                return 1 as ::core::ffi::c_int;
-            }
+            return 1 as ::core::ffi::c_int;
         }
-        if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-            enc,
-            name,
-            nameEnd,
-            &raw const KW_encoding as *const ::core::ffi::c_char,
-        ) != 0
-        {
-            let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
-            if !(ASCII_a <= c && c <= ASCII_z) && !(ASCII_A <= c && c <= ASCII_Z) {
-                *badPtr = val;
-                return 0 as ::core::ffi::c_int;
-            }
-            if !encodingName.is_null() {
-                *encodingName = val;
-            }
-            if !encoding.is_null() {
-                *encoding = encodingFinder.expect("non-null function pointer")(
+    }
+    if encoding_name_matches_ascii(enc, name, nameEnd, KW_encoding.as_ptr()) != 0 {
+        let c = toAscii(enc, val, end);
+        if !(ASCII_a <= c && c <= ASCII_z) && !(ASCII_A <= c && c <= ASCII_Z) {
+            write_copy(badPtr, val);
+            return 0 as ::core::ffi::c_int;
+        }
+        if !encodingName.is_null() {
+            write_copy(encodingName, val);
+        }
+        if !encoding.is_null() {
+            write_copy(
+                encoding,
+                call_encoding_finder(
+                    encodingFinder.expect("non-null function pointer"),
                     enc,
                     val,
-                    ptr.offset(-((*enc).minBytesPerChar as isize)),
-                );
-            }
-            if parsePseudoAttribute(
-                enc,
-                ptr,
-                end,
-                &raw mut name,
-                &raw mut nameEnd,
-                &raw mut val,
-                &raw mut ptr,
-            ) == 0
-            {
-                *badPtr = ptr;
-                return 0 as ::core::ffi::c_int;
-            }
-            if name.is_null() {
-                return 1 as ::core::ffi::c_int;
-            }
+                    add_const_c_char(ptr, -min_bytes_per_char),
+                ),
+            );
         }
-        if (*enc).nameMatchesAscii.expect("non-null function pointer")(
+        if parsePseudoAttribute(
             enc,
-            name,
-            nameEnd,
-            &raw const KW_standalone as *const ::core::ffi::c_char,
+            ptr,
+            end,
+            &raw mut name,
+            &raw mut nameEnd,
+            &raw mut val,
+            &raw mut ptr,
         ) == 0
-            || isGeneralTextEntity != 0
         {
-            *badPtr = name;
+            write_copy(badPtr, ptr);
             return 0 as ::core::ffi::c_int;
         }
-        if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-            enc,
-            val,
-            ptr.offset(-((*enc).minBytesPerChar as isize)),
-            &raw const KW_yes as *const ::core::ffi::c_char,
-        ) != 0
-        {
-            if !standalone.is_null() {
-                *standalone = 1 as ::core::ffi::c_int;
-            }
-        } else if (*enc).nameMatchesAscii.expect("non-null function pointer")(
-            enc,
-            val,
-            ptr.offset(-((*enc).minBytesPerChar as isize)),
-            &raw const KW_no as *const ::core::ffi::c_char,
-        ) != 0
-        {
-            if !standalone.is_null() {
-                *standalone = 0 as ::core::ffi::c_int;
-            }
-        } else {
-            *badPtr = val;
-            return 0 as ::core::ffi::c_int;
+        if name.is_null() {
+            return 1 as ::core::ffi::c_int;
         }
-        while isSpace(toAscii(enc, ptr, end)) != 0 {
-            ptr = ptr.offset((*enc).minBytesPerChar as isize);
-        }
-        if ptr != end {
-            *badPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        return 1 as ::core::ffi::c_int;
     }
+    if encoding_name_matches_ascii(enc, name, nameEnd, KW_standalone.as_ptr()) == 0
+        || isGeneralTextEntity != 0
+    {
+        write_copy(badPtr, name);
+        return 0 as ::core::ffi::c_int;
+    }
+    let value_end = add_const_c_char(ptr, -min_bytes_per_char);
+    if encoding_name_matches_ascii(enc, val, value_end, KW_yes.as_ptr()) != 0 {
+        if !standalone.is_null() {
+            write_copy(standalone, 1 as ::core::ffi::c_int);
+        }
+    } else if encoding_name_matches_ascii(enc, val, value_end, KW_no.as_ptr()) != 0 {
+        if !standalone.is_null() {
+            write_copy(standalone, 0 as ::core::ffi::c_int);
+        }
+    } else {
+        write_copy(badPtr, val);
+        return 0 as ::core::ffi::c_int;
+    }
+    while isSpace(toAscii(enc, ptr, end)) != 0 {
+        ptr = add_const_c_char(ptr, min_bytes_per_char);
+    }
+    if ptr != end {
+        write_copy(badPtr, ptr);
+        return 0 as ::core::ffi::c_int;
+    }
+    1 as ::core::ffi::c_int
 }
 fn checkCharRefNumber(result: ::core::ffi::c_int) -> ::core::ffi::c_int {
     match result >> 8 as ::core::ffi::c_int {
@@ -20899,10 +21001,7 @@ pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
     }
 }
 fn unknown_code_point(enc: *const ENCODING, p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    unsafe {
-        let unknown_encoding = &*(enc as *const unknown_encoding);
-        unknown_encoding.convert.expect("non-null function pointer")(unknown_encoding.userData, p)
-    }
+    call_unknown_converter(ref_from_ptr(enc as *const unknown_encoding), p)
 }
 extern "C" fn unknown_isName(
     enc: *const ENCODING,
@@ -20939,92 +21038,76 @@ extern "C" fn unknown_isInvalid(
     (code_point & !(0xffff as ::core::ffi::c_int) != 0
         || checkCharRefNumber(code_point) < 0 as ::core::ffi::c_int) as ::core::ffi::c_int
 }
-unsafe extern "C" fn unknown_toUtf8(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_char,
-    mut toLim: *const ::core::ffi::c_char,
+extern "C" fn unknown_toUtf8(
+    enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_char,
+    toLim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    unsafe {
-        let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-        let mut buf: [::core::ffi::c_char; 4] = [0; 4];
-        loop {
-            let mut utf8: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-            let mut n: ::core::ffi::c_int = 0;
-            if *fromP == fromLim {
-                return XML_CONVERT_COMPLETED;
-            }
-            utf8 = &raw const *(&raw const (*uenc).utf8 as *const [::core::ffi::c_char; 4])
-                .offset(**fromP as ::core::ffi::c_uchar as isize)
-                as *const ::core::ffi::c_char;
-            let c2rust_fresh61 = utf8;
-            utf8 = utf8.offset(1);
-            n = *c2rust_fresh61 as ::core::ffi::c_int;
-            if n == 0 as ::core::ffi::c_int {
-                let mut c: ::core::ffi::c_int =
-                    (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP);
-                n = XmlUtf8Encode(c, &raw mut buf as *mut ::core::ffi::c_char);
-                if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                utf8 = &raw mut buf as *mut ::core::ffi::c_char;
-                *fromP = (*fromP).offset(
-                    ((*(enc as *const normal_encoding)).type_0
-                        [**fromP as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                        - (BT_LEAD2 as ::core::ffi::c_int - 2 as ::core::ffi::c_int))
-                        as isize,
-                );
-            } else {
-                if n as ::core::ffi::c_long > toLim.offset_from(*toP) as ::core::ffi::c_long {
-                    return XML_CONVERT_OUTPUT_EXHAUSTED;
-                }
-                *fromP = (*fromP).offset(1);
-            }
-            memcpy(
-                *toP as *mut ::core::ffi::c_void,
-                utf8 as *const ::core::ffi::c_void,
-                n as size_t,
-            );
-            *toP = (*toP).offset(n as isize);
+    let uenc = ref_from_ptr(enc as *const unknown_encoding);
+    let mut buf: [::core::ffi::c_char; 4] = [0; 4];
+    loop {
+        let from = read_copy(fromP.cast_const());
+        if from == fromLim {
+            return XML_CONVERT_COMPLETED;
         }
+        let byte = read_c_char(from) as ::core::ffi::c_uchar as usize;
+        let utf8_entry = read_copy(uenc.utf8.as_ptr().wrapping_add(byte));
+        let mut n = utf8_entry[0] as ::core::ffi::c_int;
+        let mut utf8 = utf8_entry.as_ptr().wrapping_add(1);
+        let to = read_copy(toP.cast_const());
+        if n == 0 as ::core::ffi::c_int {
+            let c = call_unknown_converter(uenc, from);
+            n = call_xml_utf8_encode(c, buf.as_mut_ptr());
+            if n as usize > remaining_c_chars(to, toLim) {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
+            }
+            utf8 = buf.as_ptr();
+            write_copy(
+                fromP,
+                add_const_c_char(from, unknown_sequence_length(enc, from)),
+            );
+        } else {
+            if n as usize > remaining_c_chars(to, toLim) {
+                return XML_CONVERT_OUTPUT_EXHAUSTED;
+            }
+            write_copy(fromP, add_const_c_char(from, 1));
+        }
+        copy_c_chars(to, utf8, n as size_t);
+        write_copy(toP, add_mut_c_char(to, n as isize));
     }
 }
-unsafe extern "C" fn unknown_toUtf16(
-    mut enc: *const ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
+extern "C" fn unknown_toUtf16(
+    enc: *const ENCODING,
+    fromP: *mut *const ::core::ffi::c_char,
+    fromLim: *const ::core::ffi::c_char,
+    toP: *mut *mut ::core::ffi::c_ushort,
+    toLim: *const ::core::ffi::c_ushort,
 ) -> XML_Convert_Result {
-    unsafe {
-        let mut uenc: *const unknown_encoding = enc as *const unknown_encoding;
-        while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-            let mut c: ::core::ffi::c_ushort =
-                (*uenc).utf16[**fromP as ::core::ffi::c_uchar as usize];
-            if c as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                c = (*uenc).convert.expect("non-null function pointer")((*uenc).userData, *fromP)
-                    as ::core::ffi::c_ushort;
-                *fromP = (*fromP).offset(
-                    ((*(enc as *const normal_encoding)).type_0
-                        [**fromP as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
-                        - (BT_LEAD2 as ::core::ffi::c_int - 2 as ::core::ffi::c_int))
-                        as isize,
-                );
-            } else {
-                *fromP = (*fromP).offset(1);
-            }
-            let c2rust_fresh60 = *toP;
-            *toP = (*toP).offset(1);
-            *c2rust_fresh60 = c;
-        }
-        if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-            return XML_CONVERT_OUTPUT_EXHAUSTED;
+    let uenc = ref_from_ptr(enc as *const unknown_encoding);
+    while read_copy(fromP.cast_const()) < fromLim && read_copy(toP.cast_const()) < toLim.cast_mut()
+    {
+        let from = read_copy(fromP.cast_const());
+        let byte = read_c_char(from) as ::core::ffi::c_uchar as usize;
+        let mut c = uenc.utf16[byte];
+        if c as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+            c = call_unknown_converter(uenc, from) as ::core::ffi::c_ushort;
+            write_copy(
+                fromP,
+                add_const_c_char(from, unknown_sequence_length(enc, from)),
+            );
         } else {
-            return XML_CONVERT_COMPLETED;
-        };
+            write_copy(fromP, add_const_c_char(from, 1));
+        }
+        let to = read_copy(toP.cast_const());
+        write_copy(to, c);
+        write_copy(toP, add_mut_c_ushort(to, 1));
+    }
+    if read_copy(toP.cast_const()) == toLim.cast_mut() && read_copy(fromP.cast_const()) < fromLim {
+        XML_CONVERT_OUTPUT_EXHAUSTED
+    } else {
+        XML_CONVERT_COMPLETED
     }
 }
 #[no_mangle]
@@ -21193,7 +21276,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding(
         return &raw mut (*e).normal.enc;
     }
 }
-static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
+static KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     ASCII_I as ::core::ffi::c_char,
     ASCII_S as ::core::ffi::c_char,
     ASCII_O as ::core::ffi::c_char,
@@ -21206,7 +21289,7 @@ static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     ASCII_1 as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
+static KW_US_ASCII: [::core::ffi::c_char; 9] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_S as ::core::ffi::c_char,
     ASCII_MINUS as ::core::ffi::c_char,
@@ -21217,7 +21300,7 @@ static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
     ASCII_I as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
+static KW_UTF_8: [::core::ffi::c_char; 6] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F as ::core::ffi::c_char,
@@ -21225,7 +21308,7 @@ static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
     ASCII_8 as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
+static KW_UTF_16: [::core::ffi::c_char; 7] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F as ::core::ffi::c_char,
@@ -21234,7 +21317,7 @@ static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
     ASCII_6 as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F as ::core::ffi::c_char,
@@ -21245,7 +21328,7 @@ static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     ASCII_E as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16LE: [::core::ffi::c_char; 9] = [
     ASCII_U as ::core::ffi::c_char,
     ASCII_T as ::core::ffi::c_char,
     ASCII_F as ::core::ffi::c_char,
@@ -21256,35 +21339,24 @@ static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
     ASCII_E as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
-unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    unsafe {
-        static mut encodingNames: [*const ::core::ffi::c_char; 6] = unsafe {
-            [
-                &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
-                &raw const KW_US_ASCII as *const ::core::ffi::c_char,
-                &raw const KW_UTF_8 as *const ::core::ffi::c_char,
-                &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-                &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
-                &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
-            ]
-        };
-        let mut i: ::core::ffi::c_int = 0;
-        if name.is_null() {
-            return NO_ENC as ::core::ffi::c_int;
-        }
-        i = 0 as ::core::ffi::c_int;
-        while i
-            < (::core::mem::size_of::<[*const ::core::ffi::c_char; 6]>() as usize)
-                .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>() as usize)
-                as ::core::ffi::c_int
-        {
-            if streqci(name, encodingNames[i as usize]) != 0 {
-                return i;
-            }
-            i += 1;
-        }
-        return UNKNOWN_ENC as ::core::ffi::c_int;
+fn getEncodingIndex(name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
+    let encoding_names = [
+        KW_ISO_8859_1.as_ptr(),
+        KW_US_ASCII.as_ptr(),
+        KW_UTF_8.as_ptr(),
+        KW_UTF_16.as_ptr(),
+        KW_UTF_16BE.as_ptr(),
+        KW_UTF_16LE.as_ptr(),
+    ];
+    if name.is_null() {
+        return NO_ENC as ::core::ffi::c_int;
     }
+    for (index, encoding_name) in encoding_names.iter().enumerate() {
+        if streqci(name, *encoding_name) != 0 {
+            return index as ::core::ffi::c_int;
+        }
+    }
+    UNKNOWN_ENC as ::core::ffi::c_int
 }
 unsafe extern "C" fn initScan(
     mut encodingTable: *const *const ENCODING,
@@ -21542,46 +21614,41 @@ pub unsafe extern "C" fn XmlInitEncoding(
         return 1 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn findEncoding(
-    mut enc: *const ENCODING,
+fn find_encoding(
+    encoding_table: *const *const ENCODING,
+    enc: *const ENCODING,
     mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
 ) -> *const ENCODING {
-    unsafe {
-        let mut buf: [::core::ffi::c_char; 128] = ::core::mem::transmute::<
-            [u8; 128],
-            [::core::ffi::c_char; 128],
-        >(
-            *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-        );
-        let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        (*enc).utf8Convert.expect("non-null function pointer")(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128 as ::core::ffi::c_int as isize)
-                .offset(-(1 as ::core::ffi::c_int as isize)),
-        );
-        if ptr != end {
-            return ::core::ptr::null::<ENCODING>();
-        }
-        *p = 0 as ::core::ffi::c_char;
-        if streqci(
-            &raw mut buf as *mut ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-        ) != 0
-            && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
-        {
-            return enc;
-        }
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return ::core::ptr::null::<ENCODING>();
-        }
-        return encodings[i as usize];
+    let mut buf: [::core::ffi::c_char; 128] = [0; 128];
+    let mut out = buf.as_mut_ptr();
+    encoding_utf8_convert(
+        enc,
+        &mut ptr,
+        end,
+        &mut out,
+        add_const_c_char(out.cast_const(), 127),
+    );
+    if ptr != end {
+        return ::core::ptr::null::<ENCODING>();
     }
+    write_copy(out, 0 as ::core::ffi::c_char);
+    if streqci(buf.as_ptr(), KW_UTF_16.as_ptr()) != 0 && encoding_min_bytes_per_char(enc) == 2 {
+        return enc;
+    }
+    let index = getEncodingIndex(buf.as_ptr());
+    if index == UNKNOWN_ENC as ::core::ffi::c_int {
+        return ::core::ptr::null::<ENCODING>();
+    }
+    read_encoding_table_entry(encoding_table, index as usize)
+}
+
+extern "C" fn findEncoding(
+    enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+) -> *const ENCODING {
+    find_encoding(encoding_table_ptr(), enc, ptr, end)
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlParseXmlDecl(
@@ -21718,46 +21785,12 @@ pub unsafe extern "C" fn XmlInitEncodingNS(
         return 1 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn findEncodingNS(
-    mut enc: *const ENCODING,
-    mut ptr: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
+extern "C" fn findEncodingNS(
+    enc: *const ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
 ) -> *const ENCODING {
-    unsafe {
-        let mut buf: [::core::ffi::c_char; 128] = ::core::mem::transmute::<
-            [u8; 128],
-            [::core::ffi::c_char; 128],
-        >(
-            *b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-        );
-        let mut p: *mut ::core::ffi::c_char = &raw mut buf as *mut ::core::ffi::c_char;
-        let mut i: ::core::ffi::c_int = 0;
-        (*enc).utf8Convert.expect("non-null function pointer")(
-            enc,
-            &raw mut ptr,
-            end,
-            &raw mut p,
-            p.offset(128 as ::core::ffi::c_int as isize)
-                .offset(-(1 as ::core::ffi::c_int as isize)),
-        );
-        if ptr != end {
-            return ::core::ptr::null::<ENCODING>();
-        }
-        *p = 0 as ::core::ffi::c_char;
-        if streqci(
-            &raw mut buf as *mut ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-        ) != 0
-            && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
-        {
-            return enc;
-        }
-        i = getEncodingIndex(&raw mut buf as *mut ::core::ffi::c_char);
-        if i == UNKNOWN_ENC as ::core::ffi::c_int {
-            return ::core::ptr::null::<ENCODING>();
-        }
-        return encodingsNS[i as usize];
-    }
+    find_encoding(encoding_table_ns_ptr(), enc, ptr, end)
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlParseXmlDeclNS(
