@@ -7257,7 +7257,7 @@ unsafe fn XML_ExternalEntityParserCreate(
         let old_dtd_owner = old.m_dtd.clone();
         let new_dtd_owner = parser_ref.m_dtd.clone();
         let (Some(old_dtd_owner), Some(new_dtd_owner)) = (old_dtd_owner, new_dtd_owner) else {
-            XML_ParserFree(parser);
+            XML_ParserFree(parser_ref);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         };
         let copied_and_restored = old_dtd_owner.inspect(|old_dtd| {
@@ -7267,7 +7267,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             })
         });
         if !copied_and_restored {
-            XML_ParserFree(parser);
+            XML_ParserFree(parser_ref);
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
         parser_ref.m_processor = ProcessorState::ExternalEntityInit;
@@ -7310,12 +7310,8 @@ fn destroy_bindings(
         active_bindings.swap_remove(index).release();
     }
 }
-pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) {
-    if parser.is_null() {
-        return;
-    }
-    let parser_key = parser as usize;
-    let parser = &mut *parser;
+pub unsafe fn XML_ParserFree(parser: &mut XML_ParserStruct) {
+    let parser_key = std::ptr::from_mut(parser).addr();
     clear_callback_context(parser_key);
     START_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -7522,9 +7518,7 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
             backing(2013 as ::core::ffi::c_int);
         }
         if let Some(info) = unknown_encoding_mem.info.take() {
-            if let Some(release) = info.release {
-                release(info.data);
-            }
+            release_unknown_encoding_info(&info);
         }
     }
     expat_free(
@@ -7536,6 +7530,9 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
 #[export_name = "XML_ParserFree"]
 
 pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Parser) {
+    let Some(parser) = parser.as_mut() else {
+        return;
+    };
     XML_ParserFree(parser)
 }
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
