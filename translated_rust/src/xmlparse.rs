@@ -2060,7 +2060,10 @@ pub struct PoolStringRef {
 pub struct NS_ATT {
     pub version: ::core::ffi::c_ulong,
     pub hash: ::core::ffi::c_ulong,
-    pub uriName: *const crate::expat_external_h::XML_Char,
+    // Namespace-attribute cache entries only live while the temporary pool is
+    // live.  Keep a checked location in that pool rather than an address into
+    // its custom-allocator-owned storage.
+    pub uriName: Option<PoolStringRef>,
 }
 
 pub type BINDING = binding;
@@ -8068,6 +8071,7 @@ unsafe extern "C" fn storeAtts(
         }
         version = version.wrapping_sub(1);
         (*parser).m_nsAttsVersion = version;
+        let parser_ref = &mut *parser;
         while i < attIndex {
             let mut s: *const crate::expat_external_h::XML_Char = appAtts[i as usize];
             if *s.offset(-1 as isize) as ::core::ffi::c_int == 2 as ::core::ffi::c_int {
@@ -8166,12 +8170,19 @@ unsafe extern "C" fn storeAtts(
                 let mut mask: ::core::ffi::c_ulong =
                     nsAttsSize.wrapping_sub(1 as ::core::ffi::c_uint) as ::core::ffi::c_ulong;
                 j_0 = (uriHash & mask) as ::core::ffi::c_uint;
-                while (*(*parser).m_nsAtts.offset(j_0 as isize)).version == version {
-                    if uriHash == (*(*parser).m_nsAtts.offset(j_0 as isize)).hash {
+                while (*parser_ref.m_nsAtts.offset(j_0 as isize)).version == version {
+                    if uriHash == (*parser_ref.m_nsAtts.offset(j_0 as isize)).hash {
                         let mut s1: *const crate::expat_external_h::XML_Char =
-                            (*parser).m_tempPool.start;
-                        let mut s2: *const crate::expat_external_h::XML_Char =
-                            (*(*parser).m_nsAtts.offset(j_0 as isize)).uriName;
+                            parser_ref.m_tempPool.start;
+                        let Some(uri_name) = (*parser_ref.m_nsAtts.offset(j_0 as isize)).uriName
+                        else {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        };
+                        let s2 = pool_string_pointer(&raw const parser_ref.m_tempPool, uri_name);
+                        if s2.is_null() {
+                            return crate::expat_h::XML_ERROR_NO_MEMORY;
+                        }
+                        let mut s2 = s2;
                         while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int
                             && *s1 as ::core::ffi::c_int != 0 as ::core::ffi::c_int
                         {
@@ -8184,7 +8195,7 @@ unsafe extern "C" fn storeAtts(
                     }
                     if step == 0 {
                         step = ((uriHash & !mask)
-                            >> (*parser).m_nsAttsPower as ::core::ffi::c_int
+                            >> parser_ref.m_nsAttsPower as ::core::ffi::c_int
                                 - 1 as ::core::ffi::c_int
                             & mask >> 2 as ::core::ffi::c_int
                             | 1 as ::core::ffi::c_ulong)
@@ -8197,18 +8208,18 @@ unsafe extern "C" fn storeAtts(
                         j_0 = j_0.wrapping_sub(step as ::core::ffi::c_uint);
                     };
                 }
-                if (*parser).m_ns_triplets != 0 {
-                    *(*parser).m_tempPool.ptr.offset(-1 as isize) = (*parser).m_namespaceSeparator;
+                if parser_ref.m_ns_triplets != 0 {
+                    *parser_ref.m_tempPool.ptr.offset(-1 as isize) = parser_ref.m_namespaceSeparator;
                     s = (*(*b).prefix).name;
                     loop {
-                        if if (*parser).m_tempPool.ptr
-                            == (*parser).m_tempPool.end as *mut crate::expat_external_h::XML_Char
-                            && poolGrow(&raw mut (*parser).m_tempPool) == 0
+                        if if parser_ref.m_tempPool.ptr
+                            == parser_ref.m_tempPool.end as *mut crate::expat_external_h::XML_Char
+                            && poolGrow(&raw mut parser_ref.m_tempPool) == 0
                         {
                             0 as ::core::ffi::c_int
                         } else {
-                            let c2rust_fresh33 = (*parser).m_tempPool.ptr;
-                            (*parser).m_tempPool.ptr = (*parser).m_tempPool.ptr.offset(1);
+                            let c2rust_fresh33 = parser_ref.m_tempPool.ptr;
+                            parser_ref.m_tempPool.ptr = parser_ref.m_tempPool.ptr.offset(1);
                             *c2rust_fresh33 = *s;
                             1 as ::core::ffi::c_int
                         } == 0
@@ -8222,12 +8233,15 @@ unsafe extern "C" fn storeAtts(
                         }
                     }
                 }
-                s = (*parser).m_tempPool.start;
-                (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
+                s = parser_ref.m_tempPool.start;
+                parser_ref.m_tempPool.start = parser_ref.m_tempPool.ptr;
                 appAtts[i as usize] = s;
-                (*(*parser).m_nsAtts.offset(j_0 as isize)).version = version;
-                (*(*parser).m_nsAtts.offset(j_0 as isize)).hash = uriHash;
-                (*(*parser).m_nsAtts.offset(j_0 as isize)).uriName = s;
+                (*parser_ref.m_nsAtts.offset(j_0 as isize)).version = version;
+                (*parser_ref.m_nsAtts.offset(j_0 as isize)).hash = uriHash;
+                let Some(uri_name) = pool_string_ref(&raw const parser_ref.m_tempPool, s) else {
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                (*parser_ref.m_nsAtts.offset(j_0 as isize)).uriName = Some(uri_name);
                 nPrefixes -= 1;
                 if nPrefixes == 0 {
                     i += 2 as ::core::ffi::c_int;
