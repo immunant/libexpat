@@ -6607,103 +6607,16 @@ extern "C" fn entityValueInitProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let mut tok: ::core::ffi::c_int = 0;
-        let mut start: *const ::core::ffi::c_char = s;
-        let mut next: *const ::core::ffi::c_char = start;
-        (*parser).m_eventPtr = start;
-        loop {
-            tok = (*(*parser).m_encoding).scanners[0 as ::core::ffi::c_int as usize]
-                .expect("non-null function pointer")(
-                (*parser).m_encoding,
-                start,
-                end,
-                &raw mut next,
-            );
-            (*parser).m_eventEndPtr = next;
-            if tok <= 0 as ::core::ffi::c_int {
-                if (*parser).m_parsingStatus.finalBuffer == 0 && tok != XML_TOK_INVALID {
-                    *nextPtr = s;
-                    return XML_ERROR_NONE;
-                }
-                match tok {
-                    XML_TOK_INVALID => return XML_ERROR_INVALID_TOKEN,
-                    XML_TOK_PARTIAL => return XML_ERROR_UNCLOSED_TOKEN,
-                    XML_TOK_PARTIAL_CHAR => return XML_ERROR_PARTIAL_CHAR,
-                    XML_TOK_NONE | _ => {}
-                }
-                return storeEntityValue(
-                    parser,
-                    (*parser).m_encoding,
-                    s,
-                    end,
-                    XML_ACCOUNT_DIRECT,
-                    ::core::ptr::null_mut::<*const ::core::ffi::c_char>(),
-                );
-            } else if tok == XML_TOK_XML_DECL {
-                let mut result: XML_Error = XML_ERROR_NONE;
-                result = processXmlDecl(parser, 0 as ::core::ffi::c_int, start, next);
-                if result as ::core::ffi::c_uint
-                    != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return result;
-                }
-                if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                    == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    return XML_ERROR_ABORTED;
-                }
-                *nextPtr = next;
-                (*parser).m_processor = Some(
-                    entityValueProcessor
-                        as extern "C" fn(
-                            XML_Parser,
-                            *const ::core::ffi::c_char,
-                            *const ::core::ffi::c_char,
-                            *mut *const ::core::ffi::c_char,
-                        ) -> XML_Error,
-                );
-                return entityValueProcessor(parser, next, end, nextPtr);
-            } else if tok == XML_TOK_BOM {
-                if accountingDiffTolerated(
-                    &mut *parser,
-                    tok,
-                    s,
-                    next,
-                    5077 as ::core::ffi::c_int,
-                    XML_ACCOUNT_DIRECT,
-                ) == 0
-                {
-                    accountingOnAbort(&mut *parser);
-                    return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-                }
-                *nextPtr = next;
-                s = next;
-            } else if tok == XML_TOK_INSTANCE_START {
-                *nextPtr = next;
-                return XML_ERROR_SYNTAX;
-            }
-            start = next;
-            (*parser).m_eventPtr = start;
-        }
-    }
-}
-extern "C" fn externalParEntProcessor(
-    mut parser: XML_Parser,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
-) -> XML_Error {
-    unsafe {
-        let mut next: *const ::core::ffi::c_char = s;
-        let mut tok: ::core::ffi::c_int = 0;
-        tok = (*(*parser).m_encoding).scanners[0 as ::core::ffi::c_int as usize]
-            .expect("non-null function pointer")(
-            (*parser).m_encoding, s, end, &raw mut next
-        );
+    let mut start: *const ::core::ffi::c_char = s;
+    let mut next: *const ::core::ffi::c_char = start;
+    set_parser_event_ptr!(parser, start);
+    loop {
+        let enc = parser_encoding!(parser);
+        let tok = call_scanner(ptr_ref(enc).scanners[0], enc, start, end, &raw mut next);
+        set_parser_event_end_ptr!(parser, next);
         if tok <= 0 as ::core::ffi::c_int {
-            if (*parser).m_parsingStatus.finalBuffer == 0 && tok != XML_TOK_INVALID {
-                *nextPtr = s;
+            if parser_final_buffer!(parser) == 0 && tok != XML_TOK_INVALID {
+                write_copy(nextPtr, s);
                 return XML_ERROR_NONE;
             }
             match tok {
@@ -6712,47 +6625,112 @@ extern "C" fn externalParEntProcessor(
                 XML_TOK_PARTIAL_CHAR => return XML_ERROR_PARTIAL_CHAR,
                 XML_TOK_NONE | _ => {}
             }
+            return storeEntityValue(
+                parser,
+                enc,
+                s,
+                end,
+                XML_ACCOUNT_DIRECT,
+                ::core::ptr::null_mut::<*const ::core::ffi::c_char>(),
+            );
+        } else if tok == XML_TOK_XML_DECL {
+            let result = processXmlDecl(parser, 0 as ::core::ffi::c_int, start, next);
+            if result as ::core::ffi::c_uint
+                != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                return result;
+            }
+            if parser_parsing!(parser) as ::core::ffi::c_uint
+                == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+            {
+                return XML_ERROR_ABORTED;
+            }
+            write_copy(nextPtr, next);
+            set_parser_processor!(parser, entityValueProcessor);
+            return entityValueProcessor(parser, next, end, nextPtr);
         } else if tok == XML_TOK_BOM {
-            if accountingDiffTolerated(
-                &mut *parser,
+            if accounting_diff_tolerated_parser!(
+                parser,
                 tok,
                 s,
                 next,
-                5130 as ::core::ffi::c_int,
+                5077 as ::core::ffi::c_int,
                 XML_ACCOUNT_DIRECT,
             ) == 0
             {
-                accountingOnAbort(&mut *parser);
+                accounting_on_abort_parser!(parser);
                 return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
+            write_copy(nextPtr, next);
             s = next;
-            tok = (*(*parser).m_encoding).scanners[0 as ::core::ffi::c_int as usize]
-                .expect("non-null function pointer")(
-                (*parser).m_encoding, s, end, &raw mut next
-            );
+        } else if tok == XML_TOK_INSTANCE_START {
+            write_copy(nextPtr, next);
+            return XML_ERROR_SYNTAX;
         }
-        (*parser).m_processor = Some(
-            prologProcessor
-                as extern "C" fn(
-                    XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> XML_Error,
-        );
-        return doProlog(
+        start = next;
+        set_parser_event_ptr!(parser, start);
+    }
+}
+extern "C" fn externalParEntProcessor(
+    mut parser: XML_Parser,
+    mut s: *const ::core::ffi::c_char,
+    mut end: *const ::core::ffi::c_char,
+    mut nextPtr: *mut *const ::core::ffi::c_char,
+) -> XML_Error {
+    let mut next: *const ::core::ffi::c_char = s;
+    let mut tok = call_scanner(
+        ptr_ref(parser_encoding!(parser)).scanners[0],
+        parser_encoding!(parser),
+        s,
+        end,
+        &raw mut next,
+    );
+    if tok <= 0 as ::core::ffi::c_int {
+        if parser_final_buffer!(parser) == 0 && tok != XML_TOK_INVALID {
+            write_copy(nextPtr, s);
+            return XML_ERROR_NONE;
+        }
+        match tok {
+            XML_TOK_INVALID => return XML_ERROR_INVALID_TOKEN,
+            XML_TOK_PARTIAL => return XML_ERROR_UNCLOSED_TOKEN,
+            XML_TOK_PARTIAL_CHAR => return XML_ERROR_PARTIAL_CHAR,
+            XML_TOK_NONE | _ => {}
+        }
+    } else if tok == XML_TOK_BOM {
+        if accounting_diff_tolerated_parser!(
             parser,
-            (*parser).m_encoding,
+            tok,
+            s,
+            next,
+            5130 as ::core::ffi::c_int,
+            XML_ACCOUNT_DIRECT,
+        ) == 0
+        {
+            accounting_on_abort_parser!(parser);
+            return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
+        }
+        s = next;
+        tok = call_scanner(
+            ptr_ref(parser_encoding!(parser)).scanners[0],
+            parser_encoding!(parser),
             s,
             end,
-            tok,
-            next,
-            nextPtr,
-            ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int as XML_Bool,
-            XML_TRUE,
-            XML_ACCOUNT_DIRECT,
+            &raw mut next,
         );
     }
+    set_parser_processor!(parser, prologProcessor);
+    doProlog(
+        parser,
+        parser_encoding!(parser),
+        s,
+        end,
+        tok,
+        next,
+        nextPtr,
+        (parser_final_buffer!(parser) == 0) as ::core::ffi::c_int as XML_Bool,
+        XML_TRUE,
+        XML_ACCOUNT_DIRECT,
+    )
 }
 extern "C" fn entityValueProcessor(
     mut parser: XML_Parser,
