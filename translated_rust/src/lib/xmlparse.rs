@@ -1197,6 +1197,36 @@ macro_rules! xmlparse_assert_fail {
     }};
 }
 
+macro_rules! raw_ptr_ref {
+    ($ptr:expr $(,)?) => {{
+        unsafe { &*$ptr }
+    }};
+}
+
+macro_rules! raw_ptr_mut {
+    ($ptr:expr $(,)?) => {{
+        unsafe { &mut *$ptr }
+    }};
+}
+
+macro_rules! raw_ptr_slice {
+    ($ptr:expr, $len:expr $(,)?) => {{
+        unsafe { ::core::slice::from_raw_parts($ptr, $len) }
+    }};
+}
+
+macro_rules! raw_ptr_slice_mut {
+    ($ptr:expr, $len:expr $(,)?) => {{
+        unsafe { ::core::slice::from_raw_parts_mut($ptr, $len) }
+    }};
+}
+
+macro_rules! c_str_bytes_with_nul_impl {
+    ($ptr:expr $(,)?) => {{
+        unsafe { ::core::ffi::CStr::from_ptr($ptr).to_bytes_with_nul() }
+    }};
+}
+
 fn write_stderr_bytes(bytes: &[u8]) {
     let _ = io::stderr().write_all(bytes);
 }
@@ -10278,11 +10308,11 @@ fn copyEntityTable(
 }
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 fn ptr_ref<'a, T>(ptr: *const T) -> &'a T {
-    unsafe { &*ptr }
+    raw_ptr_ref!(ptr)
 }
 
 fn ptr_mut<'a, T>(ptr: *mut T) -> &'a mut T {
-    unsafe { &mut *ptr }
+    raw_ptr_mut!(ptr)
 }
 
 fn write_copy<T>(ptr: *mut T, value: T) {
@@ -10346,7 +10376,7 @@ fn ptr_slice<'a, T>(ptr: *const T, len: usize) -> &'a [T] {
     if ptr.is_null() {
         &[]
     } else {
-        unsafe { ::core::slice::from_raw_parts(ptr, len) }
+        raw_ptr_slice!(ptr, len)
     }
 }
 
@@ -10354,12 +10384,12 @@ fn ptr_slice_mut<'a, T>(ptr: *mut T, len: usize) -> &'a mut [T] {
     if ptr.is_null() {
         &mut []
     } else {
-        unsafe { ::core::slice::from_raw_parts_mut(ptr, len) }
+        raw_ptr_slice_mut!(ptr, len)
     }
 }
 
 fn c_str_bytes_with_nul<'a>(ptr: *const ::core::ffi::c_char) -> &'a [u8] {
-    unsafe { ::core::ffi::CStr::from_ptr(ptr).to_bytes_with_nul() }
+    c_str_bytes_with_nul_impl!(ptr)
 }
 
 fn normalize_c_string_lines(buffer: *mut XML_Char) {
