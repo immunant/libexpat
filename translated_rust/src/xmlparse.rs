@@ -3490,6 +3490,66 @@ impl TagBufferStorage {
     }
 }
 
+/// Converts a tokenizer-validated element name into its tag-owned UTF-8
+/// buffer.  The input range is resolved through its owning parser/entity
+/// storage before this helper is called, and the final buffer byte remains
+/// reserved for the NUL terminator expected by callbacks.
+fn convert_element_name_to_tag_buffer(
+    encoding: &crate::src::xmltok::ENCODING,
+    unknown_encoding: Option<&crate::src::xmltok::unknown_encoding>,
+    source: RawNameSource<'_>,
+    buffer: &mut TagBufferStorage,
+) -> Result<::core::ffi::c_int, crate::expat_h::XML_Error> {
+    let input: &[u8] = match source {
+        RawNameSource::Bytes(bytes) => bytes,
+        RawNameSource::Chars(chars) => bytemuck::cast_slice(chars),
+    };
+    let mut input_offset = 0usize;
+    let mut output_offset = 0usize;
+
+    loop {
+        let output_end = buffer
+            .bytes
+            .len()
+            .checked_sub(1)
+            .ok_or(crate::expat_h::XML_ERROR_NO_MEMORY)?;
+        let output = buffer
+            .bytes
+            .get_mut(output_offset..output_end)
+            .ok_or(crate::expat_h::XML_ERROR_UNEXPECTED_STATE)?;
+        let (result, consumed, written) = crate::src::xmltok::convert_to_utf8_slice(
+            encoding,
+            unknown_encoding,
+            input
+                .get(input_offset..)
+                .ok_or(crate::expat_h::XML_ERROR_UNEXPECTED_STATE)?,
+            bytemuck::cast_slice_mut(output),
+        );
+        input_offset = input_offset
+            .checked_add(consumed)
+            .ok_or(crate::expat_h::XML_ERROR_UNEXPECTED_STATE)?;
+        output_offset = output_offset
+            .checked_add(written)
+            .ok_or(crate::expat_h::XML_ERROR_NO_MEMORY)?;
+
+        if input_offset == input.len()
+            || result == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
+        {
+            return ::core::ffi::c_int::try_from(output_offset)
+                .map_err(|_| crate::expat_h::XML_ERROR_NO_MEMORY);
+        }
+        let maximum_half_capacity = usize::try_from(crate::stdlib::SIZE_MAX / 2)
+            .unwrap_or(usize::MAX);
+        if buffer.bytes.len() > maximum_half_capacity {
+            return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+        }
+        let next_capacity = buffer.bytes.len() * 2;
+        if !buffer.grow(next_capacity, 3514 as ::core::ffi::c_int) {
+            return Err(crate::expat_h::XML_ERROR_NO_MEMORY);
+        }
+    }
+}
+
 struct TagStorage {
     // A one-element vector gives this tag stable Rust-owned storage while
     // allowing allocation failure to be reported instead of aborting.
@@ -10085,64 +10145,57 @@ unsafe extern "C" fn doContent(
                     };
                     (*tag).rawNameLength = raw_name_len.length;
                     (*parser).m_tagLevel += 1;
-                    let mut rawNameEnd: *const ::core::ffi::c_char =
-                        raw_name.wrapping_offset((*tag).rawNameLength as isize);
-                    let mut fromPtr: *const ::core::ffi::c_char = raw_name;
-                    toPtr =
-                        (*tag).buffer.bytes.as_mut_ptr() as *mut crate::expat_external_h::XML_Char;
-                    loop {
-                        let mut convLen: ::core::ffi::c_int = 0;
-                        let convert_res: crate::src::xmltok::XML_Convert_Result =
-                            crate::src::xmltok::convert_to_utf8(
-                                enc,
-                                &raw mut fromPtr,
-                                rawNameEnd,
-                                &raw mut toPtr as *mut *mut ::core::ffi::c_char,
-                                ((*tag).buffer.bytes.as_mut_ptr() as *mut ICHAR)
-                                    .wrapping_offset((*tag).buffer.bytes.len() as isize)
-                                    .wrapping_offset(-(1 as ::core::ffi::c_int as isize)),
-                            );
-                        // The converter's output cursor is produced against this
-                        // tag's configured allocator-backed buffer.  Calculate
-                        // the length in address space so this conversion does
-                        // not invoke `offset_from`'s same-allocation
-                        // precondition.
-                        convLen = match toPtr
-                            .addr()
-                            .checked_sub(
-                                ((*tag).buffer.bytes.as_mut_ptr()
-                                    as *mut crate::expat_external_h::XML_Char)
-                                    .addr(),
-                            )
-                            .and_then(|len| ::core::ffi::c_int::try_from(len).ok())
-                        {
-                            Some(len) => len,
-                            None => return crate::expat_h::XML_ERROR_NO_MEMORY,
-                        };
-                        if fromPtr >= rawNameEnd
-                            || convert_res as ::core::ffi::c_uint
-                                == crate::src::xmltok::XML_CONVERT_INPUT_INCOMPLETE
-                                    as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                        {
-                            (*tag).name.strLen = convLen;
-                            break;
-                        } else {
-                            if (crate::stdlib::SIZE_MAX as crate::__stddef_size_t_h::size_t)
-                                .wrapping_div(2 as crate::__stddef_size_t_h::size_t)
-                                < (*tag).buffer.bytes.len()
-                            {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            let bufSize = (*tag).buffer.bytes.len().wrapping_mul(2);
-                            if !(*tag).buffer.grow(bufSize, 3514 as ::core::ffi::c_int) {
-                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                            }
-                            toPtr = ((*tag).buffer.bytes.as_mut_ptr()
-                                as *mut crate::expat_external_h::XML_Char)
-                                .wrapping_offset(convLen as isize);
-                        }
+                    let raw_name_length = match usize::try_from((*tag).rawNameLength) {
+                        Ok(length) => length,
+                        Err(_) => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                    };
+                    let Some(raw_name_end) = raw_name.addr().checked_add(raw_name_length) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    // Validate the scanner's name range against its owning
+                    // input before converting it.  This keeps malformed token
+                    // cursors from reaching either the converter or the tag
+                    // buffer as an invented slice.
+                    let Some(raw_name_source) = event_raw_name_source(
+                        &*parser,
+                        &*dtd,
+                        parser_events,
+                        raw_name.addr(),
+                        raw_name_end,
+                    ) else {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                    };
+                    let unknown_encoding = match (&*parser).m_encoding {
+                        EncodingState::Initial => None,
+                        EncodingState::Unknown => (&*parser)
+                            .m_unknownEncodingMem
+                            .as_ref()
+                            .and_then(UnknownEncodingMemory::initialized_encoding),
+                    };
+                    if matches!(
+                        encoding.utf8Convert,
+                        crate::src::xmltok::Utf8Converter::Unknown
+                    )
+                        && unknown_encoding.is_none()
+                    {
+                        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                     }
+                    let conv_len = match convert_element_name_to_tag_buffer(
+                        encoding,
+                        unknown_encoding,
+                        raw_name_source,
+                        &mut (*tag).buffer,
+                    ) {
+                        Ok(length) => length,
+                        Err(error) => return error,
+                    };
+                    (*tag).name.strLen = conv_len;
+                    toPtr = (*tag)
+                        .buffer
+                        .bytes
+                        .as_mut_ptr()
+                        .wrapping_add(conv_len as usize)
+                        .cast::<crate::expat_external_h::XML_Char>();
                     (*tag).name.str = TagNameStorage::TagBuffer { offset: 0 };
                     *toPtr = '\0' as crate::expat_external_h::XML_Char;
                     let mut app_atts = Vec::new();
