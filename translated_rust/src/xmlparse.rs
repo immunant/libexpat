@@ -11112,26 +11112,32 @@ unsafe fn doContent(
                             .get(&(parser_ptr as usize))
                             .cloned();
                         if let Some(callback) = callback {
-                            let (name_storage, tag_buffer) = {
+                            let name = {
                                 let tag = parser.m_activeTags[tag_index]
                                     .tag
                                     .first()
                                     .expect("tag storage has one tag");
-                                (
-                                    tag.name.str,
-                                    tag.buffer.bytes.as_ptr()
-                                        as *const crate::expat_external_h::XML_Char,
-                                )
-                            };
-                            let name = match name_storage {
-                                TagNameStorage::TagBuffer { offset } => {
-                                    tag_buffer.wrapping_offset(offset as isize)
+                                match tag.name.str {
+                                    TagNameStorage::TagBuffer { offset } => {
+                                        let Some(name) = tag
+                                            .buffer
+                                            .bytes
+                                            .get(offset..)
+                                            .and_then(terminated_xml_chars)
+                                        else {
+                                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                        };
+                                        name.as_ptr()
+                                    }
+                                    TagNameStorage::NamespaceUri => tag
+                                        .buffer
+                                        .bytes
+                                        .get(..)
+                                        .and_then(terminated_xml_chars)
+                                        .and_then(|name| namespace_name_chars(parser, name))
+                                        .map_or(::core::ptr::null(), |name| name.as_ptr()),
+                                    _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                                 }
-                                TagNameStorage::NamespaceUri => namespace_name_pointer(
-                                    parser,
-                                    tag_buffer,
-                                ),
-                                _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             callback.invoke(
                                 handler_arg_from_state!(parser),
@@ -11223,10 +11229,6 @@ unsafe fn doContent(
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     };
                     name_0.str = TagNameStorage::TempPool(name_ref);
-                    let raw_name_pointer = parser
-                        .m_tempPool
-                        .chars_from(name_ref)
-                        .map_or(::core::ptr::null(), |chars| chars.as_ptr());
                     parser.m_tempPool.commit();
                     let mut app_atts = Vec::new();
                     let mut tag_name_update = None;
@@ -11257,9 +11259,12 @@ unsafe fn doContent(
                             .m_tempPool
                             .chars_from(name)
                             .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                        TagNameStorage::NamespaceUri => {
-                            namespace_name_pointer(parser, raw_name_pointer)
-                        }
+                        TagNameStorage::NamespaceUri => parser
+                            .m_tempPool
+                            .chars_from(name_ref)
+                            .and_then(terminated_xml_chars)
+                            .and_then(|name| namespace_name_chars(parser, name))
+                            .map_or(::core::ptr::null(), |name| name.as_ptr()),
                         _ => ::core::ptr::null(),
                     };
                     // The end callback follows the start callback, which may
@@ -11416,11 +11421,13 @@ unsafe fn doContent(
                                     end_element_name = Some(name);
                                     tag_0.buffer.bytes.as_ptr().wrapping_add(offset)
                                 }
-                                TagNameStorage::NamespaceUri => namespace_name_pointer(
-                                    parser,
-                                    tag_0.buffer.bytes.as_ptr()
-                                        as *const crate::expat_external_h::XML_Char,
-                                ),
+                                TagNameStorage::NamespaceUri => tag_0
+                                    .buffer
+                                    .bytes
+                                    .get(..)
+                                    .and_then(terminated_xml_chars)
+                                    .and_then(|name| namespace_name_chars(parser, name))
+                                    .map_or(::core::ptr::null(), |name| name.as_ptr()),
                                 _ => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                             };
                             if matches!(tag_0.name.str, TagNameStorage::NamespaceUri) {
@@ -11979,36 +11986,49 @@ unsafe fn freeBindings(
     }
 }
 
-unsafe fn namespace_name_pointer(
-    parser: crate::expat_h::XML_Parser,
-    name: *const crate::expat_external_h::XML_Char,
-) -> *const crate::expat_external_h::XML_Char {
-    let dtd = parser_dtd_ptr!(parser);
-    if dtd.is_null() {
-        return ::core::ptr::null();
-    }
-    let dtd_ref = &mut *dtd;
-    let element =
-        lookup(parser, &raw mut dtd_ref.elementTypes, name as KEY, 0) as *mut ELEMENT_TYPE;
-    if element.is_null() {
-        return ::core::ptr::null();
-    }
-    let element_ref = &*element;
-    let binding_prefix = if element_ref.hasPrefix != 0 {
-        BindingPrefix::Named(element_ref.prefix)
-    } else {
-        BindingPrefix::Default
-    };
-    let parser_state = &*parser;
-    let Some(binding_id) =
-        active_binding_id_for_prefix(&parser_state.m_activeBindings, binding_prefix)
-    else {
-        return ::core::ptr::null();
-    };
-    let Some(binding_index) = parser_state.binding_index(binding_id) else {
-        return ::core::ptr::null();
-    };
-    parser_state.m_activeBindings[binding_index].uri.as_ptr()
+// Resolve an expanded namespace name through the typed DTD and binding
+// storage.  The element name is a checked, terminated XML-character slice;
+// retain that bound while hashing and probing instead of recreating a C string
+// from an unbounded raw pointer.
+fn namespace_name_chars<'a>(
+    parser: &'a XML_ParserStruct,
+    name: &[crate::expat_external_h::XML_Char],
+) -> Option<&'a [crate::expat_external_h::XML_Char]> {
+    let name = terminated_xml_chars(name)?;
+    let salt = parser
+        .m_root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .hash_secret_salt;
+    let dtd = parser.m_dtd.as_ref()?;
+    let binding_prefix = dtd.inspect(|dtd| {
+        let element_index = lookup_existing(
+            &dtd.pool,
+            &dtd.elementTypes,
+            LookupName::Borrowed(name),
+            salt,
+        )?;
+        let element = dtd
+            .elementTypes
+            .v
+            .as_ref()?
+            .entries
+            .get(element_index)?
+            .as_ref()?
+            .element()?;
+        Some(if element.hasPrefix != 0 {
+            BindingPrefix::Named(element.prefix)
+        } else {
+            BindingPrefix::Default
+        })
+    })?;
+    let binding_id = active_binding_id_for_prefix(&parser.m_activeBindings, binding_prefix)?;
+    let binding_index = parser.binding_index(binding_id)?;
+    parser
+        .m_activeBindings
+        .get(binding_index)
+        .map(|binding| binding.uri.as_slice())
+        .and_then(terminated_xml_chars)
 }
 
 // `storeAtts` needs either an active-tag index or the temporary name used for
