@@ -6543,7 +6543,7 @@ unsafe extern "C" fn storeAtts(
                 sip24_update(
                     &raw mut sip_state,
                     s as *const ::core::ffi::c_void,
-                    keylen(s as KEY)
+                    key_len(::core::ffi::CStr::from_ptr(s as KEY))
                         .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
                             as crate::__stddef_size_t_h::size_t),
                 );
@@ -11917,24 +11917,16 @@ unsafe extern "C" fn copyEntityTable(
 
 pub const INIT_POWER: ::core::ffi::c_int = 6 as ::core::ffi::c_int;
 
-unsafe extern "C" fn keyeq(mut s1: KEY, mut s2: KEY) -> crate::expat_h::XML_Bool {
-    while *s1 as ::core::ffi::c_int == *s2 as ::core::ffi::c_int {
-        if *s1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            return crate::expat_h::XML_TRUE;
-        }
-        s1 = s1.offset(1);
-        s2 = s2.offset(1);
+fn key_eq(s1: &::core::ffi::CStr, s2: &::core::ffi::CStr) -> crate::expat_h::XML_Bool {
+    if s1.to_bytes_with_nul() == s2.to_bytes_with_nul() {
+        crate::expat_h::XML_TRUE
+    } else {
+        crate::expat_h::XML_FALSE
     }
-    return crate::expat_h::XML_FALSE;
 }
 
-unsafe extern "C" fn keylen(mut s: KEY) -> crate::__stddef_size_t_h::size_t {
-    let mut len: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    while *s != 0 {
-        s = s.offset(1);
-        len = len.wrapping_add(1);
-    }
-    return len;
+fn key_len(s: &::core::ffi::CStr) -> crate::__stddef_size_t_h::size_t {
+    s.to_bytes().len() as crate::__stddef_size_t_h::size_t
 }
 
 unsafe extern "C" fn copy_salt_to_sipkey(
@@ -11965,8 +11957,9 @@ unsafe extern "C" fn hash(
     sip24_update(
         &raw mut state,
         s as *const ::core::ffi::c_void,
-        keylen(s).wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
-            as crate::__stddef_size_t_h::size_t),
+        key_len(::core::ffi::CStr::from_ptr(s))
+            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()
+                as crate::__stddef_size_t_h::size_t),
     );
     return sip24_final(&raw mut state) as ::core::ffi::c_ulong;
 }
@@ -12009,7 +12002,11 @@ unsafe extern "C" fn lookup(
         let mut step: ::core::ffi::c_uchar = 0 as ::core::ffi::c_uchar;
         i = (h & mask) as crate::__stddef_size_t_h::size_t;
         while !(*(*table).v.offset(i as isize)).is_null() {
-            if keyeq(name, (**(*table).v.offset(i as isize)).name) != 0 {
+            if key_eq(
+                ::core::ffi::CStr::from_ptr(name),
+                ::core::ffi::CStr::from_ptr((**(*table).v.offset(i as isize)).name),
+            ) != 0
+            {
                 return *(*table).v.offset(i as isize);
             }
             if step == 0 {
@@ -12391,22 +12388,20 @@ unsafe extern "C" fn poolStoreString(
     return (*pool).start;
 }
 
-unsafe extern "C" fn poolBytesToAllocateFor(
-    mut blockSize: ::core::ffi::c_int,
-) -> crate::__stddef_size_t_h::size_t {
+fn pool_bytes_to_allocate_for(block_size: ::core::ffi::c_int) -> crate::__stddef_size_t_h::size_t {
     let stretch: crate::__stddef_size_t_h::size_t = ::core::mem::size_of::<
         crate::expat_external_h::XML_Char,
     >() as crate::__stddef_size_t_h::size_t;
-    if blockSize <= 0 as ::core::ffi::c_int {
+    if block_size <= 0 as ::core::ffi::c_int {
         return 0 as crate::__stddef_size_t_h::size_t;
     }
-    if blockSize
+    if block_size
         > (crate::limits_h::INT_MAX as crate::__stddef_size_t_h::size_t).wrapping_div(stretch)
             as ::core::ffi::c_int
     {
         return 0 as crate::__stddef_size_t_h::size_t;
     }
-    let stretchedBlockSize: ::core::ffi::c_int = blockSize * stretch as ::core::ffi::c_int;
+    let stretchedBlockSize: ::core::ffi::c_int = block_size * stretch as ::core::ffi::c_int;
     let bytesToAllocate: ::core::ffi::c_int = (12 as ::core::ffi::c_ulong)
         .wrapping_add(stretchedBlockSize as ::core::ffi::c_uint as ::core::ffi::c_ulong)
         as ::core::ffi::c_int;
@@ -12463,7 +12458,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
         if blockSize < 0 as ::core::ffi::c_int {
             return crate::expat_h::XML_FALSE;
         }
-        bytesToAllocate = poolBytesToAllocateFor(blockSize);
+        bytesToAllocate = pool_bytes_to_allocate_for(blockSize);
         if bytesToAllocate == 0 as crate::__stddef_size_t_h::size_t {
             return crate::expat_h::XML_FALSE;
         }
@@ -12501,7 +12496,7 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
             }
             blockSize_0 *= 2 as ::core::ffi::c_int;
         }
-        bytesToAllocate_0 = poolBytesToAllocateFor(blockSize_0);
+        bytesToAllocate_0 = pool_bytes_to_allocate_for(blockSize_0);
         if bytesToAllocate_0 == 0 as crate::__stddef_size_t_h::size_t {
             return crate::expat_h::XML_FALSE;
         }
