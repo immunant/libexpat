@@ -17911,21 +17911,15 @@ static mut ascii_encoding: normal_encoding = unsafe {
         isInvalid4: None,
     }
 };
-unsafe extern "C" fn unicode_byte_type(
-    mut hi: ::core::ffi::c_char,
-    mut lo: ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    unsafe {
-        match hi as ::core::ffi::c_uchar as ::core::ffi::c_int {
-            216 | 217 | 218 | 219 => return BT_LEAD4 as ::core::ffi::c_int,
-            220 | 221 | 222 | 223 => return BT_TRAIL as ::core::ffi::c_int,
-            255 => match lo as ::core::ffi::c_uchar as ::core::ffi::c_int {
-                255 | 254 => return BT_NONXML as ::core::ffi::c_int,
-                _ => {}
-            },
-            _ => {}
-        }
-        return BT_NONASCII as ::core::ffi::c_int;
+fn unicode_byte_type(hi: ::core::ffi::c_char, lo: ::core::ffi::c_char) -> ::core::ffi::c_int {
+    match hi as ::core::ffi::c_uchar as ::core::ffi::c_int {
+        216 | 217 | 218 | 219 => BT_LEAD4 as ::core::ffi::c_int,
+        220 | 221 | 222 | 223 => BT_TRAIL as ::core::ffi::c_int,
+        255 => match lo as ::core::ffi::c_uchar as ::core::ffi::c_int {
+            255 | 254 => BT_NONXML as ::core::ffi::c_int,
+            _ => BT_NONASCII as ::core::ffi::c_int,
+        },
+        _ => BT_NONASCII as ::core::ffi::c_int,
     }
 }
 unsafe extern "C" fn little2_toUtf8(
@@ -20868,13 +20862,10 @@ unsafe extern "C" fn toAscii(
         };
     }
 }
-unsafe extern "C" fn isSpace(mut c: ::core::ffi::c_int) -> ::core::ffi::c_int {
-    unsafe {
-        match c {
-            32 | 13 | 10 | 9 => return 1 as ::core::ffi::c_int,
-            _ => {}
-        }
-        return 0 as ::core::ffi::c_int;
+fn isSpace(c: ::core::ffi::c_int) -> ::core::ffi::c_int {
+    match c {
+        32 | 13 | 10 | 9 => 1 as ::core::ffi::c_int,
+        _ => 0 as ::core::ffi::c_int,
     }
 }
 unsafe extern "C" fn parsePseudoAttribute(
@@ -21180,28 +21171,27 @@ unsafe extern "C" fn doParseXmlDecl(
         return 1 as ::core::ffi::c_int;
     }
 }
-unsafe extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
-    unsafe {
-        match result >> 8 as ::core::ffi::c_int {
-            216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => {
-                return -(1 as ::core::ffi::c_int);
+fn checkCharRefNumber(result: ::core::ffi::c_int) -> ::core::ffi::c_int {
+    match result >> 8 as ::core::ffi::c_int {
+        216 | 217 | 218 | 219 | 220 | 221 | 222 | 223 => -(1 as ::core::ffi::c_int),
+        0 => {
+            if matches!(
+                result,
+                0..=0x8 | 0xB | 0xC | 0xE..=0x1F
+            ) {
+                -(1 as ::core::ffi::c_int)
+            } else {
+                result
             }
-            0 => {
-                if latin1_encoding.type_0[result as usize] as ::core::ffi::c_int
-                    == BT_NONXML as ::core::ffi::c_int
-                {
-                    return -(1 as ::core::ffi::c_int);
-                }
-            }
-            255 => {
-                if result == 0xfffe as ::core::ffi::c_int || result == 0xffff as ::core::ffi::c_int
-                {
-                    return -(1 as ::core::ffi::c_int);
-                }
-            }
-            _ => {}
         }
-        return result;
+        255 => {
+            if result == 0xfffe as ::core::ffi::c_int || result == 0xffff as ::core::ffi::c_int {
+                -(1 as ::core::ffi::c_int)
+            } else {
+                result
+            }
+        }
+        _ => result,
     }
 }
 #[no_mangle]
