@@ -12668,33 +12668,10 @@ fn trim_to_complete_utf8_characters(input: &[u8]) -> usize {
     end
 }
 
-/// # Safety
-///
-/// When non-null and non-empty, `from..*from_lim_ref` must be a readable
-/// range from one allocation.  `from_lim_ref` must be writable.
-unsafe fn trim_to_complete_utf8_cursor(
-    from: Option<core::ptr::NonNull<::core::ffi::c_char>>,
-    from_lim_out: &mut *const ::core::ffi::c_char,
-) {
-    // A zero-length range does not need a dereferenceable data pointer.
-    let Some(from) = from else {
-        return;
-    };
-    let Some(from_lim) = core::ptr::NonNull::new((*from_lim_out).cast_mut()) else {
-        return;
-    };
-    if from == from_lim {
-        return;
-    }
-    // The FFI contract guarantees a single allocation.  Address subtraction
-    // preserves the C cursor ordering check without requiring unsafe pointer
-    // arithmetic; a reversed range remains a no-op.
-    let Some(length) = from_lim.addr().get().checked_sub(from.addr().get()) else {
-        return;
-    };
-    let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>().as_ptr(), length) };
-    let trimmed = trim_to_complete_utf8_characters(input);
-    *from_lim_out = input[trimmed..].as_ptr().cast::<::core::ffi::c_char>();
+/// Returns the byte offset for the longest complete UTF-8 prefix of a
+/// tokenizer-bounded input slice.
+fn trim_to_complete_utf8_cursor(input: &[u8]) -> usize {
+    trim_to_complete_utf8_characters(input)
 }
 
 #[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
@@ -12703,13 +12680,24 @@ pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
     mut from: *const ::core::ffi::c_char,
     mut fromLimRef: *mut *const ::core::ffi::c_char,
 ) {
-    let Some(mut from_lim_ref) = core::ptr::NonNull::new(fromLimRef) else {
+    let Some(from_lim_ref) = (unsafe { fromLimRef.as_mut() }) else {
         return;
     };
-    // The wrapper only converts the C out-slot.  Validation and cursor
-    // updates are performed by the named implementation.
-    let from_lim_ref = unsafe { from_lim_ref.as_mut() };
-    unsafe { trim_to_complete_utf8_cursor(core::ptr::NonNull::new(from.cast_mut()), from_lim_ref) };
+    if from.is_null() {
+        return;
+    }
+    let from_lim = *from_lim_ref;
+    if from_lim.is_null() || from == from_lim {
+        return;
+    }
+    // The FFI contract guarantees a single readable allocation.  Retain the
+    // historical no-op behavior for a reversed cursor range.
+    let Some(length) = from_lim.addr().checked_sub(from.addr()) else {
+        return;
+    };
+    let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>(), length) };
+    let trimmed = trim_to_complete_utf8_cursor(input);
+    *from_lim_ref = input[trimmed..].as_ptr().cast::<::core::ffi::c_char>();
 }
 /// Copies the largest UTF-8 prefix that fits in `output` without splitting a
 /// complete character.  This intentionally mirrors Expat's byte-oriented
