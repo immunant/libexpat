@@ -19787,75 +19787,74 @@ unsafe extern "C" fn reportProcessingInstruction(
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    let mut tem: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let (has_processing_instruction_handler, has_default_handler, dtd) = {
-        let parser_state = &*parser;
-        (
-            parser_state.m_processingInstructionHandler,
-            parser_state.m_defaultHandler,
-            parser_state
-                .m_dtd
-                .as_ref()
-                .map_or(::core::ptr::null_mut(), |dtd| dtd.value.get()),
-        )
-    };
+    if parser.is_null()
+        || !parser.is_aligned()
+        || enc.is_null()
+        || !enc.is_aligned()
+        || start.is_null()
+        || !start.is_aligned()
+        || end.is_null()
+        || !end.is_aligned()
+        || end.addr() < start.addr()
+    {
+        return 0;
+    }
+    let parser_state = &mut *parser;
+    let encoding = &*enc;
+    let has_processing_instruction_handler = parser_state.m_processingInstructionHandler;
+    let has_default_handler = parser_state.m_defaultHandler;
     if !has_processing_instruction_handler {
         if has_default_handler {
             reportDefault(parser, enc, start, end);
         }
         return 1 as ::core::ffi::c_int;
     }
-    start = start.offset(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize);
-    let parser_events = enc == parser_encoding(parser);
-    let trailing_delimiter_width = match usize::try_from((*enc).minBytesPerChar)
-        .ok()
-        .and_then(|width| width.checked_mul(2))
-    {
-        Some(width) => width,
-        None => return 0,
+    // The tokenizer cursors may refer to the parser buffer or to an active
+    // internal entity.  Resolve their complete range through that owner before
+    // copying it, rather than doing pointer arithmetic on an untrusted pair.
+    let Some(dtd_owner) = parser_state.m_dtd.as_ref() else {
+        return 0;
     };
-    let Some(target_measurement) = event_name_length(
-        parser,
+    let dtd = &*dtd_owner.value.get();
+    let parser_events = std::ptr::eq(enc, current_parser_encoding(parser_state));
+    let Some(source) = event_raw_name_source(
+        parser_state,
         dtd,
         parser_events,
-        enc,
-        start,
-        end,
-        Some(trailing_delimiter_width),
+        start.addr(),
+        end.addr(),
     ) else {
         return 0;
     };
-    tem = start.wrapping_offset(target_measurement.length as isize);
-    let data_end = end.offset(-(((*enc).minBytesPerChar * 2 as ::core::ffi::c_int) as isize));
-    let Some(whitespace_after_name) = target_measurement.whitespace_after_name else {
+    let Some(token) = raw_name_bytes(source) else {
         return 0;
     };
-    let data_start = tem.wrapping_add(whitespace_after_name);
-    let (target, data, handler_arg) = {
-        let parser_state = &mut *parser;
-        let target = poolStoreString(&raw mut parser_state.m_tempPool, enc, start, tem);
-        if target.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        parser_state.m_tempPool.commit();
-        let data = poolStoreString(
-            &raw mut parser_state.m_tempPool,
-            enc,
-            data_start,
-            data_end,
-        );
-        if data.is_null() {
-            return 0 as ::core::ffi::c_int;
-        }
-        let Some(data_start) = parser_state.m_tempPool.start_ref(false) else {
-            return 0 as ::core::ffi::c_int;
-        };
-        let Some(data_chars) = parser_state.m_tempPool.chars_from_mut(data_start) else {
-            return 0 as ::core::ffi::c_int;
-        };
-        normalizeLines(data_chars);
-        (target, data, handler_arg_from_state!(parser_state))
+    let Some(normal_encoding) = entity_value_normal_encoding(parser_state, enc.addr()) else {
+        return 0;
     };
+    let Some((target_ref, data_ref)) = report_processing_instruction_impl(
+        parser_state,
+        encoding,
+        &normal_encoding,
+        &token,
+    ) else {
+        return 0;
+    };
+    let Some(target) = parser_state
+        .m_tempPool
+        .chars_from(target_ref)
+        .map(|chars| chars.as_ptr())
+    else {
+        return 0;
+    };
+    let Some(data) = parser_state
+        .m_tempPool
+        .chars_from(data_ref)
+        .map(|chars| chars.as_ptr())
+    else {
+        return 0;
+    };
+    let handler_arg = handler_arg_from_state!(parser_state);
     let callback = PROCESSING_INSTRUCTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -19870,6 +19869,64 @@ unsafe extern "C" fn reportProcessingInstruction(
         poolClear(&mut parser_state.m_tempPool);
     }
     return 1 as ::core::ffi::c_int;
+}
+
+/// Converts a validated processing-instruction token into the two terminated
+/// callback strings.  The caller owns `token` and has already established that
+/// it came from a single parser or entity allocation, so all range handling
+/// and string-pool work here can remain slice-based.
+fn report_processing_instruction_impl(
+    parser: &mut XML_ParserStruct,
+    encoding: &crate::src::xmltok::ENCODING,
+    normal_encoding: &crate::src::xmltok::normal_encoding,
+    token: &[u8],
+) -> Option<(PoolStringRef, PoolStringRef)> {
+    let character_width = usize::try_from(encoding.minBytesPerChar).ok()?;
+    let delimiter_width = character_width.checked_mul(2)?;
+    let content_start = delimiter_width;
+    let content = token.get(content_start..)?;
+    let target_measurement = measure_event_name(
+        encoding,
+        normal_encoding,
+        bytemuck::cast_slice(content),
+        Some(delimiter_width),
+    )?;
+    let target_length = usize::try_from(target_measurement.length).ok()?;
+    let target_end = content_start.checked_add(target_length)?;
+    let data_end = token.len().checked_sub(delimiter_width)?;
+    let whitespace_after_name = target_measurement.whitespace_after_name?;
+    let data_start = target_end.checked_add(whitespace_after_name)?;
+    let target_input = token.get(content_start..target_end)?;
+    let data_input = token.get(data_start..data_end)?;
+    let unknown_encoding = match parser.m_encoding {
+        EncodingState::Initial => None,
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .and_then(UnknownEncodingMemory::initialized_encoding),
+    };
+    if matches!(
+        encoding.utf8Convert,
+        crate::src::xmltok::Utf8Converter::Unknown
+    ) && unknown_encoding.is_none()
+    {
+        return None;
+    }
+    let target = pool_store_name_source(
+        &mut parser.m_tempPool,
+        encoding,
+        unknown_encoding,
+        target_input,
+    )?;
+    parser.m_tempPool.commit();
+    let data = pool_store_name_source(
+        &mut parser.m_tempPool,
+        encoding,
+        unknown_encoding,
+        data_input,
+    )?;
+    normalizeLines(parser.m_tempPool.chars_from_mut(data)?);
+    Some((target, data))
 }
 
 unsafe extern "C" fn reportComment(
