@@ -8617,17 +8617,16 @@ pub unsafe extern "C" fn XML_UseForeignDTD_ffi(
 ) -> crate::expat_h::XML_Error {
     XML_UseForeignDTD(parser, useDTD)
 }
-pub unsafe extern "C" fn XML_SetReturnNSTriplet(
-    mut parser: crate::expat_h::XML_Parser,
-    mut do_nst: ::core::ffi::c_int,
-) {
-    if parser.is_null() {
+struct ReturnNSTripletSettings<'a> {
+    parsing: ::core::ffi::c_uint,
+    ns_triplets: &'a mut crate::expat_h::XML_Bool,
+}
+
+fn XML_SetReturnNSTriplet(settings: ReturnNSTripletSettings<'_>, do_nst: ::core::ffi::c_int) {
+    if matches!(settings.parsing, 1 | 3) {
         return;
     }
-    if parserBusy(parser) != 0 {
-        return;
-    }
-    (*parser).m_ns_triplets = (if do_nst != 0 {
+    *settings.ns_triplets = (if do_nst != 0 {
         crate::expat_h::XML_TRUE as ::core::ffi::c_int
     } else {
         crate::expat_h::XML_FALSE as ::core::ffi::c_int
@@ -8639,7 +8638,16 @@ pub unsafe extern "C" fn XML_SetReturnNSTriplet_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut do_nst: ::core::ffi::c_int,
 ) {
-    XML_SetReturnNSTriplet(parser, do_nst)
+    let Some(parser) = parser.as_mut() else {
+        return;
+    };
+    XML_SetReturnNSTriplet(
+        ReturnNSTripletSettings {
+            parsing: parser.m_parsingStatus.parsing as ::core::ffi::c_uint,
+            ns_triplets: &mut parser.m_ns_triplets,
+        },
+        do_nst,
+    )
 }
 fn set_user_data(
     parser: &mut XML_ParserStruct,
