@@ -9101,6 +9101,32 @@ fn content_loop_status(
     }
 }
 
+/// Complete the parser-state transition that follows a closed element.
+///
+/// This deliberately only inspects and updates parser state.  The caller
+/// performs the epilog processing after this borrow has ended, since that
+/// processing can invoke callbacks and re-enter the parser.
+fn close_element_epilog_action(parser: &mut XML_ParserStruct) -> bool {
+    if parser.m_tagLevel != 0
+        || parser.m_parsingStatus.parsing as ::core::ffi::c_uint
+            == crate::expat_h::XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+    {
+        return false;
+    }
+
+    if parser.m_parsingStatus.parsing as ::core::ffi::c_uint
+        == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int as ::core::ffi::c_uint
+        || parser.m_parsingStatus.parsing as ::core::ffi::c_uint
+            == crate::expat_h::XML_PARSING as ::core::ffi::c_int as ::core::ffi::c_uint
+            && parser.m_reenter as ::core::ffi::c_int != 0
+    {
+        parser.m_processor = ProcessorState::Epilog;
+        false
+    } else {
+        true
+    }
+}
+
 unsafe extern "C" fn doContent(
     mut parser: crate::expat_h::XML_Parser,
     mut startTagLevel: ::core::ffi::c_int,
@@ -9788,23 +9814,8 @@ unsafe extern "C" fn doContent(
                     }
                     poolClear(&raw mut (*parser).m_tempPool);
                     freeBindings(parser, bindings);
-                    if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
-                        && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                            != crate::expat_h::XML_FINISHED as ::core::ffi::c_int
-                                as ::core::ffi::c_uint
-                    {
-                        if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                            == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int
-                                as ::core::ffi::c_uint
-                            || (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                                == crate::expat_h::XML_PARSING as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                                && (*parser).m_reenter as ::core::ffi::c_int != 0
-                        {
-                            (*parser).m_processor = ProcessorState::Epilog;
-                        } else {
-                            return epilogProcessor(parser, next, end, nextPtr);
-                        }
+                    if close_element_epilog_action(&mut *parser) {
+                        return epilogProcessor(parser, next, end, nextPtr);
                     }
                 }
                 crate::src::xmltok::XML_TOK_END_TAG => {
@@ -9990,23 +10001,8 @@ unsafe extern "C" fn doContent(
                             let storage = parser_state.m_activeBindings.swap_remove(index);
                             parser_state.m_freeBindingList.bindings.push(storage);
                         }
-                        if (*parser).m_tagLevel == 0 as ::core::ffi::c_int
-                            && (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                                != crate::expat_h::XML_FINISHED as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                        {
-                            if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                                == crate::expat_h::XML_SUSPENDED as ::core::ffi::c_int
-                                    as ::core::ffi::c_uint
-                                || (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                                    == crate::expat_h::XML_PARSING as ::core::ffi::c_int
-                                        as ::core::ffi::c_uint
-                                    && (*parser).m_reenter as ::core::ffi::c_int != 0
-                            {
-                                (*parser).m_processor = ProcessorState::Epilog;
-                            } else {
-                                return epilogProcessor(parser, next, end, nextPtr);
-                            }
+                        if close_element_epilog_action(&mut *parser) {
+                            return epilogProcessor(parser, next, end, nextPtr);
                         }
                     }
                 }
