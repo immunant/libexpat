@@ -6345,9 +6345,13 @@ struct ProcessorInput {
 /// The parser can call user handlers while a processor runs, so every parser
 /// reference below is scoped to the state inspection or update that needs it.
 /// In particular, no `&mut XML_ParserStruct` survives the processor call.
-unsafe fn call_processor_impl(
-    parser: &mut XML_ParserStruct,
+struct ProcessorCall<'a> {
+    parser: &'a mut XML_ParserStruct,
     input: ProcessorInput,
+}
+
+fn call_processor_dispatch(
+    ProcessorCall { parser, input }: ProcessorCall<'_>,
 ) -> (crate::expat_h::XML_Error, usize) {
     let Some(have_now) = input.end.checked_sub(input.start) else {
         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, input.start);
@@ -6673,7 +6677,7 @@ unsafe fn call_processor_impl(
             // offset rather than later validating an address that a callback
             // may have invalidated by relocating that buffer.
             checked_next_offset = Some(next);
-            internalEntityProcessor(parser)
+            internal_entity_processor_impl(InternalEntityProcessorState { parser })
         } else if matches!(parser.m_processor, ProcessorState::Error) {
             // The error processor never consumes input or changes the cursor:
             // it only returns the parser's stored error.  Keep that terminal
@@ -6812,6 +6816,16 @@ unsafe fn call_processor_impl(
         };
     }
     (ret, next)
+}
+
+/// Compatibility adapter for legacy internal callers that still carry the
+/// parser borrow directly.  New processing entry points use the scoped
+/// `ProcessorCall` request so the dispatcher itself has a safe signature.
+unsafe fn call_processor_impl(
+    parser: &mut XML_ParserStruct,
+    input: ProcessorInput,
+) -> (crate::expat_h::XML_Error, usize) {
+    call_processor_dispatch(ProcessorCall { parser, input })
 }
 
 unsafe fn XML_ParserCreate_MM(
@@ -9890,7 +9904,7 @@ unsafe fn XML_Parse(
             return crate::expat_h::XML_STATUS_ERROR;
         }
     };
-    let (error, processed_to) = call_processor_impl(parser, input);
+    let (error, processed_to) = call_processor_dispatch(ProcessorCall { parser, input });
     parser.m_errorCode = error;
     parse_buffer_finish(parser, processed_to, is_final)
 }
@@ -10169,7 +10183,7 @@ pub unsafe fn XML_ResumeParser(
             end: parser.m_bufferEnd,
         }
     };
-    let (error, processed_to) = call_processor_impl(parser, input);
+    let (error, processed_to) = call_processor_dispatch(ProcessorCall { parser, input });
     {
         if processed_to <= parser.m_bufferEnd {
             parser.m_bufferPtr = Some(processed_to);
@@ -11681,8 +11695,8 @@ fn external_entity_content_processor_impl(
     if start_offset > end_offset || end_offset > parser.m_bufferEnd || end_offset > bytes.len() {
         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, start_offset);
     }
-    let start = bytes.as_ptr().wrapping_add(start_offset).cast();
-    let end = bytes.as_ptr().wrapping_add(end_offset).cast();
+    let start = PrologCursorAddress(bytes.as_ptr().wrapping_add(start_offset).addr());
+    let end = PrologCursorAddress(bytes.as_ptr().wrapping_add(end_offset).addr());
     let Some(normal_encoding) = current_parser_normal_encoding(parser) else {
         return (crate::expat_h::XML_ERROR_UNEXPECTED_STATE, start_offset);
     };
@@ -11698,20 +11712,20 @@ fn external_entity_content_processor_impl(
     };
     let have_more = (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
         as crate::expat_h::XML_Bool;
-    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
+    let encoding = EncodingAddress(std::ptr::from_ref(current_parser_encoding(parser)).addr());
     let mut next = start;
-    let mut result = unsafe { doContent(
+    let mut result = do_content_impl(ContentProcessorState {
         parser,
         start_tag_level,
         normal_encoding,
-        encoding,
-        true,
+        encoding_address: encoding,
+        parser_events: true,
         start,
         end,
-        &mut next,
+        output: &mut next,
         have_more,
         account,
-    ) };
+    });
     if result as ::core::ffi::c_uint
         == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
     {
@@ -11948,22 +11962,48 @@ fn close_content_tag(parser: &mut XML_ParserStruct, tag_index: usize) -> ClosedC
     }
 }
 
-unsafe fn doContent(
-    parser: &mut XML_ParserStruct,
-    mut startTagLevel: ::core::ffi::c_int,
+type ContentCursorAddress = PrologCursorAddress;
+
+#[derive(Copy, Clone)]
+struct EncodingAddress(usize);
+
+impl EncodingAddress {
+    fn addr(self) -> usize {
+        self.0
+    }
+}
+
+struct ContentProcessorState<'a> {
+    parser: &'a mut XML_ParserStruct,
+    start_tag_level: ::core::ffi::c_int,
     normal_encoding: crate::src::xmltok::normal_encoding,
-    enc: *const crate::src::xmltok::ENCODING,
+    encoding_address: EncodingAddress,
     parser_events: bool,
-    mut s: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-    next_ptr: &mut *const ::core::ffi::c_char,
-    mut haveMore: crate::expat_h::XML_Bool,
-    mut account: XML_Account,
+    start: ContentCursorAddress,
+    end: ContentCursorAddress,
+    output: &'a mut ContentCursorAddress,
+    have_more: crate::expat_h::XML_Bool,
+    account: XML_Account,
+}
+
+fn do_content_impl(
+    ContentProcessorState {
+        parser,
+        start_tag_level: mut startTagLevel,
+        normal_encoding,
+        encoding_address: enc,
+        parser_events,
+        start: mut s,
+        mut end,
+        output: next_ptr,
+        have_more: mut haveMore,
+        mut account,
+    }: ContentProcessorState<'_>,
 ) -> crate::expat_h::XML_Error {
     // Keep the parser state borrowed for ordinary bookkeeping.  The raw
     // handle is only recovered at the legacy callback/token API boundary;
     // no parser-owned field access below needs to dereference it.
-    let parser_ptr = std::ptr::from_mut(parser);
+    let parser_address = std::ptr::from_mut(parser).addr();
     let Some(dtd) = parser.m_dtd.clone() else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
     };
@@ -12004,7 +12044,7 @@ unsafe fn doContent(
     loop {
         let (scan, mut next, source): (
             crate::src::xmltok::ScannerResult,
-            *const ::core::ffi::c_char,
+            ContentCursorAddress,
             Vec<u8>,
         ) = {
             // The tokenizer reports an offset in this exact bounded view.
@@ -12105,7 +12145,7 @@ unsafe fn doContent(
                             0xa as crate::expat_external_h::XML_Char;
                         dispatch_character_data_slice(parser, core::slice::from_ref(&c));
                     } else if handlers.default {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         return crate::expat_h::XML_ERROR_NO_ELEMENTS;
@@ -12202,7 +12242,7 @@ unsafe fn doContent(
                                 core::slice::from_ref(&ch),
                             );
                         } else if handlers.default {
-                            report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                            report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                         }
                     } else {
                         let salt = parser
@@ -12323,7 +12363,7 @@ unsafe fn doContent(
                                     })
                                     .lock()
                                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                    .get(&(parser_ptr as usize))
+                                    .get(&parser_address)
                                     .cloned();
                                 if let Some(callback) = callback {
                                     dispatch_skipped_entity_callback(
@@ -12334,7 +12374,7 @@ unsafe fn doContent(
                                     );
                                 }
                             } else if handlers.default {
-                                report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                                report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                             }
                             break 's_1235;
                         }
@@ -12367,7 +12407,7 @@ unsafe fn doContent(
                                         })
                                         .lock()
                                         .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                        .get(&(parser_ptr as usize))
+                                        .get(&parser_address)
                                         .cloned();
                                     if let Some(callback) = callback {
                                         let Some(entity_name) = dtd.inspect(|dtd| {
@@ -12385,7 +12425,7 @@ unsafe fn doContent(
                                         );
                                     }
                                 } else if handlers.default {
-                                    report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                                    report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                                 }
                             } else {
                                 result = dtd.inspect(|dtd_state| {
@@ -12459,7 +12499,7 @@ unsafe fn doContent(
                                 })
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                .get(&(parser_ptr as usize))
+                                .get(&parser_address)
                                 .cloned()
                                 .expect("installed external entity handler");
                             event.context = Some(context_chars);
@@ -12473,7 +12513,7 @@ unsafe fn doContent(
                             }
                             parser.m_tempPool.rewind();
                         } else if handlers.default {
-                            report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                            report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                         }
                     }
                 }
@@ -12668,7 +12708,7 @@ unsafe fn doContent(
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser_ptr as usize))
+                            .get(&parser_address)
                             .cloned();
                         if let Some(callback) = callback {
                             let name = {
@@ -12713,13 +12753,13 @@ unsafe fn doContent(
                             }
                         }
                     } else if handlers.default {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                     poolClear(&mut parser.m_tempPool);
                 }
                 crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_NO_ATTS
                 | crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS => {
-                    let mut rawName: *const ::core::ffi::c_char =
+                    let mut rawName =
                         s.wrapping_offset(encoding.minBytesPerChar as isize);
                     let mut result_1: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
                     let mut bindings = None;
@@ -12883,7 +12923,7 @@ unsafe fn doContent(
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser_ptr as usize))
+                            .get(&parser_address)
                             .cloned();
                         if let Some(callback) = callback {
                             if !dispatch_start_element_callback(
@@ -12912,7 +12952,7 @@ unsafe fn doContent(
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser_ptr as usize))
+                            .get(&parser_address)
                             .cloned();
                         if let Some(callback) = callback {
                             if !dispatch_end_element_callback(
@@ -12926,7 +12966,7 @@ unsafe fn doContent(
                         noElmHandlers = crate::expat_h::XML_FALSE;
                     }
                     if noElmHandlers as ::core::ffi::c_int != 0 && end_handlers.default {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                     poolClear(&mut parser.m_tempPool);
                     while let Some(binding_id) = bindings {
@@ -12958,12 +12998,12 @@ unsafe fn doContent(
                             let Some(offset) = range.start.checked_add(cursor) else {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             };
-                            let Some(pointer) = parser.m_buffer.bytes.as_deref().and_then(|bytes| {
-                                bytes.get(offset..).map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+                            let Some(address) = parser.m_buffer.bytes.as_deref().and_then(|bytes| {
+                                bytes.get(offset..).map(|_| PrologCursorAddress(bytes.as_ptr().wrapping_add(offset).addr()))
                             }) else {
                                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                             };
-                            *next_ptr = pointer;
+                            *next_ptr = address;
                         }
                         return result.error;
                     }
@@ -12971,8 +13011,7 @@ unsafe fn doContent(
                 crate::src::xmltok::XML_TOK_END_TAG => {
                     {
                         let mut len: ::core::ffi::c_int = 0;
-                        let mut rawName_0: *const ::core::ffi::c_char =
-                            ::core::ptr::null::<::core::ffi::c_char>();
+                        let mut rawName_0 = PrologCursorAddress(0);
                         rawName_0 = s.wrapping_offset(
                             (encoding.minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
                         );
@@ -13176,7 +13215,7 @@ unsafe fn doContent(
                                 })
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner())
-                                .get(&(parser_ptr as usize))
+                                .get(&parser_address)
                                 .cloned();
                             if let Some(callback) = callback {
                                 if !dispatch_end_element_callback(
@@ -13188,7 +13227,7 @@ unsafe fn doContent(
                                 }
                             }
                         } else if parser.m_defaultHandler {
-                            report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                            report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                         }
                         while let Some(binding_id) = bindings {
                             let event = binding_release_event(parser, binding_id);
@@ -13222,12 +13261,12 @@ unsafe fn doContent(
                                 let Some(offset) = range.start.checked_add(cursor) else {
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 };
-                                let Some(pointer) = parser.m_buffer.bytes.as_deref().and_then(|bytes| {
-                                    bytes.get(offset..).map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+                                let Some(address) = parser.m_buffer.bytes.as_deref().and_then(|bytes| {
+                                    bytes.get(offset..).map(|_| PrologCursorAddress(bytes.as_ptr().wrapping_add(offset).addr()))
                                 }) else {
                                     return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                                 };
-                                *next_ptr = pointer;
+                                *next_ptr = address;
                             }
                             return result.error;
                         }
@@ -13265,7 +13304,7 @@ unsafe fn doContent(
                         };
                         dispatch_character_data_slice(parser, chars);
                     } else if handlers.default {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
                 crate::src::xmltok::XML_TOK_XML_DECL => {
@@ -13278,7 +13317,7 @@ unsafe fn doContent(
                             0xa as crate::expat_external_h::XML_Char;
                         dispatch_character_data_slice(parser, core::slice::from_ref(&c_0));
                     } else if handlers.default {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
                 crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN => {
@@ -13289,12 +13328,12 @@ unsafe fn doContent(
                             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .get(&(parser_ptr as usize))
+                            .get(&parser_address)
                             .cloned()
                             .expect("installed start CDATA handler");
                         invoke_cdata_section_callback(callback.as_ref(), parser);
                     } else if handlers.default {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                     let checked = match do_cdata_section_checked(
                         parser,
@@ -13311,13 +13350,13 @@ unsafe fn doContent(
                     // both output cursors from its live storage using the
                     // checked target/offset pair, never from the pre-callback
                     // `next` or `end` addresses.
-                    let cursor_pointer = |cursor: usize| -> Option<*const ::core::ffi::c_char> {
+                    let cursor_address = |cursor: usize| -> Option<ContentCursorAddress> {
                         match checked.event_target {
                             CdataEventTarget::Parser { input_start } => {
                                 let offset = input_start.checked_add(cursor)?;
                                 let bytes = parser.m_buffer.bytes.as_deref()?;
                                 bytes.get(offset..)
-                                    .map(|_| bytes.as_ptr().wrapping_add(offset).cast())
+                                    .map(|_| PrologCursorAddress(bytes.as_ptr().wrapping_add(offset).addr()))
                             }
                             CdataEventTarget::InternalEntity { text_start, .. } => {
                                 let (text_ref, text_len, dtd) = checked.entity_text.as_ref()?;
@@ -13325,23 +13364,23 @@ unsafe fn doContent(
                                 dtd.inspect(|dtd| {
                                     let text = entity_text_chars(dtd, *text_ref, *text_len)?;
                                     text.get(offset..)
-                                        .map(|_| text.as_ptr().wrapping_add(offset))
+                                        .map(|_| PrologCursorAddress(text.as_ptr().wrapping_add(offset).addr()))
                                 })
                             }
                         }
                     };
                     next = match checked.result.start {
-                        Some(cursor) => match cursor_pointer(cursor) {
-                            Some(pointer) => pointer,
+                        Some(cursor) => match cursor_address(cursor) {
+                            Some(address) => address,
                             None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                         },
-                        None => ::core::ptr::null(),
+                        None => PrologCursorAddress(0),
                     };
                     if let Some(cursor) = checked.result.next {
-                        let Some(pointer) = cursor_pointer(cursor) else {
+                        let Some(address) = cursor_address(cursor) else {
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
-                        *next_ptr = pointer;
+                        *next_ptr = address;
                     }
                     result_2 = checked.result.error;
                     if result_2 as ::core::ffi::c_uint
@@ -13409,7 +13448,7 @@ unsafe fn doContent(
                             dispatch_character_data_slice(parser, data);
                         }
                     } else if handlers.default {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), end.addr(), &source);
                     }
                     if startTagLevel == 0 as ::core::ffi::c_int {
                         content_update_event_start(
@@ -13441,7 +13480,7 @@ unsafe fn doContent(
                         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
                         .lock()
                         .unwrap_or_else(|poisoned| poisoned.into_inner())
-                        .get(&(parser_ptr as usize))
+                        .get(&parser_address)
                         .cloned();
                     if let Some(charDataHandler) = charDataHandler {
                         if encoding.isUtf8 == 0 {
@@ -13557,7 +13596,7 @@ unsafe fn doContent(
                             dispatch_character_data_slice(parser, data);
                         }
                     } else if parser.m_defaultHandler {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
                 crate::src::xmltok::XML_TOK_PI => {
@@ -13581,7 +13620,7 @@ unsafe fn doContent(
                     };
                     if !handled && parser.m_defaultHandler {
                         report_default_token(
-                            parser_ptr.addr(),
+                            parser_address,
                             parser,
                             encoding,
                             enc.addr(),
@@ -13610,7 +13649,7 @@ unsafe fn doContent(
                         Some(true) => {}
                         Some(false) if parser.m_defaultHandler => {
                             report_default_token(
-                                parser_ptr.addr(),
+                                parser_address,
                                 parser,
                                 encoding,
                                 enc.addr(),
@@ -13625,7 +13664,7 @@ unsafe fn doContent(
                 }
                 _ => {
                     if parser.m_defaultHandler {
-                        report_default_token(parser_ptr.addr(), parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
+                        report_default_token(parser_address, parser, encoding, enc.addr(), s.addr(), next.addr(), &source);
                     }
                 }
             }
@@ -17731,20 +17770,18 @@ fn run_prolog_for_parser_buffer(
     // `doProlog` still reports its cursor as an address, so immediately
     // translate that value back to an offset before this safe boundary returns.
     let mut raw_cursor = PrologCursorUpdate::Unchanged;
-    let error = unsafe {
-        doProlog(
-            parser,
-            parser_events,
-            PrologCursorAddress(start_address),
-            PrologCursorAddress(end_address),
-            tok,
-            PrologCursorAddress(next_address),
-            &mut raw_cursor,
-            have_more,
-            allow_closing_doctype,
-            account,
-        )
-    };
+    let error = do_prolog_impl(PrologProcessorState {
+        parser,
+        parser_events,
+        start: PrologCursorAddress(start_address),
+        end: PrologCursorAddress(end_address),
+        token: tok,
+        next: PrologCursorAddress(next_address),
+        output: &mut raw_cursor,
+        have_more,
+        allow_closing_doctype,
+        account,
+    });
     *next_ptr = match raw_cursor {
         PrologCursorUpdate::Unchanged => PrologCursorUpdate::Unchanged,
         PrologCursorUpdate::Cursor(Some(address)) => {
@@ -17761,7 +17798,7 @@ fn run_prolog_for_parser_buffer(
 /// An address-sized prolog cursor.  Processor adapters validate these
 /// addresses against the current parser or entity window before and after
 /// calling `doProlog`; the prolog state machine only transports them.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 struct PrologCursorAddress(usize);
 
 impl PrologCursorAddress {
@@ -17775,6 +17812,14 @@ impl PrologCursorAddress {
 
     fn wrapping_sub(self, offset: usize) -> Self {
         Self(self.0.wrapping_sub(offset))
+    }
+
+    fn wrapping_offset(self, offset: isize) -> Self {
+        if offset.is_negative() {
+            Self(self.0.wrapping_sub(offset.unsigned_abs()))
+        } else {
+            Self(self.0.wrapping_add(offset as usize))
+        }
     }
 
     fn is_null(self) -> bool {
@@ -17813,9 +17858,9 @@ fn continue_prolog_as_content(
         };
     };
     let encoding = if parser_events {
-        current_parser_encoding(parser)
+        EncodingAddress(std::ptr::from_ref(current_parser_encoding(parser)).addr())
     } else {
-        internal_encoding(parser.m_internalEncoding)
+        EncodingAddress(std::ptr::from_ref(internal_encoding(parser.m_internalEncoding)).addr())
     };
     let (start, end) = {
         let Some(source) = event_raw_name_source(
@@ -17831,7 +17876,7 @@ fn continue_prolog_as_content(
             };
         };
         let chars = source.chars();
-        let start = chars.as_ptr();
+        let start = PrologCursorAddress(chars.as_ptr().addr());
         (start, start.wrapping_add(chars.len()))
     };
     let start_tag_level = if parser.m_parentParser.is_some() { 1 } else { 0 };
@@ -17840,20 +17885,18 @@ fn continue_prolog_as_content(
     let mut next = start;
     // `start` and `end` were derived from the checked owner above, and
     // `next` is a local output slot whose result is revalidated below.
-    let mut error = unsafe {
-        doContent(
-            parser,
-            start_tag_level,
-            normal_encoding,
-            encoding,
-            parser_events,
-            start,
-            end,
-            &mut next,
-            have_more,
-            account,
-        )
-    };
+    let mut error = do_content_impl(ContentProcessorState {
+        parser,
+        start_tag_level,
+        normal_encoding,
+        encoding_address: encoding,
+        parser_events,
+        start,
+        end,
+        output: &mut next,
+        have_more,
+        account,
+    });
     // Normal content dispatch records raw tag names after a successful pass.
     // Keep that postcondition here rather than skipping it when prolog
     // transitions directly to content.
@@ -17885,17 +17928,32 @@ fn continue_prolog_as_content(
     }
 }
 
-unsafe fn doProlog(
-    parser: &mut XML_ParserStruct,
+struct PrologProcessorState<'a> {
+    parser: &'a mut XML_ParserStruct,
     parser_events: bool,
-    mut s: PrologCursorAddress,
-    mut end: PrologCursorAddress,
-    mut tok: ::core::ffi::c_int,
-    mut next: PrologCursorAddress,
-    next_ptr: &mut PrologCursorUpdate,
-    mut haveMore: crate::expat_h::XML_Bool,
-    mut allowClosingDoctype: crate::expat_h::XML_Bool,
-    mut account: XML_Account,
+    start: PrologCursorAddress,
+    end: PrologCursorAddress,
+    token: ::core::ffi::c_int,
+    next: PrologCursorAddress,
+    output: &'a mut PrologCursorUpdate,
+    have_more: crate::expat_h::XML_Bool,
+    allow_closing_doctype: crate::expat_h::XML_Bool,
+    account: XML_Account,
+}
+
+fn do_prolog_impl(
+    PrologProcessorState {
+        parser,
+        parser_events,
+        start: mut s,
+        mut end,
+        token: mut tok,
+        mut next,
+        output: next_ptr,
+        have_more: mut haveMore,
+        allow_closing_doctype: mut allowClosingDoctype,
+        mut account,
+    }: PrologProcessorState<'_>,
 ) -> crate::expat_h::XML_Error {
     static atypeCDATA: [crate::expat_external_h::XML_Char; 6] = [
         crate::ascii_h::ASCII_C as crate::expat_external_h::XML_Char,
@@ -21322,8 +21380,12 @@ struct ActiveInternalEntityState {
 /// and verified its live parser-buffer range before invoking this transition.
 /// This processor intentionally has no input cursor: its own retained entity
 /// text is the only source it may scan.
-unsafe fn internalEntityProcessor(
-    parser_state: &mut XML_ParserStruct,
+struct InternalEntityProcessorState<'a> {
+    parser: &'a mut XML_ParserStruct,
+}
+
+fn internal_entity_processor_impl(
+    InternalEntityProcessorState { parser: parser_state }: InternalEntityProcessorState<'_>,
 ) -> crate::expat_h::XML_Error {
     let Some(open_entity_index) = parser_state.m_openInternalEntities else {
         return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
@@ -21390,16 +21452,12 @@ unsafe fn internalEntityProcessor(
                 )
                 .scan()
             });
-            Some((text.as_ptr(), text.len(), parameter_scan))
+            Some((PrologCursorAddress(text.as_ptr().addr()), text.len(), parameter_scan))
         }) else {
             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
         };
-        let mut textStart = text_start
-            .wrapping_add(processed)
-            .cast::<::core::ffi::c_char>();
-        let mut textEnd = text_start
-            .wrapping_add(text_len)
-            .cast::<::core::ffi::c_char>();
+        let mut textStart = text_start.wrapping_add(processed);
+        let mut textEnd = text_start.wrapping_add(text_len);
         let mut next = textStart;
         let mut result: crate::expat_h::XML_Error;
         if entity_state.is_parameter {
@@ -21411,18 +21469,18 @@ unsafe fn internalEntityProcessor(
                 next = textStart.wrapping_add(offset);
             }
             let mut prolog_cursor = PrologCursorUpdate::Unchanged;
-            result = doProlog(
-                parser_state,
-                false,
-                PrologCursorAddress(textStart.addr()),
-                PrologCursorAddress(textEnd.addr()),
-                tok,
-                PrologCursorAddress(next.addr()),
-                &mut prolog_cursor,
-                crate::expat_h::XML_FALSE,
-                crate::expat_h::XML_FALSE,
-                XML_ACCOUNT_ENTITY_EXPANSION,
-            );
+            result = do_prolog_impl(PrologProcessorState {
+                parser: parser_state,
+                parser_events: false,
+                start: textStart,
+                end: textEnd,
+                token: tok,
+                next,
+                output: &mut prolog_cursor,
+                have_more: crate::expat_h::XML_FALSE,
+                allow_closing_doctype: crate::expat_h::XML_FALSE,
+                account: XML_ACCOUNT_ENTITY_EXPANSION,
+            });
             if let PrologCursorUpdate::Cursor(cursor) = prolog_cursor {
                 next = match cursor {
                     Some(address) => {
@@ -21442,10 +21500,10 @@ unsafe fn internalEntityProcessor(
                                 entity.eventText,
                                 entity.eventTextLen,
                             )?;
-                            let cursor = text.get(offset..)?.as_ptr().cast();
+                            let cursor = PrologCursorAddress(text.get(offset..)?.as_ptr().addr());
                             Some((
-                                text.as_ptr().cast(),
-                                text.as_ptr().wrapping_add(text.len()).cast(),
+                                PrologCursorAddress(text.as_ptr().addr()),
+                                PrologCursorAddress(text.as_ptr().wrapping_add(text.len()).addr()),
                                 cursor,
                             ))
                         })
@@ -21456,25 +21514,25 @@ unsafe fn internalEntityProcessor(
                         textEnd = end;
                         cursor
                     }
-                    None => ::core::ptr::null(),
+                    None => PrologCursorAddress(0),
                 };
             }
         } else {
-            result = doContent(
-                parser_state,
-                entity_state.start_tag_level,
-                *crate::src::xmltok::internal_utf8_normal_encoding(matches!(
+            result = do_content_impl(ContentProcessorState {
+                parser: parser_state,
+                start_tag_level: entity_state.start_tag_level,
+                normal_encoding: *crate::src::xmltok::internal_utf8_normal_encoding(matches!(
                     entity_state.internal_encoding,
                     InternalEncoding::Utf8Ns
                 )),
-                internal_encoding(entity_state.internal_encoding),
-                false,
-                textStart,
-                textEnd,
-                &mut next,
-                crate::expat_h::XML_FALSE,
-                XML_ACCOUNT_ENTITY_EXPANSION,
-            );
+                encoding_address: EncodingAddress(std::ptr::from_ref(internal_encoding(entity_state.internal_encoding)).addr()),
+                parser_events: false,
+                start: PrologCursorAddress(textStart.addr()),
+                end: PrologCursorAddress(textEnd.addr()),
+                output: &mut next,
+                have_more: crate::expat_h::XML_FALSE,
+                account: XML_ACCOUNT_ENTITY_EXPANSION,
+            });
         }
         if result as ::core::ffi::c_uint
             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
