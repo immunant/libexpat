@@ -2782,6 +2782,13 @@ struct AllocationBacking {
     actions: Box<dyn FnMut(ParserAllocationAction) -> bool>,
 }
 
+/// Opaque allocator token whose accounting is performed through the parser
+/// that owns the operation.  DTD state can outlive an individual parser, so
+/// unlike `AllocationBacking` this token deliberately does not capture one.
+struct LiveParserAllocationBacking {
+    actions: Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>,
+}
+
 /// The allocation route captured while a parser handle is known live.  Its
 /// factory hands out only opaque allocation tokens, so parser-owned storage
 /// never needs to retain or pass a raw parser handle.
@@ -2801,6 +2808,12 @@ impl AllocationBacking {
         Box::new(move |source_line| {
             self.apply(ParserAllocationAction::Free(source_line));
         })
+    }
+}
+
+impl LiveParserAllocationBacking {
+    fn apply(&mut self, parser: &mut XML_ParserStruct, action: ParserAllocationAction) -> bool {
+        (self.actions)(parser, action)
     }
 }
 
@@ -2891,13 +2904,7 @@ fn parser_storage_backing(
 // the same allocation, growth, and release sequence as the original table.
 struct NamespaceAttributeStorage {
     entries: Vec<NS_ATT>,
-    backing:
-        Option<Box<dyn FnMut(&mut XML_ParserStruct, NamespaceAttributeAllocationAction) -> bool>>,
-}
-
-enum NamespaceAttributeAllocationAction {
-    Grow(crate::__stddef_size_t_h::size_t),
-    Free(::core::ffi::c_int),
+    backing: Option<LiveParserAllocationBacking>,
 }
 
 // Content-model group separators are parser-owned bytes.  Their backing
@@ -4901,12 +4908,7 @@ pub struct ELEMENT_TYPE {
 
 struct DefaultAttributeStorage {
     values: Vec<DEFAULT_ATTRIBUTE>,
-    backing: Box<dyn FnMut(&mut XML_ParserStruct, DefaultAttributeAllocationAction) -> bool>,
-}
-
-enum DefaultAttributeAllocationAction {
-    Grow(crate::__stddef_size_t_h::size_t),
-    Free(::core::ffi::c_int),
+    backing: LiveParserAllocationBacking,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -7903,7 +7905,7 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
     parser.m_dataBuf.release(2011 as ::core::ffi::c_int);
     let mut ns_atts_backing = parser.m_nsAtts.backing.take();
     if let Some(backing) = ns_atts_backing.as_mut() {
-        backing(parser, NamespaceAttributeAllocationAction::Free(2012));
+        backing.apply(parser, ParserAllocationAction::Free(2012));
     }
     parser.m_nsAtts.entries = Vec::new();
     if let Some(mut unknown_encoding_mem) = parser.m_unknownEncodingMem.take() {
@@ -13677,8 +13679,23 @@ unsafe fn storeAtts(
             };
             let parser_ref = &mut *parser;
             if parser_ref.m_nsAtts.entries.is_empty() {
-                let Some(storage) =
-                    namespace_attribute_storage_new(parser_ref, ns_atts_capacity, 4089)
+                let Some(allocation_size) = ns_atts_capacity
+                    .checked_mul(::core::mem::size_of::<NS_ATT>())
+                else {
+                    parser_ref.m_nsAttsPower = oldNsAttsPower;
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                let Some(backing) = live_parser_allocation_backing(parser_ref, allocation_size, 4089)
+                else {
+                    parser_ref.m_nsAttsPower = oldNsAttsPower;
+                    return crate::expat_h::XML_ERROR_NO_MEMORY;
+                };
+                let Some(storage) = namespace_attribute_storage_from_backing(
+                    parser_ref,
+                    ns_atts_capacity,
+                    4089,
+                    backing,
+                )
                 else {
                     parser_ref.m_nsAttsPower = oldNsAttsPower;
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -13705,9 +13722,12 @@ unsafe fn storeAtts(
                     };
                 let mut backing = parser_ref.m_nsAtts.backing.take();
                 let grew = backing.as_mut().is_some_and(|backing| {
-                    backing(
+                    backing.apply(
                         parser_ref,
-                        NamespaceAttributeAllocationAction::Grow(allocation_size),
+                        ParserAllocationAction::Grow {
+                            size: allocation_size,
+                            source_line: 4089,
+                        },
                     )
                 });
                 parser_ref.m_nsAtts.backing = backing;
@@ -17814,9 +17834,17 @@ unsafe fn doProlog(
                                             let element_name = parser
                                                 .m_declElementType
                                                 .expect("element declaration must be set before its attributes");
-                                            let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
-                                                default_attribute_storage_from_live_parser(
-                                                    parser, capacity, 7182,
+                                            let mut new_storage = |parser: &mut XML_ParserStruct, capacity: usize| {
+                                                let allocation_size = capacity.checked_mul(
+                                                    ::core::mem::size_of::<DEFAULT_ATTRIBUTE>(),
+                                                )?;
+                                                let backing = live_parser_allocation_backing(
+                                                    parser,
+                                                    allocation_size,
+                                                    7182,
+                                                )?;
+                                                default_attribute_storage_from_backing(
+                                                    parser, capacity, 7182, backing,
                                                 )
                                             };
                                             if !define_declared_attribute(
@@ -17964,9 +17992,17 @@ unsafe fn doProlog(
                                             let element_name = parser
                                                 .m_declElementType
                                                 .expect("element declaration must be set before its attributes");
-                                            let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
-                                                default_attribute_storage_from_live_parser(
-                                                    parser, capacity, 7182,
+                                            let mut new_storage = |parser: &mut XML_ParserStruct, capacity: usize| {
+                                                let allocation_size = capacity.checked_mul(
+                                                    ::core::mem::size_of::<DEFAULT_ATTRIBUTE>(),
+                                                )?;
+                                                let backing = live_parser_allocation_backing(
+                                                    parser,
+                                                    allocation_size,
+                                                    7182,
+                                                )?;
+                                                default_attribute_storage_from_backing(
+                                                    parser, capacity, 7182, backing,
                                                 )
                                             };
                                             if !define_declared_attribute(
@@ -22571,9 +22607,12 @@ fn define_attribute_impl(
                 .values
                 .try_reserve_exact((count as usize).saturating_sub(storage.values.len()))
                 .is_err()
-                || !(storage.backing)(
+                || !storage.backing.apply(
                     parser,
-                    DefaultAttributeAllocationAction::Grow(allocation_size),
+                    ParserAllocationAction::Grow {
+                        size: allocation_size,
+                        source_line: 7208,
+                    },
                 )
             {
                 return 0 as ::core::ffi::c_int;
@@ -23372,7 +23411,9 @@ unsafe fn dtdReset(p: &mut DTD, parser: &mut XML_ParserStruct) {
                 continue;
             };
             if let Some(mut default_atts) = element.defaultAtts.take() {
-                (default_atts.backing)(parser, DefaultAttributeAllocationAction::Free(7539));
+                default_atts
+                    .backing
+                    .apply(parser, ParserAllocationAction::Free(7539));
             }
         }
     }
@@ -23462,9 +23503,11 @@ unsafe fn dtdDestroy(
     is_doc_entity: bool,
     parser: &mut XML_ParserStruct,
 ) {
-    let mut release_default_attributes = |parser: &mut XML_ParserStruct,
+    let mut release_default_attributes = |_parser: &mut XML_ParserStruct,
                                           mut storage: DefaultAttributeStorage| {
-        (storage.backing)(parser, DefaultAttributeAllocationAction::Free(7580));
+        storage
+            .backing
+            .apply(_parser, ParserAllocationAction::Free(7580));
     };
     dtd_destroy_impl(p, is_doc_entity, parser, &mut release_default_attributes);
 }
@@ -23643,10 +23686,20 @@ unsafe fn dtdCopy(
                 return 0 as ::core::ffi::c_int;
             };
             if old_e.nDefaultAtts != 0 {
-                let Some(storage) = default_attribute_storage_from_live_parser(
+                let Some(allocation_size) = (old_e.nDefaultAtts as usize)
+                    .checked_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>())
+                else {
+                    return 0 as ::core::ffi::c_int;
+                };
+                let Some(backing) = live_parser_allocation_backing(parser, allocation_size, 7683)
+                else {
+                    return 0 as ::core::ffi::c_int;
+                };
+                let Some(storage) = default_attribute_storage_from_backing(
                     parser,
                     old_e.nDefaultAtts as usize,
                     7683,
+                    backing,
                 )
                 else {
                     return 0 as ::core::ffi::c_int;
@@ -23970,39 +24023,48 @@ fn attribute_storage_new(
     })
 }
 
-unsafe fn namespace_attribute_storage_new(
+/// Acquires an opaque allocation token whose actions are performed through
+/// the parser supplied at the point of use.  This keeps DTD-owned storage
+/// valid when its final owner is a different parser from the one that first
+/// created it.
+unsafe fn live_parser_allocation_backing(
     parser: &mut XML_ParserStruct,
-    capacity: usize,
+    allocation_size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
-) -> Option<NamespaceAttributeStorage> {
-    let allocation_size = capacity.checked_mul(::core::mem::size_of::<NS_ATT>())?;
+) -> Option<LiveParserAllocationBacking> {
     let mut allocation = expat_malloc(parser, allocation_size, source_line);
     if allocation.is_null() {
         return None;
     }
-    let mut backing: Box<
-        dyn FnMut(&mut XML_ParserStruct, NamespaceAttributeAllocationAction) -> bool,
-    > = Box::new(move |parser, action| match action {
-        NamespaceAttributeAllocationAction::Grow(size) => {
-            let reallocated = expat_realloc(parser, allocation, size, 4089);
-            if reallocated.is_null() {
-                false
-            } else {
-                allocation = reallocated;
+    Some(LiveParserAllocationBacking {
+        actions: Box::new(move |parser, action| match action {
+            ParserAllocationAction::Grow { size, source_line } => {
+                let reallocated = expat_realloc(parser, allocation, size, source_line);
+                if reallocated.is_null() {
+                    false
+                } else {
+                    allocation = reallocated;
+                    true
+                }
+            }
+            ParserAllocationAction::Replace { .. } => false,
+            ParserAllocationAction::Free(free_source_line) => {
+                expat_free(parser, allocation, free_source_line);
                 true
             }
-        }
-        NamespaceAttributeAllocationAction::Free(free_source_line) => {
-            expat_free(parser, allocation, free_source_line);
-            true
-        }
-    });
+        }),
+    })
+}
+
+fn namespace_attribute_storage_from_backing(
+    parser: &mut XML_ParserStruct,
+    capacity: usize,
+    source_line: ::core::ffi::c_int,
+    mut backing: LiveParserAllocationBacking,
+) -> Option<NamespaceAttributeStorage> {
     let mut entries = Vec::new();
     if entries.try_reserve_exact(capacity).is_err() {
-        backing(
-            parser,
-            NamespaceAttributeAllocationAction::Free(source_line),
-        );
+        backing.apply(parser, ParserAllocationAction::Free(source_line));
         return None;
     }
     entries.resize_with(capacity, NamespaceAttributeStorage::blank_entry);
@@ -24012,52 +24074,15 @@ unsafe fn namespace_attribute_storage_new(
     })
 }
 
-/// Allocates the Rust-owned default-attribute records while retaining the
-/// configured allocator's opaque backing token.  A live exclusive parser
-/// borrow proves the legacy allocator entry points receive a non-null parser
-/// for both creation and the backing token's eventual resize/free actions.
-fn default_attribute_storage_from_live_parser(
+fn default_attribute_storage_from_backing(
     parser: &mut XML_ParserStruct,
     capacity: usize,
     source_line: ::core::ffi::c_int,
+    mut backing: LiveParserAllocationBacking,
 ) -> Option<DefaultAttributeStorage> {
-    // `default_attribute_storage_new` is the narrow legacy allocator
-    // boundary.  Its only caller obligation is the live parser borrow held
-    // above; capacity arithmetic and allocation failure remain checked by
-    // the implementation.
-    unsafe { default_attribute_storage_new(parser, capacity, source_line) }
-}
-
-unsafe fn default_attribute_storage_new(
-    parser: &mut XML_ParserStruct,
-    capacity: usize,
-    source_line: ::core::ffi::c_int,
-) -> Option<DefaultAttributeStorage> {
-    let allocation_size = capacity.checked_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>())?;
-    let mut allocation = expat_malloc(parser, allocation_size, source_line);
-    if allocation.is_null() {
-        return None;
-    }
-    let mut backing: Box<
-        dyn FnMut(&mut XML_ParserStruct, DefaultAttributeAllocationAction) -> bool,
-    > = Box::new(move |parser, action| match action {
-        DefaultAttributeAllocationAction::Grow(size) => {
-            let reallocated = expat_realloc(parser, allocation, size, 7208);
-            if reallocated.is_null() {
-                false
-            } else {
-                allocation = reallocated;
-                true
-            }
-        }
-        DefaultAttributeAllocationAction::Free(free_source_line) => {
-            expat_free(parser, allocation, free_source_line);
-            true
-        }
-    });
     let mut values = Vec::new();
     if values.try_reserve_exact(capacity).is_err() {
-        backing(parser, DefaultAttributeAllocationAction::Free(source_line));
+        backing.apply(parser, ParserAllocationAction::Free(source_line));
         return None;
     }
     Some(DefaultAttributeStorage { values, backing })
