@@ -3219,7 +3219,10 @@ pub unsafe extern "C" fn XML_SetBase_ffi(
         return crate::expat_h::XML_STATUS_ERROR;
     }
     if !p.is_null() {
-        p = poolCopyString(&raw mut (*(*parser).m_dtd).pool, p);
+        p = poolCopyString(
+            &mut (*(*parser).m_dtd).pool,
+            CStr::from_ptr(p as *const ::core::ffi::c_char),
+        );
         if p.is_null() {
             return crate::expat_h::XML_STATUS_ERROR;
         }
@@ -6026,8 +6029,10 @@ unsafe extern "C" fn storeAtts(
         0 as crate::__stddef_size_t_h::size_t,
     ) as *mut ELEMENT_TYPE;
     if elementType.is_null() {
-        let mut name: *const crate::expat_external_h::XML_Char =
-            poolCopyString(&raw mut (*dtd).pool, (*tagNamePtr).str);
+        let mut name: *const crate::expat_external_h::XML_Char = poolCopyString(
+            &mut (*dtd).pool,
+            CStr::from_ptr((*tagNamePtr).str as *const ::core::ffi::c_char),
+        );
         if name.is_null() {
             return crate::expat_h::XML_ERROR_NO_MEMORY;
         }
@@ -8295,7 +8300,12 @@ unsafe extern "C" fn doProlog(
                             enumValueStart.as_ptr()
                         };
                     }
-                    if poolAppendString(&raw mut (*parser).m_tempPool, prefix).is_null() {
+                    if poolAppendString(
+                        &mut (*parser).m_tempPool,
+                        CStr::from_ptr(prefix as *const ::core::ffi::c_char),
+                    )
+                    .is_null()
+                    {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
                     if poolAppend(&raw mut (*parser).m_tempPool, enc, s, next).is_null() {
@@ -11192,7 +11202,10 @@ unsafe extern "C" fn setContext(
                 if (*prefix).name
                     == (*parser).m_tempPool.start as *const crate::expat_external_h::XML_Char
                 {
-                    (*prefix).name = poolCopyString(&raw mut (*dtd).pool, (*prefix).name);
+                    (*prefix).name = poolCopyString(
+                        &mut (*dtd).pool,
+                        CStr::from_ptr((*prefix).name as *const ::core::ffi::c_char),
+                    );
                     if (*prefix).name.is_null() {
                         return crate::expat_h::XML_FALSE;
                     }
@@ -11445,7 +11458,10 @@ unsafe extern "C" fn dtdCopy(
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         let mut oldP: *const PREFIX = entry as *mut PREFIX;
-        name = poolCopyString(&raw mut (*newDtd).pool, (*oldP).name);
+        name = poolCopyString(
+            &mut (*newDtd).pool,
+            CStr::from_ptr((*oldP).name as *const ::core::ffi::c_char),
+        );
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -11486,7 +11502,10 @@ unsafe extern "C" fn dtdCopy(
         {
             return 0 as ::core::ffi::c_int;
         }
-        name_0 = poolCopyString(&raw mut (*newDtd).pool, (*oldA).name);
+        name_0 = poolCopyString(
+            &mut (*newDtd).pool,
+            CStr::from_ptr((*oldA).name as *const ::core::ffi::c_char),
+        );
         if name_0.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -11529,7 +11548,10 @@ unsafe extern "C" fn dtdCopy(
         let mut name_1: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         let mut oldE: *const ELEMENT_TYPE = entry as *mut ELEMENT_TYPE;
-        name_1 = poolCopyString(&raw mut (*newDtd).pool, (*oldE).name);
+        name_1 = poolCopyString(
+            &mut (*newDtd).pool,
+            CStr::from_ptr((*oldE).name as *const ::core::ffi::c_char),
+        );
         if name_1.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -11586,8 +11608,11 @@ unsafe extern "C" fn dtdCopy(
             if !(*(*oldE).defaultAtts.offset(i as isize)).value.is_null() {
                 let ref mut c2rust_fresh83 = (*(*newE).defaultAtts.offset(i as isize)).value;
                 *c2rust_fresh83 = poolCopyString(
-                    &raw mut (*newDtd).pool,
-                    (*(*oldE).defaultAtts.offset(i as isize)).value,
+                    &mut (*newDtd).pool,
+                    CStr::from_ptr(
+                        (*(*oldE).defaultAtts.offset(i as isize)).value
+                            as *const ::core::ffi::c_char,
+                    ),
                 );
                 if (*(*newE).defaultAtts.offset(i as isize)).value.is_null() {
                     return 0 as ::core::ffi::c_int;
@@ -11650,7 +11675,10 @@ unsafe extern "C" fn copyEntityTable(
         let mut name: *const crate::expat_external_h::XML_Char =
             ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         let mut oldE: *const ENTITY = entry as *mut ENTITY;
-        name = poolCopyString(newPool, (*oldE).name);
+        name = poolCopyString(
+            &mut *newPool,
+            CStr::from_ptr((*oldE).name as *const ::core::ffi::c_char),
+        );
         if name.is_null() {
             return 0 as ::core::ffi::c_int;
         }
@@ -11664,8 +11692,10 @@ unsafe extern "C" fn copyEntityTable(
             return 0 as ::core::ffi::c_int;
         }
         if !(*oldE).systemId.is_null() {
-            let mut tem: *const crate::expat_external_h::XML_Char =
-                poolCopyString(newPool, (*oldE).systemId);
+            let mut tem: *const crate::expat_external_h::XML_Char = poolCopyString(
+                &mut *newPool,
+                CStr::from_ptr((*oldE).systemId as *const ::core::ffi::c_char),
+            );
             if tem.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -11675,7 +11705,10 @@ unsafe extern "C" fn copyEntityTable(
                     (*newE).base = cachedNewBase;
                 } else {
                     cachedOldBase = (*oldE).base;
-                    tem = poolCopyString(newPool, cachedOldBase);
+                    tem = poolCopyString(
+                        &mut *newPool,
+                        CStr::from_ptr(cachedOldBase as *const ::core::ffi::c_char),
+                    );
                     if tem.is_null() {
                         return 0 as ::core::ffi::c_int;
                     }
@@ -11684,15 +11717,23 @@ unsafe extern "C" fn copyEntityTable(
                 }
             }
             if !(*oldE).publicId.is_null() {
-                tem = poolCopyString(newPool, (*oldE).publicId);
+                tem = poolCopyString(
+                    &mut *newPool,
+                    CStr::from_ptr((*oldE).publicId as *const ::core::ffi::c_char),
+                );
                 if tem.is_null() {
                     return 0 as ::core::ffi::c_int;
                 }
                 (*newE).publicId = tem;
             }
         } else {
+            let text = if (*oldE).textLen > 0 as ::core::ffi::c_int {
+                ::core::slice::from_raw_parts((*oldE).textPtr, (*oldE).textLen as usize)
+            } else {
+                &[] as &[crate::expat_external_h::XML_Char]
+            };
             let mut tem_0: *const crate::expat_external_h::XML_Char =
-                poolCopyStringN(newPool, (*oldE).textPtr, (*oldE).textLen);
+                poolCopyStringN(&mut *newPool, text);
             if tem_0.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -11700,8 +11741,10 @@ unsafe extern "C" fn copyEntityTable(
             (*newE).textLen = (*oldE).textLen;
         }
         if !(*oldE).notation.is_null() {
-            let mut tem_1: *const crate::expat_external_h::XML_Char =
-                poolCopyString(newPool, (*oldE).notation);
+            let mut tem_1: *const crate::expat_external_h::XML_Char = poolCopyString(
+                &mut *newPool,
+                CStr::from_ptr((*oldE).notation as *const ::core::ffi::c_char),
+            );
             if tem_1.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
@@ -12104,86 +12147,60 @@ unsafe extern "C" fn poolAppend(
     return (*pool).start;
 }
 
-unsafe extern "C" fn poolCopyString(
-    mut pool: *mut STRING_POOL,
-    mut s: *const crate::expat_external_h::XML_Char,
-) -> *const crate::expat_external_h::XML_Char {
-    loop {
-        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(pool) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh59 = (*pool).ptr;
-            (*pool).ptr = (*pool).ptr.offset(1);
-            *c2rust_fresh59 = *s;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
-            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-        }
-        let c2rust_fresh60 = s;
-        s = s.offset(1);
-        if !(*c2rust_fresh60 != 0) {
-            break;
-        }
+fn pool_ensure_writable(pool: &mut STRING_POOL) -> bool {
+    unsafe {
+        pool.ptr != pool.end as *mut crate::expat_external_h::XML_Char
+            || poolGrow(pool as *mut STRING_POOL) != 0
     }
-    s = (*pool).start;
-    (*pool).start = (*pool).ptr;
-    return s;
 }
 
-unsafe extern "C" fn poolCopyStringN(
-    mut pool: *mut STRING_POOL,
-    mut s: *const crate::expat_external_h::XML_Char,
-    mut n: ::core::ffi::c_int,
+fn pool_push_char(pool: &mut STRING_POOL, c: crate::expat_external_h::XML_Char) -> bool {
+    if !pool_ensure_writable(pool) {
+        return false;
+    }
+    unsafe {
+        let dest = pool.ptr;
+        pool.ptr = pool.ptr.offset(1);
+        *dest = c;
+    }
+    true
+}
+
+fn poolCopyString(pool: &mut STRING_POOL, s: &CStr) -> *const crate::expat_external_h::XML_Char {
+    for &c in s.to_bytes_with_nul() {
+        if !pool_push_char(pool, c as crate::expat_external_h::XML_Char) {
+            return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+        }
+    }
+    let result = pool.start;
+    pool.start = pool.ptr;
+    result
+}
+
+fn poolCopyStringN(
+    pool: &mut STRING_POOL,
+    s: &[crate::expat_external_h::XML_Char],
 ) -> *const crate::expat_external_h::XML_Char {
-    if (*pool).ptr.is_null() && poolGrow(pool) == 0 {
+    if pool.ptr.is_null() && !pool_ensure_writable(pool) {
         return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
     }
-    while n > 0 as ::core::ffi::c_int {
-        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(pool) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh85 = (*pool).ptr;
-            (*pool).ptr = (*pool).ptr.offset(1);
-            *c2rust_fresh85 = *s;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
+    for &c in s {
+        if !pool_push_char(pool, c) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        n -= 1;
-        s = s.offset(1);
     }
-    s = (*pool).start;
-    (*pool).start = (*pool).ptr;
-    return s;
+    let result = pool.start;
+    pool.start = pool.ptr;
+    result
 }
 
-unsafe extern "C" fn poolAppendString(
-    mut pool: *mut STRING_POOL,
-    mut s: *const crate::expat_external_h::XML_Char,
-) -> *const crate::expat_external_h::XML_Char {
-    while *s != 0 {
-        if if (*pool).ptr == (*pool).end as *mut crate::expat_external_h::XML_Char
-            && poolGrow(pool) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh74 = (*pool).ptr;
-            (*pool).ptr = (*pool).ptr.offset(1);
-            *c2rust_fresh74 = *s;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
+fn poolAppendString(pool: &mut STRING_POOL, s: &CStr) -> *const crate::expat_external_h::XML_Char {
+    for &c in s.to_bytes() {
+        if !pool_push_char(pool, c as crate::expat_external_h::XML_Char) {
             return ::core::ptr::null::<crate::expat_external_h::XML_Char>();
         }
-        s = s.offset(1);
     }
-    return (*pool).start;
+    pool.start
 }
 
 unsafe extern "C" fn poolStoreString(
