@@ -566,6 +566,21 @@ pub enum AttributeScanner {
     Big2,
 }
 
+impl AttributeScanner {
+    /// Scans one complete start-tag token already bounded by its tokenizer
+    /// cursor.  Attribute pointers are derived only from that verified slice;
+    /// the scanner itself never needs to reconstruct a slice from raw parser
+    /// cursors.
+    pub(crate) fn scan(
+        self,
+        encoding: &normal_encoding,
+        source: &[u8],
+        attributes: &mut [ATTRIBUTE],
+    ) -> ::core::ffi::c_int {
+        xmltok_impl_c::scan_atts(self, &encoding.type_0, source, attributes)
+    }
+}
+
 /// Selects the fixed whitespace scanner without retaining a raw callback.
 #[derive(Copy, Clone)]
 pub enum WhitespaceSkipper {
@@ -3948,44 +3963,6 @@ pub mod xmltok_impl_c {
         n_atts
     }
 
-    /// Boundary adapter for the parser's bounded start-tag token.
-    pub unsafe extern "C" fn normal_getAtts(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        attsMax: ::core::ffi::c_int,
-        atts: *mut crate::src::xmltok::ATTRIBUTE,
-    ) -> ::core::ffi::c_int {
-        let source_len = end.offset_from(ptr);
-        if source_len < 0 {
-            return 0;
-        }
-        let source = ::core::slice::from_raw_parts(ptr.cast::<u8>(), source_len as usize);
-        let byte_types = &(*(enc as *const normal_encoding)).type_0;
-        scan_normal_atts(byte_types, source, |action| {
-            let attribute = match action {
-                NormalAttributeAction::Name { attribute, .. }
-                | NormalAttributeAction::ValueStart { attribute, .. }
-                | NormalAttributeAction::ValueEnd { attribute, .. }
-                | NormalAttributeAction::Normalized { attribute, .. } => attribute,
-            };
-            if attribute < 0 || attribute >= attsMax {
-                return;
-            }
-            let slot = atts.add(attribute as usize);
-            match action {
-                NormalAttributeAction::Name { offset, .. } => (*slot).name = offset,
-                NormalAttributeAction::ValueStart { offset, .. } => {
-                    (*slot).valuePtr = ptr.add(offset)
-                }
-                NormalAttributeAction::ValueEnd { offset, .. } => {
-                    (*slot).valueEnd = ptr.add(offset)
-                }
-                NormalAttributeAction::Normalized { value, .. } => (*slot).normalized = value,
-            }
-        })
-    }
-
     pub unsafe extern "C" fn normal_nameLength(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -7306,49 +7283,6 @@ pub mod xmltok_impl_c {
             index += 2;
         }
         n_atts
-    }
-
-    /// Boundary adapter for the legacy pointer-based tokenizer call sites.
-    /// `end` is the token end returned by the tokenizer scanner.
-    pub unsafe extern "C" fn little2_getAtts(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        attsMax: ::core::ffi::c_int,
-        atts: *mut crate::src::xmltok::ATTRIBUTE,
-    ) -> ::core::ffi::c_int {
-        let source_len = end.offset_from(ptr);
-        if source_len < 0 {
-            return 0;
-        }
-        let source = ::core::slice::from_raw_parts(ptr.cast::<u8>(), source_len as usize);
-        let byte_types = &(*(enc as *const normal_encoding)).type_0;
-        scan_little2_atts(byte_types, source, |action| {
-            let attribute = match action {
-                Little2AttributeAction::Name { attribute, .. }
-                | Little2AttributeAction::ValueStart { attribute, .. }
-                | Little2AttributeAction::ValueEnd { attribute, .. }
-                | Little2AttributeAction::Normalized { attribute, .. } => attribute,
-            };
-            if attribute < 0 || attribute >= attsMax {
-                return;
-            }
-            let slot = atts.add(attribute as usize);
-            match action {
-                Little2AttributeAction::Name { offset, .. } => {
-                    (*slot).name = offset;
-                }
-                Little2AttributeAction::ValueStart { offset, .. } => {
-                    (*slot).valuePtr = ptr.add(offset);
-                }
-                Little2AttributeAction::ValueEnd { offset, .. } => {
-                    (*slot).valueEnd = ptr.add(offset);
-                }
-                Little2AttributeAction::Normalized { value, .. } => {
-                    (*slot).normalized = value;
-                }
-            }
-        })
     }
 
     /// Decodes one validated UTF-16LE code unit once its two bytes have crossed
@@ -10678,14 +10612,93 @@ pub mod xmltok_impl_c {
         n_atts
     }
 
-    /// Scans a bounded big-endian start-tag token and reports offsets to the
-    /// parser-owned attribute storage adapter.
-    pub fn big2_getAtts(
+    /// Fills parser-owned attribute records from one already-validated
+    /// start-tag slice.  The raw values retained in `ATTRIBUTE` are offsets
+    /// translated back to pointers into `source`, whose lifetime is bounded
+    /// by the parser's current token processing.
+    pub(crate) fn scan_atts(
+        scanner: crate::src::xmltok::AttributeScanner,
         byte_types: &[::core::ffi::c_uchar; 256],
         source: &[u8],
-        report: impl FnMut(Big2AttributeAction),
+        attributes: &mut [crate::src::xmltok::ATTRIBUTE],
     ) -> ::core::ffi::c_int {
-        scan_big2_atts(byte_types, source, report)
+        let source_start = source.as_ptr().cast::<::core::ffi::c_char>();
+        let mut store = |attribute: ::core::ffi::c_int, update: AttributeUpdate| {
+            let Ok(attribute) = usize::try_from(attribute) else {
+                return;
+            };
+            let Some(slot) = attributes.get_mut(attribute) else {
+                return;
+            };
+            match update {
+                AttributeUpdate::Name(offset) => slot.name = offset,
+                AttributeUpdate::ValueStart(offset) => {
+                    slot.valuePtr = source_start.wrapping_add(offset)
+                }
+                AttributeUpdate::ValueEnd(offset) => {
+                    slot.valueEnd = source_start.wrapping_add(offset)
+                }
+                AttributeUpdate::Normalized(value) => slot.normalized = value,
+            }
+        };
+
+        match scanner {
+            crate::src::xmltok::AttributeScanner::Normal => {
+                scan_normal_atts(byte_types, source, |action| match action {
+                    NormalAttributeAction::Name { attribute, offset } => {
+                        store(attribute, AttributeUpdate::Name(offset))
+                    }
+                    NormalAttributeAction::ValueStart { attribute, offset } => {
+                        store(attribute, AttributeUpdate::ValueStart(offset))
+                    }
+                    NormalAttributeAction::ValueEnd { attribute, offset } => {
+                        store(attribute, AttributeUpdate::ValueEnd(offset))
+                    }
+                    NormalAttributeAction::Normalized { attribute, value } => {
+                        store(attribute, AttributeUpdate::Normalized(value))
+                    }
+                })
+            }
+            crate::src::xmltok::AttributeScanner::Little2 => {
+                scan_little2_atts(byte_types, source, |action| match action {
+                    Little2AttributeAction::Name { attribute, offset } => {
+                        store(attribute, AttributeUpdate::Name(offset))
+                    }
+                    Little2AttributeAction::ValueStart { attribute, offset } => {
+                        store(attribute, AttributeUpdate::ValueStart(offset))
+                    }
+                    Little2AttributeAction::ValueEnd { attribute, offset } => {
+                        store(attribute, AttributeUpdate::ValueEnd(offset))
+                    }
+                    Little2AttributeAction::Normalized { attribute, value } => {
+                        store(attribute, AttributeUpdate::Normalized(value))
+                    }
+                })
+            }
+            crate::src::xmltok::AttributeScanner::Big2 => {
+                scan_big2_atts(byte_types, source, |action| match action {
+                    Big2AttributeAction::Name { attribute, offset } => {
+                        store(attribute, AttributeUpdate::Name(offset))
+                    }
+                    Big2AttributeAction::ValueStart { attribute, offset } => {
+                        store(attribute, AttributeUpdate::ValueStart(offset))
+                    }
+                    Big2AttributeAction::ValueEnd { attribute, offset } => {
+                        store(attribute, AttributeUpdate::ValueEnd(offset))
+                    }
+                    Big2AttributeAction::Normalized { attribute, value } => {
+                        store(attribute, AttributeUpdate::Normalized(value))
+                    }
+                })
+            }
+        }
+    }
+
+    enum AttributeUpdate {
+        Name(usize),
+        ValueStart(usize),
+        ValueEnd(usize),
+        Normalized(::core::ffi::c_char),
     }
 
     pub unsafe extern "C" fn big2_nameLength(
@@ -12101,7 +12114,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::big2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::big2_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::big2_nameLength;
@@ -12124,7 +12136,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::little2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_entityValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::little2_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::little2_nameLength;
@@ -12148,7 +12159,6 @@ pub use crate::src::xmltok::xmltok_impl_c::normal_cdataSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::normal_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_entityValueTok;
-pub use crate::src::xmltok::xmltok_impl_c::normal_getAtts;
 pub use crate::src::xmltok::xmltok_impl_c::normal_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_isPublicId;
 pub use crate::src::xmltok::xmltok_impl_c::normal_nameLength;

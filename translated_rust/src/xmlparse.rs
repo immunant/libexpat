@@ -8744,6 +8744,7 @@ unsafe extern "C" fn doContent(
                         parser,
                         enc,
                         s,
+                        next,
                         &raw mut (*tag).name,
                         tag,
                         &raw mut (*tag).bindings,
@@ -8818,6 +8819,7 @@ unsafe extern "C" fn doContent(
                         parser,
                         enc,
                         s,
+                        next,
                         &raw mut name_0,
                         ::core::ptr::null_mut(),
                         &raw mut bindings,
@@ -9406,6 +9408,7 @@ unsafe extern "C" fn storeAtts(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut attStr: *const ::core::ffi::c_char,
+    mut attEnd: *const ::core::ffi::c_char,
     mut tagNamePtr: *mut TAG_NAME,
     mut tagPtr: *mut TAG,
     mut bindingsPtr: *mut *mut BINDING,
@@ -9469,75 +9472,65 @@ unsafe extern "C" fn storeAtts(
         }
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
-    let eventEnd = parser_event_end!(parser);
     n = {
-        // Keep the scanner's output borrow local: all scanner variants fill
-        // the same owned attribute storage before later parser work can grow
-        // it or invoke a callback.
+        // `attEnd` is the tokenizer's end cursor for this exact start-tag.
+        // Rebuild the scanner input from the owning parser/entity slice only
+        // after both cursors have been validated as offsets within it.  In
+        // particular, an internal entity never uses the outer parser event
+        // cursor, which may be absent or refer to a different buffer.
+        let source = if enc == parser_encoding(parser) {
+            let Some(bytes) = (*parser).m_buffer.bytes.as_deref() else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let base = bytes.as_ptr().addr();
+            let Some(start) = attStr.addr().checked_sub(base) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(end) = attEnd.addr().checked_sub(base) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(source) = bytes.get(start..end) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            source
+        } else {
+            let Some(open_entity_index) = (*parser).m_openInternalEntities else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(open_entity) = (&(*parser).m_activeInternalEntities)
+                .get(open_entity_index)
+                .map(InternalEntityStorage::node)
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(text) = entity_text_chars(&*dtd, open_entity.eventText, open_entity.eventTextLen)
+            else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let base = text.as_ptr().addr();
+            let Some(start) = attStr.addr().checked_sub(base) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(end) = attEnd.addr().checked_sub(base) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            let Some(text) = text.get(start..end) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            // XML_Char is the one-byte C character at this internal parser
+            // boundary.  The range above was obtained from `text` itself, so
+            // this byte view retains its allocation and exact token length.
+            ::core::slice::from_raw_parts(text.as_ptr().cast::<u8>(), text.len())
+        };
+        // Keep the scanner's output borrow local: it fills the owned records
+        // before later parser work can grow them or invoke a callback.
         let parser_ref = &mut *parser;
-        let atts_size = parser_ref.m_attsSize;
         let records = &mut parser_ref.m_atts.records;
-        match (*enc).getAtts {
-            crate::src::xmltok::AttributeScanner::Normal => crate::src::xmltok::normal_getAtts(
-                enc,
-                attStr,
-                eventEnd,
-                atts_size,
-                records.as_mut_ptr(),
-            ),
-            crate::src::xmltok::AttributeScanner::Little2 => {
-                crate::src::xmltok::little2_getAtts(
-                    enc,
-                    attStr,
-                    eventEnd,
-                    atts_size,
-                    records.as_mut_ptr(),
-                )
-            }
-            crate::src::xmltok::AttributeScanner::Big2 => {
-                let source_len = eventEnd.offset_from(attStr);
-                if source_len < 0 {
-                    0
-                } else {
-                    let source =
-                        ::core::slice::from_raw_parts(attStr.cast::<u8>(), source_len as usize);
-                    let byte_types =
-                        &(*(enc as *const crate::src::xmltok::normal_encoding)).type_0;
-                    crate::src::xmltok::big2_getAtts(byte_types, source, |action| {
-                        let attribute = match action {
-                            crate::src::xmltok::Big2AttributeAction::Name { attribute, .. }
-                            | crate::src::xmltok::Big2AttributeAction::ValueStart {
-                                attribute, ..
-                            }
-                            | crate::src::xmltok::Big2AttributeAction::ValueEnd { attribute, .. }
-                            | crate::src::xmltok::Big2AttributeAction::Normalized {
-                                attribute, ..
-                            } => attribute,
-                        };
-                        if attribute < 0 || attribute >= atts_size {
-                            return;
-                        }
-                        let Some(slot) = records.get_mut(attribute as usize) else {
-                            return;
-                        };
-                        match action {
-                            crate::src::xmltok::Big2AttributeAction::Name { offset, .. } => {
-                                slot.name = offset;
-                            }
-                            crate::src::xmltok::Big2AttributeAction::ValueStart { offset, .. } => {
-                                slot.valuePtr = attStr.add(offset);
-                            }
-                            crate::src::xmltok::Big2AttributeAction::ValueEnd { offset, .. } => {
-                                slot.valueEnd = attStr.add(offset);
-                            }
-                            crate::src::xmltok::Big2AttributeAction::Normalized { value, .. } => {
-                                slot.normalized = value;
-                            }
-                        }
-                    })
-                }
-            }
-        }
+        (*enc).getAtts.scan(
+            &*(enc as *const crate::src::xmltok::normal_encoding),
+            source,
+            records,
+        )
     };
     if n > crate::limits_h::INT_MAX - nDefaultAtts {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -9581,86 +9574,53 @@ unsafe extern "C" fn storeAtts(
             .resize_with(new_capacity, AttributeStorage::blank_record);
         (*parser).m_attsSize = new_atts_size;
         if n > oldAttsSize {
-            match (*enc).getAtts {
-                crate::src::xmltok::AttributeScanner::Normal => {
-                    crate::src::xmltok::normal_getAtts(
-                        enc,
-                        attStr,
-                        eventEnd,
-                        n,
-                        (*parser).m_atts.records.as_mut_ptr(),
-                    );
-                }
-                crate::src::xmltok::AttributeScanner::Little2 => {
-                    crate::src::xmltok::little2_getAtts(
-                        enc,
-                        attStr,
-                        eventEnd,
-                        n,
-                        (*parser).m_atts.records.as_mut_ptr(),
-                    );
-                }
-                crate::src::xmltok::AttributeScanner::Big2 => {
-                    let source_len = eventEnd.offset_from(attStr);
-                    if source_len >= 0 {
-                        let source =
-                            ::core::slice::from_raw_parts(attStr.cast::<u8>(), source_len as usize);
-                        let byte_types =
-                            &(*(enc as *const crate::src::xmltok::normal_encoding)).type_0;
-                        crate::src::xmltok::big2_getAtts(byte_types, source, |action| {
-                            let attribute = match action {
-                                crate::src::xmltok::Big2AttributeAction::Name {
-                                    attribute, ..
-                                }
-                                | crate::src::xmltok::Big2AttributeAction::ValueStart {
-                                    attribute,
-                                    ..
-                                }
-                                | crate::src::xmltok::Big2AttributeAction::ValueEnd {
-                                    attribute,
-                                    ..
-                                }
-                                | crate::src::xmltok::Big2AttributeAction::Normalized {
-                                    attribute,
-                                    ..
-                                } => attribute,
-                            };
-                            if attribute < 0 || attribute >= n {
-                                return;
-                            }
-                            let Some(slot) = (&mut (*parser).m_atts.records).get_mut(attribute as usize)
-                            else {
-                                return;
-                            };
-                            match action {
-                                crate::src::xmltok::Big2AttributeAction::Name {
-                                    offset, ..
-                                } => {
-                                    slot.name = offset;
-                                }
-                                crate::src::xmltok::Big2AttributeAction::ValueStart {
-                                    offset,
-                                    ..
-                                } => {
-                                    slot.valuePtr = attStr.add(offset);
-                                }
-                                crate::src::xmltok::Big2AttributeAction::ValueEnd {
-                                    offset,
-                                    ..
-                                } => {
-                                    slot.valueEnd = attStr.add(offset);
-                                }
-                                crate::src::xmltok::Big2AttributeAction::Normalized {
-                                    value,
-                                    ..
-                                } => {
-                                    slot.normalized = value;
-                                }
-                            }
-                        });
-                    }
-                }
-            }
+            let source = if enc == parser_encoding(parser) {
+                let Some(bytes) = (*parser).m_buffer.bytes.as_deref() else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let base = bytes.as_ptr().addr();
+                let Some(start) = attStr.addr().checked_sub(base) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(end) = attEnd.addr().checked_sub(base) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(source) = bytes.get(start..end) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                source
+            } else {
+                let Some(open_entity_index) = (*parser).m_openInternalEntities else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(open_entity) = (&(*parser).m_activeInternalEntities)
+                    .get(open_entity_index)
+                    .map(InternalEntityStorage::node)
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(text) =
+                    entity_text_chars(&*dtd, open_entity.eventText, open_entity.eventTextLen)
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let base = text.as_ptr().addr();
+                let Some(start) = attStr.addr().checked_sub(base) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(end) = attEnd.addr().checked_sub(base) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                let Some(text) = text.get(start..end) else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                ::core::slice::from_raw_parts(text.as_ptr().cast::<u8>(), text.len())
+            };
+            (*enc).getAtts.scan(
+                &*(enc as *const crate::src::xmltok::normal_encoding),
+                source,
+                &mut (*parser).m_atts.records,
+            );
         }
     }
     // The opaque backing allocation preserves the configured allocator's
