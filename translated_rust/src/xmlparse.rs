@@ -8842,15 +8842,17 @@ pub unsafe extern "C" fn XML_ParserFree_ffi(mut parser: crate::expat_h::XML_Pars
     let mut parser = Box::from_raw(parser);
     parser_free_owned(&mut parser)
 }
-pub unsafe extern "C" fn XML_UseParserAsHandlerArg(mut parser: crate::expat_h::XML_Parser) {
-    if !parser.is_null() {
-        (*parser).m_handlerArg = HandlerArg::Parser;
-    }
+fn XML_UseParserAsHandlerArg(handler_arg: &mut HandlerArg) {
+    *handler_arg = HandlerArg::Parser;
 }
 #[export_name = "XML_UseParserAsHandlerArg"]
 
 pub unsafe extern "C" fn XML_UseParserAsHandlerArg_ffi(mut parser: crate::expat_h::XML_Parser) {
-    XML_UseParserAsHandlerArg(parser)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    XML_UseParserAsHandlerArg(&mut parser.m_handlerArg)
 }
 /// The parser state needed to configure use of an external DTD.
 ///
