@@ -9751,6 +9751,56 @@ fn content_token_handlers(parser: &XML_ParserStruct) -> ContentTokenHandlers {
     }
 }
 
+/// Validate an end tag against the parser's current open tag without exposing
+/// the parser handle to the token-processing loop.  Invalid retained-name
+/// storage is still treated as a tag mismatch, matching the former cursor
+/// comparison path; only an inconsistent tag stack is an unexpected state.
+fn content_end_tag_match(
+    parser: &XML_ParserStruct,
+    dtd: &DTD,
+    start_tag_level: ::core::ffi::c_int,
+    parser_events: bool,
+    raw_name_start: usize,
+    raw_name_length: ::core::ffi::c_int,
+) -> Result<(usize, bool), crate::expat_h::XML_Error> {
+    if parser.m_tagLevel == start_tag_level {
+        return Err(crate::expat_h::XML_ERROR_ASYNC_ENTITY);
+    }
+    let Some(tag_index) = parser.m_tagStack else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    let Some(tag) = parser
+        .m_activeTags
+        .get(tag_index)
+        .and_then(|storage| storage.tag.first())
+    else {
+        return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+    };
+    if raw_name_length != tag.rawNameLength {
+        return Ok((tag_index, false));
+    }
+    let Ok(raw_name_length) = usize::try_from(raw_name_length) else {
+        return Ok((tag_index, false));
+    };
+    let Some(raw_name_end) = raw_name_start.checked_add(raw_name_length) else {
+        return Ok((tag_index, false));
+    };
+    let names_match = match (
+        event_raw_name_source(
+            parser,
+            dtd,
+            parser_events,
+            raw_name_start,
+            raw_name_end,
+        ),
+        stored_raw_name_source(parser, dtd, tag),
+    ) {
+        (Some(actual), Some(expected)) => actual.same_bytes(&expected),
+        _ => false,
+    };
+    Ok((tag_index, names_match))
+}
+
 /// Complete the parser-state transition that follows a closed element.
 ///
 /// This deliberately only inspects and updates parser state.  The caller
@@ -10527,18 +10577,10 @@ unsafe fn doContent(
                     }
                 }
                 crate::src::xmltok::XML_TOK_END_TAG => {
-                    if (*parser).m_tagLevel == startTagLevel {
-                        return crate::expat_h::XML_ERROR_ASYNC_ENTITY;
-                    } else {
+                    {
                         let mut len: ::core::ffi::c_int = 0;
                         let mut rawName_0: *const ::core::ffi::c_char =
                             ::core::ptr::null::<::core::ffi::c_char>();
-                        let Some(tag_index) = (*parser).m_tagStack else {
-                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                        };
-                        if tag_index >= (*parser).m_activeTags.len() {
-                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                        }
                         rawName_0 = s.wrapping_offset(
                             (encoding.minBytesPerChar * 2 as ::core::ffi::c_int) as isize,
                         );
@@ -10548,29 +10590,16 @@ unsafe fn doContent(
                             return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
                         };
                         len = raw_name_len.length;
-                        let tag_0 = (&(*parser).m_activeTags)
-                            .get(tag_index)
-                            .expect("validated active tag index")
-                            .tag
-                            .first()
-                            .expect("tag storage has one tag");
-                        let names_match = if len == tag_0.rawNameLength {
-                            let end = rawName_0.wrapping_offset(len as isize).addr();
-                            match (
-                                event_raw_name_source(
-                                    &*parser,
-                                    &*dtd,
-                                    parser_events,
-                                    rawName_0.addr(),
-                                    end,
-                                ),
-                                stored_raw_name_source(&*parser, &*dtd, tag_0),
-                            ) {
-                                (Some(actual), Some(expected)) => actual.same_bytes(&expected),
-                                _ => false,
-                            }
-                        } else {
-                            false
+                        let (tag_index, names_match) = match content_end_tag_match(
+                            &*parser,
+                            &*dtd,
+                            startTagLevel,
+                            parser_events,
+                            rawName_0.addr(),
+                            len,
+                        ) {
+                            Ok(result) => result,
+                            Err(error) => return error,
                         };
                         if !names_match {
                             update_event_start(rawName_0);
