@@ -4925,10 +4925,9 @@ fn retained_raw_name_source<'a>(
 }
 
 // A shared DTD is held in an `UnsafeCell` only because parent and child
-// parsers share it.  Entity-event consumers never retain the returned slice:
-// they resolve it for one token and release it before a callback can re-enter
-// the parser.  Keep the one cell access here rather than repeating raw DTD
-// dereferences at every cursor boundary.
+// parsers share it.  This legacy CDATA adapter resolves a replacement-text
+// slice only while its caller retains the parser's exclusive processing
+// access; callers must not retain it across a callback.
 unsafe fn shared_entity_text_chars(
     dtd: &SharedDtd,
     text: EntityTextRef,
@@ -4937,12 +4936,13 @@ unsafe fn shared_entity_text_chars(
     entity_text_chars(&*dtd.value.get(), text, length)
 }
 
+// Default-handler reporting needs only cursor offsets. Resolve those while
+// the DTD cell is inspected so no DTD borrow can escape across a callback.
 unsafe fn shared_event_text_window(
     dtd: &SharedDtd,
     entity: &OPEN_INTERNAL_ENTITY,
 ) -> Option<(usize, usize)> {
-    let text = shared_entity_text_chars(dtd, entity.eventText, entity.eventTextLen)?;
-    Some((text.as_ptr().addr(), text.len()))
+    dtd.inspect(|dtd| event_text_window(dtd, entity))
 }
 
 // Internal-entity events are locations in the entity's replacement text, not
@@ -9475,12 +9475,14 @@ fn shared_default_current_event(
     dtd: &SharedDtd,
     entity: &OPEN_INTERNAL_ENTITY,
 ) -> Option<Vec<crate::expat_external_h::XML_Char>> {
-    let text = unsafe { shared_entity_text_chars(dtd, entity.eventText, entity.eventTextLen) }?;
-    let start = entity.internalEventPtr?;
-    let end = entity
-        .internalEventEndPtr
-        .and_then(|length| start.checked_add(length))?;
-    Some(text.get(start..end)?.to_vec())
+    dtd.inspect(|dtd| {
+        let text = entity_text_chars(dtd, entity.eventText, entity.eventTextLen)?;
+        let start = entity.internalEventPtr?;
+        let end = entity
+            .internalEventEndPtr
+            .and_then(|length| start.checked_add(length))?;
+        Some(text.get(start..end)?.to_vec())
+    })
 }
 
 fn default_current_event(parser: &XML_ParserStruct) -> Option<DefaultCurrentEvent> {
@@ -21489,13 +21491,7 @@ unsafe fn report_default_impl(
             .get(&parser_key)
             .cloned()
             .expect("default callback must be registered when installed");
-        unsafe {
-            callback.invoke(
-                handler_arg_from_state!(parser),
-                data.as_ptr(),
-                data.len() as ::core::ffi::c_int,
-            );
-        }
+        invoke_default_current_handler(parser, callback.as_ref(), data);
     };
     if encoding.isUtf8 == 0 {
         let unknown_encoding = if input.is_empty() {
