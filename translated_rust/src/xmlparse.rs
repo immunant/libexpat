@@ -2504,6 +2504,16 @@ struct RootParserState {
     accounting: ACCOUNTING,
     alloc_tracker: MALLOC_TRACKER,
     entity_stats: ENTITY_STATS,
+    // Expat allocations retain their physical header/padding layout for the
+    // configured allocator, but size metadata belongs to the owning root
+    // state.  This avoids reading or writing an in-band header through a raw
+    // pointer when an allocation is resized or released.
+    allocations: std::collections::HashMap<usize, ExpatAllocation>,
+}
+
+#[derive(Copy, Clone)]
+struct ExpatAllocation {
+    payload_size: crate::__stddef_size_t_h::size_t,
 }
 
 impl RootParserState {
@@ -2530,6 +2540,7 @@ impl RootParserState {
                 maximumDepthSeen: 0,
                 debugLevel: 0,
             },
+            allocations: std::collections::HashMap::new(),
         }
     }
 }
@@ -4751,11 +4762,25 @@ pub unsafe extern "C" fn expat_malloc(
     if mallocedPtr.is_null() {
         return crate::__stddef_null_h::NULL;
     }
+    // The payload-size header is observable through Expat's allocation-test
+    // interface and remains part of this allocation layout.  Reallocation
+    // uses the root-owned metadata above instead of reading it back.
     *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t) = size;
+    let payload_ptr = mallocedPtr
+        .cast::<u8>()
+        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+        .cast::<::core::ffi::c_void>();
     let allocation_totals = {
         let mut root = root
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
+        root.allocations.insert(
+            payload_ptr.addr(),
+            ExpatAllocation {
+                payload_size: size,
+            },
+        );
         root.alloc_tracker.bytesAllocated = root
             .alloc_tracker
             .bytesAllocated
@@ -4783,15 +4808,7 @@ pub unsafe extern "C" fn expat_malloc(
             sourceLine,
         );
     }
-    // The allocation size above includes this fixed header and padding, so
-    // advancing the returned address cannot escape the allocated object.
-    // `wrapping_add` expresses that address adjustment without an unsafe
-    // pointer-offset operation; the allocation remains owned by `mallocedPtr`
-    // and is recovered by the inverse adjustment in `expat_free`.
-    return (mallocedPtr as *mut ::core::ffi::c_char)
-        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
-        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-        as *mut ::core::ffi::c_void;
+    return payload_ptr;
 }
 #[export_name = "expat_malloc"]
 
@@ -4857,10 +4874,21 @@ pub unsafe fn expat_free(
         .cast::<u8>()
         .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>());
+    let payload_size = {
+        let root = std::sync::Arc::clone(&parser.m_root);
+        let payload_size = root
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .allocations
+            .remove(&ptr.addr())
+            .expect("expat allocation must be tracked")
+            .payload_size;
+        payload_size
+    };
     let bytesAllocated: crate::__stddef_size_t_h::size_t =
         ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
             .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-            .wrapping_add(*mallocedPtr.cast::<crate::__stddef_size_t_h::size_t>());
+            .wrapping_add(payload_size);
     expat_free_account(parser, bytesAllocated, sourceLine);
     parser
         .m_mem
@@ -4909,10 +4937,20 @@ fn expat_reallocation_change(
 fn expat_apply_reallocation_tracking(
     root: &std::sync::Arc<std::sync::Mutex<RootParserState>>,
     change: ExpatReallocationChange,
+    previous_payload_address: usize,
+    new_payload_address: usize,
+    new_payload_size: crate::__stddef_size_t_h::size_t,
 ) -> Option<(XmlBigCount, XmlBigCount)> {
     let mut root = root
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
+    root.allocations.remove(&previous_payload_address);
+    root.allocations.insert(
+        new_payload_address,
+        ExpatAllocation {
+            payload_size: new_payload_size,
+        },
+    );
     if change.is_increase {
         assert!(
             (-1 as ::core::ffi::c_int as XmlBigCount)
@@ -4961,8 +4999,6 @@ pub unsafe extern "C" fn expat_realloc(
         .wrapping_sub(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_sub(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
         as *mut ::core::ffi::c_void;
-    let prevSize: crate::__stddef_size_t_h::size_t =
-        *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t);
     let (reallocate, root) = {
         let parser_state = &*parser;
         (
@@ -4973,6 +5009,13 @@ pub unsafe extern "C" fn expat_realloc(
             std::sync::Arc::clone(&parser_state.m_root),
         )
     };
+    let prevSize = root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .allocations
+        .get(&ptr.addr())
+        .expect("expat allocation must be tracked")
+        .payload_size;
     let change = expat_reallocation_change(size, prevSize);
     if change.is_increase {
         let (tolerable, report_total) = {
@@ -5018,7 +5061,18 @@ pub unsafe extern "C" fn expat_realloc(
     if mallocedPtr.is_null() {
         return crate::__stddef_null_h::NULL;
     }
-    let allocation_totals = expat_apply_reallocation_tracking(&root, change);
+    let payload_ptr = mallocedPtr
+        .cast::<u8>()
+        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
+        .cast::<::core::ffi::c_void>();
+    let allocation_totals = expat_apply_reallocation_tracking(
+        &root,
+        change,
+        ptr.addr(),
+        payload_ptr.addr(),
+        size,
+    );
     if let Some((new_total, peak_total)) = allocation_totals {
         expat_heap_stat(
             &root,
@@ -5030,11 +5084,10 @@ pub unsafe extern "C" fn expat_realloc(
             sourceLine,
         );
     }
+    // Keep the externally observable allocation header in sync; internal
+    // bookkeeping intentionally relies on the owned registry instead.
     *(mallocedPtr as *mut crate::__stddef_size_t_h::size_t) = size;
-    return (mallocedPtr as *mut ::core::ffi::c_char)
-        .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
-        .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
-        as *mut ::core::ffi::c_void;
+    return payload_ptr;
 }
 #[export_name = "expat_realloc"]
 
@@ -5334,10 +5387,10 @@ pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
     XML_ParserCreate_MM(encodingName, memsuite, nameSep)
 }
 
-// Parser storage has the same header used by expat_malloc/expat_free.  Keep
-// that allocation under the configured memory suite: in particular, a parser
-// created with XML_ParserCreate_MM must be released through the matching
-// callback even when construction later fails.
+// Parser storage keeps the same physical prefix as expat_malloc allocations,
+// so custom allocators observe the same requested size.  Its payload size is
+// registered with the root state immediately after construction, rather than
+// being read from an in-band raw-memory header during release.
 unsafe fn allocate_parser_storage(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> Option<crate::expat_h::XML_Parser> {
@@ -5348,14 +5401,14 @@ unsafe fn allocate_parser_storage(
     if allocation.is_null() {
         return None;
     }
-    let allocation = allocation.cast::<u8>();
     allocation
         .cast::<crate::__stddef_size_t_h::size_t>()
         .write(::core::mem::size_of::<XML_ParserStruct>());
     Some(
         allocation
-            .add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
-            .add(crate::internal_h::EXPAT_MALLOC_PADDING)
+            .cast::<u8>()
+            .wrapping_add(::core::mem::size_of::<crate::__stddef_size_t_h::size_t>())
+            .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
             .cast::<XML_ParserStruct>(),
     )
 }
@@ -5631,6 +5684,12 @@ unsafe extern "C" fn parserCreate(
         let mut root = root_owner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
+        root.allocations.insert(
+            parser_ptr.addr(),
+            ExpatAllocation {
+                payload_size: ::core::mem::size_of::<XML_ParserStruct>(),
+            },
+        );
         // Both conditions are invariants of parser ownership/accounting.  They
         // cannot be recovered from without invalidating the allocator ledger.
         if (XmlBigCount::MAX - root.alloc_tracker.bytesAllocated < increase as XmlBigCount) {
