@@ -1981,6 +1981,18 @@ pub mod xmltok_impl_c {
         Attributes(usize),
     }
 
+    struct NormalScanLtResult {
+        token: ::core::ffi::c_int,
+        next: Option<usize>,
+    }
+
+    fn normal_scan_lt_result(
+        token: ::core::ffi::c_int,
+        next: Option<usize>,
+    ) -> NormalScanLtResult {
+        NormalScanLtResult { token, next }
+    }
+
     fn normal_scan_lt_multibyte<F>(
         byte_type: ::core::ffi::c_int,
         offset: usize,
@@ -2200,6 +2212,180 @@ pub mod xmltok_impl_c {
         NormalScanLtAction::Token(crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
+    fn normal_scan_cdata_section_open(input: &[u8]) -> NormalScanLtResult {
+        const CDATA_LSQB: &[u8; 6] = b"CDATA[";
+
+        if input.len() < CDATA_LSQB.len() {
+            return normal_scan_lt_result(crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+        for (offset, expected) in CDATA_LSQB.iter().enumerate() {
+            if input[offset] != *expected {
+                return normal_scan_lt_result(crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+            }
+        }
+        normal_scan_lt_result(
+            crate::src::xmltok::XML_TOK_CDATA_SECT_OPEN_1,
+            Some(CDATA_LSQB.len()),
+        )
+    }
+
+    fn normal_scan_ref_bytes_impl(
+        enc: &normal_encoding,
+        input: &[u8],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        if input.is_empty() {
+            return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+
+        let byte_type = |offset: usize| enc.type_0[input[offset] as usize] as ::core::ffi::c_int;
+        let mut offset = match byte_type(0) {
+            22 | 24 => 1,
+            29 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
+            kind @ (5 | 6 | 7) => {
+                let width = kind as usize - 3;
+                if input.len() < width {
+                    return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
+                }
+                if enc.enc.isUtf8 == 0
+                    || normal_pi_utf8_invalid(input, 0, width)
+                    || !normal_pi_utf8_name_char(input, 0, width, &nmstrtPages)
+                {
+                    return (crate::src::xmltok::XML_TOK_INVALID_1, Some(0));
+                }
+                width
+            }
+            19 => {
+                let (token, next) = normal_scan_char_ref_bytes_impl(enc, &input[1..]);
+                return (token, next.map(|next| next + 1));
+            }
+            _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(0)),
+        };
+
+        while offset < input.len() {
+            match byte_type(offset) {
+                22 | 24 | 25 | 26 | 27 => offset += 1,
+                29 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+                kind @ (5 | 6 | 7) => {
+                    let width = kind as usize - 3;
+                    if input.len() - offset < width {
+                        return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
+                    }
+                    if enc.enc.isUtf8 == 0
+                        || normal_pi_utf8_invalid(input, offset, width)
+                        || !normal_pi_utf8_name_char(input, offset, width, &namePages)
+                    {
+                        return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+                    }
+                    offset += width;
+                }
+                18 => return (crate::src::xmltok::XML_TOK_ENTITY_REF_1, Some(offset + 1)),
+                _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+            }
+        }
+        (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
+    }
+
+    fn normal_scan_char_ref_bytes_impl(
+        enc: &normal_encoding,
+        input: &[u8],
+    ) -> (::core::ffi::c_int, Option<usize>) {
+        if input.is_empty() {
+            return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+
+        let hex = input[0] == b'x';
+        let mut offset = usize::from(hex);
+        if offset == input.len() {
+            return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+        let byte_type = |offset: usize| enc.type_0[input[offset] as usize] as ::core::ffi::c_int;
+        let first_kind = byte_type(offset);
+        if !(first_kind == 25 || (hex && first_kind == 24)) {
+            return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+        }
+        offset += 1;
+
+        while offset < input.len() {
+            match byte_type(offset) {
+                25 | 24 if hex => offset += 1,
+                25 if !hex => offset += 1,
+                18 => return (crate::src::xmltok::XML_TOK_CHAR_REF_1, Some(offset + 1)),
+                _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+            }
+        }
+        (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
+    }
+
+    fn normal_scan_lt_with_check(
+        normal: &normal_encoding,
+        input: &[u8],
+        check: &dyn Fn(NormalCharCheck, usize, usize) -> bool,
+    ) -> NormalScanLtResult {
+        match normal_scan_lt_impl(normal, input, |kind, offset, width| {
+            check(
+                match kind {
+                    NormalScanLtCharCheck::Invalid => NormalCharCheck::Invalid,
+                    NormalScanLtCharCheck::NameStart => NormalCharCheck::NameStart,
+                    NormalScanLtCharCheck::Name => NormalCharCheck::Name,
+                },
+                offset,
+                width,
+            )
+        }) {
+            NormalScanLtAction::Token(token, next) => normal_scan_lt_result(token, next),
+            NormalScanLtAction::Comment(start) => {
+                let (token, next) = normal_scan_comment_impl(&normal.type_0, &input[start..], |offset, width| {
+                    check(NormalCharCheck::Invalid, start + offset, width)
+                });
+                normal_scan_lt_result(token, next.map(|next| start + next))
+            }
+            NormalScanLtAction::CdataSection(start) => {
+                let result = normal_scan_cdata_section_open(&input[start..]);
+                normal_scan_lt_result(result.token, result.next.map(|next| start + next))
+            }
+            NormalScanLtAction::ProcessingInstruction(start) => {
+                let (token, next) = normal_scan_pi_impl(normal, &input[start..]);
+                normal_scan_lt_result(token, next.map(|next| start + next))
+            }
+            NormalScanLtAction::EndTag(start) => {
+                let result = normal_scan_end_tag_impl(normal, &input[start..], |kind, offset, width| {
+                    check(
+                        match kind {
+                            NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
+                            NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
+                            NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
+                        },
+                        start + offset,
+                        width,
+                    )
+                });
+                normal_scan_lt_result(result.token, result.next.map(|next| start + next))
+            }
+            NormalScanLtAction::Attributes(start) => {
+                let result = normal_scan_atts_impl(
+                    normal,
+                    &input[start..],
+                    |kind, offset, width| {
+                        check(
+                            match kind {
+                                NormalScanAttsCharCheck::Invalid => NormalCharCheck::Invalid,
+                                NormalScanAttsCharCheck::Name => NormalCharCheck::Name,
+                                NormalScanAttsCharCheck::NameStart => NormalCharCheck::NameStart,
+                            },
+                            start + offset,
+                            width,
+                        )
+                    },
+                    |ref_start| {
+                        let (token, next) = normal_scan_ref_bytes_impl(normal, &input[start + ref_start..]);
+                        (token, next.map_or(0, |next| ref_start + next))
+                    },
+                );
+                normal_scan_lt_result(result.token, result.next.map(|next| start + next))
+            }
+        }
+    }
+
     pub unsafe extern "C" fn normal_scanLt(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
@@ -2212,96 +2398,14 @@ pub mod xmltok_impl_c {
         let input_len = end.offset_from(ptr) as usize;
         let input = ::core::slice::from_raw_parts(ptr.cast::<u8>(), input_len);
         let normal = &*(enc as *const normal_encoding);
-        let action = normal_scan_lt_impl(normal, input, |kind, offset, width| {
-            let kind = match kind {
-                NormalScanLtCharCheck::Invalid => NormalCharCheck::Invalid,
-                NormalScanLtCharCheck::NameStart => NormalCharCheck::NameStart,
-                NormalScanLtCharCheck::Name => NormalCharCheck::Name,
-            };
+        let char_check = |kind, offset, width| {
             normal_char_check(normal, kind, width, enc, ptr.add(offset), &input[offset..])
-        });
-        match action {
-            NormalScanLtAction::Token(token, next) => {
-                if let Some(next) = next {
-                    *nextTokPtr = ptr.add(next);
-                }
-                token
-            }
-            NormalScanLtAction::Comment(start) => {
-                normal_scanComment(enc, ptr.add(start), end, nextTokPtr)
-            }
-            NormalScanLtAction::CdataSection(start) => {
-                normal_scanCdataSection(enc, ptr.add(start), end, nextTokPtr)
-            }
-            NormalScanLtAction::ProcessingInstruction(start) => {
-                let (token, next) = normal_scan_pi_impl(normal, &input[start..]);
-                if let Some(next) = next {
-                    *nextTokPtr = ptr.add(start + next);
-                }
-                token
-            }
-            NormalScanLtAction::EndTag(start) => {
-                let end_tag_input = &input[start..];
-                let result =
-                    normal_scan_end_tag_impl(normal, end_tag_input, |kind, offset, width| {
-                        let kind = match kind {
-                            NormalScanEndTagCharCheck::Invalid => NormalCharCheck::Invalid,
-                            NormalScanEndTagCharCheck::NameStart => NormalCharCheck::NameStart,
-                            NormalScanEndTagCharCheck::Name => NormalCharCheck::Name,
-                        };
-                        normal_char_check(
-                            normal,
-                            kind,
-                            width,
-                            enc,
-                            ptr.add(start + offset),
-                            &end_tag_input[offset..],
-                        )
-                    });
-                if let Some(next) = result.next {
-                    *nextTokPtr = ptr.add(start + next);
-                }
-                result.token
-            }
-            NormalScanLtAction::Attributes(start) => {
-                let attributes = &input[start..];
-                // `c_char` is a one-byte integer type, so this keeps the
-                // checked bounds of `attributes` while matching the shared
-                // entity-reference scanner's input representation.
-                let attributes_as_chars = ::core::slice::from_raw_parts(
-                    attributes.as_ptr().cast::<::core::ffi::c_char>(),
-                    attributes.len(),
-                );
-                let result = normal_scan_atts_impl(
-                    normal,
-                    attributes,
-                    |kind, offset, width| {
-                        let kind = match kind {
-                            NormalScanAttsCharCheck::Invalid => NormalCharCheck::Invalid,
-                            NormalScanAttsCharCheck::Name => NormalCharCheck::Name,
-                            NormalScanAttsCharCheck::NameStart => NormalCharCheck::NameStart,
-                        };
-                        normal_char_check(
-                            normal,
-                            kind,
-                            width,
-                            enc,
-                            ptr.add(start + offset),
-                            &attributes[offset..],
-                        )
-                    },
-                    |ref_start| {
-                        let (token, next) =
-                            normal_scan_ref_impl(normal, &attributes_as_chars[ref_start..]);
-                        (token, next.map_or(0, |offset| ref_start + offset))
-                    },
-                );
-                if let Some(next) = result.next {
-                    *nextTokPtr = ptr.add(start + next);
-                }
-                result.token
-            }
+        };
+        let result = normal_scan_lt_with_check(normal, input, &char_check);
+        if let Some(next) = result.next {
+            *nextTokPtr = ptr.add(next);
         }
+        result.token
     }
 
     enum NormalContentAction {
