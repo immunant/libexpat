@@ -1539,8 +1539,16 @@ pub const XML_ACCOUNT_ENTITY_EXPANSION: XML_Account = 1;
 pub const XML_ACCOUNT_DIRECT: XML_Account = 0;
 
 pub type ICHAR = ::core::ffi::c_char;
-static mut xmlLen: ::core::ffi::c_int = 0;
-static mut xmlnsLen: ::core::ffi::c_int = 0;
+static xmlLen: ::core::ffi::c_int =
+    (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 37]>() as ::core::ffi::c_int
+        as usize)
+        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
+        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
+static xmlnsLen: ::core::ffi::c_int =
+    (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 30]>() as ::core::ffi::c_int
+        as usize)
+        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
+        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
 
 pub const INIT_TAG_BUF_SIZE: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 
@@ -13569,18 +13577,9 @@ extern "C" fn getDebugLevel(
     }
     return debugLevel;
 }
-unsafe extern "C" fn c2rust_run_static_initializers() {
-    xmlLen = (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 37]>()
-        as ::core::ffi::c_int as usize)
-        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
-        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
-    xmlnsLen = (::core::mem::size_of::<[crate::expat_external_h::XML_Char; 30]>()
-        as ::core::ffi::c_int as usize)
-        .wrapping_div(::core::mem::size_of::<crate::expat_external_h::XML_Char>() as usize)
-        .wrapping_sub(1 as usize) as ::core::ffi::c_int;
-}
+extern "C" fn c2rust_run_static_initializers() {}
 #[used]
 #[cfg_attr(target_os = "linux", link_section = ".init_array")]
 #[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
 #[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [c2rust_run_static_initializers];
+static INIT_ARRAY: [extern "C" fn(); 1] = [c2rust_run_static_initializers];
