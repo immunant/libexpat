@@ -1416,6 +1416,25 @@ static COMMENT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn CommentCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// A comment-handler registration prepared from the ABI callback value.
+///
+/// The parser implementation stores only this typed registry entry and its
+/// opaque address key; it never retains the C callback representation itself.
+struct CommentHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn CommentCallback>>,
+}
+
+fn comment_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> CommentHandlerRegistration
+where
+    Callback: CommentCallback + 'static,
+{
+    CommentHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 // CDATA callbacks use the same boundary registry as the other handler
 // families. Parser state only records whether one is installed, so an address
 // supplied by C is not retained in the parser object.
@@ -8944,23 +8963,22 @@ pub unsafe extern "C" fn XML_SetProcessingInstructionHandler_ffi(
 ) {
     XML_SetProcessingInstructionHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetCommentHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_CommentHandler,
+fn XML_SetCommentHandler(
+    handler_enabled: &mut bool,
+    parser_address: usize,
+    registration: CommentHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_commentHandler = handler.is_some();
-        let mut handlers = COMMENT_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    *handler_enabled = registration.callback.is_some();
+    let mut handlers = COMMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
@@ -8970,7 +8988,17 @@ pub unsafe extern "C" fn XML_SetCommentHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut handler: crate::expat_h::XML_CommentHandler,
 ) {
-    XML_SetCommentHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = comment_handler_registration(handler);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    XML_SetCommentHandler(
+        &mut parser.m_commentHandler,
+        parser_address,
+        registration,
+    )
 }
 fn XML_SetCdataSectionHandler(
     start_handler_enabled: &mut bool,
