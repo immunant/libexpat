@@ -2173,37 +2173,6 @@ pub unsafe extern "C" fn expat_realloc(
         .offset(crate::internal_h::EXPAT_MALLOC_PADDING as isize)
         as *mut ::core::ffi::c_void;
 }
-#[export_name = "XML_ParserCreate"]
-
-pub unsafe extern "C" fn XML_ParserCreate_ffi(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    parserCreate(
-        encodingName,
-        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
-        ::core::ptr::null_mut::<DTD>(),
-        ::core::ptr::null_mut::<XML_ParserStruct>(),
-    )
-}
-#[export_name = "XML_ParserCreateNS"]
-
-pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut nsSep: crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    let mut tmp: [crate::expat_external_h::XML_Char; 2] = [
-        nsSep,
-        0 as ::core::ffi::c_int as crate::expat_external_h::XML_Char,
-    ];
-    parserCreate(
-        encodingName,
-        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
-        &raw mut tmp as *mut crate::expat_external_h::XML_Char,
-        ::core::ptr::null_mut::<DTD>(),
-        ::core::ptr::null_mut::<XML_ParserStruct>(),
-    )
-}
 static implicitContext: [crate::expat_external_h::XML_Char; 41] = [
     crate::ascii_h::ASCII_x as crate::expat_external_h::XML_Char,
     crate::ascii_h::ASCII_m as crate::expat_external_h::XML_Char,
@@ -2357,28 +2326,13 @@ macro_rules! call_processor_loop_from_ffi {
     }};
 }
 
-#[export_name = "XML_ParserCreate_MM"]
-
-pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
-    mut nameSep: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Parser {
-    parserCreate(
-        encodingName,
-        memsuite,
-        nameSep,
-        ::core::ptr::null_mut::<DTD>(),
-        ::core::ptr::null_mut::<XML_ParserStruct>(),
-    )
-}
-unsafe extern "C" fn parserCreate(
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-    mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
-    mut nameSep: *const crate::expat_external_h::XML_Char,
-    mut dtd: *mut DTD,
-    mut parentParser: crate::expat_h::XML_Parser,
-) -> crate::expat_h::XML_Parser {
+macro_rules! parserCreate {
+    ($encodingName:expr, $memsuite:expr, $nameSep:expr, $dtd:expr, $parentParser:expr $(,)?) => {{
+    let mut encodingName: *const crate::expat_external_h::XML_Char = $encodingName;
+    let mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite = $memsuite;
+    let mut nameSep: *const crate::expat_external_h::XML_Char = $nameSep;
+    let mut dtd: *mut DTD = $dtd;
+    let mut parentParser: crate::expat_h::XML_Parser = $parentParser;
     let mut parser: crate::expat_h::XML_Parser = ::core::ptr::null_mut::<XML_ParserStruct>();
     let increase: crate::__stddef_size_t_h::size_t = (::core::mem::size_of::<
         crate::__stddef_size_t_h::size_t,
@@ -2447,33 +2401,9 @@ unsafe extern "C" fn parserCreate(
                 .offset(crate::internal_h::EXPAT_MALLOC_PADDING as isize)
                 as crate::expat_h::XML_Parser;
             mtemp_0 = &raw const (*parser).m_mem as *mut crate::expat_h::XML_Memory_Handling_Suite;
-            (*mtemp_0).malloc_fcn = Some(
-                crate::stdlib::malloc
-                    as unsafe extern "C" fn(
-                        crate::__stddef_size_t_h::size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        crate::__stddef_size_t_h::size_t,
-                    ) -> *mut ::core::ffi::c_void,
-                >;
-            (*mtemp_0).realloc_fcn = Some(
-                crate::stdlib::realloc
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        crate::__stddef_size_t_h::size_t,
-                    ) -> *mut ::core::ffi::c_void,
-            )
-                as Option<
-                    unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        crate::__stddef_size_t_h::size_t,
-                    ) -> *mut ::core::ffi::c_void,
-                >;
-            (*mtemp_0).free_fcn =
-                Some(crate::stdlib::free as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ())
-                    as Option<unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()>;
+            (*mtemp_0).malloc_fcn = Some(crate::stdlib::malloc);
+            (*mtemp_0).realloc_fcn = Some(crate::stdlib::realloc);
+            (*mtemp_0).free_fcn = Some(crate::stdlib::free);
         }
     }
     if parser.is_null() {
@@ -2681,7 +2611,54 @@ unsafe extern "C" fn parserCreate(
         (*parser).m_internalEncoding = crate::src::xmltok::xmltok_ns_c::XmlGetUtf8InternalEncoding()
             as *const crate::src::xmltok::encoding;
     }
-    return parser;
+    parser
+    }};
+}
+
+#[export_name = "XML_ParserCreate"]
+pub unsafe extern "C" fn XML_ParserCreate_ffi(
+    mut encodingName: *const crate::expat_external_h::XML_Char,
+) -> crate::expat_h::XML_Parser {
+    parserCreate!(
+        encodingName,
+        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
+        ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
+        ::core::ptr::null_mut::<DTD>(),
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+    )
+}
+
+#[export_name = "XML_ParserCreateNS"]
+pub unsafe extern "C" fn XML_ParserCreateNS_ffi(
+    mut encodingName: *const crate::expat_external_h::XML_Char,
+    mut nsSep: crate::expat_external_h::XML_Char,
+) -> crate::expat_h::XML_Parser {
+    let mut tmp: [crate::expat_external_h::XML_Char; 2] = [
+        nsSep,
+        0 as ::core::ffi::c_int as crate::expat_external_h::XML_Char,
+    ];
+    parserCreate!(
+        encodingName,
+        ::core::ptr::null::<crate::expat_h::XML_Memory_Handling_Suite>(),
+        &raw mut tmp as *mut crate::expat_external_h::XML_Char,
+        ::core::ptr::null_mut::<DTD>(),
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+    )
+}
+
+#[export_name = "XML_ParserCreate_MM"]
+pub unsafe extern "C" fn XML_ParserCreate_MM_ffi(
+    mut encodingName: *const crate::expat_external_h::XML_Char,
+    mut memsuite: *const crate::expat_h::XML_Memory_Handling_Suite,
+    mut nameSep: *const crate::expat_external_h::XML_Char,
+) -> crate::expat_h::XML_Parser {
+    parserCreate!(
+        encodingName,
+        memsuite,
+        nameSep,
+        ::core::ptr::null_mut::<DTD>(),
+        ::core::ptr::null_mut::<XML_ParserStruct>(),
+    )
 }
 
 fn parserInit(
@@ -3125,7 +3102,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
             (*parser).m_namespaceSeparator,
             0 as ::core::ffi::c_int as crate::expat_external_h::XML_Char,
         ];
-        parser = parserCreate(
+        parser = parserCreate!(
             encodingName,
             &raw const (*parser).m_mem,
             &raw mut tmp as *mut crate::expat_external_h::XML_Char,
@@ -3133,7 +3110,7 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
             oldParser,
         );
     } else {
-        parser = parserCreate(
+        parser = parserCreate!(
             encodingName,
             &raw const (*parser).m_mem,
             ::core::ptr::null::<crate::expat_external_h::XML_Char>(),
