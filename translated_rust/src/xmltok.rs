@@ -14034,10 +14034,7 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        if streqci(
-            &raw mut buf as *mut ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-        ) != 0
+        if streqci(&raw mut buf as *mut ::core::ffi::c_char, KW_UTF_16.as_ptr()) != 0
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
             return enc;
@@ -14247,10 +14244,7 @@ pub mod xmltok_ns_c {
             return ::core::ptr::null::<crate::src::xmltok::ENCODING>();
         }
         *p = 0 as ::core::ffi::c_char;
-        if streqci(
-            &raw mut buf as *mut ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-        ) != 0
+        if streqci(&raw mut buf as *mut ::core::ffi::c_char, KW_UTF_16.as_ptr()) != 0
             && (*enc).minBytesPerChar == 2 as ::core::ffi::c_int
         {
             return enc;
@@ -22705,7 +22699,7 @@ unsafe extern "C" fn parsePseudoAttribute(
     return 1 as ::core::ffi::c_int;
 }
 
-static mut KW_version: [::core::ffi::c_char; 8] = [
+static KW_version: [::core::ffi::c_char; 8] = [
     crate::ascii_h::ASCII_v as ::core::ffi::c_char,
     crate::ascii_h::ASCII_e_1 as ::core::ffi::c_char,
     crate::ascii_h::ASCII_r as ::core::ffi::c_char,
@@ -22716,7 +22710,7 @@ static mut KW_version: [::core::ffi::c_char; 8] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_encoding: [::core::ffi::c_char; 9] = [
+static KW_encoding: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_e_1 as ::core::ffi::c_char,
     crate::ascii_h::ASCII_n as ::core::ffi::c_char,
     crate::ascii_h::ASCII_c_1 as ::core::ffi::c_char,
@@ -22728,7 +22722,7 @@ static mut KW_encoding: [::core::ffi::c_char; 9] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_standalone: [::core::ffi::c_char; 11] = [
+static KW_standalone: [::core::ffi::c_char; 11] = [
     crate::ascii_h::ASCII_s as ::core::ffi::c_char,
     crate::ascii_h::ASCII_t as ::core::ffi::c_char,
     crate::ascii_h::ASCII_a_1 as ::core::ffi::c_char,
@@ -22742,14 +22736,14 @@ static mut KW_standalone: [::core::ffi::c_char; 11] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_yes: [::core::ffi::c_char; 4] = [
+static KW_yes: [::core::ffi::c_char; 4] = [
     crate::ascii_h::ASCII_y as ::core::ffi::c_char,
     crate::ascii_h::ASCII_e_1 as ::core::ffi::c_char,
     crate::ascii_h::ASCII_s as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_no: [::core::ffi::c_char; 3] = [
+static KW_no: [::core::ffi::c_char; 3] = [
     crate::ascii_h::ASCII_n as ::core::ffi::c_char,
     crate::ascii_h::ASCII_o as ::core::ffi::c_char,
     '\0' as i32 as ::core::ffi::c_char,
@@ -22797,7 +22791,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_version as *const ::core::ffi::c_char,
+        KW_version.as_ptr(),
     ) == 0
     {
         if isGeneralTextEntity == 0 {
@@ -22836,7 +22830,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_encoding as *const ::core::ffi::c_char,
+        KW_encoding.as_ptr(),
     ) != 0
     {
         let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
@@ -22877,7 +22871,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         name,
         nameEnd,
-        &raw const KW_standalone as *const ::core::ffi::c_char,
+        KW_standalone.as_ptr(),
     ) == 0
         || isGeneralTextEntity != 0
     {
@@ -22888,7 +22882,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_yes as *const ::core::ffi::c_char,
+        KW_yes.as_ptr(),
     ) != 0
     {
         if !standalone.is_null() {
@@ -22898,7 +22892,7 @@ unsafe extern "C" fn doParseXmlDecl(
         enc,
         val,
         ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_no as *const ::core::ffi::c_char,
+        KW_no.as_ptr(),
     ) != 0
     {
         if !standalone.is_null() {
@@ -23447,7 +23441,7 @@ pub unsafe extern "C" fn XmlInitUnknownEncoding_ffi(
 ) -> *mut crate::src::xmltok::ENCODING {
     XmlInitUnknownEncoding(mem, table, convert, userData)
 }
-static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
+static KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     crate::ascii_h::ASCII_I as ::core::ffi::c_char,
     crate::ascii_h::ASCII_S as ::core::ffi::c_char,
     crate::ascii_h::ASCII_O as ::core::ffi::c_char,
@@ -23461,7 +23455,7 @@ static mut KW_ISO_8859_1: [::core::ffi::c_char; 11] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
+static KW_US_ASCII: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_S as ::core::ffi::c_char,
     crate::ascii_h::ASCII_MINUS as ::core::ffi::c_char,
@@ -23473,7 +23467,7 @@ static mut KW_US_ASCII: [::core::ffi::c_char; 9] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
+static KW_UTF_8: [::core::ffi::c_char; 6] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
@@ -23482,7 +23476,7 @@ static mut KW_UTF_8: [::core::ffi::c_char; 6] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
+static KW_UTF_16: [::core::ffi::c_char; 7] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
@@ -23492,7 +23486,7 @@ static mut KW_UTF_16: [::core::ffi::c_char; 7] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
@@ -23504,7 +23498,7 @@ static mut KW_UTF_16BE: [::core::ffi::c_char; 9] = [
     '\0' as i32 as ::core::ffi::c_char,
 ];
 
-static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
+static KW_UTF_16LE: [::core::ffi::c_char; 9] = [
     crate::ascii_h::ASCII_U as ::core::ffi::c_char,
     crate::ascii_h::ASCII_T as ::core::ffi::c_char,
     crate::ascii_h::ASCII_F_1 as ::core::ffi::c_char,
@@ -23517,27 +23511,21 @@ static mut KW_UTF_16LE: [::core::ffi::c_char; 9] = [
 ];
 
 unsafe extern "C" fn getEncodingIndex(mut name: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    static mut encodingNames: [*const ::core::ffi::c_char; 6] = unsafe {
-        [
-            &raw const KW_ISO_8859_1 as *const ::core::ffi::c_char,
-            &raw const KW_US_ASCII as *const ::core::ffi::c_char,
-            &raw const KW_UTF_8 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16 as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16BE as *const ::core::ffi::c_char,
-            &raw const KW_UTF_16LE as *const ::core::ffi::c_char,
-        ]
-    };
+    let encoding_names = [
+        KW_ISO_8859_1.as_ptr(),
+        KW_US_ASCII.as_ptr(),
+        KW_UTF_8.as_ptr(),
+        KW_UTF_16.as_ptr(),
+        KW_UTF_16BE.as_ptr(),
+        KW_UTF_16LE.as_ptr(),
+    ];
     let mut i: ::core::ffi::c_int = 0;
     if name.is_null() {
         return NO_ENC as ::core::ffi::c_int;
     }
     i = 0 as ::core::ffi::c_int;
-    while i
-        < (::core::mem::size_of::<[*const ::core::ffi::c_char; 6]>() as usize)
-            .wrapping_div(::core::mem::size_of::<*const ::core::ffi::c_char>() as usize)
-            as ::core::ffi::c_int
-    {
-        if streqci(name, encodingNames[i as usize]) != 0 {
+    while i < encoding_names.len() as ::core::ffi::c_int {
+        if streqci(name, encoding_names[i as usize]) != 0 {
             return i;
         }
         i += 1;
