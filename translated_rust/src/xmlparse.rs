@@ -16956,19 +16956,33 @@ unsafe extern "C" fn externalParEntProcessor(
         }
     }
     parser.m_processor = ProcessorState::Prolog;
-    return doProlog(
+    let mut prolog_cursor = PrologCursorUpdate::Unchanged;
+    let error = doProlog(
         parser,
         true,
         s,
         end,
         tok,
         next,
-        next_ptr,
+        &mut prolog_cursor,
         (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         crate::expat_h::XML_TRUE,
         XML_ACCOUNT_DIRECT,
     );
+    if let PrologCursorUpdate::Cursor(cursor) = prolog_cursor {
+        *next_ptr = match cursor {
+            Some(address) => {
+                let Some(window) = parser.m_buffer.window_from_addresses(address, address)
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                window.as_ptr().cast::<::core::ffi::c_char>()
+            }
+            None => ::core::ptr::null(),
+        };
+    }
+    return error;
 }
 
 unsafe extern "C" fn entityValueProcessor(
@@ -17065,19 +17079,33 @@ unsafe extern "C" fn prologProcessor(
         }
         next = s.wrapping_add(offset);
     }
-    return doProlog(
+    let mut prolog_cursor = PrologCursorUpdate::Unchanged;
+    let error = doProlog(
         parser,
         true,
         s,
         end,
         tok,
         next,
-        next_ptr,
+        &mut prolog_cursor,
         (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         crate::expat_h::XML_TRUE,
         XML_ACCOUNT_DIRECT,
     );
+    if let PrologCursorUpdate::Cursor(cursor) = prolog_cursor {
+        *next_ptr = match cursor {
+            Some(address) => {
+                let Some(window) = parser.m_buffer.window_from_addresses(address, address)
+                else {
+                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                };
+                window.as_ptr().cast::<::core::ffi::c_char>()
+            }
+            None => ::core::ptr::null(),
+        };
+    }
+    return error;
 }
 
 fn prolog_quoted_token_contents(
@@ -17148,6 +17176,13 @@ fn scan_prolog_window(
 struct PrologContentContinuation {
     error: crate::expat_h::XML_Error,
     next_address: Option<usize>,
+}
+
+/// A `doProlog` return cursor, kept as a checked address until the processor
+/// adapter has revalidated it against its live parser or entity input.
+enum PrologCursorUpdate {
+    Unchanged,
+    Cursor(Option<usize>),
 }
 
 /// Continues from a complete prolog token into content processing.
@@ -17260,7 +17295,7 @@ unsafe fn doProlog(
     mut end: *const ::core::ffi::c_char,
     mut tok: ::core::ffi::c_int,
     mut next: *const ::core::ffi::c_char,
-    next_ptr: &mut *const ::core::ffi::c_char,
+    next_ptr: &mut PrologCursorUpdate,
     mut haveMore: crate::expat_h::XML_Bool,
     mut allowClosingDoctype: crate::expat_h::XML_Bool,
     mut account: XML_Account,
@@ -17422,7 +17457,7 @@ unsafe fn doProlog(
         );
         if tok <= 0 as ::core::ffi::c_int {
             if haveMore as ::core::ffi::c_int != 0 && tok != crate::src::xmltok::XML_TOK_INVALID {
-                *next_ptr = s;
+                *next_ptr = PrologCursorUpdate::Cursor(Some(s.addr()));
                 return crate::expat_h::XML_ERROR_NONE;
             }
             match tok {
@@ -17452,7 +17487,7 @@ unsafe fn doProlog(
                             .expect("external prolog parsing requires an open entity")
                             == 0
                     {
-                *next_ptr = s;
+                        *next_ptr = PrologCursorUpdate::Cursor(Some(s.addr()));
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     if parser.m_isParamEntity as ::core::ffi::c_int != 0
@@ -17473,7 +17508,7 @@ unsafe fn doProlog(
                         {
                             return crate::expat_h::XML_ERROR_INCOMPLETE_PE;
                         }
-                        *next_ptr = s;
+                        *next_ptr = PrologCursorUpdate::Cursor(Some(s.addr()));
                         return crate::expat_h::XML_ERROR_NONE;
                     }
                     return crate::expat_h::XML_ERROR_NO_ELEMENTS;
@@ -17981,21 +18016,9 @@ unsafe fn doProlog(
                                             end.addr(),
                                             account,
                                         );
-                                        *next_ptr = match continuation.next_address {
-                                            Some(next_address) => {
-                                                let Some(source) = event_raw_name_source(
-                                                    parser,
-                                                    dtd,
-                                                    parser_events,
-                                                    next_address,
-                                                    next_address,
-                                                ) else {
-                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-                                                };
-                                                source.chars().as_ptr()
-                                            }
-                                            None => ::core::ptr::null(),
-                                        };
+                                        *next_ptr = PrologCursorUpdate::Cursor(
+                                            continuation.next_address,
+                                        );
                                         return continuation.error;
                                     }
                                     34 => {
@@ -19060,7 +19083,13 @@ unsafe fn doProlog(
                                             .map(|offset| ignore_start.wrapping_add(offset))
                                             .unwrap_or(::core::ptr::null());
                                         if let Some(offset) = action.next_offset {
-                                            *next_ptr = ignore_start.wrapping_add(offset);
+                                            let Some(next_address) =
+                                                ignore_start.addr().checked_add(offset)
+                                            else {
+                                                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                            };
+                                            *next_ptr =
+                                                PrologCursorUpdate::Cursor(Some(next_address));
                                         }
                                         let result_3 = if action.check_finished_after_default
                                             && parser.m_parsingStatus.parsing
@@ -20057,13 +20086,13 @@ unsafe fn doProlog(
         }
         match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
-                *next_ptr = next;
+                *next_ptr = PrologCursorUpdate::Cursor(Some(next.addr()));
                 return crate::expat_h::XML_ERROR_NONE;
             }
             2 => return crate::expat_h::XML_ERROR_ABORTED,
             1 => {
                 if parser.m_reenter != 0 {
-                    *next_ptr = next;
+                    *next_ptr = PrologCursorUpdate::Cursor(Some(next.addr()));
                     return crate::expat_h::XML_ERROR_NONE;
                 }
             }
@@ -20879,6 +20908,7 @@ unsafe extern "C" fn internalEntityProcessor(
             if let Some(offset) = scan.next {
                 next = textStart.wrapping_add(offset);
             }
+            let mut prolog_cursor = PrologCursorUpdate::Unchanged;
             result = doProlog(
                 parser_state,
                 false,
@@ -20886,11 +20916,32 @@ unsafe extern "C" fn internalEntityProcessor(
                 textEnd,
                 tok,
                 next,
-                &mut next,
+                &mut prolog_cursor,
                 crate::expat_h::XML_FALSE,
                 crate::expat_h::XML_FALSE,
                 XML_ACCOUNT_ENTITY_EXPANSION,
             );
+            if let PrologCursorUpdate::Cursor(cursor) = prolog_cursor {
+                next = match cursor {
+                    Some(address) => {
+                        let Some(source) = dtd_owner.inspect(|dtd| {
+                            event_raw_name_source(
+                                parser_state,
+                                dtd,
+                                false,
+                                address,
+                                address,
+                            )
+                            .map(|source| source.chars().as_ptr())
+                        })
+                        else {
+                            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                        };
+                        source
+                    }
+                    None => ::core::ptr::null(),
+                };
+            }
         } else {
             result = doContent(
                 parser_state,
