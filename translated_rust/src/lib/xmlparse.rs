@@ -9443,67 +9443,69 @@ extern "C" fn defineAttribute(
     mut value: *const XML_Char,
     mut parser: XML_Parser,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        let mut att: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
-        if !value.is_null() || isId as ::core::ffi::c_int != 0 {
-            let mut i: ::core::ffi::c_int = 0;
-            i = 0 as ::core::ffi::c_int;
-            while i < (*type_0).nDefaultAtts {
-                if attId == (*(*type_0).defaultAtts.offset(i as isize)).id as *mut ATTRIBUTE_ID {
-                    return 1 as ::core::ffi::c_int;
-                }
-                i += 1;
+    if !value.is_null() || isId as ::core::ffi::c_int != 0 {
+        let mut i: ::core::ffi::c_int = 0;
+        while i < ptr_ref(type_0).nDefaultAtts {
+            let existing = ptr_ref(ptr_ref(type_0).defaultAtts.wrapping_add(i as usize));
+            if attId == existing.id as *mut ATTRIBUTE_ID {
+                return 1 as ::core::ffi::c_int;
             }
-            if isId as ::core::ffi::c_int != 0 && (*type_0).idAtt.is_null() && (*attId).xmlns == 0 {
-                (*type_0).idAtt = attId;
-            }
+            i += 1;
         }
-        if (*type_0).nDefaultAtts == (*type_0).allocDefaultAtts {
-            if (*type_0).allocDefaultAtts == 0 as ::core::ffi::c_int {
-                (*type_0).allocDefaultAtts = 8 as ::core::ffi::c_int;
-                (*type_0).defaultAtts = expat_malloc(
-                    parser,
-                    ((*type_0).allocDefaultAtts as size_t)
-                        .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>() as size_t),
-                    7182 as ::core::ffi::c_int,
-                ) as *mut DEFAULT_ATTRIBUTE;
-                if (*type_0).defaultAtts.is_null() {
-                    (*type_0).allocDefaultAtts = 0 as ::core::ffi::c_int;
-                    return 0 as ::core::ffi::c_int;
-                }
-            } else {
-                let mut temp: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
-                if (*type_0).allocDefaultAtts > INT_MAX / 2 as ::core::ffi::c_int {
-                    return 0 as ::core::ffi::c_int;
-                }
-                let mut count: ::core::ffi::c_int =
-                    (*type_0).allocDefaultAtts * 2 as ::core::ffi::c_int;
-                temp = expat_realloc(
-                    parser,
-                    (*type_0).defaultAtts as *mut ::core::ffi::c_void,
-                    (count as size_t)
-                        .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>() as size_t),
-                    7208 as ::core::ffi::c_int,
-                ) as *mut DEFAULT_ATTRIBUTE;
-                if temp.is_null() {
-                    return 0 as ::core::ffi::c_int;
-                }
-                (*type_0).allocDefaultAtts = count;
-                (*type_0).defaultAtts = temp;
-            }
+        if isId as ::core::ffi::c_int != 0
+            && ptr_ref(type_0).idAtt.is_null()
+            && ptr_ref(attId).xmlns == 0
+        {
+            ptr_mut(type_0).idAtt = attId;
         }
-        att = (*type_0)
-            .defaultAtts
-            .offset((*type_0).nDefaultAtts as isize);
-        (*att).id = attId;
-        (*att).value = value;
-        (*att).isCdata = isCdata;
-        if isCdata == 0 {
-            (*attId).maybeTokenized = XML_TRUE;
-        }
-        (*type_0).nDefaultAtts += 1 as ::core::ffi::c_int;
-        return 1 as ::core::ffi::c_int;
     }
+
+    if ptr_ref(type_0).nDefaultAtts == ptr_ref(type_0).allocDefaultAtts {
+        if ptr_ref(type_0).allocDefaultAtts == 0 as ::core::ffi::c_int {
+            ptr_mut(type_0).allocDefaultAtts = 8 as ::core::ffi::c_int;
+            ptr_mut(type_0).defaultAtts = expat_malloc_ptr::<DEFAULT_ATTRIBUTE>(
+                parser,
+                (ptr_ref(type_0).allocDefaultAtts as size_t)
+                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>() as size_t),
+                7182 as ::core::ffi::c_int,
+            );
+            if ptr_ref(type_0).defaultAtts.is_null() {
+                ptr_mut(type_0).allocDefaultAtts = 0 as ::core::ffi::c_int;
+                return 0 as ::core::ffi::c_int;
+            }
+        } else {
+            if ptr_ref(type_0).allocDefaultAtts > INT_MAX / 2 as ::core::ffi::c_int {
+                return 0 as ::core::ffi::c_int;
+            }
+            let count = ptr_ref(type_0).allocDefaultAtts * 2 as ::core::ffi::c_int;
+            let temp = expat_realloc_ptr::<DEFAULT_ATTRIBUTE>(
+                parser,
+                ptr_ref(type_0).defaultAtts as *mut ::core::ffi::c_void,
+                (count as size_t)
+                    .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>() as size_t),
+                7208 as ::core::ffi::c_int,
+            );
+            if temp.is_null() {
+                return 0 as ::core::ffi::c_int;
+            }
+            ptr_mut(type_0).allocDefaultAtts = count;
+            ptr_mut(type_0).defaultAtts = temp;
+        }
+    }
+
+    let att = ptr_mut(
+        ptr_ref(type_0)
+            .defaultAtts
+            .wrapping_add(ptr_ref(type_0).nDefaultAtts as usize),
+    );
+    att.id = attId;
+    att.value = value;
+    att.isCdata = isCdata;
+    if isCdata == 0 {
+        ptr_mut(attId).maybeTokenized = XML_TRUE;
+    }
+    ptr_mut(type_0).nDefaultAtts += 1 as ::core::ffi::c_int;
+    1 as ::core::ffi::c_int
 }
 fn setElementTypePrefix(parser: XML_Parser, elementType: *mut ELEMENT_TYPE) -> ::core::ffi::c_int {
     let parser = ptr_mut(parser);
@@ -9550,131 +9552,96 @@ extern "C" fn getAttributeId(
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut ATTRIBUTE_ID {
-    unsafe {
-        let dtd: *mut DTD = (*parser).m_dtd;
-        let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        let mut name: *const XML_Char = ::core::ptr::null::<XML_Char>();
-        if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char && poolGrow(&mut (*dtd).pool) == 0
-        {
-            0 as ::core::ffi::c_int
-        } else {
-            let c2rust_fresh52 = (*dtd).pool.ptr;
-            (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-            *c2rust_fresh52 = '\0' as i32 as XML_Char;
-            1 as ::core::ffi::c_int
-        } == 0
-        {
-            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        }
-        name = poolStoreString(&mut (*dtd).pool, enc, start, end);
-        if name.is_null() {
-            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        }
-        name = name.offset(1);
-        id = lookup(
-            parser,
-            &raw mut (*dtd).attributeIds,
-            name as KEY,
-            ::core::mem::size_of::<ATTRIBUTE_ID>() as size_t,
-        ) as *mut ATTRIBUTE_ID;
-        if id.is_null() {
-            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-        }
-        if (*id).name != name as *mut XML_Char {
-            (*dtd).pool.ptr = (*dtd).pool.start;
-        } else {
-            (*dtd).pool.start = (*dtd).pool.ptr;
-            if !((*parser).m_ns == 0) {
-                if *name.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x78 as ::core::ffi::c_int
-                    && *name.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x6d as ::core::ffi::c_int
-                    && *name.offset(2 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x6c as ::core::ffi::c_int
-                    && *name.offset(3 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x6e as ::core::ffi::c_int
-                    && *name.offset(4 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x73 as ::core::ffi::c_int
-                    && (*name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == '\0' as i32
-                        || *name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                            == 0x3a as ::core::ffi::c_int)
-                {
-                    if *name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == '\0' as i32
-                    {
-                        (*id).prefix = &raw mut (*dtd).defaultPrefix;
-                    } else {
-                        (*id).prefix = lookup(
-                            parser,
-                            &raw mut (*dtd).prefixes,
-                            name.offset(6 as ::core::ffi::c_int as isize),
-                            ::core::mem::size_of::<PREFIX>() as size_t,
-                        ) as *mut PREFIX;
-                    }
-                    (*id).xmlns = XML_TRUE;
-                } else {
-                    let mut i: ::core::ffi::c_int = 0;
-                    i = 0 as ::core::ffi::c_int;
-                    while *name.offset(i as isize) != 0 {
-                        if *name.offset(i as isize) as ::core::ffi::c_int
-                            == 0x3a as ::core::ffi::c_int
-                        {
-                            let mut j: ::core::ffi::c_int = 0;
-                            j = 0 as ::core::ffi::c_int;
-                            while j < i {
-                                if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
-                                    && poolGrow(&mut (*dtd).pool) == 0
-                                {
-                                    0 as ::core::ffi::c_int
-                                } else {
-                                    let c2rust_fresh53 = (*dtd).pool.ptr;
-                                    (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                                    *c2rust_fresh53 = *name.offset(j as isize);
-                                    1 as ::core::ffi::c_int
-                                } == 0
-                                {
-                                    return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                                }
-                                j += 1;
-                            }
-                            if if (*dtd).pool.ptr == (*dtd).pool.end as *mut XML_Char
-                                && poolGrow(&mut (*dtd).pool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh54 = (*dtd).pool.ptr;
-                                (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                                *c2rust_fresh54 = '\0' as i32 as XML_Char;
-                                1 as ::core::ffi::c_int
-                            } == 0
-                            {
-                                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                            }
-                            (*id).prefix = lookup(
-                                parser,
-                                &raw mut (*dtd).prefixes,
-                                (*dtd).pool.start as KEY,
-                                ::core::mem::size_of::<PREFIX>() as size_t,
-                            ) as *mut PREFIX;
-                            if (*id).prefix.is_null() {
-                                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                            }
-                            if (*(*id).prefix).name == (*dtd).pool.start as *const XML_Char {
-                                (*dtd).pool.start = (*dtd).pool.ptr;
-                            } else {
-                                (*dtd).pool.ptr = (*dtd).pool.start;
-                            }
-                            break;
-                        } else {
-                            i += 1;
-                        }
-                    }
-                }
-            }
-        }
+    let dtd = ptr_ref(parser).m_dtd;
+    if !pool_append_xml_char(&mut ptr_mut(dtd).pool, '\0' as i32 as XML_Char) {
+        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    }
+
+    let mut name = poolStoreString(&mut ptr_mut(dtd).pool, enc, start, end);
+    if name.is_null() {
+        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    }
+    name = name.wrapping_add(1);
+
+    let id = lookup(
+        parser,
+        &raw mut ptr_mut(dtd).attributeIds,
+        name as KEY,
+        ::core::mem::size_of::<ATTRIBUTE_ID>() as size_t,
+    ) as *mut ATTRIBUTE_ID;
+    if id.is_null() {
+        return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+    }
+
+    if ptr_ref(id).name != name as *mut XML_Char {
+        ptr_mut(dtd).pool.ptr = ptr_ref(dtd).pool.start;
         return id;
     }
+
+    ptr_mut(dtd).pool.start = ptr_ref(dtd).pool.ptr;
+    if ptr_ref(parser).m_ns == 0 {
+        return id;
+    }
+
+    let xmlns_tail = read_xml_char(name.wrapping_add(5)) as ::core::ffi::c_int;
+    if read_xml_char(name.wrapping_add(0)) as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int
+        && read_xml_char(name.wrapping_add(1)) as ::core::ffi::c_int == 0x6d as ::core::ffi::c_int
+        && read_xml_char(name.wrapping_add(2)) as ::core::ffi::c_int == 0x6c as ::core::ffi::c_int
+        && read_xml_char(name.wrapping_add(3)) as ::core::ffi::c_int == 0x6e as ::core::ffi::c_int
+        && read_xml_char(name.wrapping_add(4)) as ::core::ffi::c_int == 0x73 as ::core::ffi::c_int
+        && (xmlns_tail == '\0' as i32 || xmlns_tail == 0x3a as ::core::ffi::c_int)
+    {
+        if xmlns_tail == '\0' as i32 {
+            ptr_mut(id).prefix = &raw mut ptr_mut(dtd).defaultPrefix;
+        } else {
+            ptr_mut(id).prefix = lookup(
+                parser,
+                &raw mut ptr_mut(dtd).prefixes,
+                name.wrapping_add(6),
+                ::core::mem::size_of::<PREFIX>() as size_t,
+            ) as *mut PREFIX;
+        }
+        ptr_mut(id).xmlns = XML_TRUE;
+        return id;
+    }
+
+    let mut i: ::core::ffi::c_int = 0;
+    while read_xml_char(name.wrapping_add(i as usize)) != 0 {
+        if read_xml_char(name.wrapping_add(i as usize)) as ::core::ffi::c_int
+            == 0x3a as ::core::ffi::c_int
+        {
+            let mut j: ::core::ffi::c_int = 0;
+            while j < i {
+                if !pool_append_xml_char(
+                    &mut ptr_mut(dtd).pool,
+                    read_xml_char(name.wrapping_add(j as usize)),
+                ) {
+                    return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+                }
+                j += 1;
+            }
+            if !pool_append_xml_char(&mut ptr_mut(dtd).pool, '\0' as i32 as XML_Char) {
+                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+            }
+            ptr_mut(id).prefix = lookup(
+                parser,
+                &raw mut ptr_mut(dtd).prefixes,
+                ptr_ref(dtd).pool.start as KEY,
+                ::core::mem::size_of::<PREFIX>() as size_t,
+            ) as *mut PREFIX;
+            if ptr_ref(id).prefix.is_null() {
+                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+            }
+            if ptr_ref(ptr_ref(id).prefix).name == ptr_ref(dtd).pool.start as *const XML_Char {
+                ptr_mut(dtd).pool.start = ptr_ref(dtd).pool.ptr;
+            } else {
+                ptr_mut(dtd).pool.ptr = ptr_ref(dtd).pool.start;
+            }
+            break;
+        }
+        i += 1;
+    }
+    id
 }
 extern "C" fn getContext(mut parser: XML_Parser) -> *const XML_Char {
     unsafe {
