@@ -6648,7 +6648,7 @@ unsafe extern "C" fn doContent(
                 }
                 (*tag).name.str = (*tag).buf.str;
                 *toPtr = '\0' as i32 as crate::expat_external_h::XML_Char;
-                result_0 = storeAtts(
+                result_0 = crate::store_atts_from_unsafe_context!(
                     parser,
                     enc,
                     s,
@@ -6699,7 +6699,7 @@ unsafe extern "C" fn doContent(
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 }
                 (*parser).m_tempPool.start = (*parser).m_tempPool.ptr;
-                result_1 = storeAtts(
+                result_1 = crate::store_atts_from_unsafe_context!(
                     parser,
                     enc,
                     s,
@@ -7131,6 +7131,8 @@ unsafe extern "C" fn doContent(
     }
 }
 
+#[doc(hidden)]
+#[macro_export]
 macro_rules! get_attribute_id {
     ($parser:expr, $enc:expr, $start:expr, $end:expr $(,)?) => {{
         let parser = $parser;
@@ -7252,6 +7254,8 @@ macro_rules! get_attribute_id {
     }};
 }
 
+#[doc(hidden)]
+#[macro_export]
 macro_rules! store_attribute_value_from_unsafe_context {
     ($parser:expr, $enc:expr, $isCdata:expr, $ptr:expr, $end:expr, $pool:expr, $account:expr $(,)?) => {{
         let parser: crate::expat_h::XML_Parser = $parser;
@@ -7388,14 +7392,17 @@ macro_rules! store_attribute_value_from_unsafe_context {
     }};
 }
 
-unsafe extern "C" fn storeAtts(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut attStr: *const ::core::ffi::c_char,
-    mut tagNamePtr: *mut TAG_NAME,
-    mut bindingsPtr: *mut *mut BINDING,
-    mut account: XML_Account,
-) -> crate::expat_h::XML_Error {
+#[doc(hidden)]
+#[macro_export]
+macro_rules! store_atts_from_unsafe_context {
+    ($parser:expr, $enc:expr, $attStr:expr, $tagNamePtr:expr, $bindingsPtr:expr, $account:expr $(,)?) => {{
+        let parser: crate::expat_h::XML_Parser = $parser;
+        let enc: *const crate::src::xmltok::ENCODING = $enc;
+        let attStr: *const ::core::ffi::c_char = $attStr;
+        let tagNamePtr: *mut TAG_NAME = $tagNamePtr;
+        let bindingsPtr: *mut *mut BINDING = $bindingsPtr;
+        let account: XML_Account = $account;
+        let mut store_atts = || -> crate::expat_h::XML_Error {
     let dtd: *mut DTD = (*parser).m_dtd;
     let mut elementType: *mut ELEMENT_TYPE = ::core::ptr::null_mut::<ELEMENT_TYPE>();
     let mut nDefaultAtts: ::core::ffi::c_int = 0;
@@ -7503,7 +7510,7 @@ unsafe extern "C" fn storeAtts(
     while i < n {
         let mut currAtt: *mut crate::src::xmltok::ATTRIBUTE =
             (*parser).m_atts.offset(i as isize) as *mut crate::src::xmltok::ATTRIBUTE;
-        let mut attId: *mut ATTRIBUTE_ID = get_attribute_id!(
+        let mut attId: *mut ATTRIBUTE_ID = crate::get_attribute_id!(
             parser,
             enc,
             (*currAtt).name,
@@ -7546,7 +7553,7 @@ unsafe extern "C" fn storeAtts(
                     }
                 }
             }
-            result = store_attribute_value_from_unsafe_context!(
+            result = crate::store_attribute_value_from_unsafe_context!(
                 parser,
                 enc,
                 isCdata,
@@ -8049,7 +8056,10 @@ unsafe extern "C" fn storeAtts(
         );
     }
     (*tagNamePtr).str = (*binding).uri;
-    return crate::expat_h::XML_ERROR_NONE;
+            return crate::expat_h::XML_ERROR_NONE;
+        };
+        store_atts()
+    }};
 }
 
 extern "C" fn is_rfc3986_uri_char(
