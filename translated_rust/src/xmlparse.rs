@@ -2752,11 +2752,18 @@ struct DataBuffer {
 // allocation, growth, and free sequence.
 struct AttributeStorage {
     records: Vec<crate::src::xmltok::ATTRIBUTE>,
-    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, AttributeAllocationAction) -> bool>>,
+    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>>,
 }
 
-enum AttributeAllocationAction {
-    Grow(crate::__stddef_size_t_h::size_t),
+// Parser-owned scratch buffers keep their readable data in Rust collections.
+// This action only drives the corresponding opaque Expat allocator token, so
+// a single factory can preserve the allocator callback sequence for each
+// buffer without exposing or dereferencing the foreign allocation.
+enum ParserAllocationAction {
+    Grow {
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    },
     Free(::core::ffi::c_int),
 }
 
@@ -2779,12 +2786,7 @@ enum NamespaceAttributeAllocationAction {
 // the same allocation, growth, and release sequence as the C buffer.
 struct GroupConnectorStorage {
     values: Vec<::core::ffi::c_char>,
-    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, GroupConnectorAllocationAction) -> bool>>,
-}
-
-enum GroupConnectorAllocationAction {
-    Grow(crate::__stddef_size_t_h::size_t),
-    Free(::core::ffi::c_int),
+    backing: Option<Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>>,
 }
 
 impl GroupConnectorStorage {
@@ -2796,23 +2798,23 @@ impl GroupConnectorStorage {
     }
 }
 
-/// Acquires the observable allocator token for the parser-owned group
-/// connector buffer.  The Rust `Vec` owns the readable bytes; this closure
-/// only preserves Expat's malloc/realloc/free sequence for custom allocator
+/// Acquires the observable allocator token for a parser-owned scratch
+/// buffer. The Rust `Vec` owns the readable bytes; this closure only
+/// preserves Expat's malloc/realloc/free sequence for custom allocator
 /// callbacks, and never dereferences the foreign allocation.
-fn group_connector_allocation_backing(
+fn scratch_allocation_backing(
     parser: &mut XML_ParserStruct,
     size: crate::__stddef_size_t_h::size_t,
     source_line: ::core::ffi::c_int,
-) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, GroupConnectorAllocationAction) -> bool>> {
+) -> Option<Box<dyn FnMut(&mut XML_ParserStruct, ParserAllocationAction) -> bool>> {
     let allocation = unsafe { expat_malloc(std::ptr::from_mut(parser), size, source_line) };
     if allocation.is_null() {
         return None;
     }
     let mut allocation = allocation;
     Some(Box::new(move |parser, action| match action {
-        GroupConnectorAllocationAction::Grow(size) => {
-            let reallocated = unsafe { expat_realloc(parser, allocation, size, 5915) };
+        ParserAllocationAction::Grow { size, source_line } => {
+            let reallocated = unsafe { expat_realloc(parser, allocation, size, source_line) };
             if reallocated.is_null() {
                 false
             } else {
@@ -2820,7 +2822,7 @@ fn group_connector_allocation_backing(
                 true
             }
         }
-        GroupConnectorAllocationAction::Free(source_line) => {
+        ParserAllocationAction::Free(source_line) => {
             unsafe { expat_free(parser, allocation, source_line) };
             true
         }
@@ -2895,7 +2897,13 @@ fn ensure_attribute_capacity(
     }
     let mut backing = parser.m_atts.backing.take();
     let grew = backing.as_mut().is_some_and(|backing| {
-        backing(parser, AttributeAllocationAction::Grow(allocation_size))
+        backing(
+            parser,
+            ParserAllocationAction::Grow {
+                size: allocation_size,
+                source_line: 3894,
+            },
+        )
     });
     parser.m_atts.backing = backing;
     if !grew {
@@ -5392,7 +5400,7 @@ fn cleanup_failed_parser_construction(parser: &mut XML_ParserStruct) {
     }
     let mut atts_backing = parser.m_atts.backing.take();
     if let Some(backing) = atts_backing.as_mut() {
-        backing(parser, AttributeAllocationAction::Free(2002));
+        backing(parser, ParserAllocationAction::Free(2002));
     }
     parser.m_dataBuf.release(2011);
     release_parser_storage(parser, 2016);
@@ -6157,7 +6165,7 @@ unsafe fn parser_create_ownership_facade(
             None => {
                 let mut backing = parser.m_atts.backing.take();
                 if let Some(backing) = backing.as_mut() {
-                    backing(parser, AttributeAllocationAction::Free(1464));
+                    backing(parser, ParserAllocationAction::Free(1464));
                 }
                 return Err(1468);
             }
@@ -6170,7 +6178,7 @@ unsafe fn parser_create_ownership_facade(
             data_buf_backing(1464 as ::core::ffi::c_int);
             let mut backing = parser.m_atts.backing.take();
             if let Some(backing) = backing.as_mut() {
-                backing(parser, AttributeAllocationAction::Free(1464));
+                backing(parser, ParserAllocationAction::Free(1464));
             }
             return Err(1468);
         }
@@ -6191,7 +6199,7 @@ unsafe fn parser_create_ownership_facade(
                 parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
                 let mut backing = parser.m_atts.backing.take();
                 if let Some(backing) = backing.as_mut() {
-                    backing(parser, AttributeAllocationAction::Free(1479));
+                    backing(parser, ParserAllocationAction::Free(1479));
                 }
                 return Err(1483);
             }
@@ -7576,11 +7584,11 @@ unsafe fn parser_free_owned(parser: &mut XML_ParserStruct) {
     }
     let mut atts_backing = parser.m_atts.backing.take();
     if let Some(backing) = atts_backing.as_mut() {
-        backing(parser, AttributeAllocationAction::Free(2002));
+        backing(parser, ParserAllocationAction::Free(2002));
     }
     let mut group_connector_backing = parser.m_groupConnector.backing.take();
     if let Some(backing) = group_connector_backing.as_mut() {
-        backing(parser, GroupConnectorAllocationAction::Free(2006));
+        backing(parser, ParserAllocationAction::Free(2006));
     }
     parser.m_groupConnector.values = Vec::new();
     if let Some(mut release) = parser.m_buffer.release.take() {
@@ -18425,10 +18433,11 @@ unsafe fn doProlog(
                                                 };
                                                 if !backing(
                                                     parser,
-                                                    GroupConnectorAllocationAction::Grow(
-                                                        new_group_size
+                                                    ParserAllocationAction::Grow {
+                                                        size: new_group_size
                                                             as crate::__stddef_size_t_h::size_t,
-                                                    ),
+                                                        source_line: 5915,
+                                                    },
                                                 ) {
                                                     parser.m_groupConnector.backing =
                                                         Some(backing);
@@ -18470,7 +18479,7 @@ unsafe fn doProlog(
                                                 }
                                             } else {
                                                 parser.m_groupSize = 32 as ::core::ffi::c_uint;
-                                                let Some(mut backing) = group_connector_allocation_backing(
+                                                let Some(mut backing) = scratch_allocation_backing(
                                                     parser,
                                                     parser.m_groupSize
                                                         as crate::__stddef_size_t_h::size_t,
@@ -18489,7 +18498,7 @@ unsafe fn doProlog(
                                                 {
                                                     backing(
                                                         parser,
-                                                        GroupConnectorAllocationAction::Free(5944),
+                                                        ParserAllocationAction::Free(5944),
                                                     );
                                                     parser.m_groupSize = 0;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -23614,29 +23623,10 @@ unsafe fn attribute_storage_new(
     let allocation_size =
         capacity.checked_mul(::core::mem::size_of::<crate::src::xmltok::ATTRIBUTE>())?;
     AttributeStorage::callback_slots(capacity)?;
-    let mut allocation = expat_malloc(parser, allocation_size, source_line);
-    if allocation.is_null() {
-        return None;
-    }
-    let mut backing: Box<dyn FnMut(&mut XML_ParserStruct, AttributeAllocationAction) -> bool> =
-        Box::new(move |parser, action| match action {
-            AttributeAllocationAction::Grow(size) => {
-                let reallocated = expat_realloc(parser, allocation, size, 3894);
-                if reallocated.is_null() {
-                    false
-                } else {
-                    allocation = reallocated;
-                    true
-                }
-            }
-            AttributeAllocationAction::Free(free_source_line) => {
-                expat_free(parser, allocation, free_source_line);
-                true
-            }
-        });
+    let mut backing = scratch_allocation_backing(parser, allocation_size, source_line)?;
     let mut records = Vec::new();
     if records.try_reserve_exact(capacity).is_err() {
-        backing(parser, AttributeAllocationAction::Free(source_line));
+        backing(parser, ParserAllocationAction::Free(source_line));
         return None;
     }
     records.resize_with(capacity, AttributeStorage::blank_record);
