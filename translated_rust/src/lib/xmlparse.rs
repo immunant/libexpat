@@ -10503,6 +10503,15 @@ fn expat_malloc_ptr<T>(parser: XML_Parser, size: size_t, line: ::core::ffi::c_in
     unsafe { expat_malloc(parser, size, line) as *mut T }
 }
 
+fn expat_realloc_ptr<T>(
+    parser: XML_Parser,
+    ptr: *mut ::core::ffi::c_void,
+    size: size_t,
+    line: ::core::ffi::c_int,
+) -> *mut T {
+    unsafe { expat_realloc(parser, ptr, size, line) as *mut T }
+}
+
 fn expat_free_ptr(parser: XML_Parser, ptr: *mut ::core::ffi::c_void, line: ::core::ffi::c_int) {
     unsafe {
         expat_free(parser, ptr, line);
@@ -10764,33 +10773,27 @@ fn hashTableIterNext(iter: *mut HASH_TABLE_ITER) -> *mut NAMED {
     ::core::ptr::null_mut::<NAMED>()
 }
 fn block_next(block: *mut BLOCK) -> *mut BLOCK {
-    unsafe { (*block).next as *mut BLOCK }
+    ptr_ref(block).next as *mut BLOCK
 }
 
 fn set_block_next(block: *mut BLOCK, next: *mut BLOCK) {
-    unsafe {
-        (*block).next = next as *mut block;
-    }
+    ptr_mut(block).next = next as *mut block;
 }
 
 fn block_size(block: *mut BLOCK) -> ::core::ffi::c_int {
-    unsafe { (*block).size }
+    ptr_ref(block).size
 }
 
 fn set_block_size(block: *mut BLOCK, size: ::core::ffi::c_int) {
-    unsafe {
-        (*block).size = size;
-    }
+    ptr_mut(block).size = size;
 }
 
 fn block_storage(block: *mut BLOCK) -> *mut XML_Char {
-    unsafe { ::core::ptr::addr_of_mut!((*block).s).cast() }
+    ptr_mut(block).s.as_mut_ptr()
 }
 
 fn free_block(parser: XML_Parser, block: *mut BLOCK, source_line: ::core::ffi::c_int) {
-    unsafe {
-        expat_free(parser, block.cast::<::core::ffi::c_void>(), source_line);
-    }
+    expat_free_ptr(parser, block.cast::<::core::ffi::c_void>(), source_line);
 }
 
 fn realloc_block(
@@ -10799,14 +10802,12 @@ fn realloc_block(
     bytes_to_allocate: size_t,
     source_line: ::core::ffi::c_int,
 ) -> *mut BLOCK {
-    unsafe {
-        expat_realloc(
-            parser,
-            block.cast::<::core::ffi::c_void>(),
-            bytes_to_allocate,
-            source_line,
-        ) as *mut BLOCK
-    }
+    expat_realloc_ptr(
+        parser,
+        block.cast::<::core::ffi::c_void>(),
+        bytes_to_allocate,
+        source_line,
+    )
 }
 
 fn malloc_block(
@@ -10814,27 +10815,19 @@ fn malloc_block(
     bytes_to_allocate: size_t,
     source_line: ::core::ffi::c_int,
 ) -> *mut BLOCK {
-    unsafe { expat_malloc(parser, bytes_to_allocate, source_line) as *mut BLOCK }
+    expat_malloc_ptr(parser, bytes_to_allocate, source_line)
 }
 
 fn copy_xml_chars(dest: *mut XML_Char, src: *const XML_Char, count: usize) {
-    unsafe {
-        memcpy(
-            dest.cast::<::core::ffi::c_void>(),
-            src.cast::<::core::ffi::c_void>(),
-            count.wrapping_mul(::core::mem::size_of::<XML_Char>()),
-        );
-    }
+    ptr_slice_mut(dest, count).copy_from_slice(ptr_slice(src, count));
 }
 
 fn read_xml_char(ptr: *const XML_Char) -> XML_Char {
-    unsafe { ptr.read() }
+    *ptr_ref(ptr)
 }
 
 fn write_xml_char(ptr: *mut XML_Char, value: XML_Char) {
-    unsafe {
-        ptr.write(value);
-    }
+    *ptr_mut(ptr) = value;
 }
 
 fn call_utf8_convert(
