@@ -1284,7 +1284,7 @@ fn start_element_attribute_chars(
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a start-namespace callback is installed.
 static START_NAMESPACE_DECL_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<TwoXmlCharCallback>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<TwoXmlCharCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 trait EndElementCallback: Send + Sync + std::any::Any {}
@@ -1387,35 +1387,41 @@ static CHARACTER_DATA_HANDLERS: std::sync::OnceLock<
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a processing-instruction callback is installed.
-trait ProcessingInstructionCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        target: *const crate::expat_external_h::XML_Char,
-        data: *const crate::expat_external_h::XML_Char,
-    );
+struct TwoXmlCharCallbackEvent<'a> {
+    parser: &'a XML_ParserStruct,
+    first: Option<&'a [crate::expat_external_h::XML_Char]>,
+    second: Option<&'a [crate::expat_external_h::XML_Char]>,
 }
 
-impl ProcessingInstructionCallback
+trait TwoXmlCharCallback: Send + Sync + std::any::Any {}
+
+impl TwoXmlCharCallback
     for unsafe extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
     ) -> ()
 {
-    unsafe fn invoke(
-        &self,
-        user_data: *mut ::core::ffi::c_void,
-        target: *const crate::expat_external_h::XML_Char,
-        data: *const crate::expat_external_h::XML_Char,
-    ) {
-        self(user_data, target, data);
+}
+
+struct TwoXmlCharCallbackAdapter {
+    callback: std::sync::Arc<dyn TwoXmlCharCallback>,
+}
+
+impl TwoXmlCharCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: TwoXmlCharCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
     }
 }
 
 static PROCESSING_INSTRUCTION_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<
-        std::collections::HashMap<usize, std::sync::Arc<dyn ProcessingInstructionCallback>>,
+        std::collections::HashMap<usize, std::sync::Arc<TwoXmlCharCallbackAdapter>>,
     >,
 > = std::sync::OnceLock::new();
 
@@ -1425,23 +1431,22 @@ static PROCESSING_INSTRUCTION_HANDLERS: std::sync::OnceLock<
 /// The parser-side setter retains only this typed registry entry and its
 /// opaque parser address key; it never retains the C callback representation.
 struct ProcessingInstructionHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn ProcessingInstructionCallback>>,
+    callback: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>>,
 }
 
 fn processing_instruction_handler_registration<Callback>(
     handler: Option<Callback>,
 ) -> ProcessingInstructionHandlerRegistration
 where
-    Callback: ProcessingInstructionCallback + 'static,
+    Callback: TwoXmlCharCallback + 'static,
 {
     ProcessingInstructionHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(TwoXmlCharCallbackAdapter::new(callback))),
     }
 }
 
 // Start-namespace and processing-instruction handlers use the same C callback
 // ABI: an opaque user context followed by two XML character pointers.
-type TwoXmlCharCallback = dyn ProcessingInstructionCallback;
 
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether a comment callback is installed.
@@ -1793,6 +1798,27 @@ macro_rules! handler_arg_from_state {
     }};
 }
 
+impl TwoXmlCharCallbackAdapter {
+    fn invoke(&self, event: TwoXmlCharCallbackEvent<'_>) {
+        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+            ),
+        >() else {
+            return;
+        };
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event.first.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+                event.second.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            );
+        }
+    }
+}
+
 impl CdataSectionCallbackAdapter {
     fn invoke(&self, parser: &XML_ParserStruct) {
         let Some(callback) = self.callback.downcast_ref::<
@@ -2020,18 +2046,16 @@ fn dispatch_character_data_callback(
 /// The two strings are terminated XML-character vectors, and their storage
 /// remains live through the callback.
 fn dispatch_processing_instruction_callback(
-    callback: &dyn ProcessingInstructionCallback,
+    callback: &TwoXmlCharCallbackAdapter,
     parser: &XML_ParserStruct,
     target: &[crate::expat_external_h::XML_Char],
     data: &[crate::expat_external_h::XML_Char],
 ) {
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            target.as_ptr(),
-            data.as_ptr(),
-        );
-    }
+    callback.invoke(TwoXmlCharCallbackEvent {
+        parser,
+        first: Some(target),
+        second: Some(data),
+    });
 }
 
 /// Invokes a comment callback with a terminated parser-owned snapshot.
@@ -8116,9 +8140,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldCharacterDataHandler = false;
     let mut oldCharacterDataCallback: Option<std::sync::Arc<dyn CharacterDataCallback>> = None;
     let mut oldProcessingInstructionHandler = false;
-    let mut oldProcessingInstructionCallback: Option<
-        std::sync::Arc<dyn ProcessingInstructionCallback>,
-    > = None;
+    let mut oldProcessingInstructionCallback: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>> = None;
     let mut oldCommentHandler = false;
     let mut oldCommentCallback: Option<std::sync::Arc<dyn CommentCallback>> = None;
     let mut oldStartCdataSectionHandler = false;
@@ -8134,7 +8156,7 @@ fn xml_external_entity_parser_create_impl(
     let mut oldNotationDeclHandler = false;
     let mut oldNotationDeclCallback: Option<std::sync::Arc<dyn NotationDeclCallback>> = None;
     let mut oldStartNamespaceDeclHandler = false;
-    let mut oldStartNamespaceDeclCallback: Option<std::sync::Arc<TwoXmlCharCallback>> = None;
+    let mut oldStartNamespaceDeclCallback: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>> = None;
     let mut oldEndNamespaceDeclHandler = false;
     let mut oldEndNamespaceDeclCallback: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>> =
         None;
@@ -9642,7 +9664,7 @@ pub unsafe extern "C" fn XML_SetNotationDeclHandler_ffi(
 /// Parser state records only whether each callback is installed; the foreign
 /// callback representations themselves remain in the boundary registries.
 struct NamespaceDeclHandlerRegistrations {
-    start: Option<std::sync::Arc<TwoXmlCharCallback>>,
+    start: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>>,
     end: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>>,
 }
 
@@ -9652,17 +9674,17 @@ struct NamespaceDeclHandlerRegistrations {
 /// Parser state retains only this typed registry entry and its opaque address
 /// key, never the C callback representation itself.
 struct StartNamespaceDeclHandlerRegistration {
-    callback: Option<std::sync::Arc<TwoXmlCharCallback>>,
+    callback: Option<std::sync::Arc<TwoXmlCharCallbackAdapter>>,
 }
 
 fn start_namespace_decl_handler_registration<Callback>(
     handler: Option<Callback>,
 ) -> StartNamespaceDeclHandlerRegistration
 where
-    Callback: ProcessingInstructionCallback + 'static,
+    Callback: TwoXmlCharCallback + 'static,
 {
     StartNamespaceDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+        callback: handler.map(|callback| std::sync::Arc::new(TwoXmlCharCallbackAdapter::new(callback))),
     }
 }
 
@@ -9671,11 +9693,11 @@ fn namespace_decl_handler_registrations<StartCallback, EndCallback>(
     end: Option<EndCallback>,
 ) -> NamespaceDeclHandlerRegistrations
 where
-    StartCallback: ProcessingInstructionCallback + 'static,
+    StartCallback: TwoXmlCharCallback + 'static,
     EndCallback: EndNamespaceDeclCallback + 'static,
 {
     NamespaceDeclHandlerRegistrations {
-        start: start.map(|callback| std::sync::Arc::new(callback) as _),
+        start: start.map(|callback| std::sync::Arc::new(TwoXmlCharCallbackAdapter::new(callback))),
         end: end.map(|callback| std::sync::Arc::new(callback) as _),
     }
 }
@@ -15446,13 +15468,11 @@ fn invoke_start_namespace_decl_handler(
     // The slices are owned by `NamespaceBindingInput` for this call, so their
     // pointers remain valid throughout the foreign callback, including a
     // parser re-entry that grows the DTD pools.
-    unsafe {
-        callback.invoke(
-            handler_arg_from_state!(parser),
-            prefix.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            uri.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-        );
-    }
+    callback.invoke(TwoXmlCharCallbackEvent {
+        parser,
+        first: prefix,
+        second: uri,
+    });
 }
 
 fn add_binding_impl(
