@@ -6468,29 +6468,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn little2_prologTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let span = unsafe { end.offset_from(ptr) };
-        if span <= 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let len = (span as usize) & !1;
-        if len == 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, len) };
-        let normal = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = little2_prolog_tok(normal, input);
-        if let Some(offset) = next {
-            unsafe { *nextTokPtr = ptr.add(offset) };
-        }
-        token
-    }
-
     struct Little2AttributeValueToken {
         token: ::core::ffi::c_int,
         next: Option<usize>,
@@ -11755,7 +11732,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::little2_contentTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_ignoreSectionTok;
-pub use crate::src::xmltok::xmltok_impl_c::little2_prologTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanAtts;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanCharRef;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanComment;
