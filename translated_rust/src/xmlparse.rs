@@ -1363,7 +1363,7 @@ struct CharacterDataCallbackEvent<'a> {
 trait CharacterDataCallback: Send + Sync + std::any::Any {}
 
 impl CharacterDataCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         ::core::ffi::c_int,
@@ -1953,7 +1953,7 @@ fn character_data_callback_adapter(
             return;
         };
         let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 ::core::ffi::c_int,
@@ -1963,9 +1963,7 @@ fn character_data_callback_adapter(
         };
         // The typed event provides a live parser context and a bounded,
         // parser-owned character slice for this synchronous C callback.
-        unsafe {
-            callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
-        }
+        callback(handler_arg_from_state!(event.parser), event.data.as_ptr(), len);
     });
     std::sync::Arc::new(CharacterDataCallbackAdapter { callback })
 }
@@ -9880,12 +9878,16 @@ where
     }
 }
 
-fn XML_SetCharacterDataHandler(
-    handler_enabled: &mut bool,
+fn set_character_data_handler<Callback>(
+    parser: &mut XML_ParserStruct,
     parser_address: usize,
-    registration: CharacterDataHandlerRegistration,
-) {
-    *handler_enabled = registration.callback.is_some();
+    handler: Option<Callback>,
+)
+where
+    Callback: CharacterDataCallback + 'static,
+{
+    let registration = character_data_handler_registration(handler);
+    parser.m_characterDataHandler = registration.callback.is_some();
     let mut handlers = CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
@@ -9904,19 +9906,25 @@ fn XML_SetCharacterDataHandler(
 
 pub unsafe extern "C" fn XML_SetCharacterDataHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_CharacterDataHandler,
+    handler: crate::expat_h::XML_CharacterDataHandler,
 ) {
     if parser.is_null() || !parser.is_aligned() {
         return;
     }
     let parser_address = parser.addr();
-    let registration = character_data_handler_registration(handler);
+    // The exported callback type marks invocation as unsafe because its C
+    // arguments must be valid.  The adapter constructs those arguments only
+    // from the scoped parser borrow and bounded event slice, so it can retain
+    // the equivalent safe C callback representation internally.
+    let handler: Option<
+        extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            ::core::ffi::c_int,
+        ),
+    > = unsafe { ::core::mem::transmute(handler) };
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
-    XML_SetCharacterDataHandler(
-        &mut parser.m_characterDataHandler,
-        parser_address,
-        registration,
-    )
+    set_character_data_handler(parser, parser_address, handler)
 }
 fn set_processing_instruction_handler(
     parser: &mut XML_ParserStruct,
