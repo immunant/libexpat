@@ -2,6 +2,7 @@ use ::c2rust_bitfields;
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 use std::io::{self, Read, Write};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 extern "C" {
@@ -1016,7 +1017,7 @@ pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 #[no_mangle]
 pub static mut g_reparseDeferralEnabledDefault: XML_Bool = XML_TRUE;
 #[no_mangle]
-pub static mut g_bytesScanned: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
+pub static g_bytesScanned: AtomicU32 = AtomicU32::new(0);
 const XMLPARSE_C_FILE: &[u8] = b"/root/work/expat/lib/xmlparse.c\0";
 
 macro_rules! expat_malloc_ptr {
@@ -1091,9 +1092,7 @@ fn c_char_span_len(start: *const ::core::ffi::c_char, end: *const ::core::ffi::c
 }
 
 fn add_bytes_scanned(bytes: size_t) {
-    unsafe {
-        g_bytesScanned = g_bytesScanned.wrapping_add(bytes as ::core::ffi::c_uint);
-    }
+    g_bytesScanned.fetch_add(bytes as ::core::ffi::c_uint, Ordering::Relaxed);
 }
 
 fn implicit_context_ptr() -> *const XML_Char {
