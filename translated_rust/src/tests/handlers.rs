@@ -600,6 +600,18 @@ pub unsafe extern "C" fn start_element_suspender(
 pub static mut g_triplet_start_flag: ::core::ffi::c_int = XML_FALSE as ::core::ffi::c_int;
 #[no_mangle]
 pub static mut g_triplet_end_flag: ::core::ffi::c_int = XML_FALSE as ::core::ffi::c_int;
+
+pub(crate) fn triplet_flags() -> (::core::ffi::c_int, ::core::ffi::c_int) {
+    unsafe { (g_triplet_start_flag, g_triplet_end_flag) }
+}
+
+pub(crate) fn set_triplet_flags(start: ::core::ffi::c_int, end: ::core::ffi::c_int) {
+    unsafe {
+        g_triplet_start_flag = start;
+        g_triplet_end_flag = end;
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn triplet_start_checker(
     mut userData: *mut ::core::ffi::c_void,

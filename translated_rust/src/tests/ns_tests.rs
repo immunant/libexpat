@@ -1,3 +1,8 @@
+use crate::src::tests::handlers::{set_triplet_flags, triplet_flags};
+use crate::src::tests::runtests::{
+    current_test_parser, set_current_test_parser, take_current_test_parser,
+};
+
 extern "C" {
     pub type XML_ParserStruct;
     fn strlen(__s: *const ::core::ffi::c_char) -> size_t;
@@ -54,10 +59,8 @@ extern "C" {
     fn tcase_add_test(tc: *mut TCase, test: tcase_test_function);
     fn CharData_Init(storage: *mut CharData);
     fn CharData_CheckXMLChars(storage: *mut CharData, s: *const XML_Char) -> ::core::ffi::c_int;
-    static mut g_parser: XML_Parser;
     fn tcase_add_test__ifdef_xml_dtd(tc: *mut TCase, test: tcase_test_function);
     fn tcase_add_test__if_xml_ge(tc: *mut TCase, test: tcase_test_function);
-    fn basic_teardown();
     fn _xml_failure(parser: XML_Parser, file: *const ::core::ffi::c_char, line: ::core::ffi::c_int);
     fn _XML_Parse_SINGLE_BYTES(
         parser: XML_Parser,
@@ -100,8 +103,6 @@ extern "C" {
         name: *const XML_Char,
         atts: *mut *const XML_Char,
     );
-    static mut g_triplet_start_flag: ::core::ffi::c_int;
-    static mut g_triplet_end_flag: ::core::ffi::c_int;
     fn triplet_start_checker(
         userData: *mut ::core::ffi::c_void,
         name: *const XML_Char,
@@ -310,33 +311,15 @@ fn bool_to_c_int(value: bool) -> ::core::ffi::c_int {
 }
 
 fn global_parser() -> XML_Parser {
-    unsafe { g_parser }
+    current_test_parser() as XML_Parser
 }
 
 fn set_global_parser(parser: XML_Parser) {
-    unsafe {
-        g_parser = parser;
-    }
+    set_current_test_parser(parser as crate::src::tests::runtests::XML_Parser);
 }
 
-fn triplet_start_flag() -> ::core::ffi::c_int {
-    unsafe { g_triplet_start_flag }
-}
-
-fn set_triplet_start_flag(value: ::core::ffi::c_int) {
-    unsafe {
-        g_triplet_start_flag = value;
-    }
-}
-
-fn triplet_end_flag() -> ::core::ffi::c_int {
-    unsafe { g_triplet_end_flag }
-}
-
-fn set_triplet_end_flag(value: ::core::ffi::c_int) {
-    unsafe {
-        g_triplet_end_flag = value;
-    }
+fn take_global_parser() -> XML_Parser {
+    take_current_test_parser() as XML_Parser
 }
 
 fn bytes_to_c_chars<const N: usize>(bytes: [u8; N]) -> [::core::ffi::c_char; N] {
@@ -375,9 +358,10 @@ fn free_parser(parser: XML_Parser) {
     }
 }
 
-fn basic_teardown_safe() {
-    unsafe {
-        basic_teardown();
+fn namespace_teardown_safe() {
+    let parser = take_global_parser();
+    if !parser.is_null() {
+        free_parser(parser);
     }
 }
 
@@ -629,7 +613,7 @@ extern "C" fn namespace_setup() {
     }
 }
 extern "C" fn namespace_teardown() {
-    basic_teardown_safe();
+    namespace_teardown_safe();
 }
 extern "C" fn test_return_ns_triplet() {
     check_test_info(
@@ -680,8 +664,10 @@ extern "C" fn test_return_ns_triplet() {
                 as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
         ),
     );
-    set_triplet_start_flag(XML_FALSE as ::core::ffi::c_int);
-    set_triplet_end_flag(XML_FALSE as ::core::ffi::c_int);
+    set_triplet_flags(
+        XML_FALSE as ::core::ffi::c_int,
+        XML_FALSE as ::core::ffi::c_int,
+    );
     init_dummy_handlers_safe();
     if parse_single_bytes_len(
         global_parser(),
@@ -712,14 +698,15 @@ extern "C" fn test_return_ns_triplet() {
             89 as ::core::ffi::c_int,
         );
     }
-    if triplet_start_flag() == 0 {
+    let (triplet_start_flag, triplet_end_flag) = triplet_flags();
+    if triplet_start_flag == 0 {
         fail_test(
             b"/root/work/expat/tests/ns_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
             91 as ::core::ffi::c_int,
             b"triplet_start_checker not invoked\0".as_ptr() as *const ::core::ffi::c_char,
         );
     }
-    if triplet_end_flag() == 0 {
+    if triplet_end_flag == 0 {
         fail_test(
             b"/root/work/expat/tests/ns_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
             93 as ::core::ffi::c_int,

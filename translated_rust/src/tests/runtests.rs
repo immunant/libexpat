@@ -124,6 +124,24 @@ pub const CK_VERBOSE: ::core::ffi::c_int = 2 as ::core::ffi::c_int;
 pub static mut g_parser: XML_Parser =
     ::core::ptr::null::<XML_ParserStruct>() as *mut XML_ParserStruct;
 
+pub(crate) fn current_test_parser() -> XML_Parser {
+    unsafe { g_parser }
+}
+
+pub(crate) fn set_current_test_parser(parser: XML_Parser) {
+    unsafe {
+        g_parser = parser;
+    }
+}
+
+pub(crate) fn take_current_test_parser() -> XML_Parser {
+    unsafe {
+        let parser = g_parser;
+        g_parser = ::core::ptr::null_mut();
+        parser
+    }
+}
+
 fn parse_verbosity(args: impl IntoIterator<Item = String>) -> Result<::core::ffi::c_int, String> {
     let mut verbosity = CK_NORMAL;
 
