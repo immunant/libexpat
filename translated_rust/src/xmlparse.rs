@@ -7227,50 +7227,32 @@ unsafe extern "C" fn processXmlDecl(
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
     if if (*parser).m_ns as ::core::ffi::c_int != 0 {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS
-                as unsafe extern "C" fn(
-                    ::core::ffi::c_int,
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *mut ::core::ffi::c_int,
-                ) -> ::core::ffi::c_int,
+        crate::src::xmltok::xmltok_ns_c::XmlParseXmlDeclNS(
+            isGeneralTextEntity,
+            (*parser).m_encoding,
+            s,
+            next,
+            &mut (*parser).m_eventPtr,
+            Some(&mut version),
+            Some(&mut versionend),
+            Some(&mut encodingName),
+            Some(&mut newEncoding),
+            Some(&mut standalone),
         )
     } else {
-        Some(
-            crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl
-                as unsafe extern "C" fn(
-                    ::core::ffi::c_int,
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                    *mut *const crate::src::xmltok::ENCODING,
-                    *mut ::core::ffi::c_int,
-                ) -> ::core::ffi::c_int,
+        crate::src::xmltok::xmltok_ns_c::XmlParseXmlDecl(
+            isGeneralTextEntity,
+            (*parser).m_encoding,
+            s,
+            next,
+            &mut (*parser).m_eventPtr,
+            Some(&mut version),
+            Some(&mut versionend),
+            Some(&mut encodingName),
+            Some(&mut newEncoding),
+            Some(&mut standalone),
         )
-    }
-    .expect("non-null function pointer")(
-        isGeneralTextEntity,
-        (*parser).m_encoding,
-        s,
-        next,
-        &raw mut (*parser).m_eventPtr,
-        &raw mut version,
-        &raw mut versionend,
-        &raw mut encodingName,
-        &raw mut newEncoding,
-        &raw mut standalone,
-    ) == 0
+    } == 0
     {
         if isGeneralTextEntity != 0 {
             return crate::expat_h::XML_ERROR_TEXT_DECL;
