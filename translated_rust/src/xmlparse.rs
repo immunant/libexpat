@@ -3024,7 +3024,10 @@ struct BindingId(usize);
 pub struct binding {
     pub prefix: *mut prefix,
     nextTagBinding: Option<BindingId>,
-    pub prevPrefixBinding: *mut binding,
+    // Namespace shadowing is an index into the active binding arena.  The
+    // prior binding may move when that arena grows, so retain its stable ID
+    // and materialize an address only at the legacy callback boundary.
+    prevPrefixBinding: Option<BindingId>,
     // A binding only needs its namespace-declaration attribute's stable DTD
     // pool name when it is unwound.  Retaining that location avoids keeping a
     // raw pointer into the hash table across later table growth.
@@ -3339,7 +3342,7 @@ impl BindingStorage {
         binding.push(BINDING {
             prefix: ::core::ptr::null_mut(),
             nextTagBinding: None,
-            prevPrefixBinding: ::core::ptr::null_mut(),
+            prevPrefixBinding: None,
             attId: None,
             uri: uri.as_mut_ptr(),
             uriLen: 0,
@@ -9682,7 +9685,15 @@ unsafe extern "C" fn doContent(
                                         .as_ptr()
                                         .cast_mut()
                                 });
-                            (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+                            (*(*b).prefix).binding = (*b)
+                                .prevPrefixBinding
+                                .and_then(|id| parser_state.binding_index(id))
+                                .map_or(::core::ptr::null_mut(), |index| {
+                                    parser_state.m_activeBindings[index]
+                                        .binding
+                                        .as_ptr()
+                                        .cast_mut()
+                                });
                             let Some(index) = parser_state
                                 .m_activeBindings
                                 .iter()
@@ -9998,7 +10009,15 @@ unsafe extern "C" fn freeBindings(
                     .as_ptr()
                     .cast_mut()
             });
-        (*(*b).prefix).binding = (*b).prevPrefixBinding as *mut BINDING;
+        (*(*b).prefix).binding = (*b)
+            .prevPrefixBinding
+            .and_then(|id| parser_state.binding_index(id))
+            .map_or(::core::ptr::null_mut(), |index| {
+                parser_state.m_activeBindings[index]
+                    .binding
+                    .as_ptr()
+                    .cast_mut()
+            });
         let Some(index) = parser_state
             .m_activeBindings
             .iter()
@@ -11092,6 +11111,18 @@ unsafe extern "C" fn addBinding(
         };
         Some(storage.id)
     };
+    let previous_prefix_binding = if prefix.binding.is_null() {
+        None
+    } else {
+        let Some(storage) = parser
+            .m_activeBindings
+            .iter()
+            .find(|storage| storage.binding.as_ptr() == prefix.binding)
+        else {
+            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+        };
+        Some(storage.id)
+    };
     let binding_id = BindingId(parser.m_nextBindingId);
     let Some(next_binding_id) = parser.m_nextBindingId.checked_add(1) else {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -11131,7 +11162,7 @@ unsafe extern "C" fn addBinding(
     }
     b.prefix = prefix;
     b.attId = attribute_name;
-    b.prevPrefixBinding = prefix.binding;
+    b.prevPrefixBinding = previous_prefix_binding;
     let is_default_prefix = ::core::ptr::eq(
         prefix as *const PREFIX,
         &raw const (*parser_dtd_ptr!(parser_ptr)).defaultPrefix,
