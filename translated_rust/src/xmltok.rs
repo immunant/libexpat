@@ -567,27 +567,6 @@ impl NameMatcher {
         matches as ::core::ffi::c_int
     }
 
-    pub unsafe fn matches_ascii(
-        self,
-        ptr1: *const ::core::ffi::c_char,
-        end1: *const ::core::ffi::c_char,
-        ptr2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let expected = ::core::ffi::CStr::from_ptr(ptr2).to_bytes();
-        if expected.is_empty() {
-            return (ptr1 == end1) as ::core::ffi::c_int;
-        }
-        let input_len = end1.offset_from(ptr1);
-        if input_len < 0 {
-            return 0;
-        }
-        let input = if input_len == 0 {
-            &[]
-        } else {
-            ::core::slice::from_raw_parts(ptr1.cast::<u8>(), input_len as usize)
-        };
-        self.matches_ascii_bytes(input, expected)
-    }
 }
 
 #[derive(Copy, Clone)]
