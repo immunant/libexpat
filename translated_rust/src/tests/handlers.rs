@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicI32, Ordering};
+
 extern "C" {
     pub type XML_ParserStruct;
     fn snprintf(
@@ -109,6 +111,17 @@ fn copy_bytes(dest: &mut [::core::ffi::c_char], src: *const ::core::ffi::c_char)
             dest.len(),
         );
     }
+}
+
+static TRIPLET_START_FLAG: AtomicI32 = AtomicI32::new(XML_FALSE as ::core::ffi::c_int);
+static TRIPLET_END_FLAG: AtomicI32 = AtomicI32::new(XML_FALSE as ::core::ffi::c_int);
+
+fn set_triplet_start_flag(value: ::core::ffi::c_int) {
+    TRIPLET_START_FLAG.store(value, Ordering::Relaxed);
+}
+
+fn set_triplet_end_flag(value: ::core::ffi::c_int) {
+    TRIPLET_END_FLAG.store(value, Ordering::Relaxed);
 }
 
 pub type intptr_t = isize;
@@ -602,14 +615,15 @@ pub static mut g_triplet_start_flag: ::core::ffi::c_int = XML_FALSE as ::core::f
 pub static mut g_triplet_end_flag: ::core::ffi::c_int = XML_FALSE as ::core::ffi::c_int;
 
 pub(crate) fn triplet_flags() -> (::core::ffi::c_int, ::core::ffi::c_int) {
-    unsafe { (g_triplet_start_flag, g_triplet_end_flag) }
+    (
+        TRIPLET_START_FLAG.load(Ordering::Relaxed),
+        TRIPLET_END_FLAG.load(Ordering::Relaxed),
+    )
 }
 
 pub(crate) fn set_triplet_flags(start: ::core::ffi::c_int, end: ::core::ffi::c_int) {
-    unsafe {
-        g_triplet_start_flag = start;
-        g_triplet_end_flag = end;
-    }
+    set_triplet_start_flag(start);
+    set_triplet_end_flag(end);
 }
 
 #[no_mangle]
@@ -656,6 +670,7 @@ pub unsafe extern "C" fn triplet_start_checker(
             );
         }
         g_triplet_start_flag = XML_TRUE as ::core::ffi::c_int;
+        set_triplet_start_flag(XML_TRUE as ::core::ffi::c_int);
     }
 }
 #[no_mangle]
@@ -684,6 +699,7 @@ pub unsafe extern "C" fn triplet_end_checker(
             );
         }
         g_triplet_end_flag = XML_TRUE as ::core::ffi::c_int;
+        set_triplet_end_flag(XML_TRUE as ::core::ffi::c_int);
     }
 }
 #[no_mangle]
