@@ -5362,449 +5362,448 @@ pub mod xmltok_impl_c {
         return crate::src::xmltok::XML_TOK_PARTIAL_1;
     }
 
-    pub unsafe extern "C" fn little2_scanAtts(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut hadColon: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            's_852: {
-                'c_29387: {
-                    match if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                        == 0 as ::core::ffi::c_int
-                    {
-                        (*(enc as *const normal_encoding)).type_0
-                            [*ptr as ::core::ffi::c_uchar as usize]
-                            as ::core::ffi::c_int
-                    } else {
-                        unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                    } {
-                        29 => {
-                            if namingBitmap[(((namePages
-                                [*ptr.offset(1 as isize) as ::core::ffi::c_uchar as usize]
-                                as ::core::ffi::c_int)
-                                << 3 as ::core::ffi::c_int)
-                                + (*ptr.offset(0 as isize) as ::core::ffi::c_uchar
-                                    as ::core::ffi::c_int
-                                    >> 5 as ::core::ffi::c_int))
-                                as usize]
-                                & (1 as ::core::ffi::c_uint)
-                                    << (*ptr.offset(0 as isize) as ::core::ffi::c_uchar
-                                        as ::core::ffi::c_int
-                                        & 0x1f as ::core::ffi::c_int)
-                                == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            break 'c_29387;
-                        }
-                        22 | 24 | 25 | 26 | 27 => {
-                            break 'c_29387;
-                        }
-                        5 => {
-                            if end.offset_from(ptr) < 2 as isize {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if false || true {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            break 's_852;
-                        }
-                        6 => {
-                            if end.offset_from(ptr) < 3 as isize {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if false || true {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                            break 's_852;
-                        }
-                        7 => {
-                            if end.offset_from(ptr) < 4 as isize {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if false || true {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                            break 's_852;
-                        }
-                        23 => {
-                            if hadColon != 0 {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            hadColon = 1 as ::core::ffi::c_int;
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if !(end.offset_from(ptr)
-                                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                            {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                            }
-                            's_275: {
-                                match if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                    == 0 as ::core::ffi::c_int
-                                {
-                                    (*(enc as *const normal_encoding)).type_0
-                                        [*ptr as ::core::ffi::c_uchar as usize]
-                                        as ::core::ffi::c_int
-                                } else {
-                                    unicode_byte_type(
-                                        *ptr.offset(1 as isize),
-                                        *ptr.offset(0 as isize),
-                                    )
-                                } {
-                                    29 => {
-                                        if namingBitmap[(((nmstrtPages[*ptr.offset(1 as isize)
-                                            as ::core::ffi::c_uchar
-                                            as usize]
-                                            as ::core::ffi::c_int)
-                                            << 3 as ::core::ffi::c_int)
-                                            + (*ptr.offset(0 as isize) as ::core::ffi::c_uchar
-                                                as ::core::ffi::c_int
-                                                >> 5 as ::core::ffi::c_int))
-                                            as usize]
-                                            & (1 as ::core::ffi::c_uint)
-                                                << (*ptr.offset(0 as isize) as ::core::ffi::c_uchar
-                                                    as ::core::ffi::c_int
-                                                    & 0x1f as ::core::ffi::c_int)
-                                            == 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                                        }
-                                    }
-                                    22 | 24 => {}
-                                    5 => {
-                                        if end.offset_from(ptr) < 2 as isize {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if false || true {
-                                            *nextTokPtr = ptr;
-                                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                        break 's_275;
-                                    }
-                                    6 => {
-                                        if end.offset_from(ptr) < 3 as isize {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if false || true {
-                                            *nextTokPtr = ptr;
-                                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                                        break 's_275;
-                                    }
-                                    7 => {
-                                        if end.offset_from(ptr) < 4 as isize {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if false || true {
-                                            *nextTokPtr = ptr;
-                                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                                        break 's_275;
-                                    }
-                                    _ => {
-                                        *nextTokPtr = ptr;
-                                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                                    }
-                                }
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            }
-                            break 's_852;
-                        }
-                        21 | 9 | 10 => loop {
-                            let mut t: ::core::ffi::c_int = 0;
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            if !(end.offset_from(ptr)
-                                >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                            {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                            }
-                            t = if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                (*(enc as *const normal_encoding)).type_0
-                                    [*ptr as ::core::ffi::c_uchar as usize]
-                                    as ::core::ffi::c_int
-                            } else {
-                                unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                            };
-                            if t == crate::xmltok_impl_h::BT_EQUALS as ::core::ffi::c_int {
-                                break;
-                            }
-                            match t {
-                                21 | 10 | 9 => {}
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                                }
-                            }
-                        },
-                        14 => {}
-                        _ => {
-                            *nextTokPtr = ptr;
-                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                        }
-                    }
-                    let mut open: ::core::ffi::c_int = 0;
-                    hadColon = 0 as ::core::ffi::c_int;
-                    loop {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                        }
-                        open = if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr as ::core::ffi::c_uchar as usize]
-                                as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                        };
-                        if open == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int
-                            || open == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int
-                        {
-                            break;
-                        }
-                        match open {
-                            21 | 10 | 9 => {}
-                            _ => {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    loop {
-                        let mut t_0: ::core::ffi::c_int = 0;
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                        }
-                        t_0 = if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0
-                                [*ptr as ::core::ffi::c_uchar as usize]
-                                as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                        };
-                        if t_0 == open {
-                            break;
-                        }
-                        match t_0 {
-                            5 => {
-                                if end.offset_from(ptr) < 2 as isize {
-                                    return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            }
-                            6 => {
-                                if end.offset_from(ptr) < 3 as isize {
-                                    return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                            }
-                            7 => {
-                                if end.offset_from(ptr) < 4 as isize {
-                                    return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                }
-                                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                            }
-                            0 | 1 | 8 => {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            3 => {
-                                let mut tok: ::core::ffi::c_int = little2_scanRef(
-                                    enc,
-                                    ptr.offset(2 as ::core::ffi::c_int as isize),
-                                    end,
-                                    &raw mut ptr,
-                                );
-                                if tok <= 0 as ::core::ffi::c_int {
-                                    if tok == crate::src::xmltok::XML_TOK_INVALID_1 {
-                                        *nextTokPtr = ptr;
-                                    }
-                                    return tok;
-                                }
-                            }
-                            2 => {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            _ => {
-                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            }
-                        }
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr)
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                    {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                    }
-                    '_sol: {
-                        '_gt: {
-                            match if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                == 0 as ::core::ffi::c_int
-                            {
-                                (*(enc as *const normal_encoding)).type_0
-                                    [*ptr as ::core::ffi::c_uchar as usize]
-                                    as ::core::ffi::c_int
-                            } else {
-                                unicode_byte_type(*ptr.offset(1 as isize), *ptr.offset(0 as isize))
-                            } {
-                                21 | 9 | 10 => {
-                                    loop {
-                                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                        if !(end.offset_from(ptr)
-                                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
-                                                as isize)
-                                        {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                                        }
-                                        match if *ptr.offset(1 as isize) as ::core::ffi::c_int
-                                            == 0 as ::core::ffi::c_int
-                                        {
-                                            (*(enc as *const normal_encoding)).type_0
-                                                [*ptr as ::core::ffi::c_uchar as usize]
-                                                as ::core::ffi::c_int
-                                        } else {
-                                            unicode_byte_type(
-                                                *ptr.offset(1 as isize),
-                                                *ptr.offset(0 as isize),
-                                            )
-                                        } {
-                                            29 => {
-                                                if namingBitmap[(((nmstrtPages[*ptr
-                                                    .offset(1 as isize)
-                                                    as ::core::ffi::c_uchar
-                                                    as usize]
-                                                    as ::core::ffi::c_int)
-                                                    << 3 as ::core::ffi::c_int)
-                                                    + (*ptr.offset(0 as isize)
-                                                        as ::core::ffi::c_uchar
-                                                        as ::core::ffi::c_int
-                                                        >> 5 as ::core::ffi::c_int))
-                                                    as usize]
-                                                    & (1 as ::core::ffi::c_uint)
-                                                        << (*ptr.offset(0 as isize)
-                                                            as ::core::ffi::c_uchar
-                                                            as ::core::ffi::c_int
-                                                            & 0x1f as ::core::ffi::c_int)
-                                                    == 0
-                                                {
-                                                    *nextTokPtr = ptr;
-                                                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                                                }
-                                                break;
-                                            }
-                                            22 | 24 => {
-                                                break;
-                                            }
-                                            5 => {
-                                                if end.offset_from(ptr) < 2 as isize {
-                                                    return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                if false || true {
-                                                    *nextTokPtr = ptr;
-                                                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                                                }
-                                                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                                break 's_852;
-                                            }
-                                            6 => {
-                                                if end.offset_from(ptr) < 3 as isize {
-                                                    return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                if false || true {
-                                                    *nextTokPtr = ptr;
-                                                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                                                }
-                                                ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                                                break 's_852;
-                                            }
-                                            7 => {
-                                                if end.offset_from(ptr) < 4 as isize {
-                                                    return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                                }
-                                                if false || true {
-                                                    *nextTokPtr = ptr;
-                                                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                                                }
-                                                ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                                                break 's_852;
-                                            }
-                                            21 | 9 | 10 => {}
-                                            11 => {
-                                                break '_gt;
-                                            }
-                                            17 => {
-                                                break '_sol;
-                                            }
-                                            _ => {
-                                                *nextTokPtr = ptr;
-                                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                                            }
-                                        }
-                                    }
-                                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                    break 's_852;
-                                }
-                                17 => {
-                                    break '_sol;
-                                }
-                                11 => {}
-                                _ => {
-                                    *nextTokPtr = ptr;
-                                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                                }
-                            }
-                        }
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS_1;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    if !(end.offset_from(ptr)
-                        >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                    {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                    }
-                    if !(*ptr.offset(1 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                        && *ptr.offset(0 as isize) as ::core::ffi::c_int
-                            == 0x3e as ::core::ffi::c_int)
-                    {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    return crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1;
-                }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            }
-        }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+    struct Little2ScanResult {
+        token: ::core::ffi::c_int,
+        next: Option<usize>,
     }
 
+    fn little2_byte_type(
+        byte_types: &[::core::ffi::c_uchar; 256],
+        input: &[::core::ffi::c_char],
+        ptr: usize,
+    ) -> ::core::ffi::c_int {
+        let lo = input[ptr] as ::core::ffi::c_uchar;
+        let hi = input[ptr + 1] as ::core::ffi::c_uchar;
+        if hi == 0 {
+            byte_types[lo as usize] as ::core::ffi::c_int
+        } else {
+            unicode_byte_type(hi as ::core::ffi::c_char, lo as ::core::ffi::c_char)
+        }
+    }
+
+    fn little2_in_name_bitmap(
+        input: &[::core::ffi::c_char],
+        ptr: usize,
+        pages: &[::core::ffi::c_uchar; 256],
+    ) -> bool {
+        let lo = input[ptr] as ::core::ffi::c_uchar;
+        let hi = input[ptr + 1] as ::core::ffi::c_uchar;
+        let word = (pages[hi as usize] as usize) * 8 + (lo as usize >> 5);
+        namingBitmap[word] & (1 << (lo & 0x1f)) != 0
+    }
+
+    fn little2_scan_atts_impl<F>(
+        byte_types: &[::core::ffi::c_uchar; 256],
+        input: &[::core::ffi::c_char],
+        mut scan_ref: F,
+    ) -> Little2ScanResult
+    where
+        F: FnMut(usize) -> (::core::ffi::c_int, usize),
+    {
+        let partial = crate::src::xmltok::XML_TOK_PARTIAL_1;
+        let partial_char = crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
+        let invalid = crate::src::xmltok::XML_TOK_INVALID_1;
+        let mut ptr = 0;
+        let mut had_colon = false;
+
+        'attribute: while input.len().saturating_sub(ptr) >= 2 {
+            match little2_byte_type(byte_types, input, ptr) {
+                29 => {
+                    if !little2_in_name_bitmap(input, ptr, &namePages) {
+                        return Little2ScanResult {
+                            token: invalid,
+                            next: Some(ptr),
+                        };
+                    }
+                    ptr += 2;
+                    continue 'attribute;
+                }
+                22 | 24 | 25 | 26 | 27 => {
+                    ptr += 2;
+                    continue 'attribute;
+                }
+                5 => {
+                    return Little2ScanResult {
+                        token: if input.len().saturating_sub(ptr) < 2 {
+                            partial_char
+                        } else {
+                            invalid
+                        },
+                        next: (input.len().saturating_sub(ptr) >= 2).then_some(ptr),
+                    };
+                }
+                6 => {
+                    return Little2ScanResult {
+                        token: if input.len().saturating_sub(ptr) < 3 {
+                            partial_char
+                        } else {
+                            invalid
+                        },
+                        next: (input.len().saturating_sub(ptr) >= 3).then_some(ptr),
+                    };
+                }
+                7 => {
+                    return Little2ScanResult {
+                        token: if input.len().saturating_sub(ptr) < 4 {
+                            partial_char
+                        } else {
+                            invalid
+                        },
+                        next: (input.len().saturating_sub(ptr) >= 4).then_some(ptr),
+                    };
+                }
+                23 => {
+                    if had_colon {
+                        return Little2ScanResult {
+                            token: invalid,
+                            next: Some(ptr),
+                        };
+                    }
+                    had_colon = true;
+                    ptr += 2;
+                    if input.len().saturating_sub(ptr) < 2 {
+                        return Little2ScanResult {
+                            token: partial,
+                            next: None,
+                        };
+                    }
+                    match little2_byte_type(byte_types, input, ptr) {
+                        29 => {
+                            if !little2_in_name_bitmap(input, ptr, &nmstrtPages) {
+                                return Little2ScanResult {
+                                    token: invalid,
+                                    next: Some(ptr),
+                                };
+                            }
+                            ptr += 2;
+                        }
+                        22 | 24 => ptr += 2,
+                        5 => {
+                            return Little2ScanResult {
+                                token: if input.len().saturating_sub(ptr) < 2 {
+                                    partial_char
+                                } else {
+                                    invalid
+                                },
+                                next: (input.len().saturating_sub(ptr) >= 2).then_some(ptr),
+                            };
+                        }
+                        6 => {
+                            return Little2ScanResult {
+                                token: if input.len().saturating_sub(ptr) < 3 {
+                                    partial_char
+                                } else {
+                                    invalid
+                                },
+                                next: (input.len().saturating_sub(ptr) >= 3).then_some(ptr),
+                            };
+                        }
+                        7 => {
+                            return Little2ScanResult {
+                                token: if input.len().saturating_sub(ptr) < 4 {
+                                    partial_char
+                                } else {
+                                    invalid
+                                },
+                                next: (input.len().saturating_sub(ptr) >= 4).then_some(ptr),
+                            };
+                        }
+                        _ => {
+                            return Little2ScanResult {
+                                token: invalid,
+                                next: Some(ptr),
+                            };
+                        }
+                    }
+                    continue 'attribute;
+                }
+                21 | 9 | 10 => {
+                    loop {
+                        ptr += 2;
+                        if input.len().saturating_sub(ptr) < 2 {
+                            return Little2ScanResult {
+                                token: partial,
+                                next: None,
+                            };
+                        }
+                        let byte_type = little2_byte_type(byte_types, input, ptr);
+                        if byte_type == crate::xmltok_impl_h::BT_EQUALS as ::core::ffi::c_int {
+                            break;
+                        }
+                        if !matches!(byte_type, 21 | 10 | 9) {
+                            return Little2ScanResult {
+                                token: invalid,
+                                next: Some(ptr),
+                            };
+                        }
+                    }
+                }
+                14 => {}
+                _ => {
+                    return Little2ScanResult {
+                        token: invalid,
+                        next: Some(ptr),
+                    };
+                }
+            }
+
+            had_colon = false;
+            let open = loop {
+                ptr += 2;
+                if input.len().saturating_sub(ptr) < 2 {
+                    return Little2ScanResult {
+                        token: partial,
+                        next: None,
+                    };
+                }
+                let byte_type = little2_byte_type(byte_types, input, ptr);
+                if matches!(
+                    byte_type,
+                    x if x == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int
+                        || x == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int
+                ) {
+                    break byte_type;
+                }
+                if !matches!(byte_type, 21 | 10 | 9) {
+                    return Little2ScanResult {
+                        token: invalid,
+                        next: Some(ptr),
+                    };
+                }
+            };
+
+            ptr += 2;
+            loop {
+                if input.len().saturating_sub(ptr) < 2 {
+                    return Little2ScanResult {
+                        token: partial,
+                        next: None,
+                    };
+                }
+                let byte_type = little2_byte_type(byte_types, input, ptr);
+                if byte_type == open {
+                    break;
+                }
+                match byte_type {
+                    5 => {
+                        if input.len().saturating_sub(ptr) < 2 {
+                            return Little2ScanResult {
+                                token: partial_char,
+                                next: None,
+                            };
+                        }
+                        ptr += 2;
+                    }
+                    6 => {
+                        if input.len().saturating_sub(ptr) < 3 {
+                            return Little2ScanResult {
+                                token: partial_char,
+                                next: None,
+                            };
+                        }
+                        ptr += 3;
+                    }
+                    7 => {
+                        if input.len().saturating_sub(ptr) < 4 {
+                            return Little2ScanResult {
+                                token: partial_char,
+                                next: None,
+                            };
+                        }
+                        ptr += 4;
+                    }
+                    0 | 1 | 8 => {
+                        return Little2ScanResult {
+                            token: invalid,
+                            next: Some(ptr),
+                        };
+                    }
+                    3 => {
+                        let (token, next) = scan_ref(ptr + 2);
+                        ptr = next;
+                        if token <= 0 {
+                            return Little2ScanResult {
+                                token,
+                                next: (token == invalid).then_some(ptr),
+                            };
+                        }
+                    }
+                    2 => {
+                        return Little2ScanResult {
+                            token: invalid,
+                            next: Some(ptr),
+                        };
+                    }
+                    _ => ptr += 2,
+                }
+            }
+
+            ptr += 2;
+            if input.len().saturating_sub(ptr) < 2 {
+                return Little2ScanResult {
+                    token: partial,
+                    next: None,
+                };
+            }
+            match little2_byte_type(byte_types, input, ptr) {
+                21 | 9 | 10 => loop {
+                    ptr += 2;
+                    if input.len().saturating_sub(ptr) < 2 {
+                        return Little2ScanResult {
+                            token: partial,
+                            next: None,
+                        };
+                    }
+                    match little2_byte_type(byte_types, input, ptr) {
+                        29 => {
+                            if !little2_in_name_bitmap(input, ptr, &nmstrtPages) {
+                                return Little2ScanResult {
+                                    token: invalid,
+                                    next: Some(ptr),
+                                };
+                            }
+                            ptr += 2;
+                            continue 'attribute;
+                        }
+                        22 | 24 => {
+                            ptr += 2;
+                            continue 'attribute;
+                        }
+                        5 => {
+                            return Little2ScanResult {
+                                token: if input.len().saturating_sub(ptr) < 2 {
+                                    partial_char
+                                } else {
+                                    invalid
+                                },
+                                next: (input.len().saturating_sub(ptr) >= 2).then_some(ptr),
+                            };
+                        }
+                        6 => {
+                            return Little2ScanResult {
+                                token: if input.len().saturating_sub(ptr) < 3 {
+                                    partial_char
+                                } else {
+                                    invalid
+                                },
+                                next: (input.len().saturating_sub(ptr) >= 3).then_some(ptr),
+                            };
+                        }
+                        7 => {
+                            return Little2ScanResult {
+                                token: if input.len().saturating_sub(ptr) < 4 {
+                                    partial_char
+                                } else {
+                                    invalid
+                                },
+                                next: (input.len().saturating_sub(ptr) >= 4).then_some(ptr),
+                            };
+                        }
+                        21 | 9 | 10 => continue,
+                        11 => {
+                            return Little2ScanResult {
+                                token: crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS_1,
+                                next: Some(ptr + 2),
+                            };
+                        }
+                        17 => {
+                            ptr += 2;
+                            if input.len().saturating_sub(ptr) < 2 {
+                                return Little2ScanResult {
+                                    token: partial,
+                                    next: None,
+                                };
+                            }
+                            if input[ptr + 1] as ::core::ffi::c_uchar != 0
+                                || input[ptr] as ::core::ffi::c_uchar != b'>'
+                            {
+                                return Little2ScanResult {
+                                    token: invalid,
+                                    next: Some(ptr),
+                                };
+                            }
+                            return Little2ScanResult {
+                                token: crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1,
+                                next: Some(ptr + 2),
+                            };
+                        }
+                        _ => {
+                            return Little2ScanResult {
+                                token: invalid,
+                                next: Some(ptr),
+                            };
+                        }
+                    }
+                },
+                17 => {
+                    ptr += 2;
+                    if input.len().saturating_sub(ptr) < 2 {
+                        return Little2ScanResult {
+                            token: partial,
+                            next: None,
+                        };
+                    }
+                    if input[ptr + 1] as ::core::ffi::c_uchar != 0
+                        || input[ptr] as ::core::ffi::c_uchar != b'>'
+                    {
+                        return Little2ScanResult {
+                            token: invalid,
+                            next: Some(ptr),
+                        };
+                    }
+                    return Little2ScanResult {
+                        token: crate::src::xmltok::XML_TOK_EMPTY_ELEMENT_WITH_ATTS_1,
+                        next: Some(ptr + 2),
+                    };
+                }
+                11 => {
+                    return Little2ScanResult {
+                        token: crate::src::xmltok::XML_TOK_START_TAG_WITH_ATTS_1,
+                        next: Some(ptr + 2),
+                    };
+                }
+                _ => {
+                    return Little2ScanResult {
+                        token: invalid,
+                        next: Some(ptr),
+                    };
+                }
+            }
+        }
+
+        Little2ScanResult {
+            token: partial,
+            next: None,
+        }
+    }
+
+    pub unsafe extern "C" fn little2_scanAtts(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len < 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        let result = little2_scan_atts_impl(&normal.type_0, input, |ref_start| {
+            let mut ref_end = ptr;
+            let token = little2_scanRef(enc, ptr.add(ref_start), end, &mut ref_end);
+            let next = ref_end.offset_from(ptr);
+            if next < 0 || next as usize > input.len() {
+                (crate::src::xmltok::XML_TOK_INVALID_1, ref_start)
+            } else {
+                (token, next as usize)
+            }
+        });
+        if let Some(next) = result.next {
+            *nextTokPtr = ptr.add(next);
+        }
+        result.token
+    }
     pub unsafe extern "C" fn little2_scanLt(
         mut enc: *const crate::src::xmltok::ENCODING,
         mut ptr: *const ::core::ffi::c_char,
