@@ -5692,7 +5692,8 @@ pub const EXPAND_SPARE: ::core::ffi::c_int = 24 as ::core::ffi::c_int;
 pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 #[no_mangle]
 
-pub static mut g_reparseDeferralEnabledDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
+pub static g_reparseDeferralEnabledDefault: std::sync::atomic::AtomicU8 =
+    std::sync::atomic::AtomicU8::new(crate::expat_h::XML_TRUE);
 #[no_mangle]
 
 pub static g_bytesScanned: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -7093,7 +7094,7 @@ unsafe fn parser_create_ownership_facade(
     );
     pool_init(&mut parser.m_tempPool, string_pool_allocator.clone());
     pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
-    if !parser_initialize_from_cstr(parser, encoding_name) {
+    if !parser_initialize_from_cstr(parser, parser_ptr.addr(), encoding_name) {
         cleanup_failed_parser_construction(parser);
         return None;
     }
@@ -7583,9 +7584,9 @@ fn parser_init(
 /// state initialization below it uses the exclusive typed borrow.
 unsafe fn parser_initialize_from_cstr(
     parser: &mut XML_ParserStruct,
+    parser_key: usize,
     encoding_name: Option<&std::ffi::CStr>,
 ) -> bool {
-    let parser_handle = std::ptr::from_mut(parser);
     parser.m_protocolEncodingName = encoding_name.and_then(|encoding_name| {
         let allocation_size = encoding_name
             .to_bytes_with_nul()
@@ -7596,8 +7597,8 @@ unsafe fn parser_initialize_from_cstr(
     });
     parser_init(
         parser,
-        parser_handle.addr(),
-        g_reparseDeferralEnabledDefault,
+        parser_key,
+        g_reparseDeferralEnabledDefault.load(std::sync::atomic::Ordering::Relaxed),
         environment_decimal_debug_level("EXPAT_ACCOUNTING_DEBUG", 0),
         environment_decimal_debug_level("EXPAT_ENTITY_DEBUG", 0),
     );
@@ -7700,6 +7701,7 @@ impl ParserResetState<'_> {
 /// boundary; callers with a typed parser borrow do not need an unsafe call.
 fn parser_reset_impl(
     parser: &mut XML_ParserStruct,
+    parser_key: usize,
     encoding_name: Option<&::std::ffi::CStr>,
 ) -> crate::expat_h::XML_Bool {
     if parser.m_parentParser.is_some() {
@@ -7738,9 +7740,7 @@ fn parser_reset_impl(
     if let Some(protocol_encoding_name) = protocol_encoding_name {
         protocol_encoding_name.release(1691);
     }
-    unsafe {
-        parser_initialize_from_cstr(parser, encoding_name);
-    }
+    unsafe { parser_initialize_from_cstr(parser, parser_key, encoding_name) };
     dtd.inspect(|dtd| unsafe { dtdReset(dtd, parser) });
     return crate::expat_h::XML_TRUE;
 }
@@ -7751,12 +7751,13 @@ pub unsafe extern "C" fn XML_ParserReset_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Bool {
+    let parser_key = parser.addr();
     let Some(parser) = parser.as_mut() else {
         return crate::expat_h::XML_FALSE;
     };
     let encoding_name = (!encodingName.is_null())
         .then(|| ::std::ffi::CStr::from_ptr(encodingName));
-    parser_reset_impl(parser, encoding_name)
+    parser_reset_impl(parser, parser_key, encoding_name)
 }
 unsafe extern "C" fn parserBusy(
     mut parser: crate::expat_h::XML_Parser,
