@@ -1405,7 +1405,7 @@ impl TwoXmlCharCallback
 }
 
 struct TwoXmlCharCallbackAdapter {
-    callback: std::sync::Arc<dyn TwoXmlCharCallback>,
+    callback: std::sync::Arc<dyn Fn(TwoXmlCharCallbackEvent<'_>) + Send + Sync>,
 }
 
 impl TwoXmlCharCallbackAdapter {
@@ -1414,7 +1414,7 @@ impl TwoXmlCharCallbackAdapter {
         Callback: TwoXmlCharCallback + 'static,
     {
         Self {
-            callback: std::sync::Arc::new(callback),
+            callback: two_xml_char_callback_adapter(std::sync::Arc::new(callback)),
         }
     }
 }
@@ -1970,7 +1970,19 @@ fn character_data_callback_adapter(
 
 impl TwoXmlCharCallbackAdapter {
     fn invoke(&self, event: TwoXmlCharCallbackEvent<'_>) {
-        let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
+        (self.callback)(event);
+    }
+}
+
+/// Converts a registered two-string C callback into typed parser dispatch.
+///
+/// The unsafe ABI call is isolated at callback registration.  Invocation
+/// thereafter accepts only live parser and XML-character views.
+fn two_xml_char_callback_adapter(
+    callback: std::sync::Arc<dyn TwoXmlCharCallback>,
+) -> std::sync::Arc<dyn Fn(TwoXmlCharCallbackEvent<'_>) + Send + Sync> {
+    std::sync::Arc::new(move |event: TwoXmlCharCallbackEvent<'_>| {
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any).downcast_ref::<
             unsafe extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
@@ -1986,7 +1998,7 @@ impl TwoXmlCharCallbackAdapter {
                 event.second.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
             );
         }
-    }
+    })
 }
 
 /// Converts one registered C callback into the typed, synchronous callback
