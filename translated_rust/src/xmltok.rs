@@ -13716,7 +13716,7 @@ extern "C" fn initUpdatePosition(
     normal_updatePosition(&raw const utf8_encoding.enc, ptr, end, pos);
 }
 
-enum XmlDeclEncodingAction {
+enum XmlDeclEncodingAction<'a> {
     MinBytes,
     ToAscii {
         ptr: *const ::core::ffi::c_char,
@@ -13740,6 +13740,11 @@ enum XmlDeclEncodingAction {
         ptr: *const ::core::ffi::c_char,
         end: *const ::core::ffi::c_char,
     },
+    UpdatePosition {
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        pos: &'a mut crate::src::xmltok::POSITION,
+    },
 }
 
 enum XmlDeclEncodingResult {
@@ -13750,7 +13755,7 @@ enum XmlDeclEncodingResult {
 
 fn xml_decl_encoding_action(
     mut enc: *const crate::src::xmltok::ENCODING,
-    action: XmlDeclEncodingAction,
+    action: XmlDeclEncodingAction<'_>,
 ) -> XmlDeclEncodingResult {
     unsafe {
         match action {
@@ -13802,6 +13807,10 @@ fn xml_decl_encoding_action(
             XmlDeclEncodingAction::FindEncoding { finder, ptr, end } => {
                 XmlDeclEncodingResult::Encoding(finder(enc, ptr, end))
             }
+            XmlDeclEncodingAction::UpdatePosition { ptr, end, pos } => {
+                (*enc).updatePosition.expect("non-null function pointer")(enc, ptr, end, pos);
+                XmlDeclEncodingResult::Int(0)
+            }
         }
     }
 }
@@ -13841,6 +13850,19 @@ pub(crate) fn encoding_name_matches_ascii(
         },
     ) {
         XmlDeclEncodingResult::Int(value) => value,
+        XmlDeclEncodingResult::Encoding(_) => unreachable!(),
+        XmlDeclEncodingResult::EncodingName(_) => unreachable!(),
+    }
+}
+
+pub(crate) fn encoding_update_position(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+    end: *const ::core::ffi::c_char,
+    pos: &mut crate::src::xmltok::POSITION,
+) {
+    match xml_decl_encoding_action(enc, XmlDeclEncodingAction::UpdatePosition { ptr, end, pos }) {
+        XmlDeclEncodingResult::Int(_) => {}
         XmlDeclEncodingResult::Encoding(_) => unreachable!(),
         XmlDeclEncodingResult::EncodingName(_) => unreachable!(),
     }

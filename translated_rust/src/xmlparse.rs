@@ -4228,16 +4228,12 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
 }
 fn update_position_to_event(parser: &mut XML_ParserStruct) {
     if !parser.m_eventPtr.is_null() && parser.m_eventPtr >= parser.m_positionPtr {
-        unsafe {
-            (*parser.m_encoding)
-                .updatePosition
-                .expect("non-null function pointer")(
-                parser.m_encoding,
-                parser.m_positionPtr,
-                parser.m_eventPtr,
-                &mut parser.m_position,
-            );
-        }
+        crate::src::xmltok::encoding_update_position(
+            parser.m_encoding,
+            parser.m_positionPtr,
+            parser.m_eventPtr,
+            &mut parser.m_position,
+        );
         parser.m_positionPtr = parser.m_eventPtr;
     }
 }
