@@ -5650,6 +5650,7 @@ unsafe fn XML_ParserCreate(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> crate::expat_h::XML_Parser {
     parser_create_ownership_facade(encoding_name, memory_suite, None, false, None)
+        .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 #[export_name = "XML_ParserCreate"]
 
@@ -5672,6 +5673,7 @@ unsafe fn XML_ParserCreateNS(
     memory_suite: crate::expat_h::XML_Memory_Handling_Suite,
 ) -> crate::expat_h::XML_Parser {
     parser_create_ownership_facade(encoding_name, memory_suite, Some(ns_sep), false, None)
+        .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 #[export_name = "XML_ParserCreateNS"]
 
@@ -5964,6 +5966,7 @@ unsafe fn XML_ParserCreate_MM(
     namespace_separator: Option<crate::expat_external_h::XML_Char>,
 ) -> crate::expat_h::XML_Parser {
     parser_create_ownership_facade(encoding_name, memory_suite, namespace_separator, false, None)
+        .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 #[export_name = "XML_ParserCreate_MM"]
 
@@ -6003,7 +6006,7 @@ unsafe fn parser_create_ownership_facade(
     namespace_separator: Option<crate::expat_external_h::XML_Char>,
     share_parent_dtd: bool,
     parent: Option<&XML_ParserStruct>,
-) -> crate::expat_h::XML_Parser {
+) -> Option<Box<XML_ParserStruct>> {
     let increase = ::core::mem::size_of::<crate::__stddef_size_t_h::size_t>()
         .wrapping_add(crate::internal_h::EXPAT_MALLOC_PADDING)
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
@@ -6016,11 +6019,11 @@ unsafe fn parser_create_ownership_facade(
             increase as XmlBigCount,
             1354 as ::core::ffi::c_int,
         ) {
-            return ::core::ptr::null_mut();
+            return None;
         }
         let inherited_dtd = if share_parent_dtd {
             let Some(dtd) = parent.m_dtd.as_ref() else {
-                return ::core::ptr::null_mut();
+                return None;
             };
             Some(std::sync::Arc::clone(dtd))
         } else {
@@ -6035,7 +6038,7 @@ unsafe fn parser_create_ownership_facade(
         None
     };
     if share_parent_dtd && parent_state.is_none() {
-        return ::core::ptr::null_mut();
+        return None;
     }
     let mut parser_owner = Box::new(initial_parser_struct(memory_suite));
     let parser_ptr = std::ptr::from_mut(parser_owner.as_mut());
@@ -6045,7 +6048,7 @@ unsafe fn parser_create_ownership_facade(
         .wrapping_add(::core::mem::size_of::<XML_ParserStruct>());
     let allocation = memory_suite.malloc_fcn.expect("non-null function pointer")(allocation_size);
     if allocation.is_null() {
-        return ::core::ptr::null_mut();
+        return None;
     }
     let free = memory_suite.free_fcn.expect("non-null function pointer");
     parser.m_parserStorageBacking = Some(Box::new(move || unsafe {
@@ -6197,7 +6200,7 @@ unsafe fn parser_create_ownership_facade(
     })();
     if storage_result.is_err() {
         cleanup_failed_parser_construction(parser);
-        return ::core::ptr::null_mut();
+        return None;
     }
     initialize_parser_collections(parser);
     parser.m_unknownEncodingHandler = false;
@@ -6217,7 +6220,7 @@ unsafe fn parser_create_ownership_facade(
     pool_init(&mut parser.m_temp2Pool, string_pool_allocator);
     if !parser_initialize_from_cstr(parser, encoding_name) {
         cleanup_failed_parser_construction(parser);
-        return ::core::ptr::null_mut();
+        return None;
     }
     if let Some(namespace_separator) = namespace_separator {
         parser.m_ns = crate::expat_h::XML_TRUE;
@@ -6226,7 +6229,7 @@ unsafe fn parser_create_ownership_facade(
     } else {
         parser.m_internalEncoding = InternalEncoding::Utf8;
     }
-    Box::into_raw(parser_owner)
+    Some(parser_owner)
 }
 
 fn empty_string_pool() -> STRING_POOL {
@@ -6903,6 +6906,7 @@ fn xml_set_encoding_impl(
     parser.m_protocolEncodingName = protocol_encoding_name;
     crate::expat_h::XML_STATUS_OK
 }
+
 #[export_name = "XML_SetEncoding"]
 
 pub unsafe extern "C" fn XML_SetEncoding_ffi(
@@ -6921,7 +6925,7 @@ unsafe fn XML_ExternalEntityParserCreate(
     context: Option<&std::ffi::CStr>,
     encoding_name: Option<&std::ffi::CStr>,
 ) -> crate::expat_h::XML_Parser {
-    let mut parser = std::ptr::from_ref(old).cast_mut();
+    let old_parser_key = std::ptr::from_ref(old).addr();
     let mut oldStartElementHandler = false;
     let mut oldStartElementCallback: Option<std::sync::Arc<dyn StartElementCallback>> = None;
     let mut oldEndElementCallback: Option<std::sync::Arc<dyn EndElementCallback>> = None;
@@ -6980,140 +6984,140 @@ unsafe fn XML_ExternalEntityParserCreate(
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldEndElementCallback = END_ELEMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldCharacterDataHandler = old.m_characterDataHandler;
     oldCharacterDataCallback = CHARACTER_DATA_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldProcessingInstructionHandler = old.m_processingInstructionHandler;
     oldProcessingInstructionCallback = PROCESSING_INSTRUCTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldCommentHandler = old.m_commentHandler;
     oldCommentCallback = COMMENT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldStartCdataSectionHandler = old.m_startCdataSectionHandler;
     oldStartCdataSectionCallback = START_CDATA_SECTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldEndCdataSectionHandler = old.m_endCdataSectionHandler;
     oldEndCdataSectionCallback = END_CDATA_SECTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldDefaultHandler = old.m_defaultHandler;
     oldDefaultCallback = DEFAULT_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldUnparsedEntityDeclHandler = old.m_unparsedEntityDeclHandler;
     oldUnparsedEntityDeclCallback = UNPARSED_ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldNotationDeclHandler = old.m_notationDeclHandler;
     oldNotationDeclCallback = NOTATION_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldStartNamespaceDeclHandler = old.m_startNamespaceDeclHandler;
     oldStartNamespaceDeclCallback = START_NAMESPACE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldEndNamespaceDeclHandler = old.m_endNamespaceDeclHandler;
     oldEndNamespaceDeclCallback = END_NAMESPACE_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldNotStandaloneHandler = old.m_notStandaloneHandler;
     oldNotStandaloneCallback = NOT_STANDALONE_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldExternalEntityRefHandler = EXTERNAL_ENTITY_REF_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldSkippedEntityCallback = SKIPPED_ENTITY_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldUnknownEncodingHandler = UNKNOWN_ENCODING_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldUnknownEncodingHandlerArg = UNKNOWN_ENCODING_HANDLER_ARGS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldElementDeclHandler = old.m_elementDeclHandler;
     oldElementDeclCallback = ELEMENT_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldAttlistDeclHandler = old.m_attlistDeclHandler;
     oldAttlistDeclCallback = ATTLIST_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldEntityDeclHandler = ENTITY_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldXmlDeclHandler = XML_DECL_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldDeclElementType = old.m_declElementType;
     oldUserData = old.m_userData.load();
@@ -7123,32 +7127,33 @@ unsafe fn XML_ExternalEntityParserCreate(
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&(parser as usize))
+        .get(&old_parser_key)
         .cloned();
     oldParamEntityParsing = old.m_paramEntityParsing;
     oldInEntityValue = old.m_prologState.inEntityValue;
     oldns_triplets = old.m_ns_triplets;
     oldReparseDeferralEnabled = old.m_reparseDeferralEnabled;
-    parser = parser_create_ownership_facade(
+    let mut parser_owner = match parser_create_ownership_facade(
         encoding_name,
         old.m_mem,
         (old.m_ns != 0).then_some(old.m_namespaceSeparator),
         context.is_none(),
         Some(old),
-    );
-    if parser.is_null() {
-        return ::core::ptr::null_mut::<XML_ParserStruct>();
-    }
+    ) {
+        Some(parser_owner) => parser_owner,
+        None => return ::core::ptr::null_mut(),
+    };
     // The child is configured wholly within this function before it is
     // exposed, so one exclusive borrow covers all field updates.
-    let parser_ref = &mut *parser;
+    let parser_ref = parser_owner.as_mut();
+    let parser_key = std::ptr::from_mut(parser_ref).addr();
     parser_ref.m_startElementHandler = oldStartElementHandler;
     if let Some(callback) = oldStartElementCallback {
         START_ELEMENT_HANDLERS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_endElementHandler = oldEndElementCallback.is_some();
     if let Some(callback) = oldEndElementCallback {
@@ -7156,7 +7161,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_characterDataHandler = oldCharacterDataHandler;
     if let Some(callback) = oldCharacterDataCallback {
@@ -7164,7 +7169,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_processingInstructionHandler = oldProcessingInstructionHandler;
     if let Some(callback) = oldProcessingInstructionCallback {
@@ -7172,7 +7177,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_commentHandler = oldCommentHandler;
     if let Some(callback) = oldCommentCallback {
@@ -7180,7 +7185,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_startCdataSectionHandler = oldStartCdataSectionHandler;
     if let Some(callback) = oldStartCdataSectionCallback {
@@ -7188,7 +7193,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_endCdataSectionHandler = oldEndCdataSectionHandler;
     if let Some(callback) = oldEndCdataSectionCallback {
@@ -7196,7 +7201,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_defaultHandler = oldDefaultHandler;
     if let Some(callback) = oldDefaultCallback {
@@ -7204,7 +7209,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_unparsedEntityDeclHandler = oldUnparsedEntityDeclHandler;
     if let Some(callback) = oldUnparsedEntityDeclCallback {
@@ -7212,7 +7217,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_notationDeclHandler = oldNotationDeclHandler;
     if let Some(callback) = oldNotationDeclCallback {
@@ -7220,7 +7225,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_startNamespaceDeclHandler = oldStartNamespaceDeclHandler;
     if let Some(callback) = oldStartNamespaceDeclCallback {
@@ -7228,7 +7233,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_endNamespaceDeclHandler = oldEndNamespaceDeclHandler;
     if let Some(callback) = oldEndNamespaceDeclCallback {
@@ -7236,7 +7241,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_notStandaloneHandler = oldNotStandaloneHandler;
     if let Some(callback) = oldNotStandaloneCallback {
@@ -7244,7 +7249,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_externalEntityRefHandler = oldExternalEntityRefHandler.is_some();
     if let Some(callback) = oldExternalEntityRefHandler {
@@ -7252,7 +7257,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_skippedEntityHandler = oldSkippedEntityCallback.is_some();
     if let Some(callback) = oldSkippedEntityCallback {
@@ -7260,7 +7265,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_unknownEncodingHandler = oldUnknownEncodingHandler.is_some();
     if let Some(callback) = oldUnknownEncodingHandler {
@@ -7268,14 +7273,14 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     if let Some(arg) = oldUnknownEncodingHandlerArg {
         UNKNOWN_ENCODING_HANDLER_ARGS
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, arg);
+            .insert(parser_key, arg);
     }
     parser_ref.m_elementDeclHandler = oldElementDeclHandler;
     if let Some(callback) = oldElementDeclCallback {
@@ -7283,7 +7288,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_attlistDeclHandler = oldAttlistDeclHandler;
     if let Some(callback) = oldAttlistDeclCallback {
@@ -7291,7 +7296,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_entityDeclHandler = oldEntityDeclHandler.is_some();
     if let Some(callback) = oldEntityDeclHandler {
@@ -7299,7 +7304,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_xmlDeclHandler = oldXmlDeclHandler.is_some();
     if let Some(callback) = oldXmlDeclHandler {
@@ -7307,7 +7312,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, callback);
+            .insert(parser_key, callback);
     }
     parser_ref.m_declElementType = oldDeclElementType;
     parser_ref.m_userData.store(oldUserData);
@@ -7318,7 +7323,7 @@ unsafe fn XML_ExternalEntityParserCreate(
             .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(parser as usize, arg);
+            .insert(parser_key, arg);
     }
     parser_ref.m_defaultExpandInternalEntities = oldDefaultExpandInternalEntities;
     parser_ref.m_ns_triplets = oldns_triplets;
@@ -7334,7 +7339,6 @@ unsafe fn XML_ExternalEntityParserCreate(
         let new_dtd_owner = parser_ref.m_dtd.clone();
         let (Some(old_dtd_owner), Some(new_dtd_owner)) = (old_dtd_owner, new_dtd_owner) else {
             parser_free_owned(parser_ref);
-            drop(Box::from_raw(parser));
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         };
         let copied_and_restored = old_dtd_owner.inspect(|old_dtd| {
@@ -7345,7 +7349,6 @@ unsafe fn XML_ExternalEntityParserCreate(
         });
         if !copied_and_restored {
             parser_free_owned(parser_ref);
-            drop(Box::from_raw(parser));
             return ::core::ptr::null_mut::<XML_ParserStruct>();
         }
         parser_ref.m_processor = ProcessorState::ExternalEntityInit;
@@ -7354,7 +7357,7 @@ unsafe fn XML_ExternalEntityParserCreate(
         crate::src::xmlrole::prolog_state_init_external_entity(&mut parser_ref.m_prologState);
         parser_ref.m_processor = ProcessorState::ExternalParEntInit;
     }
-    return parser;
+    Box::into_raw(parser_owner)
 }
 #[export_name = "XML_ExternalEntityParserCreate"]
 
