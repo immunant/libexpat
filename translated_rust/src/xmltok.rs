@@ -7216,18 +7216,14 @@ pub mod xmltok_impl_c {
         })
     }
 
-    /// Reads an ASCII code unit from a validated UTF-16LE character reference.
-    ///
-    /// The tokenizer has already established that the reference is terminated by
-    /// a UTF-16 semicolon.  Keeping the raw read here lets the decoder below use
-    /// ordinary code-unit values without manufacturing a slice of unknown size.
-    unsafe fn little2_char_ref_unit(
-        ptr: *const ::core::ffi::c_char,
-        unit_index: usize,
+    /// Decodes one validated UTF-16LE code unit once its two bytes have crossed
+    /// the tokenizer boundary.
+    fn little2_char_ref_unit(
+        low: ::core::ffi::c_char,
+        high: ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
-        let byte_index = unit_index * 2;
-        let low = unsafe { *ptr.wrapping_add(byte_index) } as ::core::ffi::c_int;
-        let high = unsafe { *ptr.wrapping_add(byte_index + 1) } as ::core::ffi::c_int;
+        let low = low as ::core::ffi::c_int;
+        let high = high as ::core::ffi::c_int;
         if high == 0 { low } else { -1 }
     }
 
@@ -7298,7 +7294,13 @@ pub mod xmltok_impl_c {
     ) -> ::core::ffi::c_int {
         let mut unit_index = 2;
         decode_char_ref_number(|| {
-            let unit = unsafe { little2_char_ref_unit(ptr, unit_index) };
+            let byte_index = unit_index * 2;
+            // The tokenizer selected this callback only after recognizing a
+            // complete UTF-16 character reference, including its semicolon.
+            let unit = little2_char_ref_unit(
+                *ptr.wrapping_add(byte_index),
+                *ptr.wrapping_add(byte_index + 1),
+            );
             unit_index += 1;
             unit
         })
