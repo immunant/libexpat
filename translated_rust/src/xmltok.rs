@@ -4566,25 +4566,15 @@ pub mod xmltok_impl_c {
         token
     }
 
-    pub unsafe extern "C" fn little2_scanCharRef(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        // Avoid constructing a slice from an empty C range.  The scanner has
-        // no token to inspect until a complete UTF-16 code unit is available.
-        if input_len < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
+    /// Scans a bounded UTF-16LE character reference and reports the next
+    /// cursor as an offset in `input`.  The caller that owns a C cursor is
+    /// responsible for validating the range and translating that offset.
+    pub fn little2_scanCharRef(
+        normal: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> (::core::ffi::c_int, Option<usize>) {
         let result = little2_scan_char_ref_impl(&normal.type_0, input, 0);
-        if let Some(next) = result.next {
-            *nextTokPtr = ptr.add(next);
-        }
-        result.token
+        (result.token, result.next)
     }
 
     // Retained as a disabled translation reference.  The active scanner below
