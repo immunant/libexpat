@@ -1302,6 +1302,25 @@ static END_ELEMENT_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn EndElementCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// An end-element handler registration prepared from the ABI callback value.
+///
+/// Parser state retains only this typed registry entry and its opaque address
+/// key, never the C callback representation itself.
+struct EndElementHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn EndElementCallback>>,
+}
+
+fn end_element_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> EndElementHandlerRegistration
+where
+    Callback: EndElementCallback + 'static,
+{
+    EndElementHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 trait EndNamespaceDeclCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -8901,23 +8920,22 @@ pub unsafe extern "C" fn XML_SetStartElementHandler_ffi(
 ) {
     XML_SetStartElementHandler(parser, start)
 }
-pub unsafe extern "C" fn XML_SetEndElementHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndElementHandler,
+fn set_end_element_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: EndElementHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_endElementHandler = end.is_some();
-        let mut handlers = END_ELEMENT_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match end {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_endElementHandler = registration.callback.is_some();
+    let mut handlers = END_ELEMENT_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
@@ -8927,7 +8945,13 @@ pub unsafe extern "C" fn XML_SetEndElementHandler_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut end: crate::expat_h::XML_EndElementHandler,
 ) {
-    XML_SetEndElementHandler(parser, end)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = end_element_handler_registration(end);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_end_element_handler(parser, parser_address, registration)
 }
 struct CharacterDataHandlerRegistration {
     callback: Option<std::sync::Arc<dyn CharacterDataCallback>>,
