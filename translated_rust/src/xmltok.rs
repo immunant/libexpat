@@ -4525,6 +4525,9 @@ enum NormalCharCheck {
 
 enum XmlDeclEncodingAction<'a> {
     MinBytes,
+    NameLength {
+        ptr: *const ::core::ffi::c_char,
+    },
     ToAscii {
         ptr: *const ::core::ffi::c_char,
         end: *const ::core::ffi::c_char,
@@ -4909,6 +4912,11 @@ fn encoding_data_lookup(
                 XmlDeclEncodingAction::MinBytes => {
                     XmlDeclEncodingResult::Int((*enc).minBytesPerChar)
                 }
+                XmlDeclEncodingAction::NameLength { ptr } => XmlDeclEncodingResult::Int((*enc)
+                    .nameLength
+                    .expect("non-null function pointer")(
+                    enc, ptr
+                )),
                 XmlDeclEncodingAction::ToAscii { mut ptr, end } => {
                     let mut buf: [::core::ffi::c_char; 1] = [0; 1];
                     let mut p = buf.as_mut_ptr();
@@ -14185,6 +14193,17 @@ fn xml_decl_encoding_action(
 
 pub(crate) fn encoding_min_bytes(enc: *const crate::src::xmltok::ENCODING) -> ::core::ffi::c_int {
     match xml_decl_encoding_action(enc, XmlDeclEncodingAction::MinBytes) {
+        XmlDeclEncodingResult::Int(value) => value,
+        XmlDeclEncodingResult::Encoding(_) => unreachable!(),
+        XmlDeclEncodingResult::EncodingName(_) => unreachable!(),
+    }
+}
+
+pub(crate) fn encoding_name_length(
+    enc: *const crate::src::xmltok::ENCODING,
+    ptr: *const ::core::ffi::c_char,
+) -> ::core::ffi::c_int {
+    match xml_decl_encoding_action(enc, XmlDeclEncodingAction::NameLength { ptr }) {
         XmlDeclEncodingResult::Int(value) => value,
         XmlDeclEncodingResult::Encoding(_) => unreachable!(),
         XmlDeclEncodingResult::EncodingName(_) => unreachable!(),
