@@ -21177,31 +21177,49 @@ unsafe fn storeEntityValue(
                         if parser.m_isParamEntity as ::core::ffi::c_int != 0
                             || enc_ptr != std::ptr::from_ref(current_parser_encoding(parser))
                         {
-                            let mut name: *const crate::expat_external_h::XML_Char =
-                                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-                            let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
-                            name = poolStoreString(
+                            if poolStoreString(
                                 &mut parser.m_tempPool,
                                 enc_ptr,
                                 entityTextPtr.wrapping_add(enc.enc.minBytesPerChar as usize),
                                 next.wrapping_sub(enc.enc.minBytesPerChar as usize),
-                            );
-                            if name.is_null() {
+                            )
+                            .is_null()
+                            {
                                 result = crate::expat_h::XML_ERROR_NO_MEMORY;
                                 break '_endEntityValue;
                             } else {
-                                entity = lookup(
-                                    parser,
-                                    &raw mut dtd.paramEntities,
-                                    name as KEY,
-                                    0 as crate::__stddef_size_t_h::size_t,
-                                ) as *mut ENTITY;
+                                let Some(name) = parser.m_tempPool.start_ref(true) else {
+                                    result = crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                    break '_endEntityValue;
+                                };
+                                let hash_salt = parser
+                                    .m_root
+                                    .lock()
+                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                    .hash_secret_salt;
+                                // The temporary pool owns the just-decoded, terminated
+                                // parameter-entity name.  Borrow its checked character
+                                // slice only for the DTD lookup; a table record copies it
+                                // if it must retain the key.
+                                let entity = pool_terminated_chars(&parser.m_tempPool, name)
+                                    .and_then(|name| {
+                                        lookup_impl(
+                                            &mut dtd.pool,
+                                            &mut dtd.paramEntities,
+                                            LookupName::Borrowed(name),
+                                            0,
+                                            hash_salt,
+                                        )
+                                    })
+                                    .and_then(|record| match record {
+                                        NamedRecord::Entity(entity) => Some(entity.as_mut()),
+                                        _ => None,
+                                    });
                                 (*parser).m_tempPool.rewind();
-                                if entity.is_null() {
+                                let Some(entity) = entity else {
                                     dtd.keepProcessing = dtd.standalone;
                                     break '_endEntityValue;
-                                }
-                                let entity = &mut *entity;
+                                };
                                 let is_current_declaration = match parser.m_declEntity {
                                     Some(DeclaredEntity::General(name))
                                     | Some(DeclaredEntity::Parameter(name)) => {
@@ -23975,63 +23993,6 @@ fn general_entity_mut(
         return None;
     };
     Some(entity.as_mut())
-}
-
-unsafe extern "C" fn lookup(
-    parser: crate::expat_h::XML_Parser,
-    table: *mut HASH_TABLE,
-    name: KEY,
-    create_size: crate::__stddef_size_t_h::size_t,
-) -> *mut NAMED {
-    let Some(parser) = parser.as_mut() else {
-        return ::core::ptr::null_mut();
-    };
-    let salt = parser
-        .m_root
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .hash_secret_salt;
-    let Some(dtd_owner) = parser.m_dtd.as_ref() else {
-        return ::core::ptr::null_mut();
-    };
-    let dtd = &mut *dtd_owner.value.get();
-    // A context-restoration key may reside in a temporary pool.  Keep its
-    // checked borrowed view through probing and table growth, then copy it
-    // only when a newly-created record must retain it.
-    let name = if name.is_null() {
-        return ::core::ptr::null_mut();
-    } else if let Some(name) = pool_string_ref_from_address(&dtd.pool, name.addr(), false) {
-        LookupName::Retained(name)
-    } else if let Some(name) = pool_string_ref_from_address(&parser.m_tempPool, name.addr(), false)
-        .and_then(|name| pool_terminated_chars(&parser.m_tempPool, name))
-    {
-        LookupName::Borrowed(name)
-    } else if let Some(name) = pool_string_ref_from_address(&parser.m_temp2Pool, name.addr(), false)
-        .and_then(|name| pool_terminated_chars(&parser.m_temp2Pool, name))
-    {
-        LookupName::Borrowed(name)
-    } else {
-        // `name` belongs to the legacy hash-table ABI only on this path.
-        // Materialize its C-string view at that boundary, then hand the
-        // bounded XML-character slice to the pool implementation.
-        let name = bytemuck::cast_slice(std::ffi::CStr::from_ptr(name).to_bytes_with_nul());
-        let Some(name) = poolCopyString(&mut dtd.pool, name) else {
-            return ::core::ptr::null_mut();
-        };
-        LookupName::Retained(name)
-    };
-    let Some(table) = table.as_mut() else {
-        return ::core::ptr::null_mut();
-    };
-    lookup_impl(&mut dtd.pool, table, name, create_size, salt).map_or(
-        ::core::ptr::null_mut(),
-        |record| match record {
-            NamedRecord::Prefix(record) => std::ptr::from_mut(record.as_mut()).cast(),
-            NamedRecord::Attribute(record) => std::ptr::from_mut(record.as_mut()).cast(),
-            NamedRecord::Element(record) => std::ptr::from_mut(record.as_mut()).cast(),
-            NamedRecord::Entity(record) => std::ptr::from_mut(record.as_mut()).cast(),
-        },
-    )
 }
 
 unsafe extern "C" fn hashTableClear(mut table: *mut HASH_TABLE) {
