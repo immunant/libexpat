@@ -2636,10 +2636,6 @@ static ELEMENT_DECL_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn ElementDeclCallback>>>,
 > = std::sync::OnceLock::new();
 
-trait AttlistDeclCallback: Send + Sync {
-    unsafe fn invoke(&self, event: AttlistDeclCallbackEvent<'_>);
-}
-
 /// A checked, transient attribute-declaration callback event.
 ///
 /// The strings are all parser-owned and NUL-terminated for the duration of
@@ -2655,39 +2651,41 @@ struct AttlistDeclCallbackEvent<'a> {
     is_required: ::core::ffi::c_int,
 }
 
-impl AttlistDeclCallback
-    for unsafe extern "C" fn(
-        *mut ::core::ffi::c_void,
-        *const crate::expat_external_h::XML_Char,
-        *const crate::expat_external_h::XML_Char,
-        *const crate::expat_external_h::XML_Char,
-        *const crate::expat_external_h::XML_Char,
-        ::core::ffi::c_int,
-    )
-{
-    unsafe fn invoke(&self, event: AttlistDeclCallbackEvent<'_>) {
-        self(
-            handler_arg_from_state!(event.parser),
-            event.element_name.as_ptr(),
-            event.attribute_name.as_ptr(),
-            event.attribute_type.as_ptr(),
-            event
-                .default_value
-                .map_or(::core::ptr::null(), |value| value.as_ptr()),
-            event.is_required,
-        );
-    }
-}
-
-/// Keeps the one unsafe callback invocation at the ABI boundary while the
-/// parser-side declaration dispatcher works solely with a typed event.
+/// Keeps parser-side declaration dispatch on a checked, typed event.  The
+/// foreign callback itself remains erased until this narrow ABI boundary.
 struct AttlistDeclCallbackAdapter {
-    callback: std::sync::Arc<dyn AttlistDeclCallback>,
+    callback: std::sync::Arc<dyn std::any::Any + Send + Sync>,
 }
 
 impl AttlistDeclCallbackAdapter {
     fn invoke(&self, event: AttlistDeclCallbackEvent<'_>) {
-        unsafe { self.callback.invoke(event) }
+        let Some(callback) = self.callback.downcast_ref::<
+            unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                *const crate::expat_external_h::XML_Char,
+                ::core::ffi::c_int,
+            ),
+        >() else {
+            return;
+        };
+        // The event's XML-character slices are parser-owned and
+        // NUL-terminated, so they satisfy the C handler's pointer and
+        // lifetime contract for this synchronous call.
+        unsafe {
+            callback(
+                handler_arg_from_state!(event.parser),
+                event.element_name.as_ptr(),
+                event.attribute_name.as_ptr(),
+                event.attribute_type.as_ptr(),
+                event
+                    .default_value
+                    .map_or(::core::ptr::null(), |value| value.as_ptr()),
+                event.is_required,
+            );
+        }
     }
 }
 
@@ -10318,7 +10316,7 @@ fn attlist_decl_handler_registration<Callback>(
     handler: Option<Callback>,
 ) -> Option<std::sync::Arc<AttlistDeclCallbackAdapter>>
 where
-    Callback: AttlistDeclCallback + 'static,
+    Callback: std::any::Any + Send + Sync + 'static,
 {
     handler.map(|callback| {
         std::sync::Arc::new(AttlistDeclCallbackAdapter {
