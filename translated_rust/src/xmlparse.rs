@@ -1520,7 +1520,7 @@ impl EndCdataSectionCallback for unsafe extern "C" fn(*mut ::core::ffi::c_void) 
 /// Owns an erased C callback representation while exposing only a typed
 /// parser reference to callback dispatch.
 struct CdataSectionCallbackAdapter {
-    callback: std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    callback: std::sync::Arc<dyn Fn(&XML_ParserStruct) + Send + Sync>,
 }
 
 static START_CDATA_SECTION_HANDLERS: std::sync::OnceLock<
@@ -1554,9 +1554,7 @@ where
     Callback: EndCdataSectionCallback + 'static,
 {
     EndCdataSectionHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
-            callback: std::sync::Arc::new(callback),
-        })),
+        callback: handler.map(cdata_section_callback_adapter),
     }
 }
 
@@ -1568,12 +1566,8 @@ where
     Callback: EndCdataSectionCallback + 'static,
 {
     CdataSectionHandlers {
-        start: start.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
-            callback: std::sync::Arc::new(callback),
-        })),
-        end: end.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
-            callback: std::sync::Arc::new(callback),
-        })),
+        start: start.map(cdata_section_callback_adapter),
+        end: end.map(cdata_section_callback_adapter),
     }
 }
 
@@ -1722,9 +1716,7 @@ where
     Callback: EndCdataSectionCallback + 'static,
 {
     EndDoctypeDeclHandlerRegistration {
-        callback: handler.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
-            callback: std::sync::Arc::new(callback),
-        })),
+        callback: handler.map(cdata_section_callback_adapter),
     }
 }
 
@@ -1740,9 +1732,7 @@ where
         start: start.map(|callback| {
             std::sync::Arc::new(StartDoctypeDeclCallbackAdapter::new(callback))
         }),
-        end: end.map(|callback| std::sync::Arc::new(CdataSectionCallbackAdapter {
-            callback: std::sync::Arc::new(callback),
-        })),
+        end: end.map(cdata_section_callback_adapter),
     }
 }
 
@@ -1991,14 +1981,34 @@ impl TwoXmlCharCallbackAdapter {
     }
 }
 
-impl CdataSectionCallbackAdapter {
-    fn invoke(&self, parser: &XML_ParserStruct) {
-        let Some(callback) = self.callback.downcast_ref::<
-            unsafe extern "C" fn(*mut ::core::ffi::c_void),
-        >() else {
+/// Converts one registered C callback into the typed, synchronous callback
+/// used by CDATA and end-doctype dispatch.  This is the sole ABI call site
+/// for that shared adapter family; parser dispatch itself retains only a
+/// parser reference.
+fn cdata_section_callback_adapter<Callback>(
+    callback: Callback,
+) -> std::sync::Arc<CdataSectionCallbackAdapter>
+where
+    Callback: EndCdataSectionCallback + 'static,
+{
+    let callback = std::sync::Arc::new(callback);
+    let callback = std::sync::Arc::new(move |parser: &XML_ParserStruct| {
+        let Some(callback) = (callback.as_ref() as &dyn std::any::Any)
+            .downcast_ref::<unsafe extern "C" fn(*mut ::core::ffi::c_void)>()
+        else {
             return;
         };
+        // The callback receives only the caller-owned opaque context or the
+        // current parser handle, selected by the parser's handler-argument
+        // mode. Both are materialized for this immediate foreign call.
         unsafe { callback(handler_arg_from_state!(parser)) }
+    });
+    std::sync::Arc::new(CdataSectionCallbackAdapter { callback })
+}
+
+impl CdataSectionCallbackAdapter {
+    fn invoke(&self, parser: &XML_ParserStruct) {
+        (self.callback)(parser)
     }
 }
 
@@ -9944,11 +9954,7 @@ fn set_start_cdata_section_handler<Callback>(
 ) where
     Callback: EndCdataSectionCallback + 'static,
 {
-    let callback = start.map(|callback| {
-        std::sync::Arc::new(CdataSectionCallbackAdapter {
-            callback: std::sync::Arc::new(callback),
-        })
-    });
+    let callback = start.map(cdata_section_callback_adapter);
     parser.m_startCdataSectionHandler = callback.is_some();
     let mut handlers = START_CDATA_SECTION_HANDLERS
         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
