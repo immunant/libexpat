@@ -10094,26 +10094,22 @@ pub unsafe extern "C" fn XML_GetCurrentColumnNumber_ffi(
         None => 0,
     }
 }
-pub unsafe extern "C" fn XML_FreeContentModel(
-    mut parser: crate::expat_h::XML_Parser,
-    mut model: *mut crate::expat_h::XML_Content,
-) {
-    if parser.is_null() {
-        return;
-    }
+/// Releases the Rust-owned declaration model identified at the ABI boundary.
+///
+/// A model address is only a registry key here.  Its contents and allocator
+/// token remain owned by the registry until this transfer-release operation.
+fn XML_FreeContentModel(model_address: usize) {
     let owned_model = CONTENT_MODEL_STORAGE.get().and_then(|models| {
         models
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .remove(&model.addr())
+            .remove(&model_address)
     });
     if let Some(mut owned_model) = owned_model {
         if let Some(mut backing) = owned_model.backing.take() {
             backing();
         }
-        return;
     }
-    (*parser).m_mem.free_fcn.expect("non-null function pointer")(model as *mut ::core::ffi::c_void);
 }
 #[export_name = "XML_FreeContentModel"]
 
@@ -10121,7 +10117,11 @@ pub unsafe extern "C" fn XML_FreeContentModel_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut model: *mut crate::expat_h::XML_Content,
 ) {
-    XML_FreeContentModel(parser, model)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let _parser = parser.as_ref().expect("non-null parser was checked");
+    XML_FreeContentModel(model.addr())
 }
 pub unsafe extern "C" fn XML_MemMalloc(
     mut parser: crate::expat_h::XML_Parser,
