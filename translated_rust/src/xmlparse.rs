@@ -5955,81 +5955,72 @@ unsafe fn allocate_parser_storage(
     // failure below releases exactly the tokens acquired so far before the
     // parser allocation itself is returned to the configured allocator.
     let parser = &mut *parser_ptr;
-    parser.m_buffer = InputBuffer::empty();
-    parser.m_bufferLim = 0;
-    parser.m_attsSize = INIT_ATTS_SIZE;
-    let Some(atts) = attribute_storage_new(parser, INIT_ATTS_SIZE as usize, 1449) else {
-        expat_free(
+    let storage_result = (|| -> Result<(), ::core::ffi::c_int> {
+        parser.m_buffer = InputBuffer::empty();
+        parser.m_bufferLim = 0;
+        parser.m_attsSize = INIT_ATTS_SIZE;
+        let Some(atts) = attribute_storage_new(parser, INIT_ATTS_SIZE as usize, 1449) else {
+            return Err(1451);
+        };
+        parser.m_atts = atts;
+        let mut data_buf_backing = match allocation_backing(
             parser,
-            parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-            1451 as ::core::ffi::c_int,
-        );
-        return None;
-    };
-    parser.m_atts = atts;
-    let mut data_buf_backing = match allocation_backing(
-        parser,
-        (INIT_DATA_BUF_SIZE as crate::__stddef_size_t_h::size_t)
-            .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
-        1462 as ::core::ffi::c_int,
-    ) {
-        Some(backing) => backing,
-        None => {
+            (INIT_DATA_BUF_SIZE as crate::__stddef_size_t_h::size_t)
+                .wrapping_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>()),
+            1462 as ::core::ffi::c_int,
+        ) {
+            Some(backing) => backing,
+            None => {
+                let mut backing = parser.m_atts.backing.take();
+                if let Some(backing) = backing.as_mut() {
+                    backing(parser, AttributeAllocationAction::Free(1464));
+                }
+                return Err(1468);
+            }
+        };
+        let mut data_buf_chars = Vec::new();
+        if data_buf_chars
+            .try_reserve_exact(INIT_DATA_BUF_SIZE as usize)
+            .is_err()
+        {
+            data_buf_backing(1464 as ::core::ffi::c_int);
             let mut backing = parser.m_atts.backing.take();
             if let Some(backing) = backing.as_mut() {
                 backing(parser, AttributeAllocationAction::Free(1464));
             }
-            expat_free(
-                parser,
-                parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-                1468 as ::core::ffi::c_int,
-            );
-            return None;
+            return Err(1468);
         }
-    };
-    let mut data_buf_chars = Vec::new();
-    if data_buf_chars
-        .try_reserve_exact(INIT_DATA_BUF_SIZE as usize)
-        .is_err()
-    {
-        data_buf_backing(1464 as ::core::ffi::c_int);
-        let mut backing = parser.m_atts.backing.take();
-        if let Some(backing) = backing.as_mut() {
-            backing(parser, AttributeAllocationAction::Free(1464));
+        data_buf_chars.resize(INIT_DATA_BUF_SIZE as usize, 0);
+        parser.m_dataBuf = DataBuffer {
+            chars: data_buf_chars,
+            backing: Some(data_buf_backing),
+        };
+        parser.m_dataBufEnd = INIT_DATA_BUF_SIZE as usize;
+        if share_parent_dtd {
+            parser.m_dtd = parent_state
+                .as_ref()
+                .and_then(|state| state.inherited_dtd.as_ref())
+                .cloned();
+        } else {
+            parser.m_dtd = dtd_create(parser);
+            if parser.m_dtd.is_none() {
+                parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
+                let mut backing = parser.m_atts.backing.take();
+                if let Some(backing) = backing.as_mut() {
+                    backing(parser, AttributeAllocationAction::Free(1479));
+                }
+                return Err(1483);
+            }
         }
+        Ok(())
+    })();
+    if let Err(source_line) = storage_result {
         expat_free(
             parser,
             parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-            1468 as ::core::ffi::c_int,
+            source_line,
         );
         return None;
-    }
-    data_buf_chars.resize(INIT_DATA_BUF_SIZE as usize, 0);
-    parser.m_dataBuf = DataBuffer {
-        chars: data_buf_chars,
-        backing: Some(data_buf_backing),
-    };
-    parser.m_dataBufEnd = INIT_DATA_BUF_SIZE as usize;
-    if share_parent_dtd {
-        parser.m_dtd = parent_state
-            .as_ref()
-            .and_then(|state| state.inherited_dtd.as_ref())
-            .cloned();
-    } else {
-        parser.m_dtd = dtd_create(parser);
-        if parser.m_dtd.is_none() {
-            parser.m_dataBuf.release(1478 as ::core::ffi::c_int);
-            let mut backing = parser.m_atts.backing.take();
-            if let Some(backing) = backing.as_mut() {
-                backing(parser, AttributeAllocationAction::Free(1479));
-            }
-            expat_free(
-                parser,
-                parser as *mut XML_ParserStruct as *mut ::core::ffi::c_void,
-                1483 as ::core::ffi::c_int,
-            );
-            return None;
-        }
     }
     initialize_parser_collections(parser);
     parser.m_unknownEncodingHandler = false;
