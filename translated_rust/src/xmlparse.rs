@@ -15645,10 +15645,10 @@ unsafe fn doProlog(
                 }
                 crate::src::xmltok::XML_TOK_NONE => {
                     if enc != active_parser_encoding
-                        && (*parser)
+                        && parser
                             .m_openInternalEntities
                             .and_then(|index| {
-                                (*parser)
+                                parser
                                     .m_activeInternalEntities
                                     .get(index)
                                     .map(|storage| storage.node().betweenDecl)
@@ -15659,10 +15659,10 @@ unsafe fn doProlog(
                         *next_ptr = s;
                         return crate::expat_h::XML_ERROR_NONE;
                     }
-                    if (*parser).m_isParamEntity as ::core::ffi::c_int != 0
+                    if parser.m_isParamEntity as ::core::ffi::c_int != 0
                         || enc != active_parser_encoding
                     {
-                        let prolog_state = &mut (*parser).m_prologState;
+                        let prolog_state = &mut parser.m_prologState;
                         let token: &[::core::ffi::c_char] = &[];
                         let min_bytes_per_char = encoding.minBytesPerChar;
                         if crate::src::xmlrole::prolog_handler_dispatch(
@@ -15736,7 +15736,7 @@ unsafe fn doProlog(
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
             token_bytes.extend(token.iter().map(|&ch| ch as u8));
-            let prolog_state = &mut (*parser).m_prologState;
+            let prolog_state = &mut parser.m_prologState;
             let (min_bytes_per_char, entity_name_matcher) =
                 (encoding.minBytesPerChar, encoding.predefinedEntityName);
             role = crate::src::xmlrole::prolog_handler_dispatch(
@@ -15806,9 +15806,9 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     4 => {
-                                        if (*parser).m_startDoctypeDeclHandler {
+                                        if parser.m_startDoctypeDeclHandler {
                                             if pool_store_name_source(
-                                                &mut (*parser).m_tempPool,
+                                                &mut parser.m_tempPool,
                                                 &encoding,
                                                 unknown_encoding.as_ref(),
                                                 &token_bytes,
@@ -15818,20 +15818,20 @@ unsafe fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
                                             let Some(doctype_name) =
-                                                (*parser).m_tempPool.start_ref(false)
+                                                parser.m_tempPool.start_ref(false)
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            (*parser).m_doctypeName = Some(doctype_name);
-                                            (*parser).m_tempPool.commit();
-                                            (*parser).m_doctypePubid = None;
+                                            parser.m_doctypeName = Some(doctype_name);
+                                            parser.m_tempPool.commit();
+                                            parser.m_doctypePubid = None;
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
-                                        (*parser).m_doctypeSysid = DoctypeSystemId::None;
+                                        parser.m_doctypeSysid = DoctypeSystemId::None;
                                         break 's_2375;
                                     }
                                     7 => {
-                                        if (*parser).m_startDoctypeDeclHandler {
+                                        if parser.m_startDoctypeDeclHandler {
                                             let callback = START_DOCTYPE_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -15910,8 +15910,8 @@ unsafe fn doProlog(
                                                     1 as ::core::ffi::c_int,
                                                 );
                                             }
-                                            (*parser).m_doctypeName = None;
-                                            poolClear(&mut (*parser).m_tempPool);
+                                            parser.m_doctypeName = None;
+                                            poolClear(&mut parser.m_tempPool);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -15943,7 +15943,7 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     6 => {
-                                        (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
+                                        parser.m_useForeignDTD = crate::expat_h::XML_FALSE;
                                         if external_subset_entity_mut(
                                             dtd,
                                             ::core::mem::size_of::<ENTITY>(),
@@ -15953,10 +15953,10 @@ unsafe fn doProlog(
                                         {
                                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                                         }
-                                        (*parser).m_declEntity =
+                                        parser.m_declEntity =
                                             Some(DeclaredEntity::ExternalSubset);
-                                        (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                                        if (*parser).m_startDoctypeDeclHandler {
+                                        dtd.hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                                        if parser.m_startDoctypeDeclHandler {
                                             let public_id_checker = encoding.isPublicId;
                                             let public_id_width = match public_id_checker {
                                                 crate::src::xmltok::PublicIdChecker::Normal => 1,
@@ -15998,7 +15998,7 @@ unsafe fn doProlog(
                                                 return crate::expat_h::XML_ERROR_PUBLICID;
                                             };
                                             if pool_store_name_source(
-                                                &mut (*parser).m_tempPool,
+                                                &mut parser.m_tempPool,
                                                 &encoding,
                                                 unknown_encoding.as_ref(),
                                                 quoted_public_id,
@@ -16032,7 +16032,7 @@ unsafe fn doProlog(
                                         {
                                             return crate::expat_h::XML_ERROR_INVALID_TOKEN;
                                         }
-                                        if (*parser).m_doctypeName.is_some() {
+                                        if parser.m_doctypeName.is_some() {
                                             let callback = START_DOCTYPE_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -16111,20 +16111,20 @@ unsafe fn doProlog(
                                                     0 as ::core::ffi::c_int,
                                                 );
                                             }
-                                            poolClear(&mut (*parser).m_tempPool);
+                                            poolClear(&mut parser.m_tempPool);
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
-                                        if (*parser).m_doctypeSysid.is_present()
-                                            || (*parser).m_useForeignDTD as ::core::ffi::c_int != 0
+                                        if parser.m_doctypeSysid.is_present()
+                                            || parser.m_useForeignDTD as ::core::ffi::c_int != 0
                                         {
                                             let mut hadParamEntityRefs: crate::expat_h::XML_Bool =
-                                                (*dtd).hasParamEntityRefs;
-                                            (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                                            if (*parser).m_paramEntityParsing as ::core::ffi::c_uint
+                                                dtd.hasParamEntityRefs;
+                                            dtd.hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                                            if parser.m_paramEntityParsing as ::core::ffi::c_uint
                                                 != 0
-                                                && (*parser).m_externalEntityRefHandler
+                                                && parser.m_externalEntityRefHandler
                                             {
-                                                (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                                                dtd.paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let (entity_base, entity_system_id, entity_public_id) = {
                                                     let Some(entity) = external_subset_entity_mut(
                                                         dtd,
@@ -16133,8 +16133,8 @@ unsafe fn doProlog(
                                                     ) else {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     };
-                                                    if (*parser).m_useForeignDTD != 0 {
-                                                        entity.base = (*parser).m_curBase;
+                                                    if parser.m_useForeignDTD != 0 {
+                                                        entity.base = parser.m_curBase;
                                                     }
                                                     (entity.base, entity.systemId, entity.publicId)
                                                 };
@@ -16166,9 +16166,9 @@ unsafe fn doProlog(
                                                 {
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                                 }
-                                                if (*dtd).paramEntityRead != 0 {
-                                                    if (*dtd).standalone == 0
-                                                        && (*parser).m_notStandaloneHandler
+                                                if dtd.paramEntityRead != 0 {
+                                                    if dtd.standalone == 0
+                                                        && parser.m_notStandaloneHandler
                                                     {
                                                         let callback = NOT_STANDALONE_HANDLERS
                                                             .get_or_init(|| {
@@ -16193,13 +16193,13 @@ unsafe fn doProlog(
                                                             return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                                         }
                                                     }
-                                                } else if !(*parser).m_doctypeSysid.is_present() {
-                                                    (*dtd).hasParamEntityRefs = hadParamEntityRefs;
+                                                } else if !parser.m_doctypeSysid.is_present() {
+                                                    dtd.hasParamEntityRefs = hadParamEntityRefs;
                                                 }
                                             }
-                                            (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
+                                            parser.m_useForeignDTD = crate::expat_h::XML_FALSE;
                                         }
-                                        if (*parser).m_endDoctypeDeclHandler {
+                                        if parser.m_endDoctypeDeclHandler {
                                             let callback = END_DOCTYPE_DECL_HANDLERS
                                                 .get_or_init(|| {
                                                     std::sync::Mutex::new(
@@ -16217,15 +16217,15 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     2 => {
-                                        if (*parser).m_useForeignDTD != 0 {
+                                        if parser.m_useForeignDTD != 0 {
                                             let mut hadParamEntityRefs_0: crate::expat_h::XML_Bool =
-                                                (*dtd).hasParamEntityRefs;
-                                            (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                                            if (*parser).m_paramEntityParsing as ::core::ffi::c_uint
+                                                dtd.hasParamEntityRefs;
+                                            dtd.hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                                            if parser.m_paramEntityParsing as ::core::ffi::c_uint
                                                 != 0
-                                                && (*parser).m_externalEntityRefHandler
+                                                && parser.m_externalEntityRefHandler
                                             {
-                                                (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                                                dtd.paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let (entity_base, entity_system_id, entity_public_id) = {
                                                     let Some(entity) = external_subset_entity_mut(
                                                         dtd,
@@ -16234,7 +16234,7 @@ unsafe fn doProlog(
                                                     ) else {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     };
-                                                    entity.base = (*parser).m_curBase;
+                                                    entity.base = parser.m_curBase;
                                                     (entity.base, entity.systemId, entity.publicId)
                                                 };
                                                 let handler = EXTERNAL_ENTITY_REF_HANDLERS
@@ -16265,9 +16265,9 @@ unsafe fn doProlog(
                                                 {
                                                     return crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                                 }
-                                                if (*dtd).paramEntityRead != 0 {
-                                                    if (*dtd).standalone == 0
-                                                        && (*parser).m_notStandaloneHandler
+                                                if dtd.paramEntityRead != 0 {
+                                                    if dtd.standalone == 0
+                                                        && parser.m_notStandaloneHandler
                                                     {
                                                         let callback = NOT_STANDALONE_HANDLERS
                                                             .get_or_init(|| {
@@ -16293,12 +16293,12 @@ unsafe fn doProlog(
                                                         }
                                                     }
                                                 } else {
-                                                    (*dtd).hasParamEntityRefs =
+                                                    dtd.hasParamEntityRefs =
                                                         hadParamEntityRefs_0;
                                                 }
                                             }
                                         }
-                                        (*parser).m_processor = ProcessorState::Content;
+                                        parser.m_processor = ProcessorState::Content;
                                         return contentProcessor(
                                             parser,
                                             s,
@@ -16340,10 +16340,10 @@ unsafe fn doProlog(
                                         break '_checkAttListDeclHandler;
                                     }
                                     31 | 32 => {
-                                        if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                            && (*parser).m_attlistDeclHandler
+                                        if dtd.keepProcessing as ::core::ffi::c_int != 0
+                                            && parser.m_attlistDeclHandler
                                         {
-                                            let prefix = if (*parser).m_declAttributeType.is_some() {
+                                            let prefix = if parser.m_declAttributeType.is_some() {
                                                 &enumValueSep[..]
                                             } else {
                                                 if role
@@ -16382,12 +16382,12 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     35 | 36 => {
-                                        if (*dtd).keepProcessing != 0 {
-                                            let Some(attribute_name) = (*parser).m_declAttributeId
+                                        if dtd.keepProcessing != 0 {
+                                            let Some(attribute_name) = parser.m_declAttributeId
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            let element_name = (*parser)
+                                            let element_name = parser
                                                 .m_declElementType
                                                 .expect("element declaration must be set before its attributes");
                                             let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
@@ -16398,30 +16398,30 @@ unsafe fn doProlog(
                                                 dtd,
                                                 element_name,
                                                 attribute_name,
-                                                (*parser).m_declAttributeIsCdata,
-                                                (*parser).m_declAttributeIsId,
+                                                parser.m_declAttributeIsCdata,
+                                                parser.m_declAttributeIsId,
                                                 None,
                                                 &mut new_storage,
                                             )
                                             {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            if (*parser).m_attlistDeclHandler
-                                                && (*parser).m_declAttributeType.is_some()
+                                            if parser.m_attlistDeclHandler
+                                                && parser.m_declAttributeType.is_some()
                                             {
-                                                if (*parser).m_declAttributeType.is_some_and(
+                                                if parser.m_declAttributeType.is_some_and(
                                                     |attribute_type| {
                                                         attribute_type.needs_closing_delimiter(
-                                                            &(*parser).m_tempPool,
+                                                            &parser.m_tempPool,
                                                         )
                                                     },
                                                 ) {
-                                                    if (if (*parser).m_tempPool.is_full()
-                                                        && poolGrow(&mut (*parser).m_tempPool) == 0
+                                                    if (if parser.m_tempPool.is_full()
+                                                        && poolGrow(&mut parser.m_tempPool) == 0
                                                     {
                                                         0 as ::core::ffi::c_int
                                                     } else {
-                                                        if (*parser).m_tempPool.write_cursor(
+                                                        if parser.m_tempPool.write_cursor(
                                                             0x29 as crate::expat_external_h::XML_Char,
                                                         ) {
                                                             1 as ::core::ffi::c_int
@@ -16429,13 +16429,13 @@ unsafe fn doProlog(
                                                             0 as ::core::ffi::c_int
                                                         }
                                                     }) == 0
-                                                        || (if (*parser).m_tempPool.is_full()
-                                                            && poolGrow(&mut (*parser).m_tempPool)
+                                                        || (if parser.m_tempPool.is_full()
+                                                            && poolGrow(&mut parser.m_tempPool)
                                                                 == 0
                                                         {
                                                             0 as ::core::ffi::c_int
                                                         } else {
-                                                            if (*parser).m_tempPool.write_cursor(
+                                                            if parser.m_tempPool.write_cursor(
                                                                 '\0' as crate::expat_external_h::XML_Char,
                                                             ) {
                                                                 1 as ::core::ffi::c_int
@@ -16465,7 +16465,7 @@ unsafe fn doProlog(
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
-                                                    let attribute_name = (*dtd)
+                                                    let attribute_name = dtd
                                                         .pool
                                                         .chars_from(attribute_name)
                                                         .map_or(::core::ptr::null(), |chars| {
@@ -16474,7 +16474,7 @@ unsafe fn doProlog(
                                                     if attribute_name.is_null() {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
-                                                    let attribute_type = match (*parser)
+                                                    let attribute_type = match parser
                                                         .m_declAttributeType
                                                     {
                                                         Some(DeclAttributeType::Cdata) => {
@@ -16508,7 +16508,7 @@ unsafe fn doProlog(
                                                                 as *const crate::expat_external_h::XML_Char
                                                         }
                                                         Some(DeclAttributeType::Temporary(type_ref)) => {
-                                                            (*parser)
+                                                            parser
                                                                 .m_tempPool
                                                                 .chars_from(type_ref)
                                                                 .map_or(::core::ptr::null(), |chars| {
@@ -16522,10 +16522,10 @@ unsafe fn doProlog(
                                                     }
                                                     callback.invoke(
                                                         handler_arg_from_state!(parser),
-                                                        (*dtd)
+                                                        dtd
                                                             .pool
                                                             .chars_from(
-                                                                (*parser)
+                                                                parser
                                                                     .m_declElementType
                                                                     .expect("element declaration must be set before its callback"),
                                                             )
@@ -16543,18 +16543,18 @@ unsafe fn doProlog(
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
-                                        poolClear(&mut (*parser).m_tempPool);
+                                        poolClear(&mut parser.m_tempPool);
                                         break 's_2375;
                                     }
                                     37 | 38 => {
-                                        if (*dtd).keepProcessing != 0 {
+                                        if dtd.keepProcessing != 0 {
                                             let mut attVal: *const crate::expat_external_h::XML_Char =
                                                 ::core::ptr::null:: <crate::expat_external_h::XML_Char>();
                                             let mut result_1: crate::expat_h::XML_Error =
                                                 storeAttributeValue(
                                                     parser,
                                                     enc,
-                                                    (*parser).m_declAttributeIsCdata,
+                                                    parser.m_declAttributeIsCdata,
                                                     s.wrapping_add(encoding.minBytesPerChar as usize),
                                                     next.wrapping_sub(encoding.minBytesPerChar as usize),
                                                     std::ptr::from_mut(&mut dtd.pool),
@@ -16574,11 +16574,11 @@ unsafe fn doProlog(
                                                     chars.as_ptr()
                                                 });
                                             dtd_ref.pool.commit();
-                                            let Some(attribute_name) = (*parser).m_declAttributeId
+                                            let Some(attribute_name) = parser.m_declAttributeId
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            let element_name = (*parser)
+                                            let element_name = parser
                                                 .m_declElementType
                                                 .expect("element declaration must be set before its attributes");
                                             let mut new_storage = |parser: &mut XML_ParserStruct, capacity| {
@@ -16589,7 +16589,7 @@ unsafe fn doProlog(
                                                 dtd,
                                                 element_name,
                                                 attribute_name,
-                                                (*parser).m_declAttributeIsCdata,
+                                                parser.m_declAttributeIsCdata,
                                                 crate::expat_h::XML_FALSE,
                                                 Some(start),
                                                 &mut new_storage,
@@ -16597,22 +16597,22 @@ unsafe fn doProlog(
                                             {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            if (*parser).m_attlistDeclHandler
-                                                && (*parser).m_declAttributeType.is_some()
+                                            if parser.m_attlistDeclHandler
+                                                && parser.m_declAttributeType.is_some()
                                             {
-                                                if (*parser).m_declAttributeType.is_some_and(
+                                                if parser.m_declAttributeType.is_some_and(
                                                     |attribute_type| {
                                                         attribute_type.needs_closing_delimiter(
-                                                            &(*parser).m_tempPool,
+                                                            &parser.m_tempPool,
                                                         )
                                                     },
                                                 ) {
-                                                    if (if (*parser).m_tempPool.is_full()
-                                                        && poolGrow(&mut (*parser).m_tempPool) == 0
+                                                    if (if parser.m_tempPool.is_full()
+                                                        && poolGrow(&mut parser.m_tempPool) == 0
                                                     {
                                                         0 as ::core::ffi::c_int
                                                     } else {
-                                                        if (*parser).m_tempPool.write_cursor(
+                                                        if parser.m_tempPool.write_cursor(
                                                             0x29 as crate::expat_external_h::XML_Char,
                                                         ) {
                                                             1 as ::core::ffi::c_int
@@ -16620,13 +16620,13 @@ unsafe fn doProlog(
                                                             0 as ::core::ffi::c_int
                                                         }
                                                     }) == 0
-                                                        || (if (*parser).m_tempPool.is_full()
-                                                            && poolGrow(&mut (*parser).m_tempPool)
+                                                        || (if parser.m_tempPool.is_full()
+                                                            && poolGrow(&mut parser.m_tempPool)
                                                                 == 0
                                                         {
                                                             0 as ::core::ffi::c_int
                                                         } else {
-                                                            if (*parser).m_tempPool.write_cursor(
+                                                            if parser.m_tempPool.write_cursor(
                                                                 '\0' as crate::expat_external_h::XML_Char,
                                                             ) {
                                                                 1 as ::core::ffi::c_int
@@ -16656,7 +16656,7 @@ unsafe fn doProlog(
                                                 if let Some(callback) =
                                                     attlist_decl_handler(parser_key)
                                                 {
-                                                    let attribute_name = (*dtd)
+                                                    let attribute_name = dtd
                                                         .pool
                                                         .chars_from(attribute_name)
                                                         .map_or(::core::ptr::null(), |chars| {
@@ -16665,7 +16665,7 @@ unsafe fn doProlog(
                                                     if attribute_name.is_null() {
                                                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                     }
-                                                    let attribute_type = match (*parser)
+                                                    let attribute_type = match parser
                                                         .m_declAttributeType
                                                     {
                                                         Some(DeclAttributeType::Cdata) => {
@@ -16699,7 +16699,7 @@ unsafe fn doProlog(
                                                                 as *const crate::expat_external_h::XML_Char
                                                         }
                                                         Some(DeclAttributeType::Temporary(type_ref)) => {
-                                                            (*parser)
+                                                            parser
                                                                 .m_tempPool
                                                                 .chars_from(type_ref)
                                                                 .map_or(::core::ptr::null(), |chars| {
@@ -16713,10 +16713,10 @@ unsafe fn doProlog(
                                                     }
                                                     callback.invoke(
                                                         handler_arg_from_state!(parser),
-                                                        (*dtd)
+                                                        dtd
                                                             .pool
                                                             .chars_from(
-                                                                (*parser)
+                                                                parser
                                                                     .m_declElementType
                                                                     .expect("element declaration must be set before its callback"),
                                                             )
@@ -16731,14 +16731,14 @@ unsafe fn doProlog(
                                                             as ::core::ffi::c_int,
                                                     );
                                                 }
-                                                poolClear(&mut (*parser).m_tempPool);
+                                                poolClear(&mut parser.m_tempPool);
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
                                         break 's_2375;
                                     }
                                     12 => {
-                                        if (*dtd).keepProcessing != 0 {
+                                        if dtd.keepProcessing != 0 {
                                             let mut result_2: crate::expat_h::XML_Error =
                                                 callStoreEntityValue(
                                                     parser,
@@ -16747,7 +16747,7 @@ unsafe fn doProlog(
                                                     next.wrapping_sub(encoding.minBytesPerChar as usize),
                                                     XML_ACCOUNT_NONE,
                                             );
-                                            if let Some(declaration) = (*parser).m_declEntity {
+                                            if let Some(declaration) = parser.m_declEntity {
                                                 let dtd_ref = &mut *dtd;
                                                 let Some(entity_text_ref) =
                                                     dtd_ref.entityValuePool.start_ref(true)
@@ -16779,7 +16779,7 @@ unsafe fn doProlog(
                                                     entity.textLen = text_len;
                                                     (entity.named.name, entity.is_param, entity.textLen)
                                                 };
-                                                if (*parser).m_entityDeclHandler {
+                                                if parser.m_entityDeclHandler {
                                                     event_target.set_end(
                                                         parser,
                                                         internal_event_start,
@@ -16809,7 +16809,7 @@ unsafe fn doProlog(
                                                                 as ::core::ffi::c_int,
                                                             entity_text,
                                                             entity_text_len,
-                                                            (*parser)
+                                                            parser
                                                                 .m_curBase
                                                                 .map(|base| {
                                                                     pool_string_pointer!(
@@ -16834,7 +16834,7 @@ unsafe fn doProlog(
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
                                             } else {
-                                                (*dtd).entityValuePool.rewind();
+                                                dtd.entityValuePool.rewind();
                                             }
                                             if result_2 as ::core::ffi::c_uint
                                                 != crate::expat_h::XML_ERROR_NONE
@@ -16847,9 +16847,9 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     5 => {
-                                        (*parser).m_useForeignDTD = crate::expat_h::XML_FALSE;
-                                        (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                                        if (*parser).m_startDoctypeDeclHandler {
+                                        parser.m_useForeignDTD = crate::expat_h::XML_FALSE;
+                                        dtd.hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                                        if parser.m_startDoctypeDeclHandler {
                                             let Some(system_id) = prolog_quoted_token_contents(
                                                 &token_bytes,
                                                 encoding.minBytesPerChar,
@@ -16868,12 +16868,12 @@ unsafe fn doProlog(
                                             parser.m_tempPool.commit();
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         } else {
-                                            (*parser).m_doctypeSysid =
+                                            parser.m_doctypeSysid =
                                                 DoctypeSystemId::ExternalSubset;
                                         }
-                                        if (*dtd).standalone == 0
-                                            && (*parser).m_paramEntityParsing as u64 == 0
-                                            && (*parser).m_notStandaloneHandler
+                                        if dtd.standalone == 0
+                                            && parser.m_paramEntityParsing as u64 == 0
+                                            && parser.m_notStandaloneHandler
                                         {
                                             let callback = NOT_STANDALONE_HANDLERS
                                                 .get_or_init(|| {
@@ -16890,7 +16890,7 @@ unsafe fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NOT_STANDALONE;
                                             }
                                         }
-                                        if (*parser).m_declEntity.is_none() {
+                                        if parser.m_declEntity.is_none() {
                                             let Some(entity) = external_subset_entity_mut(
                                                 dtd,
                                                 ::core::mem::size_of::<ENTITY>(),
@@ -16899,7 +16899,7 @@ unsafe fn doProlog(
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
                                             entity.publicId = None;
-                                            (*parser).m_declEntity =
+                                            parser.m_declEntity =
                                                 Some(DeclaredEntity::ExternalSubset);
                                         }
                                         break 'c_12793;
@@ -16908,11 +16908,11 @@ unsafe fn doProlog(
                                         break 'c_12793;
                                     }
                                     15 => {
-                                        if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                            && (*parser).m_declEntity.is_some()
-                                            && (*parser).m_entityDeclHandler
+                                        if dtd.keepProcessing as ::core::ffi::c_int != 0
+                                            && parser.m_declEntity.is_some()
+                                            && parser.m_entityDeclHandler
                                         {
-                                            let declaration = (*parser)
+                                            let declaration = parser
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
                                             event_target.set_end(
@@ -16998,10 +16998,10 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     16 => {
-                                        if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                            && (*parser).m_declEntity.is_some()
+                                        if dtd.keepProcessing as ::core::ffi::c_int != 0
+                                            && parser.m_declEntity.is_some()
                                         {
-                                            let declaration = (*parser)
+                                            let declaration = parser
                                                 .m_declEntity
                                                 .expect("entity declaration must be set");
                                             let Some(notation) = pool_store_name_source(
@@ -17012,7 +17012,7 @@ unsafe fn doProlog(
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            (*dtd).pool.commit();
+                                            dtd.pool.commit();
                                             let (
                                                 entity_name_ref,
                                                 entity_base_ref,
@@ -17094,7 +17094,7 @@ unsafe fn doProlog(
                                                     entity_notation,
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
-                                            } else if (*parser).m_entityDeclHandler {
+                                            } else if parser.m_entityDeclHandler {
                                                 event_target.set_end(
                                                     parser,
                                                     internal_event_start,
@@ -17136,7 +17136,7 @@ unsafe fn doProlog(
                                     }
                                     9 => {
                                         if predefined_entity_name != 0 {
-                                            (*parser).m_declEntity = None;
+                                            parser.m_declEntity = None;
                                             break 's_2375;
                                         } else {
                                             if dtd.keepProcessing != 0 {
@@ -17258,9 +17258,9 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     18 => {
-                                        (*parser).m_declNotationPublicId = None;
-                                        (*parser).m_declNotationName = None;
-                                        if (*parser).m_notationDeclHandler {
+                                        parser.m_declNotationPublicId = None;
+                                        parser.m_declNotationName = None;
+                                        if parser.m_notationDeclHandler {
                                             let Some(notation_name) = pool_store_name_source(
                                                 &mut parser.m_tempPool,
                                                 &encoding,
@@ -17309,7 +17309,7 @@ unsafe fn doProlog(
                                             );
                                             return crate::expat_h::XML_ERROR_PUBLICID;
                                         }
-                                        if (*parser).m_declNotationName.is_some() {
+                                        if parser.m_declNotationName.is_some() {
                                             let Some(public_id) = prolog_quoted_token_contents(
                                                 &token_bytes,
                                                 encoding.minBytesPerChar,
@@ -17337,8 +17337,8 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     19 => {
-                                        if (*parser).m_declNotationName.is_some()
-                                            && (*parser).m_notationDeclHandler
+                                        if parser.m_declNotationName.is_some()
+                                            && parser.m_notationDeclHandler
                                         {
                                             let Some(system_id) = prolog_quoted_token_contents(
                                                 &token_bytes,
@@ -17430,12 +17430,12 @@ unsafe fn doProlog(
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
-                                        poolClear(&mut (*parser).m_tempPool);
+                                        poolClear(&mut parser.m_tempPool);
                                         break 's_2375;
                                     }
                                     20 => {
-                                        if (*parser).m_declNotationPublicId.is_some()
-                                            && (*parser).m_notationDeclHandler
+                                        if parser.m_declNotationPublicId.is_some()
+                                            && parser.m_notationDeclHandler
                                         {
                                             event_target.set_end(
                                                 parser,
@@ -17512,7 +17512,7 @@ unsafe fn doProlog(
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
-                                        poolClear(&mut (*parser).m_tempPool);
+                                        poolClear(&mut parser.m_tempPool);
                                         break 's_2375;
                                     }
                                     -1 => match tok {
@@ -17527,7 +17527,7 @@ unsafe fn doProlog(
                                     58 => {
                                         let mut result_3: crate::expat_h::XML_Error =
                                             crate::expat_h::XML_ERROR_NONE;
-                                        if (*parser).m_defaultHandler {
+                                        if parser.m_defaultHandler {
                                             report_default_token(
                                                 parser_key,
                                                 parser,
@@ -17553,35 +17553,35 @@ unsafe fn doProlog(
                                         {
                                             return result_3;
                                         } else if next.is_null() {
-                                            (*parser).m_processor = ProcessorState::IgnoreSection;
+                                            parser.m_processor = ProcessorState::IgnoreSection;
                                             return result_3;
                                         }
                                         break 's_2375;
                                     }
                                     44 => {
                                         let group_level =
-                                            match usize::try_from((*parser).m_prologState.level) {
+                                            match usize::try_from(parser.m_prologState.level) {
                                                 Ok(level) => level,
                                                 Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
                                             };
-                                        if (*parser).m_prologState.level >= (*parser).m_groupSize {
-                                            if (*parser).m_groupSize != 0 {
-                                                if (*parser).m_groupSize
+                                        if parser.m_prologState.level >= parser.m_groupSize {
+                                            if parser.m_groupSize != 0 {
+                                                if parser.m_groupSize
                                                     > (-1 as ::core::ffi::c_int
                                                         as ::core::ffi::c_uint)
                                                         .wrapping_div(2 as ::core::ffi::c_uint)
                                                 {
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                let old_group_size = (*parser).m_groupSize;
-                                                (*parser).m_groupSize = (*parser)
+                                                let old_group_size = parser.m_groupSize;
+                                                parser.m_groupSize = parser
                                                     .m_groupSize
                                                     .wrapping_mul(2 as ::core::ffi::c_uint);
-                                                let new_group_size = (*parser).m_groupSize as usize;
+                                                let new_group_size = parser.m_groupSize as usize;
                                                 let Some(mut backing) =
-                                                    (*parser).m_groupConnector.backing.take()
+                                                    parser.m_groupConnector.backing.take()
                                                 else {
-                                                    (*parser).m_groupSize = old_group_size;
+                                                    parser.m_groupSize = old_group_size;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 };
                                                 if !backing(
@@ -17591,30 +17591,30 @@ unsafe fn doProlog(
                                                             as crate::__stddef_size_t_h::size_t,
                                                     ),
                                                 ) {
-                                                    (*parser).m_groupConnector.backing =
+                                                    parser.m_groupConnector.backing =
                                                         Some(backing);
-                                                    (*parser).m_groupSize = old_group_size;
+                                                    parser.m_groupSize = old_group_size;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                (*parser).m_groupConnector.backing = Some(backing);
+                                                parser.m_groupConnector.backing = Some(backing);
                                                 let additional = new_group_size.saturating_sub(
-                                                    (*parser).m_groupConnector.values.len(),
+                                                    parser.m_groupConnector.values.len(),
                                                 );
-                                                if (*parser)
+                                                if parser
                                                     .m_groupConnector
                                                     .values
                                                     .try_reserve_exact(additional)
                                                     .is_err()
                                                 {
-                                                    (*parser).m_groupSize = old_group_size;
+                                                    parser.m_groupSize = old_group_size;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                (*parser)
+                                                parser
                                                     .m_groupConnector
                                                     .values
                                                     .resize(new_group_size, 0);
                                                 let mut scaff_index =
-                                                    (*dtd).scaffIndex.lock().unwrap_or_else(
+                                                    dtd.scaffIndex.lock().unwrap_or_else(
                                                         |poisoned| poisoned.into_inner(),
                                                     );
                                                 let additional = new_group_size
@@ -17624,21 +17624,21 @@ unsafe fn doProlog(
                                                         .try_reserve_exact(additional)
                                                         .is_err()
                                                 {
-                                                    (*parser).m_groupSize = (*parser)
+                                                    parser.m_groupSize = parser
                                                         .m_groupSize
                                                         .wrapping_div(2 as ::core::ffi::c_uint);
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
                                             } else {
-                                                (*parser).m_groupSize = 32 as ::core::ffi::c_uint;
+                                                parser.m_groupSize = 32 as ::core::ffi::c_uint;
                                                 let mut allocation = expat_malloc(
                                                     parser,
-                                                    (*parser).m_groupSize
+                                                    parser.m_groupSize
                                                         as crate::__stddef_size_t_h::size_t,
                                                     5944 as ::core::ffi::c_int,
                                                 );
                                                 if allocation.is_null() {
-                                                    (*parser).m_groupSize =
+                                                    parser.m_groupSize =
                                                         0 as ::core::ffi::c_uint;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
@@ -17670,7 +17670,7 @@ unsafe fn doProlog(
                                                 let mut values = Vec::new();
                                                 if values
                                                     .try_reserve_exact(
-                                                        (*parser).m_groupSize as usize,
+                                                        parser.m_groupSize as usize,
                                                     )
                                                     .is_err()
                                                 {
@@ -17678,11 +17678,11 @@ unsafe fn doProlog(
                                                         &mut *parser,
                                                         GroupConnectorAllocationAction::Free(5944),
                                                     );
-                                                    (*parser).m_groupSize = 0;
+                                                    parser.m_groupSize = 0;
                                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                                 }
-                                                values.resize((*parser).m_groupSize as usize, 0);
-                                                (*parser).m_groupConnector =
+                                                values.resize(parser.m_groupSize as usize, 0);
+                                                parser.m_groupConnector =
                                                     GroupConnectorStorage {
                                                         values,
                                                         backing: Some(backing),
@@ -17690,23 +17690,23 @@ unsafe fn doProlog(
                                             }
                                         }
                                         let Some(connector) =
-                                            (&mut (*parser).m_groupConnector.values)
+                                            (&mut parser.m_groupConnector.values)
                                                 .get_mut(group_level)
                                         else {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         };
                                         *connector = 0;
-                                        if (*dtd).in_eldecl != 0 {
+                                        if dtd.in_eldecl != 0 {
                                             let mut myindex: ::core::ffi::c_int =
                                                 nextScaffoldPart(parser);
                                             if myindex < 0 as ::core::ffi::c_int {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             }
-                                            let mut scaff_index = (*dtd)
+                                            let mut scaff_index = dtd
                                                 .scaffIndex
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-                                            let level = (*dtd).scaffLevel as usize;
+                                            let level = dtd.scaffLevel as usize;
                                             if scaff_index.len() <= level {
                                                 let additional = level + 1 - scaff_index.len();
                                                 if scaff_index
@@ -17718,8 +17718,8 @@ unsafe fn doProlog(
                                                 scaff_index.resize(level + 1, 0);
                                             }
                                             scaff_index[level] = myindex;
-                                            (*dtd).scaffLevel += 1;
-                                            let mut scaffold = (*dtd)
+                                            dtd.scaffLevel += 1;
+                                            let mut scaffold = dtd
                                                 .scaffold
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -17729,7 +17729,7 @@ unsafe fn doProlog(
                                                 return crate::expat_h::XML_ERROR_SYNTAX;
                                             };
                                             node.type_0 = crate::expat_h::XML_CTYPE_SEQ;
-                                            if (*parser).m_elementDeclHandler {
+                                            if parser.m_elementDeclHandler {
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
@@ -17737,12 +17737,12 @@ unsafe fn doProlog(
                                     }
                                     50 => {
                                         let group_level =
-                                            match usize::try_from((*parser).m_prologState.level) {
+                                            match usize::try_from(parser.m_prologState.level) {
                                                 Ok(level) => level,
                                                 Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
                                             };
                                         let Some(connector) =
-                                            (&mut (*parser).m_groupConnector.values)
+                                            (&mut parser.m_groupConnector.values)
                                                 .get_mut(group_level)
                                         else {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
@@ -17754,8 +17754,8 @@ unsafe fn doProlog(
                                         }
                                         *connector =
                                             crate::ascii_h::ASCII_COMMA as ::core::ffi::c_char;
-                                        if (*dtd).in_eldecl as ::core::ffi::c_int != 0
-                                            && (*parser).m_elementDeclHandler
+                                        if dtd.in_eldecl as ::core::ffi::c_int != 0
+                                            && parser.m_elementDeclHandler
                                         {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
@@ -17763,11 +17763,11 @@ unsafe fn doProlog(
                                     }
                                     49 => {
                                         let group_level =
-                                            match usize::try_from((*parser).m_prologState.level) {
+                                            match usize::try_from(parser.m_prologState.level) {
                                                 Ok(level) => level,
                                                 Err(_) => return crate::expat_h::XML_ERROR_SYNTAX,
                                             };
-                                        let connector = match (&(*parser).m_groupConnector.values)
+                                        let connector = match (&parser.m_groupConnector.values)
                                             .get(group_level)
                                             .copied()
                                         {
@@ -17779,16 +17779,16 @@ unsafe fn doProlog(
                                         {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
                                         }
-                                        if (*dtd).in_eldecl as ::core::ffi::c_int != 0
+                                        if dtd.in_eldecl as ::core::ffi::c_int != 0
                                             && connector == 0
                                         {
                                             let parent_index = {
                                                 let scaff_index =
-                                                    (*dtd).scaffIndex.lock().unwrap_or_else(
+                                                    dtd.scaffIndex.lock().unwrap_or_else(
                                                         |poisoned| poisoned.into_inner(),
                                                     );
                                                 match scaff_index
-                                                    .get(((*dtd).scaffLevel - 1) as usize)
+                                                    .get((dtd.scaffLevel - 1) as usize)
                                                     .copied()
                                                 {
                                                     Some(index) => index,
@@ -17797,7 +17797,7 @@ unsafe fn doProlog(
                                                     }
                                                 }
                                             };
-                                            let mut scaffold = (*dtd)
+                                            let mut scaffold = dtd
                                                 .scaffold
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -17812,13 +17812,13 @@ unsafe fn doProlog(
                                                     as ::core::ffi::c_uint
                                             {
                                                 parent.type_0 = crate::expat_h::XML_CTYPE_CHOICE;
-                                                if (*parser).m_elementDeclHandler {
+                                                if parser.m_elementDeclHandler {
                                                     handleDefault = crate::expat_h::XML_FALSE;
                                                 }
                                             }
                                         }
                                         let Some(connector) =
-                                            (&mut (*parser).m_groupConnector.values)
+                                            (&mut parser.m_groupConnector.values)
                                                 .get_mut(group_level)
                                         else {
                                             return crate::expat_h::XML_ERROR_SYNTAX;
@@ -17828,9 +17828,9 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     60 | 59 => {
-                                        (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
-                                        if (*parser).m_paramEntityParsing as u64 == 0 {
-                                            (*dtd).keepProcessing = (*dtd).standalone;
+                                        dtd.hasParamEntityRefs = crate::expat_h::XML_TRUE;
+                                        if parser.m_paramEntityParsing as u64 == 0 {
+                                            dtd.keepProcessing = dtd.standalone;
                                         } else {
                                             let mut name_1: *const crate::expat_external_h::XML_Char =
                                                 ::core::ptr::null:: <crate::expat_external_h::XML_Char>();
@@ -17871,14 +17871,14 @@ unsafe fn doProlog(
                                                     entity.publicId,
                                                 )
                                             });
-                                            (*dtd).pool.rewind();
-                                            if (*parser).m_prologState.documentEntity != 0
-                                                && (if (*dtd).standalone as ::core::ffi::c_int != 0
+                                            dtd.pool.rewind();
+                                            if parser.m_prologState.documentEntity != 0
+                                                && (if dtd.standalone as ::core::ffi::c_int != 0
                                                 {
-                                                    (*parser).m_openInternalEntities.is_none()
+                                                    parser.m_openInternalEntities.is_none()
                                                         as ::core::ffi::c_int
                                                 } else {
-                                                    ((*dtd).hasParamEntityRefs == 0)
+                                                    (dtd.hasParamEntityRefs == 0)
                                                         as ::core::ffi::c_int
                                                 }) != 0
                                             {
@@ -17891,11 +17891,11 @@ unsafe fn doProlog(
                                                     return crate::expat_h::XML_ERROR_ENTITY_DECLARED_IN_PE;
                                                 }
                                             } else if entity_state.is_none() {
-                                                (*dtd).keepProcessing = (*dtd).standalone;
+                                                dtd.keepProcessing = dtd.standalone;
                                                 if role
                                                     == crate::src::xmlrole::XML_ROLE_PARAM_ENTITY_REF
                                                         as ::core::ffi::c_int
-                                                    && (*parser).m_skippedEntityHandler
+                                                    && parser.m_skippedEntityHandler
                                                 {
                                                     let callback = SKIPPED_ENTITY_HANDLERS
                                                         .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
@@ -17961,8 +17961,8 @@ unsafe fn doProlog(
                                                 }
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                                 break 's_2375;
-                                            } else if (*parser).m_externalEntityRefHandler {
-                                                (*dtd).paramEntityRead = crate::expat_h::XML_FALSE;
+                                            } else if parser.m_externalEntityRefHandler {
+                                                dtd.paramEntityRead = crate::expat_h::XML_FALSE;
                                                 let entity_ptr = {
                                                     let entity = declared_entity_mut(
                                                         dtd,
@@ -18043,17 +18043,17 @@ unsafe fn doProlog(
                                                 .expect("parameter entity must remain in the DTD")
                                                 .open = crate::expat_h::XML_FALSE;
                                                 handleDefault = crate::expat_h::XML_FALSE;
-                                                if (*dtd).paramEntityRead == 0 {
-                                                    (*dtd).keepProcessing = (*dtd).standalone;
+                                                if dtd.paramEntityRead == 0 {
+                                                    dtd.keepProcessing = dtd.standalone;
                                                     break 's_2375;
                                                 }
                                             } else {
-                                                (*dtd).keepProcessing = (*dtd).standalone;
+                                                dtd.keepProcessing = dtd.standalone;
                                                 break 's_2375;
                                             }
                                         }
-                                        if (*dtd).standalone == 0
-                                            && (*parser).m_notStandaloneHandler
+                                        if dtd.standalone == 0
+                                            && parser.m_notStandaloneHandler
                                         {
                                             let callback = NOT_STANDALONE_HANDLERS
                                                 .get_or_init(|| {
@@ -18073,7 +18073,7 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     40 => {
-                                        if (*parser).m_elementDeclHandler {
+                                        if parser.m_elementDeclHandler {
                                             let Some(element_name) = get_element_type_from_token(
                                                 dtd,
                                                 &encoding,
@@ -18083,19 +18083,19 @@ unsafe fn doProlog(
                                             ) else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
                                             };
-                                            (*parser).m_declElementType = Some(element_name);
-                                            (*dtd).scaffLevel = 0 as ::core::ffi::c_int;
-                                            (*dtd).scaffCount = 0 as ::core::ffi::c_uint;
-                                            (*dtd).in_eldecl = crate::expat_h::XML_TRUE;
+                                            parser.m_declElementType = Some(element_name);
+                                            dtd.scaffLevel = 0 as ::core::ffi::c_int;
+                                            dtd.scaffCount = 0 as ::core::ffi::c_uint;
+                                            dtd.in_eldecl = crate::expat_h::XML_TRUE;
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
                                     }
                                     41 | 42 => {
-                                        if (*dtd).in_eldecl != 0 {
-                                            if (*parser).m_elementDeclHandler {
+                                        if dtd.in_eldecl != 0 {
+                                            if parser.m_elementDeclHandler {
                                                 let mut content: *mut crate::expat_h::XML_Content =
-                                                    (*parser)
+                                                    parser
                                                         .m_mem
                                                         .malloc_fcn
                                                         .expect("non-null function pointer")(
@@ -18141,10 +18141,10 @@ unsafe fn doProlog(
                                                 );
                                                 callElementDeclHandler(
                                                     parser,
-                                                    (*dtd)
+                                                    dtd
                                                         .pool
                                                         .chars_from(
-                                                            (*parser)
+                                                            parser
                                                                 .m_declElementType
                                                                 .expect("element declaration must be set before its callback"),
                                                         )
@@ -18154,19 +18154,19 @@ unsafe fn doProlog(
                                                 );
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
-                                            (*dtd).in_eldecl = crate::expat_h::XML_FALSE;
+                                            dtd.in_eldecl = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
                                     }
                                     43 => {
-                                        if (*dtd).in_eldecl != 0 {
+                                        if dtd.in_eldecl != 0 {
                                             let parent_index = {
                                                 let scaff_index =
-                                                    (*dtd).scaffIndex.lock().unwrap_or_else(
+                                                    dtd.scaffIndex.lock().unwrap_or_else(
                                                         |poisoned| poisoned.into_inner(),
                                                     );
                                                 match scaff_index
-                                                    .get(((*dtd).scaffLevel - 1) as usize)
+                                                    .get((dtd.scaffLevel - 1) as usize)
                                                     .copied()
                                                 {
                                                     Some(index) => index,
@@ -18175,7 +18175,7 @@ unsafe fn doProlog(
                                                     }
                                                 }
                                             };
-                                            let mut scaffold = (*dtd)
+                                            let mut scaffold = dtd
                                                 .scaffold
                                                 .lock()
                                                 .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -18185,7 +18185,7 @@ unsafe fn doProlog(
                                                 return crate::expat_h::XML_ERROR_SYNTAX;
                                             };
                                             parent.type_0 = crate::expat_h::XML_CTYPE_MIXED;
-                                            if (*parser).m_elementDeclHandler {
+                                            if parser.m_elementDeclHandler {
                                                 handleDefault = crate::expat_h::XML_FALSE;
                                             }
                                         }
@@ -18247,35 +18247,35 @@ unsafe fn doProlog(
                                         break 's_2375;
                                     }
                                     3 => {
-                                        if (*parser).m_startDoctypeDeclHandler {
+                                        if parser.m_startDoctypeDeclHandler {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
                                     }
                                     11 => {
-                                        if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                            && (*parser).m_entityDeclHandler
+                                        if dtd.keepProcessing as ::core::ffi::c_int != 0
+                                            && parser.m_entityDeclHandler
                                         {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
                                     }
                                     17 => {
-                                        if (*parser).m_notationDeclHandler {
+                                        if parser.m_notationDeclHandler {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
                                     }
                                     33 => {
-                                        if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                            && (*parser).m_attlistDeclHandler
+                                        if dtd.keepProcessing as ::core::ffi::c_int != 0
+                                            && parser.m_attlistDeclHandler
                                         {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
                                     }
                                     39 => {
-                                        if (*parser).m_elementDeclHandler {
+                                        if parser.m_elementDeclHandler {
                                             handleDefault = crate::expat_h::XML_FALSE;
                                         }
                                         break 's_2375;
@@ -18317,10 +18317,10 @@ unsafe fn doProlog(
                                 }
                                 break '_alreadyChecked;
                             }
-                            if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                                && (*parser).m_declEntity.is_some()
+                            if dtd.keepProcessing as ::core::ffi::c_int != 0
+                                && parser.m_declEntity.is_some()
                             {
-                                let declaration = (*parser)
+                                let declaration = parser
                                     .m_declEntity
                                     .expect("entity declaration must be set");
                                 let Some(system_id) = prolog_quoted_token_contents(
@@ -18341,9 +18341,9 @@ unsafe fn doProlog(
                                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                                 };
                                 entity.systemId = Some(system_id);
-                                entity.base = (*parser).m_curBase;
-                                (*dtd).pool.commit();
-                                if (*parser).m_entityDeclHandler
+                                entity.base = parser.m_curBase;
+                                dtd.pool.commit();
+                                if parser.m_entityDeclHandler
                                     && role
                                         == crate::src::xmlrole::XML_ROLE_ENTITY_SYSTEM_ID
                                             as ::core::ffi::c_int
@@ -18353,20 +18353,20 @@ unsafe fn doProlog(
                             }
                             break 's_2375;
                         }
-                        if (*dtd).keepProcessing as ::core::ffi::c_int != 0
-                            && (*parser).m_attlistDeclHandler
+                        if dtd.keepProcessing as ::core::ffi::c_int != 0
+                            && parser.m_attlistDeclHandler
                         {
                             handleDefault = crate::expat_h::XML_FALSE;
                         }
                         break 's_2375;
                     }
-                    if (*dtd).in_eldecl != 0 {
+                    if dtd.in_eldecl != 0 {
                         let mut myindex_0: ::core::ffi::c_int = nextScaffoldPart(parser);
                         if myindex_0 < 0 as ::core::ffi::c_int {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
                         {
-                            let mut scaffold = (*dtd)
+                            let mut scaffold = dtd
                                 .scaffold
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -18406,7 +18406,7 @@ unsafe fn doProlog(
                         // sequences in the DTD pool.  Count the terminator from
                         // the pool's checked slice rather than walking an
                         // unbounded raw pointer as the C implementation did.
-                        let Some(nameLen) = (*dtd)
+                        let Some(nameLen) = dtd
                             .pool
                             .chars_from(name_ref)
                             .and_then(|chars| chars.iter().position(|&ch| ch == 0))
@@ -18415,7 +18415,7 @@ unsafe fn doProlog(
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         };
                         {
-                            let mut scaffold = (*dtd)
+                            let mut scaffold = dtd
                                 .scaffold
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -18425,37 +18425,37 @@ unsafe fn doProlog(
                             node.name = Some(name_ref);
                         }
                         if nameLen
-                            > crate::limits_h::UINT_MAX.wrapping_sub((*dtd).contentStringLen)
+                            > crate::limits_h::UINT_MAX.wrapping_sub(dtd.contentStringLen)
                                 as crate::__stddef_size_t_h::size_t
                         {
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         }
-                        (*dtd).contentStringLen = (*dtd)
+                        dtd.contentStringLen = dtd
                             .contentStringLen
                             .wrapping_add(nameLen as ::core::ffi::c_uint);
-                        if (*parser).m_elementDeclHandler {
+                        if parser.m_elementDeclHandler {
                             handleDefault = crate::expat_h::XML_FALSE;
                         }
                     }
                     break 's_2375;
                 }
-                if (*dtd).in_eldecl != 0 {
-                    if (*parser).m_elementDeclHandler {
+                if dtd.in_eldecl != 0 {
+                    if parser.m_elementDeclHandler {
                         handleDefault = crate::expat_h::XML_FALSE;
                     }
-                    (*dtd).scaffLevel -= 1;
+                    dtd.scaffLevel -= 1;
                     let parent_index = {
-                        let scaff_index = (*dtd)
+                        let scaff_index = dtd
                             .scaffIndex
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner());
-                        match scaff_index.get((*dtd).scaffLevel as usize).copied() {
+                        match scaff_index.get(dtd.scaffLevel as usize).copied() {
                             Some(index) => index,
                             None => return crate::expat_h::XML_ERROR_SYNTAX,
                         }
                     };
                     {
-                        let mut scaffold = (*dtd)
+                        let mut scaffold = dtd
                             .scaffold
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -18464,7 +18464,7 @@ unsafe fn doProlog(
                         };
                         parent.quant = quant;
                     }
-                    if (*dtd).scaffLevel == 0 as ::core::ffi::c_int {
+                    if dtd.scaffLevel == 0 as ::core::ffi::c_int {
                         if handleDefault == 0 {
                             let mut model: *mut crate::expat_h::XML_Content =
                                 build_model(parser, dtd);
@@ -18479,9 +18479,9 @@ unsafe fn doProlog(
                             );
                             callElementDeclHandler(
                                 parser,
-                                (*dtd)
+                                dtd
                                     .pool
-                                    .chars_from((*parser).m_declElementType.expect(
+                                    .chars_from(parser.m_declElementType.expect(
                                         "element declaration must be set before its callback",
                                     ))
                                     .expect("element declaration name must remain in the DTD pool")
@@ -18489,15 +18489,15 @@ unsafe fn doProlog(
                                 model,
                             );
                         }
-                        (*dtd).in_eldecl = crate::expat_h::XML_FALSE;
-                        (*dtd).contentStringLen = 0 as ::core::ffi::c_uint;
+                        dtd.in_eldecl = crate::expat_h::XML_FALSE;
+                        dtd.contentStringLen = 0 as ::core::ffi::c_uint;
                     }
                 }
                 break 's_2375;
             }
-            if (*dtd).keepProcessing as ::core::ffi::c_int != 0 && (*parser).m_declEntity.is_some()
+            if dtd.keepProcessing as ::core::ffi::c_int != 0 && parser.m_declEntity.is_some()
             {
-                let declaration = (*parser)
+                let declaration = parser
                     .m_declEntity
                     .expect("entity declaration must be set");
                 let Some(public_id) = prolog_quoted_token_contents(
@@ -18523,14 +18523,14 @@ unsafe fn doProlog(
                     return crate::expat_h::XML_ERROR_NO_MEMORY;
                 };
                 entity.publicId = Some(public_id);
-                if (*parser).m_entityDeclHandler
+                if parser.m_entityDeclHandler
                     && role == crate::src::xmlrole::XML_ROLE_ENTITY_PUBLIC_ID as ::core::ffi::c_int
                 {
                     handleDefault = crate::expat_h::XML_FALSE;
                 }
             }
         }
-        if handleDefault as ::core::ffi::c_int != 0 && (*parser).m_defaultHandler {
+        if handleDefault as ::core::ffi::c_int != 0 && parser.m_defaultHandler {
             report_default_token(
                 parser_key,
                 parser,
@@ -18541,14 +18541,14 @@ unsafe fn doProlog(
                 &token_bytes,
             );
         }
-        match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+        match parser.m_parsingStatus.parsing as ::core::ffi::c_uint {
             3 => {
                 *next_ptr = next;
                 return crate::expat_h::XML_ERROR_NONE;
             }
             2 => return crate::expat_h::XML_ERROR_ABORTED,
             1 => {
-                if (*parser).m_reenter != 0 {
+                if parser.m_reenter != 0 {
                     *next_ptr = next;
                     return crate::expat_h::XML_ERROR_NONE;
                 }
