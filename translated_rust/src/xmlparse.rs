@@ -9132,9 +9132,16 @@ unsafe extern "C" fn doContent(
                     let mut result_0: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
                     let mut toPtr: *mut crate::expat_external_h::XML_Char =
                         ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-                    if (*parser).m_freeTagList.tags.try_reserve(1).is_err()
-                        || (*parser).m_activeTags.try_reserve(1).is_err()
-                    {
+                    let tag_lists_have_capacity = {
+                        // No callback can run while reserving parser-owned tag
+                        // storage, so borrow the parser once for both vectors.
+                        // Keeping this state update in a safe borrow avoids
+                        // repeatedly dereferencing the same parser handle.
+                        let parser_state = &mut *parser;
+                        parser_state.m_freeTagList.tags.try_reserve(1).is_ok()
+                            && parser_state.m_activeTags.try_reserve(1).is_ok()
+                    };
+                    if !tag_lists_have_capacity {
                         return crate::expat_h::XML_ERROR_NO_MEMORY;
                     }
                     let mut tag_storage = match (*parser).m_freeTagList.tags.pop() {
@@ -9144,8 +9151,14 @@ unsafe extern "C" fn doContent(
                             None => return crate::expat_h::XML_ERROR_NO_MEMORY,
                         },
                     };
-                    tag = tag_storage.tag.as_mut_ptr();
-                    if (*tag).buffer.bytes.is_empty() {
+                    if tag_storage
+                        .tag
+                        .first()
+                        .expect("tag storage has one tag")
+                        .buffer
+                        .bytes
+                        .is_empty()
+                    {
                         let allocation = expat_malloc(
                             parser,
                             INIT_TAG_BUF_SIZE as crate::__stddef_size_t_h::size_t,
@@ -9185,11 +9198,16 @@ unsafe extern "C" fn doContent(
                             }
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
                         };
-                        (*tag).buffer = buffer;
+                        tag_storage
+                            .tag
+                            .first_mut()
+                            .expect("tag storage has one tag")
+                            .buffer = buffer;
                     }
                     let parser_state = &mut *parser;
                     let tag_index = parser_state.m_activeTags.len();
                     parser_state.m_activeTags.push(tag_storage);
+                    tag = parser_state.m_activeTags[tag_index].tag.as_mut_ptr();
                     (*tag).bindings = ::core::ptr::null_mut::<BINDING>();
                     parser_state.m_tagStack = Some(tag_index);
                     (*tag).name.localPart = None;
