@@ -436,6 +436,13 @@ impl NameMatcher {
 }
 
 #[derive(Copy, Clone)]
+pub enum AttributeScanner {
+    Normal,
+    Little2,
+    Big2,
+}
+
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct encoding {
     pub scanners: [crate::src::xmltok::Scanner; 4],
@@ -453,14 +460,7 @@ pub struct encoding {
             *const ::core::ffi::c_char,
         ) -> *const ::core::ffi::c_char,
     >,
-    pub getAtts: Option<
-        unsafe extern "C" fn(
-            *const crate::src::xmltok::ENCODING,
-            *const ::core::ffi::c_char,
-            ::core::ffi::c_int,
-            *mut crate::src::xmltok::ATTRIBUTE,
-        ) -> ::core::ffi::c_int,
-    >,
+    pub getAtts: crate::src::xmltok::AttributeScanner,
     pub charRefNumber: Option<
         unsafe extern "C" fn(
             *const crate::src::xmltok::ENCODING,
@@ -13722,15 +13722,7 @@ static mut utf8_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -14104,15 +14096,7 @@ static mut utf8_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -14486,15 +14470,7 @@ static mut internal_utf8_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -14868,15 +14844,7 @@ static mut internal_utf8_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -15311,15 +15279,7 @@ static mut latin1_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -15639,15 +15599,7 @@ static mut latin1_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -15988,15 +15940,7 @@ static mut ascii_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -16316,15 +16260,7 @@ static mut ascii_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            normal_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Normal,
         charRefNumber: Some(
             normal_charRefNumber
                 as unsafe extern "C" fn(
@@ -16989,15 +16925,7 @@ static mut little2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            little2_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
                 as unsafe extern "C" fn(
@@ -17317,15 +17245,7 @@ static mut little2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            little2_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
                 as unsafe extern "C" fn(
@@ -17645,15 +17565,7 @@ static mut internal_little2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            little2_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
                 as unsafe extern "C" fn(
@@ -17973,15 +17885,7 @@ static mut internal_little2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            little2_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Little2,
         charRefNumber: Some(
             little2_charRefNumber
                 as unsafe extern "C" fn(
@@ -18301,15 +18205,7 @@ static mut big2_encoding_ns: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            big2_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Big2,
         charRefNumber: Some(
             big2_charRefNumber
                 as unsafe extern "C" fn(
@@ -18629,15 +18525,7 @@ static mut big2_encoding: normal_encoding = normal_encoding {
                     *const ::core::ffi::c_char,
                 ) -> *const ::core::ffi::c_char,
         ),
-        getAtts: Some(
-            big2_getAtts
-                as unsafe extern "C" fn(
-                    *const crate::src::xmltok::ENCODING,
-                    *const ::core::ffi::c_char,
-                    ::core::ffi::c_int,
-                    *mut crate::src::xmltok::ATTRIBUTE,
-                ) -> ::core::ffi::c_int,
-        ),
+        getAtts: AttributeScanner::Big2,
         charRefNumber: Some(
             big2_charRefNumber
                 as unsafe extern "C" fn(

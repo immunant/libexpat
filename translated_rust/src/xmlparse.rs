@@ -6261,12 +6261,12 @@ unsafe extern "C" fn storeAtts(
         }
     }
     nDefaultAtts = (*elementType).nDefaultAtts;
-    n = (*enc).getAtts.expect("non-null function pointer")(
-        enc,
-        attStr,
-        (*parser).m_attsSize,
-        (*parser).m_atts,
-    );
+    let get_atts = match (*enc).getAtts {
+        crate::src::xmltok::AttributeScanner::Normal => crate::src::xmltok::normal_getAtts,
+        crate::src::xmltok::AttributeScanner::Little2 => crate::src::xmltok::little2_getAtts,
+        crate::src::xmltok::AttributeScanner::Big2 => crate::src::xmltok::big2_getAtts,
+    };
+    n = get_atts(enc, attStr, (*parser).m_attsSize, (*parser).m_atts);
     if n > crate::limits_h::INT_MAX - nDefaultAtts {
         return crate::expat_h::XML_ERROR_NO_MEMORY;
     }
@@ -6293,7 +6293,7 @@ unsafe extern "C" fn storeAtts(
         }
         (*parser).m_atts = temp;
         if n > oldAttsSize {
-            (*enc).getAtts.expect("non-null function pointer")(enc, attStr, n, (*parser).m_atts);
+            get_atts(enc, attStr, n, (*parser).m_atts);
         }
     }
     appAtts = (*parser).m_atts as *mut *const crate::expat_external_h::XML_Char;
