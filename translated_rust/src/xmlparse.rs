@@ -2170,7 +2170,6 @@ pub struct XML_ParserStruct {
     // offset avoids an interior pointer that would be invalidated on growth.
     pub m_bufferLim: usize,
     pub m_parseEndByteIndex: crate::expat_external_h::XML_Index,
-    pub m_parseEndPtr: *const ::core::ffi::c_char,
     pub m_partialTokenBytesBefore: crate::__stddef_size_t_h::size_t,
     pub m_reparseDeferralEnabled: crate::expat_h::XML_Bool,
     pub m_lastBufferRequestSize: ::core::ffi::c_int,
@@ -3943,7 +3942,6 @@ fn initial_parser_struct(
         m_bufferEnd: 0,
         m_bufferLim: 0,
         m_parseEndByteIndex: 0,
-        m_parseEndPtr: ::core::ptr::null::<::core::ffi::c_char>(),
         m_partialTokenBytesBefore: 0,
         m_reparseDeferralEnabled: crate::expat_h::XML_FALSE,
         m_lastBufferRequestSize: 0,
@@ -4446,7 +4444,6 @@ fn parser_init(
     parser.m_bufferPtr = parser.m_buffer.bytes.as_ref().map(|_| 0);
     parser.m_bufferEnd = 0;
     parser.m_parseEndByteIndex = 0 as crate::expat_external_h::XML_Index;
-    parser.m_parseEndPtr = ::core::ptr::null::<::core::ffi::c_char>();
     parser.m_partialTokenBytesBefore = 0 as crate::__stddef_size_t_h::size_t;
     parser.m_reparseDeferralEnabled = reparse_deferral_enabled;
     parser.m_lastBufferRequestSize = 0 as ::core::ffi::c_int;
@@ -6560,16 +6557,16 @@ unsafe fn parse_buffer_impl(
             .wrapping_add(parser_ref.m_bufferPtr.unwrap());
         parser_ref.m_positionPtr = start;
         parser_ref.m_bufferEnd = parser_ref.m_bufferEnd.wrapping_add(len as usize);
-        parser_ref.m_parseEndPtr = parser_ref
+        let parse_end = parser_ref
             .m_buffer
             .bytes
-            .as_mut()
+            .as_ref()
             .unwrap()
-            .as_mut_ptr()
+            .as_ptr()
             .wrapping_add(parser_ref.m_bufferEnd);
         parser_ref.m_parseEndByteIndex += len as crate::expat_external_h::XML_Index;
         parser_ref.m_parsingStatus.finalBuffer = is_final as crate::expat_h::XML_Bool;
-        (start, parser_ref.m_parseEndPtr)
+        (start, parse_end)
     };
 
     // The setup borrow has ended before a user callback can re-enter through
@@ -6876,7 +6873,14 @@ pub unsafe extern "C" fn XML_ResumeParser(
             .unwrap()
             .as_ptr()
             .wrapping_add(parser_ref.m_bufferPtr.unwrap());
-        (start, parser_ref.m_parseEndPtr)
+        let parse_end = parser_ref
+            .m_buffer
+            .bytes
+            .as_ref()
+            .unwrap()
+            .as_ptr()
+            .wrapping_add(parser_ref.m_bufferEnd);
+        (start, parse_end)
     };
     let mut processed_to = start;
     let error = callProcessor(parser, start, parse_end, &raw mut processed_to);
