@@ -6922,10 +6922,10 @@ pub unsafe extern "C" fn XML_SetEncoding_ffi(
 }
 unsafe fn XML_ExternalEntityParserCreate(
     old: &XML_ParserStruct,
+    old_parser_key: usize,
     context: Option<&std::ffi::CStr>,
     encoding_name: Option<&std::ffi::CStr>,
-) -> crate::expat_h::XML_Parser {
-    let old_parser_key = std::ptr::from_ref(old).addr();
+) -> Option<Box<XML_ParserStruct>> {
     let mut oldStartElementHandler = false;
     let mut oldStartElementCallback: Option<std::sync::Arc<dyn StartElementCallback>> = None;
     let mut oldEndElementCallback: Option<std::sync::Arc<dyn EndElementCallback>> = None;
@@ -7141,7 +7141,7 @@ unsafe fn XML_ExternalEntityParserCreate(
         Some(old),
     ) {
         Some(parser_owner) => parser_owner,
-        None => return ::core::ptr::null_mut(),
+        None => return None,
     };
     // The child is configured wholly within this function before it is
     // exposed, so one exclusive borrow covers all field updates.
@@ -7337,19 +7337,18 @@ unsafe fn XML_ExternalEntityParserCreate(
         // with scoped DTD references.
         let old_dtd_owner = old.m_dtd.clone();
         let new_dtd_owner = parser_ref.m_dtd.clone();
-        let (Some(old_dtd_owner), Some(new_dtd_owner)) = (old_dtd_owner, new_dtd_owner) else {
-            parser_free_owned(parser_ref);
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
+        let copied_and_restored = match (old_dtd_owner, new_dtd_owner) {
+            (Some(old_dtd_owner), Some(new_dtd_owner)) => old_dtd_owner.inspect(|old_dtd| {
+                new_dtd_owner.inspect(|new_dtd| {
+                    dtdCopy(new_dtd, old_dtd, parser_ref) != 0
+                        && set_context_impl(parser_ref, new_dtd, context.to_bytes()) != 0
+                })
+            }),
+            _ => false,
         };
-        let copied_and_restored = old_dtd_owner.inspect(|old_dtd| {
-            new_dtd_owner.inspect(|new_dtd| {
-                dtdCopy(new_dtd, old_dtd, parser_ref) != 0
-                    && set_context_impl(parser_ref, new_dtd, context.to_bytes()) != 0
-            })
-        });
         if !copied_and_restored {
             parser_free_owned(parser_ref);
-            return ::core::ptr::null_mut::<XML_ParserStruct>();
+            return None;
         }
         parser_ref.m_processor = ProcessorState::ExternalEntityInit;
     } else {
@@ -7357,7 +7356,7 @@ unsafe fn XML_ExternalEntityParserCreate(
         crate::src::xmlrole::prolog_state_init_external_entity(&mut parser_ref.m_prologState);
         parser_ref.m_processor = ProcessorState::ExternalParEntInit;
     }
-    Box::into_raw(parser_owner)
+    Some(parser_owner)
 }
 #[export_name = "XML_ExternalEntityParserCreate"]
 
@@ -7366,13 +7365,15 @@ pub unsafe extern "C" fn XML_ExternalEntityParserCreate_ffi(
     mut context: *const crate::expat_external_h::XML_Char,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Parser {
+    let old_parser_key = oldParser.addr();
     let Some(old) = oldParser.as_ref() else {
         return ::core::ptr::null_mut();
     };
     let context = (!context.is_null()).then(|| std::ffi::CStr::from_ptr(context));
     let encoding_name = (!encodingName.is_null())
         .then(|| std::ffi::CStr::from_ptr(encodingName));
-    XML_ExternalEntityParserCreate(old, context, encoding_name)
+    XML_ExternalEntityParserCreate(old, old_parser_key, context, encoding_name)
+        .map_or_else(::core::ptr::null_mut, Box::into_raw)
 }
 fn destroy_bindings(
     active_bindings: &mut Vec<BindingStorage>,
