@@ -10503,40 +10503,31 @@ unsafe extern "C" fn callStoreEntityValue(
     return result;
 }
 
-unsafe extern "C" fn normalizeLines(mut s: *mut crate::expat_external_h::XML_Char) {
-    let mut p: *mut crate::expat_external_h::XML_Char =
-        ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
-    loop {
-        if *s as ::core::ffi::c_int == '\0' as i32 {
-            return;
-        }
-        if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-            break;
-        }
-        s = s.offset(1);
-    }
-    p = s;
-    loop {
-        if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-            let c2rust_fresh7 = p;
-            p = p.offset(1);
-            *c2rust_fresh7 = 0xa as crate::expat_external_h::XML_Char;
-            s = s.offset(1);
-            if *s as ::core::ffi::c_int == 0xa as ::core::ffi::c_int {
-                s = s.offset(1);
+fn normalizeLines(s: &mut [crate::expat_external_h::XML_Char]) {
+    let Some(mut read) = s
+        .iter()
+        .position(|&c| c as ::core::ffi::c_int == 0xd as ::core::ffi::c_int)
+    else {
+        return;
+    };
+    let mut write = read;
+    while read < s.len() && s[read] != 0 {
+        if s[read] as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
+            s[write] = 0xa as crate::expat_external_h::XML_Char;
+            write += 1;
+            read += 1;
+            if read < s.len() && s[read] as ::core::ffi::c_int == 0xa as ::core::ffi::c_int {
+                read += 1;
             }
         } else {
-            let c2rust_fresh8 = s;
-            s = s.offset(1);
-            let c2rust_fresh9 = p;
-            p = p.offset(1);
-            *c2rust_fresh9 = *c2rust_fresh8;
-        }
-        if !(*s != 0) {
-            break;
+            s[write] = s[read];
+            write += 1;
+            read += 1;
         }
     }
-    *p = '\0' as i32 as crate::expat_external_h::XML_Char;
+    if write < s.len() {
+        s[write] = '\0' as i32 as crate::expat_external_h::XML_Char;
+    }
 }
 
 unsafe extern "C" fn reportProcessingInstruction(
@@ -10572,7 +10563,10 @@ unsafe extern "C" fn reportProcessingInstruction(
     if data.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    normalizeLines(data);
+    let data_len = CStr::from_ptr(data as *const ::core::ffi::c_char)
+        .to_bytes_with_nul()
+        .len();
+    normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
     (*parser)
         .m_processingInstructionHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, target, data);
@@ -10603,7 +10597,10 @@ unsafe extern "C" fn reportComment(
     if data.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    normalizeLines(data);
+    let data_len = CStr::from_ptr(data as *const ::core::ffi::c_char)
+        .to_bytes_with_nul()
+        .len();
+    normalizeLines(::core::slice::from_raw_parts_mut(data, data_len));
     (*parser)
         .m_commentHandler
         .expect("non-null function pointer")((*parser).m_handlerArg, data);
