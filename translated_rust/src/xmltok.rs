@@ -7392,29 +7392,6 @@ pub mod xmltok_impl_c {
         (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
     }
 
-    pub unsafe extern "C" fn big2_scanPi(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = unsafe { end.offset_from(ptr) };
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
-        if input.len() < 2 {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        let enc = unsafe { &*(enc as *const normal_encoding) };
-        let (token, next) = big2_scan_pi_impl(enc, input);
-        if let Some(offset) = next {
-            unsafe {
-                *nextTokPtr = ptr.add(offset);
-            }
-        }
-        token
-    }
     struct Big2CdataSectionResult {
         token: ::core::ffi::c_int,
         next: Option<usize>,
@@ -11525,7 +11502,6 @@ pub use crate::src::xmltok::xmltok_impl_c::big2_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::big2_entityValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_ignoreSectionTok;
 pub use crate::src::xmltok::xmltok_impl_c::big2_prologTok;
-pub use crate::src::xmltok::xmltok_impl_c::big2_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::big2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::little2_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::little2_checkPiTarget;
