@@ -9973,15 +9973,6 @@ fn public_id_type_is_allowed(t: ::core::ffi::c_int) -> bool {
     )
 }
 
-fn set_bad_public_id_ptr(
-    bad_ptr: *mut *const ::core::ffi::c_char,
-    ptr: *const ::core::ffi::c_char,
-) {
-    unsafe {
-        *bad_ptr = ptr;
-    }
-}
-
 fn set_next_tok_ptr(
     next_tok_ptr: *mut *const ::core::ffi::c_char,
     ptr: *const ::core::ffi::c_char,
@@ -10104,19 +10095,19 @@ fn is_public_id(
             t if public_id_type_is_allowed(t) => {}
             21 => {
                 if c == 0x9 {
-                    set_bad_public_id_ptr(bad_ptr, ptr);
+                    set_next_tok_ptr(bad_ptr, ptr);
                     return 0;
                 }
             }
             26 | 22 => {
                 if c & !0x7f != 0 && !matches!(c, 36 | 64) {
-                    set_bad_public_id_ptr(bad_ptr, ptr);
+                    set_next_tok_ptr(bad_ptr, ptr);
                     return 0;
                 }
             }
             _ if matches!(c, 36 | 64) => {}
             _ => {
-                set_bad_public_id_ptr(bad_ptr, ptr);
+                set_next_tok_ptr(bad_ptr, ptr);
                 return 0;
             }
         }

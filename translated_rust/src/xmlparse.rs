@@ -1501,7 +1501,7 @@ pub const XML_ACCOUNT_ENTITY_EXPANSION: XML_Account = 1;
 
 pub const XML_ACCOUNT_DIRECT: XML_Account = 0;
 
-const ACCOUNTING_ABORTING_EPILOG: &[u8; 11] = b" ABORTING\n\0";
+const ACCOUNTING_ABORTING_EPILOG: &str = " ABORTING\n";
 
 pub type ICHAR = ::core::ffi::c_char;
 
@@ -4925,8 +4925,8 @@ unsafe extern "C" fn externalEntityInitProcessor2(
             ) == 0
             {
                 accountingReportStats(
-                    parser,
-                    ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                    &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                    ACCOUNTING_ABORTING_EPILOG,
                 );
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
@@ -5111,8 +5111,8 @@ unsafe extern "C" fn doContent(
         ) == 0
         {
             accountingReportStats(
-                parser,
-                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                ACCOUNTING_ABORTING_EPILOG,
             );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
@@ -6871,8 +6871,8 @@ unsafe extern "C" fn doCdataSection(
         );
         if accountingDiffTolerated(parser, tok, s, next, 4619 as ::core::ffi::c_int, account) == 0 {
             accountingReportStats(
-                parser,
-                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                ACCOUNTING_ABORTING_EPILOG,
             );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
@@ -7092,8 +7092,8 @@ unsafe extern "C" fn doIgnoreSection(
     ) == 0
     {
         accountingReportStats(
-            parser,
-            ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+            ACCOUNTING_ABORTING_EPILOG,
         );
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
@@ -7194,8 +7194,8 @@ unsafe extern "C" fn processXmlDecl(
     ) == 0
     {
         accountingReportStats(
-            parser,
-            ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+            &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+            ACCOUNTING_ABORTING_EPILOG,
         );
         return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
     }
@@ -7549,8 +7549,8 @@ unsafe extern "C" fn entityValueInitProcessor(
             ) == 0
             {
                 accountingReportStats(
-                    parser,
-                    ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                    &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                    ACCOUNTING_ABORTING_EPILOG,
                 );
                 return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             }
@@ -7600,8 +7600,8 @@ unsafe extern "C" fn externalParEntProcessor(
         ) == 0
         {
             accountingReportStats(
-                parser,
-                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                ACCOUNTING_ABORTING_EPILOG,
             );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
@@ -7913,8 +7913,8 @@ unsafe extern "C" fn doProlog(
                 ) == 0
                 {
                     accountingReportStats(
-                        parser,
-                        ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                        &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                        ACCOUNTING_ABORTING_EPILOG,
                     );
                     return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
                 }
@@ -9457,8 +9457,8 @@ unsafe extern "C" fn epilogProcessor(
         ) == 0
         {
             accountingReportStats(
-                parser,
-                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                ACCOUNTING_ABORTING_EPILOG,
             );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
@@ -9907,8 +9907,8 @@ unsafe extern "C" fn appendAttributeValue(
         if accountingDiffTolerated(parser, tok, ptr, next, 6591 as ::core::ffi::c_int, account) == 0
         {
             accountingReportStats(
-                parser,
-                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                ACCOUNTING_ABORTING_EPILOG,
             );
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
@@ -10183,8 +10183,8 @@ unsafe extern "C" fn storeEntityValue(
         ) == 0
         {
             accountingReportStats(
-                parser,
-                ACCOUNTING_ABORTING_EPILOG.as_ptr() as *const ::core::ffi::c_char,
+                &*getRootParserOf(parser, ::core::ptr::null_mut::<::core::ffi::c_uint>()),
+                ACCOUNTING_ABORTING_EPILOG,
             );
             result = crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
             break;
@@ -12569,38 +12569,24 @@ fn accountingGetCurrentAmplification(rootParser: &XML_ParserStruct) -> ::core::f
     return amplificationFactor;
 }
 
-unsafe extern "C" fn accountingReportStats(
-    mut originParser: crate::expat_h::XML_Parser,
-    mut epilog: *const ::core::ffi::c_char,
-) {
-    let rootParser: crate::expat_h::XML_Parser =
-        getRootParserOf(originParser, ::core::ptr::null_mut::<::core::ffi::c_uint>())
-            as crate::expat_h::XML_Parser;
-    '_c2rust_label: {
-        if (*rootParser).m_parentParser.is_null() {
-        } else {
-            crate::stdlib::__assert_fail(
-                b"! rootParser->m_parentParser\0".as_ptr() as *const ::core::ffi::c_char,
-                b"../../expat/lib/xmlparse.c\0".as_ptr() as *const ::core::ffi::c_char,
-                8487 as ::core::ffi::c_uint,
-                b"void accountingReportStats(XML_Parser, const char *)\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
-    };
-    if (*rootParser).m_accounting.debugLevel == 0 as ::core::ffi::c_ulong {
+fn accountingReportStats(rootParser: &XML_ParserStruct, epilog: &str) {
+    if !rootParser.m_parentParser.is_null() {
+        std::process::abort();
+    }
+    if rootParser.m_accounting.debugLevel == 0 as ::core::ffi::c_ulong {
         return;
     }
     let amplificationFactor: ::core::ffi::c_float =
-        accountingGetCurrentAmplification(&*rootParser) as ::core::ffi::c_float;
-    crate::stdlib::fprintf(
-        crate::stdlib::stderr,
-        b"expat: Accounting(%p): Direct %10llu, indirect %10llu, amplification %8.2f%s\0".as_ptr()
-            as *const ::core::ffi::c_char,
-        rootParser as *mut ::core::ffi::c_void,
-        (*rootParser).m_accounting.countBytesDirect,
-        (*rootParser).m_accounting.countBytesIndirect,
-        amplificationFactor as ::core::ffi::c_double,
+        accountingGetCurrentAmplification(rootParser) as ::core::ffi::c_float;
+    use std::io::Write as _;
+
+    let _ = write!(
+        std::io::stderr(),
+        "expat: Accounting({:p}): Direct {:10}, indirect {:10}, amplification {:8.2}{}",
+        rootParser,
+        rootParser.m_accounting.countBytesDirect,
+        rootParser.m_accounting.countBytesIndirect,
+        amplificationFactor,
         epilog,
     );
 }
@@ -12764,7 +12750,7 @@ unsafe extern "C" fn accountingDiffTolerated(
             || amplificationFactor <= (*rootParser).m_accounting.maximumAmplificationFactor)
             as ::core::ffi::c_int as crate::expat_h::XML_Bool;
     if (*rootParser).m_accounting.debugLevel >= 2 as ::core::ffi::c_ulong {
-        accountingReportStats(rootParser, b"\0".as_ptr() as *const ::core::ffi::c_char);
+        accountingReportStats(&*rootParser, "");
         accountingReportDiff(
             rootParser,
             levelsAwayFromRootParser,
