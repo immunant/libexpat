@@ -19299,7 +19299,8 @@ unsafe extern "C" fn epilogProcessor(
                 let Some(normal_encoding) = current_parser_normal_encoding(parser_state) else {
                     return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                let encoding_address = std::ptr::from_ref(current_parser_encoding(parser_state)).addr();
+                let encoding_address =
+                    std::ptr::from_ref(current_parser_encoding(parser_state)).addr();
                 let encoding = *current_parser_encoding(parser_state);
                 let Some(handled) = report_processing_instruction_token(
                     parser_state,
@@ -19340,29 +19341,45 @@ unsafe extern "C" fn epilogProcessor(
                 Ok(())
             }
             EpilogEvent::Comment(range) => {
-                let Some(bytes) = parser_state.m_buffer.bytes.as_deref() else {
+                let Some(token) = input_for_dispatch.bytes.get(range.clone()) else {
                     return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
                 };
-                let Some(start_offset) = input_for_dispatch.input_start.checked_add(range.start)
-                else {
-                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-                };
-                let Some(end_offset) = input_for_dispatch.input_start.checked_add(range.end) else {
-                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-                };
-                let (Some(start), Some(end)) = (bytes.get(start_offset..), bytes.get(end_offset..))
-                else {
-                    return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
-                };
-                let encoding = std::ptr::from_ref(current_parser_encoding(parser_state));
-                (reportComment(
-                    parser_for_dispatch,
-                    encoding,
-                    start.as_ptr().cast(),
-                    end.as_ptr().cast(),
-                ) != 0)
-                    .then_some(())
-                    .ok_or(crate::expat_h::XML_ERROR_NO_MEMORY)
+                let encoding_address = std::ptr::from_ref(current_parser_encoding(parser_state)).addr();
+                let encoding = *current_parser_encoding(parser_state);
+                match report_comment_token(parser_state, &encoding, token) {
+                    Some(true) => Ok(()),
+                    Some(false) if parser_state.m_defaultHandler => {
+                        let Some(input_offset) = input_for_dispatch
+                            .input_start
+                            .checked_add(range.start)
+                        else {
+                            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                        };
+                        let Some(input_start) = parser_state
+                            .m_buffer
+                            .bytes
+                            .as_deref()
+                            .and_then(|bytes| bytes.as_ptr().addr().checked_add(input_offset))
+                        else {
+                            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                        };
+                        let Some(input_end) = input_start.checked_add(token.len()) else {
+                            return Err(crate::expat_h::XML_ERROR_UNEXPECTED_STATE);
+                        };
+                        report_default_token(
+                            parser_for_dispatch.addr(),
+                            parser_state,
+                            &encoding,
+                            encoding_address,
+                            input_start,
+                            input_end,
+                            &input_for_dispatch.bytes,
+                        );
+                        Ok(())
+                    }
+                    Some(false) => Ok(()),
+                    None => Err(crate::expat_h::XML_ERROR_NO_MEMORY),
+                }
             }
         }
     };
@@ -21274,67 +21291,9 @@ fn report_processing_instruction_token(
     Some(true)
 }
 
-unsafe extern "C" fn reportComment(
-    mut parser: crate::expat_h::XML_Parser,
-    mut enc: *const crate::src::xmltok::ENCODING,
-    mut start: *const ::core::ffi::c_char,
-    mut end: *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    if parser.is_null() || enc.is_null() || start.is_null() || end.addr() < start.addr() {
-        return 0;
-    }
-    let (callback, data, handler_arg) = {
-        let parser_state = &mut *parser;
-        if !parser_state.m_commentHandler {
-            if parser_state.m_defaultHandler {
-                reportDefault(parser, enc, start, end);
-            }
-            return 1 as ::core::ffi::c_int;
-        }
-        // Comments can originate in the parser buffer or in an active entity.
-        // Resolve the complete token through its owner before removing XML
-        // delimiters, rather than deriving a slice from raw tokenizer cursors.
-        let Some(dtd_owner) = parser_state.m_dtd.as_ref() else {
-            return 0;
-        };
-        let dtd = &*dtd_owner.value.get();
-        let Some(token) = entity_value_token_source(parser_state, dtd, start.addr(), end.addr()) else {
-            return 0;
-        };
-        let Some(token) = raw_name_bytes(token) else {
-            return 0;
-        };
-        let encoding = &*enc;
-        let Some(event) = report_comment_impl(parser_state, encoding, &token) else {
-            return 0;
-        };
-        let Some(data) = parser_state.m_tempPool.chars_from(event.data) else {
-            return 0;
-        };
-        // A comment callback may re-enter the parser.  Give it an owned
-        // snapshot so the temporary pool can be released before that
-        // boundary, while preserving the callback argument through return.
-        let mut callback_data = Vec::new();
-        if callback_data.try_reserve_exact(data.len()).is_err() {
-            return 0;
-        }
-        callback_data.extend_from_slice(data);
-        let handler_arg = match parser_state.m_handlerArg {
-            HandlerArg::UserData => callback_context_pointer!(parser_state),
-            HandlerArg::Parser => std::ptr::from_ref(parser_state).cast_mut().cast(),
-        };
-        parser_state.m_tempPool.clear();
-        (event.callback, callback_data, handler_arg)
-    };
-    if let Some(callback) = callback {
-        callback.invoke(handler_arg, data.as_ptr());
-    }
-    return 1 as ::core::ffi::c_int;
-}
-
 /// Prepared comment data remains in the parser's temporary pool until the
-/// boundary caller invokes the registered foreign callback.  Keeping the pool
-/// reference instead of an interior pointer lets the conversion and registry
+/// callback adapter invokes the registered foreign callback.  Keeping the
+/// pool reference instead of an interior pointer lets conversion and registry
 /// lookup remain entirely safe.
 struct CommentCallbackEvent {
     callback: Option<std::sync::Arc<dyn CommentCallback>>,
