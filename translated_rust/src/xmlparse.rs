@@ -3659,64 +3659,27 @@ impl FreeBindingList {
     }
 }
 
+// The allocator token factory is the sole place that retains the parser
+// handle needed for Expat's observable allocation callbacks.  Once these
+// tokens have been made, binding storage itself is ordinary owned Rust state.
+struct BindingStorageBacking {
+    binding: Box<dyn FnMut(::core::ffi::c_int)>,
+    uri: Box<dyn FnMut(BindingUriAllocationAction) -> bool>,
+}
+
+impl BindingStorageBacking {
+    fn release(mut self, source_line: ::core::ffi::c_int) {
+        (self.uri)(BindingUriAllocationAction::Free(source_line));
+        (self.binding)(source_line);
+    }
+}
+
 impl BindingStorage {
-    unsafe fn new(parser: &mut XML_ParserStruct, uri_capacity: usize) -> Option<Self> {
-        // Binding storage is created only while the parser is exclusively
-        // borrowed.  Keep its opaque allocator handle local; no binding state
-        // retains or dereferences it.
-        let parser_handle = std::ptr::from_mut(parser);
-        let mut binding_backing = unsafe { allocation_backing(
-            parser_handle,
-            ::core::mem::size_of::<BINDING>(),
-            4525 as ::core::ffi::c_int,
-        )? };
-        let uri_size =
-            uri_capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
-        let uri_allocation = unsafe { expat_malloc(parser_handle, uri_size, 4543 as ::core::ffi::c_int) };
-        if uri_allocation.is_null() {
-            binding_backing(4545 as ::core::ffi::c_int);
-            return None;
-        }
-        let mut uri_allocation = uri_allocation;
-        let mut uri_backing: Box<dyn FnMut(BindingUriAllocationAction) -> bool> =
-            Box::new(move |action| match action {
-                BindingUriAllocationAction::Grow { size, source_line } => {
-                    let reallocated = unsafe {
-                        expat_realloc(parser_handle, uri_allocation, size, source_line)
-                    };
-                    if reallocated.is_null() {
-                        false
-                    } else {
-                        uri_allocation = reallocated;
-                        true
-                    }
-                }
-                BindingUriAllocationAction::Replace {
-                    size,
-                    allocation_source_line,
-                    free_source_line,
-                } => {
-                    let replacement = unsafe {
-                        expat_malloc(parser_handle, size, allocation_source_line)
-                    };
-                    if replacement.is_null() {
-                        false
-                    } else {
-                        unsafe { expat_free(parser_handle, uri_allocation, free_source_line) };
-                        uri_allocation = replacement;
-                        true
-                    }
-                }
-                BindingUriAllocationAction::Free(source_line) => {
-                    unsafe { expat_free(parser_handle, uri_allocation, source_line) };
-                    true
-                }
-            });
+    fn new(uri_capacity: usize, mut backing: BindingStorageBacking) -> Option<Self> {
         let mut binding = Vec::new();
         let mut uri = Vec::new();
         if binding.try_reserve_exact(1).is_err() || uri.try_reserve_exact(uri_capacity).is_err() {
-            uri_backing(BindingUriAllocationAction::Free(4545 as ::core::ffi::c_int));
-            binding_backing(4545 as ::core::ffi::c_int);
+            backing.release(4545 as ::core::ffi::c_int);
             return None;
         }
         uri.resize(uri_capacity, 0);
@@ -3732,8 +3695,8 @@ impl BindingStorage {
             binding,
             id: BindingId(0),
             uri,
-            binding_backing: Some(binding_backing),
-            uri_backing: Some(uri_backing),
+            binding_backing: Some(backing.binding),
+            uri_backing: Some(backing.uri),
         })
     }
 
@@ -12696,10 +12659,66 @@ fn new_binding_storage(
     parser: &mut XML_ParserStruct,
     uri_capacity: usize,
 ) -> Option<BindingStorage> {
-    // `BindingStorage` preserves the configured allocator's observable
-    // allocation schedule.  The constructor materializes its opaque allocator
-    // handle locally; the binding state machine itself stays safe.
-    unsafe { BindingStorage::new(parser, uri_capacity) }
+    // Materialize opaque allocator tokens at the parser boundary.  Their
+    // memory is never dereferenced: the resulting facade only preserves
+    // Expat's allocation, reallocation, and release observations.
+    let parser_handle = std::ptr::from_mut(parser);
+    let mut binding_backing = unsafe {
+        allocation_backing(
+            parser_handle,
+            ::core::mem::size_of::<BINDING>(),
+            4525 as ::core::ffi::c_int,
+        )?
+    };
+    let uri_size =
+        uri_capacity.checked_mul(::core::mem::size_of::<crate::expat_external_h::XML_Char>())?;
+    let uri_allocation = unsafe { expat_malloc(parser_handle, uri_size, 4543) };
+    if uri_allocation.is_null() {
+        binding_backing(4545);
+        return None;
+    }
+    let mut uri_allocation = uri_allocation;
+    let uri_backing: Box<dyn FnMut(BindingUriAllocationAction) -> bool> =
+        Box::new(move |action| match action {
+            BindingUriAllocationAction::Grow { size, source_line } => {
+                let reallocated = unsafe {
+                    expat_realloc(parser_handle, uri_allocation, size, source_line)
+                };
+                if reallocated.is_null() {
+                    false
+                } else {
+                    uri_allocation = reallocated;
+                    true
+                }
+            }
+            BindingUriAllocationAction::Replace {
+                size,
+                allocation_source_line,
+                free_source_line,
+            } => {
+                let replacement = unsafe {
+                    expat_malloc(parser_handle, size, allocation_source_line)
+                };
+                if replacement.is_null() {
+                    false
+                } else {
+                    unsafe { expat_free(parser_handle, uri_allocation, free_source_line) };
+                    uri_allocation = replacement;
+                    true
+                }
+            }
+            BindingUriAllocationAction::Free(source_line) => {
+                unsafe { expat_free(parser_handle, uri_allocation, source_line) };
+                true
+            }
+        });
+    BindingStorage::new(
+        uri_capacity,
+        BindingStorageBacking {
+            binding: binding_backing,
+            uri: uri_backing,
+        },
+    )
 }
 
 fn invoke_start_namespace_decl_handler(
