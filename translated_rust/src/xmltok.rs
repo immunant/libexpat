@@ -17486,55 +17486,228 @@ unsafe extern "C" fn parsePseudoAttribute(
     return 1 as ::core::ffi::c_int;
 }
 
-static mut KW_version: [::core::ffi::c_char; 8] = [
-    crate::ascii_h::ASCII_v as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_e_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_r as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_s as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_i as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_o as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_n as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
+const XML_DECL_VERSION: &[u8] = b"version";
+const XML_DECL_ENCODING: &[u8] = b"encoding";
+const XML_DECL_STANDALONE: &[u8] = b"standalone";
+const XML_DECL_YES: &[u8] = b"yes";
+const XML_DECL_NO: &[u8] = b"no";
 
-static mut KW_encoding: [::core::ffi::c_char; 9] = [
-    crate::ascii_h::ASCII_e_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_n as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_c_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_o as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_d as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_i as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_n as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_g_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
+#[derive(Clone)]
+struct XmlDeclAttribute {
+    name: core::ops::Range<usize>,
+    value: core::ops::Range<usize>,
+    next: usize,
+}
 
-static mut KW_standalone: [::core::ffi::c_char; 11] = [
-    crate::ascii_h::ASCII_s as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_t as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_a_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_n as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_d as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_a_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_l_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_o as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_n as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_e_1 as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
+struct XmlDeclResult {
+    version: Option<core::ops::Range<usize>>,
+    version_end: Option<usize>,
+    encoding_name: Option<core::ops::Range<usize>>,
+    encoding_end: Option<usize>,
+    standalone: Option<::core::ffi::c_int>,
+}
 
-static mut KW_yes: [::core::ffi::c_char; 4] = [
-    crate::ascii_h::ASCII_y as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_e_1 as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_s as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
+fn xml_decl_ascii_at(enc: &encoding, input: &[u8], offset: usize) -> Option<u8> {
+    let width = usize::try_from(enc.minBytesPerChar).ok()?;
+    let bytes = input.get(offset..offset.checked_add(width)?)?;
+    match enc.nameMatchesAscii {
+        NameMatcher::Normal => bytes.first().copied(),
+        NameMatcher::Little2 if bytes.len() == 2 && bytes[1] == 0 => Some(bytes[0]),
+        NameMatcher::Big2 if bytes.len() == 2 && bytes[0] == 0 => Some(bytes[1]),
+        NameMatcher::Little2 | NameMatcher::Big2 => Some(u8::MAX),
+    }
+}
 
-static mut KW_no: [::core::ffi::c_char; 3] = [
-    crate::ascii_h::ASCII_n as ::core::ffi::c_char,
-    crate::ascii_h::ASCII_o as ::core::ffi::c_char,
-    '\0' as ::core::ffi::c_char,
-];
+fn xml_decl_matches_ascii(
+    enc: &encoding,
+    input: &[u8],
+    span: core::ops::Range<usize>,
+    word: &[u8],
+) -> bool {
+    let width = match usize::try_from(enc.minBytesPerChar) {
+        Ok(width) => width,
+        Err(_) => return false,
+    };
+    if span.len() != word.len().saturating_mul(width) {
+        return false;
+    }
+    word.iter().enumerate().all(|(index, &expected)| {
+        xml_decl_ascii_at(enc, input, span.start + index * width) == Some(expected)
+    })
+}
+
+fn xml_decl_is_space(character: Option<u8>) -> bool {
+    matches!(character, Some(b' ' | b'\r' | b'\n' | b'\t'))
+}
+
+fn parse_xml_decl_pseudo_attribute(
+    enc: &encoding,
+    input: &[u8],
+    mut cursor: usize,
+    end: usize,
+) -> Result<Option<XmlDeclAttribute>, usize> {
+    let width = usize::try_from(enc.minBytesPerChar).map_err(|_| cursor)?;
+    if cursor == end {
+        return Ok(None);
+    }
+    if !xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+        return Err(cursor);
+    }
+    loop {
+        cursor = cursor.checked_add(width).ok_or(cursor)?;
+        if !xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+            break;
+        }
+    }
+    if cursor == end {
+        return Ok(None);
+    }
+
+    let name_start = cursor;
+    let name_end;
+    loop {
+        match xml_decl_ascii_at(enc, input, cursor) {
+            None => return Err(cursor),
+            Some(b'=') => {
+                name_end = cursor;
+                break;
+            }
+            character if xml_decl_is_space(character) => {
+                name_end = cursor;
+                loop {
+                    cursor = cursor.checked_add(width).ok_or(cursor)?;
+                    let character = xml_decl_ascii_at(enc, input, cursor);
+                    if !xml_decl_is_space(character) {
+                        if character != Some(b'=') {
+                            return Err(cursor);
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+            Some(_) => cursor = cursor.checked_add(width).ok_or(cursor)?,
+        }
+    }
+    if cursor == name_start {
+        return Err(cursor);
+    }
+
+    cursor = cursor.checked_add(width).ok_or(cursor)?;
+    while xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+        cursor = cursor.checked_add(width).ok_or(cursor)?;
+    }
+    let quote = match xml_decl_ascii_at(enc, input, cursor) {
+        Some(quote @ (b'\'' | b'"')) => quote,
+        _ => return Err(cursor),
+    };
+    cursor = cursor.checked_add(width).ok_or(cursor)?;
+    let value_start = cursor;
+    loop {
+        let character = xml_decl_ascii_at(enc, input, cursor).ok_or(cursor)?;
+        if character == quote {
+            break;
+        }
+        if !matches!(
+            character,
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'.' | b'-' | b'_'
+        ) {
+            return Err(cursor);
+        }
+        cursor = cursor.checked_add(width).ok_or(cursor)?;
+    }
+    let next = cursor.checked_add(width).ok_or(cursor)?;
+    Ok(Some(XmlDeclAttribute {
+        name: name_start..name_end,
+        value: value_start..cursor,
+        next,
+    }))
+}
+
+fn parse_xml_decl(
+    is_general_text_entity: bool,
+    enc: &encoding,
+    input: &[u8],
+) -> Result<XmlDeclResult, usize> {
+    let width = usize::try_from(enc.minBytesPerChar).map_err(|_| 0usize)?;
+    let start = width.checked_mul(5).ok_or(0usize)?;
+    let suffix = width.checked_mul(2).ok_or(0usize)?;
+    let end = input.len().checked_sub(suffix).ok_or(input.len())?;
+    if start > end {
+        return Err(input.len());
+    }
+    let mut cursor = start;
+    let mut result = XmlDeclResult {
+        version: None,
+        version_end: None,
+        encoding_name: None,
+        encoding_end: None,
+        standalone: None,
+    };
+
+    let mut attribute = parse_xml_decl_pseudo_attribute(enc, input, cursor, end)?;
+    let Some(ref first) = attribute else {
+        return Err(cursor);
+    };
+    if xml_decl_matches_ascii(enc, input, first.name.clone(), XML_DECL_VERSION) {
+        result.version = Some(first.value.clone());
+        result.version_end = Some(first.next);
+        cursor = first.next;
+        attribute = parse_xml_decl_pseudo_attribute(enc, input, cursor, end)?;
+        if attribute.is_none() {
+            return if is_general_text_entity {
+                Err(cursor)
+            } else {
+                Ok(result)
+            };
+        }
+    } else if !is_general_text_entity {
+        return Err(first.name.start);
+    }
+
+    let current = attribute
+        .as_ref()
+        .expect("XML declaration attribute is present");
+    if xml_decl_matches_ascii(enc, input, current.name.clone(), XML_DECL_ENCODING) {
+        let value_start = current.value.start;
+        if !matches!(
+            xml_decl_ascii_at(enc, input, value_start),
+            Some(b'a'..=b'z' | b'A'..=b'Z')
+        ) {
+            return Err(value_start);
+        }
+        result.encoding_name = Some(current.value.clone());
+        result.encoding_end = current.next.checked_sub(width);
+        cursor = current.next;
+        attribute = parse_xml_decl_pseudo_attribute(enc, input, cursor, end)?;
+        if attribute.is_none() {
+            return Ok(result);
+        }
+    }
+
+    let attribute = attribute.expect("XML declaration attribute is present");
+    if is_general_text_entity
+        || !xml_decl_matches_ascii(enc, input, attribute.name.clone(), XML_DECL_STANDALONE)
+    {
+        return Err(attribute.name.start);
+    }
+    if xml_decl_matches_ascii(enc, input, attribute.value.clone(), XML_DECL_YES) {
+        result.standalone = Some(1);
+    } else if xml_decl_matches_ascii(enc, input, attribute.value.clone(), XML_DECL_NO) {
+        result.standalone = Some(0);
+    } else {
+        return Err(attribute.value.start);
+    }
+    cursor = attribute.next;
+    while xml_decl_is_space(xml_decl_ascii_at(enc, input, cursor)) {
+        cursor = cursor.checked_add(width).ok_or(cursor)?;
+    }
+    if cursor == end {
+        Ok(result)
+    } else {
+        Err(cursor)
+    }
+}
 
 unsafe extern "C" fn doParseXmlDecl(
     mut encodingFinder: Option<
@@ -17555,143 +17728,41 @@ unsafe extern "C" fn doParseXmlDecl(
     mut encoding: *mut *const crate::src::xmltok::ENCODING,
     mut standalone: *mut ::core::ffi::c_int,
 ) -> ::core::ffi::c_int {
-    let mut val: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut name: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    let mut nameEnd: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-    ptr = ptr.offset((5 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize);
-    end = end.offset(-((2 as ::core::ffi::c_int * (*enc).minBytesPerChar) as isize));
-    if parsePseudoAttribute(
-        enc,
-        ptr,
-        end,
-        &raw mut name,
-        &raw mut nameEnd,
-        &raw mut val,
-        &raw mut ptr,
-    ) == 0
-        || name.is_null()
-    {
-        *badPtr = ptr;
-        return 0 as ::core::ffi::c_int;
+    if enc.is_null() || ptr.is_null() || end.addr() < ptr.addr() {
+        return 0;
     }
-    if (*enc).nameMatchesAscii.matches_ascii(
-        name,
-        nameEnd,
-        &raw const KW_version as *const ::core::ffi::c_char,
-    ) == 0
-    {
-        if isGeneralTextEntity == 0 {
-            *badPtr = name;
-            return 0 as ::core::ffi::c_int;
-        }
-    } else {
-        if !versionPtr.is_null() {
-            *versionPtr = val;
-        }
-        if !versionEndPtr.is_null() {
-            *versionEndPtr = ptr;
-        }
-        if parsePseudoAttribute(
-            enc,
-            ptr,
-            end,
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
-            *badPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        if name.is_null() {
-            if isGeneralTextEntity != 0 {
-                *badPtr = ptr;
-                return 0 as ::core::ffi::c_int;
+    let input = core::slice::from_raw_parts(ptr.cast::<u8>(), end.addr() - ptr.addr());
+    let result = match parse_xml_decl(isGeneralTextEntity != 0, &*enc, input) {
+        Ok(result) => result,
+        Err(offset) => {
+            if let Some(bad) = badPtr.as_mut() {
+                *bad = ptr.wrapping_add(offset.min(input.len()));
             }
-            return 1 as ::core::ffi::c_int;
+            return 0;
         }
+    };
+    if let (Some(range), Some(version)) = (result.version, versionPtr.as_mut()) {
+        *version = ptr.wrapping_add(range.start);
     }
-    if (*enc).nameMatchesAscii.matches_ascii(
-        name,
-        nameEnd,
-        &raw const KW_encoding as *const ::core::ffi::c_char,
-    ) != 0
+    if let (Some(offset), Some(version_end)) = (result.version_end, versionEndPtr.as_mut()) {
+        *version_end = ptr.wrapping_add(offset);
+    }
+    if let (Some(range), Some(name)) = (result.encoding_name.clone(), encodingName.as_mut()) {
+        *name = ptr.wrapping_add(range.start);
+    }
+    if let (Some(range), Some(value_end), Some(found_encoding)) =
+        (result.encoding_name, result.encoding_end, encoding.as_mut())
     {
-        let mut c: ::core::ffi::c_int = toAscii(enc, val, end);
-        if !(crate::ascii_h::ASCII_a_1 <= c && c <= crate::ascii_h::ASCII_z)
-            && !(crate::ascii_h::ASCII_A <= c && c <= crate::ascii_h::ASCII_Z)
-        {
-            *badPtr = val;
-            return 0 as ::core::ffi::c_int;
-        }
-        if !encodingName.is_null() {
-            *encodingName = val;
-        }
-        if !encoding.is_null() {
-            *encoding = encodingFinder.expect("non-null function pointer")(
-                enc,
-                val,
-                ptr.offset(-((*enc).minBytesPerChar as isize)),
-            );
-        }
-        if parsePseudoAttribute(
+        *found_encoding = encodingFinder.expect("non-null function pointer")(
             enc,
-            ptr,
-            end,
-            &raw mut name,
-            &raw mut nameEnd,
-            &raw mut val,
-            &raw mut ptr,
-        ) == 0
-        {
-            *badPtr = ptr;
-            return 0 as ::core::ffi::c_int;
-        }
-        if name.is_null() {
-            return 1 as ::core::ffi::c_int;
-        }
+            ptr.wrapping_add(range.start),
+            ptr.wrapping_add(value_end),
+        );
     }
-    if (*enc).nameMatchesAscii.matches_ascii(
-        name,
-        nameEnd,
-        &raw const KW_standalone as *const ::core::ffi::c_char,
-    ) == 0
-        || isGeneralTextEntity != 0
-    {
-        *badPtr = name;
-        return 0 as ::core::ffi::c_int;
+    if let (Some(value), Some(output)) = (result.standalone, standalone.as_mut()) {
+        *output = value;
     }
-    if (*enc).nameMatchesAscii.matches_ascii(
-        val,
-        ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_yes as *const ::core::ffi::c_char,
-    ) != 0
-    {
-        if !standalone.is_null() {
-            *standalone = 1 as ::core::ffi::c_int;
-        }
-    } else if (*enc).nameMatchesAscii.matches_ascii(
-        val,
-        ptr.offset(-((*enc).minBytesPerChar as isize)),
-        &raw const KW_no as *const ::core::ffi::c_char,
-    ) != 0
-    {
-        if !standalone.is_null() {
-            *standalone = 0 as ::core::ffi::c_int;
-        }
-    } else {
-        *badPtr = val;
-        return 0 as ::core::ffi::c_int;
-    }
-    while isSpace(toAscii(enc, ptr, end)) != 0 {
-        ptr = ptr.offset((*enc).minBytesPerChar as isize);
-    }
-    if ptr != end {
-        *badPtr = ptr;
-        return 0 as ::core::ffi::c_int;
-    }
-    return 1 as ::core::ffi::c_int;
+    1
 }
 
 unsafe extern "C" fn checkCharRefNumber(mut result: ::core::ffi::c_int) -> ::core::ffi::c_int {
