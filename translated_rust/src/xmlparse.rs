@@ -1349,6 +1349,25 @@ static END_NAMESPACE_DECL_HANDLERS: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
+/// An end-namespace handler registration prepared from the ABI callback value.
+///
+/// Parser state retains only this typed registry entry and its opaque address
+/// key, never the C callback representation itself.
+struct EndNamespaceDeclHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn EndNamespaceDeclCallback>>,
+}
+
+fn end_namespace_decl_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> EndNamespaceDeclHandlerRegistration
+where
+    Callback: EndNamespaceDeclCallback + 'static,
+{
+    EndNamespaceDeclHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
 trait CharacterDataCallback: Send + Sync {
     unsafe fn invoke(
         &self,
@@ -9508,33 +9527,38 @@ pub unsafe extern "C" fn XML_SetStartNamespaceDeclHandler_ffi(
 ) {
     XML_SetStartNamespaceDeclHandler(parser, start)
 }
-pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
+fn set_end_namespace_decl_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: EndNamespaceDeclHandlerRegistration,
 ) {
-    if !parser.is_null() {
-        (*parser).m_endNamespaceDeclHandler = end.is_some();
-        let mut handlers = END_NAMESPACE_DECL_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match end {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
+    parser.m_endNamespaceDeclHandler = registration.callback.is_some();
+    let mut handlers = END_NAMESPACE_DECL_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
         }
     }
 }
 #[export_name = "XML_SetEndNamespaceDeclHandler"]
 
 pub unsafe extern "C" fn XML_SetEndNamespaceDeclHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut end: crate::expat_h::XML_EndNamespaceDeclHandler,
+    parser: crate::expat_h::XML_Parser,
+    end: crate::expat_h::XML_EndNamespaceDeclHandler,
 ) {
-    XML_SetEndNamespaceDeclHandler(parser, end)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = end_namespace_decl_handler_registration(end);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_end_namespace_decl_handler(parser, parser_address, registration)
 }
 pub unsafe extern "C" fn XML_SetNotStandaloneHandler(
     mut parser: crate::expat_h::XML_Parser,
