@@ -845,7 +845,7 @@ pub struct siphash {
     pub v2: uint64_t,
     pub v3: uint64_t,
     pub buf: [::core::ffi::c_uchar; 8],
-    pub p: *mut ::core::ffi::c_uchar,
+    pub buf_len: usize,
     pub c: uint64_t,
 }
 #[derive(Copy, Clone)]
@@ -5149,11 +5149,11 @@ unsafe extern "C" fn storeAtts(
                         v2: 0,
                         v3: 0,
                         buf: [0; 8],
-                        p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
+                        buf_len: 0,
                         c: 0,
                     };
                     let mut sip_key: sipkey = sipkey { k: [0; 2] };
-                    copy_salt_to_sipkey(parser, &raw mut sip_key);
+                    copy_salt_to_sipkey(get_hash_secret_salt(parser), &mut sip_key);
                     sip24_init(&mut sip_state, &sip_key);
                     *(s as *mut XML_Char).offset(-(1 as ::core::ffi::c_int) as isize) =
                         0 as XML_Char;
@@ -5185,10 +5185,12 @@ unsafe extern "C" fn storeAtts(
                         j_0 = j_0.wrapping_add(1);
                     }
                     sip24_update(
-                        &raw mut sip_state,
-                        (*b).uri as *const ::core::ffi::c_void,
-                        ((*b).uriLen as size_t)
-                            .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+                        &mut sip_state,
+                        ::core::slice::from_raw_parts(
+                            (*b).uri.cast::<::core::ffi::c_uchar>(),
+                            ((*b).uriLen as size_t)
+                                .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+                        ),
                     );
                     loop {
                         let c2rust_fresh42 = s;
@@ -5198,9 +5200,12 @@ unsafe extern "C" fn storeAtts(
                         }
                     }
                     sip24_update(
-                        &raw mut sip_state,
-                        s as *const ::core::ffi::c_void,
-                        keylen(s as KEY).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+                        &mut sip_state,
+                        ::core::slice::from_raw_parts(
+                            s.cast::<::core::ffi::c_uchar>(),
+                            keylen(s as KEY)
+                                .wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+                        ),
                     );
                     loop {
                         if if (*parser).m_tempPool.ptr == (*parser).m_tempPool.end as *mut XML_Char
@@ -10466,11 +10471,9 @@ unsafe extern "C" fn keylen(mut s: KEY) -> size_t {
         return len;
     }
 }
-unsafe extern "C" fn copy_salt_to_sipkey(mut parser: XML_Parser, mut key: *mut sipkey) {
-    unsafe {
-        (*key).k[0 as ::core::ffi::c_int as usize] = 0 as uint64_t;
-        (*key).k[1 as ::core::ffi::c_int as usize] = get_hash_secret_salt(parser) as uint64_t;
-    }
+fn copy_salt_to_sipkey(salt: ::core::ffi::c_ulong, key: &mut sipkey) {
+    key.k[0] = 0 as uint64_t;
+    key.k[1] = salt as uint64_t;
 }
 unsafe extern "C" fn hash(mut parser: XML_Parser, mut s: KEY) -> ::core::ffi::c_ulong {
     unsafe {
@@ -10480,16 +10483,16 @@ unsafe extern "C" fn hash(mut parser: XML_Parser, mut s: KEY) -> ::core::ffi::c_
             v2: 0,
             v3: 0,
             buf: [0; 8],
-            p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
+            buf_len: 0,
             c: 0,
         };
         let mut key: sipkey = sipkey { k: [0; 2] };
-        copy_salt_to_sipkey(parser, &raw mut key);
+        copy_salt_to_sipkey(get_hash_secret_salt(parser), &mut key);
         sip24_init(&mut state, &key);
+        let name_len = keylen(s).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t);
         sip24_update(
-            &raw mut state,
-            s as *const ::core::ffi::c_void,
-            keylen(s).wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+            &mut state,
+            ::core::slice::from_raw_parts(s.cast::<::core::ffi::c_uchar>(), name_len),
         );
         return sip24_final(&mut state) as ::core::ffi::c_ulong;
     }
@@ -12020,7 +12023,7 @@ fn sip_round(state: &mut siphash, rounds: ::core::ffi::c_int) {
         i += 1;
     }
 }
-fn sip24_init(state: &mut siphash, key: &sipkey) {
+fn sip24_init<'a>(state: &'a mut siphash, key: &sipkey) -> &'a mut siphash {
     state.v0 = ((0x736f6d65 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
         | 0x70736575 as uint64_t)
         ^ key.k[0];
@@ -12033,147 +12036,61 @@ fn sip24_init(state: &mut siphash, key: &sipkey) {
     state.v3 = ((0x74656462 as ::core::ffi::c_uint as uint64_t) << 32 as ::core::ffi::c_int
         | 0x79746573 as uint64_t)
         ^ key.k[1];
-    state.p = &raw mut state.buf as *mut ::core::ffi::c_uchar;
+    state.buf_len = 0;
     state.c = 0 as uint64_t;
+    state
 }
-unsafe extern "C" fn sip24_update(
-    mut H: *mut siphash,
-    mut src: *const ::core::ffi::c_void,
-    mut len: size_t,
-) -> *mut siphash {
-    unsafe {
-        let mut p: *const ::core::ffi::c_uchar = src as *const ::core::ffi::c_uchar;
-        let mut pe: *const ::core::ffi::c_uchar = p.offset(len as isize);
-        let mut m: uint64_t = 0;
-        loop {
-            while p < pe
-                && (*H).p
-                    < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                        (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
-                            .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
-                            as isize,
-                    ) as *mut ::core::ffi::c_uchar
-            {
-                let c2rust_fresh20 = p;
-                p = p.offset(1);
-                let c2rust_fresh21 = (*H).p;
-                (*H).p = (*H).p.offset(1);
-                *c2rust_fresh21 = *c2rust_fresh20;
-            }
-            if (*H).p
-                < (&raw mut (*H).buf as *mut ::core::ffi::c_uchar).offset(
-                    (::core::mem::size_of::<[::core::ffi::c_uchar; 8]>() as usize)
-                        .wrapping_div(::core::mem::size_of::<::core::ffi::c_uchar>() as usize)
-                        as isize,
-                ) as *mut ::core::ffi::c_uchar
-            {
-                break;
-            }
-            m = ((*H).buf[0 as ::core::ffi::c_int as usize] as uint64_t) << 0 as ::core::ffi::c_int
-                | ((*H).buf[1 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 8 as ::core::ffi::c_int
-                | ((*H).buf[2 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 16 as ::core::ffi::c_int
-                | ((*H).buf[3 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 24 as ::core::ffi::c_int
-                | ((*H).buf[4 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 32 as ::core::ffi::c_int
-                | ((*H).buf[5 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 40 as ::core::ffi::c_int
-                | ((*H).buf[6 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 48 as ::core::ffi::c_int
-                | ((*H).buf[7 as ::core::ffi::c_int as usize] as uint64_t)
-                    << 56 as ::core::ffi::c_int;
-            (*H).v3 ^= m;
-            sip_round(&mut *H, 2 as ::core::ffi::c_int);
-            (*H).v0 ^= m;
-            (*H).p = &raw mut (*H).buf as *mut ::core::ffi::c_uchar;
-            (*H).c = (*H).c.wrapping_add(8 as uint64_t);
-            if !(p < pe) {
-                break;
-            }
+fn sip24_update<'a>(state: &'a mut siphash, mut src: &[::core::ffi::c_uchar]) -> &'a mut siphash {
+    if state.buf_len != 0 {
+        let to_copy = (state.buf.len() - state.buf_len).min(src.len());
+        state.buf[state.buf_len..state.buf_len + to_copy].copy_from_slice(&src[..to_copy]);
+        state.buf_len += to_copy;
+        src = &src[to_copy..];
+        if state.buf_len == state.buf.len() {
+            let m = (state.buf[0] as uint64_t)
+                | ((state.buf[1] as uint64_t) << 8)
+                | ((state.buf[2] as uint64_t) << 16)
+                | ((state.buf[3] as uint64_t) << 24)
+                | ((state.buf[4] as uint64_t) << 32)
+                | ((state.buf[5] as uint64_t) << 40)
+                | ((state.buf[6] as uint64_t) << 48)
+                | ((state.buf[7] as uint64_t) << 56);
+            state.v3 ^= m;
+            sip_round(state, 2 as ::core::ffi::c_int);
+            state.v0 ^= m;
+            state.buf_len = 0;
+            state.c = state.c.wrapping_add(state.buf.len() as uint64_t);
         }
-        return H;
     }
+
+    while src.len() >= state.buf.len() {
+        let chunk_len = state.buf.len();
+        let m = (src[0] as uint64_t)
+            | ((src[1] as uint64_t) << 8)
+            | ((src[2] as uint64_t) << 16)
+            | ((src[3] as uint64_t) << 24)
+            | ((src[4] as uint64_t) << 32)
+            | ((src[5] as uint64_t) << 40)
+            | ((src[6] as uint64_t) << 48)
+            | ((src[7] as uint64_t) << 56);
+        state.v3 ^= m;
+        sip_round(state, 2 as ::core::ffi::c_int);
+        state.v0 ^= m;
+        state.c = state.c.wrapping_add(chunk_len as uint64_t);
+        src = &src[chunk_len..];
+    }
+
+    if !src.is_empty() {
+        state.buf[..src.len()].copy_from_slice(src);
+        state.buf_len = src.len();
+    }
+
+    state
 }
 fn sip24_final(state: &mut siphash) -> uint64_t {
-    let left = (state.p as usize).wrapping_sub(state.buf.as_ptr() as usize) as ::core::ffi::c_char;
-    let mut b: uint64_t = state.c.wrapping_add(left as uint64_t) << 56 as ::core::ffi::c_int;
-    let mut c2rust_current_block_6: u64;
-    match left as ::core::ffi::c_int {
-        7 => {
-            b |= (state.buf[6 as ::core::ffi::c_int as usize] as uint64_t)
-                << 48 as ::core::ffi::c_int;
-            c2rust_current_block_6 = 765793381763078134;
-        }
-        6 => {
-            c2rust_current_block_6 = 765793381763078134;
-        }
-        5 => {
-            c2rust_current_block_6 = 3105948935974009916;
-        }
-        4 => {
-            c2rust_current_block_6 = 16488506295619998735;
-        }
-        3 => {
-            c2rust_current_block_6 = 2165477741955893522;
-        }
-        2 => {
-            c2rust_current_block_6 = 16420434121503669123;
-        }
-        1 => {
-            c2rust_current_block_6 = 4773154127383362184;
-        }
-        0 | _ => {
-            c2rust_current_block_6 = 5720623009719927633;
-        }
-    }
-    match c2rust_current_block_6 {
-        765793381763078134 => {
-            b |= (state.buf[5 as ::core::ffi::c_int as usize] as uint64_t)
-                << 40 as ::core::ffi::c_int;
-            c2rust_current_block_6 = 3105948935974009916;
-        }
-        _ => {}
-    }
-    match c2rust_current_block_6 {
-        3105948935974009916 => {
-            b |= (state.buf[4 as ::core::ffi::c_int as usize] as uint64_t)
-                << 32 as ::core::ffi::c_int;
-            c2rust_current_block_6 = 16488506295619998735;
-        }
-        _ => {}
-    }
-    match c2rust_current_block_6 {
-        16488506295619998735 => {
-            b |= (state.buf[3 as ::core::ffi::c_int as usize] as uint64_t)
-                << 24 as ::core::ffi::c_int;
-            c2rust_current_block_6 = 2165477741955893522;
-        }
-        _ => {}
-    }
-    match c2rust_current_block_6 {
-        2165477741955893522 => {
-            b |= (state.buf[2 as ::core::ffi::c_int as usize] as uint64_t)
-                << 16 as ::core::ffi::c_int;
-            c2rust_current_block_6 = 16420434121503669123;
-        }
-        _ => {}
-    }
-    match c2rust_current_block_6 {
-        16420434121503669123 => {
-            b |= (state.buf[1 as ::core::ffi::c_int as usize] as uint64_t)
-                << 8 as ::core::ffi::c_int;
-            c2rust_current_block_6 = 4773154127383362184;
-        }
-        _ => {}
-    }
-    match c2rust_current_block_6 {
-        4773154127383362184 => {
-            b |= (state.buf[0 as ::core::ffi::c_int as usize] as uint64_t)
-                << 0 as ::core::ffi::c_int;
-        }
-        _ => {}
+    let mut b = state.c.wrapping_add(state.buf_len as uint64_t) << 56 as ::core::ffi::c_int;
+    for (index, byte) in state.buf[..state.buf_len].iter().enumerate() {
+        b |= (*byte as uint64_t) << (index * 8);
     }
     state.v3 ^= b;
     sip_round(state, 2 as ::core::ffi::c_int);
@@ -12182,716 +12099,703 @@ fn sip24_final(state: &mut siphash) -> uint64_t {
     sip_round(state, 4 as ::core::ffi::c_int);
     state.v0 ^ state.v1 ^ state.v2 ^ state.v3
 }
-unsafe extern "C" fn siphash24(
-    mut src: *const ::core::ffi::c_void,
-    mut len: size_t,
-    mut key: *const sipkey,
-) -> uint64_t {
-    unsafe {
-        let mut state: siphash = siphash {
-            v0: 0 as uint64_t,
-            v1: 0 as uint64_t,
-            v2: 0 as uint64_t,
-            v3: 0 as uint64_t,
-            buf: [
-                0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ],
-            p: ::core::ptr::null_mut::<::core::ffi::c_uchar>(),
-            c: 0 as uint64_t,
-        };
-        sip24_init(&mut state, &*key);
-        sip24_update(&raw mut state, src, len);
-        return sip24_final(&mut state);
-    }
+fn siphash24(src: &[::core::ffi::c_uchar], key: &sipkey) -> uint64_t {
+    let mut state: siphash = siphash {
+        v0: 0 as uint64_t,
+        v1: 0 as uint64_t,
+        v2: 0 as uint64_t,
+        v3: 0 as uint64_t,
+        buf: [
+            0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        buf_len: 0,
+        c: 0 as uint64_t,
+    };
+    sip24_final(sip24_update(sip24_init(&mut state, key), src))
 }
-unsafe extern "C" fn sip24_valid() -> ::core::ffi::c_int {
-    unsafe {
-        static mut vectors: [[::core::ffi::c_uchar; 8]; 64] = [
-            [
-                0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xfd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x4f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x80 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x2d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x7e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x55 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x37 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xab as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x82 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x86 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x84 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x56 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x14 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x69 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x9c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x4b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x88 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x17 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x63 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xac as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xaa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xef as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x41 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xfa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x7c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x78 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xae as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x34 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xff as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x33 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x19 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x10 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x52 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x43 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x16 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x20 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x83 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x3a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x13 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x91 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xb1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x25 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x9f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x1b as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-            [
-                0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x4c as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
-                0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
-            ],
-        ];
-        let mut in_0: [::core::ffi::c_uchar; 64] = [0; 64];
-        let mut k: sipkey = sipkey { k: [0; 2] };
-        let mut i: size_t = 0;
-        sip_tokey(
-            &mut k,
-            b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F",
-        );
-        i = 0 as size_t;
-        while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() as usize {
-            in_0[i as usize] = i as ::core::ffi::c_uchar;
-            if siphash24(
-                &raw mut in_0 as *mut ::core::ffi::c_uchar as *const ::core::ffi::c_void,
-                i,
-                &raw mut k,
-            ) != (vectors[i as usize][0 as ::core::ffi::c_int as usize] as uint64_t)
+fn sip24_valid() -> ::core::ffi::c_int {
+    static VECTORS: [[::core::ffi::c_uchar; 8]; 64] = [
+        [
+            0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xfd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x4f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x80 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x2d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x7e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x55 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x37 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xab as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x82 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xfb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x86 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x84 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x56 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x14 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x7a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x47 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x69 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x9c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x4b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x88 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x67 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x94 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x85 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x17 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x63 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x61 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xac as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xaa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xde as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xef as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x49 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x41 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xfa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xce as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x7c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x27 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x71 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xe3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x78 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xae as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x34 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xff as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x39 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x29 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x90 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x4d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xca as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x33 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x59 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x58 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x42 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x15 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x73 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x18 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x35 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x19 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x53 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x10 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xdb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x75 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x98 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd0 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x51 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa9 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x12 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xad as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xfc as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xfe as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x52 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x97 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x43 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x64 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xee as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x5a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x16 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x76 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x92 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x74 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xcb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x87 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x6f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x20 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x81 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x22 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa8 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x7f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x99 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xc1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x31 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x24 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xbd as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x83 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x3a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xaf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xbf as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x65 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xea as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x13 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x50 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x79 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x23 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x93 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x2b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x28 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x46 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xd7 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x66 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xe1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x91 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xb1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xec as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa4 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0xf3 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x25 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x96 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xa1 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6d as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x62 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x9f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x57 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x5f as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xf2 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8e as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x60 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x38 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x1b as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xe5 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+        [
+            0x72 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x45 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x6 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0xeb as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x4c as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x32 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x8a as ::core::ffi::c_int as ::core::ffi::c_uchar,
+            0x95 as ::core::ffi::c_int as ::core::ffi::c_uchar,
+        ],
+    ];
+    let mut in_0: [::core::ffi::c_uchar; 64] = [0; 64];
+    let mut k: sipkey = sipkey { k: [0; 2] };
+    let mut i: size_t = 0;
+    sip_tokey(
+        &mut k,
+        b"\0\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F",
+    );
+    i = 0 as size_t;
+    while i < ::core::mem::size_of::<[::core::ffi::c_uchar; 64]>() as usize {
+        in_0[i as usize] = i as ::core::ffi::c_uchar;
+        if siphash24(&in_0[..i as usize], &k)
+            != (VECTORS[i as usize][0 as ::core::ffi::c_int as usize] as uint64_t)
                 << 0 as ::core::ffi::c_int
-                | (vectors[i as usize][1 as ::core::ffi::c_int as usize] as uint64_t)
+                | (VECTORS[i as usize][1 as ::core::ffi::c_int as usize] as uint64_t)
                     << 8 as ::core::ffi::c_int
-                | (vectors[i as usize][2 as ::core::ffi::c_int as usize] as uint64_t)
+                | (VECTORS[i as usize][2 as ::core::ffi::c_int as usize] as uint64_t)
                     << 16 as ::core::ffi::c_int
-                | (vectors[i as usize][3 as ::core::ffi::c_int as usize] as uint64_t)
+                | (VECTORS[i as usize][3 as ::core::ffi::c_int as usize] as uint64_t)
                     << 24 as ::core::ffi::c_int
-                | (vectors[i as usize][4 as ::core::ffi::c_int as usize] as uint64_t)
+                | (VECTORS[i as usize][4 as ::core::ffi::c_int as usize] as uint64_t)
                     << 32 as ::core::ffi::c_int
-                | (vectors[i as usize][5 as ::core::ffi::c_int as usize] as uint64_t)
+                | (VECTORS[i as usize][5 as ::core::ffi::c_int as usize] as uint64_t)
                     << 40 as ::core::ffi::c_int
-                | (vectors[i as usize][6 as ::core::ffi::c_int as usize] as uint64_t)
+                | (VECTORS[i as usize][6 as ::core::ffi::c_int as usize] as uint64_t)
                     << 48 as ::core::ffi::c_int
-                | (vectors[i as usize][7 as ::core::ffi::c_int as usize] as uint64_t)
+                | (VECTORS[i as usize][7 as ::core::ffi::c_int as usize] as uint64_t)
                     << 56 as ::core::ffi::c_int
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            i = i.wrapping_add(1);
+        {
+            return 0 as ::core::ffi::c_int;
         }
-        return 1 as ::core::ffi::c_int;
+        i = i.wrapping_add(1);
     }
+    return 1 as ::core::ffi::c_int;
 }
 pub const EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT:
     ::core::ffi::c_float = 100.0f32;
