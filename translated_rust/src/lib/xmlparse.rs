@@ -8453,109 +8453,104 @@ extern "C" fn epilogProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        (*parser).m_processor = Some(
-            epilogProcessor
-                as extern "C" fn(
-                    XML_Parser,
-                    *const ::core::ffi::c_char,
-                    *const ::core::ffi::c_char,
-                    *mut *const ::core::ffi::c_char,
-                ) -> XML_Error,
-        );
-        (*parser).m_eventPtr = s;
-        loop {
-            let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-            let mut tok: ::core::ffi::c_int = (*(*parser).m_encoding).scanners
-                [0 as ::core::ffi::c_int as usize]
-                .expect("non-null function pointer")(
-                (*parser).m_encoding, s, end, &raw mut next
-            );
-            if accountingDiffTolerated(
-                &mut *parser,
-                tok,
-                s,
-                next,
-                6279 as ::core::ffi::c_int,
-                XML_ACCOUNT_DIRECT,
-            ) == 0
-            {
-                accountingOnAbort(&mut *parser);
-                return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
-            }
-            (*parser).m_eventEndPtr = next;
-            match tok {
-                -15 => {
-                    if (*parser).m_defaultHandler.is_some() {
-                        reportDefault(parser, (*parser).m_encoding, s, next);
-                        if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                            == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
-                        {
-                            return XML_ERROR_ABORTED;
-                        }
-                    }
-                    *nextPtr = next;
-                    return XML_ERROR_NONE;
-                }
-                XML_TOK_NONE => {
-                    *nextPtr = s;
-                    return XML_ERROR_NONE;
-                }
-                XML_TOK_PROLOG_S => {
-                    if (*parser).m_defaultHandler.is_some() {
-                        reportDefault(parser, (*parser).m_encoding, s, next);
-                    }
-                }
-                XML_TOK_PI => {
-                    if reportProcessingInstruction(parser, (*parser).m_encoding, s, next) == 0 {
-                        return XML_ERROR_NO_MEMORY;
-                    }
-                }
-                XML_TOK_COMMENT => {
-                    if reportComment(parser, (*parser).m_encoding, s, next) == 0 {
-                        return XML_ERROR_NO_MEMORY;
-                    }
-                }
-                XML_TOK_INVALID => {
-                    (*parser).m_eventPtr = next;
-                    return XML_ERROR_INVALID_TOKEN;
-                }
-                XML_TOK_PARTIAL => {
-                    if (*parser).m_parsingStatus.finalBuffer == 0 {
-                        *nextPtr = s;
-                        return XML_ERROR_NONE;
-                    }
-                    return XML_ERROR_UNCLOSED_TOKEN;
-                }
-                XML_TOK_PARTIAL_CHAR => {
-                    if (*parser).m_parsingStatus.finalBuffer == 0 {
-                        *nextPtr = s;
-                        return XML_ERROR_NONE;
-                    }
-                    return XML_ERROR_PARTIAL_CHAR;
-                }
-                _ => return XML_ERROR_JUNK_AFTER_DOC_ELEMENT,
-            }
-            match (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
-                3 => {
-                    (*parser).m_eventPtr = next;
-                    *nextPtr = next;
-                    return XML_ERROR_NONE;
-                }
-                2 => {
-                    (*parser).m_eventPtr = next;
-                    return XML_ERROR_ABORTED;
-                }
-                1 => {
-                    if (*parser).m_reenter != 0 {
-                        return XML_ERROR_UNEXPECTED_STATE;
-                    }
-                }
-                _ => {}
-            }
-            s = next;
-            (*parser).m_eventPtr = s;
+    ptr_mut(parser).m_processor = Some(
+        epilogProcessor
+            as extern "C" fn(
+                XML_Parser,
+                *const ::core::ffi::c_char,
+                *const ::core::ffi::c_char,
+                *mut *const ::core::ffi::c_char,
+            ) -> XML_Error,
+    );
+    ptr_mut(parser).m_eventPtr = s;
+    loop {
+        let enc = ptr_ref(parser).m_encoding;
+        let mut next: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+        let tok = call_scanner(ptr_ref(enc).scanners[0], enc, s, end, &raw mut next);
+        if accounting_diff_tolerated_parser!(
+            parser,
+            tok,
+            s,
+            next,
+            6279 as ::core::ffi::c_int,
+            XML_ACCOUNT_DIRECT,
+        ) == 0
+        {
+            accounting_on_abort_parser!(parser);
+            return XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
+        ptr_mut(parser).m_eventEndPtr = next;
+        match tok {
+            -15 => {
+                if ptr_ref(parser).m_defaultHandler.is_some() {
+                    reportDefault(parser, enc, s, next);
+                    if ptr_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+                        == XML_FINISHED as ::core::ffi::c_int as ::core::ffi::c_uint
+                    {
+                        return XML_ERROR_ABORTED;
+                    }
+                }
+                write_copy(nextPtr, next);
+                return XML_ERROR_NONE;
+            }
+            XML_TOK_NONE => {
+                write_copy(nextPtr, s);
+                return XML_ERROR_NONE;
+            }
+            XML_TOK_PROLOG_S => {
+                if ptr_ref(parser).m_defaultHandler.is_some() {
+                    reportDefault(parser, enc, s, next);
+                }
+            }
+            XML_TOK_PI => {
+                if reportProcessingInstruction(parser, enc, s, next) == 0 {
+                    return XML_ERROR_NO_MEMORY;
+                }
+            }
+            XML_TOK_COMMENT => {
+                if reportComment(parser, enc, s, next) == 0 {
+                    return XML_ERROR_NO_MEMORY;
+                }
+            }
+            XML_TOK_INVALID => {
+                ptr_mut(parser).m_eventPtr = next;
+                return XML_ERROR_INVALID_TOKEN;
+            }
+            XML_TOK_PARTIAL => {
+                if ptr_ref(parser).m_parsingStatus.finalBuffer == 0 {
+                    write_copy(nextPtr, s);
+                    return XML_ERROR_NONE;
+                }
+                return XML_ERROR_UNCLOSED_TOKEN;
+            }
+            XML_TOK_PARTIAL_CHAR => {
+                if ptr_ref(parser).m_parsingStatus.finalBuffer == 0 {
+                    write_copy(nextPtr, s);
+                    return XML_ERROR_NONE;
+                }
+                return XML_ERROR_PARTIAL_CHAR;
+            }
+            _ => return XML_ERROR_JUNK_AFTER_DOC_ELEMENT,
+        }
+        match ptr_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint {
+            3 => {
+                ptr_mut(parser).m_eventPtr = next;
+                write_copy(nextPtr, next);
+                return XML_ERROR_NONE;
+            }
+            2 => {
+                ptr_mut(parser).m_eventPtr = next;
+                return XML_ERROR_ABORTED;
+            }
+            1 => {
+                if ptr_ref(parser).m_reenter != 0 {
+                    return XML_ERROR_UNEXPECTED_STATE;
+                }
+            }
+            _ => {}
+        }
+        s = next;
+        ptr_mut(parser).m_eventPtr = s;
     }
 }
 extern "C" fn processEntity(
