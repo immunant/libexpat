@@ -21094,7 +21094,7 @@ unsafe fn storeEntityValue(
                                     if parser.m_externalEntityRefHandler {
                                         dtd.paramEntityRead = crate::expat_h::XML_FALSE;
                                         entity.open = crate::expat_h::XML_TRUE;
-                                        entityTrackingOnOpen(
+                                        entity_tracking_on_open(
                                             parser,
                                             entity,
                                             6840 as ::core::ffi::c_int,
@@ -21123,7 +21123,7 @@ unsafe fn storeEntityValue(
                                             event,
                                         ) == 0
                                         {
-                                            entityTrackingOnClose(
+                                            entity_tracking_on_close(
                                                 parser,
                                                 entity,
                                                 6844 as ::core::ffi::c_int,
@@ -21133,7 +21133,7 @@ unsafe fn storeEntityValue(
                                                 crate::expat_h::XML_ERROR_EXTERNAL_ENTITY_HANDLING;
                                             break '_endEntityValue;
                                         } else {
-                                            entityTrackingOnClose(
+                                            entity_tracking_on_close(
                                                 parser,
                                                 entity,
                                                 6849 as ::core::ffi::c_int,
