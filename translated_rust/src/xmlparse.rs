@@ -15306,40 +15306,34 @@ unsafe extern "C" fn doProlog(
                                         if (*dtd).keepProcessing as ::core::ffi::c_int != 0
                                             && (*parser).m_attlistDeclHandler
                                         {
-                                            let mut prefix: *const crate::expat_external_h::XML_Char =
-                                                ::core::ptr::null:: <crate::expat_external_h::XML_Char>();
-                                            if (*parser).m_declAttributeType.is_some() {
-                                                prefix = &raw const enumValueSep
-                                                    as *const crate::expat_external_h::XML_Char;
+                                            let prefix = if (*parser).m_declAttributeType.is_some() {
+                                                &enumValueSep[..]
                                             } else {
-                                                prefix = if role
+                                                if role
                                                     == crate::src::xmlrole::XML_ROLE_ATTRIBUTE_NOTATION_VALUE
                                                         as ::core::ffi::c_int
                                                 {
-                                                    &raw const notationPrefix as *const crate::expat_external_h::XML_Char
+                                                    &notationPrefix[..]
                                                 } else {
-                                                    &raw const enumValueStart as *const crate::expat_external_h::XML_Char
-                                                };
-                                            }
-                                            if poolAppendString(
-                                                &raw mut (*parser).m_tempPool,
-                                                prefix,
-                                            )
-                                            .is_null()
-                                            {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
-                                            if poolAppend(
-                                                &raw mut (*parser).m_tempPool,
-                                                enc,
-                                                s,
-                                                next,
-                                            )
-                                            .is_null()
-                                            {
-                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
-                                            }
+                                                    &enumValueStart[..]
+                                                }
+                                            };
                                             let parser_ref = &mut *parser;
+                                            if !pool_append_terminated_chars(
+                                                &mut parser_ref.m_tempPool,
+                                                prefix,
+                                            ) {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            }
+                                            if pool_append_source(
+                                                &mut parser_ref.m_tempPool,
+                                                encoding,
+                                                unknown_encoding.as_ref(),
+                                                &token_bytes,
+                                            )
+                                            .is_none() {
+                                                return crate::expat_h::XML_ERROR_NO_MEMORY;
+                                            }
                                             let Some(start) = parser_ref.m_tempPool.start_ref(true)
                                             else {
                                                 return crate::expat_h::XML_ERROR_NO_MEMORY;
@@ -18453,6 +18447,24 @@ fn pool_append_char(pool: &mut STRING_POOL, value: crate::expat_external_h::XML_
     }
 
     pool.write_cursor(value)
+}
+
+/// Appends a terminated XML-character literal without rebuilding a raw C
+/// cursor.  Declaration prefixes are immutable local arrays, so the first
+/// terminator bounds the complete input before the pool can grow.
+fn pool_append_terminated_chars(
+    pool: &mut STRING_POOL,
+    chars: &[crate::expat_external_h::XML_Char],
+) -> bool {
+    for &character in chars {
+        if character == 0 {
+            return true;
+        }
+        if !pool_append_char(pool, character) {
+            return false;
+        }
+    }
+    false
 }
 
 /// Stores one of the ASCII-only XML declaration values in a pool without
