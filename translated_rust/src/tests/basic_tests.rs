@@ -1300,7 +1300,29 @@ fn c_string_offset(
     text: *const ::core::ffi::c_char,
     offset: ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    unsafe { text.offset(offset as isize) }
+    text.wrapping_offset(offset as isize)
+}
+
+fn trim_to_complete_utf8_characters(
+    input: *const ::core::ffi::c_char,
+    from_lim: &mut *const ::core::ffi::c_char,
+) {
+    ffi_call2(
+        _INTERNAL_trim_to_complete_utf8_characters,
+        input,
+        from_lim as *mut *const ::core::ffi::c_char,
+    );
+}
+
+fn utf8_input_hex(input: *const ::core::ffi::c_char) -> String {
+    use std::fmt::Write as _;
+
+    let mut rendered = String::new();
+    for index in 0..(c_string_len(input) as usize) {
+        let byte = value_from_ptr(input.wrapping_add(index).cast::<u8>());
+        write!(&mut rendered, "\\x{byte:02x}").expect("writing to String should not fail");
+    }
+    rendered
 }
 
 fn set_subtest_message(message: &str) {
@@ -3497,110 +3519,92 @@ extern "C" fn test_illegal_utf8() {
     }
 }
 pub const UTF8_LEAD_1: [::core::ffi::c_char; 2] =
-    unsafe { ::core::mem::transmute::<[u8; 2], [::core::ffi::c_char; 2]>(*b"\x7F\0") };
+    [0x7f_u8 as ::core::ffi::c_char, 0_u8 as ::core::ffi::c_char];
 pub const UTF8_LEAD_2: [::core::ffi::c_char; 2] =
-    unsafe { ::core::mem::transmute::<[u8; 2], [::core::ffi::c_char; 2]>(*b"\xDF\0") };
+    [0xdf_u8 as ::core::ffi::c_char, 0_u8 as ::core::ffi::c_char];
 pub const UTF8_LEAD_3: [::core::ffi::c_char; 2] =
-    unsafe { ::core::mem::transmute::<[u8; 2], [::core::ffi::c_char; 2]>(*b"\xEF\0") };
+    [0xef_u8 as ::core::ffi::c_char, 0_u8 as ::core::ffi::c_char];
 pub const UTF8_LEAD_4: [::core::ffi::c_char; 2] =
-    unsafe { ::core::mem::transmute::<[u8; 2], [::core::ffi::c_char; 2]>(*b"\xF7\0") };
+    [0xf7_u8 as ::core::ffi::c_char, 0_u8 as ::core::ffi::c_char];
 extern "C" fn test_utf8_auto_align() {
-    unsafe {
-        _check_set_test_info(
-            b"test_utf8_auto_align\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            322 as ::core::ffi::c_int,
-        );
-        let mut cases: [TestCase_1; 11] = [
-            TestCase_1 {
-                expectedMovementInChars: 0 as ptrdiff_t,
-                input: b"\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            TestCase_1 {
-                expectedMovementInChars: 0 as ptrdiff_t,
-                input: UTF8_LEAD_1.as_ptr(),
-            },
-            TestCase_1 {
-                expectedMovementInChars: -(1 as ::core::ffi::c_int) as ptrdiff_t,
-                input: UTF8_LEAD_2.as_ptr(),
-            },
-            TestCase_1 {
-                expectedMovementInChars: 0 as ptrdiff_t,
-                input: b"\xDF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            TestCase_1 {
-                expectedMovementInChars: -(1 as ::core::ffi::c_int) as ptrdiff_t,
-                input: UTF8_LEAD_3.as_ptr(),
-            },
-            TestCase_1 {
-                expectedMovementInChars: -(2 as ::core::ffi::c_int) as ptrdiff_t,
-                input: b"\xEF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            TestCase_1 {
-                expectedMovementInChars: 0 as ptrdiff_t,
-                input: b"\xEF\xBF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            TestCase_1 {
-                expectedMovementInChars: -(1 as ::core::ffi::c_int) as ptrdiff_t,
-                input: UTF8_LEAD_4.as_ptr(),
-            },
-            TestCase_1 {
-                expectedMovementInChars: -(2 as ::core::ffi::c_int) as ptrdiff_t,
-                input: b"\xF7\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            TestCase_1 {
-                expectedMovementInChars: -(3 as ::core::ffi::c_int) as ptrdiff_t,
-                input: b"\xF7\xBF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-            TestCase_1 {
-                expectedMovementInChars: 0 as ptrdiff_t,
-                input: b"\xF7\xBF\xBF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
-            },
-        ];
-        let mut i: size_t = 0 as size_t;
-        let mut success: bool = true_0 != 0;
-        while i
-            < (::core::mem::size_of::<[TestCase_1; 11]>() as usize)
-                .wrapping_div(::core::mem::size_of::<TestCase_1>() as usize)
-        {
-            let mut fromLim: *const ::core::ffi::c_char = cases[i as usize]
-                .input
-                .offset(strlen(cases[i as usize].input) as isize);
-            let fromLimInitially: *const ::core::ffi::c_char = fromLim;
-            let mut actualMovementInChars: ptrdiff_t = 0;
-            _INTERNAL_trim_to_complete_utf8_characters(cases[i as usize].input, &raw mut fromLim);
-            actualMovementInChars =
-                fromLim.offset_from(fromLimInitially) as ::core::ffi::c_long as ptrdiff_t;
-            if actualMovementInChars != cases[i as usize].expectedMovementInChars {
-                let mut j: size_t = 0 as size_t;
-                success = false_0 != 0;
-                printf(
-                    b"[-] UTF-8 case %2u: Expected movement by %2d chars, actually moved by %2d chars: \"\0"
-                        .as_ptr() as *const ::core::ffi::c_char,
-                    i.wrapping_add(1 as size_t) as ::core::ffi::c_uint,
-                    cases[i as usize].expectedMovementInChars as ::core::ffi::c_int,
-                    actualMovementInChars as ::core::ffi::c_int,
-                );
-                while j < strlen(cases[i as usize].input) {
-                    printf(
-                        b"\\x%02x\0".as_ptr() as *const ::core::ffi::c_char,
-                        *cases[i as usize].input.offset(j as isize) as ::core::ffi::c_uchar
-                            as ::core::ffi::c_int,
-                    );
-                    j = j.wrapping_add(1);
-                }
-                printf(b"\"\n\0".as_ptr() as *const ::core::ffi::c_char);
-            }
-            i = i.wrapping_add(1);
-        }
-        if !success {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                371 as ::core::ffi::c_int,
-                b"UTF-8 auto-alignment is not bullet-proof\n\0".as_ptr()
-                    as *const ::core::ffi::c_char,
+    set_test_info(b"test_utf8_auto_align\0", 322 as ::core::ffi::c_int);
+    let cases: [TestCase_1; 11] = [
+        TestCase_1 {
+            expectedMovementInChars: 0 as ptrdiff_t,
+            input: b"\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        TestCase_1 {
+            expectedMovementInChars: 0 as ptrdiff_t,
+            input: UTF8_LEAD_1.as_ptr(),
+        },
+        TestCase_1 {
+            expectedMovementInChars: -(1 as ::core::ffi::c_int) as ptrdiff_t,
+            input: UTF8_LEAD_2.as_ptr(),
+        },
+        TestCase_1 {
+            expectedMovementInChars: 0 as ptrdiff_t,
+            input: b"\xDF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        TestCase_1 {
+            expectedMovementInChars: -(1 as ::core::ffi::c_int) as ptrdiff_t,
+            input: UTF8_LEAD_3.as_ptr(),
+        },
+        TestCase_1 {
+            expectedMovementInChars: -(2 as ::core::ffi::c_int) as ptrdiff_t,
+            input: b"\xEF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        TestCase_1 {
+            expectedMovementInChars: 0 as ptrdiff_t,
+            input: b"\xEF\xBF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        TestCase_1 {
+            expectedMovementInChars: -(1 as ::core::ffi::c_int) as ptrdiff_t,
+            input: UTF8_LEAD_4.as_ptr(),
+        },
+        TestCase_1 {
+            expectedMovementInChars: -(2 as ::core::ffi::c_int) as ptrdiff_t,
+            input: b"\xF7\xBF\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        TestCase_1 {
+            expectedMovementInChars: -(3 as ::core::ffi::c_int) as ptrdiff_t,
+            input: b"\xF7\xBF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+        TestCase_1 {
+            expectedMovementInChars: 0 as ptrdiff_t,
+            input: b"\xF7\xBF\xBF\xBF\0".as_ptr() as *const ::core::ffi::c_char,
+        },
+    ];
+    let mut i: size_t = 0 as size_t;
+    let mut success = true;
+    while i
+        < (::core::mem::size_of::<[TestCase_1; 11]>() as usize)
+            .wrapping_div(::core::mem::size_of::<TestCase_1>() as usize)
+    {
+        let input = cases[i as usize].input;
+        let mut from_lim = c_string_offset(input, c_string_len(input));
+        let from_lim_initially = from_lim;
+        trim_to_complete_utf8_characters(input, &mut from_lim);
+        let actual_movement_in_chars =
+            (from_lim as isize).wrapping_sub(from_lim_initially as isize) as ptrdiff_t;
+
+        if actual_movement_in_chars != cases[i as usize].expectedMovementInChars {
+            success = false;
+            println!(
+                "[-] UTF-8 case {:2}: Expected movement by {:2} chars, actually moved by {:2} chars: \"{}\"",
+                i + 1,
+                cases[i as usize].expectedMovementInChars,
+                actual_movement_in_chars,
+                utf8_input_hex(input),
             );
         }
+
+        i = i.wrapping_add(1);
+    }
+    if !success {
+        fail_test(
+            371 as ::core::ffi::c_int,
+            b"UTF-8 auto-alignment is not bullet-proof\n\0",
+        );
     }
 }
 extern "C" fn test_utf16() {
