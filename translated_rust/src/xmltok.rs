@@ -9734,109 +9734,161 @@ pub mod xmltok_impl_c {
         result.token
     }
 
-    pub unsafe extern "C" fn big2_entityValueTok(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut start: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        if ptr >= end {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        } else if !(end.offset_from(ptr)
-            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-        {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+    struct Big2EntityValueToken {
+        token: ::core::ffi::c_int,
+        next: Option<usize>,
+    }
+
+    fn big2_entity_value_tok_impl(
+        enc: &normal_encoding,
+        input: &[::core::ffi::c_char],
+    ) -> Big2EntityValueToken {
+        if input.is_empty() {
+            return Big2EntityValueToken {
+                token: crate::src::xmltok::XML_TOK_NONE_1,
+                next: None,
+            };
         }
-        start = ptr;
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize {
-            match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
-                    as ::core::ffi::c_int
-            } else {
-                unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-            } {
-                5 => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
+        if input.len() < 2 {
+            return Big2EntityValueToken {
+                token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+                next: None,
+            };
+        }
+
+        let mut pos = 0;
+        while pos + 2 <= input.len() {
+            match big2_byte_type(enc, input, pos) {
+                5 => pos += 2,
                 6 => {
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                }
-                7 => {
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                }
-                3 => {
-                    if ptr == start {
-                        return big2_scanRef(
-                            enc,
-                            ptr.offset(2 as ::core::ffi::c_int as isize),
-                            end,
-                            nextTokPtr,
-                        );
-                    }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
-                }
-                30 => {
-                    if ptr == start {
-                        let mut tok: ::core::ffi::c_int = big2_scanPercent(
-                            enc,
-                            ptr.offset(2 as ::core::ffi::c_int as isize),
-                            end,
-                            nextTokPtr,
-                        );
-                        return if tok == crate::src::xmltok::XML_TOK_PERCENT_1 {
-                            crate::src::xmltok::XML_TOK_INVALID_1
-                        } else {
-                            tok
+                    if input.len() - pos < 3 {
+                        return Big2EntityValueToken {
+                            token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+                            next: None,
                         };
                     }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+                    pos += 3;
+                }
+                7 => {
+                    if input.len() - pos < 4 {
+                        return Big2EntityValueToken {
+                            token: crate::src::xmltok::XML_TOK_PARTIAL_1,
+                            next: None,
+                        };
+                    }
+                    pos += 4;
+                }
+                3 if pos == 0 => {
+                    return match big2_scan_ref(enc, input, 2) {
+                        Big2ScanOutcome::Token(token, next) => Big2EntityValueToken {
+                            token,
+                            next: Some(next),
+                        },
+                        Big2ScanOutcome::Partial(token) => Big2EntityValueToken {
+                            token,
+                            next: None,
+                        },
+                        Big2ScanOutcome::Invalid(next) => Big2EntityValueToken {
+                            token: crate::src::xmltok::XML_TOK_INVALID_1,
+                            next: Some(next),
+                        },
+                    };
+                }
+                3 => {
+                    return Big2EntityValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(pos),
+                    };
+                }
+                30 if pos == 0 => {
+                    return match big2_scan_percent_impl(enc, &input[2..]) {
+                        Big2ScanOutcome::Token(token, next) => Big2EntityValueToken {
+                            token: if token == crate::src::xmltok::XML_TOK_PERCENT_1 {
+                                crate::src::xmltok::XML_TOK_INVALID_1
+                            } else {
+                                token
+                            },
+                            next: Some(next + 2),
+                        },
+                        Big2ScanOutcome::Partial(token) => Big2EntityValueToken {
+                            token,
+                            next: None,
+                        },
+                        Big2ScanOutcome::Invalid(next) => Big2EntityValueToken {
+                            token: crate::src::xmltok::XML_TOK_INVALID_1,
+                            next: Some(next + 2),
+                        },
+                    };
+                }
+                30 => {
+                    return Big2EntityValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(pos),
+                    };
+                }
+                10 if pos == 0 => {
+                    return Big2EntityValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_NEWLINE_1,
+                        next: Some(2),
+                    };
                 }
                 10 => {
-                    if ptr == start {
-                        *nextTokPtr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        return crate::src::xmltok::XML_TOK_DATA_NEWLINE_1;
+                    return Big2EntityValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(pos),
+                    };
+                }
+                9 if pos == 0 => {
+                    pos += 2;
+                    if pos + 2 > input.len() {
+                        return Big2EntityValueToken {
+                            token: crate::src::xmltok::XML_TOK_TRAILING_CR_1,
+                            next: None,
+                        };
                     }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+                    if big2_byte_type(enc, input, pos)
+                        == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
+                    {
+                        pos += 2;
+                    }
+                    return Big2EntityValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_NEWLINE_1,
+                        next: Some(pos),
+                    };
                 }
                 9 => {
-                    if ptr == start {
-                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        if !(end.offset_from(ptr)
-                            >= (1 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize)
-                        {
-                            return crate::src::xmltok::XML_TOK_TRAILING_CR_1;
-                        }
-                        if (if *ptr.offset(0 as isize) as ::core::ffi::c_int
-                            == 0 as ::core::ffi::c_int
-                        {
-                            (*(enc as *const normal_encoding)).type_0[*ptr
-                                .offset(1 as ::core::ffi::c_int as isize)
-                                as ::core::ffi::c_uchar
-                                as usize] as ::core::ffi::c_int
-                        } else {
-                            unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
-                        }) == crate::xmltok_impl_h::BT_LF as ::core::ffi::c_int
-                        {
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                        }
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_DATA_NEWLINE_1;
-                    }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+                    return Big2EntityValueToken {
+                        token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+                        next: Some(pos),
+                    };
                 }
-                _ => {
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                }
+                _ => pos += 2,
             }
         }
-        *nextTokPtr = ptr;
-        return crate::src::xmltok::XML_TOK_DATA_CHARS_1;
+
+        Big2EntityValueToken {
+            token: crate::src::xmltok::XML_TOK_DATA_CHARS_1,
+            next: Some(pos),
+        }
+    }
+
+    pub unsafe extern "C" fn big2_entityValueTok(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = end.offset_from(ptr);
+        if input_len <= 0 {
+            return crate::src::xmltok::XML_TOK_NONE_1;
+        }
+        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
+        let normal = &*(enc as *const normal_encoding);
+        let result = big2_entity_value_tok_impl(normal, input);
+        if let Some(offset) = result.next {
+            *nextTokPtr = ptr.add(offset);
+        }
+        result.token
     }
 
     fn big2_ignore_section_tok_impl(
