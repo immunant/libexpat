@@ -100,6 +100,17 @@ extern "C" {
     static mut g_allocation_count: ::core::ffi::c_int;
     static mut g_reallocation_count: ::core::ffi::c_int;
 }
+
+fn copy_bytes(dest: &mut [::core::ffi::c_char], src: *const ::core::ffi::c_char) {
+    unsafe {
+        memcpy(
+            dest.as_mut_ptr() as *mut ::core::ffi::c_void,
+            src as *const ::core::ffi::c_void,
+            dest.len(),
+        );
+    }
+}
+
 pub type intptr_t = isize;
 pub type size_t = usize;
 pub type XML_Char = ::core::ffi::c_char;
@@ -837,21 +848,19 @@ extern "C" fn failing_converter(
 ) -> ::core::ffi::c_int {
     -(1 as ::core::ffi::c_int)
 }
-unsafe extern "C" fn prefix_converter(
-    mut data: *mut ::core::ffi::c_void,
-    mut s: *const ::core::ffi::c_char,
+extern "C" fn prefix_converter(
+    _data: *mut ::core::ffi::c_void,
+    s: *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if *s.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            == -(1 as ::core::ffi::c_int) as ::core::ffi::c_char as ::core::ffi::c_int
-        {
-            return -(1 as ::core::ffi::c_int);
-        }
-        return *s.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-            + (*s.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                & 0x7f as ::core::ffi::c_int)
-            & 0x1ff as ::core::ffi::c_int;
+    let mut bytes = [0 as ::core::ffi::c_char; 2];
+    copy_bytes(&mut bytes, s);
+    if bytes[0] as ::core::ffi::c_int
+        == -(1 as ::core::ffi::c_int) as ::core::ffi::c_char as ::core::ffi::c_int
+    {
+        return -(1 as ::core::ffi::c_int);
     }
+    bytes[1] as ::core::ffi::c_int + (bytes[0] as ::core::ffi::c_int & 0x7f as ::core::ffi::c_int)
+        & 0x1ff as ::core::ffi::c_int
 }
 #[no_mangle]
 pub unsafe extern "C" fn MiscEncodingHandler(
@@ -3452,6 +3461,16 @@ pub unsafe extern "C" fn ext2_accumulate_characters(
         accumulate_characters((*test_data).storage as *mut ::core::ffi::c_void, s, len);
     }
 }
+fn fail_handler_record_overflow() -> ! {
+    unsafe {
+        _fail(
+            b"/root/work/expat/tests/handlers.c\0".as_ptr() as *const ::core::ffi::c_char,
+            1682 as ::core::ffi::c_int,
+            b"check failed: rec->count < max_entries\0".as_ptr() as *const ::core::ffi::c_char,
+        )
+    }
+}
+
 fn record_call(
     rec: &mut handler_record_list,
     funcname: *const ::core::ffi::c_char,
@@ -3460,13 +3479,7 @@ fn record_call(
     let max_entries = ::core::ffi::c_int::try_from(rec.entries.len())
         .expect("handler record capacity should fit into c_int");
     if !(rec.count < max_entries) {
-        unsafe {
-            _fail(
-                b"/root/work/expat/tests/handlers.c\0".as_ptr() as *const ::core::ffi::c_char,
-                1682 as ::core::ffi::c_int,
-                b"check failed: rec->count < max_entries\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+        fail_handler_record_overflow();
     }
 
     let entry_index =
