@@ -2960,17 +2960,6 @@ fn set_parser_event_end_address(parser: &mut XML_ParserStruct, end: usize) {
     });
 }
 
-macro_rules! parser_event_start {
-    ($parser:expr) => {{
-        let parser_ref = $parser;
-        parser_ref.m_eventPtr.and_then(|offset| {
-            parser_ref.m_buffer.bytes.as_ref().and_then(|bytes| {
-                (offset <= bytes.len()).then(|| bytes.as_ptr().wrapping_add(offset).cast())
-            })
-        })
-    }};
-}
-
 pub type ENTITY_STATS = entity_stats;
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -10019,7 +10008,7 @@ unsafe extern "C" fn externalEntityInitProcessor3(
                 1 as ::core::ffi::c_int,
                 &declaration_encoding,
                 declaration_encoding_address,
-                start,
+                start.addr(),
                 &declaration_input,
             );
             if result as ::core::ffi::c_uint
@@ -14641,17 +14630,18 @@ fn declaration_token_bytes(
     Ok(token)
 }
 
-/// Processes a declaration from the tokenizer's validated token window.
+/// Processes a declaration from a checked token copy and its input address.
 ///
-/// The parser reference remains `unsafe` while parser state still carries
-/// boundary callback values, but this implementation never reconstructs the
-/// declaration window from raw pointers.
+/// All processor paths have already established that `input` is the complete
+/// declaration token starting at `start_address`.  Keeping that boundary
+/// address-based means callers do not need to pass an unchecked cursor into
+/// declaration-result handling.
 unsafe fn process_xml_decl(
     parser: &mut XML_ParserStruct,
     isGeneralTextEntity: ::core::ffi::c_int,
     encoding: &crate::src::xmltok::ENCODING,
     encoding_address: usize,
-    s: *const ::core::ffi::c_char,
+    start_address: usize,
     input: &[u8],
 ) -> crate::expat_h::XML_Error {
     // The tokenizer returns bounded ranges into the declaration token.  Keep
@@ -14682,7 +14672,16 @@ unsafe fn process_xml_decl(
     // XmlParseXmlDecl writes this only for a malformed declaration.  Seed it
     // from the current event so a successful declaration keeps its callback
     // location instead of clearing it.
-    let mut bad_ptr = parser_event_start!(&*parser).unwrap_or(::core::ptr::null());
+    let mut bad_address = parser
+        .m_eventPtr
+        .and_then(|offset| {
+            parser
+                .m_buffer
+                .bytes
+                .as_ref()
+                .and_then(|bytes| bytes.as_ptr().addr().checked_add(offset))
+        })
+        .unwrap_or(0);
     let parsed = {
         declaration_input = Some(input);
         let encoding_info = encoding.xml_decl_info();
@@ -14705,12 +14704,12 @@ unsafe fn process_xml_decl(
                 true
             }
             Err(offset) => {
-                bad_ptr = s.wrapping_add(offset.min(input.len()));
+                bad_address = start_address.wrapping_add(offset.min(input.len()));
                 false
             }
         }
     };
-    set_parser_event_start!(parser, bad_ptr);
+    set_parser_event_start_address(parser, bad_address);
     if !parsed {
         if isGeneralTextEntity != 0 {
             return crate::expat_h::XML_ERROR_TEXT_DECL;
@@ -14790,7 +14789,7 @@ unsafe fn process_xml_decl(
             parser,
             encoding,
             encoding_address,
-            s.addr(),
+            start_address,
             input,
         );
     }
@@ -14816,10 +14815,10 @@ unsafe fn process_xml_decl(
                 || new_encoding.minBytesPerChar == 2 as ::core::ffi::c_int
                     && std::ptr::from_ref(new_encoding).addr() != encoding_address
             {
-                let encoding_name_ptr = encoding_name
+                let encoding_name_address = encoding_name
                     .as_ref()
-                    .map_or(::core::ptr::null(), |range| s.wrapping_add(range.start));
-                set_parser_event_start!(parser, encoding_name_ptr);
+                    .map_or(0, |range| start_address.wrapping_add(range.start));
+                set_parser_event_start_address(parser, encoding_name_address);
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
             parser.m_initEncoding.selected_encoding = Some(index);
@@ -14831,7 +14830,7 @@ unsafe fn process_xml_decl(
             ) {
                 return crate::expat_h::XML_ERROR_INCORRECT_ENCODING;
             }
-            let encoding_name_ptr = s.wrapping_add(encoding_name.start);
+            let encoding_name_address = start_address.wrapping_add(encoding_name.start);
             if storedEncName.is_null() {
                 let Some(stored_name) = pool_store_xml_decl_ascii(
                     &mut parser.m_temp2Pool,
@@ -14854,7 +14853,7 @@ unsafe fn process_xml_decl(
                 == crate::expat_h::XML_ERROR_UNKNOWN_ENCODING as ::core::ffi::c_int
                     as ::core::ffi::c_uint
             {
-                set_parser_event_start!(parser, encoding_name_ptr);
+                set_parser_event_start_address(parser, encoding_name_address);
             }
             return result;
         }
@@ -15130,7 +15129,7 @@ unsafe fn entity_value_init_processor_impl(
                 0 as ::core::ffi::c_int,
                 &declaration_encoding,
                 declaration_encoding_address,
-                start,
+                start.addr(),
                 &declaration_input,
             );
             if result as ::core::ffi::c_uint
@@ -15693,7 +15692,7 @@ unsafe fn doProlog(
                                             0 as ::core::ffi::c_int,
                                             &declaration_encoding,
                                             declaration_encoding_address,
-                                            s,
+                                            s.addr(),
                                             &token_bytes,
                                         );
                                         if result as ::core::ffi::c_uint
@@ -15830,7 +15829,7 @@ unsafe fn doProlog(
                                             1 as ::core::ffi::c_int,
                                             &declaration_encoding,
                                             declaration_encoding_address,
-                                            s,
+                                            s.addr(),
                                             &token_bytes,
                                         );
                                         if result_0 as ::core::ffi::c_uint
