@@ -12481,82 +12481,16 @@ fn utf8_invalid4(input: &[u8]) -> bool {
             _ => *second & 0xc0 != 0x80,
         }
 }
-pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters(
-    mut from: *const ::core::ffi::c_char,
-    mut fromLimRef: *mut *const ::core::ffi::c_char,
-) {
-    let mut fromLim: *const ::core::ffi::c_char = *fromLimRef;
-    let mut walked: crate::__stddef_size_t_h::size_t = 0 as crate::__stddef_size_t_h::size_t;
-    while fromLim > from {
-        let prev: ::core::ffi::c_uchar = *fromLim.offset(-1 as isize) as ::core::ffi::c_uchar;
-        if prev as ::core::ffi::c_uint & 0xf8 as ::core::ffi::c_uint == 0xf0 as ::core::ffi::c_uint
-        {
-            if walked.wrapping_add(1 as crate::__stddef_size_t_h::size_t)
-                >= 4 as crate::__stddef_size_t_h::size_t
-            {
-                fromLim =
-                    fromLim.offset((4 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                break;
-            } else {
-                walked = 0 as crate::__stddef_size_t_h::size_t;
-            }
-        } else if prev as ::core::ffi::c_uint & 0xf0 as ::core::ffi::c_uint
-            == 0xe0 as ::core::ffi::c_uint
-        {
-            if walked.wrapping_add(1 as crate::__stddef_size_t_h::size_t)
-                >= 3 as crate::__stddef_size_t_h::size_t
-            {
-                fromLim =
-                    fromLim.offset((3 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                break;
-            } else {
-                walked = 0 as crate::__stddef_size_t_h::size_t;
-            }
-        } else if prev as ::core::ffi::c_uint & 0xe0 as ::core::ffi::c_uint
-            == 0xc0 as ::core::ffi::c_uint
-        {
-            if walked.wrapping_add(1 as crate::__stddef_size_t_h::size_t)
-                >= 2 as crate::__stddef_size_t_h::size_t
-            {
-                fromLim =
-                    fromLim.offset((2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as isize);
-                break;
-            } else {
-                walked = 0 as crate::__stddef_size_t_h::size_t;
-            }
-        } else if prev as ::core::ffi::c_uint & 0x80 as ::core::ffi::c_uint
-            == 0 as ::core::ffi::c_uint
-        {
-            break;
-        }
-        fromLim = fromLim.offset(-1);
-        walked = walked.wrapping_add(1);
-    }
-    *fromLimRef = fromLim;
-}
-#[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
-
-pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
-    mut from: *const ::core::ffi::c_char,
-    mut fromLimRef: *mut *const ::core::ffi::c_char,
-) {
-    _INTERNAL_trim_to_complete_utf8_characters(from, fromLimRef)
-}
-/// Copies the largest UTF-8 prefix that fits in `output` without splitting a
-/// complete character.  This intentionally mirrors Expat's byte-oriented
-/// trailing-character trim: malformed bytes are copied unchanged, while an
-/// incomplete trailing lead sequence remains for the next conversion call.
-fn utf8_to_utf8_window(
-    input: &[u8],
-    output: &mut [u8],
-) -> (crate::src::xmltok::XML_Convert_Result, usize) {
-    let output_exhausted = input.len() > output.len();
-    let limited = &input[..input.len().min(output.len())];
-    let mut end = limited.len();
+/// Returns the largest prefix that ends at a complete UTF-8 character.
+///
+/// This deliberately retains Expat's byte-oriented behavior for malformed
+/// input: it only removes a trailing incomplete lead sequence.
+fn trim_to_complete_utf8_characters(input: &[u8]) -> usize {
+    let mut end = input.len();
     let mut walked = 0usize;
 
     while end > 0 {
-        let previous = limited[end - 1];
+        let previous = input[end - 1];
         let complete_width = match previous {
             byte if byte & 0xf8 == 0xf0 => Some(4),
             byte if byte & 0xf0 == 0xe0 => Some(3),
@@ -12574,6 +12508,56 @@ fn utf8_to_utf8_window(
         end -= 1;
         walked += 1;
     }
+    end
+}
+
+/// # Safety
+///
+/// When non-null and non-empty, `from..*from_lim_ref` must be a readable
+/// range from one allocation.  `from_lim_ref` must be writable.
+unsafe fn trim_to_complete_utf8_cursor(
+    from: *const ::core::ffi::c_char,
+    from_lim_ref: *mut *const ::core::ffi::c_char,
+) {
+    if from_lim_ref.is_null() {
+        return;
+    }
+    let from_lim = unsafe { *from_lim_ref };
+    // A zero-length range does not need a dereferenceable data pointer.
+    if from == from_lim {
+        return;
+    }
+    if from.is_null() || from_lim.is_null() {
+        return;
+    }
+    let length = unsafe { from_lim.offset_from(from) };
+    if length <= 0 {
+        return;
+    }
+    let input = unsafe { core::slice::from_raw_parts(from.cast::<u8>(), length as usize) };
+    let trimmed = trim_to_complete_utf8_characters(input);
+    unsafe { *from_lim_ref = from.add(trimmed) };
+}
+
+#[export_name = "_INTERNAL_trim_to_complete_utf8_characters"]
+
+pub unsafe extern "C" fn _INTERNAL_trim_to_complete_utf8_characters_ffi(
+    mut from: *const ::core::ffi::c_char,
+    mut fromLimRef: *mut *const ::core::ffi::c_char,
+) {
+    unsafe { trim_to_complete_utf8_cursor(from, fromLimRef) };
+}
+/// Copies the largest UTF-8 prefix that fits in `output` without splitting a
+/// complete character.  This intentionally mirrors Expat's byte-oriented
+/// trailing-character trim: malformed bytes are copied unchanged, while an
+/// incomplete trailing lead sequence remains for the next conversion call.
+fn utf8_to_utf8_window(
+    input: &[u8],
+    output: &mut [u8],
+) -> (crate::src::xmltok::XML_Convert_Result, usize) {
+    let output_exhausted = input.len() > output.len();
+    let limited = &input[..input.len().min(output.len())];
+    let end = trim_to_complete_utf8_characters(limited);
 
     output[..end]
         .iter_mut()
