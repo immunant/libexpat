@@ -1662,6 +1662,28 @@ fn c_string_len(text: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
     ffi_call1(strlen, text) as ::core::ffi::c_int
 }
 
+macro_rules! content_model_slice {
+    ($model:expr, $len:expr) => {{
+        unsafe { ::core::slice::from_raw_parts($model, $len) }
+    }};
+}
+
+macro_rules! xml_name_eq {
+    ($actual:expr, $expected:expr) => {{
+        ffi_call2(
+            strcmp,
+            ($actual).cast::<::core::ffi::c_char>(),
+            bytes_as_c_char_ptr($expected),
+        ) == 0 as ::core::ffi::c_int
+    }};
+}
+
+macro_rules! parser_user_data_bits {
+    ($parser:expr) => {{
+        unsafe { *($parser as *mut *mut ::core::ffi::c_void) as uintptr_t as uint32_t }
+    }};
+}
+
 fn parser_get_buffer(len: ::core::ffi::c_int) -> *mut ::core::ffi::c_void {
     ffi_call2(XML_GetBuffer, current_parser(), len)
 }
@@ -7796,375 +7818,248 @@ unsafe extern "C" fn test_default_current() {
         }
     }
 }
-unsafe extern "C" fn test_dtd_elements() {
-    unsafe {
-        _check_set_test_info(
-            b"test_dtd_elements\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2211 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<!DOCTYPE doc [\n<!ELEMENT doc (chapter)>\n<!ELEMENT chapter (#PCDATA)>\n]>\n<doc><chapter>Wombats are go</chapter></doc>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        XML_SetElementDeclHandler(
-            g_parser,
-            Some(
-                dummy_element_decl_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Content,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2221 as ::core::ffi::c_int,
-            );
-        }
-    }
+extern "C" fn test_dtd_elements() {
+    set_test_info(b"test_dtd_elements\0", 2211 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE doc [\n<!ELEMENT doc (chapter)>\n<!ELEMENT chapter (#PCDATA)>\n]>\n<doc><chapter>Wombats are go</chapter></doc>\0",
+    );
+    ffi_call2(
+        XML_SetElementDeclHandler,
+        current_parser(),
+        Some(
+            dummy_element_decl_handler
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    *const XML_Char,
+                    *mut XML_Content,
+                ) -> (),
+        ),
+    );
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2221 as ::core::ffi::c_int,
+    );
 }
-unsafe extern "C" fn element_decl_check_model(
-    mut userData: *mut ::core::ffi::c_void,
-    mut name: *const XML_Char,
-    mut model: *mut XML_Content,
+extern "C" fn element_decl_check_model(
+    _user_data: *mut ::core::ffi::c_void,
+    name: *const XML_Char,
+    model: *mut XML_Content,
 ) {
-    unsafe {
-        let mut errorFlags: uint32_t = 0 as uint32_t;
-        errorFlags = (errorFlags as ::core::ffi::c_uint
-            | if strcmp(
-                name as *const ::core::ffi::c_char,
-                b"junk\0".as_ptr() as *const ::core::ffi::c_char,
-            ) == 0 as ::core::ffi::c_int
-            {
-                0 as ::core::ffi::c_uint
-            } else {
-                (1 as ::core::ffi::c_uint) << 0 as ::core::ffi::c_int
-            }) as uint32_t;
-        errorFlags = (errorFlags as ::core::ffi::c_uint
-            | if !model.is_null() {
-                0 as ::core::ffi::c_uint
-            } else {
-                (1 as ::core::ffi::c_uint) << 1 as ::core::ffi::c_int
-            }) as uint32_t;
-        if !model.is_null() {
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(0 as ::core::ffi::c_int as isize)).type_0 as ::core::ffi::c_uint
-                    == XML_CTYPE_SEQ as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 2 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(0 as ::core::ffi::c_int as isize)).quant as ::core::ffi::c_uint
-                    == XML_CQUANT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 3 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(0 as ::core::ffi::c_int as isize)).numchildren
-                    == 2 as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 4 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(0 as ::core::ffi::c_int as isize)).children
-                    == model.offset(1 as ::core::ffi::c_int as isize) as *mut XML_Content
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 5 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(0 as ::core::ffi::c_int as isize))
-                    .name
-                    .is_null()
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 6 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(1 as ::core::ffi::c_int as isize)).type_0 as ::core::ffi::c_uint
-                    == XML_CTYPE_CHOICE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 7 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(1 as ::core::ffi::c_int as isize)).quant as ::core::ffi::c_uint
-                    == XML_CQUANT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 8 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(1 as ::core::ffi::c_int as isize)).numchildren
-                    == 3 as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 9 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(1 as ::core::ffi::c_int as isize)).children
-                    == model.offset(3 as ::core::ffi::c_int as isize) as *mut XML_Content
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 10 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(1 as ::core::ffi::c_int as isize))
-                    .name
-                    .is_null()
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 11 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(2 as ::core::ffi::c_int as isize)).type_0 as ::core::ffi::c_uint
-                    == XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 12 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(2 as ::core::ffi::c_int as isize)).quant as ::core::ffi::c_uint
-                    == XML_CQUANT_REP as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 13 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(2 as ::core::ffi::c_int as isize)).numchildren
-                    == 0 as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 14 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(2 as ::core::ffi::c_int as isize))
-                    .children
-                    .is_null()
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 15 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if strcmp(
-                    (*model.offset(2 as ::core::ffi::c_int as isize)).name,
-                    b"zebra\0".as_ptr() as *const ::core::ffi::c_char,
-                ) == 0 as ::core::ffi::c_int
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 16 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(3 as ::core::ffi::c_int as isize)).type_0 as ::core::ffi::c_uint
-                    == XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 17 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(3 as ::core::ffi::c_int as isize)).quant as ::core::ffi::c_uint
-                    == XML_CQUANT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 18 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(3 as ::core::ffi::c_int as isize)).numchildren
-                    == 0 as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 19 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(3 as ::core::ffi::c_int as isize))
-                    .children
-                    .is_null()
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 20 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if strcmp(
-                    (*model.offset(3 as ::core::ffi::c_int as isize)).name,
-                    b"bar\0".as_ptr() as *const ::core::ffi::c_char,
-                ) == 0 as ::core::ffi::c_int
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 21 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(4 as ::core::ffi::c_int as isize)).type_0 as ::core::ffi::c_uint
-                    == XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 22 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(4 as ::core::ffi::c_int as isize)).quant as ::core::ffi::c_uint
-                    == XML_CQUANT_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 23 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(4 as ::core::ffi::c_int as isize)).numchildren
-                    == 0 as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 24 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(4 as ::core::ffi::c_int as isize))
-                    .children
-                    .is_null()
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 25 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if strcmp(
-                    (*model.offset(4 as ::core::ffi::c_int as isize)).name,
-                    b"foo\0".as_ptr() as *const ::core::ffi::c_char,
-                ) == 0 as ::core::ffi::c_int
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 26 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(5 as ::core::ffi::c_int as isize)).type_0 as ::core::ffi::c_uint
-                    == XML_CTYPE_NAME as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 27 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(5 as ::core::ffi::c_int as isize)).quant as ::core::ffi::c_uint
-                    == XML_CQUANT_PLUS as ::core::ffi::c_int as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 28 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(5 as ::core::ffi::c_int as isize)).numchildren
-                    == 0 as ::core::ffi::c_uint
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 29 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if (*model.offset(5 as ::core::ffi::c_int as isize))
-                    .children
-                    .is_null()
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 30 as ::core::ffi::c_int
-                }) as uint32_t;
-            errorFlags = (errorFlags as ::core::ffi::c_uint
-                | if strcmp(
-                    (*model.offset(5 as ::core::ffi::c_int as isize)).name,
-                    b"xyz\0".as_ptr() as *const ::core::ffi::c_char,
-                ) == 0 as ::core::ffi::c_int
-                {
-                    0 as ::core::ffi::c_uint
-                } else {
-                    (1 as ::core::ffi::c_uint) << 31 as ::core::ffi::c_int
-                }) as uint32_t;
-        }
-        XML_SetUserData(
-            g_parser,
-            errorFlags as uintptr_t as *mut ::core::ffi::c_void,
-        );
-        XML_FreeContentModel(g_parser, model);
+    let mut error_flags = 0 as uint32_t;
+    error_flags |= if xml_name_eq!(name, b"junk\0") {
+        0
+    } else {
+        (1 as uint32_t) << 0
+    };
+    error_flags |= if !model.is_null() {
+        0
+    } else {
+        (1 as uint32_t) << 1
+    };
+    if !model.is_null() {
+        let nodes = content_model_slice!(model, 6);
+        let root = &nodes[0];
+        let choice = &nodes[1];
+        let zebra = &nodes[2];
+        let bar = &nodes[3];
+        let foo = &nodes[4];
+        let xyz = &nodes[5];
+
+        error_flags |= if root.type_0 == XML_CTYPE_SEQ {
+            0
+        } else {
+            (1 as uint32_t) << 2
+        };
+        error_flags |= if root.quant == XML_CQUANT_NONE {
+            0
+        } else {
+            (1 as uint32_t) << 3
+        };
+        error_flags |= if root.numchildren == 2 as ::core::ffi::c_uint {
+            0
+        } else {
+            (1 as uint32_t) << 4
+        };
+        error_flags |= if root.children == nodes.as_ptr().wrapping_add(1) as *mut XML_Content {
+            0
+        } else {
+            (1 as uint32_t) << 5
+        };
+        error_flags |= if root.name.is_null() {
+            0
+        } else {
+            (1 as uint32_t) << 6
+        };
+
+        error_flags |= if choice.type_0 == XML_CTYPE_CHOICE {
+            0
+        } else {
+            (1 as uint32_t) << 7
+        };
+        error_flags |= if choice.quant == XML_CQUANT_NONE {
+            0
+        } else {
+            (1 as uint32_t) << 8
+        };
+        error_flags |= if choice.numchildren == 3 as ::core::ffi::c_uint {
+            0
+        } else {
+            (1 as uint32_t) << 9
+        };
+        error_flags |= if choice.children == nodes.as_ptr().wrapping_add(3) as *mut XML_Content {
+            0
+        } else {
+            (1 as uint32_t) << 10
+        };
+        error_flags |= if choice.name.is_null() {
+            0
+        } else {
+            (1 as uint32_t) << 11
+        };
+
+        error_flags |= if zebra.type_0 == XML_CTYPE_NAME {
+            0
+        } else {
+            (1 as uint32_t) << 12
+        };
+        error_flags |= if zebra.quant == XML_CQUANT_REP {
+            0
+        } else {
+            (1 as uint32_t) << 13
+        };
+        error_flags |= if zebra.numchildren == 0 as ::core::ffi::c_uint {
+            0
+        } else {
+            (1 as uint32_t) << 14
+        };
+        error_flags |= if zebra.children.is_null() {
+            0
+        } else {
+            (1 as uint32_t) << 15
+        };
+        error_flags |= if xml_name_eq!(zebra.name, b"zebra\0") {
+            0
+        } else {
+            (1 as uint32_t) << 16
+        };
+
+        error_flags |= if bar.type_0 == XML_CTYPE_NAME {
+            0
+        } else {
+            (1 as uint32_t) << 17
+        };
+        error_flags |= if bar.quant == XML_CQUANT_NONE {
+            0
+        } else {
+            (1 as uint32_t) << 18
+        };
+        error_flags |= if bar.numchildren == 0 as ::core::ffi::c_uint {
+            0
+        } else {
+            (1 as uint32_t) << 19
+        };
+        error_flags |= if bar.children.is_null() {
+            0
+        } else {
+            (1 as uint32_t) << 20
+        };
+        error_flags |= if xml_name_eq!(bar.name, b"bar\0") {
+            0
+        } else {
+            (1 as uint32_t) << 21
+        };
+
+        error_flags |= if foo.type_0 == XML_CTYPE_NAME {
+            0
+        } else {
+            (1 as uint32_t) << 22
+        };
+        error_flags |= if foo.quant == XML_CQUANT_NONE {
+            0
+        } else {
+            (1 as uint32_t) << 23
+        };
+        error_flags |= if foo.numchildren == 0 as ::core::ffi::c_uint {
+            0
+        } else {
+            (1 as uint32_t) << 24
+        };
+        error_flags |= if foo.children.is_null() {
+            0
+        } else {
+            (1 as uint32_t) << 25
+        };
+        error_flags |= if xml_name_eq!(foo.name, b"foo\0") {
+            0
+        } else {
+            (1 as uint32_t) << 26
+        };
+
+        error_flags |= if xyz.type_0 == XML_CTYPE_NAME {
+            0
+        } else {
+            (1 as uint32_t) << 27
+        };
+        error_flags |= if xyz.quant == XML_CQUANT_PLUS {
+            0
+        } else {
+            (1 as uint32_t) << 28
+        };
+        error_flags |= if xyz.numchildren == 0 as ::core::ffi::c_uint {
+            0
+        } else {
+            (1 as uint32_t) << 29
+        };
+        error_flags |= if xyz.children.is_null() {
+            0
+        } else {
+            (1 as uint32_t) << 30
+        };
+        error_flags |= if xml_name_eq!(xyz.name, b"xyz\0") {
+            0
+        } else {
+            (1 as uint32_t) << 31
+        };
     }
+    ffi_call2(
+        XML_SetUserData,
+        current_parser(),
+        error_flags as uintptr_t as *mut ::core::ffi::c_void,
+    );
+    ffi_call2(XML_FreeContentModel, current_parser(), model);
 }
-unsafe extern "C" fn test_dtd_elements_nesting() {
-    unsafe {
-        _check_set_test_info(
-            b"test_dtd_elements_nesting\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            2285 as ::core::ffi::c_int,
+extern "C" fn test_dtd_elements_nesting() {
+    set_test_info(b"test_dtd_elements_nesting\0", 2285 as ::core::ffi::c_int);
+    let parser = current_parser();
+    let text = bytes_as_c_char_ptr(
+        b"<!DOCTYPE foo [\n<!ELEMENT junk ((bar|foo|xyz+), zebra*)>\n]>\n<foo/>\0",
+    );
+    ffi_call2(
+        XML_SetUserData,
+        parser,
+        -(1 as ::core::ffi::c_int) as uintptr_t as *mut ::core::ffi::c_void,
+    );
+    ffi_call2(
+        XML_SetElementDeclHandler,
+        parser,
+        Some(
+            element_decl_check_model
+                as unsafe extern "C" fn(
+                    *mut ::core::ffi::c_void,
+                    *const XML_Char,
+                    *mut XML_Content,
+                ) -> (),
+        ),
+    );
+    ensure_parser_success(
+        parse_single_bytes_c_string(text),
+        2297 as ::core::ffi::c_int,
+    );
+    if parser_user_data_bits!(parser) != 0 as uint32_t {
+        fail_test(
+            2300 as ::core::ffi::c_int,
+            b"Element declaration model regression detected\0",
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE foo [\n<!ELEMENT junk ((bar|foo|xyz+), zebra*)>\n]>\n<foo/>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        XML_SetUserData(
-            g_parser,
-            -(1 as ::core::ffi::c_int) as uintptr_t as *mut ::core::ffi::c_void,
-        );
-        XML_SetElementDeclHandler(
-            g_parser,
-            Some(
-                element_decl_check_model
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Content,
-                    ) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2297 as ::core::ffi::c_int,
-            );
-        }
-        if *(g_parser as *mut *mut ::core::ffi::c_void) as uintptr_t as uint32_t != 0 as uint32_t {
-            _fail(
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                2300 as ::core::ffi::c_int,
-                b"Element declaration model regression detected\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            );
-        }
     }
 }
 unsafe extern "C" fn test_set_foreign_dtd() {
