@@ -3509,25 +3509,6 @@ pub mod xmltok_impl_c {
         }
     }
 
-    pub unsafe extern "C" fn normal_attributeValueTok(
-        enc: *const crate::src::xmltok::ENCODING,
-        ptr: *const ::core::ffi::c_char,
-        end: *const ::core::ffi::c_char,
-        nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let input_len = end.offset_from(ptr);
-        if input_len <= 0 {
-            return crate::src::xmltok::XML_TOK_NONE_1;
-        }
-        let input = ::core::slice::from_raw_parts(ptr, input_len as usize);
-        let normal = &*(enc as *const normal_encoding);
-        let result = normal_attribute_value_tok_impl(normal, input);
-        if let Some(offset) = result.next {
-            *nextTokPtr = ptr.add(offset);
-        }
-        result.token
-    }
-
     struct NormalEntityValueToken {
         token: ::core::ffi::c_int,
         next: Option<usize>,
@@ -12128,7 +12109,6 @@ pub use crate::src::xmltok::xmltok_impl_c::little2_scanPercent;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPi;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanPoundName;
 pub use crate::src::xmltok::xmltok_impl_c::little2_scanRef;
-pub use crate::src::xmltok::xmltok_impl_c::normal_attributeValueTok;
 pub use crate::src::xmltok::xmltok_impl_c::normal_checkPiTarget;
 pub use crate::src::xmltok::xmltok_impl_c::normal_scanCdataSection;
 pub use crate::src::xmltok::xmltok_impl_c::skip_s;
