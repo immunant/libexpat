@@ -970,6 +970,47 @@ fn write_stderr_bytes(bytes: &[u8]) {
     let _ = io::stderr().write_all(bytes);
 }
 
+fn c_char_span_len(start: *const ::core::ffi::c_char, end: *const ::core::ffi::c_char) -> size_t {
+    if start.is_null() || end.is_null() {
+        0
+    } else {
+        (end as usize).wrapping_sub(start as usize) as size_t
+    }
+}
+
+fn add_bytes_scanned(bytes: size_t) {
+    unsafe {
+        g_bytesScanned = g_bytesScanned.wrapping_add(bytes as ::core::ffi::c_uint);
+    }
+}
+
+fn implicit_context_ptr() -> *const XML_Char {
+    unsafe { &raw const implicitContext as *const XML_Char }
+}
+
+fn init_protocol_encoding(
+    parser: &mut XML_ParserStruct,
+    protocol_encoding_name: *const ::core::ffi::c_char,
+) -> bool {
+    let initializer: unsafe extern "C" fn(
+        *mut INIT_ENCODING,
+        *mut *const ENCODING,
+        *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int = if parser.m_ns != 0 {
+        XmlInitEncodingNS
+    } else {
+        XmlInitEncoding
+    };
+
+    unsafe {
+        initializer(
+            &mut parser.m_initEncoding,
+            &mut parser.m_encoding,
+            protocol_encoding_name,
+        ) != 0
+    }
+}
+
 fn c_str_bytes<'a>(ptr: *const ::core::ffi::c_char) -> &'a [u8] {
     let (terminator, bytes) = c_str_bytes_with_nul(ptr)
         .split_last()
@@ -1470,85 +1511,70 @@ extern "C" fn callProcessor(
     mut end: *const ::core::ffi::c_char,
     mut endPtr: *mut *const ::core::ffi::c_char,
 ) -> XML_Error {
-    unsafe {
-        let have_now: size_t = (if !end.is_null() && !start.is_null() {
-            end.offset_from(start) as ::core::ffi::c_long
+    let have_now = c_char_span_len(start, end);
+    if ptr_ref(parser).m_reparseDeferralEnabled as ::core::ffi::c_int != 0
+        && ptr_ref(parser).m_parsingStatus.finalBuffer == 0
+    {
+        let had_before = ptr_ref(parser).m_partialTokenBytesBefore;
+        let mut available_buffer =
+            c_char_span_len(ptr_ref(parser).m_buffer, ptr_ref(parser).m_bufferPtr);
+        available_buffer = available_buffer.wrapping_sub(if available_buffer < 1024 as size_t {
+            available_buffer
         } else {
-            0 as ::core::ffi::c_long
-        }) as size_t;
-        if (*parser).m_reparseDeferralEnabled as ::core::ffi::c_int != 0
-            && (*parser).m_parsingStatus.finalBuffer == 0
-        {
-            let had_before: size_t = (*parser).m_partialTokenBytesBefore;
-            let mut available_buffer: size_t =
-                (if !(*parser).m_bufferPtr.is_null() && !(*parser).m_buffer.is_null() {
-                    (*parser).m_bufferPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-                } else {
-                    0 as ::core::ffi::c_long
-                }) as size_t;
-            available_buffer =
-                available_buffer.wrapping_sub(if available_buffer < 1024 as size_t {
-                    available_buffer
-                } else {
-                    1024 as size_t
-                });
-            available_buffer = available_buffer.wrapping_add(
-                (if !(*parser).m_bufferLim.is_null() && !(*parser).m_bufferEnd.is_null() {
-                    (*parser).m_bufferLim.offset_from((*parser).m_bufferEnd) as ::core::ffi::c_long
-                } else {
-                    0 as ::core::ffi::c_long
-                }) as size_t,
-            );
-            let enough: bool = have_now >= (2 as size_t).wrapping_mul(had_before)
-                || (*parser).m_lastBufferRequestSize as size_t > available_buffer;
-            if !enough {
-                *endPtr = start;
-                return XML_ERROR_NONE;
-            }
+            1024 as size_t
+        });
+        available_buffer = available_buffer.wrapping_add(c_char_span_len(
+            ptr_ref(parser).m_bufferEnd.cast_const(),
+            ptr_ref(parser).m_bufferLim,
+        ));
+
+        let enough = have_now >= (2 as size_t).wrapping_mul(had_before)
+            || ptr_ref(parser).m_lastBufferRequestSize as size_t > available_buffer;
+        if !enough {
+            write_copy(endPtr, start);
+            return XML_ERROR_NONE;
         }
-        g_bytesScanned = g_bytesScanned.wrapping_add(have_now as ::core::ffi::c_uint);
-        let mut ret: XML_Error = XML_ERROR_NONE;
-        *endPtr = start;
-        loop {
-            ret = (*parser).m_processor.expect("non-null function pointer")(
-                parser, *endPtr, end, endPtr,
-            );
-            if (*parser).m_parsingStatus.parsing as ::core::ffi::c_uint
-                != XML_PARSING as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                (*parser).m_reenter = XML_FALSE;
-            }
-            if (*parser).m_reenter == 0 {
-                break;
-            }
-            (*parser).m_reenter = XML_FALSE;
-            if ret as ::core::ffi::c_uint
-                != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                return ret;
-            }
-        }
-        if ret as ::core::ffi::c_uint == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            if *endPtr == start {
-                (*parser).m_partialTokenBytesBefore = have_now;
-            } else {
-                (*parser).m_partialTokenBytesBefore = 0 as size_t;
-            }
-        }
-        return ret;
     }
+
+    add_bytes_scanned(have_now);
+    let mut ret = XML_ERROR_NONE;
+    write_copy(endPtr, start);
+    loop {
+        let processor = ptr_ref(parser)
+            .m_processor
+            .expect("non-null function pointer");
+        ret = processor(parser, *ptr_ref(endPtr), end, endPtr);
+        if ptr_ref(parser).m_parsingStatus.parsing as ::core::ffi::c_uint
+            != XML_PARSING as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            ptr_mut(parser).m_reenter = XML_FALSE;
+        }
+        if ptr_ref(parser).m_reenter == 0 {
+            break;
+        }
+        ptr_mut(parser).m_reenter = XML_FALSE;
+        if ret as ::core::ffi::c_uint != XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        {
+            return ret;
+        }
+    }
+    if ret as ::core::ffi::c_uint == XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint {
+        ptr_mut(parser).m_partialTokenBytesBefore = if *ptr_ref(endPtr) == start {
+            have_now
+        } else {
+            0 as size_t
+        };
+    }
+    ret
 }
 extern "C" fn startParsing(mut parser: XML_Parser) -> XML_Bool {
-    unsafe {
-        if (*parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
-            (*parser).m_hash_secret_salt = generate_hash_secret_salt();
-        }
-        if (*parser).m_ns != 0 {
-            return setContext(parser, &raw const implicitContext as *const XML_Char);
-        }
-        return XML_TRUE;
+    if ptr_ref(parser).m_hash_secret_salt == 0 as ::core::ffi::c_ulong {
+        ptr_mut(parser).m_hash_secret_salt = generate_hash_secret_salt();
     }
+    if ptr_ref(parser).m_ns != 0 {
+        return setContext(parser, implicit_context_ptr());
+    }
+    XML_TRUE
 }
 #[no_mangle]
 pub unsafe extern "C" fn XML_ParserCreate_MM(
@@ -3195,9 +3221,7 @@ pub unsafe extern "C" fn XML_GetBuffer(
     }
 }
 extern "C" fn triggerReenter(mut parser: XML_Parser) {
-    unsafe {
-        (*parser).m_reenter = XML_TRUE;
-    }
+    ptr_mut(parser).m_reenter = XML_TRUE;
 }
 #[no_mangle]
 pub unsafe extern "C" fn XML_StopParser(
@@ -6038,37 +6062,11 @@ extern "C" fn doIgnoreSection(
     }
 }
 extern "C" fn initializeEncoding(mut parser: XML_Parser) -> XML_Error {
-    unsafe {
-        let mut s: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
-        s = (*parser).m_protocolEncodingName as *const ::core::ffi::c_char;
-        if if (*parser).m_ns as ::core::ffi::c_int != 0 {
-            Some(
-                XmlInitEncodingNS
-                    as unsafe extern "C" fn(
-                        *mut INIT_ENCODING,
-                        *mut *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-        } else {
-            Some(
-                XmlInitEncoding
-                    as unsafe extern "C" fn(
-                        *mut INIT_ENCODING,
-                        *mut *const ENCODING,
-                        *const ::core::ffi::c_char,
-                    ) -> ::core::ffi::c_int,
-            )
-        }
-        .expect("non-null function pointer")(
-            &raw mut (*parser).m_initEncoding,
-            &raw mut (*parser).m_encoding,
-            s,
-        ) != 0
-        {
-            return XML_ERROR_NONE;
-        }
-        return handleUnknownEncoding(parser, (*parser).m_protocolEncodingName);
+    let protocol_encoding_name = ptr_ref(parser).m_protocolEncodingName;
+    if init_protocol_encoding(ptr_mut(parser), protocol_encoding_name) {
+        XML_ERROR_NONE
+    } else {
+        handleUnknownEncoding(parser, protocol_encoding_name)
     }
 }
 extern "C" fn processXmlDecl(
@@ -11614,8 +11612,8 @@ fn getRootParserOf<'a>(
     outLevelDiff: Option<&mut ::core::ffi::c_uint>,
 ) -> &'a mut XML_ParserStruct {
     let mut stepsTakenUpwards: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
-    while let Some(parent) = unsafe { parser.m_parentParser.as_mut() } {
-        parser = parent;
+    while !parser.m_parentParser.is_null() {
+        parser = ptr_mut(parser.m_parentParser);
         stepsTakenUpwards = stepsTakenUpwards.wrapping_add(1);
     }
     assert_root_parser(
