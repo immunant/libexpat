@@ -1623,6 +1623,14 @@ fn set_subtest_message(message: &str) {
     }
 }
 
+fn set_subtest_c_string(message: *const ::core::ffi::c_char) {
+    set_subtest_message(&c_string_to_string_lossy(message));
+}
+
+fn set_split_subtest_message(split: ::core::ffi::c_int) {
+    set_subtest_message(&format!("split at byte {split}"));
+}
+
 fn format_attr_normalization_failure(
     buffer: &mut [::core::ffi::c_char; 256],
     attrname: *const XML_Char,
@@ -5057,7 +5065,7 @@ extern "C" fn test_ext_entity_invalid_parse() {
     let text = bytes_as_c_char_ptr(
         b"<!DOCTYPE doc [\n  <!ENTITY en SYSTEM 'http://example.org/dummy.ent'>\n]>\n<doc>&en;</doc>\0",
     );
-    let faults = [
+    let mut faults = [
         ext_faults {
             parse_text: bytes_as_c_char_ptr(b"<\0"),
             fail_text: bytes_as_c_char_ptr(b"Incomplete element declaration not faulted\0"),
@@ -10036,110 +10044,61 @@ extern "C" fn test_not_predefined_entities() {
     }
 }
 extern "C" fn test_ignore_section() {
-    unsafe {
-        _check_set_test_info(
-            b"test_ignore_section\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3283 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc><e>&entity;</e></doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut expected: *const XML_Char =
-            b"<![IGNORE[<!ELEMENT e (#PCDATA)*>]]>\n&entity;\0".as_ptr() as *const XML_Char;
-        let mut storage: CharData = CharData {
-            count: 0,
-            data: [0; 2048],
-        };
-        CharData_Init(&raw mut storage);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        parser_set_user_data(&raw mut storage as *mut ::core::ffi::c_void);
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_load_ignore
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
+    set_test_info(b"test_ignore_section\0", 3283 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc><e>&entity;</e></doc>\0");
+    let expected = bytes_as_xml_char_ptr(b"<![IGNORE[<!ELEMENT e (#PCDATA)*>]]>\n&entity;\0");
+    let mut storage = CharData {
+        count: 0,
+        data: [0; 2048],
+    };
+
+    char_data_init(&mut storage);
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_user_data((&raw mut storage).cast());
+    parser_set_external_entity_ref_handler(Some(
+        external_entity_load_ignore
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+            ) -> ::core::ffi::c_int,
+    ));
+    parser_set_default_handler(Some(
+        accumulate_characters
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, ::core::ffi::c_int),
+    ));
+    parser_set_start_doctype_decl_handler(Some(
+        dummy_start_doctype_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+                ::core::ffi::c_int,
             ),
-        );
-        XML_SetDefaultHandler(
-            g_parser,
-            Some(
-                accumulate_characters
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
+    ));
+    parser_set_end_doctype_decl_handler(Some(
+        dummy_end_doctype_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void),
+    ));
+    parser_set_element_decl_handler(Some(
+        dummy_element_decl_handler
+            as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char, *mut XML_Content),
+    ));
+    parser_set_start_element_handler(Some(
+        dummy_start_element
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *mut *const XML_Char,
             ),
-        );
-        XML_SetStartDoctypeDeclHandler(
-            g_parser,
-            Some(
-                dummy_start_doctype_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        XML_SetEndDoctypeDeclHandler(
-            g_parser,
-            Some(dummy_end_doctype_handler as unsafe extern "C" fn(*mut ::core::ffi::c_void) -> ()),
-        );
-        XML_SetElementDeclHandler(
-            g_parser,
-            Some(
-                dummy_element_decl_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut XML_Content,
-                    ) -> (),
-            ),
-        );
-        XML_SetStartElementHandler(
-            g_parser,
-            Some(
-                dummy_start_element
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *mut *const XML_Char,
-                    ) -> (),
-            ),
-        );
-        XML_SetEndElementHandler(
-            g_parser,
-            Some(
-                dummy_end_element
-                    as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char) -> (),
-            ),
-        );
-        if _XML_Parse_SINGLE_BYTES(
-            g_parser,
-            text,
-            strlen(text) as ::core::ffi::c_int,
-            XML_TRUE as ::core::ffi::c_int,
-        ) as ::core::ffi::c_uint
-            == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-        {
-            _xml_failure(
-                g_parser,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3302 as ::core::ffi::c_int,
-            );
-        }
-        CharData_CheckXMLChars(&raw mut storage, expected);
-    }
+    ));
+    parser_set_end_element_handler(Some(
+        dummy_end_element as unsafe extern "C" fn(*mut ::core::ffi::c_void, *const XML_Char),
+    ));
+    parse_single_bytes_c_string_expect_success(text, 3302 as ::core::ffi::c_int);
+    char_data_check_xml_chars(&mut storage, expected);
 }
 extern "C" fn test_ignore_section_utf16() {
     set_test_info(b"test_ignore_section_utf16\0", 3307 as ::core::ffi::c_int);
@@ -10259,77 +10218,59 @@ extern "C" fn test_ignore_section_utf16_be() {
     char_data_check_xml_chars(&mut storage, expected);
 }
 extern "C" fn test_bad_ignore_section() {
-    unsafe {
-        _check_set_test_info(
-            b"test_bad_ignore_section\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3363 as ::core::ffi::c_int,
+    set_test_info(b"test_bad_ignore_section\0", 3363 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc><e>&entity;</e></doc>\0");
+    let mut faults = [
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<![IGNORE[<!ELEM\0"),
+            fail_text: bytes_as_c_char_ptr(b"Broken-off declaration not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_SYNTAX,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<![IGNORE[\x01]]>\0"),
+            fail_text: bytes_as_c_char_ptr(b"Invalid XML character not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_INVALID_TOKEN,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<![IGNORE[\xE2\x82\0"),
+            fail_text: bytes_as_c_char_ptr(b"Partial XML character not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_PARTIAL_CHAR,
+        },
+        ext_faults {
+            parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_NONE,
+        },
+    ];
+
+    for fault in faults
+        .iter_mut()
+        .take_while(|fault| !fault.parse_text.is_null())
+    {
+        set_subtest_c_string(fault.parse_text);
+        parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        parser_set_external_entity_ref_handler(Some(
+            external_entity_faulter
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                ) -> ::core::ffi::c_int,
+        ));
+        parser_set_user_data((fault as *mut ExtFaults).cast());
+        expect_failure(
+            text,
+            XML_ERROR_EXTERNAL_ENTITY_HANDLING,
+            b"Incomplete IGNORE section not failed\0",
+            3383 as ::core::ffi::c_int,
         );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM 'foo'>\n<doc><e>&entity;</e></doc>\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut faults: [ExtFaults; 4] = [
-            ext_faults {
-                parse_text: b"<![IGNORE[<!ELEM\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Broken-off declaration not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_SYNTAX,
-            },
-            ext_faults {
-                parse_text: b"<![IGNORE[\x01]]>\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Invalid XML character not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_INVALID_TOKEN,
-            },
-            ext_faults {
-                parse_text: b"<![IGNORE[\xE2\x82\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Partial XML character not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_PARTIAL_CHAR,
-            },
-            ext_faults {
-                parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_NONE,
-            },
-        ];
-        let mut fault: *mut ExtFaults = ::core::ptr::null_mut::<ExtFaults>();
-        fault = (&raw mut faults as *mut ExtFaults).offset(0 as ::core::ffi::c_int as isize)
-            as *mut ExtFaults;
-        while !(*fault).parse_text.is_null() {
-            set_subtest(
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                (*fault).parse_text,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_faulter
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            parser_set_user_data(fault as *mut ::core::ffi::c_void);
-            _expect_failure(
-                text,
-                XML_ERROR_EXTERNAL_ENTITY_HANDLING,
-                b"Incomplete IGNORE section not failed\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                3383 as ::core::ffi::c_int,
-            );
-            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            fault = fault.offset(1);
-        }
+        parser_reset();
     }
 }
 extern "C" fn external_bom_checker(
@@ -10396,227 +10337,153 @@ extern "C" fn external_bom_checker(
     XML_STATUS_OK as ::core::ffi::c_int
 }
 extern "C" fn test_external_bom_consumed() {
-    unsafe {
-        _check_set_test_info(
-            b"test_external_bom_consumed\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3437 as ::core::ffi::c_int,
-        );
-        let text: *const ::core::ffi::c_char = b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let external: *const ::core::ffi::c_char =
-            b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr() as *const ::core::ffi::c_char;
-        let len: ::core::ffi::c_int = strlen(external) as ::core::ffi::c_int;
-        let mut split: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        while split <= len {
-            set_subtest(
-                b"split at byte %d\0".as_ptr() as *const ::core::ffi::c_char,
-                split,
-            );
-            let mut testdata: bom_testdata = bom_testdata {
-                external: ::core::ptr::null::<::core::ffi::c_char>(),
-                split: 0,
-                nested_callback_happened: 0,
-            };
-            testdata.external = external;
-            testdata.split = split;
-            testdata.nested_callback_happened = XML_FALSE;
-            let mut parser: XML_Parser = XML_ParserCreate(::core::ptr::null::<XML_Char>());
-            if parser.is_null() {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3452 as ::core::ffi::c_int,
-                    b"Couldn't create parser\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            XML_SetParamEntityParsing(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                parser,
-                Some(
-                    external_bom_checker
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            parser_set_user_data_for(parser, &raw mut testdata as *mut ::core::ffi::c_void);
-            record_bom_testdata(parser, testdata.external, testdata.split);
-            if _XML_Parse_SINGLE_BYTES(
-                parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3459 as ::core::ffi::c_int,
-                );
-            }
-            if bom_testdata(parser)
-                .expect("bom testdata should remain registered")
-                .nested_callback_happened
-                == 0
-            {
-                _fail(
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3461 as ::core::ffi::c_int,
-                    b"ref handler not called\0".as_ptr() as *const ::core::ffi::c_char,
-                );
-            }
-            parser_free(parser);
-            split += 1;
+    set_test_info(b"test_external_bom_consumed\0", 3437 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0");
+    let external = bytes_as_c_char_ptr(b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0");
+    let len = c_string_len(external);
+
+    for split in 0..=len {
+        set_split_subtest_message(split);
+        let mut testdata = bom_testdata {
+            external,
+            split,
+            nested_callback_happened: XML_FALSE,
+        };
+        let parser = parser_create();
+        if parser.is_null() {
+            fail_test(3452 as ::core::ffi::c_int, b"Couldn't create parser\0");
         }
+
+        parser_set_param_entity_parsing_for(parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
+        parser_set_external_entity_ref_handler_for(
+            parser,
+            Some(
+                external_bom_checker
+                    as unsafe extern "C" fn(
+                        XML_Parser,
+                        *const XML_Char,
+                        *const XML_Char,
+                        *const XML_Char,
+                        *const XML_Char,
+                    ) -> ::core::ffi::c_int,
+            ),
+        );
+        parser_set_user_data_for(parser, (&raw mut testdata).cast());
+        record_bom_testdata(parser, testdata.external, testdata.split);
+        ensure_parser_success_for(
+            parser,
+            parse_single_bytes_c_string_for(parser, text),
+            3459 as ::core::ffi::c_int,
+        );
+        if bom_testdata(parser)
+            .expect("bom testdata should remain registered")
+            .nested_callback_happened
+            == 0
+        {
+            fail_test(3461 as ::core::ffi::c_int, b"ref handler not called\0");
+        }
+        parser_free(parser);
     }
 }
 extern "C" fn test_external_entity_values() {
-    unsafe {
-        _check_set_test_info(
-            b"test_external_entity_values\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3469 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char =
-            b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0".as_ptr()
-                as *const ::core::ffi::c_char;
-        let mut data_004_2: [ExtFaults; 12] = [
-            ext_faults {
-                parse_text: b"<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_NONE,
-            },
-            ext_faults {
-                parse_text: b"<!ATTLIST $doc a1 CDATA 'value'>\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: b"Invalid token not faulted\0".as_ptr() as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_INVALID_TOKEN,
-            },
-            ext_faults {
-                parse_text: b"'wombat\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Unterminated string not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            ext_faults {
-                parse_text: b"\xE2\x82\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Partial UTF-8 character not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_PARTIAL_CHAR,
-            },
-            ext_faults {
-                parse_text: b"<?xml version='1.0' encoding='utf-8'?>\n\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_NONE,
-            },
-            ext_faults {
-                parse_text: b"<?xml?>\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Malformed XML declaration not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_XML_DECL,
-            },
-            ext_faults {
-                parse_text: b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_NONE,
-            },
-            ext_faults {
-                parse_text: b"<?xml version='1.0' encoding='utf-8'?>\n$\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: b"Invalid token after text declaration not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_INVALID_TOKEN,
-            },
-            ext_faults {
-                parse_text: b"<?xml version='1.0' encoding='utf-8'?>\n'wombat\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: b"Unterminated string after text decl not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_UNCLOSED_TOKEN,
-            },
-            ext_faults {
-                parse_text: b"<?xml version='1.0' encoding='utf-8'?>\n\xE2\x82\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                fail_text: b"Partial UTF-8 character after text decl not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_PARTIAL_CHAR,
-            },
-            ext_faults {
-                parse_text: b"%e1;\0".as_ptr() as *const ::core::ffi::c_char,
-                fail_text: b"Recursive parameter entity not faulted\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_RECURSIVE_ENTITY_REF,
-            },
-            ext_faults {
-                parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
-                encoding: ::core::ptr::null::<XML_Char>(),
-                error: XML_ERROR_NONE,
-            },
-        ];
-        let mut i: ::core::ffi::c_int = 0;
-        i = 0 as ::core::ffi::c_int;
-        while !data_004_2[i as usize].parse_text.is_null() {
-            set_subtest(
-                b"%s\0".as_ptr() as *const ::core::ffi::c_char,
-                data_004_2[i as usize].parse_text,
-            );
-            XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-            XML_SetExternalEntityRefHandler(
-                g_parser,
-                Some(
-                    external_entity_valuer
-                        as unsafe extern "C" fn(
-                            XML_Parser,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                            *const XML_Char,
-                        ) -> ::core::ffi::c_int,
-                ),
-            );
-            parser_set_user_data((&raw mut data_004_2 as *mut ExtFaults).offset(i as isize)
-                as *mut ExtFaults as *mut ::core::ffi::c_void);
-            if _XML_Parse_SINGLE_BYTES(
-                g_parser,
-                text,
-                strlen(text) as ::core::ffi::c_int,
-                XML_TRUE as ::core::ffi::c_int,
-            ) as ::core::ffi::c_uint
-                == XML_STATUS_ERROR as ::core::ffi::c_int as ::core::ffi::c_uint
-            {
-                _xml_failure(
-                    g_parser,
-                    b"/root/work/expat/tests/basic_tests.c\0".as_ptr()
-                        as *const ::core::ffi::c_char,
-                    3507 as ::core::ffi::c_int,
-                );
-            }
-            XML_ParserReset(g_parser, ::core::ptr::null::<XML_Char>());
-            i += 1;
-        }
+    set_test_info(b"test_external_entity_values\0", 3469 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<!DOCTYPE doc SYSTEM '004-1.ent'>\n<doc></doc>\n\0");
+    let mut data_004_2 = [
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<!ATTLIST doc a1 CDATA 'value'>\0"),
+            fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_NONE,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<!ATTLIST $doc a1 CDATA 'value'>\0"),
+            fail_text: bytes_as_c_char_ptr(b"Invalid token not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_INVALID_TOKEN,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"'wombat\0"),
+            fail_text: bytes_as_c_char_ptr(b"Unterminated string not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"\xE2\x82\0"),
+            fail_text: bytes_as_c_char_ptr(b"Partial UTF-8 character not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_PARTIAL_CHAR,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-8'?>\n\0"),
+            fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_NONE,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<?xml?>\0"),
+            fail_text: bytes_as_c_char_ptr(b"Malformed XML declaration not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_XML_DECL,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"\xEF\xBB\xBF<!ATTLIST doc a1 CDATA 'value'>\0"),
+            fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_NONE,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-8'?>\n$\0"),
+            fail_text: bytes_as_c_char_ptr(b"Invalid token after text declaration not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_INVALID_TOKEN,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-8'?>\n'wombat\0"),
+            fail_text: bytes_as_c_char_ptr(b"Unterminated string after text decl not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_UNCLOSED_TOKEN,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"<?xml version='1.0' encoding='utf-8'?>\n\xE2\x82\0"),
+            fail_text: bytes_as_c_char_ptr(
+                b"Partial UTF-8 character after text decl not faulted\0",
+            ),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_PARTIAL_CHAR,
+        },
+        ext_faults {
+            parse_text: bytes_as_c_char_ptr(b"%e1;\0"),
+            fail_text: bytes_as_c_char_ptr(b"Recursive parameter entity not faulted\0"),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_RECURSIVE_ENTITY_REF,
+        },
+        ext_faults {
+            parse_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            fail_text: ::core::ptr::null::<::core::ffi::c_char>(),
+            encoding: ::core::ptr::null::<XML_Char>(),
+            error: XML_ERROR_NONE,
+        },
+    ];
+
+    for fault in data_004_2
+        .iter_mut()
+        .take_while(|fault| !fault.parse_text.is_null())
+    {
+        set_subtest_c_string(fault.parse_text);
+        parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+        parser_set_external_entity_ref_handler(Some(
+            external_entity_valuer
+                as unsafe extern "C" fn(
+                    XML_Parser,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                    *const XML_Char,
+                ) -> ::core::ffi::c_int,
+        ));
+        parser_set_user_data((fault as *mut ExtFaults).cast());
+        parse_single_bytes_c_string_expect_success(text, 3507 as ::core::ffi::c_int);
+        parser_reset();
     }
 }
 extern "C" fn test_ext_entity_not_standalone() {
@@ -10660,59 +10527,41 @@ extern "C" fn test_bad_public_doctype() {
     );
 }
 extern "C" fn test_attribute_enum_value() {
-    unsafe {
-        _check_set_test_info(
-            b"test_attribute_enum_value\0".as_ptr() as *const ::core::ffi::c_char,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3551 as ::core::ffi::c_int,
-        );
-        let mut text: *const ::core::ffi::c_char = b"<?xml version='1.0' standalone='no'?>\n<!DOCTYPE animal SYSTEM 'test.dtd'>\n<animal>This is a \n    <a/>  \n\nyellow tiger</animal>\0"
-            .as_ptr() as *const ::core::ffi::c_char;
-        let mut dtd_data: ExtTest = ExtTest {
-            parse_text: b"<!ELEMENT animal (#PCDATA|a)*>\n<!ELEMENT a EMPTY>\n<!ATTLIST animal xml:space (default|preserve) 'preserve'>\0"
-                .as_ptr() as *const ::core::ffi::c_char,
-            encoding: ::core::ptr::null::<XML_Char>(),
-            storage: ::core::ptr::null_mut::<CharData>(),
-        };
-        let mut expected: *const XML_Char =
-            b"This is a \n      \n\nyellow tiger\0".as_ptr() as *const XML_Char;
-        XML_SetExternalEntityRefHandler(
-            g_parser,
-            Some(
-                external_entity_loader
-                    as unsafe extern "C" fn(
-                        XML_Parser,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                    ) -> ::core::ffi::c_int,
+    set_test_info(b"test_attribute_enum_value\0", 3551 as ::core::ffi::c_int);
+    let text = bytes_as_c_char_ptr(b"<?xml version='1.0' standalone='no'?>\n<!DOCTYPE animal SYSTEM 'test.dtd'>\n<animal>This is a \n    <a/>  \n\nyellow tiger</animal>\0");
+    let mut dtd_data = ExtTest {
+        parse_text: bytes_as_c_char_ptr(
+            b"<!ELEMENT animal (#PCDATA|a)*>\n<!ELEMENT a EMPTY>\n<!ATTLIST animal xml:space (default|preserve) 'preserve'>\0",
+        ),
+        encoding: ::core::ptr::null::<XML_Char>(),
+        storage: ::core::ptr::null_mut::<CharData>(),
+    };
+    let expected = bytes_as_xml_char_ptr(b"This is a \n      \n\nyellow tiger\0");
+
+    parser_set_external_entity_ref_handler(Some(
+        external_entity_loader
+            as unsafe extern "C" fn(
+                XML_Parser,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+            ) -> ::core::ffi::c_int,
+    ));
+    parser_set_user_data((&raw mut dtd_data).cast());
+    parser_set_param_entity_parsing(XML_PARAM_ENTITY_PARSING_ALWAYS);
+    parser_set_attlist_decl_handler(Some(
+        dummy_attlist_decl_handler
+            as unsafe extern "C" fn(
+                *mut ::core::ffi::c_void,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+                *const XML_Char,
+                ::core::ffi::c_int,
             ),
-        );
-        parser_set_user_data(&raw mut dtd_data as *mut ::core::ffi::c_void);
-        XML_SetParamEntityParsing(g_parser, XML_PARAM_ENTITY_PARSING_ALWAYS);
-        XML_SetAttlistDeclHandler(
-            g_parser,
-            Some(
-                dummy_attlist_decl_handler
-                    as unsafe extern "C" fn(
-                        *mut ::core::ffi::c_void,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        *const XML_Char,
-                        ::core::ffi::c_int,
-                    ) -> (),
-            ),
-        );
-        _run_ext_character_check(
-            text,
-            &raw mut dtd_data,
-            expected,
-            b"/root/work/expat/tests/basic_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            3567 as ::core::ffi::c_int,
-        );
-    }
+    ));
+    run_ext_character_check(text, &mut dtd_data, expected, 3567 as ::core::ffi::c_int);
 }
 extern "C" fn test_predefined_entity_redefinition() {
     set_test_info(
