@@ -501,19 +501,6 @@ fn public_id_bad_offset(
     None
 }
 
-pub unsafe fn check_public_id(
-    checker: PublicIdChecker,
-    enc: *const crate::src::xmltok::ENCODING,
-    ptr: *const ::core::ffi::c_char,
-    end: *const ::core::ffi::c_char,
-    bad_ptr: *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int {
-    match checker {
-        PublicIdChecker::Normal => xmltok_impl_c::normal_isPublicId(enc, ptr, end, bad_ptr),
-        PublicIdChecker::Little2 => xmltok_impl_c::little2_isPublicId(enc, ptr, end, bad_ptr),
-        PublicIdChecker::Big2 => xmltok_impl_c::big2_isPublicId(enc, ptr, end, bad_ptr),
-    }
-}
 #[derive(Copy, Clone)]
 pub enum NameMatcher {
     Normal,

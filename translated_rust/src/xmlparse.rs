@@ -11935,13 +11935,18 @@ unsafe extern "C" fn doProlog(
                                         (*parser).m_declEntity = Some(DeclaredEntity::ExternalSubset);
                                         (*dtd).hasParamEntityRefs = crate::expat_h::XML_TRUE;
                                         if (*parser).m_startDoctypeDeclHandler {
-                                            if crate::src::xmltok::check_public_id(
-                                                (*enc).isPublicId,
-                                                enc,
-                                                s,
-                                                next,
-                                                eventPP,
-                                            ) == 0
+                                            let is_public_id = match (*enc).isPublicId {
+                                                crate::src::xmltok::PublicIdChecker::Normal => {
+                                                    crate::src::xmltok::normal_isPublicId
+                                                }
+                                                crate::src::xmltok::PublicIdChecker::Little2 => {
+                                                    crate::src::xmltok::little2_isPublicId
+                                                }
+                                                crate::src::xmltok::PublicIdChecker::Big2 => {
+                                                    crate::src::xmltok::big2_isPublicId
+                                                }
+                                            };
+                                            if is_public_id(enc, s, next, eventPP) == 0
                                             {
                                                 if parser_events {
                                                     set_parser_event_start!(parser, parser_event_ptr);
@@ -13202,13 +13207,18 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                     21 => {
-                                        if crate::src::xmltok::check_public_id(
-                                            (*enc).isPublicId,
-                                            enc,
-                                            s,
-                                            next,
-                                            eventPP,
-                                        ) == 0
+                                        let is_public_id = match (*enc).isPublicId {
+                                            crate::src::xmltok::PublicIdChecker::Normal => {
+                                                crate::src::xmltok::normal_isPublicId
+                                            }
+                                            crate::src::xmltok::PublicIdChecker::Little2 => {
+                                                crate::src::xmltok::little2_isPublicId
+                                            }
+                                            crate::src::xmltok::PublicIdChecker::Big2 => {
+                                                crate::src::xmltok::big2_isPublicId
+                                            }
+                                        };
+                                        if is_public_id(enc, s, next, eventPP) == 0
                                         {
                                             if parser_events {
                                                 set_parser_event_start!(parser, parser_event_ptr);
@@ -14038,13 +14048,18 @@ unsafe extern "C" fn doProlog(
                                         break 's_2375;
                                     }
                                 }
-                                if crate::src::xmltok::check_public_id(
-                                    (*enc).isPublicId,
-                                    enc,
-                                    s,
-                                    next,
-                                    eventPP,
-                                ) == 0
+                                let is_public_id = match (*enc).isPublicId {
+                                    crate::src::xmltok::PublicIdChecker::Normal => {
+                                        crate::src::xmltok::normal_isPublicId
+                                    }
+                                    crate::src::xmltok::PublicIdChecker::Little2 => {
+                                        crate::src::xmltok::little2_isPublicId
+                                    }
+                                    crate::src::xmltok::PublicIdChecker::Big2 => {
+                                        crate::src::xmltok::big2_isPublicId
+                                    }
+                                };
+                                if is_public_id(enc, s, next, eventPP) == 0
                                 {
                                     if parser_events {
                                         set_parser_event_start!(parser, parser_event_ptr);
