@@ -728,281 +728,186 @@ pub mod xmltok_impl_c {
         return 1 as ::core::ffi::c_int;
     }
 
-    pub unsafe extern "C" fn normal_scanPi(
-        mut enc: *const crate::src::xmltok::ENCODING,
-        mut ptr: *const ::core::ffi::c_char,
-        mut end: *const ::core::ffi::c_char,
-        mut nextTokPtr: *mut *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_int {
-        let mut tok: ::core::ffi::c_int = 0;
-        let mut target: *const ::core::ffi::c_char = ptr;
-        if !(end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize) {
-            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-        }
-        's_138: {
-            match (*(enc as *const normal_encoding)).type_0[*ptr as ::core::ffi::c_uchar as usize]
-                as ::core::ffi::c_int
-            {
-                29 => {
-                    if true {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                }
-                22 | 24 => {}
-                5 => {
-                    if end.offset_from(ptr) < 2 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid2
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isNmstrt2
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                    break 's_138;
-                }
-                6 => {
-                    if end.offset_from(ptr) < 3 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid3
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isNmstrt3
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                    break 's_138;
-                }
-                7 => {
-                    if end.offset_from(ptr) < 4 as isize {
-                        return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                    }
-                    if (*(enc as *const normal_encoding))
-                        .isInvalid4
-                        .expect("non-null function pointer")(enc, ptr)
-                        != 0
-                        || (*(enc as *const normal_encoding))
-                            .isNmstrt4
-                            .expect("non-null function pointer")(enc, ptr)
-                            == 0
-                    {
-                        *nextTokPtr = ptr;
-                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                    }
-                    ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                    break 's_138;
-                }
-                _ => {
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
-                }
+    fn normal_byte_type(enc: &normal_encoding, input: &[::core::ffi::c_char], offset: usize) -> ::core::ffi::c_int {
+        enc.type_0[input[offset] as u8 as usize] as ::core::ffi::c_int
+    }
+
+    fn normal_utf8_invalid(input: &[::core::ffi::c_char], offset: usize, width: usize) -> bool {
+        let bytes = &input[offset..offset + width];
+        let b0 = bytes[0] as u8;
+        let b1 = bytes[1] as u8;
+        match width {
+            2 => b0 < 0xc2 || b1 & 0xc0 != 0x80,
+            3 => {
+                let b2 = bytes[2] as u8;
+                b2 & 0xc0 != 0x80
+                    || (b0 == 0xef && b1 == 0xbf && b2 > 0xbd)
+                    || (b0 == 0xe0 && (b1 < 0xa0 || b1 & 0xc0 == 0xc0))
+                    || (b0 != 0xe0 && (b1 & 0xc0 != 0x80 || (b0 == 0xed && b1 > 0x9f)))
             }
-            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+            4 => {
+                let b2 = bytes[2] as u8;
+                let b3 = bytes[3] as u8;
+                b2 & 0xc0 != 0x80
+                    || b3 & 0xc0 != 0x80
+                    || (b0 == 0xf0 && (b1 < 0x90 || b1 & 0xc0 == 0xc0))
+                    || (b0 != 0xf0 && (b1 & 0xc0 != 0x80 || (b0 == 0xf4 && b1 > 0x8f)))
+            }
+            _ => true,
         }
-        while end.offset_from(ptr) >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize {
-            's_493: {
-                'c_15963: {
-                    match (*(enc as *const normal_encoding)).type_0
-                        [*ptr as ::core::ffi::c_uchar as usize]
-                        as ::core::ffi::c_int
+    }
+
+    fn normal_utf8_name_char(
+        input: &[::core::ffi::c_char],
+        offset: usize,
+        width: usize,
+        pages: &[::core::ffi::c_uchar; 256],
+    ) -> bool {
+        if width == 4 {
+            return false;
+        }
+        let b0 = input[offset] as u8;
+        let b1 = input[offset + 1] as u8;
+        let bitmap_index = if width == 2 {
+            pages[((b0 >> 2) & 7) as usize] as usize * 8
+                + ((b0 & 3) as usize) * 2
+                + ((b1 >> 5) & 1) as usize
+        } else {
+            pages[(((b0 & 0x0f) << 4) + (b1 >> 2 & 0x0f)) as usize] as usize * 8
+                + ((b1 & 3) as usize) * 2
+                + ((input[offset + 2] as u8 >> 5) & 1) as usize
+        };
+        namingBitmap[bitmap_index] & (1 << ((input[offset + width - 1] as u8) & 0x1f)) != 0
+    }
+
+    fn normal_pi_target_token(input: &[::core::ffi::c_char], target: usize, terminator: usize) -> Option<::core::ffi::c_int> {
+        if terminator - target != 3 {
+            return Some(crate::src::xmltok::XML_TOK_PI_1);
+        }
+        let mut upper = false;
+        for (offset, lower, upper_case) in [
+            (0, crate::ascii_h::ASCII_x_1 as u8, crate::ascii_h::ASCII_X_1 as u8),
+            (1, crate::ascii_h::ASCII_m_1 as u8, crate::ascii_h::ASCII_M_1 as u8),
+            (2, crate::ascii_h::ASCII_l_1 as u8, crate::ascii_h::ASCII_L_1 as u8),
+        ] {
+            match input[target + offset] as u8 {
+                value if value == lower => {}
+                value if value == upper_case => upper = true,
+                _ => return Some(crate::src::xmltok::XML_TOK_PI_1),
+            }
+        }
+        if upper { None } else { Some(crate::src::xmltok::XML_TOK_XML_DECL_1) }
+    }
+
+    fn normal_scan_pi_impl(enc: &normal_encoding, input: &[::core::ffi::c_char]) -> (::core::ffi::c_int, Option<usize>) {
+        if input.is_empty() {
+            return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+        }
+        let target = 0;
+        let mut offset = 0;
+        match normal_byte_type(enc, input, offset) {
+            22 | 24 => offset += 1,
+            29 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+            kind @ (5 | 6 | 7) => {
+                let width = kind as usize - 3;
+                if input.len() < width {
+                    return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
+                }
+                if enc.enc.isUtf8 == 0 || normal_utf8_invalid(input, offset, width)
+                    || !normal_utf8_name_char(input, offset, width, &nmstrtPages)
+                {
+                    return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+                }
+                offset += width;
+            }
+            _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+        }
+
+        while offset < input.len() {
+            match normal_byte_type(enc, input, offset) {
+                22 | 24 | 25 | 26 | 27 => offset += 1,
+                29 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+                kind @ (5 | 6 | 7) => {
+                    let width = kind as usize - 3;
+                    if input.len() - offset < width {
+                        return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
+                    }
+                    if enc.enc.isUtf8 == 0 || normal_utf8_invalid(input, offset, width)
+                        || !normal_utf8_name_char(input, offset, width, &namePages)
                     {
-                        29 => {
-                            if true {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
+                        return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+                    }
+                    offset += width;
+                }
+                21 | 9 | 10 => {
+                    let Some(token) = normal_pi_target_token(input, target, offset) else {
+                        return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+                    };
+                    offset += 1;
+                    while offset < input.len() {
+                        match normal_byte_type(enc, input, offset) {
+                            kind @ (5 | 6 | 7) => {
+                                let width = kind as usize - 3;
+                                if input.len() - offset < width {
+                                    return (crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1, None);
+                                }
+                                if enc.enc.isUtf8 != 0 && normal_utf8_invalid(input, offset, width) {
+                                    return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+                                }
+                                offset += width;
                             }
-                            break 'c_15963;
-                        }
-                        22 | 24 | 25 | 26 | 27 => {
-                            break 'c_15963;
-                        }
-                        5 => {
-                            if end.offset_from(ptr) < 2 as isize {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if (*(enc as *const normal_encoding))
-                                .isInvalid2
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || (*(enc as *const normal_encoding))
-                                    .isName2
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                            break 's_493;
-                        }
-                        6 => {
-                            if end.offset_from(ptr) < 3 as isize {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if (*(enc as *const normal_encoding))
-                                .isInvalid3
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || (*(enc as *const normal_encoding))
-                                    .isName3
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                            break 's_493;
-                        }
-                        7 => {
-                            if end.offset_from(ptr) < 4 as isize {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                            }
-                            if (*(enc as *const normal_encoding))
-                                .isInvalid4
-                                .expect("non-null function pointer")(
-                                enc, ptr
-                            ) != 0
-                                || (*(enc as *const normal_encoding))
-                                    .isName4
-                                    .expect("non-null function pointer")(
-                                    enc, ptr
-                                ) == 0
-                            {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                            break 's_493;
-                        }
-                        21 | 9 | 10 => {
-                            if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            while end.offset_from(ptr)
-                                >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize
-                            {
-                                match (*(enc as *const normal_encoding)).type_0
-                                    [*ptr as ::core::ffi::c_uchar as usize]
-                                    as ::core::ffi::c_int
-                                {
-                                    5 => {
-                                        if end.offset_from(ptr) < 2 as isize {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if (*(enc as *const normal_encoding))
-                                            .isInvalid2
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) != 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-                                    }
-                                    6 => {
-                                        if end.offset_from(ptr) < 3 as isize {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if (*(enc as *const normal_encoding))
-                                            .isInvalid3
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) != 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(3 as ::core::ffi::c_int as isize);
-                                    }
-                                    7 => {
-                                        if end.offset_from(ptr) < 4 as isize {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_CHAR_1;
-                                        }
-                                        if (*(enc as *const normal_encoding))
-                                            .isInvalid4
-                                            .expect("non-null function pointer")(
-                                            enc, ptr
-                                        ) != 0
-                                        {
-                                            *nextTokPtr = ptr;
-                                            return crate::src::xmltok::XML_TOK_INVALID_1;
-                                        }
-                                        ptr = ptr.offset(4 as ::core::ffi::c_int as isize);
-                                    }
-                                    0 | 1 | 8 => {
-                                        *nextTokPtr = ptr;
-                                        return crate::src::xmltok::XML_TOK_INVALID_1;
-                                    }
-                                    15 => {
-                                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                                        if !(end.offset_from(ptr)
-                                            >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int)
-                                                as isize)
-                                        {
-                                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                                        }
-                                        if *ptr as ::core::ffi::c_int == 0x3e as ::core::ffi::c_int
-                                        {
-                                            *nextTokPtr =
-                                                ptr.offset(1 as ::core::ffi::c_int as isize);
-                                            return tok;
-                                        }
-                                    }
-                                    _ => {
-                                        ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                                    }
+                            0 | 1 | 8 => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
+                            15 => {
+                                offset += 1;
+                                if offset == input.len() {
+                                    return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                                }
+                                if input[offset] as u8 == 0x3e {
+                                    return (token, Some(offset + 1));
                                 }
                             }
-                            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+                            _ => offset += 1,
                         }
-                        15 => {
-                            if normal_checkPiTarget(enc, target, ptr, &raw mut tok) == 0 {
-                                *nextTokPtr = ptr;
-                                return crate::src::xmltok::XML_TOK_INVALID_1;
-                            }
-                            ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                            if !(end.offset_from(ptr)
-                                >= (1 as ::core::ffi::c_int * 1 as ::core::ffi::c_int) as isize)
-                            {
-                                return crate::src::xmltok::XML_TOK_PARTIAL_1;
-                            }
-                            if *ptr as ::core::ffi::c_int == 0x3e as ::core::ffi::c_int {
-                                *nextTokPtr = ptr.offset(1 as ::core::ffi::c_int as isize);
-                                return tok;
-                            }
-                        }
-                        _ => {}
                     }
-                    *nextTokPtr = ptr;
-                    return crate::src::xmltok::XML_TOK_INVALID_1;
+                    return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
                 }
-                ptr = ptr.offset(1 as ::core::ffi::c_int as isize);
+                15 => {
+                    let Some(token) = normal_pi_target_token(input, target, offset) else {
+                        return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset));
+                    };
+                    offset += 1;
+                    if offset == input.len() {
+                        return (crate::src::xmltok::XML_TOK_PARTIAL_1, None);
+                    }
+                    return if input[offset] as u8 == 0x3e {
+                        (token, Some(offset + 1))
+                    } else {
+                        (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset))
+                    };
+                }
+                _ => return (crate::src::xmltok::XML_TOK_INVALID_1, Some(offset)),
             }
         }
-        return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        (crate::src::xmltok::XML_TOK_PARTIAL_1, None)
+    }
+
+    pub unsafe extern "C" fn normal_scanPi(
+        enc: *const crate::src::xmltok::ENCODING,
+        ptr: *const ::core::ffi::c_char,
+        end: *const ::core::ffi::c_char,
+        nextTokPtr: *mut *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int {
+        let input_len = unsafe { end.offset_from(ptr) };
+        if input_len <= 0 {
+            return crate::src::xmltok::XML_TOK_PARTIAL_1;
+        }
+        let input = unsafe { ::core::slice::from_raw_parts(ptr, input_len as usize) };
+        let enc = unsafe { &*(enc as *const normal_encoding) };
+        let (token, next) = normal_scan_pi_impl(enc, input);
+        if let Some(offset) = next {
+            unsafe { *nextTokPtr = ptr.add(offset) };
+        }
+        token
     }
 
     pub unsafe extern "C" fn normal_scanCdataSection(
