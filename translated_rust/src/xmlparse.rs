@@ -16313,37 +16313,6 @@ fn accounting_slice_diff_tolerated(
     tolerated
 }
 
-/// Resolves a raw tokenizer cursor pair through the parser's owned input
-/// buffer before accounting.  This is deliberately narrower than a general
-/// raw-slice adapter: cursors outside that buffer are rejected immediately.
-unsafe fn accounting_parser_window_diff_tolerated(
-    parser: crate::expat_h::XML_Parser,
-    token: ::core::ffi::c_int,
-    before: *const ::core::ffi::c_char,
-    after: *const ::core::ffi::c_char,
-    source_line: ::core::ffi::c_int,
-    account: XML_Account,
-    report_abort: bool,
-) -> Option<bool> {
-    let parser = &*parser;
-    let input = parser
-        .m_buffer
-        .window_from_addresses(before.addr(), after.addr())?;
-    let tolerated = accounting_slice_diff_tolerated(
-        parser,
-        token,
-        input,
-        0,
-        input.len(),
-        source_line,
-        account,
-    );
-    if !tolerated && report_abort {
-        cdata_accounting_on_abort(parser);
-    }
-    Some(tolerated)
-}
-
 fn cdata_accounting_on_abort(parser: &XML_ParserStruct) {
     cdata_accounting_report_stats(parser, " ABORTING\n");
 }
