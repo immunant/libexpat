@@ -12860,12 +12860,7 @@ unsafe fn storeAtts(
             (*parser).m_tempPool.commit();
         } else {
             appAtts[attIndex as usize] =
-                poolStoreString(
-                    &raw mut (*parser).m_tempPool,
-                    enc,
-                    value_start,
-                    value_end,
-                );
+                poolStoreString(&mut parser.m_tempPool, enc, value_start, value_end);
             if appAtts[attIndex as usize].is_null() {
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
@@ -20687,7 +20682,7 @@ unsafe fn storeEntityValue(
                                 ::core::ptr::null::<crate::expat_external_h::XML_Char>();
                             let mut entity: *mut ENTITY = ::core::ptr::null_mut::<ENTITY>();
                             name = poolStoreString(
-                                &raw mut (*parser).m_tempPool,
+                                &mut parser.m_tempPool,
                                 enc_ptr,
                                 entityTextPtr.wrapping_add(enc.enc.minBytesPerChar as usize),
                                 next.wrapping_sub(enc.enc.minBytesPerChar as usize),
@@ -24099,8 +24094,8 @@ fn pool_copy_chars(
     string
 }
 
-unsafe extern "C" fn poolStoreString(
-    mut pool: *mut STRING_POOL,
+unsafe fn poolStoreString(
+    pool: &mut STRING_POOL,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
@@ -24108,13 +24103,12 @@ unsafe extern "C" fn poolStoreString(
     if poolAppend(pool, enc, ptr, end).is_null() {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    if (*pool).is_full() && poolGrow(&mut *pool) == 0 {
+    if pool.is_full() && poolGrow(pool) == 0 {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    if !(&mut *pool).write_cursor(0 as crate::expat_external_h::XML_Char) {
+    if !pool.write_cursor(0 as crate::expat_external_h::XML_Char) {
         return ::core::ptr::null_mut::<crate::expat_external_h::XML_Char>();
     }
-    let pool = &*pool;
     let Some(start) = pool.start_ref(true) else {
         return ::core::ptr::null_mut();
     };
