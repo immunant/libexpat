@@ -4303,17 +4303,19 @@ pub unsafe extern "C" fn XML_GetErrorCode_ffi(
 ) -> crate::expat_h::XML_Error {
     XML_GetErrorCode(parser)
 }
-pub unsafe extern "C" fn XML_GetCurrentByteIndex(
-    mut parser: crate::expat_h::XML_Parser,
+pub extern "C" fn XML_GetCurrentByteIndex(
+    parser: crate::expat_h::XML_Parser,
 ) -> crate::expat_external_h::XML_Index {
-    if parser.is_null() {
-        return -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index;
-    }
-    if !(*parser).m_eventPtr.is_null() {
-        return (*parser).m_parseEndByteIndex as ::core::ffi::c_long
-            - (*parser).m_parseEndPtr.offset_from((*parser).m_eventPtr) as ::core::ffi::c_long;
-    }
-    return -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index;
+    with_parser_mut(parser, |parser| {
+        if !parser.m_eventPtr.is_null() {
+            parser.m_parseEndByteIndex as ::core::ffi::c_long
+                - (parser.m_parseEndPtr as usize).wrapping_sub(parser.m_eventPtr as usize)
+                    as ::core::ffi::c_long
+        } else {
+            -1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index
+        }
+    })
+    .unwrap_or(-1 as ::core::ffi::c_int as crate::expat_external_h::XML_Index)
 }
 #[export_name = "XML_GetCurrentByteIndex"]
 
@@ -4322,17 +4324,18 @@ pub unsafe extern "C" fn XML_GetCurrentByteIndex_ffi(
 ) -> crate::expat_external_h::XML_Index {
     XML_GetCurrentByteIndex(parser)
 }
-pub unsafe extern "C" fn XML_GetCurrentByteCount(
-    mut parser: crate::expat_h::XML_Parser,
+pub extern "C" fn XML_GetCurrentByteCount(
+    parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_int;
-    }
-    if !(*parser).m_eventEndPtr.is_null() && !(*parser).m_eventPtr.is_null() {
-        return (*parser).m_eventEndPtr.offset_from((*parser).m_eventPtr) as ::core::ffi::c_long
-            as ::core::ffi::c_int;
-    }
-    return 0 as ::core::ffi::c_int;
+    with_parser_mut(parser, |parser| {
+        if !parser.m_eventEndPtr.is_null() && !parser.m_eventPtr.is_null() {
+            (parser.m_eventEndPtr as usize).wrapping_sub(parser.m_eventPtr as usize)
+                as ::core::ffi::c_int
+        } else {
+            0 as ::core::ffi::c_int
+        }
+    })
+    .unwrap_or(0 as ::core::ffi::c_int)
 }
 #[export_name = "XML_GetCurrentByteCount"]
 
@@ -4341,26 +4344,27 @@ pub unsafe extern "C" fn XML_GetCurrentByteCount_ffi(
 ) -> ::core::ffi::c_int {
     XML_GetCurrentByteCount(parser)
 }
-pub unsafe extern "C" fn XML_GetInputContext(
-    mut parser: crate::expat_h::XML_Parser,
-    mut offset: *mut ::core::ffi::c_int,
-    mut size: *mut ::core::ffi::c_int,
+pub fn XML_GetInputContext(
+    parser: crate::expat_h::XML_Parser,
+    offset: Option<&mut ::core::ffi::c_int>,
+    size: Option<&mut ::core::ffi::c_int>,
 ) -> *const ::core::ffi::c_char {
-    if parser.is_null() {
-        return ::core::ptr::null::<::core::ffi::c_char>();
-    }
-    if !(*parser).m_eventPtr.is_null() && !(*parser).m_buffer.is_null() {
-        if !offset.is_null() {
-            *offset = (*parser).m_eventPtr.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-                as ::core::ffi::c_int;
+    with_parser_mut(parser, |parser| {
+        if !parser.m_eventPtr.is_null() && !parser.m_buffer.is_null() {
+            if let Some(offset) = offset {
+                *offset = (parser.m_eventPtr as usize).wrapping_sub(parser.m_buffer as usize)
+                    as ::core::ffi::c_int;
+            }
+            if let Some(size) = size {
+                *size = (parser.m_bufferEnd as usize).wrapping_sub(parser.m_buffer as usize)
+                    as ::core::ffi::c_int;
+            }
+            parser.m_buffer
+        } else {
+            ::core::ptr::null::<::core::ffi::c_char>()
         }
-        if !size.is_null() {
-            *size = (*parser).m_bufferEnd.offset_from((*parser).m_buffer) as ::core::ffi::c_long
-                as ::core::ffi::c_int;
-        }
-        return (*parser).m_buffer;
-    }
-    return ::core::ptr::null::<::core::ffi::c_char>();
+    })
+    .unwrap_or(::core::ptr::null::<::core::ffi::c_char>())
 }
 #[export_name = "XML_GetInputContext"]
 
@@ -4369,7 +4373,7 @@ pub unsafe extern "C" fn XML_GetInputContext_ffi(
     mut offset: *mut ::core::ffi::c_int,
     mut size: *mut ::core::ffi::c_int,
 ) -> *const ::core::ffi::c_char {
-    XML_GetInputContext(parser, offset, size)
+    XML_GetInputContext(parser, unsafe { offset.as_mut() }, unsafe { size.as_mut() })
 }
 pub unsafe extern "C" fn XML_GetCurrentLineNumber(
     mut parser: crate::expat_h::XML_Parser,
