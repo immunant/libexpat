@@ -11003,7 +11003,25 @@ fn reportDefault(
     };
 }
 
-unsafe extern "C" fn defineAttribute(
+macro_rules! default_atts {
+    ($ptr:expr, $size:expr) => {
+        unsafe { ::core::slice::from_raw_parts($ptr, $size) }
+    };
+}
+
+macro_rules! default_atts_mut {
+    ($ptr:expr, $size:expr) => {
+        unsafe { ::core::slice::from_raw_parts_mut($ptr, $size) }
+    };
+}
+
+macro_rules! xml_char_cstr {
+    ($ptr:expr) => {
+        unsafe { ::core::ffi::CStr::from_ptr($ptr) }
+    };
+}
+
+fn defineAttribute(
     mut type_0: *mut ELEMENT_TYPE,
     mut attId: *mut ATTRIBUTE_ID,
     mut isCdata: crate::expat_h::XML_Bool,
@@ -11011,44 +11029,41 @@ unsafe extern "C" fn defineAttribute(
     mut value: *const crate::expat_external_h::XML_Char,
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_int {
-    let mut att: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
+    let type_0 = expect_element_type_mut!(type_0);
+    let att_id = expect_attribute_id_mut!(attId);
     if !value.is_null() || isId as ::core::ffi::c_int != 0 {
-        let mut i: ::core::ffi::c_int = 0;
-        i = 0 as ::core::ffi::c_int;
-        while i < (*type_0).nDefaultAtts {
-            if attId == (*(*type_0).defaultAtts.offset(i as isize)).id as *mut ATTRIBUTE_ID {
+        for att in default_atts!(type_0.defaultAtts, type_0.nDefaultAtts as usize) {
+            if attId == att.id as *mut ATTRIBUTE_ID {
                 return 1 as ::core::ffi::c_int;
             }
-            i += 1;
         }
-        if isId as ::core::ffi::c_int != 0 && (*type_0).idAtt.is_null() && (*attId).xmlns == 0 {
-            (*type_0).idAtt = attId;
+        if isId as ::core::ffi::c_int != 0 && type_0.idAtt.is_null() && att_id.xmlns == 0 {
+            type_0.idAtt = attId;
         }
     }
-    if (*type_0).nDefaultAtts == (*type_0).allocDefaultAtts {
-        if (*type_0).allocDefaultAtts == 0 as ::core::ffi::c_int {
-            (*type_0).allocDefaultAtts = 8 as ::core::ffi::c_int;
-            (*type_0).defaultAtts = expat_malloc(
+    if type_0.nDefaultAtts == type_0.allocDefaultAtts {
+        if type_0.allocDefaultAtts == 0 as ::core::ffi::c_int {
+            type_0.allocDefaultAtts = 8 as ::core::ffi::c_int;
+            type_0.defaultAtts = expat_malloc(
                 parser,
-                ((*type_0).allocDefaultAtts as crate::__stddef_size_t_h::size_t)
+                (type_0.allocDefaultAtts as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
                         as crate::__stddef_size_t_h::size_t),
                 7182 as ::core::ffi::c_int,
             ) as *mut DEFAULT_ATTRIBUTE;
-            if (*type_0).defaultAtts.is_null() {
-                (*type_0).allocDefaultAtts = 0 as ::core::ffi::c_int;
+            if type_0.defaultAtts.is_null() {
+                type_0.allocDefaultAtts = 0 as ::core::ffi::c_int;
                 return 0 as ::core::ffi::c_int;
             }
         } else {
-            let mut temp: *mut DEFAULT_ATTRIBUTE = ::core::ptr::null_mut::<DEFAULT_ATTRIBUTE>();
-            if (*type_0).allocDefaultAtts > crate::limits_h::INT_MAX / 2 as ::core::ffi::c_int {
+            let temp: *mut DEFAULT_ATTRIBUTE;
+            if type_0.allocDefaultAtts > crate::limits_h::INT_MAX / 2 as ::core::ffi::c_int {
                 return 0 as ::core::ffi::c_int;
             }
-            let mut count: ::core::ffi::c_int =
-                (*type_0).allocDefaultAtts * 2 as ::core::ffi::c_int;
+            let count: ::core::ffi::c_int = type_0.allocDefaultAtts * 2 as ::core::ffi::c_int;
             temp = expat_realloc(
                 parser,
-                (*type_0).defaultAtts as *mut ::core::ffi::c_void,
+                type_0.defaultAtts as *mut ::core::ffi::c_void,
                 (count as crate::__stddef_size_t_h::size_t)
                     .wrapping_mul(::core::mem::size_of::<DEFAULT_ATTRIBUTE>()
                         as crate::__stddef_size_t_h::size_t),
@@ -11057,219 +11072,134 @@ unsafe extern "C" fn defineAttribute(
             if temp.is_null() {
                 return 0 as ::core::ffi::c_int;
             }
-            (*type_0).allocDefaultAtts = count;
-            (*type_0).defaultAtts = temp;
+            type_0.allocDefaultAtts = count;
+            type_0.defaultAtts = temp;
         }
     }
-    att = (*type_0)
-        .defaultAtts
-        .offset((*type_0).nDefaultAtts as isize);
-    (*att).id = attId;
-    (*att).value = value;
-    (*att).isCdata = isCdata;
+    let att = default_atts_mut!(type_0.defaultAtts, (type_0.nDefaultAtts + 1) as usize)
+        .last_mut()
+        .expect("new default attribute slot");
+    att.id = attId;
+    att.value = value;
+    att.isCdata = isCdata;
     if isCdata == 0 {
-        (*attId).maybeTokenized = crate::expat_h::XML_TRUE;
+        att_id.maybeTokenized = crate::expat_h::XML_TRUE;
     }
-    (*type_0).nDefaultAtts += 1 as ::core::ffi::c_int;
+    type_0.nDefaultAtts += 1 as ::core::ffi::c_int;
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn setElementTypePrefix(
+fn setElementTypePrefix(
     mut parser: crate::expat_h::XML_Parser,
     mut elementType: *mut ELEMENT_TYPE,
 ) -> ::core::ffi::c_int {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut name: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    name = (*elementType).name;
-    while *name != 0 {
-        if *name as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int {
-            let mut prefix: *mut PREFIX = ::core::ptr::null_mut::<PREFIX>();
-            let mut s: *const crate::expat_external_h::XML_Char =
-                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-            s = (*elementType).name;
-            while s != name {
-                if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                    && poolGrow(&mut (*dtd).pool) == 0
-                {
-                    0 as ::core::ffi::c_int
-                } else {
-                    let c2rust_fresh15 = (*dtd).pool.ptr;
-                    (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                    *c2rust_fresh15 = *s;
-                    1 as ::core::ffi::c_int
-                } == 0
-                {
-                    return 0 as ::core::ffi::c_int;
-                }
-                s = s.offset(1);
-            }
-            if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                && poolGrow(&mut (*dtd).pool) == 0
-            {
-                0 as ::core::ffi::c_int
-            } else {
-                let c2rust_fresh16 = (*dtd).pool.ptr;
-                (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                *c2rust_fresh16 = '\0' as i32 as crate::expat_external_h::XML_Char;
-                1 as ::core::ffi::c_int
-            } == 0
-            {
-                return 0 as ::core::ffi::c_int;
-            }
-            prefix = lookup(
-                parser,
-                &mut (*dtd).prefixes,
-                (*dtd).pool.start as KEY,
-                ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
-            ) as *mut PREFIX;
-            if prefix.is_null() {
-                return 0 as ::core::ffi::c_int;
-            }
-            if (*prefix).name == (*dtd).pool.start as *const crate::expat_external_h::XML_Char {
-                (*dtd).pool.start = (*dtd).pool.ptr;
-            } else {
-                (*dtd).pool.ptr = (*dtd).pool.start;
-            }
-            (*elementType).prefix = prefix;
-            break;
-        } else {
-            name = name.offset(1);
+    let dtd = expect_dtd_mut(expect_parser_ref(parser).m_dtd);
+    let element_type = expect_element_type_mut!(elementType);
+    let name = xml_char_cstr!(element_type.name).to_bytes();
+    if let Some(prefix_len) = name.iter().position(|ch| *ch == b':') {
+        if pool_append_chars(
+            &mut dtd.pool,
+            element_type.name,
+            prefix_len as ::core::ffi::c_int,
+        ) == 0
+            || pool_append_nul(&mut dtd.pool) == 0
+        {
+            return 0 as ::core::ffi::c_int;
         }
+        let prefix = lookup(
+            parser,
+            &mut dtd.prefixes,
+            dtd.pool.start as KEY,
+            ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
+        ) as *mut PREFIX;
+        if prefix.is_null() {
+            return 0 as ::core::ffi::c_int;
+        }
+        if expect_prefix_ref_ptr(prefix).name
+            == dtd.pool.start as *const crate::expat_external_h::XML_Char
+        {
+            dtd.pool.start = dtd.pool.ptr;
+        } else {
+            dtd.pool.ptr = dtd.pool.start;
+        }
+        element_type.prefix = prefix;
     }
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe extern "C" fn getAttributeId(
+fn getAttributeId(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut start: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
 ) -> *mut ATTRIBUTE_ID {
-    let dtd: *mut DTD = (*parser).m_dtd;
-    let mut id: *mut ATTRIBUTE_ID = ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-    let mut name: *const crate::expat_external_h::XML_Char =
-        ::core::ptr::null::<crate::expat_external_h::XML_Char>();
-    if if (*dtd).pool.ptr == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-        && poolGrow(&mut (*dtd).pool) == 0
-    {
-        0 as ::core::ffi::c_int
-    } else {
-        let c2rust_fresh52 = (*dtd).pool.ptr;
-        (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-        *c2rust_fresh52 = '\0' as i32 as crate::expat_external_h::XML_Char;
-        1 as ::core::ffi::c_int
-    } == 0
-    {
+    let parser_ref = expect_parser_ref(parser);
+    let ns_enabled = parser_ref.m_ns != 0;
+    let dtd = expect_dtd_mut(parser_ref.m_dtd);
+
+    if pool_append_nul(&mut dtd.pool) == 0 {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
-    name = poolStoreString(&mut (*dtd).pool, enc, start, end);
+    let name = poolStoreString(&mut dtd.pool, enc, start, end);
     if name.is_null() {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
-    name = name.offset(1);
-    id = lookup(
+    let name = name.wrapping_add(1);
+    let id = lookup(
         parser,
-        &mut (*dtd).attributeIds,
+        &mut dtd.attributeIds,
         name as KEY,
         ::core::mem::size_of::<ATTRIBUTE_ID>() as crate::__stddef_size_t_h::size_t,
     ) as *mut ATTRIBUTE_ID;
     if id.is_null() {
         return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
     }
-    if (*id).name != name as *mut crate::expat_external_h::XML_Char {
-        (*dtd).pool.ptr = (*dtd).pool.start;
-    } else {
-        (*dtd).pool.start = (*dtd).pool.ptr;
-        if !((*parser).m_ns == 0) {
-            if *name.offset(0 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                == 0x78 as ::core::ffi::c_int
-                && *name.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x6d as ::core::ffi::c_int
-                && *name.offset(2 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x6c as ::core::ffi::c_int
-                && *name.offset(3 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x6e as ::core::ffi::c_int
-                && *name.offset(4 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == 0x73 as ::core::ffi::c_int
-                && (*name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == '\0' as i32
-                    || *name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                        == 0x3a as ::core::ffi::c_int)
-            {
-                if *name.offset(5 as ::core::ffi::c_int as isize) as ::core::ffi::c_int
-                    == '\0' as i32
-                {
-                    (*id).prefix = &raw mut (*dtd).defaultPrefix;
-                } else {
-                    (*id).prefix = lookup(
-                        parser,
-                        &mut (*dtd).prefixes,
-                        name.offset(6 as ::core::ffi::c_int as isize),
-                        ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
-                    ) as *mut PREFIX;
-                }
-                (*id).xmlns = crate::expat_h::XML_TRUE;
+
+    let id_ref = expect_attribute_id_mut!(id);
+    if id_ref.name != name as *mut crate::expat_external_h::XML_Char {
+        pool_reset(&mut dtd.pool);
+        return id;
+    }
+
+    dtd.pool.start = dtd.pool.ptr;
+    if ns_enabled {
+        let name_bytes = xml_char_cstr!(name).to_bytes_with_nul();
+        if name_bytes.starts_with(b"xmlns") && matches!(name_bytes.get(5), Some(0) | Some(b':')) {
+            if name_bytes.get(5) == Some(&0) {
+                id_ref.prefix = &raw mut dtd.defaultPrefix;
             } else {
-                let mut i: ::core::ffi::c_int = 0;
-                i = 0 as ::core::ffi::c_int;
-                while *name.offset(i as isize) != 0 {
-                    if *name.offset(i as isize) as ::core::ffi::c_int == 0x3a as ::core::ffi::c_int
-                    {
-                        let mut j: ::core::ffi::c_int = 0;
-                        j = 0 as ::core::ffi::c_int;
-                        while j < i {
-                            if if (*dtd).pool.ptr
-                                == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                                && poolGrow(&mut (*dtd).pool) == 0
-                            {
-                                0 as ::core::ffi::c_int
-                            } else {
-                                let c2rust_fresh53 = (*dtd).pool.ptr;
-                                (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                                *c2rust_fresh53 = *name.offset(j as isize);
-                                1 as ::core::ffi::c_int
-                            } == 0
-                            {
-                                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                            }
-                            j += 1;
-                        }
-                        if if (*dtd).pool.ptr
-                            == (*dtd).pool.end as *mut crate::expat_external_h::XML_Char
-                            && poolGrow(&mut (*dtd).pool) == 0
-                        {
-                            0 as ::core::ffi::c_int
-                        } else {
-                            let c2rust_fresh54 = (*dtd).pool.ptr;
-                            (*dtd).pool.ptr = (*dtd).pool.ptr.offset(1);
-                            *c2rust_fresh54 = '\0' as i32 as crate::expat_external_h::XML_Char;
-                            1 as ::core::ffi::c_int
-                        } == 0
-                        {
-                            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                        }
-                        (*id).prefix = lookup(
-                            parser,
-                            &mut (*dtd).prefixes,
-                            (*dtd).pool.start as KEY,
-                            ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
-                        ) as *mut PREFIX;
-                        if (*id).prefix.is_null() {
-                            return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
-                        }
-                        if (*(*id).prefix).name
-                            == (*dtd).pool.start as *const crate::expat_external_h::XML_Char
-                        {
-                            (*dtd).pool.start = (*dtd).pool.ptr;
-                        } else {
-                            (*dtd).pool.ptr = (*dtd).pool.start;
-                        }
-                        break;
-                    } else {
-                        i += 1;
-                    }
-                }
+                id_ref.prefix = lookup(
+                    parser,
+                    &mut dtd.prefixes,
+                    name.wrapping_add(6),
+                    ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
+                ) as *mut PREFIX;
+            }
+            id_ref.xmlns = crate::expat_h::XML_TRUE;
+        } else if let Some(prefix_len) = name_bytes[..name_bytes.len().saturating_sub(1)]
+            .iter()
+            .position(|ch| *ch == b':')
+        {
+            if pool_append_chars(&mut dtd.pool, name, prefix_len as ::core::ffi::c_int) == 0
+                || pool_append_nul(&mut dtd.pool) == 0
+            {
+                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+            }
+            id_ref.prefix = lookup(
+                parser,
+                &mut dtd.prefixes,
+                dtd.pool.start as KEY,
+                ::core::mem::size_of::<PREFIX>() as crate::__stddef_size_t_h::size_t,
+            ) as *mut PREFIX;
+            if id_ref.prefix.is_null() {
+                return ::core::ptr::null_mut::<ATTRIBUTE_ID>();
+            }
+            if expect_prefix_ref_ptr(id_ref.prefix).name
+                == dtd.pool.start as *const crate::expat_external_h::XML_Char
+            {
+                dtd.pool.start = dtd.pool.ptr;
+            } else {
+                dtd.pool.ptr = dtd.pool.start;
             }
         }
     }
@@ -12853,7 +12783,7 @@ fn getElementType(
         dtd.pool.ptr = dtd.pool.start;
     } else {
         dtd.pool.start = dtd.pool.ptr;
-        if unsafe_expr!(setElementTypePrefix(parser, ret)) == 0 {
+        if setElementTypePrefix(parser, ret) == 0 {
             return ::core::ptr::null_mut::<ELEMENT_TYPE>();
         }
     }
