@@ -3056,14 +3056,7 @@ fn dispatch_xml_decl_callback(
     });
 }
 
-trait UnknownEncodingCallback: Send + Sync {
-    unsafe fn invoke(
-        &self,
-        data: *mut ::core::ffi::c_void,
-        encoding_name: *const crate::expat_external_h::XML_Char,
-        info: *mut crate::expat_h::XML_Encoding,
-    ) -> ::core::ffi::c_int;
-}
+trait UnknownEncodingCallback: Send + Sync + std::any::Any {}
 
 impl UnknownEncodingCallback
     for unsafe extern "C" fn(
@@ -3072,48 +3065,45 @@ impl UnknownEncodingCallback
         *mut crate::expat_h::XML_Encoding,
     ) -> ::core::ffi::c_int
 {
-    unsafe fn invoke(
-        &self,
-        data: *mut ::core::ffi::c_void,
-        encoding_name: *const crate::expat_external_h::XML_Char,
-        info: *mut crate::expat_h::XML_Encoding,
-    ) -> ::core::ffi::c_int {
-        self(data, encoding_name, info)
-    }
 }
 
 /// A typed, parser-side view of a foreign unknown-encoding callback.  This
 /// hides the raw callback ABI from normal parser dispatch.
-trait UnknownEncodingCallbackAdapter: Send + Sync {
-    fn invoke(
-        &self,
-        callback_arg: &UnknownEncodingHandlerRegistration,
-        encoding_name: Option<&[crate::expat_external_h::XML_Char]>,
-        info: &mut crate::expat_h::XML_Encoding,
-    ) -> Option<::core::ffi::c_int>;
+struct UnknownEncodingCallbackAdapter {
+    callback: std::sync::Arc<dyn UnknownEncodingCallback>,
 }
 
-struct UnknownEncodingCallbackAdapterImpl<Callback> {
-    callback: Callback,
-}
+impl UnknownEncodingCallbackAdapter {
+    fn new<Callback>(callback: Callback) -> Self
+    where
+        Callback: UnknownEncodingCallback + 'static,
+    {
+        Self {
+            callback: std::sync::Arc::new(callback),
+        }
+    }
 
-impl<Callback> UnknownEncodingCallbackAdapter for UnknownEncodingCallbackAdapterImpl<Callback>
-where
-    Callback: UnknownEncodingCallback,
-{
     fn invoke(
         &self,
         callback_arg: &UnknownEncodingHandlerRegistration,
         encoding_name: Option<&[crate::expat_external_h::XML_Char]>,
         info: &mut crate::expat_h::XML_Encoding,
     ) -> Option<::core::ffi::c_int> {
+        let callback = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<unsafe extern "C" fn(
+            *mut ::core::ffi::c_void,
+            *const crate::expat_external_h::XML_Char,
+            *mut crate::expat_h::XML_Encoding,
+        ) -> ::core::ffi::c_int>()?;
         let context = callback_arg
             .context
             .context
             .downcast_ref::<std::sync::atomic::AtomicPtr<::core::ffi::c_void>>()?;
         let encoding_name = encoding_name.map_or(::core::ptr::null(), |chars| chars.as_ptr());
+        // The registration stores the exact callback and opaque context supplied
+        // at the ABI boundary; the typed name and encoding view remain valid for
+        // this synchronous callback only.
         Some(unsafe {
-            self.callback.invoke(
+            callback(
                 context.load(std::sync::atomic::Ordering::Relaxed),
                 encoding_name,
                 info,
@@ -3140,12 +3130,12 @@ impl UnknownEncodingReleaseRecord {
 // Foreign callback values remain in this boundary registry; parser state only
 // records whether an unknown-encoding callback is installed.
 static UNKNOWN_ENCODING_HANDLERS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn UnknownEncodingCallbackAdapter>>>,
+    std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<UnknownEncodingCallbackAdapter>>>,
 > = std::sync::OnceLock::new();
 
 #[derive(Clone)]
 struct UnknownEncodingHandlerRegistration {
-    callback: Option<std::sync::Arc<dyn UnknownEncodingCallbackAdapter>>,
+    callback: Option<std::sync::Arc<UnknownEncodingCallbackAdapter>>,
     // The context belongs to the foreign caller.  This opaque container keeps
     // its address out of parser state and is only materialized for callback
     // dispatch.
@@ -3163,9 +3153,8 @@ where
     Callback: UnknownEncodingCallback + 'static,
 {
     UnknownEncodingHandlerRegistration {
-        callback: handler.map(|callback| {
-            std::sync::Arc::new(UnknownEncodingCallbackAdapterImpl { callback }) as _
-        }),
+        callback: handler
+            .map(|callback| std::sync::Arc::new(UnknownEncodingCallbackAdapter::new(callback))),
         context,
     }
 }
@@ -8775,9 +8764,8 @@ fn xml_external_entity_parser_create_impl(
     let mut oldExternalEntityRefHandler: Option<std::sync::Arc<dyn ExternalEntityRefCallback>> =
         None;
     let mut oldSkippedEntityCallback: Option<std::sync::Arc<dyn SkippedEntityCallback>> = None;
-    let mut oldUnknownEncodingHandler: Option<
-        std::sync::Arc<dyn UnknownEncodingCallbackAdapter>,
-    > = None;
+    let mut oldUnknownEncodingHandler: Option<std::sync::Arc<UnknownEncodingCallbackAdapter>> =
+        None;
     let mut oldUnknownEncodingHandlerArg: Option<UnknownEncodingHandlerRegistration> = None;
     let mut oldElementDeclHandler = false;
     let mut oldElementDeclCallback: Option<std::sync::Arc<ElementDeclCallbackAdapter>> = None;
@@ -18098,7 +18086,7 @@ fn copy_unknown_encoding_name(
 /// parser-owned, NUL-terminated XML characters.  The callback may re-enter,
 /// so callers must not retain a pool borrow across this boundary.
 fn call_unknown_encoding_handler(
-    callback: &dyn UnknownEncodingCallbackAdapter,
+    callback: &UnknownEncodingCallbackAdapter,
     callback_arg: &UnknownEncodingHandlerRegistration,
     encoding_name: Option<&[crate::expat_external_h::XML_Char]>,
     info: &mut crate::expat_h::XML_Encoding,
