@@ -10422,17 +10422,17 @@ pub mod xmltok_impl_c {
         mut ptr: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int {
         let mut result: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset((2 as ::core::ffi::c_int * 2 as ::core::ffi::c_int) as isize);
-        if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-            && *ptr.offset(1 as isize) as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int
+        ptr = ptr.wrapping_add(2 * 2);
+        if *ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+            && *ptr.wrapping_add(1) as ::core::ffi::c_int == 0x78 as ::core::ffi::c_int
         {
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
-            while !(*ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as isize) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
+            ptr = ptr.wrapping_add(2);
+            while !(*ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+                && *ptr.wrapping_add(1) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
             {
                 let mut c: ::core::ffi::c_int =
-                    if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        *ptr.offset(1 as isize) as ::core::ffi::c_int
+                    if *ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                        *ptr.wrapping_add(1) as ::core::ffi::c_int
                     } else {
                         -1 as ::core::ffi::c_int
                     };
@@ -10473,15 +10473,15 @@ pub mod xmltok_impl_c {
                 if result >= 0x110000 as ::core::ffi::c_int {
                     return -1 as ::core::ffi::c_int;
                 }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                ptr = ptr.wrapping_add(2);
             }
         } else {
-            while !(*ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
-                && *ptr.offset(1 as isize) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
+            while !(*ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+                && *ptr.wrapping_add(1) as ::core::ffi::c_int == 0x3b as ::core::ffi::c_int)
             {
                 let mut c_0: ::core::ffi::c_int =
-                    if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-                        *ptr.offset(1 as isize) as ::core::ffi::c_int
+                    if *ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                        *ptr.wrapping_add(1) as ::core::ffi::c_int
                     } else {
                         -1 as ::core::ffi::c_int
                     };
@@ -10490,7 +10490,7 @@ pub mod xmltok_impl_c {
                 if result >= 0x110000 as ::core::ffi::c_int {
                     return -1 as ::core::ffi::c_int;
                 }
-                ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+                ptr = ptr.wrapping_add(2);
             }
         }
         return checkCharRefNumber(result);
