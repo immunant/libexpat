@@ -2032,7 +2032,6 @@ pub struct STRING_POOL {
     // the valid one-past-end position of a full slab.
     ptr_offset: usize,
     start: Option<PoolStringRef>,
-    pub parser: crate::expat_h::XML_Parser,
     // Active blocks grow only at the head.  This count lets pool clients use
     // a stable ordinal from the tail without retaining a pointer into a block.
     pub blockCount: usize,
@@ -2170,11 +2169,17 @@ struct StringPoolStorage {
     // reuse order as Expat's former free-block list.
     active: Vec<StringPoolBlock>,
     free: Vec<StringPoolBlock>,
+    allocate: Option<StringPoolAllocate>,
 }
+
+type StringPoolBlockBacking = Box<dyn FnMut(StringPoolAllocationAction) -> bool>;
+type StringPoolAllocate = Box<
+    dyn FnMut(crate::__stddef_size_t_h::size_t) -> Option<StringPoolBlockBacking>,
+>;
 
 struct StringPoolBlock {
     chars: Vec<crate::expat_external_h::XML_Char>,
-    backing: Box<dyn FnMut(StringPoolAllocationAction) -> bool>,
+    backing: StringPoolBlockBacking,
 }
 
 enum StringPoolAllocationAction {
@@ -3343,10 +3348,10 @@ fn empty_string_pool() -> STRING_POOL {
         storage: StringPoolStorage {
             active: Vec::new(),
             free: Vec::new(),
+            allocate: None,
         },
         ptr_offset: 0,
         start: None,
-        parser: ::core::ptr::null_mut::<XML_ParserStruct>(),
         blockCount: 0,
     }
 }
@@ -14965,11 +14970,35 @@ unsafe extern "C" fn poolInit(mut pool: *mut STRING_POOL, mut parser: crate::exp
         StringPoolStorage {
             active: Vec::new(),
             free: Vec::new(),
+            // Keep the parser handle confined to the allocator token factory.
+            // Slabs never need to retain it as parser state: each backing token
+            // owns the allocation it must later grow or free.
+            allocate: Some(Box::new(move |size| {
+                let allocation = expat_malloc(parser, size, 8201 as ::core::ffi::c_int);
+                if allocation.is_null() {
+                    return None;
+                }
+                let mut allocation = allocation;
+                Some(Box::new(move |action| match action {
+                    StringPoolAllocationAction::Grow(size) => {
+                        let reallocated = expat_realloc(parser, allocation, size, 8161);
+                        if reallocated.is_null() {
+                            false
+                        } else {
+                            allocation = reallocated;
+                            true
+                        }
+                    }
+                    StringPoolAllocationAction::Free(source_line) => {
+                        expat_free(parser, allocation, source_line);
+                        true
+                    }
+                }))
+            })),
         },
     );
     pool.start = None;
     pool.ptr_offset = 0;
-    pool.parser = parser;
     pool.blockCount = 0;
 }
 
@@ -14989,6 +15018,12 @@ unsafe extern "C" fn poolDestroy(mut pool: *mut STRING_POOL) {
     while let Some(mut block) = pool.storage.free.pop() {
         (block.backing)(StringPoolAllocationAction::Free(8006));
     }
+    // The pool itself is embedded in manually allocated parser/DTD storage,
+    // so release the factory and vector capacities explicitly before that
+    // outer storage is returned through the configured allocator.
+    pool.storage.allocate = None;
+    pool.storage.active = Vec::new();
+    pool.storage.free = Vec::new();
 }
 
 unsafe extern "C" fn poolAppend(
@@ -15311,33 +15346,20 @@ unsafe extern "C" fn poolGrow(mut pool: *mut STRING_POOL) -> crate::expat_h::XML
     if bytes_to_allocate == 0 as crate::__stddef_size_t_h::size_t {
         return crate::expat_h::XML_FALSE;
     }
-    let allocation = expat_malloc(pool.parser, bytes_to_allocate, 8201 as ::core::ffi::c_int);
-    if allocation.is_null() {
+    let Some(mut backing) = pool
+        .storage
+        .allocate
+        .as_mut()
+        .and_then(|allocate| allocate(bytes_to_allocate))
+    else {
         return crate::expat_h::XML_FALSE;
-    }
+    };
     let mut chars = Vec::new();
     if chars.try_reserve_exact(block_size as usize).is_err() {
-        expat_free(pool.parser, allocation, 8201 as ::core::ffi::c_int);
+        backing(StringPoolAllocationAction::Free(8201));
         return crate::expat_h::XML_FALSE;
     }
     chars.resize(block_size as usize, 0);
-    let parser = pool.parser;
-    let mut allocation = allocation;
-    let backing = Box::new(move |action| match action {
-        StringPoolAllocationAction::Grow(size) => {
-            let reallocated = expat_realloc(parser, allocation, size, 8161);
-            if reallocated.is_null() {
-                false
-            } else {
-                allocation = reallocated;
-                true
-            }
-        }
-        StringPoolAllocationAction::Free(source_line) => {
-            expat_free(parser, allocation, source_line);
-            true
-        }
-    });
     let source = pool.start_ref(true);
     let source_index = if pool.ptr_offset != 0 {
         source.and_then(|source| source.block_from_tail.get().checked_sub(1))
