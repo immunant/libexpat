@@ -10896,6 +10896,60 @@ fn cdata_parsing_state(parser: &XML_ParserStruct) -> CdataParsingState {
     }
 }
 
+// CDATA can report events from either the parser's current input buffer or an
+// internal entity's replacement text.  Keep the latter as a stable vector
+// index instead of retaining a raw pointer to one of its cursor fields across
+// callbacks: a callback may re-enter the parser and grow or otherwise update
+// the active-entity storage.
+#[derive(Copy, Clone)]
+enum CdataEventTarget {
+    Parser,
+    InternalEntity(usize),
+}
+
+impl CdataEventTarget {
+    fn set_start(
+        self,
+        parser: &mut XML_ParserStruct,
+        internal_window: Option<(usize, usize)>,
+        start: usize,
+    ) {
+        match self {
+            Self::Parser => {
+                parser.m_eventPtr = parser.m_buffer.offset_from_address(start);
+            }
+            Self::InternalEntity(index) => {
+                if let Some(entity) = parser.m_activeInternalEntities.get_mut(index) {
+                    entity.node_mut().internalEventPtr =
+                        internal_event_offset(internal_window, start);
+                }
+            }
+        }
+    }
+
+    fn set_end(
+        self,
+        parser: &mut XML_ParserStruct,
+        internal_start: Option<usize>,
+        internal_window: Option<(usize, usize)>,
+        end: usize,
+    ) {
+        match self {
+            Self::Parser => {
+                parser.m_eventEndPtr = parser.m_buffer.offset_from_address(end);
+            }
+            Self::InternalEntity(index) => {
+                if let Some(entity) = parser.m_activeInternalEntities.get_mut(index) {
+                    entity.node_mut().internalEventEndPtr = internal_start.and_then(|start| {
+                        internal_event_offset(internal_window, end)
+                            .and_then(|end| end.checked_sub(start))
+                    });
+                }
+            }
+        }
+    }
+}
+
 unsafe extern "C" fn doCdataSection(
     mut parser: crate::expat_h::XML_Parser,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -10937,8 +10991,7 @@ unsafe extern "C" fn doCdataSection(
         .m_buffer
         .window_from_addresses(s.addr(), end.addr())
         .is_some();
-    let mut eventPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
-    let mut eventEndPP: *mut Option<usize> = ::core::ptr::null_mut::<Option<usize>>();
+    let mut event_target = CdataEventTarget::Parser;
     let mut internal_event_text: Option<(
         EntityTextRef,
         ::core::ffi::c_int,
@@ -10969,20 +11022,15 @@ unsafe extern "C" fn doCdataSection(
                 return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
             };
             internal_event_window = Some((text.as_ptr().addr(), text.len()));
-            std::ptr::from_mut(open_entity.node_mut())
+            open_entity_index
         };
-        eventPP = &raw mut (*open_entity).internalEventPtr;
-        eventEndPP = &raw mut (*open_entity).internalEventEndPtr;
+        event_target = CdataEventTarget::InternalEntity(open_entity);
     }
     let event_parser = parser_handle;
-    let parser_event_start_ptr = eventPP;
     let mut update_event_start = |start: *const ::core::ffi::c_char| {
-        if parser_events {
-            set_parser_event_start!(&mut *event_parser, start);
-        } else {
-            let offset = internal_event_offset(internal_event_window, start.addr());
-            *parser_event_start_ptr = offset;
-            internal_event_start.set(offset);
+        event_target.set_start(&mut *event_parser, internal_event_window, start.addr());
+        if !parser_events {
+            internal_event_start.set(internal_event_offset(internal_event_window, start.addr()));
         }
     };
     update_event_start(s);
@@ -11025,13 +11073,11 @@ unsafe extern "C" fn doCdataSection(
             accountingOnAbort(parser_handle);
             return crate::expat_h::XML_ERROR_AMPLIFICATION_LIMIT_BREACH;
         }
-        set_event_end!(
+        event_target.set_end(
             &mut *parser_handle,
-            parser_events,
             internal_event_start.get(),
             internal_event_window,
-            eventEndPP,
-            next
+            next.addr(),
         );
         // The flags and callback context are both observed between tokens.
         // `callback_context` is only a transient boundary value: it is not
@@ -11123,13 +11169,11 @@ unsafe extern "C" fn doCdataSection(
                                     &raw mut dataPtr,
                                     data_end,
                                 );
-                            set_event_end!(
+                            event_target.set_end(
                                 &mut *parser_handle,
-                                parser_events,
                                 internal_event_start.get(),
                                 internal_event_window,
-                                eventEndPP,
-                                next
+                                next.addr(),
                             );
                             // The converter is bounded by `data_end`, which is derived from
                             // the Rust-owned scratch buffer.  Validate the returned cursor
@@ -11170,7 +11214,7 @@ unsafe extern "C" fn doCdataSection(
                             None => return crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
                         };
                         charDataHandler.invoke(
-                            handler_arg!(parser_handle),
+                            callback_context,
                             s as *const crate::expat_external_h::XML_Char,
                             data_len,
                         );
