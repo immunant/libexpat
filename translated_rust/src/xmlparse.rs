@@ -22527,36 +22527,6 @@ unsafe fn poolCopyString(
     return (s, Some(start));
 }
 
-unsafe fn poolCopyStringN(
-    mut pool: *mut STRING_POOL,
-    mut s: *const crate::expat_external_h::XML_Char,
-    mut n: ::core::ffi::c_int,
-) -> Option<PoolStringRef> {
-    if (*pool).start.is_none() && poolGrow(&mut *pool) == 0 {
-        return None;
-    }
-    while n > 0 as ::core::ffi::c_int {
-        if if (*pool).is_full() && poolGrow(&mut *pool) == 0 {
-            0 as ::core::ffi::c_int
-        } else {
-            if (&mut *pool).write_cursor(*s) {
-                1 as ::core::ffi::c_int
-            } else {
-                0 as ::core::ffi::c_int
-            }
-        } == 0
-        {
-            return None;
-        }
-        n -= 1;
-        s = s.offset(1);
-    }
-    let pool = &mut *pool;
-    let string = pool.start_ref(true);
-    pool.commit();
-    string
-}
-
 /// Returns the owned, NUL-terminated pool string at `string`.
 ///
 /// A pool location can also designate non-terminated entity text, so callers
