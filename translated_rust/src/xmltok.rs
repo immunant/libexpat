@@ -12839,7 +12839,7 @@ pub mod xmltok_ns_c {
 
 pub mod nametab_h {
 
-    pub static mut namingBitmap: [::core::ffi::c_uint; 320] = [
+    pub static namingBitmap: [::core::ffi::c_uint; 320] = [
         0 as ::core::ffi::c_uint,
         0 as ::core::ffi::c_uint,
         0 as ::core::ffi::c_uint,
@@ -13162,7 +13162,7 @@ pub mod nametab_h {
         0x77ffffff as ::core::ffi::c_int as ::core::ffi::c_uint,
     ];
 
-    pub static mut nmstrtPages: [::core::ffi::c_uchar; 256] = [
+    pub static nmstrtPages: [::core::ffi::c_uchar; 256] = [
         0x2 as ::core::ffi::c_uchar,
         0x3 as ::core::ffi::c_uchar,
         0x4 as ::core::ffi::c_uchar,
@@ -13421,7 +13421,7 @@ pub mod nametab_h {
         0 as ::core::ffi::c_uchar,
     ];
 
-    pub static mut namePages: [::core::ffi::c_uchar; 256] = [
+    pub static namePages: [::core::ffi::c_uchar; 256] = [
         0x19 as ::core::ffi::c_uchar,
         0x3 as ::core::ffi::c_uchar,
         0x1a as ::core::ffi::c_uchar,
