@@ -9672,17 +9672,23 @@ pub unsafe extern "C" fn XML_SetXmlDeclHandler_ffi(
 ) {
     XML_SetXmlDeclHandler(parser, handler)
 }
-pub unsafe extern "C" fn XML_SetParamEntityParsing(
-    mut parser: crate::expat_h::XML_Parser,
-    mut peParsing: crate::expat_h::XML_ParamEntityParsing,
+/// The parser state needed to update parameter-entity parsing mode.
+///
+/// The exported wrapper makes this scoped view after validating the opaque
+/// parser handle, so feature-state policy stays outside the FFI boundary.
+struct ParamEntityParsingSettings<'a> {
+    parsing: ::core::ffi::c_uint,
+    value: &'a mut crate::expat_h::XML_ParamEntityParsing,
+}
+
+fn XML_SetParamEntityParsing(
+    settings: ParamEntityParsingSettings<'_>,
+    peParsing: crate::expat_h::XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
-    if parser.is_null() {
+    if matches!(settings.parsing, 1 | 3) {
         return 0 as ::core::ffi::c_int;
     }
-    if parserBusy(parser) != 0 {
-        return 0 as ::core::ffi::c_int;
-    }
-    (*parser).m_paramEntityParsing = peParsing;
+    *settings.value = peParsing;
     return 1 as ::core::ffi::c_int;
 }
 #[export_name = "XML_SetParamEntityParsing"]
@@ -9691,7 +9697,15 @@ pub unsafe extern "C" fn XML_SetParamEntityParsing_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut peParsing: crate::expat_h::XML_ParamEntityParsing,
 ) -> ::core::ffi::c_int {
-    XML_SetParamEntityParsing(parser, peParsing)
+    if parser.is_null() || !parser.is_aligned() {
+        return 0 as ::core::ffi::c_int;
+    }
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    let settings = ParamEntityParsingSettings {
+        parsing: parser.m_parsingStatus.parsing as ::core::ffi::c_uint,
+        value: &mut parser.m_paramEntityParsing,
+    };
+    XML_SetParamEntityParsing(settings, peParsing)
 }
 /// The subset of parser state needed to configure the shared hash key.
 ///
