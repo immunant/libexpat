@@ -301,10 +301,6 @@ fn write_copy<T>(ptr: *mut T, value: T) {
     with_mut(ptr, |slot| *slot = value)
 }
 
-fn ref_from_ptr<'a, T>(ptr: *const T) -> &'a T {
-    unsafe { &*ptr }
-}
-
 fn add_const_c_char(ptr: *const ::core::ffi::c_char, offset: isize) -> *const ::core::ffi::c_char {
     ptr.wrapping_offset(offset)
 }
@@ -514,11 +510,52 @@ fn call_unknown_converter(
     unsafe { uenc.convert.expect("non-null function pointer")(uenc.userData, ptr) }
 }
 
+fn encode_utf8_bytes(
+    c: ::core::ffi::c_int,
+    buf: &mut [::core::ffi::c_char; 4],
+) -> ::core::ffi::c_int {
+    if c < 0 as ::core::ffi::c_int {
+        return 0 as ::core::ffi::c_int;
+    }
+    if c < min2 as ::core::ffi::c_int {
+        buf[0] = (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        return 1 as ::core::ffi::c_int;
+    }
+    if c < min3 as ::core::ffi::c_int {
+        buf[0] = (c >> 6 as ::core::ffi::c_int | UTF8_cval2 as ::core::ffi::c_int)
+            as ::core::ffi::c_char;
+        buf[1] =
+            (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        return 2 as ::core::ffi::c_int;
+    }
+    if c < min4 as ::core::ffi::c_int {
+        buf[0] = (c >> 12 as ::core::ffi::c_int | UTF8_cval3 as ::core::ffi::c_int)
+            as ::core::ffi::c_char;
+        buf[1] = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+            | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[2] =
+            (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        return 3 as ::core::ffi::c_int;
+    }
+    if c < 0x110000 as ::core::ffi::c_int {
+        buf[0] = (c >> 18 as ::core::ffi::c_int | UTF8_cval4 as ::core::ffi::c_int)
+            as ::core::ffi::c_char;
+        buf[1] = (c >> 12 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+            | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[2] = (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
+            | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        buf[3] =
+            (c & 0x3f as ::core::ffi::c_int | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
+        return 4 as ::core::ffi::c_int;
+    }
+    0 as ::core::ffi::c_int
+}
+
 fn call_xml_utf8_encode(
     c: ::core::ffi::c_int,
-    buf: *mut ::core::ffi::c_char,
+    buf: &mut [::core::ffi::c_char; 4],
 ) -> ::core::ffi::c_int {
-    unsafe { XmlUtf8Encode(c, buf) }
+    encode_utf8_bytes(c, buf)
 }
 
 fn call_encoding_finder(
@@ -20779,53 +20816,7 @@ pub unsafe extern "C" fn XmlUtf8Encode(
     mut c: ::core::ffi::c_int,
     mut buf: *mut ::core::ffi::c_char,
 ) -> ::core::ffi::c_int {
-    unsafe {
-        if c < 0 as ::core::ffi::c_int {
-            return 0 as ::core::ffi::c_int;
-        }
-        if c < min2 as ::core::ffi::c_int {
-            *buf.offset(0 as ::core::ffi::c_int as isize) =
-                (c | UTF8_cval1 as ::core::ffi::c_int) as ::core::ffi::c_char;
-            return 1 as ::core::ffi::c_int;
-        }
-        if c < min3 as ::core::ffi::c_int {
-            *buf.offset(0 as ::core::ffi::c_int as isize) = (c >> 6 as ::core::ffi::c_int
-                | UTF8_cval2 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
-            *buf.offset(1 as ::core::ffi::c_int as isize) = (c & 0x3f as ::core::ffi::c_int
-                | 0x80 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
-            return 2 as ::core::ffi::c_int;
-        }
-        if c < min4 as ::core::ffi::c_int {
-            *buf.offset(0 as ::core::ffi::c_int as isize) = (c >> 12 as ::core::ffi::c_int
-                | UTF8_cval3 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
-            *buf.offset(1 as ::core::ffi::c_int as isize) =
-                (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-            *buf.offset(2 as ::core::ffi::c_int as isize) = (c & 0x3f as ::core::ffi::c_int
-                | 0x80 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
-            return 3 as ::core::ffi::c_int;
-        }
-        if c < 0x110000 as ::core::ffi::c_int {
-            *buf.offset(0 as ::core::ffi::c_int as isize) = (c >> 18 as ::core::ffi::c_int
-                | UTF8_cval4 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
-            *buf.offset(1 as ::core::ffi::c_int as isize) =
-                (c >> 12 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-            *buf.offset(2 as ::core::ffi::c_int as isize) =
-                (c >> 6 as ::core::ffi::c_int & 0x3f as ::core::ffi::c_int
-                    | 0x80 as ::core::ffi::c_int) as ::core::ffi::c_char;
-            *buf.offset(3 as ::core::ffi::c_int as isize) = (c & 0x3f as ::core::ffi::c_int
-                | 0x80 as ::core::ffi::c_int)
-                as ::core::ffi::c_char;
-            return 4 as ::core::ffi::c_int;
-        }
-        return 0 as ::core::ffi::c_int;
-    }
+    encode_utf8_bytes(c, unsafe { &mut *(buf as *mut [::core::ffi::c_char; 4]) })
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlUtf16Encode(
@@ -20858,7 +20849,9 @@ pub unsafe extern "C" fn XmlSizeOfUnknownEncoding() -> ::core::ffi::c_int {
     ::core::mem::size_of::<unknown_encoding>() as ::core::ffi::c_int
 }
 fn unknown_code_point(enc: *const ENCODING, p: *const ::core::ffi::c_char) -> ::core::ffi::c_int {
-    call_unknown_converter(ref_from_ptr(enc as *const unknown_encoding), p)
+    with_ref(enc.cast::<unknown_encoding>(), |uenc| {
+        call_unknown_converter(uenc, p)
+    })
 }
 extern "C" fn unknown_isName(
     enc: *const ENCODING,
@@ -20902,38 +20895,39 @@ extern "C" fn unknown_toUtf8(
     toP: *mut *mut ::core::ffi::c_char,
     toLim: *const ::core::ffi::c_char,
 ) -> XML_Convert_Result {
-    let uenc = ref_from_ptr(enc as *const unknown_encoding);
-    let mut buf: [::core::ffi::c_char; 4] = [0; 4];
-    loop {
-        let from = read_copy(fromP.cast_const());
-        if from == fromLim {
-            return XML_CONVERT_COMPLETED;
-        }
-        let byte = read_c_char(from) as ::core::ffi::c_uchar as usize;
-        let utf8_entry = read_copy(uenc.utf8.as_ptr().wrapping_add(byte));
-        let mut n = utf8_entry[0] as ::core::ffi::c_int;
-        let mut utf8 = utf8_entry.as_ptr().wrapping_add(1);
-        let to = read_copy(toP.cast_const());
-        if n == 0 as ::core::ffi::c_int {
-            let c = call_unknown_converter(uenc, from);
-            n = call_xml_utf8_encode(c, buf.as_mut_ptr());
-            if n as usize > remaining_c_chars(to, toLim) {
-                return XML_CONVERT_OUTPUT_EXHAUSTED;
+    with_ref(enc.cast::<unknown_encoding>(), |uenc| {
+        let mut buf: [::core::ffi::c_char; 4] = [0; 4];
+        loop {
+            let from = read_copy(fromP.cast_const());
+            if from == fromLim {
+                break XML_CONVERT_COMPLETED;
             }
-            utf8 = buf.as_ptr();
-            write_copy(
-                fromP,
-                add_const_c_char(from, unknown_sequence_length(enc, from)),
-            );
-        } else {
-            if n as usize > remaining_c_chars(to, toLim) {
-                return XML_CONVERT_OUTPUT_EXHAUSTED;
+            let byte = read_c_char(from) as ::core::ffi::c_uchar as usize;
+            let utf8_entry = read_copy(uenc.utf8.as_ptr().wrapping_add(byte));
+            let mut n = utf8_entry[0] as ::core::ffi::c_int;
+            let mut utf8 = utf8_entry.as_ptr().wrapping_add(1);
+            let to = read_copy(toP.cast_const());
+            if n == 0 as ::core::ffi::c_int {
+                let c = call_unknown_converter(uenc, from);
+                n = call_xml_utf8_encode(c, &mut buf);
+                if n as usize > remaining_c_chars(to, toLim) {
+                    break XML_CONVERT_OUTPUT_EXHAUSTED;
+                }
+                utf8 = buf.as_ptr();
+                write_copy(
+                    fromP,
+                    add_const_c_char(from, unknown_sequence_length(enc, from)),
+                );
+            } else {
+                if n as usize > remaining_c_chars(to, toLim) {
+                    break XML_CONVERT_OUTPUT_EXHAUSTED;
+                }
+                write_copy(fromP, add_const_c_char(from, 1));
             }
-            write_copy(fromP, add_const_c_char(from, 1));
+            copy_c_chars(to, utf8, n as size_t);
+            write_copy(toP, add_mut_c_char(to, n as isize));
         }
-        copy_c_chars(to, utf8, n as size_t);
-        write_copy(toP, add_mut_c_char(to, n as isize));
-    }
+    })
 }
 extern "C" fn unknown_toUtf16(
     enc: *const ENCODING,
@@ -20942,30 +20936,34 @@ extern "C" fn unknown_toUtf16(
     toP: *mut *mut ::core::ffi::c_ushort,
     toLim: *const ::core::ffi::c_ushort,
 ) -> XML_Convert_Result {
-    let uenc = ref_from_ptr(enc as *const unknown_encoding);
-    while read_copy(fromP.cast_const()) < fromLim && read_copy(toP.cast_const()) < toLim.cast_mut()
-    {
-        let from = read_copy(fromP.cast_const());
-        let byte = read_c_char(from) as ::core::ffi::c_uchar as usize;
-        let mut c = uenc.utf16[byte];
-        if c as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            c = call_unknown_converter(uenc, from) as ::core::ffi::c_ushort;
-            write_copy(
-                fromP,
-                add_const_c_char(from, unknown_sequence_length(enc, from)),
-            );
-        } else {
-            write_copy(fromP, add_const_c_char(from, 1));
+    with_ref(enc.cast::<unknown_encoding>(), |uenc| {
+        while read_copy(fromP.cast_const()) < fromLim
+            && read_copy(toP.cast_const()) < toLim.cast_mut()
+        {
+            let from = read_copy(fromP.cast_const());
+            let byte = read_c_char(from) as ::core::ffi::c_uchar as usize;
+            let mut c = uenc.utf16[byte];
+            if c as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                c = call_unknown_converter(uenc, from) as ::core::ffi::c_ushort;
+                write_copy(
+                    fromP,
+                    add_const_c_char(from, unknown_sequence_length(enc, from)),
+                );
+            } else {
+                write_copy(fromP, add_const_c_char(from, 1));
+            }
+            let to = read_copy(toP.cast_const());
+            write_copy(to, c);
+            write_copy(toP, add_mut_c_ushort(to, 1));
         }
-        let to = read_copy(toP.cast_const());
-        write_copy(to, c);
-        write_copy(toP, add_mut_c_ushort(to, 1));
-    }
-    if read_copy(toP.cast_const()) == toLim.cast_mut() && read_copy(fromP.cast_const()) < fromLim {
-        XML_CONVERT_OUTPUT_EXHAUSTED
-    } else {
-        XML_CONVERT_COMPLETED
-    }
+        if read_copy(toP.cast_const()) == toLim.cast_mut()
+            && read_copy(fromP.cast_const()) < fromLim
+        {
+            XML_CONVERT_OUTPUT_EXHAUSTED
+        } else {
+            XML_CONVERT_COMPLETED
+        }
+    })
 }
 #[no_mangle]
 pub unsafe extern "C" fn XmlInitUnknownEncoding(
