@@ -9928,17 +9928,20 @@ pub unsafe extern "C" fn XML_SetReparseDeferralEnabled_ffi(
 ) -> crate::expat_h::XML_Bool {
     XML_SetReparseDeferralEnabled(parser, enabled)
 }
-unsafe extern "C" fn storeRawNames(
-    mut parser: crate::expat_h::XML_Parser,
+fn store_raw_names_impl(
+    parser: &mut XML_ParserStruct,
+    dtd: &DTD,
 ) -> crate::expat_h::XML_Bool {
-    let dtd = &*parser_dtd_ptr!(parser);
-    let parser = &mut *parser;
     let mut tag_index = parser.m_tagStack;
+    let input_buffer = &parser.m_buffer;
+    let active_tags = &mut parser.m_activeTags;
     while let Some(index) = tag_index {
-        let Some(storage) = parser.m_activeTags.get_mut(index) else {
+        let Some(storage) = active_tags.get_mut(index) else {
             return crate::expat_h::XML_FALSE;
         };
-        let tag = &mut *storage.tag.as_mut_ptr();
+        let Some(tag) = storage.tag.first_mut() else {
+            return crate::expat_h::XML_FALSE;
+        };
         let mut nameLen: crate::__stddef_size_t_h::size_t =
             ::core::mem::size_of::<crate::expat_external_h::XML_Char>().wrapping_mul(
                 (tag.name.strLen + 1 as ::core::ffi::c_int) as crate::__stddef_size_t_h::size_t,
@@ -9981,9 +9984,12 @@ unsafe extern "C" fn storeRawNames(
                     .bytes
                     .copy_within(old_offset..old_end, raw_name_offset);
             }
-            _ => {
-                let Some(raw_name) =
-                    retained_raw_name_source(parser, dtd, tag.rawName, raw_name_len)
+            RawNameStorage::InputBuffer(offset) => {
+                let Some(raw_name) = input_buffer
+                    .bytes
+                    .as_deref()
+                    .and_then(|bytes| bytes.get(offset..offset.checked_add(raw_name_len)?))
+                    .map(RawNameSource::Bytes)
                 else {
                     return crate::expat_h::XML_FALSE;
                 };
@@ -9991,11 +9997,39 @@ unsafe extern "C" fn storeRawNames(
                     return crate::expat_h::XML_FALSE;
                 }
             }
+            RawNameStorage::EntityText {
+                text,
+                length,
+                offset,
+            } => {
+                let Some(raw_name) = entity_text_chars(dtd, text, length)
+                    .and_then(|chars| chars.get(offset..offset.checked_add(raw_name_len)?))
+                    .map(RawNameSource::Chars)
+                else {
+                    return crate::expat_h::XML_FALSE;
+                };
+                if !raw_name.copy_into(&mut tag.buffer.bytes[raw_name_offset..raw_name_end]) {
+                    return crate::expat_h::XML_FALSE;
+                }
+            }
+            RawNameStorage::Unset => return crate::expat_h::XML_FALSE,
         }
         tag.rawName = RawNameStorage::TagBuffer(raw_name_offset);
         tag_index = index.checked_sub(1);
     }
     return crate::expat_h::XML_TRUE;
+}
+
+unsafe extern "C" fn storeRawNames(
+    parser: crate::expat_h::XML_Parser,
+) -> crate::expat_h::XML_Bool {
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_FALSE;
+    };
+    let Some(dtd_owner) = parser.m_dtd.clone() else {
+        return crate::expat_h::XML_FALSE;
+    };
+    dtd_owner.inspect(|dtd| store_raw_names_impl(parser, dtd))
 }
 
 unsafe extern "C" fn contentProcessor(
@@ -16012,6 +16046,114 @@ fn scan_prolog_window(
         .then_some(scan)
 }
 
+struct PrologContentContinuation {
+    error: crate::expat_h::XML_Error,
+    next_address: Option<usize>,
+}
+
+/// Continues from a complete prolog token into content processing.
+///
+/// The prolog state machine carries C-compatible cursors for its legacy
+/// callers, but the transition itself only needs a checked window owned by
+/// either the parser buffer or the active internal entity.  Resolve that
+/// window before entering the older content implementation and validate its
+/// returned cursor against the current owner afterwards.  This keeps raw
+/// processor dispatch out of `doProlog` while preserving content's existing
+/// callback and re-entry behavior.
+fn continue_prolog_as_content(
+    parser: &mut XML_ParserStruct,
+    dtd: &DTD,
+    parser_events: bool,
+    start_address: usize,
+    end_address: usize,
+    account: XML_Account,
+) -> PrologContentContinuation {
+    let Some(normal_encoding) = (if parser_events {
+        current_parser_normal_encoding(parser)
+    } else {
+        Some(*crate::src::xmltok::internal_utf8_normal_encoding(matches!(
+            parser.m_internalEncoding,
+            InternalEncoding::Utf8Ns
+        )))
+    }) else {
+        return PrologContentContinuation {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            next_address: Some(start_address),
+        };
+    };
+    let encoding = if parser_events {
+        current_parser_encoding(parser)
+    } else {
+        internal_encoding(parser.m_internalEncoding)
+    };
+    let (start, end) = {
+        let Some(source) = event_raw_name_source(
+            parser,
+            dtd,
+            parser_events,
+            start_address,
+            end_address,
+        ) else {
+            return PrologContentContinuation {
+                error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+                next_address: Some(start_address),
+            };
+        };
+        let chars = source.chars();
+        let start = chars.as_ptr();
+        (start, start.wrapping_add(chars.len()))
+    };
+    let start_tag_level = if parser.m_parentParser.is_some() { 1 } else { 0 };
+    let have_more = (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+        as crate::expat_h::XML_Bool;
+    let mut next = start;
+    // `start` and `end` were derived from the checked owner above, and
+    // `next` is a local output slot whose result is revalidated below.
+    let mut error = unsafe {
+        doContent(
+            parser,
+            start_tag_level,
+            normal_encoding,
+            encoding,
+            parser_events,
+            start,
+            end,
+            &raw mut next,
+            have_more,
+            account,
+        )
+    };
+    // `contentProcessor` records raw tag names after a successful content
+    // pass.  Keep that postcondition in the adapter rather than skipping it
+    // when prolog transitions directly to content.
+    if error as ::core::ffi::c_uint
+        == crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int as ::core::ffi::c_uint
+        && store_raw_names_impl(parser, dtd) == 0
+    {
+        error = crate::expat_h::XML_ERROR_NO_MEMORY;
+    }
+    let next_address = (!next.is_null()).then_some(next.addr());
+    if next_address.is_some_and(|next_address| {
+        event_raw_name_source(
+            parser,
+            dtd,
+            parser_events,
+            next_address,
+            next_address,
+        )
+        .is_none()
+    }) {
+        return PrologContentContinuation {
+            error: crate::expat_h::XML_ERROR_UNEXPECTED_STATE,
+            next_address: Some(start_address),
+        };
+    }
+    PrologContentContinuation {
+        error,
+        next_address,
+    }
+}
+
 unsafe fn doProlog(
     parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
@@ -16728,12 +16870,30 @@ unsafe fn doProlog(
                                             }
                                         }
                                         parser.m_processor = ProcessorState::Content;
-                                        return contentProcessor(
+                                        let continuation = continue_prolog_as_content(
                                             parser,
-                                            s,
-                                            end,
-                                            std::ptr::from_mut(next_ptr),
+                                            dtd,
+                                            parser_events,
+                                            s.addr(),
+                                            end.addr(),
+                                            account,
                                         );
+                                        *next_ptr = match continuation.next_address {
+                                            Some(next_address) => {
+                                                let Some(source) = event_raw_name_source(
+                                                    parser,
+                                                    dtd,
+                                                    parser_events,
+                                                    next_address,
+                                                    next_address,
+                                                ) else {
+                                                    return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+                                                };
+                                                source.chars().as_ptr()
+                                            }
+                                            None => ::core::ptr::null(),
+                                        };
+                                        return continuation.error;
                                     }
                                     34 => {
                                         let Some(element_name) = get_element_type_from_token(
