@@ -452,20 +452,11 @@ pub unsafe extern "C" fn duff_reallocator(
         return realloc(ptr, size);
     }
 }
-unsafe extern "C" fn portable_strnlen(
-    mut s: *const ::core::ffi::c_char,
-    mut maxlen: size_t,
-) -> size_t {
-    unsafe {
-        let end: *const ::core::ffi::c_char =
-            memchr(s as *const ::core::ffi::c_void, '\0' as i32, maxlen)
-                as *const ::core::ffi::c_char;
-        return if end.is_null() {
-            maxlen
-        } else {
-            end.offset_from(s) as ::core::ffi::c_long as size_t
-        };
-    }
+fn portable_strnlen(bytes: &[u8]) -> size_t {
+    bytes
+        .iter()
+        .position(|&byte| byte == b'\0')
+        .unwrap_or(bytes.len())
 }
 #[no_mangle]
 pub unsafe extern "C" fn portable_strndup(
@@ -477,7 +468,8 @@ pub unsafe extern "C" fn portable_strndup(
             *__errno_location() = EINVAL;
             return ::core::ptr::null_mut::<::core::ffi::c_char>();
         }
-        n = portable_strnlen(s, n);
+        let source = ::core::slice::from_raw_parts(s.cast::<u8>(), n);
+        n = portable_strnlen(source);
         let buffer: *mut ::core::ffi::c_char =
             malloc(n.wrapping_add(1 as size_t)) as *mut ::core::ffi::c_char;
         if buffer.is_null() {
