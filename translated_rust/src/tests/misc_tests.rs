@@ -540,133 +540,121 @@ unsafe extern "C" fn test_misc_error_string() {
         }
     }
 }
-unsafe extern "C" fn parse_version(
-    mut version_text: *const XML_LChar,
-    mut version_struct: *mut XML_Expat_Version,
-) -> ::core::ffi::c_int {
+fn set_test_info(
+    function: *const ::core::ffi::c_char,
+    filename: *const ::core::ffi::c_char,
+    lineno: ::core::ffi::c_int,
+) {
     unsafe {
+        _check_set_test_info(function, filename, lineno);
+    }
+}
+
+fn fail(
+    file: *const ::core::ffi::c_char,
+    line: ::core::ffi::c_int,
+    msg: *const ::core::ffi::c_char,
+) -> ! {
+    unsafe { _fail(file, line, msg) }
+}
+
+fn expat_version() -> Option<(XML_Expat_Version, &'static std::ffi::CStr)> {
+    unsafe {
+        let version_text = XML_ExpatVersion();
         if version_text.is_null() {
-            return XML_FALSE as ::core::ffi::c_int;
+            None
+        } else {
+            Some((
+                XML_ExpatVersionInfo(),
+                std::ffi::CStr::from_ptr(version_text),
+            ))
         }
-        while *version_text as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
-            if *version_text as ::core::ffi::c_int >= ASCII_0
-                && *version_text as ::core::ffi::c_int <= ASCII_9
-            {
+    }
+}
+
+fn parse_version(version_text: &std::ffi::CStr) -> Option<XML_Expat_Version> {
+    fn parse_component(bytes: &[u8], index: &mut usize) -> Option<::core::ffi::c_int> {
+        let start = *index;
+        let mut value = 0 as ::core::ffi::c_int;
+
+        while let Some(byte) = bytes.get(*index) {
+            if !byte.is_ascii_digit() {
                 break;
             }
-            version_text = version_text.offset(1);
+
+            value = 10 as ::core::ffi::c_int * value + (::core::ffi::c_int::from(*byte) - ASCII_0);
+            *index += 1;
         }
-        if *version_text as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
-            return XML_FALSE as ::core::ffi::c_int;
-        }
-        (*version_struct).major = 0 as ::core::ffi::c_int;
-        while *version_text as ::core::ffi::c_int >= ASCII_0
-            && *version_text as ::core::ffi::c_int <= ASCII_9
-        {
-            let c2rust_fresh0 = version_text;
-            version_text = version_text.offset(1);
-            (*version_struct).major = 10 as ::core::ffi::c_int * (*version_struct).major
-                + (*c2rust_fresh0 as ::core::ffi::c_int - ASCII_0);
-        }
-        let c2rust_fresh1 = version_text;
-        version_text = version_text.offset(1);
-        if *c2rust_fresh1 as ::core::ffi::c_int != ASCII_PERIOD {
-            return XML_FALSE as ::core::ffi::c_int;
-        }
-        (*version_struct).minor = 0 as ::core::ffi::c_int;
-        while *version_text as ::core::ffi::c_int >= ASCII_0
-            && *version_text as ::core::ffi::c_int <= ASCII_9
-        {
-            let c2rust_fresh2 = version_text;
-            version_text = version_text.offset(1);
-            (*version_struct).minor = 10 as ::core::ffi::c_int * (*version_struct).minor
-                + (*c2rust_fresh2 as ::core::ffi::c_int - ASCII_0);
-        }
-        let c2rust_fresh3 = version_text;
-        version_text = version_text.offset(1);
-        if *c2rust_fresh3 as ::core::ffi::c_int != ASCII_PERIOD {
-            return XML_FALSE as ::core::ffi::c_int;
-        }
-        (*version_struct).micro = 0 as ::core::ffi::c_int;
-        while *version_text as ::core::ffi::c_int >= ASCII_0
-            && *version_text as ::core::ffi::c_int <= ASCII_9
-        {
-            let c2rust_fresh4 = version_text;
-            version_text = version_text.offset(1);
-            (*version_struct).micro = 10 as ::core::ffi::c_int * (*version_struct).micro
-                + (*c2rust_fresh4 as ::core::ffi::c_int - ASCII_0);
-        }
-        if *version_text as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
-            return XML_FALSE as ::core::ffi::c_int;
-        }
-        return XML_TRUE as ::core::ffi::c_int;
+
+        (*index != start).then_some(value)
     }
-}
-unsafe extern "C" fn versions_equal(
-    mut first: *const XML_Expat_Version,
-    mut second: *const XML_Expat_Version,
-) -> ::core::ffi::c_int {
-    unsafe {
-        return ((*first).major == (*second).major
-            && (*first).minor == (*second).minor
-            && (*first).micro == (*second).micro) as ::core::ffi::c_int;
+
+    let bytes = version_text.to_bytes();
+    let mut index = bytes.iter().position(|byte| byte.is_ascii_digit())?;
+    let major = parse_component(bytes, &mut index)?;
+
+    if bytes.get(index).copied() != Some(ASCII_PERIOD as u8) {
+        return None;
     }
+    index += 1;
+
+    let minor = parse_component(bytes, &mut index)?;
+    if bytes.get(index).copied() != Some(ASCII_PERIOD as u8) {
+        return None;
+    }
+    index += 1;
+
+    let micro = parse_component(bytes, &mut index)?;
+    (index == bytes.len()).then_some(XML_Expat_Version {
+        major,
+        minor,
+        micro,
+    })
 }
-unsafe extern "C" fn test_misc_version() {
-    unsafe {
-        _check_set_test_info(
-            b"test_misc_version\0".as_ptr() as *const ::core::ffi::c_char,
+
+fn versions_equal(first: &XML_Expat_Version, second: &XML_Expat_Version) -> bool {
+    first.major == second.major && first.minor == second.minor && first.micro == second.micro
+}
+
+extern "C" fn test_misc_version() {
+    set_test_info(
+        b"test_misc_version\0".as_ptr() as *const ::core::ffi::c_char,
+        b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
+        201 as ::core::ffi::c_int,
+    );
+
+    let (read_version, version_text) = match expat_version() {
+        Some(version) => version,
+        None => fail(
             b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-            201 as ::core::ffi::c_int,
+            208 as ::core::ffi::c_int,
+            b"Could not obtain version text\0".as_ptr() as *const ::core::ffi::c_char,
+        ),
+    };
+
+    let parsed_version = match parse_version(version_text) {
+        Some(version) => version,
+        None => fail(
+            b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
+            211 as ::core::ffi::c_int,
+            b"Unable to parse version text\0".as_ptr() as *const ::core::ffi::c_char,
+        ),
+    };
+
+    if !versions_equal(&read_version, &parsed_version) {
+        fail(
+            b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
+            213 as ::core::ffi::c_int,
+            b"Version mismatch\0".as_ptr() as *const ::core::ffi::c_char,
         );
-        let mut read_version: XML_Expat_Version = XML_ExpatVersionInfo();
-        let mut parsed_version: XML_Expat_Version = XML_Expat_Version {
-            major: 0 as ::core::ffi::c_int,
-            minor: 0 as ::core::ffi::c_int,
-            micro: 0 as ::core::ffi::c_int,
-        };
-        let mut version_text: *const XML_LChar = XML_ExpatVersion();
-        if version_text.is_null() {
-            _fail(
-                b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                208 as ::core::ffi::c_int,
-                b"Could not obtain version text\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if !version_text.is_null() {
-        } else {
-            __assert_fail(
-                b"version_text != NULL\0".as_ptr() as *const ::core::ffi::c_char,
-                b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                209 as ::core::ffi::c_uint,
-                __ASSERT_FUNCTION.as_ptr(),
-            );
-        };
-        if parse_version(version_text, &raw mut parsed_version) == 0 {
-            _fail(
-                b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                211 as ::core::ffi::c_int,
-                b"Unable to parse version text\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if versions_equal(&raw mut read_version, &raw mut parsed_version) == 0 {
-            _fail(
-                b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                213 as ::core::ffi::c_int,
-                b"Version mismatch\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
-        if strcmp(
-            version_text as *const ::core::ffi::c_char,
-            b"expat_2.7.4\0".as_ptr() as *const ::core::ffi::c_char,
-        ) != 0 as ::core::ffi::c_int
-        {
-            _fail(
-                b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
-                217 as ::core::ffi::c_int,
-                b"XML_*_VERSION in expat.h out of sync?\n\0".as_ptr() as *const ::core::ffi::c_char,
-            );
-        }
+    }
+
+    if version_text.to_bytes() != b"expat_2.7.4" {
+        fail(
+            b"/root/work/expat/tests/misc_tests.c\0".as_ptr() as *const ::core::ffi::c_char,
+            217 as ::core::ffi::c_int,
+            b"XML_*_VERSION in expat.h out of sync?\n\0".as_ptr() as *const ::core::ffi::c_char,
+        );
     }
 }
 unsafe extern "C" fn test_misc_features() {
