@@ -2618,7 +2618,7 @@ fn dispatch_unparsed_entity_decl_callback(
 trait NotationDeclCallback: Send + Sync + std::any::Any {}
 
 impl NotationDeclCallback
-    for unsafe extern "C" fn(
+    for extern "C" fn(
         *mut ::core::ffi::c_void,
         *const crate::expat_external_h::XML_Char,
         *const crate::expat_external_h::XML_Char,
@@ -2657,7 +2657,7 @@ impl NotationDeclCallbackAdapter {
 
     fn invoke(&self, event: NotationDeclCallbackEvent<'_>) {
         let Some(callback) = (self.callback.as_ref() as &dyn std::any::Any).downcast_ref::<
-            unsafe extern "C" fn(
+            extern "C" fn(
                 *mut ::core::ffi::c_void,
                 *const crate::expat_external_h::XML_Char,
                 *const crate::expat_external_h::XML_Char,
@@ -2667,21 +2667,19 @@ impl NotationDeclCallbackAdapter {
         >() else {
             return;
         };
-        unsafe {
-            callback(
-                handler_arg_from_state!(event.parser),
-                event
-                    .notation_name
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event.base.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event
-                    .system_id
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-                event
-                    .public_id
-                    .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
-            );
-        }
+        callback(
+            handler_arg_from_state!(event.parser),
+            event
+                .notation_name
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event.base.map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event
+                .system_id
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+            event
+                .public_id
+                .map_or(::core::ptr::null(), |chars| chars.as_ptr()),
+        );
     }
 }
 
