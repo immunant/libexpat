@@ -10669,14 +10669,14 @@ pub mod xmltok_impl_c {
         let mut state: crate::xmltok_impl_h::C2Rust_Unnamed_3 = crate::xmltok_impl_c::inName_1;
         let mut nAtts: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
         let mut open: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-        ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+        ptr = ptr.wrapping_add(2);
         loop {
-            match if *ptr.offset(0 as isize) as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+            match if *ptr as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
                 (*(enc as *const normal_encoding)).type_0
-                    [*ptr.offset(1 as ::core::ffi::c_int as isize) as ::core::ffi::c_uchar as usize]
+                    [*ptr.wrapping_add(1) as ::core::ffi::c_uchar as usize]
                     as ::core::ffi::c_int
             } else {
-                unicode_byte_type(*ptr.offset(0 as isize), *ptr.offset(1 as isize))
+                unicode_byte_type(*ptr, *ptr.wrapping_add(1))
             } {
                 5 => {
                     if state as ::core::ffi::c_uint
@@ -10684,12 +10684,12 @@ pub mod xmltok_impl_c {
                             as ::core::ffi::c_uint
                     {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
+                            (*atts.wrapping_add(nAtts as usize)).name = ptr;
+                            (*atts.wrapping_add(nAtts as usize)).normalized = 1 as ::core::ffi::c_char;
                         }
                         state = crate::xmltok_impl_c::inName_1;
                     }
-                    ptr = ptr.offset((2 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
+                    ptr = ptr.wrapping_add(0);
                 }
                 6 => {
                     if state as ::core::ffi::c_uint
@@ -10697,12 +10697,12 @@ pub mod xmltok_impl_c {
                             as ::core::ffi::c_uint
                     {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
+                            (*atts.wrapping_add(nAtts as usize)).name = ptr;
+                            (*atts.wrapping_add(nAtts as usize)).normalized = 1 as ::core::ffi::c_char;
                         }
                         state = crate::xmltok_impl_c::inName_1;
                     }
-                    ptr = ptr.offset((3 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
+                    ptr = ptr.wrapping_add(1);
                 }
                 7 => {
                     if state as ::core::ffi::c_uint
@@ -10710,12 +10710,12 @@ pub mod xmltok_impl_c {
                             as ::core::ffi::c_uint
                     {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
+                            (*atts.wrapping_add(nAtts as usize)).name = ptr;
+                            (*atts.wrapping_add(nAtts as usize)).normalized = 1 as ::core::ffi::c_char;
                         }
                         state = crate::xmltok_impl_c::inName_1;
                     }
-                    ptr = ptr.offset((4 as ::core::ffi::c_int - 2 as ::core::ffi::c_int) as isize);
+                    ptr = ptr.wrapping_add(2);
                 }
                 29 | 22 | 24 => {
                     if state as ::core::ffi::c_uint
@@ -10723,8 +10723,8 @@ pub mod xmltok_impl_c {
                             as ::core::ffi::c_uint
                     {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).name = ptr;
-                            (*atts.offset(nAtts as isize)).normalized = 1 as ::core::ffi::c_char;
+                            (*atts.wrapping_add(nAtts as usize)).name = ptr;
+                            (*atts.wrapping_add(nAtts as usize)).normalized = 1 as ::core::ffi::c_char;
                         }
                         state = crate::xmltok_impl_c::inName_1;
                     }
@@ -10735,15 +10735,14 @@ pub mod xmltok_impl_c {
                             as ::core::ffi::c_uint
                     {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valuePtr =
-                                ptr.offset(2 as ::core::ffi::c_int as isize);
+                            (*atts.wrapping_add(nAtts as usize)).valuePtr = ptr.wrapping_add(2);
                         }
                         state = crate::xmltok_impl_c::inValue_1;
                         open = crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int;
                     } else if open == crate::xmltok_impl_h::BT_QUOT as ::core::ffi::c_int {
                         state = crate::xmltok_impl_c::other_1;
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valueEnd = ptr;
+                            (*atts.wrapping_add(nAtts as usize)).valueEnd = ptr;
                         }
                         nAtts += 1;
                     }
@@ -10754,22 +10753,21 @@ pub mod xmltok_impl_c {
                             as ::core::ffi::c_uint
                     {
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valuePtr =
-                                ptr.offset(2 as ::core::ffi::c_int as isize);
+                            (*atts.wrapping_add(nAtts as usize)).valuePtr = ptr.wrapping_add(2);
                         }
                         state = crate::xmltok_impl_c::inValue_1;
                         open = crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int;
                     } else if open == crate::xmltok_impl_h::BT_APOS as ::core::ffi::c_int {
                         state = crate::xmltok_impl_c::other_1;
                         if nAtts < attsMax {
-                            (*atts.offset(nAtts as isize)).valueEnd = ptr;
+                            (*atts.wrapping_add(nAtts as usize)).valueEnd = ptr;
                         }
                         nAtts += 1;
                     }
                 }
                 3 => {
                     if nAtts < attsMax {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
+                        (*atts.wrapping_add(nAtts as usize)).normalized = 0 as ::core::ffi::c_char;
                     }
                 }
                 21 => {
@@ -10782,48 +10780,42 @@ pub mod xmltok_impl_c {
                         == crate::xmltok_impl_c::inValue_1 as ::core::ffi::c_int
                             as ::core::ffi::c_uint
                         && nAtts < attsMax
-                        && (*atts.offset(nAtts as isize)).normalized as ::core::ffi::c_int != 0
-                        && (ptr == (*atts.offset(nAtts as isize)).valuePtr
-                            || (if *ptr.offset(0 as isize) as ::core::ffi::c_int
+                        && (*atts.wrapping_add(nAtts as usize)).normalized as ::core::ffi::c_int != 0
+                        && (ptr == (*atts.wrapping_add(nAtts as usize)).valuePtr
+                            || (if *ptr as ::core::ffi::c_int
                                 == 0 as ::core::ffi::c_int
                             {
-                                *ptr.offset(1 as isize) as ::core::ffi::c_int
+                                *ptr.wrapping_add(1) as ::core::ffi::c_int
                             } else {
                                 -1 as ::core::ffi::c_int
                             }) != crate::ascii_h::ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(0 as isize)
+                            || (if *ptr.wrapping_add(2)
                                 as ::core::ffi::c_int
                                 == 0 as ::core::ffi::c_int
                             {
-                                *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as isize)
+                                *ptr.wrapping_add(2)
+                                    .wrapping_add(1)
                                     as ::core::ffi::c_int
                             } else {
                                 -1 as ::core::ffi::c_int
                             }) == crate::ascii_h::ASCII_SPACE
-                            || (if *ptr
-                                .offset(2 as ::core::ffi::c_int as isize)
-                                .offset(0 as isize)
+                            || (if *ptr.wrapping_add(2)
                                 as ::core::ffi::c_int
                                 == 0 as ::core::ffi::c_int
                             {
                                 (*(enc as *const normal_encoding)).type_0[*ptr
-                                    .offset(2 as ::core::ffi::c_int as isize)
-                                    .offset(1 as ::core::ffi::c_int as isize)
+                                    .wrapping_add(2)
+                                    .wrapping_add(1)
                                     as ::core::ffi::c_uchar
                                     as usize] as ::core::ffi::c_int
                             } else {
                                 unicode_byte_type(
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(0 as isize),
-                                    *ptr.offset(2 as ::core::ffi::c_int as isize)
-                                        .offset(1 as isize),
+                                    *ptr.wrapping_add(2),
+                                    *ptr.wrapping_add(2).wrapping_add(1),
                                 )
                             }) == open)
                     {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
+                        (*atts.wrapping_add(nAtts as usize)).normalized = 0 as ::core::ffi::c_char;
                     }
                 }
                 9 | 10 => {
@@ -10837,7 +10829,7 @@ pub mod xmltok_impl_c {
                             as ::core::ffi::c_uint
                         && nAtts < attsMax
                     {
-                        (*atts.offset(nAtts as isize)).normalized = 0 as ::core::ffi::c_char;
+                        (*atts.wrapping_add(nAtts as usize)).normalized = 0 as ::core::ffi::c_char;
                     }
                 }
                 11 | 17 => {
@@ -10850,7 +10842,7 @@ pub mod xmltok_impl_c {
                 }
                 _ => {}
             }
-            ptr = ptr.offset(2 as ::core::ffi::c_int as isize);
+            ptr = ptr.wrapping_add(2);
         }
     }
 
