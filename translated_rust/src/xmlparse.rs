@@ -2719,7 +2719,22 @@ fn parserBusy(parser: &XML_ParserStruct) -> crate::expat_h::XML_Bool {
         0 | 2 | _ => return crate::expat_h::XML_FALSE,
     };
 }
-pub unsafe extern "C" fn XML_SetEncoding(
+pub fn XML_SetEncoding(
+    parser: Option<&mut XML_ParserStruct>,
+    protocol_encoding_name: *const crate::expat_external_h::XML_Char,
+) -> crate::expat_h::XML_Status {
+    with_parser_mut(parser, |parser| {
+        if parserBusy(parser) != 0 {
+            return crate::expat_h::XML_STATUS_ERROR;
+        }
+        parser.m_protocolEncodingName = protocol_encoding_name;
+        crate::expat_h::XML_STATUS_OK
+    })
+    .unwrap_or(crate::expat_h::XML_STATUS_ERROR)
+}
+#[export_name = "XML_SetEncoding"]
+
+pub unsafe extern "C" fn XML_SetEncoding_ffi(
     mut parser: crate::expat_h::XML_Parser,
     mut encodingName: *const crate::expat_external_h::XML_Char,
 ) -> crate::expat_h::XML_Status {
@@ -2734,23 +2749,20 @@ pub unsafe extern "C" fn XML_SetEncoding(
         (*parser).m_protocolEncodingName as *mut ::core::ffi::c_void,
         1723 as ::core::ffi::c_int,
     );
-    if encodingName.is_null() {
-        (*parser).m_protocolEncodingName = ::core::ptr::null::<crate::expat_external_h::XML_Char>();
+
+    let protocol_encoding_name = if encodingName.is_null() {
+        ::core::ptr::null::<crate::expat_external_h::XML_Char>()
     } else {
-        (*parser).m_protocolEncodingName = copyString(encodingName, parser);
-        if (*parser).m_protocolEncodingName.is_null() {
+        let protocol_encoding_name = copyString(encodingName, parser);
+        if protocol_encoding_name.is_null() {
+            (*parser).m_protocolEncodingName =
+                ::core::ptr::null::<crate::expat_external_h::XML_Char>();
             return crate::expat_h::XML_STATUS_ERROR;
         }
-    }
-    return crate::expat_h::XML_STATUS_OK;
-}
-#[export_name = "XML_SetEncoding"]
+        protocol_encoding_name
+    };
 
-pub unsafe extern "C" fn XML_SetEncoding_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut encodingName: *const crate::expat_external_h::XML_Char,
-) -> crate::expat_h::XML_Status {
-    XML_SetEncoding(parser, encodingName)
+    XML_SetEncoding(unsafe { parser.as_mut() }, protocol_encoding_name)
 }
 pub unsafe extern "C" fn XML_ExternalEntityParserCreate(
     mut oldParser: crate::expat_h::XML_Parser,
