@@ -6296,13 +6296,6 @@ type TokScanner = extern "C" fn(
     *mut *const ::core::ffi::c_char,
 ) -> ::core::ffi::c_int;
 
-type UnsafeTokScanner = unsafe extern "C" fn(
-    *const crate::src::xmltok::ENCODING,
-    *const ::core::ffi::c_char,
-    *const ::core::ffi::c_char,
-    *mut *const ::core::ffi::c_char,
-) -> ::core::ffi::c_int;
-
 fn scan_lt(
     enc: *const crate::src::xmltok::ENCODING,
     mut ptr: *const ::core::ffi::c_char,
@@ -6322,7 +6315,7 @@ fn scan_lt(
         usize,
     ) -> bool,
     lead_name: fn(*const crate::src::xmltok::ENCODING, *const ::core::ffi::c_char, usize) -> bool,
-    scan_atts: UnsafeTokScanner,
+    scan_atts: TokScanner,
     scan_comment: TokScanner,
     scan_cdata_section: TokScanner,
     scan_pi: TokScanner,
@@ -6459,11 +6452,11 @@ fn scan_lt(
                                 return crate::src::xmltok::XML_TOK_INVALID_1;
                             }
                             ptr = ptr.wrapping_add(width);
-                            return unsafe { scan_atts(enc, ptr, end, next_tok_ptr) };
+                            return scan_atts(enc, ptr, end, next_tok_ptr);
                         }
                         t if is_pi_name_start_type(t) => {
                             ptr = ptr.wrapping_add(width);
-                            return unsafe { scan_atts(enc, ptr, end, next_tok_ptr) };
+                            return scan_atts(enc, ptr, end, next_tok_ptr);
                         }
                         t if lead_byte_width(t).is_some() => {
                             let lead_width = lead_byte_width(t).expect("checked above");
@@ -6475,7 +6468,7 @@ fn scan_lt(
                                 return crate::src::xmltok::XML_TOK_INVALID_1;
                             }
                             ptr = ptr.wrapping_add(lead_width);
-                            return unsafe { scan_atts(enc, ptr, end, next_tok_ptr) };
+                            return scan_atts(enc, ptr, end, next_tok_ptr);
                         }
                         t if t == crate::xmltok_impl_h::BT_GT as ::core::ffi::c_int => {
                             set_next_tok_ptr(next_tok_ptr, ptr.wrapping_add(width));
