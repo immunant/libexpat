@@ -9279,41 +9279,32 @@ unsafe extern "C" fn callStoreEntityValue(
         return result;
     }
 }
-unsafe extern "C" fn normalizeLines(mut s: *mut XML_Char) {
-    unsafe {
-        let mut p: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
-        loop {
-            if *s as ::core::ffi::c_int == '\0' as i32 {
-                return;
+fn normalizeLines(s: *mut XML_Char) {
+    let buffer = xml_char_slice_with_nul_mut(s);
+    let Some(first_cr) = buffer[..buffer.len() - 1]
+        .iter()
+        .position(|&ch| ch as ::core::ffi::c_int == 0xd as ::core::ffi::c_int)
+    else {
+        return;
+    };
+
+    let mut read = first_cr;
+    let mut write = first_cr;
+    while buffer[read] != 0 {
+        if buffer[read] as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
+            buffer[write] = 0xa as XML_Char;
+            write += 1;
+            read += 1;
+            if buffer[read] as ::core::ffi::c_int == 0xa as ::core::ffi::c_int {
+                read += 1;
             }
-            if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-                break;
-            }
-            s = s.offset(1);
+        } else {
+            buffer[write] = buffer[read];
+            write += 1;
+            read += 1;
         }
-        p = s;
-        loop {
-            if *s as ::core::ffi::c_int == 0xd as ::core::ffi::c_int {
-                let c2rust_fresh7 = p;
-                p = p.offset(1);
-                *c2rust_fresh7 = 0xa as XML_Char;
-                s = s.offset(1);
-                if *s as ::core::ffi::c_int == 0xa as ::core::ffi::c_int {
-                    s = s.offset(1);
-                }
-            } else {
-                let c2rust_fresh8 = s;
-                s = s.offset(1);
-                let c2rust_fresh9 = p;
-                p = p.offset(1);
-                *c2rust_fresh9 = *c2rust_fresh8;
-            }
-            if !(*s != 0) {
-                break;
-            }
-        }
-        *p = '\0' as i32 as XML_Char;
     }
+    buffer[write] = '\0' as i32 as XML_Char;
 }
 unsafe extern "C" fn reportProcessingInstruction(
     mut parser: XML_Parser,
@@ -10047,39 +10038,31 @@ unsafe extern "C" fn setContext(mut parser: XML_Parser, mut context: *const XML_
         return XML_TRUE;
     }
 }
-unsafe extern "C" fn normalizePublicId(mut publicId: *mut XML_Char) {
-    unsafe {
-        let mut p: *mut XML_Char = publicId;
-        let mut s: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
-        s = publicId;
-        while *s != 0 {
-            match *s as ::core::ffi::c_int {
-                32 | 13 | 10 => {
-                    if p != publicId
-                        && *p.offset(-(1 as ::core::ffi::c_int) as isize) as ::core::ffi::c_int
-                            != 0x20 as ::core::ffi::c_int
-                    {
-                        let c2rust_fresh70 = p;
-                        p = p.offset(1);
-                        *c2rust_fresh70 = 0x20 as XML_Char;
-                    }
-                }
-                _ => {
-                    let c2rust_fresh71 = p;
-                    p = p.offset(1);
-                    *c2rust_fresh71 = *s;
+fn normalizePublicId(publicId: *mut XML_Char) {
+    let buffer = xml_char_slice_with_nul_mut(publicId);
+    let mut write = 0usize;
+
+    for read in 0..buffer.len() - 1 {
+        match buffer[read] as ::core::ffi::c_int {
+            32 | 13 | 10 => {
+                if write != 0
+                    && buffer[write - 1] as ::core::ffi::c_int != 0x20 as ::core::ffi::c_int
+                {
+                    buffer[write] = 0x20 as XML_Char;
+                    write += 1;
                 }
             }
-            s = s.offset(1);
+            _ => {
+                buffer[write] = buffer[read];
+                write += 1;
+            }
         }
-        if p != publicId
-            && *p.offset(-(1 as ::core::ffi::c_int) as isize) as ::core::ffi::c_int
-                == 0x20 as ::core::ffi::c_int
-        {
-            p = p.offset(-1);
-        }
-        *p = '\0' as i32 as XML_Char;
     }
+
+    if write != 0 && buffer[write - 1] as ::core::ffi::c_int == 0x20 as ::core::ffi::c_int {
+        write -= 1;
+    }
+    buffer[write] = '\0' as i32 as XML_Char;
 }
 unsafe extern "C" fn dtdCreate(mut parser: XML_Parser) -> *mut DTD {
     unsafe {
@@ -10519,6 +10502,20 @@ fn ptr_slice_mut<'a, T>(ptr: *mut T, len: usize) -> &'a mut [T] {
 
 fn key_bytes<'a>(key: KEY) -> &'a [u8] {
     unsafe { ::core::ffi::CStr::from_ptr(key).to_bytes() }
+}
+
+fn xml_char_slice_with_nul<'a>(ptr: *const XML_Char) -> &'a [XML_Char] {
+    let len = unsafe { ::core::ffi::CStr::from_ptr(ptr).to_bytes_with_nul().len() };
+    ptr_slice(ptr, len)
+}
+
+fn xml_char_slice_with_nul_mut<'a>(ptr: *mut XML_Char) -> &'a mut [XML_Char] {
+    let len = unsafe {
+        ::core::ffi::CStr::from_ptr(ptr.cast_const())
+            .to_bytes_with_nul()
+            .len()
+    };
+    ptr_slice_mut(ptr, len)
 }
 
 fn expat_malloc_ptr<T>(parser: XML_Parser, size: size_t, line: ::core::ffi::c_int) -> *mut T {
@@ -11328,29 +11325,19 @@ unsafe extern "C" fn getElementType(
         return ret;
     }
 }
-unsafe extern "C" fn copyString(mut s: *const XML_Char, mut parser: XML_Parser) -> *mut XML_Char {
-    unsafe {
-        let mut charsRequired: size_t = 0 as size_t;
-        let mut result: *mut XML_Char = ::core::ptr::null_mut::<XML_Char>();
-        while *s.offset(charsRequired as isize) as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
-            charsRequired = charsRequired.wrapping_add(1);
-        }
-        charsRequired = charsRequired.wrapping_add(1);
-        result = expat_malloc(
-            parser,
-            charsRequired.wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-            8456 as ::core::ffi::c_int,
-        ) as *mut XML_Char;
-        if result.is_null() {
-            return ::core::ptr::null_mut::<XML_Char>();
-        }
-        memcpy(
-            result as *mut ::core::ffi::c_void,
-            s as *const ::core::ffi::c_void,
-            charsRequired.wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
-        );
-        return result;
+fn copyString(s: *const XML_Char, parser: XML_Parser) -> *mut XML_Char {
+    let source = xml_char_slice_with_nul(s);
+    let chars_required = source.len() as size_t;
+    let result = expat_malloc_ptr::<XML_Char>(
+        parser,
+        chars_required.wrapping_mul(::core::mem::size_of::<XML_Char>() as size_t),
+        8456 as ::core::ffi::c_int,
+    );
+    if result.is_null() {
+        return ::core::ptr::null_mut::<XML_Char>();
     }
+    ptr_slice_mut(result, source.len()).copy_from_slice(source);
+    result
 }
 fn accountingGetCurrentAmplification(rootParser: &XML_ParserStruct) -> ::core::ffi::c_float {
     let lenOfShortestInclude: size_t =
