@@ -4176,6 +4176,42 @@ impl TagBufferStorage {
     }
 }
 
+/// Acquires the opaque Expat allocation paired with a tag-name buffer.
+///
+/// The readable tag name remains in `TagBufferStorage::bytes`; this facade
+/// owns only the allocator token needed to preserve custom allocator
+/// callbacks during growth and release.  Keeping that boundary here removes
+/// allocator mechanics from the content state machine and confines the raw
+/// allocator API to the typed tag-buffer owner.
+fn tag_buffer_allocation_backing(
+    parser: &mut XML_ParserStruct,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<dyn FnMut(TagBufferAllocationAction) -> bool>> {
+    let parser_ptr = std::ptr::from_mut(parser);
+    let allocation = unsafe { expat_malloc(parser_ptr, size, source_line) };
+    if allocation.is_null() {
+        return None;
+    }
+    let mut allocation = allocation;
+    Some(Box::new(move |action| match action {
+        TagBufferAllocationAction::Grow { size, source_line } => {
+            let reallocated =
+                unsafe { expat_realloc(parser_ptr, allocation, size, source_line) };
+            if reallocated.is_null() {
+                false
+            } else {
+                allocation = reallocated;
+                true
+            }
+        }
+        TagBufferAllocationAction::Free(source_line) => {
+            unsafe { expat_free(parser_ptr, allocation, source_line) };
+            true
+        }
+    }))
+}
+
 /// Converts a tokenizer-validated element name into its tag-owned UTF-8
 /// buffer.  The input range is resolved through its owning parser/entity
 /// storage before this helper is called, and the final buffer byte remains
@@ -11585,35 +11621,16 @@ unsafe fn doContent(
                         .bytes
                         .is_empty()
                     {
-                        let allocation = expat_malloc(
+                        let Some(backing) = tag_buffer_allocation_backing(
                             parser,
                             INIT_TAG_BUF_SIZE as crate::__stddef_size_t_h::size_t,
                             3480 as ::core::ffi::c_int,
-                        );
-                        if allocation.is_null() {
+                        ) else {
                             if let Some(mut backing) = tag_storage.backing.take() {
                                 backing(3482 as ::core::ffi::c_int);
                             }
                             return crate::expat_h::XML_ERROR_NO_MEMORY;
-                        }
-                        let mut allocation = allocation;
-                        let backing: Box<dyn FnMut(TagBufferAllocationAction) -> bool> =
-                            Box::new(move |action| match action {
-                                TagBufferAllocationAction::Grow { size, source_line } => {
-                                    let reallocated =
-                                        expat_realloc(parser_ptr, allocation, size, source_line);
-                                    if reallocated.is_null() {
-                                        false
-                                    } else {
-                                        allocation = reallocated;
-                                        true
-                                    }
-                                }
-                                TagBufferAllocationAction::Free(source_line) => {
-                                    expat_free(parser_ptr, allocation, source_line);
-                                    true
-                                }
-                            });
+                        };
                         let Some(buffer) = TagBufferStorage::allocate(
                             INIT_TAG_BUF_SIZE as usize,
                             3480 as ::core::ffi::c_int,
