@@ -15152,14 +15152,15 @@ unsafe extern "C" fn externalParEntProcessor(
         }
     }
     parser.m_processor = ProcessorState::Prolog;
+    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
     return doProlog(
-        std::ptr::from_mut(parser),
-        std::ptr::from_ref(current_parser_encoding(parser)),
+        parser,
+        encoding,
         s,
         end,
         tok,
         next,
-        std::ptr::from_mut(next_ptr),
+        next_ptr,
         (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         crate::expat_h::XML_TRUE,
@@ -15227,11 +15228,17 @@ unsafe extern "C" fn prologProcessor(
     mut end: *const ::core::ffi::c_char,
     mut nextPtr: *mut *const ::core::ffi::c_char,
 ) -> crate::expat_h::XML_Error {
+    let Some(parser) = parser.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
+    let Some(next_ptr) = nextPtr.as_mut() else {
+        return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+    };
     let mut next: *const ::core::ffi::c_char = s;
-    let encoding = parser_encoding(parser);
+    let scan_encoding = std::ptr::from_ref(current_parser_encoding(parser));
     let scan = scanner_context_from_raw(
-        (*encoding).scanners[0 as usize],
-        encoding,
+        (*scan_encoding).scanners[0 as usize],
+        scan_encoding,
         s,
         end,
     )
@@ -15240,15 +15247,16 @@ unsafe extern "C" fn prologProcessor(
     if let Some(offset) = scan.next {
         next = s.wrapping_add(offset);
     }
+    let encoding = std::ptr::from_ref(current_parser_encoding(parser));
     return doProlog(
         parser,
-        parser_encoding(parser),
+        encoding,
         s,
         end,
         tok,
         next,
-        nextPtr,
-        ((*parser).m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
+        next_ptr,
+        (parser.m_parsingStatus.finalBuffer == 0) as ::core::ffi::c_int
             as crate::expat_h::XML_Bool,
         crate::expat_h::XML_TRUE,
         XML_ACCOUNT_DIRECT,
@@ -15265,14 +15273,14 @@ fn prolog_quoted_token_contents(
     (content_start <= content_end).then(|| &token[content_start..content_end])
 }
 
-unsafe extern "C" fn doProlog(
-    mut parser: crate::expat_h::XML_Parser,
+unsafe fn doProlog(
+    parser: &mut XML_ParserStruct,
     mut enc: *const crate::src::xmltok::ENCODING,
     mut s: *const ::core::ffi::c_char,
     mut end: *const ::core::ffi::c_char,
     mut tok: ::core::ffi::c_int,
     mut next: *const ::core::ffi::c_char,
-    mut nextPtr: *mut *const ::core::ffi::c_char,
+    next_ptr: &mut *const ::core::ffi::c_char,
     mut haveMore: crate::expat_h::XML_Bool,
     mut allowClosingDoctype: crate::expat_h::XML_Bool,
     mut account: XML_Account,
@@ -15373,8 +15381,6 @@ unsafe extern "C" fn doProlog(
     // the call.  Keep that invariant at this boundary and use the checked
     // borrow throughout the prolog state machine instead of repeatedly
     // dereferencing its raw handle.
-    let parser = &mut *parser;
-    let next_ptr = &mut *nextPtr;
     let parser_key = parser as *mut XML_ParserStruct as usize;
     let hash_salt = parser
         .m_root
@@ -16080,7 +16086,12 @@ unsafe extern "C" fn doProlog(
                                             }
                                         }
                                         (*parser).m_processor = ProcessorState::Content;
-                                        return contentProcessor(parser, s, end, nextPtr);
+                                        return contentProcessor(
+                                            parser,
+                                            s,
+                                            end,
+                                            std::ptr::from_mut(next_ptr),
+                                        );
                                     }
                                     34 => {
                                         let Some(element_name) = get_element_type_from_token(
@@ -17308,7 +17319,12 @@ unsafe extern "C" fn doProlog(
                                         }
                                         handleDefault = crate::expat_h::XML_FALSE;
                                         result_3 = doIgnoreSection(
-                                            parser, enc, &mut next, end, nextPtr, haveMore,
+                                            parser,
+                                            enc,
+                                            &mut next,
+                                            end,
+                                            std::ptr::from_mut(next_ptr),
+                                            haveMore,
                                         );
                                         if result_3 as ::core::ffi::c_uint
                                             != crate::expat_h::XML_ERROR_NONE as ::core::ffi::c_int
@@ -18911,13 +18927,13 @@ unsafe extern "C" fn internalEntityProcessor(
                 next = textStart.wrapping_add(offset);
             }
             result = doProlog(
-                parser,
+                parser_state,
                 &internal_encoding.enc,
                 textStart,
                 textEnd,
                 tok,
                 next,
-                &raw mut next,
+                &mut next,
                 crate::expat_h::XML_FALSE,
                 crate::expat_h::XML_FALSE,
                 XML_ACCOUNT_ENTITY_EXPANSION,
