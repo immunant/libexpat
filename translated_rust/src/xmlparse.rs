@@ -8501,29 +8501,28 @@ unsafe extern "C" fn doContent(
     let internal_event_start = std::cell::Cell::new(None);
     let mut internal_event_window = None;
     if !parser_events {
-        let open_entity = {
+        let (window, event_start, event_end) = {
             let parser_state = &mut *parser;
             let open_entity_index = parser_state
                 .m_openInternalEntities
                 .expect("internal entity parsing requires an open entity");
-            std::ptr::from_mut(
-                parser_state
-                    .m_activeInternalEntities
-                    .get_mut(open_entity_index)
-                    .expect("open internal entity index is live")
-                    .node_mut(),
+            let open_entity = parser_state
+                .m_activeInternalEntities
+                .get_mut(open_entity_index)
+                .expect("open internal entity index is live")
+                .node_mut();
+            let Some(window) = event_text_window(&*dtd, open_entity) else {
+                return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
+            };
+            (
+                window,
+                &raw mut open_entity.internalEventPtr,
+                &raw mut open_entity.internalEventEndPtr,
             )
         };
-        let open_entity = &mut *open_entity;
-        let Some(window) = event_text_window(
-            &*dtd,
-            open_entity,
-        ) else {
-            return crate::expat_h::XML_ERROR_UNEXPECTED_STATE;
-        };
         internal_event_window = Some(window);
-        eventPP = &raw mut open_entity.internalEventPtr;
-        eventEndPP = &raw mut open_entity.internalEventEndPtr;
+        eventPP = event_start;
+        eventEndPP = event_end;
     }
     let event_parser = parser;
     let parser_event_start_ptr = eventPP;
@@ -8646,24 +8645,36 @@ unsafe extern "C" fn doContent(
                     };
                     let entity_start = s.wrapping_offset(min_bytes_per_char as isize);
                     let entity_end = next.wrapping_offset(-(min_bytes_per_char as isize));
-                    // The tokenizer produced this complete entity-reference
-                    // token, so this subrange is within its readable input.
-                    let entity_len = entity_end.addr().checked_sub(entity_start.addr()).unwrap_or(0);
-                    let max_entity_name_len = match entity_name_matcher {
-                        crate::src::xmltok::PredefinedEntityNameMatcher::Normal => 4,
-                        crate::src::xmltok::PredefinedEntityNameMatcher::Little2
-                        | crate::src::xmltok::PredefinedEntityNameMatcher::Big2 => 9,
-                    };
-                    let entity_name = if entity_len <= max_entity_name_len {
-                        ::core::slice::from_raw_parts(entity_start, entity_len)
-                    } else {
-                        &[]
+                    // Resolve the scanner's token cursors through their
+                    // owning parser/entity storage before matching.  The
+                    // fixed predefined names contain at most four encoded
+                    // characters, so a local byte view covers both UTF-8
+                    // and UTF-16 without manufacturing a slice from a raw
+                    // cursor.
+                    let predefined = match event_raw_name_source(
+                        &*parser,
+                        &*dtd,
+                        parser_events,
+                        entity_start.addr(),
+                        entity_end.addr(),
+                    ) {
+                        Some(RawNameSource::Chars(chars)) => {
+                            crate::src::xmltok::predefined_entity_name(entity_name_matcher, chars)
+                        }
+                        Some(RawNameSource::Bytes(bytes)) if bytes.len() <= 8 => {
+                            let mut name = [0 as ::core::ffi::c_char; 8];
+                            for (destination, &source) in name.iter_mut().zip(bytes.iter()) {
+                                *destination = source as ::core::ffi::c_char;
+                            }
+                            crate::src::xmltok::predefined_entity_name(
+                                entity_name_matcher,
+                                &name[..bytes.len()],
+                            )
+                        }
+                        _ => 0,
                     };
                     let mut ch: crate::expat_external_h::XML_Char =
-                        crate::src::xmltok::predefined_entity_name(
-                            entity_name_matcher,
-                            entity_name,
-                        ) as crate::expat_external_h::XML_Char;
+                        predefined as crate::expat_external_h::XML_Char;
                     if ch != 0 {
                         accountingDiffTolerated(
                             parser,
