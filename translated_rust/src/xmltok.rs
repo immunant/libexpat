@@ -12682,38 +12682,6 @@ fn utf8_to_utf16(
     (result, input_offset, output_offset)
 }
 
-unsafe extern "C" fn utf8_toUtf16(
-    enc: *const crate::src::xmltok::ENCODING,
-    fromP: *mut *const ::core::ffi::c_char,
-    fromLim: *const ::core::ffi::c_char,
-    toP: *mut *mut ::core::ffi::c_ushort,
-    toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::xmltok::XML_Convert_Result {
-    // The converter contract supplies two ordered, single-allocation windows.
-    // Keep the borrowed slices local so their lifetimes cannot outlive the call.
-    let from = *fromP;
-    let to = *toP;
-    let input_len: usize = fromLim.offset_from(from).try_into().unwrap();
-    let output_len: usize = toLim.offset_from(to).try_into().unwrap();
-    let input_start = if input_len == 0 {
-        ::core::ptr::NonNull::<u8>::dangling().as_ptr()
-    } else {
-        from as *const u8
-    };
-    let output_start = if output_len == 0 {
-        ::core::ptr::NonNull::<::core::ffi::c_ushort>::dangling().as_ptr()
-    } else {
-        to
-    };
-    let input = ::core::slice::from_raw_parts(input_start, input_len);
-    let output = ::core::slice::from_raw_parts_mut(output_start, output_len);
-    let byte_types = &(*(enc as *const normal_encoding)).type_0;
-    let (result, input_offset, output_offset) = utf8_to_utf16(byte_types, input, output);
-    *fromP = from.add(input_offset);
-    *toP = to.add(output_offset);
-    result
-}
-
 static utf8_encoding_ns: normal_encoding = normal_encoding {
     enc: crate::src::xmltok::encoding {
         scanners: [
@@ -13935,27 +13903,6 @@ fn latin1_to_utf8_window(
         input_used,
         output_used,
     )
-}
-
-unsafe extern "C" fn latin1_toUtf16(
-    _enc: *const crate::src::xmltok::ENCODING,
-    mut fromP: *mut *const ::core::ffi::c_char,
-    mut fromLim: *const ::core::ffi::c_char,
-    mut toP: *mut *mut ::core::ffi::c_ushort,
-    mut toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::xmltok::XML_Convert_Result {
-    while *fromP < fromLim && *toP < toLim as *mut ::core::ffi::c_ushort {
-        let c2rust_fresh4 = *fromP;
-        *fromP = (*fromP).offset(1);
-        let c2rust_fresh5 = *toP;
-        *toP = (*toP).offset(1);
-        *c2rust_fresh5 = *c2rust_fresh4 as ::core::ffi::c_uchar as ::core::ffi::c_ushort;
-    }
-    if *toP == toLim as *mut ::core::ffi::c_ushort && *fromP < fromLim {
-        return crate::src::xmltok::XML_CONVERT_OUTPUT_EXHAUSTED;
-    } else {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
-    };
 }
 
 static latin1_encoding_ns: normal_encoding = normal_encoding {
@@ -17720,57 +17667,6 @@ fn unknown_to_utf8_window(
         input_used,
         output_used,
     )
-}
-
-unsafe extern "C" fn unknown_toUtf16(
-    enc: *const crate::src::xmltok::ENCODING,
-    fromP: *mut *const ::core::ffi::c_char,
-    fromLim: *const ::core::ffi::c_char,
-    toP: *mut *mut ::core::ffi::c_ushort,
-    toLim: *const ::core::ffi::c_ushort,
-) -> crate::src::xmltok::XML_Convert_Result {
-    let input_start = unsafe { *fromP };
-    let input_len = if input_start == fromLim {
-        0
-    } else {
-        unsafe { fromLim.offset_from(input_start) as usize }
-    };
-    if input_len == 0 {
-        return crate::src::xmltok::XML_CONVERT_COMPLETED;
-    }
-    let output_start = unsafe { *toP };
-    let output_len = if output_start == toLim.cast_mut() {
-        0
-    } else {
-        unsafe { toLim.offset_from(output_start) as usize }
-    };
-    let encoding = unsafe { &*(enc as *const unknown_encoding) };
-    let input = unsafe { core::slice::from_raw_parts(input_start.cast::<u8>(), input_len) };
-    // As with the UTF-8 converter, an empty C window may be represented by a
-    // null pointer.  There is no output access in that case.
-    let output = if output_len == 0 {
-        &mut []
-    } else {
-        unsafe { core::slice::from_raw_parts_mut(output_start, output_len) }
-    };
-    let (result, input_used, output_used) = unknown_to_utf16_window(
-        encoding,
-        input,
-        output,
-        |source| {
-            unknown_encoding_converter(encoding.converter_id)
-                .expect("unknown encoding converter is registered")
-                .invoke
-                .invoke(source)
-        },
-    );
-    if input_used != 0 {
-        unsafe { *fromP = input_start.add(input_used) };
-    }
-    if output_used != 0 {
-        unsafe { *toP = output_start.add(output_used) };
-    }
-    result
 }
 
 fn unknown_to_utf16_window(
