@@ -3390,7 +3390,8 @@ pub const INIT_SCAFFOLD_ELEMENTS: ::core::ffi::c_int = 32 as ::core::ffi::c_int;
 pub static mut g_reparseDeferralEnabledDefault: crate::expat_h::XML_Bool = crate::expat_h::XML_TRUE;
 #[no_mangle]
 
-pub static mut g_bytesScanned: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
+pub static g_bytesScanned: std::sync::atomic::AtomicU32 =
+    std::sync::atomic::AtomicU32::new(0);
 
 unsafe extern "C" fn expat_heap_stat(
     mut rootParser: crate::expat_h::XML_Parser,
@@ -3899,7 +3900,10 @@ unsafe extern "C" fn callProcessor(
             return crate::expat_h::XML_ERROR_NONE;
         }
     }
-    g_bytesScanned = g_bytesScanned.wrapping_add(have_now as ::core::ffi::c_uint);
+    g_bytesScanned.fetch_add(
+        have_now as ::core::ffi::c_uint,
+        std::sync::atomic::Ordering::Relaxed,
+    );
     let mut ret: crate::expat_h::XML_Error = crate::expat_h::XML_ERROR_NONE;
     *endPtr = start;
     loop {
