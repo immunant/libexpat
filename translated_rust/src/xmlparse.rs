@@ -2300,12 +2300,11 @@ pub struct XML_ParserStruct {
     m_protocolEncodingName: Option<ProtocolEncodingName>,
     pub m_ns: crate::expat_h::XML_Bool,
     pub m_ns_triplets: crate::expat_h::XML_Bool,
-    pub m_unknownEncodingMem: *mut ::core::ffi::c_void,
-    // A successful unknown-encoding callback transfers this ABI record to
-    // the parser until reset/free.  Keeping the record intact ties its
-    // foreign data and release callback together, preventing one from being
-    // retained without the other.
-    m_unknownEncodingInfo: Option<crate::expat_h::XML_Encoding>,
+    // The unknown-encoding tokenizer object is allocated through the
+    // configured Expat allocator.  Its non-null storage address is also the
+    // callback registry key, while the successful callback record stays with
+    // that storage until reset/free.
+    m_unknownEncodingMem: Option<UnknownEncodingMemory>,
     pub m_prologState: crate::src::xmlrole::PROLOG_STATE,
     pub m_processor: ProcessorState,
     pub m_errorCode: crate::expat_h::XML_Error,
@@ -2417,6 +2416,17 @@ pub struct XML_ParserStruct {
 struct ProtocolEncodingName {
     chars: Vec<crate::expat_external_h::XML_Char>,
     backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
+}
+
+struct UnknownEncodingMemory {
+    // The tokenizer initializer writes an `unknown_encoding` into this
+    // pre-reserved slot.  We retain the slot without exposing its address in
+    // parser state; it stays stable until the adapter is released.
+    storage: Vec<::core::mem::MaybeUninit<crate::src::xmltok::unknown_encoding>>,
+    // Expat still observes the allocation and matching free through its
+    // configured allocator, even though Rust owns the typed tokenizer bytes.
+    backing: Option<Box<dyn FnMut(::core::ffi::c_int)>>,
+    info: Option<crate::expat_h::XML_Encoding>,
 }
 
 impl ProtocolEncodingName {
@@ -4034,8 +4044,7 @@ fn initial_parser_struct(
         m_protocolEncodingName: None,
         m_ns: crate::expat_h::XML_FALSE,
         m_ns_triplets: crate::expat_h::XML_FALSE,
-        m_unknownEncodingMem: crate::__stddef_null_h::NULL,
-        m_unknownEncodingInfo: None,
+        m_unknownEncodingMem: None,
         m_prologState: crate::src::xmlrole::PROLOG_STATE {
             handler: None,
             level: 0,
@@ -4529,8 +4538,7 @@ fn parser_init(
     parser.m_tagStack = None;
     parser.m_inheritedBindings = ::core::ptr::null_mut::<BINDING>();
     parser.m_nSpecifiedAtts = 0 as ::core::ffi::c_int;
-    parser.m_unknownEncodingMem = crate::__stddef_null_h::NULL;
-    parser.m_unknownEncodingInfo = None;
+    parser.m_unknownEncodingMem = None;
     parser.m_parsingStatus.parsing = crate::expat_h::XML_INITIALIZED;
     parser.m_reenter = crate::expat_h::XML_FALSE;
     parser.m_isParamEntity = crate::expat_h::XML_FALSE;
@@ -4618,7 +4626,6 @@ pub unsafe extern "C" fn XML_ParserReset(
     // invoking allocator or release callbacks below, which may inspect the parser.
     let (
         unknown_encoding_mem,
-        unknown_encoding_info,
         protocol_encoding_name,
         dtd,
     ) = {
@@ -4664,21 +4671,25 @@ pub unsafe extern "C" fn XML_ParserReset(
             parser_state.m_freeValueEntities = ::core::ptr::NonNull::new(open_entity);
         }
         moveToFreeBindingList(parser_state, parser_state.m_inheritedBindings);
-        let unknown_encoding_mem = parser_state.m_unknownEncodingMem;
-        let unknown_encoding_info = parser_state.m_unknownEncodingInfo.take();
+        let unknown_encoding_mem = parser_state.m_unknownEncodingMem.take();
         let protocol_encoding_name = parser_state.m_protocolEncodingName.take();
         (
             unknown_encoding_mem,
-            unknown_encoding_info,
             protocol_encoding_name,
             parser_dtd_ptr!(parser_state),
         )
     };
-    crate::src::xmltok::unregister_unknown_encoding_converter(unknown_encoding_mem as usize);
-    expat_free(parser, unknown_encoding_mem, 1686 as ::core::ffi::c_int);
-    if let Some(info) = unknown_encoding_info {
-        if let Some(release) = info.release {
-            release(info.data);
+    if let Some(mut unknown_encoding_mem) = unknown_encoding_mem {
+        crate::src::xmltok::unregister_unknown_encoding_converter(
+            unknown_encoding_mem.storage.as_ptr() as usize,
+        );
+        if let Some(mut backing) = unknown_encoding_mem.backing.take() {
+            backing(1686 as ::core::ffi::c_int);
+        }
+        if let Some(info) = unknown_encoding_mem.info.take() {
+            if let Some(release) = info.release {
+                release(info.data);
+            }
         }
     }
     poolClear(&raw mut (*parser).m_tempPool);
@@ -5454,15 +5465,17 @@ pub unsafe extern "C" fn XML_ParserFree(mut parser: crate::expat_h::XML_Parser) 
         backing(parser, NamespaceAttributeAllocationAction::Free(2012));
     }
     parser.m_nsAtts.entries = Vec::new();
-    crate::src::xmltok::unregister_unknown_encoding_converter(parser.m_unknownEncodingMem as usize);
-    expat_free(
-        parser as *mut XML_ParserStruct,
-        parser.m_unknownEncodingMem,
-        2013 as ::core::ffi::c_int,
-    );
-    if let Some(info) = parser.m_unknownEncodingInfo.take() {
-        if let Some(release) = info.release {
-            release(info.data);
+    if let Some(mut unknown_encoding_mem) = parser.m_unknownEncodingMem.take() {
+        crate::src::xmltok::unregister_unknown_encoding_converter(
+            unknown_encoding_mem.storage.as_ptr() as usize,
+        );
+        if let Some(mut backing) = unknown_encoding_mem.backing.take() {
+            backing(2013 as ::core::ffi::c_int);
+        }
+        if let Some(info) = unknown_encoding_mem.info.take() {
+            if let Some(release) = info.release {
+                release(info.data);
+            }
         }
     }
     expat_free(
@@ -7836,7 +7849,13 @@ unsafe fn parser_encoding(
             }
             _ => &raw const parser.m_initEncoding.initEnc,
         },
-        EncodingState::Unknown => parser.m_unknownEncodingMem.cast(),
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .expect("unknown encoding storage is installed")
+            .storage
+            .as_ptr()
+            .cast(),
     }
 }
 
@@ -10792,20 +10811,31 @@ unsafe extern "C" fn handleUnknownEncoding(
         if callback.zip(callback_arg).is_some_and(|(callback, callback_arg)| {
             callback_arg.invoke.invoke(callback.as_ref(), encodingName, &raw mut info) != 0
         }) {
-            let mut enc: *mut crate::src::xmltok::ENCODING =
-                ::core::ptr::null_mut::<crate::src::xmltok::ENCODING>();
-            (*parser).m_unknownEncodingMem = expat_malloc(
+            let Some(mut backing) = allocation_backing(
                 parser,
-                crate::src::xmltok::XmlSizeOfUnknownEncoding() as crate::__stddef_size_t_h::size_t,
+                crate::src::xmltok::XmlSizeOfUnknownEncoding()
+                    as crate::__stddef_size_t_h::size_t,
                 4963 as ::core::ffi::c_int,
-            );
-            if (*parser).m_unknownEncodingMem.is_null() {
+            ) else {
                 if info.release.is_some() {
                     info.release.expect("non-null function pointer")(info.data);
                 }
                 return crate::expat_h::XML_ERROR_NO_MEMORY;
+            };
+            let mut storage = Vec::new();
+            if storage.try_reserve_exact(1).is_err() {
+                backing(4963 as ::core::ffi::c_int);
+                if let Some(release) = info.release {
+                    release(info.data);
+                }
+                return crate::expat_h::XML_ERROR_NO_MEMORY;
             }
-            enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
+            (*parser).m_unknownEncodingMem = Some(UnknownEncodingMemory {
+                storage,
+                backing: Some(backing),
+                info: None,
+            });
+            let enc = if (*parser).m_ns as ::core::ffi::c_int != 0 {
                 Some(
                     crate::src::xmltok::XmlInitUnknownEncodingNS
                         as unsafe extern "C" fn(
@@ -10829,13 +10859,23 @@ unsafe extern "C" fn handleUnknownEncoding(
                 )
             }
             .expect("non-null function pointer")(
-                (*parser).m_unknownEncodingMem,
+                (*parser)
+                    .m_unknownEncodingMem
+                    .as_mut()
+                    .expect("unknown encoding storage is installed")
+                    .storage
+                    .as_mut_ptr()
+                    .cast(),
                 &raw mut info.map as *mut ::core::ffi::c_int,
                 info.convert as crate::src::xmltok::CONVERTER,
                 info.data,
             );
             if !enc.is_null() {
-                (*parser).m_unknownEncodingInfo = Some(info);
+                (*parser)
+                    .m_unknownEncodingMem
+                    .as_mut()
+                    .expect("unknown encoding storage is installed")
+                    .info = Some(info);
                 (*parser).m_encoding = EncodingState::Unknown;
                 return crate::expat_h::XML_ERROR_NONE;
             }
@@ -11269,7 +11309,13 @@ unsafe extern "C" fn doProlog(
             }
             _ => &raw const parser.m_initEncoding.initEnc,
         },
-        EncodingState::Unknown => parser.m_unknownEncodingMem.cast(),
+        EncodingState::Unknown => parser
+            .m_unknownEncodingMem
+            .as_ref()
+            .expect("unknown encoding storage is installed")
+            .storage
+            .as_ptr()
+            .cast(),
     };
     let parser_events = enc == active_parser_encoding;
     let mut eventPP: *mut *const ::core::ffi::c_char =
@@ -11404,7 +11450,13 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 _ => &raw const parser.m_initEncoding.initEnc,
                                             },
-                                            EncodingState::Unknown => parser.m_unknownEncodingMem.cast(),
+                                            EncodingState::Unknown => parser
+                                                .m_unknownEncodingMem
+                                                .as_ref()
+                                                .expect("unknown encoding storage is installed")
+                                                .storage
+                                                .as_ptr()
+                                                .cast(),
                                         };
                                         enc = active_parser_encoding;
                                         handleDefault = crate::expat_h::XML_FALSE;
@@ -11533,7 +11585,13 @@ unsafe extern "C" fn doProlog(
                                                 }
                                                 _ => &raw const parser.m_initEncoding.initEnc,
                                             },
-                                            EncodingState::Unknown => parser.m_unknownEncodingMem.cast(),
+                                            EncodingState::Unknown => parser
+                                                .m_unknownEncodingMem
+                                                .as_ref()
+                                                .expect("unknown encoding storage is installed")
+                                                .storage
+                                                .as_ptr()
+                                                .cast(),
                                         };
                                         enc = active_parser_encoding;
                                         handleDefault = crate::expat_h::XML_FALSE;
