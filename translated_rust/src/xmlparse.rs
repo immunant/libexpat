@@ -2852,6 +2852,46 @@ static SKIPPED_ENTITY_HANDLERS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<usize, std::sync::Arc<dyn SkippedEntityCallback>>>,
 > = std::sync::OnceLock::new();
 
+/// A skipped-entity callback prepared from its ABI value.
+///
+/// The parser state only records whether a callback is present; the foreign
+/// callback itself stays in the boundary registry for dispatch after parser
+/// borrows have been released.
+struct SkippedEntityHandlerRegistration {
+    callback: Option<std::sync::Arc<dyn SkippedEntityCallback>>,
+}
+
+fn skipped_entity_handler_registration<Callback>(
+    handler: Option<Callback>,
+) -> SkippedEntityHandlerRegistration
+where
+    Callback: SkippedEntityCallback + 'static,
+{
+    SkippedEntityHandlerRegistration {
+        callback: handler.map(|callback| std::sync::Arc::new(callback) as _),
+    }
+}
+
+fn set_skipped_entity_handler(
+    parser: &mut XML_ParserStruct,
+    parser_address: usize,
+    registration: SkippedEntityHandlerRegistration,
+) {
+    parser.m_skippedEntityHandler = registration.callback.is_some();
+    let mut handlers = SKIPPED_ENTITY_HANDLERS
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match registration.callback {
+        Some(callback) => {
+            handlers.insert(parser_address, callback);
+        }
+        None => {
+            handlers.remove(&parser_address);
+        }
+    }
+}
+
 /// Invokes a skipped-entity callback from a staged, terminated entity name.
 ///
 /// Parameter-entity lookup uses a temporary DTD pool entry which is rewound
@@ -9835,33 +9875,19 @@ pub unsafe extern "C" fn XML_SetExternalEntityRefHandlerArg_ffi(
     let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
     set_external_entity_ref_handler_arg(parser, registration);
 }
-pub unsafe extern "C" fn XML_SetSkippedEntityHandler(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_SkippedEntityHandler,
-) {
-    if !parser.is_null() {
-        (*parser).m_skippedEntityHandler = handler.is_some();
-        let mut handlers = SKIPPED_ENTITY_HANDLERS
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match handler {
-            Some(callback) => {
-                handlers.insert(parser as usize, std::sync::Arc::new(callback));
-            }
-            None => {
-                handlers.remove(&(parser as usize));
-            }
-        }
-    }
-}
 #[export_name = "XML_SetSkippedEntityHandler"]
 
 pub unsafe extern "C" fn XML_SetSkippedEntityHandler_ffi(
-    mut parser: crate::expat_h::XML_Parser,
-    mut handler: crate::expat_h::XML_SkippedEntityHandler,
+    parser: crate::expat_h::XML_Parser,
+    handler: crate::expat_h::XML_SkippedEntityHandler,
 ) {
-    XML_SetSkippedEntityHandler(parser, handler)
+    if parser.is_null() || !parser.is_aligned() {
+        return;
+    }
+    let parser_address = parser.addr();
+    let registration = skipped_entity_handler_registration(handler);
+    let parser = unsafe { parser.as_mut() }.expect("non-null parser was checked");
+    set_skipped_entity_handler(parser, parser_address, registration)
 }
 /// Updates unknown-encoding callback registrations for an already validated
 /// parser.  The foreign context remains in an opaque boundary adapter and is
