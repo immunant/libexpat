@@ -13094,13 +13094,12 @@ extern "C" fn accountingDiffTolerated(
     }
     return tolerated;
 }
-pub unsafe extern "C" fn testingAccountingGetCountBytesDirect(
+pub extern "C" fn testingAccountingGetCountBytesDirect(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_ulonglong;
-    }
-    return (*parser).m_accounting.countBytesDirect as ::core::ffi::c_ulonglong;
+    parser_ref(parser)
+        .map(|parser| parser.m_accounting.countBytesDirect as ::core::ffi::c_ulonglong)
+        .unwrap_or(0 as ::core::ffi::c_ulonglong)
 }
 #[export_name = "testingAccountingGetCountBytesDirect"]
 
@@ -13109,13 +13108,12 @@ pub unsafe extern "C" fn testingAccountingGetCountBytesDirect_ffi(
 ) -> ::core::ffi::c_ulonglong {
     testingAccountingGetCountBytesDirect(parser)
 }
-pub unsafe extern "C" fn testingAccountingGetCountBytesIndirect(
+pub extern "C" fn testingAccountingGetCountBytesIndirect(
     mut parser: crate::expat_h::XML_Parser,
 ) -> ::core::ffi::c_ulonglong {
-    if parser.is_null() {
-        return 0 as ::core::ffi::c_ulonglong;
-    }
-    return (*parser).m_accounting.countBytesIndirect as ::core::ffi::c_ulonglong;
+    parser_ref(parser)
+        .map(|parser| parser.m_accounting.countBytesIndirect as ::core::ffi::c_ulonglong)
+        .unwrap_or(0 as ::core::ffi::c_ulonglong)
 }
 #[export_name = "testingAccountingGetCountBytesIndirect"]
 
