@@ -2207,12 +2207,33 @@ pub struct HASH_TABLE {
     pub power: ::core::ffi::c_uchar,
     pub size: crate::__stddef_size_t_h::size_t,
     pub used: crate::__stddef_size_t_h::size_t,
-    pub parser: crate::expat_h::XML_Parser,
+    // This token retains the parser-specific allocation route without
+    // retaining a dereferenceable parser back-pointer in the table.
+    allocator: Option<HashTableAllocator>,
 }
 
 pub struct HashTableSlots {
     entries: Vec<Option<NamedAllocation>>,
     backing: Box<dyn FnMut(::core::ffi::c_int)>,
+}
+
+struct HashTableAllocator {
+    allocate: Box<
+        dyn FnMut(
+            crate::__stddef_size_t_h::size_t,
+            ::core::ffi::c_int,
+        ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>>,
+    >,
+}
+
+impl HashTableAllocator {
+    fn allocate(
+        &mut self,
+        size: crate::__stddef_size_t_h::size_t,
+        source_line: ::core::ffi::c_int,
+    ) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
+        (self.allocate)(size, source_line)
+    }
 }
 
 struct NamedAllocation {
@@ -13907,6 +13928,18 @@ unsafe fn allocation_backing(
     }))
 }
 
+fn hash_table_allocation_backing(
+    table: &mut HASH_TABLE,
+    size: crate::__stddef_size_t_h::size_t,
+    source_line: ::core::ffi::c_int,
+) -> Option<Box<dyn FnMut(::core::ffi::c_int)>> {
+    table
+        .allocator
+        .as_mut()
+        .expect("initialized hash table allocator")
+        .allocate(size, source_line)
+}
+
 unsafe extern "C" fn lookup(
     mut parser: crate::expat_h::XML_Parser,
     mut table: *mut HASH_TABLE,
@@ -13924,7 +13957,7 @@ unsafe extern "C" fn lookup(
         let allocation_size = table
             .size
             .wrapping_mul(::core::mem::size_of::<*mut NAMED>());
-        let Some(mut backing) = allocation_backing(table.parser, allocation_size, 7839 as ::core::ffi::c_int) else {
+        let Some(mut backing) = hash_table_allocation_backing(table, allocation_size, 7839 as ::core::ffi::c_int) else {
             table.size = 0 as crate::__stddef_size_t_h::size_t;
             return ::core::ptr::null_mut::<NAMED>();
         };
@@ -13997,7 +14030,7 @@ unsafe extern "C" fn lookup(
                 return ::core::ptr::null_mut::<NAMED>();
             }
             let allocation_size = newSize.wrapping_mul(::core::mem::size_of::<*mut NAMED>());
-            let Some(mut backing) = allocation_backing(table.parser, allocation_size, 7887 as ::core::ffi::c_int) else {
+            let Some(mut backing) = hash_table_allocation_backing(table, allocation_size, 7887 as ::core::ffi::c_int) else {
                 return ::core::ptr::null_mut::<NAMED>();
             };
             let mut new_slots = Vec::new();
@@ -14073,7 +14106,7 @@ unsafe extern "C" fn lookup(
             }
         }
     }
-    let Some(mut backing) = allocation_backing(table.parser, createSize, 7914 as ::core::ffi::c_int) else {
+    let Some(mut backing) = hash_table_allocation_backing(table, createSize, 7914 as ::core::ffi::c_int) else {
         return ::core::ptr::null_mut::<NAMED>();
     };
     let word_size = ::core::mem::size_of::<usize>();
@@ -14127,7 +14160,14 @@ unsafe extern "C" fn hashTableInit(mut p: *mut HASH_TABLE, mut parser: crate::ex
     (*p).size = 0 as crate::__stddef_size_t_h::size_t;
     (*p).used = 0 as crate::__stddef_size_t_h::size_t;
     ::core::ptr::write(&raw mut (*p).v, None);
-    (*p).parser = parser;
+    ::core::ptr::write(
+        &raw mut (*p).allocator,
+        Some(HashTableAllocator {
+            allocate: Box::new(move |size, source_line| {
+                allocation_backing(parser, size, source_line)
+            }),
+        }),
+    );
 }
 
 unsafe extern "C" fn hashTableIterInit<'a>(
