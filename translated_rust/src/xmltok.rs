@@ -419,10 +419,18 @@ pub mod xmltok_impl_c {
         end >= ptr && end - ptr >= len
     }
 
-    fn write_raw_pointee<T>(dst: *mut T, value: T) {
-        unsafe {
-            *dst = value;
+    struct RawOutPtr<T>(*mut T);
+
+    impl<T> RawOutPtr<T> {
+        fn write(self, value: T) {
+            unsafe {
+                *self.0 = value;
+            }
         }
+    }
+
+    fn write_raw_pointee<T>(dst: *mut T, value: T) {
+        RawOutPtr(dst).write(value);
     }
 
     #[derive(Copy, Clone)]
@@ -7890,8 +7898,17 @@ extern "C" fn isNever(
     return 0 as ::core::ffi::c_int;
 }
 
+#[derive(Copy, Clone)]
+struct RawCharPtr(*const ::core::ffi::c_char);
+
+impl RawCharPtr {
+    fn byte_at(self, offset: usize) -> ::core::ffi::c_int {
+        unsafe { *self.0.cast::<::core::ffi::c_uchar>().add(offset) as ::core::ffi::c_int }
+    }
+}
+
 fn utf8_byte_at(p: *const ::core::ffi::c_char, offset: usize) -> ::core::ffi::c_int {
-    unsafe { *p.cast::<::core::ffi::c_uchar>().add(offset) as ::core::ffi::c_int }
+    RawCharPtr(p).byte_at(offset)
 }
 
 extern "C" fn utf8_isName2(
@@ -8124,6 +8141,39 @@ fn raw_span_len<T>(start: *const T, end: *const T) -> usize {
     (end as usize).wrapping_sub(start as usize) / ::core::mem::size_of::<T>()
 }
 
+struct RawConversionBuffers;
+
+impl RawConversionBuffers {
+    fn run<T>(
+        fromP: *mut *const ::core::ffi::c_char,
+        fromLim: *const ::core::ffi::c_char,
+        toP: *mut *mut T,
+        toLim: *const T,
+        convert: impl FnOnce(
+            *const ::core::ffi::c_char,
+            &[::core::ffi::c_char],
+            &mut [T],
+        ) -> ConversionProgress,
+    ) -> crate::src::xmltok::XML_Convert_Result {
+        unsafe {
+            let from = *fromP;
+            let to = *toP;
+            let input_len = raw_span_len(from, fromLim);
+            let output_len = raw_span_len(to as *const T, toLim);
+            let input = ::core::slice::from_raw_parts(from, input_len);
+            let output = ::core::slice::from_raw_parts_mut(to, output_len);
+            let progress = convert(from, input, output);
+
+            debug_assert!(progress.input_consumed <= input_len);
+            debug_assert!(progress.output_written <= output_len);
+
+            *fromP = from.wrapping_add(progress.input_consumed);
+            *toP = to.wrapping_add(progress.output_written);
+            progress.result
+        }
+    }
+}
+
 fn with_conversion_buffers<T>(
     fromP: *mut *const ::core::ffi::c_char,
     fromLim: *const ::core::ffi::c_char,
@@ -8135,22 +8185,7 @@ fn with_conversion_buffers<T>(
         &mut [T],
     ) -> ConversionProgress,
 ) -> crate::src::xmltok::XML_Convert_Result {
-    unsafe {
-        let from = *fromP;
-        let to = *toP;
-        let input_len = raw_span_len(from, fromLim);
-        let output_len = raw_span_len(to as *const T, toLim);
-        let input = ::core::slice::from_raw_parts(from, input_len);
-        let output = ::core::slice::from_raw_parts_mut(to, output_len);
-        let progress = convert(from, input, output);
-
-        debug_assert!(progress.input_consumed <= input_len);
-        debug_assert!(progress.output_written <= output_len);
-
-        *fromP = from.wrapping_add(progress.input_consumed);
-        *toP = to.wrapping_add(progress.output_written);
-        progress.result
-    }
+    RawConversionBuffers::run(fromP, fromLim, toP, toLim, convert)
 }
 
 enum UnknownEncodingAccess {
@@ -8167,30 +8202,40 @@ enum UnknownEncodingAccessResult {
     Convert(::core::ffi::c_int),
 }
 
+#[derive(Copy, Clone)]
+struct UnknownEncodingPtr(*const crate::src::xmltok::ENCODING);
+
+impl UnknownEncodingPtr {
+    fn access(self, access: UnknownEncodingAccess) -> UnknownEncodingAccessResult {
+        unsafe {
+            let enc = self.0;
+            let uenc = enc as *const unknown_encoding;
+            match access {
+                UnknownEncodingAccess::Utf8Entry(byte) => {
+                    UnknownEncodingAccessResult::Utf8Entry((*uenc).utf8[byte])
+                }
+                UnknownEncodingAccess::Utf16Unit(byte) => {
+                    UnknownEncodingAccessResult::Utf16Unit((*uenc).utf16[byte])
+                }
+                UnknownEncodingAccess::ByteType(byte) => UnknownEncodingAccessResult::ByteType(
+                    (*(enc as *const normal_encoding)).type_0[byte],
+                ),
+                UnknownEncodingAccess::Convert(p) => UnknownEncodingAccessResult::Convert((*uenc)
+                    .convert
+                    .expect("non-null function pointer")(
+                    (*uenc).userData,
+                    p,
+                )),
+            }
+        }
+    }
+}
+
 fn unknown_encoding_access(
     enc: *const crate::src::xmltok::ENCODING,
     access: UnknownEncodingAccess,
 ) -> UnknownEncodingAccessResult {
-    unsafe {
-        let uenc = enc as *const unknown_encoding;
-        match access {
-            UnknownEncodingAccess::Utf8Entry(byte) => {
-                UnknownEncodingAccessResult::Utf8Entry((*uenc).utf8[byte])
-            }
-            UnknownEncodingAccess::Utf16Unit(byte) => {
-                UnknownEncodingAccessResult::Utf16Unit((*uenc).utf16[byte])
-            }
-            UnknownEncodingAccess::ByteType(byte) => UnknownEncodingAccessResult::ByteType(
-                (*(enc as *const normal_encoding)).type_0[byte],
-            ),
-            UnknownEncodingAccess::Convert(p) => UnknownEncodingAccessResult::Convert((*uenc)
-                .convert
-                .expect("non-null function pointer")(
-                (*uenc).userData,
-                p,
-            )),
-        }
-    }
+    UnknownEncodingPtr(enc).access(access)
 }
 
 fn convert_to_utf8_bytes(
